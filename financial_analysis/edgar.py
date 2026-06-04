@@ -7,7 +7,7 @@ from typing import Any, Dict, Iterable, List, Optional
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-USER_AGENT = "FinancialAnalysis/0.1 (github.com/Lucarino99/FinancialAnalysis; contact: ouellet.luc1@gmail.com)"
+USER_AGENT = "Luc Ouellet ouellet.luc1@gmail.com"
 COMPANY_TICKER_URL = "https://www.sec.gov/files/company_tickers.json"
 SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik}.json"
 INDEX_BASE_URL = "https://www.sec.gov/Archives/edgar/full-index"
@@ -15,14 +15,6 @@ MASTER_INDEX_FILENAME = "master.idx"
 DEFAULT_REQUEST_DELAY = 0.15
 _last_request_time: Optional[float] = None
 
-KNOWN_CIKS: Dict[str, str] = {
-    "PANW": "1321560",
-    "CRWD": "1051330",
-    "FTNT": "0826432",
-    "S": "1752368",
-    "ZS": "1652978",
-    "VAR": "1694078",
-}
 
 class EdgarClientError(Exception):
     pass
@@ -76,12 +68,11 @@ def _safe_filename(text: str) -> str:
 
 def get_cik_for_ticker(ticker: str, request_delay: float = DEFAULT_REQUEST_DELAY) -> str:
     ticker_upper = ticker.strip().upper()
-    if ticker_upper in KNOWN_CIKS:
-        return KNOWN_CIKS[ticker_upper]
 
     payload = _http_get(COMPANY_TICKER_URL, request_delay=request_delay)
     raw = json.loads(payload)
-    for record in raw:
+    # SEC company_tickers.json is a dict with numeric keys; iterate over values
+    for record in raw.values():
         if record.get("ticker", "").upper() == ticker_upper:
             cik_str = str(record.get("cik_str", "")).strip()
             if cik_str:

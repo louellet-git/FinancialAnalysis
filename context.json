@@ -1,14 +1,16 @@
 {
   "project": "FinancialAnalysis",
-  "summary": "Build a small Python pipeline for ingesting SEC EDGAR filings, parsing XBRL financial statements, and extracting structured valuation inputs for public cybersecurity companies.",
-  "initial_target": "Palo Alto Networks",
+  "summary": "Python pipeline: SEC EDGAR → XBRL JSON API → time-series financial schema → Monte Carlo stochastic DCF. Future: options valuation (Black-Scholes, real options).",
+  "initial_target": "Palo Alto Networks (PANW)",
+  "xbrl_path": "SEC XBRL JSON API — data.sec.gov/api/xbrl/companyfacts/CIK{padded_cik}.json. Primary parse path. Raw .txt EDGAR downloads are archival fallback only.",
+  "dcf_direction": "Stochastic DCF via Monte Carlo (numpy). Fit growth/margin/WACC distributions from historical data. Output P10/P50/P90. Architecture must support future options valuation extension.",
   "current_focus": [
-    "EDGAR import",
-    "XBRL parser",
-    "financial schema",
-    "importer interface",
-    "basic DCF scaffold"
+    "XBRL API client (ticket 2)",
+    "time-series financial schema (ticket 3)",
+    "importer interface (ticket 4)",
+    "stochastic DCF scaffold (ticket 5)"
   ],
+  "smoke_test_policy": "Every ticket requires a live smoke test before closing. A ticket is not done until real output is printed and confirmed consumable by the next ticket.",
   "notes": "Agents should be concise when updating README.md and context.json.",
   "placement": "root context.json for agent awareness"
 }
