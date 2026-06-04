@@ -30,6 +30,13 @@ class PeriodFinancials:
             return None
         return self.operating_cash_flow - self.capex
 
+    @property
+    def fcf_margin(self) -> Optional[float]:
+        fcf = self.free_cash_flow
+        if fcf is None or not self.revenue:
+            return None
+        return fcf / self.revenue
+
 
 @dataclass
 class CompanyFinancials:

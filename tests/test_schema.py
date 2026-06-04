@@ -76,3 +76,32 @@ def test_company_financials_periods_ordered_ascending():
 def test_company_financials_empty_periods_by_default():
     company = CompanyFinancials(ticker="PANW", cik="1327567", company_name="Palo Alto Networks Inc")
     assert company.periods == []
+
+
+# --- fcf_margin derived property ---
+
+def test_fcf_margin_computed_when_revenue_and_fcf_present():
+    p = PeriodFinancials(
+        ticker="PANW", period_end=date(2024, 7, 31), form="10-K", filed_date=date(2024, 9, 12),
+        revenue=8_030_000_000.0,
+        operating_cash_flow=3_260_000_000.0,
+        capex=157_000_000.0,
+    )
+    assert abs(p.fcf_margin - (3_260_000_000.0 - 157_000_000.0) / 8_030_000_000.0) < 1e-9
+
+
+def test_fcf_margin_none_when_revenue_missing():
+    p = PeriodFinancials(
+        ticker="PANW", period_end=date(2024, 7, 31), form="10-K", filed_date=date(2024, 9, 12),
+        operating_cash_flow=3_260_000_000.0,
+        capex=157_000_000.0,
+    )
+    assert p.fcf_margin is None
+
+
+def test_fcf_margin_none_when_fcf_missing():
+    p = PeriodFinancials(
+        ticker="PANW", period_end=date(2024, 7, 31), form="10-K", filed_date=date(2024, 9, 12),
+        revenue=8_030_000_000.0,
+    )
+    assert p.fcf_margin is None
