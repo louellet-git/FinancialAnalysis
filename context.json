@@ -1,0 +1,14 @@
+{
+  "project": "FinancialAnalysis",
+  "summary": "Build a small Python pipeline for ingesting SEC EDGAR filings, parsing XBRL financial statements, and extracting structured valuation inputs for public cybersecurity companies.",
+  "initial_target": "Palo Alto Networks",
+  "current_focus": [
+    "EDGAR import",
+    "XBRL parser",
+    "financial schema",
+    "importer interface",
+    "basic DCF scaffold"
+  ],
+  "notes": "Agents should be concise when updating README.md and context.json.",
+  "placement": "root context.json for agent awareness"
+}
