@@ -40,3 +40,35 @@ def extract_annual_series(facts: Dict[str, Any], concept: str) -> List[Dict[str,
 def extract_quarterly_series(facts: Dict[str, Any], concept: str) -> List[Dict[str, Any]]:
     entries = [e for e in _get_usd_entries(facts, concept) if e.get("form") == "10-Q"]
     return _deduplicate(entries)
+
+
+def extract_series(
+    facts: Dict[str, Any],
+    concept: str,
+    form_types: List[str],
+    unit: str = "USD",
+    n: int = 10,
+) -> List[Dict[str, Any]]:
+    """Extract a time series of financial data for any concept, form types, and units.
+
+    Args:
+        facts: SEC XBRL company facts dict
+        concept: Concept identifier in "namespace/name" format (e.g., "us-gaap/Revenues")
+        form_types: List of form types to include (e.g., ["10-K"] or ["10-Q"])
+        unit: Unit to extract (e.g., "USD", "USD/shares"). Defaults to "USD".
+        n: Maximum number of most recent entries to return. Defaults to 10.
+
+    Returns:
+        List of dicts sorted by end date (ascending), deduplicated by latest filing,
+        limited to the n most recent entries.
+    """
+    parts = concept.split("/", 1)
+    if len(parts) != 2:
+        return []
+    namespace, name = parts
+    try:
+        entries = facts["facts"][namespace][name]["units"].get(unit, [])
+    except KeyError:
+        return []
+    filtered = [e for e in entries if e.get("form") in form_types]
+    return _deduplicate(filtered)[-n:]
