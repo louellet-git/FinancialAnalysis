@@ -101,6 +101,19 @@
 
 ---
 
+## Ticket 4.5 — Financial Statement xlsx Export ✅ CLOSED
+- **Title:** Export financial statements for any ticker to a four-tab xlsx file
+- **Status:** ✅ CLOSED 2026-06-05. Smoke test passed.
+- **Results:**
+  - NVDA: 4,886 rows across 4 tabs (IS: 356, BS: 391, CF: 213, Raw: 3,926)
+  - FY2026 revenue: 215,938,000,000 ✓; capex: -6,042,000,000 ✓ (negative); FCF: 108,760,000,000 ✓
+  - `filed_date` column populated (e.g. 2026-02-25 for FY2026 10-K) ✓
+  - Raw tab has 3,926 unmapped XBRL concept rows ✓
+  - PANW second ticker: 4,073 rows, FY2025 revenue: 9,221,500,000 ✓
+  - Empty cells for None values (not "NA" or 0) ✓
+
+---
+
 ## Ticket 5 — Stochastic DCF Scaffold
 - **Title:** Implement Monte Carlo stochastic DCF model
 - **Description:** Create `financial_analysis/dcf.py` with a `StochasticDCF` class that fits distributions to historical FCF data from `CompanyFinancials`, runs a vectorized Monte Carlo simulation, and outputs P10/P50/P90 present value estimates. Architecture must support future extension to options valuation (Black-Scholes, real options on growth).
