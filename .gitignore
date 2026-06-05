@@ -1,0 +1,17 @@
+# Environment variables — never commit API keys
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Data — raw cache and processed outputs are local only
+data/raw/
+data/processed/
+
+# IDE
+.vscode/
+.idea/
