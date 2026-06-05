@@ -38,18 +38,21 @@ def _resolve_field(
     form_types: list[str],
     n: int,
 ) -> dict[str, float]:
-    """Returns {period_end: value} for the first concept in spec that has data."""
+    """Returns {period_end: value}, merging all concepts (first concept wins per period_end).
+
+    Merging handles companies that use different concepts for different fiscal years
+    (e.g. NVDA used RevenueFromContractWith... through FY2022, then Revenues for FY2023+).
+    """
+    result: dict[str, float] = {}
     for concept in spec.concepts:
         entries = extract_series(facts, concept, form_types=form_types, unit=spec.unit, n=n)
-        if entries:
-            result = {}
-            for e in entries:
+        for e in entries:
+            if e["end"] not in result:
                 val = e["val"]
                 if spec.sign_flip:
                     val = -abs(val)
                 result[e["end"]] = val
-            return result
-    return {}
+    return result
 
 
 def _collect_raw_extras(
