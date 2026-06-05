@@ -83,21 +83,22 @@ def _populate_filed_dates(
     all_periods: dict[tuple[str, str], dict],
     form_types: list[str],
 ) -> None:
-    """Best-effort: fill filed_date from Revenues concept entries."""
-    ref_concept = "us-gaap/Revenues"
-    ns, name = ref_concept.split("/", 1)
-    try:
-        entries = facts["facts"][ns][name]["units"]["USD"]
-    except KeyError:
-        return
-    for e in entries:
-        if e.get("form") not in form_types:
+    """Best-effort: fill filed_date by scanning all revenue concept fallbacks."""
+    from financial_analysis.xbrl_tags import INCOME_STATEMENT_TAGS
+    revenue_concepts = INCOME_STATEMENT_TAGS["revenue"].concepts
+    for concept in revenue_concepts:
+        ns, name = concept.split("/", 1)
+        try:
+            entries = facts["facts"][ns][name]["units"]["USD"]
+        except KeyError:
             continue
-        form = e["form"]
-        key_form = "10-K" if "K" in form else "10-Q"
-        key = (e["end"], key_form)
-        if key in all_periods and "filed" in e:
-            all_periods[key]["filed_date"] = e["filed"]
+        for e in entries:
+            if e.get("form") not in form_types or "filed" not in e:
+                continue
+            key_form = "10-K" if "K" in e["form"] else "10-Q"
+            key = (e["end"], key_form)
+            if key in all_periods:
+                all_periods[key]["filed_date"] = e["filed"]
 
 
 def import_company(

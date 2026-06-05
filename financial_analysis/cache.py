@@ -24,5 +24,5 @@ def load_company_facts(
     cik = get_cik_for_ticker(ticker)
     facts = fetch_company_facts(cik)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(facts), encoding="utf-8")
+    path.write_text(json.dumps(facts, indent=2), encoding="utf-8")
     return facts
