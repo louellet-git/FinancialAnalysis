@@ -20,7 +20,7 @@ from financial_analysis import store
 from financial_analysis.importer import UnsupportedFilingError, import_company
 from financial_analysis.edgar import EdgarClientError
 from financial_analysis.fmp import FMPClientError, load_estimates, load_surprises, load_fmp_statements
-from financial_analysis.market_data import load_prices
+from financial_analysis.market_data import load_earnings_surprises, load_prices
 from financial_analysis.schema import CompanyFinancials, PeriodFinancials
 from financial_analysis.xbrl_tags import STATEMENT_MAP, UNIT_MAP
 
@@ -219,13 +219,22 @@ def main() -> None:
         except Exception as e:
             print(f"  Warning: price fetch failed — {e}")
 
-        print("Fetching analyst estimates (FMP)...")
+        print("Fetching earnings surprises (yfinance)...")
+        try:
+            company.surprises = load_earnings_surprises(ticker, cache_dir=cache_dir, refresh=args.refresh)
+            print(f"  {len(company.surprises)} earnings surprise records loaded")
+        except Exception as e:
+            print(f"  Warning: earnings fetch failed — {e}")
+
+        print("Fetching analyst estimates (FMP, optional)...")
         try:
             company.estimates = load_estimates(ticker, cache_dir=cache_dir, refresh=args.refresh)
-            company.surprises = load_surprises(ticker, cache_dir=cache_dir, refresh=args.refresh)
-            print(f"  {len(company.estimates)} estimate records, {len(company.surprises)} surprise records")
+            fmp_surprises = load_surprises(ticker, cache_dir=cache_dir, refresh=args.refresh)
+            if fmp_surprises:
+                company.surprises = fmp_surprises
+            print(f"  {len(company.estimates)} FMP estimate records loaded")
         except FMPClientError as e:
-            print(f"  Warning: FMP fetch failed — {e}")
+            print(f"  FMP unavailable ({e}) — using yfinance earnings only")
 
     n_tabs = 4 if args.no_market else 6
     print(f"Writing {out_path} ...")
