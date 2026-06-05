@@ -114,6 +114,21 @@
 
 ---
 
+## Ticket 4.6 — Market Data Enrichment ✅ CLOSED
+- **Title:** Add historical stock prices and analyst earnings surprises to the pipeline
+- **Status:** Closed 2026-06-05. Smoke test passed.
+- **Results:**
+  - New modules: `financial_analysis/market_data.py` (yfinance prices + earnings), `financial_analysis/fmp.py` (FMP client + IFRS stub)
+  - New schema dataclasses: `PricePoint`, `EarningsEstimate`, `EarningsSurprise`
+  - `CompanyFinancials` extended with `prices`, `estimates`, `surprises` lists
+  - `scripts/analyze.py` now produces 6-tab xlsx (+ Prices, + Estimates); `--no-market` for 4-tab fallback
+  - NVDA smoke test: 6885 price points (yfinance, ~27 years), 25 earnings surprise records (yfinance)
+  - 11871 rows across 6 tabs; 4886 rows across 4 tabs with `--no-market` ✓
+  - Cache hit on second run (instant, no API calls) ✓
+  - FMP analyst-estimates (v3 legacy) unavailable on free plan post-Aug 2025 — pipeline degrades gracefully to yfinance; FMP stub preserved for future upgrade
+
+---
+
 ## Ticket 5 — Stochastic DCF Scaffold
 - **Title:** Implement Monte Carlo stochastic DCF model
 - **Description:** Create `financial_analysis/dcf.py` with a `StochasticDCF` class that fits distributions to historical FCF data from `CompanyFinancials`, runs a vectorized Monte Carlo simulation, and outputs P10/P50/P90 present value estimates. Architecture must support future extension to options valuation (Black-Scholes, real options on growth).
