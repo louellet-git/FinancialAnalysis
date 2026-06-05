@@ -57,7 +57,7 @@
 
 ---
 
-## Ticket 3.5 — Data Store
+## Ticket 3.5 — Data Store ✅ CLOSED
 - **Title:** Persist and retrieve CompanyFinancials as JSON with query helpers
 - **Description:** Implement `financial_analysis/store.py` that saves `CompanyFinancials` to `data/processed/{TICKER}.json` (human-readable), loads it back as a typed Python object with an in-memory session cache, and exposes query helpers for time-series and cross-ticker analysis.
 - **Acceptance criteria:**
@@ -89,6 +89,28 @@
   - `scripts/import_financials.py` CLI: `python -m scripts.import_financials PANW` prints a table of periods and confirms save path
   - Gracefully handles tickers with no XBRL facts (raises `EdgarClientError` with clear message)
 - **Smoke test:** `python -m scripts.import_financials PANW` prints 5+ annual periods showing revenue, operating income, and FCF — all non-zero; confirms `data/processed/PANW.json` written
+- **Status:** ✅ CLOSED 2026-06-05. Smoke test passed.
+- **Results:**
+  - Annual periods (10-K): 24, Quarterly periods (10-Q): 45
+  - Revenue (FY2026): 215,938,000,000 ✓ (merged across RevenueFromContract... FY2018-FY2022 + Revenues FY2023+)
+  - OCF (FY2026): 102,718,000,000 ✓
+  - CapEx (FY2026): -6,042,000,000 ✓ (sign_flip applied, stored as negative)
+  - raw_extras count: 146 us-gaap concepts ✓
+  - Cache hit on second run ✓ (~0.5s vs ~3s for live fetch)
+  - Fix: `_resolve_field` updated to merge all concept fallbacks per period_end (NVDA uses two revenue concepts across fiscal years)
+
+---
+
+## Ticket 4.5 — Financial Statement xlsx Export ✅ CLOSED
+- **Title:** Export financial statements for any ticker to a four-tab xlsx file
+- **Status:** ✅ CLOSED 2026-06-05. Smoke test passed.
+- **Results:**
+  - NVDA: 4,886 rows across 4 tabs (IS: 356, BS: 391, CF: 213, Raw: 3,926)
+  - FY2026 revenue: 215,938,000,000 ✓; capex: -6,042,000,000 ✓ (negative); FCF: 108,760,000,000 ✓
+  - `filed_date` column populated (e.g. 2026-02-25 for FY2026 10-K) ✓
+  - Raw tab has 3,926 unmapped XBRL concept rows ✓
+  - PANW second ticker: 4,073 rows, FY2025 revenue: 9,221,500,000 ✓
+  - Empty cells for None values (not "NA" or 0) ✓
 
 ---
 

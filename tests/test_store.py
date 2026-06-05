@@ -171,3 +171,26 @@ def test_compare_multiple_tickers(tmp_path):
     clear_cache()
     result = compare(["TEST", "OTHER"], "revenue", data_dir=tmp_path)
     assert set(result.keys()) == {"TEST", "OTHER"}
+
+
+# --- new fields round-trip ---
+
+def test_save_and_load_preserves_new_fields(tmp_path):
+    from financial_analysis.store import save, load, clear_cache
+    clear_cache()
+    p = PeriodFinancials(
+        ticker="TEST", period_end=date(2024, 1, 28),
+        form="10-K", filed_date=date(2024, 2, 1),
+        revenue=60_000_000_000,
+        cash_and_equivalents=7_000_000_000,
+        repurchases_common_stock=-9_500_000_000,
+        raw_extras={"us-gaap/SomeUnmappedConcept": 999_000_000},
+    )
+    company = CompanyFinancials(ticker="TEST", cik="0001", company_name="Test Co", periods=[p])
+    save(company, data_dir=tmp_path)
+    clear_cache()
+    loaded = load("TEST", data_dir=tmp_path)
+    lp = loaded.periods[0]
+    assert lp.cash_and_equivalents == 7_000_000_000
+    assert lp.repurchases_common_stock == -9_500_000_000
+    assert lp.raw_extras["us-gaap/SomeUnmappedConcept"] == 999_000_000

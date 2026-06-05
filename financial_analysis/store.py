@@ -1,18 +1,19 @@
 from __future__ import annotations
 import json
+from dataclasses import fields as dataclass_fields
 from datetime import date, datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from financial_analysis.schema import CompanyFinancials, PeriodFinancials
 
 _CACHE: Dict[str, CompanyFinancials] = {}
-
 _DEFAULT_DATA_DIR = Path("data/processed")
 
-# All valid metrics: dataclass fields + derived properties
+_DATE_FIELDS = {"period_end", "filed_date"}
+
 _VALID_METRICS = {
-    f for f in PeriodFinancials.__dataclass_fields__
+    f.name for f in dataclass_fields(PeriodFinancials)
 } | {"free_cash_flow", "fcf_margin"}
 
 
@@ -25,25 +26,14 @@ def save(company: CompanyFinancials, data_dir: Path = _DEFAULT_DATA_DIR) -> Path
     path = data_dir / f"{company.ticker.upper()}.json"
 
     def _period_to_dict(p: PeriodFinancials) -> dict:
-        return {
-            "ticker": p.ticker,
-            "period_end": p.period_end.isoformat(),
-            "form": p.form,
-            "filed_date": p.filed_date.isoformat(),
-            "currency": p.currency,
-            "revenue": p.revenue,
-            "gross_profit": p.gross_profit,
-            "operating_income": p.operating_income,
-            "net_income": p.net_income,
-            "rd_expense": p.rd_expense,
-            "sga_expense": p.sga_expense,
-            "operating_cash_flow": p.operating_cash_flow,
-            "capex": p.capex,
-            "total_assets": p.total_assets,
-            "total_liabilities": p.total_liabilities,
-            "equity": p.equity,
-            "shares_outstanding": p.shares_outstanding,
-        }
+        result: dict[str, Any] = {}
+        for f in dataclass_fields(p):
+            val = getattr(p, f.name)
+            if f.name in _DATE_FIELDS and isinstance(val, date):
+                result[f.name] = val.isoformat()
+            else:
+                result[f.name] = val
+        return result
 
     payload = {
         "ticker": company.ticker,
@@ -70,29 +60,20 @@ def load(ticker: str, data_dir: Path = _DEFAULT_DATA_DIR) -> CompanyFinancials:
     def _to_date(s: str) -> date:
         return datetime.strptime(s, "%Y-%m-%d").date()
 
-    periods = [
-        PeriodFinancials(
-            ticker=p["ticker"],
-            period_end=_to_date(p["period_end"]),
-            form=p["form"],
-            filed_date=_to_date(p["filed_date"]),
-            currency=p.get("currency", "USD"),
-            revenue=p.get("revenue"),
-            gross_profit=p.get("gross_profit"),
-            operating_income=p.get("operating_income"),
-            net_income=p.get("net_income"),
-            rd_expense=p.get("rd_expense"),
-            sga_expense=p.get("sga_expense"),
-            operating_cash_flow=p.get("operating_cash_flow"),
-            capex=p.get("capex"),
-            total_assets=p.get("total_assets"),
-            total_liabilities=p.get("total_liabilities"),
-            equity=p.get("equity"),
-            shares_outstanding=p.get("shares_outstanding"),
-        )
-        for p in raw["periods"]
-    ]
+    def _build_period(p: dict) -> PeriodFinancials:
+        kwargs: dict[str, Any] = {}
+        for f in dataclass_fields(PeriodFinancials):
+            if f.name in _DATE_FIELDS:
+                kwargs[f.name] = _to_date(p[f.name])
+            elif f.name == "raw_extras":
+                kwargs[f.name] = p.get(f.name, {})
+            elif f.name == "currency":
+                kwargs[f.name] = p.get(f.name, "USD")
+            else:
+                kwargs[f.name] = p.get(f.name)
+        return PeriodFinancials(**kwargs)
 
+    periods = [_build_period(p) for p in raw["periods"]]
     company = CompanyFinancials(
         ticker=raw["ticker"],
         cik=raw["cik"],
@@ -109,7 +90,9 @@ def get_series(
     data_dir: Path = _DEFAULT_DATA_DIR,
 ) -> List[Tuple[date, Optional[float]]]:
     if metric not in _VALID_METRICS:
-        raise ValueError(f"'{metric}' is not a valid metric. Valid options: {sorted(_VALID_METRICS)}")
+        raise ValueError(
+            f"'{metric}' is not a valid metric. Valid options: {sorted(_VALID_METRICS)}"
+        )
     company = load(ticker, data_dir=data_dir)
     return [(p.period_end, getattr(p, metric)) for p in company.periods]
 
