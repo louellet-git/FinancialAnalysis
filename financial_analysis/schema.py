@@ -5,6 +5,34 @@ from typing import Any, Dict, List, Optional
 
 
 @dataclass
+class PricePoint:
+    date: date
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: int
+
+
+@dataclass
+class EarningsEstimate:
+    period_end: date
+    period_type: str  # "annual" or "quarterly"
+    estimated_eps: Optional[float] = None
+    estimated_revenue: Optional[float] = None
+    number_of_analysts: Optional[int] = None
+
+
+@dataclass
+class EarningsSurprise:
+    date: date
+    actual_eps: float
+    estimated_eps: float
+    surprise: float
+    surprise_pct: float
+
+
+@dataclass
 class PeriodFinancials:
     ticker: str
     period_end: date
@@ -100,3 +128,6 @@ class CompanyFinancials:
     cik: str
     company_name: str
     periods: List[PeriodFinancials] = field(default_factory=list)
+    prices: List[PricePoint] = field(default_factory=list)
+    estimates: List[EarningsEstimate] = field(default_factory=list)
+    surprises: List[EarningsSurprise] = field(default_factory=list)
