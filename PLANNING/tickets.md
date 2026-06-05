@@ -91,11 +91,13 @@
 - **Smoke test:** `python -m scripts.import_financials PANW` prints 5+ annual periods showing revenue, operating income, and FCF — all non-zero; confirms `data/processed/PANW.json` written
 - **Status:** ✅ CLOSED 2026-06-05. Smoke test passed.
 - **Results:**
-  - Importing NVDA... / Company: NVIDIA CORP / CIK: 1045810 / Annual periods (10-K): 22 / Quarterly periods (10-Q): 38 / Saved: data/processed/NVDA.json / Cache: data/raw/NVDA/company_facts.json
-  - capex negative ✓ (sign_flip applied) — e.g. 2026-01-25 capex: -6042000000
-  - raw_extras populated ✓ (count: 146 us-gaap concepts)
-  - Cache hit on second run ✓ (0.478s vs ~3s first run)
-  - Note: revenue is None for NVDA annual periods; ocf correctly populated (e.g. 2026-01-25 ocf: 102718000000)
+  - Annual periods (10-K): 24, Quarterly periods (10-Q): 45
+  - Revenue (FY2026): 215,938,000,000 ✓ (merged across RevenueFromContract... FY2018-FY2022 + Revenues FY2023+)
+  - OCF (FY2026): 102,718,000,000 ✓
+  - CapEx (FY2026): -6,042,000,000 ✓ (sign_flip applied, stored as negative)
+  - raw_extras count: 146 us-gaap concepts ✓
+  - Cache hit on second run ✓ (~0.5s vs ~3s for live fetch)
+  - Fix: `_resolve_field` updated to merge all concept fallbacks per period_end (NVDA uses two revenue concepts across fiscal years)
 
 ---
 
