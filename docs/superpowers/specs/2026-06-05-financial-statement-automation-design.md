@@ -11,18 +11,6 @@ Replace ad-hoc exploratory scripts with a single reusable command that fetches, 
 
 ---
 
-## Background — Pain Points Identified
-
-During an NVDA walkthrough session the following inefficiencies were observed:
-
-1. **No local XBRL cache** — the same ~5MB JSON blob was fetched 4 times across 4 scripts
-2. **No concept fallback map** — a live discovery script was needed to find that NVDA uses `PaymentsToAcquireProductiveAssets` instead of `PaymentsToAcquirePropertyPlantAndEquipment` for CapEx
-3. **No unified display command** — income statement, balance sheet, and cash flow were three separate throwaway scripts with duplicated formatting logic
-4. **Terminal output captured in context** — large printed tables consumed context window; output to file is dramatically cheaper
-5. **Windows encoding errors** — missing explicit UTF-8 caused re-runs
-
----
-
 ## Architecture
 
 ```
@@ -118,19 +106,7 @@ The existing `_deduplicate` logic (keep latest `filed` date per `end` date) natu
 
 **IFRS / non-USD detection**
 
-Immediately after fetching facts, before any concept extraction:
-
-```python
-facts_namespaces = set(facts.get("facts", {}).keys())
-if "us-gaap" not in facts_namespaces:
-    raise UnsupportedFilingError(
-        f"{ticker} does not report under us-gaap "
-        f"(namespaces found: {facts_namespaces}). "
-        "IFRS and non-US-GAAP filers are not supported."
-    )
-```
-
-`UnsupportedFilingError` is defined in `financial_analysis/importer.py` alongside the existing `EdgarClientError` pattern from `edgar.py`.
+Immediately after fetching facts, before any concept extraction: check that `"us-gaap"` is present in the facts namespaces. If not, raise `UnsupportedFilingError` with a message listing the namespaces found. `UnsupportedFilingError` is defined in `financial_analysis/importer.py` alongside the existing `EdgarClientError` pattern from `edgar.py`.
 
 If all monetary concepts return empty (non-USD reporting currency), the reconciliation pass will raise `ReconciliationError` before saving, so no explicit check is needed for that case.
 
@@ -204,8 +180,6 @@ NVDA,   1045810, NVIDIA CORP,  2025-01-26,  10-K,      2025-02-26,  raw,        
 
 ### Design decisions
 
-- **Monetary values in raw USD** — no B/M suffixes; pandas reads as float correctly
-- **Ratios/margins as decimals** — `0.7449` not `74.49%`; consistent with numpy/modelling conventions
 - **Empty cell for missing values** — not `"NA"` or `0`; pandas reads as `NaN` automatically
 - **`form_type` column** — distinguishes annual from quarterly; filter `form_type == "10-K"` for annual-only view
 - **`filed_date` column** — critical for point-in-time analysis and backtesting
@@ -228,7 +202,6 @@ NVDA,   1045810, NVIDIA CORP,  2025-01-26,  10-K,      2025-02-26,  raw,        
 | Short filing history (recent IPOs) | Fewer rows in xlsx; DCF guard enforces minimum 4 annual periods with positive FCF |
 | Missing concepts | Empty `value` cell; no row omitted |
 | Windows UTF-8 | All file writes use explicit `encoding="utf-8"` |
-| Q4 10-Q overlap with 10-K | Annual and quarterly stored separately by `form_type`; no collision |
 
 ---
 
