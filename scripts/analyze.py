@@ -1,8 +1,9 @@
-"""CLI: export financial statements for a ticker to a four-tab xlsx file.
+"""CLI: export financial statements for a ticker to a six-tab xlsx file.
 
 Usage:
     python -m scripts.analyze NVDA
     python -m scripts.analyze NVDA --refresh
+    python -m scripts.analyze NVDA --no-market
     python -m scripts.analyze NVDA --out path/to/custom.xlsx
 """
 from __future__ import annotations
@@ -18,6 +19,8 @@ import openpyxl
 from financial_analysis import store
 from financial_analysis.importer import UnsupportedFilingError, import_company
 from financial_analysis.edgar import EdgarClientError
+from financial_analysis.fmp import FMPClientError, load_estimates, load_surprises, load_fmp_statements
+from financial_analysis.market_data import load_prices
 from financial_analysis.schema import CompanyFinancials, PeriodFinancials
 from financial_analysis.xbrl_tags import STATEMENT_MAP, UNIT_MAP
 
@@ -25,6 +28,9 @@ COLUMNS = [
     "ticker", "cik", "company_name", "period_end", "form_type",
     "filed_date", "statement", "metric", "value", "unit",
 ]
+
+PRICE_COLUMNS = ["ticker", "date", "open", "high", "low", "close", "volume"]
+ESTIMATE_COLUMNS = ["ticker", "period_end", "period_type", "metric", "value", "unit"]
 
 _TAB_FOR = {
     "income_statement": "Income Statement",
@@ -48,6 +54,8 @@ def _flatten(company: CompanyFinancials) -> dict[str, list[dict[str, Any]]]:
         "Balance Sheet": [],
         "Cash Flow": [],
         "Raw": [],
+        "Prices": [],
+        "Estimates": [],
     }
 
     for p in company.periods:
@@ -60,7 +68,6 @@ def _flatten(company: CompanyFinancials) -> dict[str, list[dict[str, Any]]]:
             "filed_date": p.filed_date.isoformat(),
         }
 
-        # Canonical fields from STATEMENT_MAP (excluding derived metrics handled separately)
         for metric, statement in STATEMENT_MAP.items():
             if metric in _DERIVED_METRICS:
                 continue
@@ -75,7 +82,6 @@ def _flatten(company: CompanyFinancials) -> dict[str, list[dict[str, Any]]]:
                 "unit": _unit_for(metric),
             })
 
-        # Derived properties
         for metric, statement in _DERIVED_METRICS.items():
             val = getattr(p, metric, None)
             if val is not None:
@@ -87,7 +93,6 @@ def _flatten(company: CompanyFinancials) -> dict[str, list[dict[str, Any]]]:
                     "unit": _unit_for(metric),
                 })
 
-        # Raw extras
         for concept, val in (p.raw_extras or {}).items():
             if val is not None:
                 tabs["Raw"].append({
@@ -97,6 +102,57 @@ def _flatten(company: CompanyFinancials) -> dict[str, list[dict[str, Any]]]:
                     "value": val,
                     "unit": "USD",
                 })
+
+    for pp in company.prices:
+        tabs["Prices"].append({
+            "ticker": company.ticker,
+            "date": pp.date.isoformat(),
+            "open": pp.open,
+            "high": pp.high,
+            "low": pp.low,
+            "close": pp.close,
+            "volume": pp.volume,
+        })
+
+    for est in company.estimates:
+        for metric, val in [
+            ("estimated_eps", est.estimated_eps),
+            ("estimated_revenue", est.estimated_revenue),
+        ]:
+            if val is not None:
+                tabs["Estimates"].append({
+                    "ticker": company.ticker,
+                    "period_end": est.period_end.isoformat(),
+                    "period_type": est.period_type,
+                    "metric": metric,
+                    "value": val,
+                    "unit": "USD/share" if "eps" in metric else "USD",
+                })
+        if est.number_of_analysts is not None:
+            tabs["Estimates"].append({
+                "ticker": company.ticker,
+                "period_end": est.period_end.isoformat(),
+                "period_type": est.period_type,
+                "metric": "number_of_analysts",
+                "value": est.number_of_analysts,
+                "unit": "count",
+            })
+
+    for surp in company.surprises:
+        for metric, val in [
+            ("actual_eps", surp.actual_eps),
+            ("estimated_eps", surp.estimated_eps),
+            ("surprise", surp.surprise),
+            ("surprise_pct", surp.surprise_pct),
+        ]:
+            tabs["Estimates"].append({
+                "ticker": company.ticker,
+                "period_end": surp.date.isoformat(),
+                "period_type": "surprise",
+                "metric": metric,
+                "value": val,
+                "unit": "USD/share" if "eps" in metric or metric == "surprise" else "ratio",
+            })
 
     return tabs
 
@@ -108,11 +164,17 @@ def write_xlsx(company: CompanyFinancials, out_path: Path) -> int:
     tabs = _flatten(company)
     total_rows = 0
 
+    tab_columns = {
+        "Prices": PRICE_COLUMNS,
+        "Estimates": ESTIMATE_COLUMNS,
+    }
+
     for tab_name, rows in tabs.items():
         ws = wb.create_sheet(tab_name)
-        ws.append(COLUMNS)
+        cols = tab_columns.get(tab_name, COLUMNS)
+        ws.append(cols)
         for row in rows:
-            ws.append([row.get(c, "") for c in COLUMNS])
+            ws.append([row.get(c, "") for c in cols])
             total_rows += 1
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -125,17 +187,23 @@ def main() -> None:
     parser.add_argument("ticker", help="Stock ticker symbol (e.g. NVDA)")
     parser.add_argument("--refresh", action="store_true", help="Force re-fetch from SEC API")
     parser.add_argument("--out", type=Path, help="Output file path (default: data/processed/TICKER_financials.xlsx)")
+    parser.add_argument("--no-market", action="store_true", dest="no_market", help="Skip stock prices and analyst estimates")
     args = parser.parse_args()
 
     ticker = args.ticker.upper()
     out_path = args.out or Path(f"data/processed/{ticker}_financials.xlsx")
+    cache_dir = Path("data/raw")
 
     print(f"Importing {ticker}...")
     try:
         import_company(ticker, save=True, refresh=args.refresh)
     except UnsupportedFilingError as e:
-        print(f"Error: {e}")
-        sys.exit(1)
+        print(f"XBRL import failed ({e}). Trying FMP IFRS fallback...")
+        try:
+            load_fmp_statements(ticker)
+        except NotImplementedError:
+            print("IFRS via FMP not yet implemented. Exiting.")
+            sys.exit(1)
     except EdgarClientError as e:
         print(f"SEC API error: {e}")
         sys.exit(1)
@@ -143,9 +211,26 @@ def main() -> None:
     store.clear_cache()
     company = store.load(ticker)
 
+    if not args.no_market:
+        print("Fetching stock prices (yfinance)...")
+        try:
+            company.prices = load_prices(ticker, cache_dir=cache_dir, refresh=args.refresh)
+            print(f"  {len(company.prices)} price points loaded")
+        except Exception as e:
+            print(f"  Warning: price fetch failed — {e}")
+
+        print("Fetching analyst estimates (FMP)...")
+        try:
+            company.estimates = load_estimates(ticker, cache_dir=cache_dir, refresh=args.refresh)
+            company.surprises = load_surprises(ticker, cache_dir=cache_dir, refresh=args.refresh)
+            print(f"  {len(company.estimates)} estimate records, {len(company.surprises)} surprise records")
+        except FMPClientError as e:
+            print(f"  Warning: FMP fetch failed — {e}")
+
+    n_tabs = 4 if args.no_market else 6
     print(f"Writing {out_path} ...")
     total = write_xlsx(company, out_path)
-    print(f"Done: {out_path} ({total} rows across 4 tabs)")
+    print(f"Done: {out_path} ({total} rows across {n_tabs} tabs)")
 
 
 if __name__ == "__main__":

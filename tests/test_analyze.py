@@ -37,7 +37,7 @@ def _make_company() -> CompanyFinancials:
 def test_flatten_returns_four_tabs():
     company = _make_company()
     tabs = _flatten(company)
-    assert set(tabs.keys()) == {"Income Statement", "Balance Sheet", "Cash Flow", "Raw"}
+    assert set(tabs.keys()) == {"Income Statement", "Balance Sheet", "Cash Flow", "Raw", "Prices", "Estimates"}
 
 
 def test_flatten_income_statement_has_revenue_row():
@@ -89,7 +89,7 @@ def test_write_xlsx_creates_file_with_four_tabs(tmp_path):
     write_xlsx(company, out)
     assert out.exists()
     wb = openpyxl.load_workbook(out)
-    assert set(wb.sheetnames) == {"Income Statement", "Balance Sheet", "Cash Flow", "Raw"}
+    assert set(wb.sheetnames) == {"Income Statement", "Balance Sheet", "Cash Flow", "Raw", "Prices", "Estimates"}
 
 
 def test_write_xlsx_has_header_row(tmp_path):
