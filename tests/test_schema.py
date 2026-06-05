@@ -105,3 +105,66 @@ def test_fcf_margin_none_when_fcf_missing():
         revenue=8_030_000_000.0,
     )
     assert p.fcf_margin is None
+
+
+# --- New Income Statement fields ---
+
+def test_period_financials_new_income_statement_fields():
+    p = PeriodFinancials(
+        ticker="TEST", period_end=date(2024, 1, 28),
+        form="10-K", filed_date=date(2024, 2, 1),
+        cogs_total=10_000_000,
+        interest_income=500_000,
+        interest_expense=250_000,
+        income_before_tax=5_000_000,
+        income_tax_expense=1_000_000,
+        da_total=800_000,
+        sbc_total=1_200_000,
+        eps_diluted=2.50,
+        shares_diluted=2_500_000_000,
+    )
+    assert p.cogs_total == 10_000_000
+    assert p.eps_diluted == 2.50
+
+
+def test_period_financials_new_balance_sheet_fields():
+    p = PeriodFinancials(
+        ticker="TEST", period_end=date(2024, 1, 28),
+        form="10-K", filed_date=date(2024, 2, 1),
+        cash_and_equivalents=7_000_000_000,
+        accounts_receivable_net=10_000_000_000,
+        total_current_assets=44_000_000_000,
+        long_term_debt=9_000_000_000,
+        total_current_liabilities=10_000_000_000,
+    )
+    assert p.cash_and_equivalents == 7_000_000_000
+
+
+def test_period_financials_new_cash_flow_fields():
+    p = PeriodFinancials(
+        ticker="TEST", period_end=date(2024, 1, 28),
+        form="10-K", filed_date=date(2024, 2, 1),
+        operating_cash_flow=28_000_000_000,
+        capex=-1_000_000_000,
+        repurchases_common_stock=-9_500_000_000,
+        net_cash_from_investing=-10_000_000_000,
+        net_cash_from_financing=-13_000_000_000,
+    )
+    assert p.repurchases_common_stock == -9_500_000_000
+
+
+def test_period_financials_raw_extras_defaults_empty():
+    p = PeriodFinancials(
+        ticker="TEST", period_end=date(2024, 1, 28),
+        form="10-K", filed_date=date(2024, 2, 1),
+    )
+    assert p.raw_extras == {}
+
+
+def test_period_financials_raw_extras_stores_concepts():
+    p = PeriodFinancials(
+        ticker="TEST", period_end=date(2024, 1, 28),
+        form="10-K", filed_date=date(2024, 2, 1),
+        raw_extras={"us-gaap/PaymentsToAcquireEquitySecuritiesFvNi": 17_500_000_000},
+    )
+    assert p.raw_extras["us-gaap/PaymentsToAcquireEquitySecuritiesFvNi"] == 17_500_000_000
