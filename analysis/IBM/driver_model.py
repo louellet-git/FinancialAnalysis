@@ -55,11 +55,23 @@ def _linear_schedule(start: float, end: float, years: int = PROJECTION_YEARS) ->
 INFRA_BASE = (SEGMENT_HISTORY["Infrastructure"][2024]
               + SEGMENT_HISTORY["Infrastructure"][2025]) / 2.0  # = 14_869e6
 
+# Software growth pairing (consolidation reopen: the f-credit must be DERIVED from
+# MA_RECURRENCE, not hardcoded on one leg): mean = organic + f x acquired.
+SOFTWARE_ORGANIC_G = 0.040   # F16 decomposition: organic ~3.75-4%
+SOFTWARE_ACQUIRED_G = 0.020  # ~2-2.5pp all-in acquired growth at historical spend
+G_SOFTWARE_MEAN = SOFTWARE_ORGANIC_G + MA_RECURRENCE * SOFTWARE_ACQUIRED_G  # = 0.050
+
+# Infrastructure year-1 pin (consolidation reopen: -7% applied to the FY24/25-average
+# base double-counted the cycle correction). The pin targets the warning-implied LEVEL,
+# FY2025 x (1 - 7%) = $14,618M, expressed as growth on INFRA_BASE:
+INFRA_Y1_TARGET = SEGMENT_HISTORY["Infrastructure"][2025] * (1 - 0.07)
+INFRA_Y1_GROWTH = INFRA_Y1_TARGET / INFRA_BASE - 1.0  # = -1.69%
+
 DRIVERS = [
     # --- revenue drivers (10y-horizon growth means, charged basis: f=MA_RECURRENCE
     #     of M&A is paid for in the margin, so f x acquired growth is credited on
     #     top of organic) ---
-    Driver("g_software", stochastic=True, mean=0.050, std=0.025,
+    Driver("g_software", stochastic=True, mean=G_SOFTWARE_MEAN, std=0.025,
            dist="truncnorm", hi=0.11,
            rationale=f"Largest segment (44%). Organic growth ~3.75-4% (F16 decomposition); "
                      f"acquired growth ~2-2.5pp of which f=MA_RECURRENCE={MA_RECURRENCE:.2f} "
@@ -124,16 +136,18 @@ DRIVERS = [
                      "slow-moving policy, so a schedule not a sampled process. The "
                      "flat-2.54% / ramp-3.5% / ramp-4.5% locus is published by "
                      "dcf_drivers_run.py."),
-    Driver("ma_ratio", stochastic=True, mean=0.071, std=0.018, dist="truncnorm", lo=0.0,
+    Driver("ma_ratio", stochastic=True, mean=0.071, std=0.024, dist="truncnorm", lo=0.0,
            rationale="Acquisition spend % of revenue: 5.7/3.9/8.2/5.2/12.3% FY21-25 — "
                      "simple average 7.06%, so mean 7.1% (the old 6.6% was flattering-"
                      "backward; the endpoint rule applied to sbc_ratio must not be "
-                     "selectively skipped here). Std 1.8%: one draw is held for all 10 "
-                     "years, so dispersion must be DECADE-AVERAGE scale (adjudicated "
-                     "conflict #1: level honesty AND averaging honesty), not single-year "
-                     "lumpiness. The fat right tail (12.3% endpoint, accelerating) lives "
-                     "in the lognormal-marginal engine ticket. Truncated at 0: spend "
-                     "cannot be negative."),
+                     "selectively skipped here). Std 2.4%: one draw is held for all 10 "
+                     "years, so dispersion is DECADE-AVERAGE scale — the margin "
+                     "consolidation ruled that at high spend persistence (AR(1) rho~0.8, "
+                     "supported by the accelerating 12.3% endpoint) the decade-average "
+                     "std is ~2.4%, and the prior 1.8% made the FY2025 endpoint a 2.9-"
+                     "sigma event. The fat right tail lives in the lognormal-marginal "
+                     "engine ticket. Truncated at 0: spend cannot be negative (lo now "
+                     "3.0 sigma out)."),
     Driver("ma_recurrence", stochastic=False, mean=MA_RECURRENCE,
            rationale=f"DETERMINISTIC f={MA_RECURRENCE:.2f}. The correct defense is "
                      f"per-path PAIRING COHERENCE, not 'fake precision' (the old "
@@ -264,7 +278,7 @@ def build() -> dict:
         SegmentSpec("Consulting", SEGMENT_HISTORY["Consulting"][2025], "g_consulting",
                     year1_growth=0.0),
         SegmentSpec("Infrastructure", INFRA_BASE, "g_infrastructure",
-                    year1_growth=-0.07),
+                    year1_growth=INFRA_Y1_GROWTH),
         SegmentSpec("Financing", SEGMENT_HISTORY["Financing"][2025], "g_financing",
                     year1_growth=0.0),
     ]

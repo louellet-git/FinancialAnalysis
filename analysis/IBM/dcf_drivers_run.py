@@ -35,6 +35,8 @@ from analysis.IBM.driver_model import (
     MA_RECURRENCE,
     NET_DEBT,
     SHARES,
+    SOFTWARE_ACQUIRED_G,
+    SOFTWARE_ORGANIC_G,
     _linear_schedule,
     build,
 )
@@ -143,7 +145,7 @@ def ma_recurrence_locus() -> None:
           "shift (f - 0.5) x 2pp -- pairing kept)")
     print("-" * 78)
     for f in (0.0, 0.25, 0.50, 0.75, 1.00):
-        g_sw_mean = 0.050 + (f - MA_RECURRENCE) * 0.02
+        g_sw_mean = SOFTWARE_ORGANIC_G + f * SOFTWARE_ACQUIRED_G
         bundle = _variant({
             "ma_recurrence": {"mean": f},
             "g_software": {"mean": g_sw_mean},

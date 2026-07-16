@@ -50,7 +50,50 @@ before judging. Consolidation reviews per item follow the fixes below.
 - Mixture / lognormal marginals (g_consulting skew, ma_ratio right tail).
 - Harris-Pringle re-levered β with target capital structure.
 
-## Reviewer conflicts adjudicated by the author (consolidators: judge these)
+## Consolidation reviews (round 2 — one reviewer per item, reviewing the completed work-package)
+
+**TERMINAL VALUE — CONSOLIDATION: ACCEPTED.** "All dispositions implemented and verified by
+execution: tg std 0.75% with world-state rationale; pinned fraction reported (0.0009, seed 7);
+tg·ma_ratio=+0.15 in matrix, PSD passing; implied-reinvestment check printed (RR 20.8%, ROIC
+10.8% > WACC — no cost-without-growth at means). Year-10 terminal margin 13.55% (core 19.4 +
+mix 1.2 − SBC 3.5 − f·M&A 3.55) is internally consistent with tg at segment means. tg
+attribution (−19/+26) is second only to core_margin at TV/EV 64.1%; judged honest because tg
+comoves with growth/rates/M&A draws, but the anchoring is correlational, not structural —
+T-DCF-3 (derived per-path tg) remains the binding open ticket."
+
+**MARGIN — CONSOLIDATION: REOPENED (ma_ratio std) → FIXED.** "core_margin (19.4% endpoint +
+mix-drift), sbc_ratio ramp, ma_recurrence pairing/assert, and the mix-drift margin formula are
+faithfully implemented and verified (means path 13.31%→13.55%; broadcast tests pass; mix-drift's
++1.2pp is consistent with a 9.3pp software-share shift, and does not double-count the SBC ramp).
+REOPENED: ma_ratio std 1.8% understates decade-average uncertainty — 1.8% is the AR(1)
+decade-average only at ρ≈0.6; the 12.3% accelerating FY2025 endpoint argues ρ≈0.8, i.e. std
+≈2.4%, and at 1.8% a decade at the endpoint level is a 2.9σ event." **Author fix: std 2.4%
+implemented; lo=0 now 3.0σ out.**
+
+**REVENUE — CONSOLIDATION: REOPENED (3 items) → FIXED.** "Segment dispositions verified in code
+and accepted; g_financing disclosures present. Reopened: the Infrastructure year-1 pin (−7%)
+applied to the FY24/25-average base double-counts the cycle correction, understating year-1
+Infrastructure by ~$790M versus warning-implied actuals; the FX register row was never added
+(DRIVERS.md remains pre-review); and the pairing assert covers only the ma_recurrence leg —
+g_software's f-credit is hardcoded in two files, so changing MA_RECURRENCE drifts silently."
+**Author fixes: pin level-targeted (−1.69% on the haircut base → warning-implied $14,618M);
+g_software mean now DERIVED (`SOFTWARE_ORGANIC_G + MA_RECURRENCE × SOFTWARE_ACQUIRED_G`) and
+the locus slope derives from the same constants; DRIVERS.md rewritten post-review with the FX
+register row.**
+
+**WACC — CONSOLIDATION: REOPENED (documentation) → FIXED.** "Implementation verified — kd
+derived from rf (identity test), E/V 0.72 fixed-point self-consistent, WACC at means 7.06%, MC
+std 0.56%, no negative-spread paths (constant −10bp disclosed). Conflicts #2/#3 upheld: spread
+fair-value-calibrated; top-of-band retirement justified (+$11.5/sh vs 7.34%, +$17.6 vs 7.50% at
+means; conservatism lives transparently in β 0.85 vs trailing 0.68). Reopened solely on
+documentation: DRIVERS.md table still pre-revision and lacks the promised gap attribution and
+term-structure disclosure." **Author fix: DRIVERS.md rewritten — post-review table, 7.50→7.06
+gap attribution, term-structure and FX disclosures.**
+
+**Round-2 close-out (v4 final, seed 7, 10k):** P10 $83.84 / P50 $151.84 / P90 $258.03,
+TV/EV 64.1%, tg pinned 0.09%. All reopened items fixed and re-verified (220 tests).
+
+## Reviewer conflicts adjudicated by the author (consolidators' rulings above: #1 overturned to std 2.4%, #2 and #3 upheld)
 
 1. **ma_ratio**: driver reviewer wants mean ≥7.1 AND fatter right tail; margin-formula reviewer wants dispersion shrunk to decade-average scale. Resolution: mean 7.1%, std 1.8% — level honesty and averaging honesty; the tail lives in the ticket.
 2. **kd spread**: WACC-formula reviewer proposed +0.89% (preserves old 4.1%); kd reviewer showed 4.1% fails provenance and market yield ≈ 4.45% pre-tax. Resolution: spread −0.10% (fair-value calibrated); the old level is retired with the position.
