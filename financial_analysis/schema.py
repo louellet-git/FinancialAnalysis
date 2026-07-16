@@ -33,6 +33,29 @@ class EarningsSurprise:
 
 
 @dataclass
+class OptionQuote:
+    contract_symbol: str
+    option_type: str  # "call" or "put"
+    expiry: date
+    strike: float
+    last_price: Optional[float] = None
+    bid: Optional[float] = None
+    ask: Optional[float] = None
+    volume: Optional[int] = None
+    open_interest: Optional[int] = None
+    implied_volatility: Optional[float] = None
+    in_the_money: Optional[bool] = None
+
+
+@dataclass
+class OptionChainSnapshot:
+    ticker: str
+    snapshot_date: date
+    spot_price: Optional[float] = None
+    quotes: List[OptionQuote] = field(default_factory=list)
+
+
+@dataclass
 class PeriodFinancials:
     ticker: str
     period_end: date
@@ -112,7 +135,9 @@ class PeriodFinancials:
     def free_cash_flow(self) -> Optional[float]:
         if self.operating_cash_flow is None or self.capex is None:
             return None
-        return self.operating_cash_flow - self.capex
+        # capex is a cash outflow; the importer stores it sign-flipped (negative).
+        # abs() makes the subtraction correct for either sign convention.
+        return self.operating_cash_flow - abs(self.capex)
 
     @property
     def fcf_margin(self) -> Optional[float]:
@@ -131,3 +156,4 @@ class CompanyFinancials:
     prices: List[PricePoint] = field(default_factory=list)
     estimates: List[EarningsEstimate] = field(default_factory=list)
     surprises: List[EarningsSurprise] = field(default_factory=list)
+    option_chain: Optional[OptionChainSnapshot] = None

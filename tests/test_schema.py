@@ -32,6 +32,17 @@ def test_free_cash_flow_computed_when_both_present():
     assert p.free_cash_flow == 3_260_000_000.0 - 157_000_000.0
 
 
+def test_free_cash_flow_correct_when_capex_stored_negative():
+    # Importer applies sign_flip: capex arrives negative. FCF must subtract
+    # the spend, not add it back (regression: OCF - (-capex) overstated FCF).
+    p = PeriodFinancials(
+        ticker="PANW", period_end=date(2024, 7, 31), form="10-K", filed_date=date(2024, 9, 12),
+        operating_cash_flow=3_260_000_000.0,
+        capex=-157_000_000.0,
+    )
+    assert p.free_cash_flow == 3_260_000_000.0 - 157_000_000.0
+
+
 def test_free_cash_flow_none_when_ocf_missing():
     p = PeriodFinancials(
         ticker="PANW", period_end=date(2024, 7, 31), form="10-K", filed_date=date(2024, 9, 12),

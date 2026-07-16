@@ -129,7 +129,19 @@
 
 ---
 
-## Ticket 5 — Stochastic DCF Scaffold
+## Ticket 5 — Stochastic DCF Scaffold ✅ CLOSED
+- **Title:** Implement Monte Carlo stochastic DCF model
+- **Status:** Closed 2026-06-12. Smoke test passed.
+- **Results:**
+  - `financial_analysis/dcf.py`: `DCFAssumptions`, `DCFResult`, `StochasticDCF`; 13 unit tests green (`tests/test_dcf.py`); full suite 113 passed.
+  - Vectorized numpy MC (no per-sim Python loop); `seed` field added for reproducible runs.
+  - PANW smoke test (loaded from `data/processed/PANW.json`, no live call): P10 $69.9B · P50 $118.0B · P90 $204.2B · P50/share $176.70.
+  - Min-history guard requires ≥4 annual periods with positive FCF; ignores 10-Q rows.
+  - CLI added: `scripts/run_dcf.py` (overridable simulations/years/growth/wacc/terminal-growth/seed).
+  - **Bug fixed en route:** `schema.free_cash_flow` was `OCF - capex` but capex is stored sign-flipped (negative), overstating FCF by 2×capex. Now `OCF - abs(capex)`; regression test added.
+  - **SpaceX (SPCX) sample requested:** ticker resolves to SPACE EXPLORATION TECHNOLOGIES CORP (CIK 0001181412) but only a Form D (`ffd` namespace) is on file — no `us-gaap` financials, no 10-K (IPO'd 2026-06-12). Importer raises `UnsupportedFilingError`; DCF guard independently rejects post-IPO single-period histories. Both layers verified.
+
+### Original spec
 - **Title:** Implement Monte Carlo stochastic DCF model
 - **Description:** Create `financial_analysis/dcf.py` with a `StochasticDCF` class that fits distributions to historical FCF data from `CompanyFinancials`, runs a vectorized Monte Carlo simulation, and outputs P10/P50/P90 present value estimates. Architecture must support future extension to options valuation (Black-Scholes, real options on growth).
 - **Acceptance criteria:**
@@ -145,7 +157,8 @@
 
 ---
 
-## Ticket 6 — README Update
+## Ticket 6 — README Update ✅ CLOSED
+- **Status:** Closed 2026-06-12. README documents the full EDGAR → XBRL → schema → Monte Carlo DCF pipeline, adds a Stochastic DCF section with usage + `run_dcf.py` CLI, and marks Tickets 5–6 complete in the roadmap. `context.json` updated.
 - **Title:** Document the full stochastic pipeline
 - **Description:** Update `README.md` to reflect the XBRL API path, time-series schema, and Monte Carlo DCF direction.
 - **Acceptance criteria:**

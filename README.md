@@ -1,16 +1,17 @@
 # FinancialAnalysis
 
-Python pipeline that pulls public-company financials from SEC EDGAR, enriches them with market data, and prepares the groundwork for a stochastic Monte Carlo DCF model.
+Python pipeline that pulls public-company financials from SEC EDGAR, enriches them with market data, and runs a stochastic Monte Carlo DCF valuation.
 
 ## What it does
 
 ```
 scripts/analyze.py TICKER
-    ├── SEC EDGAR XBRL API  →  PeriodFinancials[]   (income stmt / balance sheet / cash flow)
-    ├── yfinance            →  PricePoint[]          (daily OHLCV, full history)
-    └── yfinance            →  EarningsSurprise[]    (EPS estimate vs actual, ~25 quarters)
+    ├── SEC EDGAR XBRL API  →  PeriodFinancials[]     (income stmt / balance sheet / cash flow)
+    ├── yfinance            →  PricePoint[]           (daily OHLCV, full history)
+    ├── yfinance            →  EarningsSurprise[]     (EPS estimate vs actual, ~25 quarters)
+    └── yfinance            →  OptionChainSnapshot    (full option chain + derived metrics)
                 ↓
-    data/processed/TICKER_financials.xlsx  (6 tabs)
+    data/processed/TICKER_financials.xlsx  (8 tabs)
 ```
 
 All remote data is disk-cached under `data/raw/TICKER/` — re-runs are instant.
@@ -26,14 +27,70 @@ python -m scripts.analyze NVDA
 # Skip market data (SEC data only, faster)
 python -m scripts.analyze NVDA --no-market
 
+# Skip the option-chain snapshot (keep prices and earnings)
+python -m scripts.analyze NVDA --no-options
+
 # Force re-fetch everything from remote APIs
 python -m scripts.analyze NVDA --refresh
 
 # Import only (no xlsx export)
 python -m scripts.import_financials PANW
+
+# Run a Monte Carlo DCF on already-imported data (no live API call)
+python -m scripts.run_dcf PANW --seed 7
+
+# Interactive bear/base/bull DCF report → data/processed/IBM_dcf.html
+python -m scripts.visualize_dcf IBM
 ```
 
 Output: `data/processed/TICKER_financials.xlsx`
+
+## Stochastic DCF
+
+`financial_analysis/dcf.py` runs a vectorized Monte Carlo DCF. It samples revenue
+growth, FCF margin, WACC, and terminal growth from normal distributions, projects
+free cash flow over a 10-year horizon, adds a Gordon-growth terminal value, and
+discounts everything to present value across (by default) 10,000 simulations.
+
+```python
+from financial_analysis import store
+from financial_analysis.dcf import DCFAssumptions, StochasticDCF
+
+company = store.load("PANW")              # from data/processed/PANW.json — no SEC call
+result = StochasticDCF(company, DCFAssumptions(seed=7)).run()
+print(result.median_value, result.p10_value, result.p90_value)
+print(result.median_per_share)            # None if shares outstanding unavailable
+```
+
+- **FCF margin** is derived from the last 5 annual periods when not supplied explicitly.
+- Only annual (10-K) periods feed the model; quarterly rows are ignored.
+- **Minimum-history guard:** raises `ValueError` unless at least 4 annual periods
+  have positive FCF. This blocks meaningless valuations of recently-IPO'd or
+  loss-making companies (e.g. SpaceX, which has no 10-K on file yet).
+
+## Interactive DCF report
+
+`python -m scripts.visualize_dcf TICKER` runs the bear/base/bull presets from
+`financial_analysis/scenarios.py` and writes `data/processed/TICKER_dcf.html` —
+a self-contained interactive report (plotly.js is inlined, so the file opens
+offline). Four panels:
+
+- **FCF projection fan** — simulated FCF per projection year, P10–P90 band +
+  median line per scenario
+- **Per-share value distribution** — histogram of (EV − net debt) / shares per
+  scenario, with the current price marked (yfinance last close; `--price X`
+  overrides it, and the marker is omitted with a note when offline)
+- **PV build-up waterfall** — median base-case PV of each projection year +
+  terminal value − net debt = equity value, making visible how much of the
+  value sits in the terminal assumption
+- **Sensitivity tornado** — P50 per-share impact of shifting each input
+  (growth, WACC, terminal growth, FCF margin) by ±1σ, others held at their means
+
+The presets are generic mature-large-cap defaults; per-ticker overrides
+(scenario labels, pinned net debt / share counts) live in the `scenarios.py`
+registries. Without an override, net debt is derived from the latest 10-K
+(long-term debt + short-term borrowings − cash) and shares from
+shares_outstanding (falling back to diluted).
 
 ## xlsx structure
 
@@ -45,6 +102,8 @@ Output: `data/processed/TICKER_financials.xlsx`
 | Raw | All other unmapped XBRL concepts (100–200 rows per period) |
 | Prices | Daily OHLCV from yfinance (~6,800 rows for NVDA) |
 | Estimates | Earnings surprises — actual vs estimated EPS per quarter |
+| Options | Full option chain, one row per contract (strike, bid/ask, volume, OI, IV, ITM flag) |
+| Options Summary | Per-expiry derived metrics — ATM IV, implied move (ATM straddle ÷ spot), 90/110 skew, put/call ratios — plus a chain-wide `ALL` row |
 
 All financial tabs use a long format: one row per `(period, metric)`.
 
@@ -55,7 +114,20 @@ All financial tabs use a long format: one row per `(period, metric)`.
 | Financial statements | SEC EDGAR XBRL JSON API | None (public) |
 | Daily stock prices | yfinance | None |
 | Earnings surprises | yfinance | None |
+| Option chains (current snapshot only) | yfinance | None |
+| Option chain history (backfill) | FMP / Polygon (optional, requires paid plan) | API key in `.env` |
 | Analyst estimates (forward) | FMP API (optional, requires paid plan) | `FMP_API_KEY` in `.env` |
+
+### Option-chain history
+
+yfinance only serves the **current** option chain — there is no free historical
+endpoint. The pipeline therefore persists every pull as a dated snapshot at
+`data/raw/TICKER/options/YYYY-MM-DD.json` (one per calendar day; a same-day
+re-run reads from disk, `--refresh` overwrites). History accumulates from the
+first time you run a ticker. Use `financial_analysis.options.list_snapshots(ticker, cache_dir)`
+and `load_snapshot(ticker, cache_dir, snapshot_date=None)` (None → latest) to
+query accumulated snapshots. If backfilled history is required, FMP or Polygon
+paid plans are the upgrade path.
 
 ## Environment
 
@@ -82,17 +154,27 @@ financial_analysis/
     fmp.py          — FMP API client (analyst estimates, IFRS stub)
     importer.py     — XBRL → PeriodFinancials orchestration
     market_data.py  — yfinance price and earnings loader
-    schema.py       — PeriodFinancials, CompanyFinancials, PricePoint, EarningsSurprise
+    options.py      — yfinance option-chain snapshots + derived metrics (ATM IV, implied move, skew, P/C)
+    schema.py       — PeriodFinancials, CompanyFinancials, PricePoint, EarningsSurprise, OptionQuote, OptionChainSnapshot
     store.py        — JSON persistence and in-memory session cache
     xbrl_api.py     — SEC XBRL JSON API client
     xbrl_tags.py    — XBRL concept registry (TagSpec, sign_flip, fallbacks)
 
+    dcf.py          — Monte Carlo stochastic DCF (P10/P50/P90, per-share)
+    scenarios.py    — bear/base/bull presets + per-ticker net debt/shares registry
+
 scripts/
     analyze.py          — full pipeline → xlsx (primary entrypoint)
     import_financials.py — import only, no xlsx
+    run_dcf.py          — Monte Carlo DCF on imported data
+    visualize_dcf.py    — interactive 4-panel DCF report → self-contained HTML
+
+analysis/
+    IBM/dcf_scenarios.py — IBM bear/base/bull console report (wraps scenarios.py)
 
 data/
     raw/TICKER/         — remote data cache (gitignored)
+    raw/TICKER/options/ — dated option-chain snapshots, YYYY-MM-DD.json (gitignored)
     processed/          — JSON and xlsx outputs (gitignored)
 
 PLANNING/tickets.md     — all tickets with acceptance criteria and smoke test results
@@ -108,5 +190,6 @@ context.json            — project summary for agent orientation
 - [x] Ticket 4 — Financial statement importer (33 metrics, annual + quarterly)
 - [x] Ticket 4.5 — xlsx export (4-tab long-format)
 - [x] Ticket 4.6 — Market data enrichment (prices + earnings surprises)
-- [ ] Ticket 5 — Stochastic DCF scaffold (Monte Carlo, P10/P50/P90)
-- [ ] Ticket 6 — README update *(this file)*
+- [x] Ticket 5 — Stochastic DCF scaffold (Monte Carlo, P10/P50/P90)
+- [x] Ticket 6 — README update *(this file)*
+- [ ] Future — options valuation (Black-Scholes, real options on growth); more cybersecurity tickers

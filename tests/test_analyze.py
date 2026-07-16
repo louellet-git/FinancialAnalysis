@@ -34,10 +34,13 @@ def _make_company() -> CompanyFinancials:
     return CompanyFinancials(ticker="TEST", cik="1045810", company_name="Test Co", periods=[p1, p2])
 
 
-def test_flatten_returns_four_tabs():
+def test_flatten_returns_all_tabs():
     company = _make_company()
     tabs = _flatten(company)
-    assert set(tabs.keys()) == {"Income Statement", "Balance Sheet", "Cash Flow", "Raw", "Prices", "Estimates"}
+    assert set(tabs.keys()) == {
+        "Income Statement", "Balance Sheet", "Cash Flow", "Raw",
+        "Prices", "Estimates", "Options", "Options Summary",
+    }
 
 
 def test_flatten_income_statement_has_revenue_row():
@@ -82,14 +85,17 @@ def test_flatten_capex_unit_is_usd():
     assert all(r["unit"] == "USD" for r in capex_rows)
 
 
-def test_write_xlsx_creates_file_with_four_tabs(tmp_path):
+def test_write_xlsx_creates_file_with_all_tabs(tmp_path):
     import openpyxl
     company = _make_company()
     out = tmp_path / "TEST_financials.xlsx"
     write_xlsx(company, out)
     assert out.exists()
     wb = openpyxl.load_workbook(out)
-    assert set(wb.sheetnames) == {"Income Statement", "Balance Sheet", "Cash Flow", "Raw", "Prices", "Estimates"}
+    assert set(wb.sheetnames) == {
+        "Income Statement", "Balance Sheet", "Cash Flow", "Raw",
+        "Prices", "Estimates", "Options", "Options Summary",
+    }
 
 
 def test_write_xlsx_has_header_row(tmp_path):
@@ -108,3 +114,47 @@ def test_write_xlsx_returns_total_row_count(tmp_path):
     out = tmp_path / "TEST_financials.xlsx"
     total = write_xlsx(company, out)
     assert total > 0
+
+
+def _attach_option_chain(company: CompanyFinancials) -> CompanyFinancials:
+    from financial_analysis.schema import OptionChainSnapshot, OptionQuote
+    company.option_chain = OptionChainSnapshot(
+        ticker="TEST",
+        snapshot_date=date(2026, 7, 16),
+        spot_price=100.0,
+        quotes=[
+            OptionQuote("TEST260724C00100000", "call", date(2026, 7, 24), 100.0,
+                        last_price=5.0, bid=4.9, ask=5.1, volume=10, open_interest=100,
+                        implied_volatility=0.30, in_the_money=False),
+            OptionQuote("TEST260724P00100000", "put", date(2026, 7, 24), 100.0,
+                        last_price=4.8, bid=4.7, ask=4.9, volume=20, open_interest=50,
+                        implied_volatility=0.32, in_the_money=False),
+        ],
+    )
+    return company
+
+
+def test_flatten_options_tab_one_row_per_contract():
+    tabs = _flatten(_attach_option_chain(_make_company()))
+    assert len(tabs["Options"]) == 2
+    types = {r["option_type"] for r in tabs["Options"]}
+    assert types == {"call", "put"}
+    assert tabs["Options"][0]["expiry"] == "2026-07-24"
+
+
+def test_flatten_options_summary_has_per_expiry_and_total_rows():
+    tabs = _flatten(_attach_option_chain(_make_company()))
+    rows = tabs["Options Summary"]
+    expiries = [r["expiry"] for r in rows]
+    assert expiries == ["2026-07-24", "ALL"]
+    per_exp = rows[0]
+    assert per_exp["atm_strike"] == 100.0
+    assert per_exp["atm_iv"] == pytest.approx(0.31)
+    assert per_exp["implied_move"] == pytest.approx(0.098)
+    assert rows[1]["put_call_volume_ratio"] == pytest.approx(2.0)
+
+
+def test_flatten_no_option_chain_gives_empty_tabs():
+    tabs = _flatten(_make_company())
+    assert tabs["Options"] == []
+    assert tabs["Options Summary"] == []
