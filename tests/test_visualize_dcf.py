@@ -139,7 +139,9 @@ def _driver_build() -> dict:
         Driver("rf", False, 0.042, rationale="10y treasury"),
         Driver("beta", False, 0.9, rationale="5y weekly beta"),
         Driver("erp", False, 0.05, rationale="Consensus ERP"),
-        Driver("kd_after_tax", False, 0.035, rationale="After-tax cost of debt"),
+        Driver("kd_spread", False, -0.001, rationale="Fair-value spread over rf"),
+        Driver("tax_rate", False, 0.21, rationale="Statutory shield"),
+        Driver("margin_mix_drift", False, 0.0, rationale="No mix drift in fixture"),
         Driver("equity_weight", False, 0.85, rationale="Market-value weights"),
     ]
     corr = {("g_soft", "g_infra"): 0.3, ("g_soft", "core_margin"): 0.2}
