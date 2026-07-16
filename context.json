@@ -4,11 +4,12 @@
   "initial_target": "Palo Alto Networks (PANW)",
   "xbrl_path": "SEC XBRL JSON API — data.sec.gov/api/xbrl/companyfacts/CIK{padded_cik}.json. Primary parse path. Raw .txt EDGAR downloads are archival fallback only.",
   "dcf_direction": "Stochastic DCF via Monte Carlo (numpy). Fit growth/margin/WACC distributions from historical data. Output P10/P50/P90. Architecture must support future options valuation extension.",
-  "completed_tickets": ["1", "1.5", "2", "3", "3.5", "4", "4.5", "4.6"],
+  "completed_tickets": ["1", "1.5", "2", "3", "3.5", "4", "4.5", "4.6", "5", "6"],
   "current_focus": [
-    "stochastic DCF scaffold (ticket 5)",
-    "README update (ticket 6)"
+    "options valuation extension (Black-Scholes, real options) — future"
   ],
+  "dcf_implementation": "financial_analysis/dcf.py — StochasticDCF + DCFAssumptions + DCFResult. Vectorized numpy Monte Carlo (default 10k sims, 10y). Samples growth/FCF-margin/WACC/terminal-growth. FCF margin derived from last 5 annual periods if not given. Annual (10-K) periods only. Min-history guard: requires >=4 annual periods with positive FCF, else ValueError (blocks post-IPO/loss-makers). CLI: scripts/run_dcf.py. Loads from store, no live API call at valuation time.",
+  "fcf_sign_note": "capex is stored sign-flipped (negative) by the importer; schema.free_cash_flow uses OCF - abs(capex). Fixed 2026-06-12 (was overstating FCF by 2x capex).",
   "smoke_test_policy": "Every ticket requires a live smoke test before closing. A ticket is not done until real output is printed and confirmed consumable by the next ticket.",
   "notes": "Agents should be concise when updating README.md and context.json.",
   "placement": "root context.json for agent awareness"

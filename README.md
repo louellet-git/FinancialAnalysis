@@ -1,6 +1,6 @@
 # FinancialAnalysis
 
-Python pipeline that pulls public-company financials from SEC EDGAR, enriches them with market data, and prepares the groundwork for a stochastic Monte Carlo DCF model.
+Python pipeline that pulls public-company financials from SEC EDGAR, enriches them with market data, and runs a stochastic Monte Carlo DCF valuation.
 
 ## What it does
 
@@ -31,9 +31,35 @@ python -m scripts.analyze NVDA --refresh
 
 # Import only (no xlsx export)
 python -m scripts.import_financials PANW
+
+# Run a Monte Carlo DCF on already-imported data (no live API call)
+python -m scripts.run_dcf PANW --seed 7
 ```
 
 Output: `data/processed/TICKER_financials.xlsx`
+
+## Stochastic DCF
+
+`financial_analysis/dcf.py` runs a vectorized Monte Carlo DCF. It samples revenue
+growth, FCF margin, WACC, and terminal growth from normal distributions, projects
+free cash flow over a 10-year horizon, adds a Gordon-growth terminal value, and
+discounts everything to present value across (by default) 10,000 simulations.
+
+```python
+from financial_analysis import store
+from financial_analysis.dcf import DCFAssumptions, StochasticDCF
+
+company = store.load("PANW")              # from data/processed/PANW.json — no SEC call
+result = StochasticDCF(company, DCFAssumptions(seed=7)).run()
+print(result.median_value, result.p10_value, result.p90_value)
+print(result.median_per_share)            # None if shares outstanding unavailable
+```
+
+- **FCF margin** is derived from the last 5 annual periods when not supplied explicitly.
+- Only annual (10-K) periods feed the model; quarterly rows are ignored.
+- **Minimum-history guard:** raises `ValueError` unless at least 4 annual periods
+  have positive FCF. This blocks meaningless valuations of recently-IPO'd or
+  loss-making companies (e.g. SpaceX, which has no 10-K on file yet).
 
 ## xlsx structure
 
@@ -87,9 +113,12 @@ financial_analysis/
     xbrl_api.py     — SEC XBRL JSON API client
     xbrl_tags.py    — XBRL concept registry (TagSpec, sign_flip, fallbacks)
 
+    dcf.py          — Monte Carlo stochastic DCF (P10/P50/P90, per-share)
+
 scripts/
     analyze.py          — full pipeline → xlsx (primary entrypoint)
     import_financials.py — import only, no xlsx
+    run_dcf.py          — Monte Carlo DCF on imported data
 
 data/
     raw/TICKER/         — remote data cache (gitignored)
@@ -108,5 +137,6 @@ context.json            — project summary for agent orientation
 - [x] Ticket 4 — Financial statement importer (33 metrics, annual + quarterly)
 - [x] Ticket 4.5 — xlsx export (4-tab long-format)
 - [x] Ticket 4.6 — Market data enrichment (prices + earnings surprises)
-- [ ] Ticket 5 — Stochastic DCF scaffold (Monte Carlo, P10/P50/P90)
-- [ ] Ticket 6 — README update *(this file)*
+- [x] Ticket 5 — Stochastic DCF scaffold (Monte Carlo, P10/P50/P90)
+- [x] Ticket 6 — README update *(this file)*
+- [ ] Future — options valuation (Black-Scholes, real options on growth); more cybersecurity tickers

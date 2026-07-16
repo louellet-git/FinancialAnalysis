@@ -112,7 +112,9 @@ class PeriodFinancials:
     def free_cash_flow(self) -> Optional[float]:
         if self.operating_cash_flow is None or self.capex is None:
             return None
-        return self.operating_cash_flow - self.capex
+        # capex is a cash outflow; the importer stores it sign-flipped (negative).
+        # abs() makes the subtraction correct for either sign convention.
+        return self.operating_cash_flow - abs(self.capex)
 
     @property
     def fcf_margin(self) -> Optional[float]:
