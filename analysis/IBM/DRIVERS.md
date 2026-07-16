@@ -68,14 +68,16 @@ conservatism lives transparently in β = 0.85 (vs trailing ~0.68) with the publi
 
 **P10 $83.84 / P50 $151.84 / P90 $258.03** · TV/EV at means 64.1% · tg guard pinned 0.09%.
 
-Attribution leaders (±1σ, correlations intact): core_margin ∓31 · terminal_growth −19/+26 ·
-rf +23/−19 · erp +22/−18 · g_software −18/+21 · ma_ratio ±14.
+Attribution leaders (±1σ, correlations intact, post-consolidation run): core_margin ∓31 ·
+terminal_growth −19/+26 · rf +23/−19 · erp +22/−18 · g_software −18/+21 · ma_ratio ±18.7
+(rose with the consolidation-mandated std 2.4%).
 
-Published loci (`python -m analysis.IBM.dcf_drivers_run`): ma_recurrence f=0→1 (paired,
-derived from `SOFTWARE_ORGANIC_G + f × SOFTWARE_ACQUIRED_G`): P50 $195→$101 ·
-SBC drift flat/3.5%/4.5%: $162/$152/$138 · β 0.68/0.85/1.00: $177/$152/$131 ·
-supply-shock correlations and τ=0 disclosure runs · implied terminal reinvestment:
-RR 20.8%, ROIC 10.8% > WACC (no free growth at means).
+Published loci (`python -m analysis.IBM.dcf_drivers_run`, engine governs — these are the
+current run's values): ma_recurrence f=0→1 (paired, derived from
+`SOFTWARE_ORGANIC_G + f × SOFTWARE_ACQUIRED_G`): P50 $197.79→$101 ·
+SBC drift flat/3.5%/4.5%: $164.11/$151.84/$139.20 · β 0.68/0.85/1.00:
+$179.42/$151.84/$132.34 · supply-shock correlations and τ=0 disclosure runs ·
+implied terminal reinvestment: RR 20.8%, ROIC 10.8% > WACC (no free growth at means).
 
 ## Deferred tickets
 

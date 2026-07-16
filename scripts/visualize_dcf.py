@@ -83,38 +83,50 @@ DRIVER_SEED = 7
 
 _DEFAULT_CACHE_DIR = Path("data/raw")
 
-# Chart chrome (dataviz reference palette, light mode)
-_SURFACE = "#fcfcfb"
-_PAGE = "#f9f9f7"
-_INK = "#0b0b0b"
-_INK_SECONDARY = "#52514e"
-_INK_MUTED = "#898781"
-_GRID = "#e1e0d9"
-_AXIS = "#c3c2b7"
-_NEUTRAL = "#f0efec"
-_FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif'
+# Chart chrome — "Ratings-desk blueprint" tokens
+# (docs/design-specs/2026-07-16-ratings-desk-blueprint.md §1, light mode).
+_PAGE = "#f4f4f5"           # page bg; cards are transparent line drawings on it
+_SURFACE = "#f4f4f5"        # literal surface hex (marker rings, stack gaps)
+_RAISED = "#eceef0"         # chips / hover rows — the only non-transparent fill
+_INK = "#1d1f20"            # primary ink; also the strong rule + hover bg
+_INK_SECONDARY = "#4a5158"  # body / chart text
+_INK_MUTED = "#6b7480"      # meta, ticks, notes
+_ACCENT = "#5980a6"
+_ACCENT_DEEP = "#31506e"    # section headers, links, the one solid chip
+_ACCENT_TINT = "#e9eef4"    # atm row, stoch badge fill
+_HAIRLINE = "#c9ced4"       # card borders, td rules
+_GRID = "#dde2e8"           # plotly gridlines
+_AXIS = "#aab2bb"           # axis line / zeroline
+_NEUTRAL = "#d7dce1"        # neutral fill (bars, bands)
+_FONT = '"Avenir Next","Segoe UI",system-ui,sans-serif'
 
-# Categorical slots 1-3, fixed order (validated: worst adjacent CVD dE 47.2)
-_SCENARIO_COLORS = {"bear": "#2a78d6", "base": "#1baf7a", "bull": "#eda100"}
-# Full 8-slot categorical order (validated: worst adjacent CVD dE 24.2) —
-# used for revenue segments and any other multi-series identity encoding.
-_CATEGORICAL = ("#2a78d6", "#1baf7a", "#eda100", "#008300",
-                "#4a3aa7", "#e34948", "#e87ba4", "#eb6834")
+# Scenario hues, fixed binding (spec: orange-red / blue / teal — no red–green
+# pair; the scenario→hue binding follows the scenario everywhere it appears).
+_SCENARIO_COLORS = {"bear": "#9e3a26", "base": "#35618f", "bull": "#23755f"}
+# Full 8-slot categorical order (spec-validated: adjacent pairs alternate the
+# blue↔yellow opponent axis, simulated CVD ΔE ≥ 12) — used for revenue
+# segments and any other multi-series identity encoding. Order IS the
+# CVD mechanism: do not reorder.
+_CATEGORICAL = ("#35618f", "#b45309", "#216e5c", "#8f4d9f",
+                "#857f29", "#882255", "#667585", "#0a5e75")
 # Diverging pair for polarity (waterfall contributions, tornado shifts, skew,
-# correlation heatmap) with a neutral gray midpoint.
-_COOL = "#2a78d6"
-_WARM = "#e34948"
-_DIVERGING_SCALE = [[0.0, _WARM], [0.5, _NEUTRAL], [1.0, _COOL]]
-# Sequential blue ramp (magnitude — OI heatmap); near zero recedes to surface.
-_SEQ_BLUES = [[0.0, "#f4f8fd"], [0.14, "#cde2fb"], [0.3, "#9ec5f4"],
-              [0.45, "#6da7ec"], [0.6, "#3987e5"], [0.75, "#256abf"],
-              [0.9, "#184f95"], [1.0, "#0d366b"]]
-# Delta text colors (direction × whether up is good) — text tokens, not marks.
-_DELTA_UP = "#006300"
-_DELTA_DOWN = "#d03b3b"
-# Driver-model series color (categorical slot 5 — distinct from the three
-# scenario slots so the two engines never share a hue).
-_DRIVER_COLOR = "#4a3aa7"
+# correlation heatmap) with a neutral achromatic midpoint.
+_COOL = "#35618f"
+_WARM = "#a04a17"
+_DIVERGING_MID = "#c6cbd1"
+_DIVERGING_SCALE = [[0.0, _WARM], [0.5, _DIVERGING_MID], [1.0, _COOL]]
+# Sequential single-hue steel ramp (magnitude — OI heatmap); near zero
+# recedes toward the page ground.
+_SEQ_STEEL = [[0.0, "#dfe6ee"], [0.14, "#c4d1de"], [0.3, "#a8bccd"],
+              [0.45, "#8ca7bd"], [0.6, "#7092ac"], [0.75, "#557d99"],
+              [0.9, "#3c6484"], [1.0, "#274a66"]]
+# Delta text colors (direction × whether up is good) — text tokens, not marks;
+# ≥ 4.5:1 on the page bg, safe at table sizes.
+_DELTA_UP = "#1c6b4f"
+_DELTA_DOWN = "#a13326"
+# Driver-model series color (categorical purple slot — the first slot whose
+# hue family is shared with no scenario, so the two engines never share a hue).
+_DRIVER_COLOR = "#8f4d9f"
 
 _TORNADO_INPUTS = (
     ("Revenue growth", "growth_rate_mean", "growth_rate_std"),
@@ -224,27 +236,41 @@ def _fmt(v: Optional[float]) -> str:
 
 def _apply_chrome(fig: go.Figure, *, x_title: str = "", y_title: str = "",
                   show_legend: bool = True) -> None:
+    """Shared plotly chrome (spec §3): transparent backgrounds so charts sit
+    inside the line-drawn cards, hairline grids one step lighter than card
+    borders, ink-inverted hover labels."""
     fig.update_layout(
-        paper_bgcolor=_SURFACE, plot_bgcolor=_SURFACE,
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(family=_FONT, size=12, color=_INK_SECONDARY),
-        margin=dict(l=56, r=24, t=8, b=44),
+        colorway=list(_CATEGORICAL),
+        margin=dict(l=46, r=12, t=12, b=38),
         showlegend=show_legend,
         legend=dict(orientation="h", yanchor="bottom", y=1.0, x=0,
-                    font=dict(color=_INK_SECONDARY), bgcolor="rgba(0,0,0,0)"),
-        hoverlabel=dict(font=dict(family=_FONT, size=12)),
+                    font=dict(size=11, color=_INK_SECONDARY),
+                    bgcolor="rgba(0,0,0,0)", borderwidth=0),
+        hoverlabel=dict(bgcolor=_INK, bordercolor=_INK,
+                        font=dict(family=_FONT, size=12, color=_PAGE)),
     )
-    fig.update_xaxes(title=dict(text=x_title, font=dict(color=_INK_MUTED)),
-                     gridcolor=_GRID, gridwidth=1, linecolor=_AXIS,
-                     zeroline=False, tickfont=dict(color=_INK_MUTED))
-    fig.update_yaxes(title=dict(text=y_title, font=dict(color=_INK_MUTED)),
-                     gridcolor=_GRID, gridwidth=1, linecolor=_AXIS,
-                     zeroline=False, tickfont=dict(color=_INK_MUTED))
+    axis_kw = dict(gridcolor=_GRID, gridwidth=1, linecolor=_AXIS,
+                   zeroline=False, zerolinecolor=_AXIS, zerolinewidth=1,
+                   tickfont=dict(size=11, color=_INK_MUTED))
+    fig.update_xaxes(title=dict(text=x_title,
+                                font=dict(size=11, color=_INK_MUTED)), **axis_kw)
+    fig.update_yaxes(title=dict(text=y_title,
+                                font=dict(size=11, color=_INK_MUTED)), **axis_kw)
 
 
 def _fig_html(fig: go.Figure, height: int = 380) -> str:
     return pio.to_html(fig, full_html=False, include_plotlyjs=False,
                        config={"displayModeBar": False, "responsive": True},
                        default_width="100%", default_height=height)
+
+
+def _table(head: str, rows: str) -> str:
+    """Tables scroll inside their own wrapper (.tblwrap) so the card itself
+    stays overflow-visible — its corner registration marks sit just outside
+    the card border and would otherwise be clipped."""
+    return f'<div class="tblwrap"><table>{head}{rows}</table></div>'
 
 
 def _card(title: str, sub: str, body: str, wide: bool = False) -> str:
@@ -292,10 +318,11 @@ def _header_html(company: CompanyFinancials, cap: CapitalStructure,
         chips.append(_chip(f"{sc.key.title()} P50", f"${p50:,.0f}", sub="per share"))
     if price is not None and "base" in stats:
         delta = (stats["base"][1] - price) / price
+        # The accent chip is the page's one solid fill (spec §2) — its value
+        # renders white via CSS; direction is carried by the sign here and by
+        # the delta text colors in the scenario-summary table.
         chips.append(_chip("Base P50 vs price", f"{delta:+.0%}",
-                           sub="implied up/downside",
-                           value_color=_DELTA_UP if delta >= 0 else _DELTA_DOWN,
-                           accent=True))
+                           sub="implied up/downside", accent=True))
 
     meta = (f"As of {as_of.isoformat()} · net debt {_money_b(cap.net_debt)} · "
             f"{cap.shares / 1e9:.3f}B shares · {html.escape(price_note)}")
@@ -320,12 +347,13 @@ def _price_history_figure(points: List[PricePoint]) -> go.Figure:
                        xanchor="left", xshift=6,
                        font=dict(size=11, color=_INK_SECONDARY))
     _apply_chrome(fig, y_title="Close ($)", show_legend=False)
+    # Wider right margin for the direct end-label; top margin for the toggle.
     fig.update_layout(
-        margin=dict(l=56, r=56, t=30, b=44),
+        margin=dict(l=46, r=56, t=30, b=38),
         updatemenus=[dict(
             type="buttons", direction="right", x=1.0, xanchor="right",
             y=1.18, yanchor="top", showactive=True,
-            bgcolor=_SURFACE, bordercolor=_GRID, borderwidth=1,
+            bgcolor=_RAISED, bordercolor=_HAIRLINE, borderwidth=1,
             font=dict(size=11, color=_INK_SECONDARY), pad=dict(l=4, r=4, t=2, b=2),
             buttons=[
                 dict(label="Linear", method="relayout", args=[{"yaxis.type": "linear"}]),
@@ -349,15 +377,20 @@ def _valuation_zoom_figure(points: List[PricePoint],
         b10, _, b90 = stats["base"]
         fig.add_hrect(y0=b10, y1=b90, fillcolor=_rgba(_SCENARIO_COLORS["base"], 0.10),
                       line_width=0)
+        # Page-ground knockout behind the label so the bull P50 line (which can
+        # sit within a few px of the band top) never strikes through the text.
         fig.add_annotation(x=x[0], y=b90, text="Base P10–P90", showarrow=False,
-                           xanchor="left", yshift=10,
+                           xanchor="left", yshift=10, bgcolor=_PAGE,
                            font=dict(size=11, color=_INK_MUTED))
     for sc in scenarios:
         p50 = stats[sc.key][1]
         color = _SCENARIO_COLORS[sc.key]
         fig.add_hline(y=p50, line_color=color, line_width=2)
+        # bgcolor knocks the hline out behind the text (it is vertically
+        # centred on the line and would otherwise read as struck-through).
         fig.add_annotation(x=x[-1], y=p50, text=f"{sc.key.title()} P50 ${p50:,.0f}",
                            showarrow=False, xanchor="left", xshift=6,
+                           bgcolor=_PAGE,
                            font=dict(size=11, color=_INK_SECONDARY))
     fig.add_trace(go.Scatter(
         x=x, y=y, mode="lines", line=dict(color=_INK, width=2), name="Price",
@@ -371,7 +404,8 @@ def _valuation_zoom_figure(points: List[PricePoint],
     pad = (hi - lo) * 0.06 or 1.0
     _apply_chrome(fig, y_title="Price / value per share ($)", show_legend=False)
     fig.update_yaxes(range=[lo - pad, hi + pad])
-    fig.update_layout(margin=dict(l=56, r=130, t=8, b=44))
+    # Wide right margin kept for the scenario-P50 direct end-labels.
+    fig.update_layout(margin=dict(l=46, r=130, t=12, b=38))
     return fig
 
 
@@ -457,7 +491,8 @@ def _fundamentals_figure(annuals) -> go.Figure:
                            font=dict(size=11, color=_INK_SECONDARY))
 
     _apply_chrome(fig)
-    fig.update_layout(bargap=0.4, margin=dict(l=56, r=72, t=8, b=36),
+    # Wider right margin kept for the FCF / margin direct end-labels.
+    fig.update_layout(bargap=0.4, margin=dict(l=46, r=72, t=12, b=38),
                       hovermode="x unified")
     # Years are labels, not timestamps — stop plotly date-parsing "2018".
     fig.update_xaxes(type="category")
@@ -479,7 +514,7 @@ def _fundamentals_table(annuals) -> str:
             f"<td>{_money_b(p.capex)}</td><td>{_money_b(p.sbc_total, 2)}</td>"
             f"<td>{_money_b(p.acquisitions_net_of_cash)}</td>"
             f"<td>{_money_b(p.free_cash_flow)}</td><td>{margin}</td></tr>")
-    return f"<table>{head}{''.join(rows)}</table>"
+    return _table(head, "".join(rows))
 
 
 def _fundamentals_section(company: CompanyFinancials) -> str:
@@ -531,7 +566,8 @@ def _fan_figure(scenarios: Tuple[Scenario, ...], results: dict, base_year: int) 
                            font=dict(size=11, color=_INK_SECONDARY))
     fig.update_layout(hovermode="x unified")
     _apply_chrome(fig, x_title="Projection year", y_title="Free cash flow ($B)")
-    fig.update_layout(margin=dict(l=56, r=56, t=8, b=44))
+    # Wider right margin kept for the scenario-name direct end-labels.
+    fig.update_layout(margin=dict(l=46, r=56, t=12, b=38))
     if years:
         fig.update_xaxes(tickmode="array", tickvals=years)
     return fig
@@ -681,9 +717,12 @@ def _summary_table(scenarios: Tuple[Scenario, ...], results: dict,
             f"<td>${p10:,.0f}</td><td>${p50:,.0f}</td><td>${p90:,.0f}</td>"
         )
         if price is not None:
-            cells += f"<td>{(p50 - price) / price:+.0%}</td>"
+            d = (p50 - price) / price
+            # Delta text tokens (spec §1) — text only, never marks.
+            cells += (f'<td style="color:{_DELTA_UP if d >= 0 else _DELTA_DOWN}">'
+                      f"{d:+.0%}</td>")
         rows.append(f"<tr>{cells}</tr>")
-    return f"<table>{head}{''.join(rows)}</table>"
+    return _table(head, "".join(rows))
 
 
 def _aggregate_section(company, scenarios: Tuple[Scenario, ...], results: dict,
@@ -765,7 +804,7 @@ def _driver_table(model: DriverModel) -> str:
             f"<td>{html.escape(d.dist)}</td><td>{_fmt(d.mean)}</td>"
             f"<td>{_fmt(d.std) if d.stochastic else '—'}</td><td>{bounds}</td>"
             f'<td class="wrap">{html.escape(d.rationale or "—")}</td></tr>')
-    return f"<table>{head}{''.join(rows)}</table>"
+    return _table(head, "".join(rows))
 
 
 def _corr_heatmap_figure(model: DriverModel) -> go.Figure:
@@ -811,8 +850,11 @@ def _driver_compare_figure(driver_stats: Tuple[float, float, float],
             hovertemplate="%{x:$,.0f}<extra>" + label + "</extra>",
         ))
         for v, tag in ((p10, "P10"), (p50, "P50"), (p90, "P90")):
+            # bgcolor knocks the price vline out where a percentile label
+            # happens to fall within a few $ of the market price.
             fig.add_annotation(x=v, y=label, text=f"{tag} ${v:,.0f}",
                                showarrow=False, yshift=label_shift,
+                               bgcolor=_PAGE,
                                font=dict(size=11, color=_INK_SECONDARY))
     if price is not None:
         fig.add_vline(x=price, line_color=_INK, line_width=2)
@@ -820,8 +862,8 @@ def _driver_compare_figure(driver_stats: Tuple[float, float, float],
                            text=f"Price ${price:,.2f}", showarrow=False,
                            font=dict(size=11, color=_INK))
     _apply_chrome(fig, x_title="Equity value per share ($)", show_legend=False)
-    # Room for the price annotation that sits above the plot area.
-    fig.update_layout(margin=dict(l=56, r=24, t=28, b=44))
+    # Taller top margin kept for the price annotation above the plot area.
+    fig.update_layout(margin=dict(l=46, r=12, t=28, b=38))
     fig.update_yaxes(showgrid=False)
     return fig
 
@@ -1022,7 +1064,7 @@ def _oi_heatmap_figure(snapshot, spot: Optional[float]) -> Optional[go.Figure]:
     z = [[oi[e].get(s) for s in xs] for e in expiries]
     fig = go.Figure(go.Heatmap(
         z=z, x=xs, y=[_expiry_label(e) for e in expiries],
-        colorscale=_SEQ_BLUES, xgap=2, ygap=2, zmin=0,
+        colorscale=_SEQ_STEEL, xgap=2, ygap=2, zmin=0,
         colorbar=dict(title=dict(text="OI", font=dict(color=_INK_MUTED)),
                       thickness=12, outlinewidth=0,
                       tickfont=dict(color=_INK_MUTED)),
@@ -1034,8 +1076,8 @@ def _oi_heatmap_figure(snapshot, spot: Optional[float]) -> Optional[go.Figure]:
                            text=f"Spot ${spot:,.2f}", showarrow=False,
                            font=dict(size=11, color=_INK))
     _apply_chrome(fig, x_title="Strike ($)", show_legend=False)
-    # Room for the spot annotation that sits above the plot area.
-    fig.update_layout(margin=dict(l=56, r=24, t=28, b=44))
+    # Taller top margin kept for the spot annotation above the plot area.
+    fig.update_layout(margin=dict(l=46, r=12, t=28, b=38))
     fig.update_xaxes(showgrid=False)
     fig.update_yaxes(showgrid=False, autorange="reversed")
     return fig
@@ -1098,7 +1140,7 @@ def _chain_table(snapshot, expiry: date, atm_strike: Optional[float],
             f"<td>{px(p.last_price if p else None)}</td>"
             f"<td>{iv(p.implied_volatility if p else None)}</td>"
             f"<td>{oi(p.open_interest if p else None)}</td></tr>")
-    return f"<table>{head}{''.join(rows)}</table>"
+    return _table(head, "".join(rows))
 
 
 def _options_section(ticker: str, cache_dir: Path, price: Optional[float]) -> str:
@@ -1229,45 +1271,100 @@ def build_report_html(company, scenarios: Tuple[Scenario, ...], results: dict,
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{ticker} — Company report</title>
 <style>
-  * {{ box-sizing: border-box; }}
-  body {{ margin: 0; padding: 24px; background: {_PAGE}; color: {_INK};
-         font-family: {_FONT}; }}
-  header {{ margin: 0 0 12px 4px; }}
-  h1 {{ font-size: 22px; margin: 0 0 4px; }}
-  .section-h {{ font-size: 17px; margin: 28px 4px 12px; color: {_INK};
-                border-bottom: 1px solid {_GRID}; padding-bottom: 6px; }}
-  h3 {{ font-size: 15px; margin: 0 0 2px; color: {_INK}; }}
-  .meta {{ color: {_INK_SECONDARY}; font-size: 13px; margin: 0; }}
-  .sub {{ color: {_INK_MUTED}; font-size: 12px; margin: 0 0 8px; }}
-  .grid {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-           gap: 16px; }}
-  @media (max-width: 1100px) {{ .grid {{ grid-template-columns: minmax(0, 1fr); }} }}
-  .card {{ background: {_SURFACE}; border: 1px solid rgba(11,11,11,0.10);
-           border-radius: 8px; padding: 16px; overflow-x: auto; }}
-  .card.wide, .wide-chips, .wide-note {{ grid-column: 1 / -1; }}
-  .chips {{ display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0 4px; }}
-  .chip {{ background: {_SURFACE}; border: 1px solid rgba(11,11,11,0.10);
-           border-radius: 8px; padding: 10px 14px; min-width: 116px; }}
-  .chip.accent {{ border-color: {_AXIS}; }}
-  .chip-label {{ font-size: 11px; color: {_INK_MUTED}; }}
-  .chip-value {{ font-size: 18px; font-weight: 600; color: {_INK}; }}
-  .chip-sub {{ font-size: 11px; color: {_INK_MUTED}; }}
-  .badge {{ font-size: 11px; border-radius: 999px; padding: 1px 8px;
-            border: 1px solid; white-space: nowrap; }}
-  .badge.stoch {{ color: #1c5cab; border-color: #86b6ef; background: #cde2fb; }}
-  .badge.det {{ color: {_INK_SECONDARY}; border-color: {_AXIS}; background: {_NEUTRAL}; }}
-  .note {{ color: {_INK_SECONDARY}; font-size: 13px; background: {_NEUTRAL};
-           padding: 10px 12px; border-radius: 6px; margin: 4px 0; }}
-  table {{ border-collapse: collapse; font-size: 13px; width: 100%; }}
-  th {{ text-align: left; color: {_INK_MUTED}; font-weight: 600; }}
-  th, td {{ padding: 6px 10px; border-bottom: 1px solid {_GRID};
-            font-variant-numeric: tabular-nums; white-space: nowrap; }}
-  td.wrap {{ white-space: normal; min-width: 260px; font-variant-numeric: normal; }}
-  tr.atm td {{ background: rgba(42,120,214,0.10); }}
-  .dot {{ display: inline-block; width: 10px; height: 10px; border-radius: 50%;
-          margin-right: 6px; vertical-align: baseline; }}
-  footer {{ color: {_INK_MUTED}; font-size: 12px; margin: 24px 4px 0; }}
-  footer p {{ margin: 2px 0; }}
+/* Ratings-desk blueprint (docs/design-specs/2026-07-16-ratings-desk-blueprint.md §2) */
+:root{{
+  --bg:{_PAGE}; --raised:{_RAISED}; --ink:{_INK}; --ink-2:{_INK_SECONDARY}; --ink-3:{_INK_MUTED};
+  --accent:{_ACCENT}; --accent-deep:{_ACCENT_DEEP}; --accent-tint:{_ACCENT_TINT};
+  --hairline:{_HAIRLINE}; --rule:{_INK}; --td-rule:#e3e6ea;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:28px; --sp-7:40px; --sp-8:56px;
+  --font-display:"Avenir Next Condensed","Arial Narrow","Roboto Condensed","Liberation Sans Narrow","Helvetica Neue",sans-serif;
+  --font-body:"Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;
+  --font-mono:ui-monospace,"SF Mono","Cascadia Mono",Consolas,"Liberation Mono",monospace;
+}}
+*{{box-sizing:border-box}}
+body{{margin:0;padding:0 var(--sp-6) var(--sp-7);background:var(--bg);color:var(--ink);
+  font:400 13px/1.55 var(--font-body);
+  font-variant-numeric:tabular-nums lining-nums;
+  -webkit-font-smoothing:antialiased}}
+a{{color:var(--accent-deep)}} a:hover{{color:var(--accent)}}
+::selection{{background:var(--accent-tint)}}
+
+header{{padding:28px 0 18px;border-bottom:2px solid var(--rule);margin-bottom:40px}}
+header h1{{margin:0;font:600 30px/1.1 var(--font-display);letter-spacing:.01em}}
+header p, header .meta{{margin:2px 0;font:500 12px/1.4 var(--font-mono);
+  text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3)}}
+
+/* Chips — the primary read. Blueprint plates; accent chip is the ONE solid object. */
+.chips{{display:flex;flex-wrap:wrap;gap:12px}}
+header .chips{{margin:20px 0 6px}}
+.chip{{background:transparent;border:1px solid var(--ink);border-radius:0;
+  padding:12px 18px 10px;min-width:116px;box-shadow:none}}
+.chip .chip-value{{font:600 26px/1.1 var(--font-display);
+  letter-spacing:0;color:var(--ink);display:block}}
+.chip .chip-label,.chip .chip-sub{{font:600 10.5px/1.4 var(--font-body);
+  text-transform:uppercase;letter-spacing:.10em;color:var(--ink-3)}}
+.chip.accent{{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}}
+.chip.accent .chip-value{{color:#fff}}
+.chip.accent .chip-label,.chip.accent .chip-sub{{color:#c4d1de}}
+
+section.rsec{{margin:0 0 56px}}
+h2.section-h{{display:flex;align-items:center;gap:12px;margin:0 0 16px;
+  font:600 14px/1.2 var(--font-display);text-transform:uppercase;
+  letter-spacing:.14em;color:var(--accent-deep)}}
+h2.section-h::after{{content:"";flex:1;height:1px;background:var(--hairline)}}
+
+.grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}}
+@media (max-width:1099px){{.grid{{grid-template-columns:minmax(0,1fr)}}}}
+
+/* Cards — transparent line drawings with corner registration marks */
+section.card{{position:relative;background:transparent;border:1px solid var(--hairline);
+  border-radius:0;box-shadow:none;padding:20px}}
+.card.wide,.wide-chips,.wide-note{{grid-column:1/-1}}
+section.card::before,section.card::after{{content:"";position:absolute;
+  width:9px;height:9px;pointer-events:none;
+  background:linear-gradient(var(--accent),var(--accent)) 50% 0/1px 100% no-repeat,
+             linear-gradient(var(--accent),var(--accent)) 0 50%/100% 1px no-repeat}}
+section.card::before{{top:-5px;left:-5px}}
+section.card::after{{bottom:-5px;right:-5px}}
+
+h3{{margin:0 0 12px;font:600 16px/1.25 var(--font-display);letter-spacing:.02em;color:var(--ink)}}
+p.sub{{margin:-8px 0 12px;font-size:13px;color:var(--ink-2)}}
+p.sub.wide-note{{margin-top:0}}
+p.note{{margin:10px 0 0;font-size:11.5px;line-height:1.5;color:var(--ink-3);
+  padding-left:8px;border-left:2px solid var(--hairline)}}
+
+/* Tables scroll inside their own wrapper so the card (and its registration
+   marks just outside the border) stays overflow-visible. */
+.tblwrap{{overflow-x:auto}}
+table{{border-collapse:collapse;width:100%}}
+th{{text-align:left;font:600 11px/1.3 var(--font-body);text-transform:uppercase;
+  letter-spacing:.08em;color:var(--ink-3);padding:6px 10px;
+  border-bottom:1px solid var(--rule);white-space:nowrap}}
+td{{font-size:12.5px;padding:6px 10px;border-bottom:1px solid var(--td-rule);
+  color:var(--ink);white-space:nowrap}}
+td.wrap{{white-space:normal;min-width:260px;font-variant-numeric:normal}}
+tr:hover td{{background:var(--raised)}}
+tr.atm td{{background:var(--accent-tint);font-weight:600}}
+tr.atm td:first-child{{box-shadow:inset 2px 0 0 var(--accent)}}
+
+.badge{{border-radius:0;font:600 10.5px/1 var(--font-body);
+  text-transform:uppercase;letter-spacing:.06em;padding:3px 7px;white-space:nowrap}}
+.badge.stoch{{background:var(--accent-tint);color:var(--accent-deep);
+  border:1px solid var(--accent)}}
+.badge.det{{background:var(--raised);color:var(--ink-2);border:1px solid var(--hairline)}}
+
+span.dot{{display:inline-block;width:9px;height:9px;border-radius:0;
+  vertical-align:baseline;margin-right:6px}}   /* square swatch; inline bg carries the hue */
+
+footer{{margin-top:56px;padding-top:14px;border-top:2px solid var(--rule);
+  font:400 11px/1.6 var(--font-mono);color:var(--ink-3)}}
+footer p{{margin:2px 0}}
+
+@media print{{
+  body{{background:#fff}}
+  section.card{{break-inside:avoid}}
+  tr:hover td{{background:transparent}}
+}}
 </style>
 <script>{get_plotlyjs()}</script>
 </head>

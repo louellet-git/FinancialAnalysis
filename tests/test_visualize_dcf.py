@@ -1,5 +1,6 @@
 import html as html_mod
 import json
+import re
 from datetime import date, timedelta
 from unittest import mock
 
@@ -231,6 +232,21 @@ def test_report_is_self_contained(report_html):
     assert "<link " not in report_html
     assert '<img src="http' not in report_html
     assert len(report_html) > 1_000_000  # the ~4MB bundle is really embedded
+
+
+def test_page_bg_token_is_blueprint_ground(report_html):
+    # Ratings-desk blueprint: light technical ground, not near-white.
+    assert "--bg:#f4f4f5" in report_html
+    assert "background:var(--bg)" in report_html
+
+
+def test_cards_have_zero_border_radius(report_html):
+    # Cards are square-cornered line drawings (radius 0 everywhere).
+    card_rule = re.search(r"section\.card\{[^}]*\}", report_html)
+    assert card_rule is not None
+    assert "border-radius:0" in card_rule.group(0)
+    assert "border-radius: 8px" not in report_html
+    assert "border-radius:8px" not in report_html
 
 
 def test_report_shows_price_marker(report_html):
