@@ -1,5 +1,8 @@
 """IBM Monte Carlo DCF — bear/base/bull scenarios with equity-adjusted per-share values.
 
+Thin wrapper: the scenario presets and IBM capital-structure override live in
+financial_analysis/scenarios.py; this script preserves the original console report.
+
 Prerequisite: python -m scripts.analyze IBM  (populates data/processed/IBM.json)
 
 Usage (from repo root):
@@ -13,32 +16,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import numpy as np
 
 from financial_analysis import store
-from financial_analysis.dcf import DCFAssumptions, StochasticDCF
+from financial_analysis.dcf import StochasticDCF
+from financial_analysis.scenarios import CAPITAL_OVERRIDES, scenarios_for
 
-# FY2025 10-K: $61.3B total debt + finance leases (incl. current) - $13.6B cash - $0.8B securities
-NET_DEBT = 46.9e9
-SHARES = 936_952_129  # FY2025 10-K shares outstanding
+_CAPITAL = CAPITAL_OVERRIDES["IBM"]
+NET_DEBT = _CAPITAL.net_debt
+SHARES = int(_CAPITAL.shares)
 
-SCENARIOS = {
-    "Bear  (AI disruption is real, growth stalls)": DCFAssumptions(
-        growth_rate_mean=0.01, growth_rate_std=0.02,
-        wacc_mean=0.095, wacc_std=0.01,
-        terminal_growth_mean=0.015, terminal_growth_std=0.005,
-        seed=7,
-    ),
-    "Base  (mature grower, historical trend)": DCFAssumptions(
-        growth_rate_mean=0.04, growth_rate_std=0.02,
-        wacc_mean=0.085, wacc_std=0.01,
-        terminal_growth_mean=0.025, terminal_growth_std=0.005,
-        seed=7,
-    ),
-    "Bull  (Q2 was timing; software/AI momentum resumes)": DCFAssumptions(
-        growth_rate_mean=0.06, growth_rate_std=0.02,
-        wacc_mean=0.08, wacc_std=0.01,
-        terminal_growth_mean=0.03, terminal_growth_std=0.005,
-        seed=7,
-    ),
-}
+SCENARIOS = {s.label: s.assumptions for s in scenarios_for("IBM")}
 
 
 def main() -> None:

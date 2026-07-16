@@ -34,6 +34,9 @@ python -m scripts.import_financials PANW
 
 # Run a Monte Carlo DCF on already-imported data (no live API call)
 python -m scripts.run_dcf PANW --seed 7
+
+# Interactive bear/base/bull DCF report → data/processed/IBM_dcf.html
+python -m scripts.visualize_dcf IBM
 ```
 
 Output: `data/processed/TICKER_financials.xlsx`
@@ -60,6 +63,30 @@ print(result.median_per_share)            # None if shares outstanding unavailab
 - **Minimum-history guard:** raises `ValueError` unless at least 4 annual periods
   have positive FCF. This blocks meaningless valuations of recently-IPO'd or
   loss-making companies (e.g. SpaceX, which has no 10-K on file yet).
+
+## Interactive DCF report
+
+`python -m scripts.visualize_dcf TICKER` runs the bear/base/bull presets from
+`financial_analysis/scenarios.py` and writes `data/processed/TICKER_dcf.html` —
+a self-contained interactive report (plotly.js is inlined, so the file opens
+offline). Four panels:
+
+- **FCF projection fan** — simulated FCF per projection year, P10–P90 band +
+  median line per scenario
+- **Per-share value distribution** — histogram of (EV − net debt) / shares per
+  scenario, with the current price marked (yfinance last close; `--price X`
+  overrides it, and the marker is omitted with a note when offline)
+- **PV build-up waterfall** — median base-case PV of each projection year +
+  terminal value − net debt = equity value, making visible how much of the
+  value sits in the terminal assumption
+- **Sensitivity tornado** — P50 per-share impact of shifting each input
+  (growth, WACC, terminal growth, FCF margin) by ±1σ, others held at their means
+
+The presets are generic mature-large-cap defaults; per-ticker overrides
+(scenario labels, pinned net debt / share counts) live in the `scenarios.py`
+registries. Without an override, net debt is derived from the latest 10-K
+(long-term debt + short-term borrowings − cash) and shares from
+shares_outstanding (falling back to diluted).
 
 ## xlsx structure
 
@@ -114,11 +141,16 @@ financial_analysis/
     xbrl_tags.py    — XBRL concept registry (TagSpec, sign_flip, fallbacks)
 
     dcf.py          — Monte Carlo stochastic DCF (P10/P50/P90, per-share)
+    scenarios.py    — bear/base/bull presets + per-ticker net debt/shares registry
 
 scripts/
     analyze.py          — full pipeline → xlsx (primary entrypoint)
     import_financials.py — import only, no xlsx
     run_dcf.py          — Monte Carlo DCF on imported data
+    visualize_dcf.py    — interactive 4-panel DCF report → self-contained HTML
+
+analysis/
+    IBM/dcf_scenarios.py — IBM bear/base/bull console report (wraps scenarios.py)
 
 data/
     raw/TICKER/         — remote data cache (gitignored)
