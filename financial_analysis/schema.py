@@ -33,6 +33,29 @@ class EarningsSurprise:
 
 
 @dataclass
+class OptionQuote:
+    contract_symbol: str
+    option_type: str  # "call" or "put"
+    expiry: date
+    strike: float
+    last_price: Optional[float] = None
+    bid: Optional[float] = None
+    ask: Optional[float] = None
+    volume: Optional[int] = None
+    open_interest: Optional[int] = None
+    implied_volatility: Optional[float] = None
+    in_the_money: Optional[bool] = None
+
+
+@dataclass
+class OptionChainSnapshot:
+    ticker: str
+    snapshot_date: date
+    spot_price: Optional[float] = None
+    quotes: List[OptionQuote] = field(default_factory=list)
+
+
+@dataclass
 class PeriodFinancials:
     ticker: str
     period_end: date
@@ -133,3 +156,4 @@ class CompanyFinancials:
     prices: List[PricePoint] = field(default_factory=list)
     estimates: List[EarningsEstimate] = field(default_factory=list)
     surprises: List[EarningsSurprise] = field(default_factory=list)
+    option_chain: Optional[OptionChainSnapshot] = None
