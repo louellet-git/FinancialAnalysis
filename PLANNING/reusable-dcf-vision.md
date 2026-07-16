@@ -1,6 +1,6 @@
 # The Valuation Factory — reusable, self-improving DCF (standing initiative)
 
-Design approved 2026-07-16 (Luc), with six amendments incorporated (§ marked ✦). Manager
+Design approved 2026-07-16 (Luc), with seven amendments incorporated (marked ✦). Manager
 agent: Claude (this vision's completion falls on the manager; work starts when the IBM v4
 report pipeline completes). Universe: **non-financial US large-caps first**; archetype
 expansion is the frontier.
