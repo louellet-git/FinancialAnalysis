@@ -70,6 +70,17 @@ created or changed), and the charter review verifies on every run that the cover
 is current against the latest filing (a new XBRL concept appearing in a fresh 10-K arrives
 unclassified and therefore forces attention). This kills the silent-omission failure mode:
 nothing in the statements can be ignored by accident, only by argued decision.
+**Reason-code anti-inflation (the codes that absorb everything under deadline pressure):**
+(a) `immaterial-below-threshold` is quantitative in the schema — each such item states its
+measured share (< 0.5% of revenue or EV, per item), so the claim is checkable, not vibes;
+the validator recomputes it against the current filing. (b) `duplicative-of-X` must point
+at a real X: the validator verifies the reference RESOLVES to an existing driver/formula/
+bridge line, and the coverage reviewer's mandate includes spot-checking that the economics
+actually flow through the named destination — an item marked duplicative-of-X where X does
+not capture it recreates F15's stock-or-flow error in the paperwork layer, the most
+dangerous misclassification of all. (c) A **coverage-classification specimen** joins the
+red-team corpus (✦2): a known-material item mislabeled `immaterial` that the coverage
+reviewer must catch — gate sensitivity applies to this gate like every other.
 
 ### L5 — Review system (three tiers + terminus)
 Exists (vendored doc-review framework + the valuation-analyst/skeptic/report-auditor
