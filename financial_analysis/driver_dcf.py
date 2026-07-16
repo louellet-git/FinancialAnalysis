@@ -10,6 +10,10 @@ Design contract:
 - **Drivers** are the only stochastic objects. Each :class:`Driver` declares —
   explicitly, with a written rationale reviewers can challenge — whether it is
   stochastic or deterministic. Deterministic drivers become constant arrays.
+  A deterministic driver may instead declare a per-year ``schedule`` (e.g. an
+  SBC ramp): it samples as a ``(years, 1)`` array that broadcasts against the
+  ``(n,)`` stochastic draws, and terminal-year computations use the final
+  scheduled value. Stochastic drivers cannot be scheduled.
 - **Stochastic drivers are sampled jointly** from correlated standard normals
   (full pairwise correlation matrix, Cholesky factorization), then transformed
   to each driver's marginal as ``mean + std * z``.
@@ -65,6 +69,14 @@ class Driver:
     the driver is (or is not) sampled and where its parameters come from.
     Deterministic drivers must leave ``std`` at 0 and carry no bounds —
     ambiguity is rejected, not repaired.
+
+    ``schedule`` (deterministic drivers only) declares a per-year value path
+    instead of a single constant. Convention: ``mean`` must equal
+    ``schedule[0]`` (asserted here) — the mean is the year-1 value, and
+    ``mean_overrides`` in :meth:`DriverModel.sample` shifts the whole
+    schedule by ``override - mean``. Schedule length must equal the engine's
+    ``projection_years``; that is validated by :class:`DriverDCF` (a Driver
+    does not know the horizon).
     """
 
     name: str                     # unique key, e.g. "g_software"
@@ -75,10 +87,29 @@ class Driver:
     lo: Optional[float] = None    # clip bounds, truncnorm only (see module doc)
     hi: Optional[float] = None
     rationale: str = ""           # why stochastic/deterministic + parameter source
+    schedule: Optional[Tuple[float, ...]] = None  # per-year values, deterministic only
 
     def __post_init__(self) -> None:
         if not self.name:
             raise ValueError("Driver name must be non-empty.")
+        if self.schedule is not None:
+            if self.stochastic:
+                raise ValueError(
+                    f"Driver {self.name!r} is stochastic but declares a schedule — "
+                    "schedules are for deterministic per-year paths only."
+                )
+            sched = tuple(float(v) for v in self.schedule)
+            if len(sched) == 0:
+                raise ValueError(
+                    f"Driver {self.name!r}: schedule must be non-empty."
+                )
+            object.__setattr__(self, "schedule", sched)
+            if sched[0] != self.mean:
+                raise ValueError(
+                    f"Driver {self.name!r}: mean={self.mean} must equal "
+                    f"schedule[0]={sched[0]} — the mean of a scheduled driver "
+                    "is its year-1 value by convention."
+                )
         if self.dist not in _ALLOWED_DISTS:
             raise ValueError(
                 f"Driver {self.name!r}: dist must be one of {_ALLOWED_DISTS}, "
@@ -247,11 +278,14 @@ class DriverModel:
         (``np.random.default_rng(seed)``), transformed to ``mean + std * z``,
         then clipped to [lo, hi] where declared (see module docstring for the
         disclosed clip-after-correlation distortion). Deterministic drivers:
-        constant arrays.
+        constant ``(n,)`` arrays — except scheduled drivers, which yield a
+        ``(years, 1)`` column of their per-year values that broadcasts
+        against the ``(n,)`` draws.
 
         ``mean_overrides`` shifts the named drivers' means while keeping the
         same z-draws for a given seed — this is what makes ±1σ attribution
-        runs comparable path-by-path with all correlations intact.
+        runs comparable path-by-path with all correlations intact. For a
+        scheduled driver the whole schedule shifts by ``override - mean``.
         """
         if n <= 0:
             raise ValueError(f"n must be positive, got {n}.")
@@ -275,7 +309,13 @@ class DriverModel:
             draws[d.name] = x
         for d in self.drivers:
             if not d.stochastic:
-                draws[d.name] = np.full(n, overrides.get(d.name, d.mean))
+                if d.schedule is not None:
+                    shift = overrides.get(d.name, d.mean) - d.mean
+                    draws[d.name] = (
+                        np.asarray(d.schedule, dtype=float).reshape(-1, 1) + shift
+                    )
+                else:
+                    draws[d.name] = np.full(n, overrides.get(d.name, d.mean))
         return draws
 
 
@@ -287,10 +327,17 @@ def revenue_paths(
     segments: Dict[str, float],
     growth_draws: Dict[str, np.ndarray],
     years: int,
+    year1_growth: Optional[Dict[str, float]] = None,
 ) -> np.ndarray:
     """Revenue per year: each segment compounds at its own drawn growth.
 
-    revenue_t = Σ_s base_s * (1 + g_s)^t for t = 1..years, shape (years, n).
+    Without a year-1 pin: revenue_t = Σ_s base_s * (1 + g_s)^t for
+    t = 1..years, shape (years, n).
+
+    ``year1_growth`` optionally pins a segment's first projection year to a
+    known deterministic growth rate (e.g. mid-year guidance/actuals): year 1
+    revenue = base * (1 + year1_growth) exactly, and the drawn growth applies
+    from year 2 on, compounding from that year-1 level.
 
     Limitation (disclosed): g_s is a single draw held constant over all years
     of a path — no mean reversion. This widens far-year dispersion relative
@@ -303,36 +350,55 @@ def revenue_paths(
     missing = set(segments) - set(growth_draws)
     if missing:
         raise ValueError(f"No growth draws for segment(s): {sorted(missing)}.")
+    pins = year1_growth or {}
+    unknown = set(pins) - set(segments)
+    if unknown:
+        raise ValueError(f"year1_growth for unknown segment(s): {sorted(unknown)}.")
     t = np.arange(1, years + 1).reshape(-1, 1)
-    return sum(
-        base * (1.0 + growth_draws[name]) ** t for name, base in segments.items()
-    )
+    total = np.zeros((years, 1))
+    for name, base in segments.items():
+        g = growth_draws[name]
+        if name in pins and pins[name] is not None:
+            year1_level = base * (1.0 + pins[name])
+            total = total + year1_level * (1.0 + g) ** (t - 1)
+        else:
+            total = total + base * (1.0 + g) ** t
+    return total
 
 
 def fcff_margin(
     core_margin: np.ndarray,
+    mix_drift: np.ndarray,
     sbc_ratio: np.ndarray,
     ma_ratio: np.ndarray,
     ma_recurrence: np.ndarray,
 ) -> np.ndarray:
-    """FCFF margin = core_margin − sbc_ratio − ma_recurrence × ma_ratio.
+    """FCFF margin = core_margin + mix_drift − sbc_ratio − ma_recurrence × ma_ratio.
 
-    SBC is treated as a full cash-equivalent cost; the recurring share of
-    M&A spend (ma_recurrence ∈ [0, 1]) charges acquisition outlay against
-    margin. All inputs are (n,) driver arrays.
+    ``mix_drift`` is a deterministic business-mix margin term (typically a
+    per-year schedule, e.g. software-mix accretion). SBC is treated as a full
+    cash-equivalent cost; the recurring share of M&A spend
+    (ma_recurrence ∈ [0, 1]) charges acquisition outlay against margin.
+    Inputs are (n,) driver arrays or (years, 1) schedule columns; the result
+    broadcasts accordingly.
     """
-    return core_margin - sbc_ratio - ma_recurrence * ma_ratio
+    return core_margin + mix_drift - sbc_ratio - ma_recurrence * ma_ratio
 
 
 def wacc_capm(
     rf: np.ndarray,
     beta: np.ndarray,
     erp: np.ndarray,
-    kd_after_tax: np.ndarray,
+    kd_spread: np.ndarray,
+    tax_rate: np.ndarray,
     equity_weight: np.ndarray,
 ) -> np.ndarray:
-    """WACC = E/V × (rf + β × ERP) + (1 − E/V) × Kd_after_tax (CAPM cost of
-    equity, after-tax cost of debt, market-value weights)."""
+    """WACC = E/V × (rf + β × ERP) + (1 − E/V) × Kd_after_tax, where the
+    after-tax cost of debt is DERIVED per path from the risk-free draw:
+    Kd_after_tax = (rf + kd_spread) × (1 − tax_rate). Deriving kd from rf
+    keeps credit spreads non-negative-by-construction relative to rates
+    (fixed kd while rf floats produced negative-spread paths)."""
+    kd_after_tax = (rf + kd_spread) * (1.0 - tax_rate)
     return equity_weight * (rf + beta * erp) + (1.0 - equity_weight) * kd_after_tax
 
 
@@ -378,8 +444,8 @@ ITEMS: Tuple[Item, ...] = (
     Item(
         name="fcff_margin",
         doc=(
-            "Core operating FCFF margin minus SBC ratio minus the recurring "
-            "share of the M&A-to-revenue ratio."
+            "Core operating FCFF margin plus deterministic mix-drift, minus "
+            "SBC ratio, minus the recurring share of the M&A-to-revenue ratio."
         ),
         formula=fcff_margin,
     ),
@@ -387,7 +453,8 @@ ITEMS: Tuple[Item, ...] = (
         name="wacc",
         doc=(
             "CAPM: equity weight times (risk-free + beta × equity risk "
-            "premium) plus debt weight times after-tax cost of debt."
+            "premium) plus debt weight times after-tax cost of debt, with "
+            "kd derived per path as (rf + spread) × (1 − tax rate)."
         ),
         formula=wacc_capm,
     ),
@@ -408,8 +475,8 @@ ITEMS: Tuple[Item, ...] = (
 
 #: Drivers DriverDCF requires by exact name (beyond per-segment growth drivers).
 ROLE_DRIVERS: Tuple[str, ...] = (
-    "core_margin", "sbc_ratio", "ma_ratio", "ma_recurrence",
-    "rf", "beta", "erp", "kd_after_tax", "equity_weight",
+    "core_margin", "margin_mix_drift", "sbc_ratio", "ma_ratio", "ma_recurrence",
+    "rf", "beta", "erp", "kd_spread", "tax_rate", "equity_weight",
     "terminal_growth",
 )
 
@@ -417,11 +484,18 @@ ROLE_DRIVERS: Tuple[str, ...] = (
 @dataclass(frozen=True)
 class SegmentSpec:
     """One revenue segment: last-annual base revenue and the name of the
-    growth driver that compounds it."""
+    growth driver that compounds it.
+
+    ``year1_growth``, when set, pins the segment's first projection year to
+    a known deterministic growth rate (e.g. mid-year guidance/actuals); the
+    drawn growth then applies from year 2 on, compounding from the year-1
+    level.
+    """
 
     name: str
     base_revenue: float
     growth_driver: str
+    year1_growth: Optional[float] = None
 
     def __post_init__(self) -> None:
         if self.base_revenue <= 0:
@@ -452,6 +526,7 @@ class DriverDCFResult:
     per_share_p50: float
     per_share_p90: float
     tv_ev_share_at_means: float                 # PV(terminal)/EV, all drivers at mean
+    tg_pinned_fraction: float                   # share of paths where the T-DCF-2 guard binds
     attribution: Dict[str, DriverAttribution]   # keyed by stochastic driver name
     per_share_paths: np.ndarray = field(repr=False)  # (n,)
     fcff: np.ndarray = field(repr=False)             # (years, n)
@@ -465,9 +540,9 @@ class DriverDCF:
     Hard-coded model shape, composed exclusively from the vetted formulas in
     this module:
 
-        revenue_t = revenue_paths(segments, growth draws)
-        fcff_t    = revenue_t × fcff_margin(core_margin, sbc, m&a, recurrence)
-        wacc      = wacc_capm(rf, beta, erp, kd_after_tax, equity_weight)
+        revenue_t = revenue_paths(segments, growth draws, year-1 pins)
+        fcff_t    = revenue_t × fcff_margin(core_margin, mix_drift, sbc, m&a, recurrence)
+        wacc      = wacc_capm(rf, beta, erp, kd_spread, tax_rate, equity_weight)
         EV        = Σ fcff_t/(1+wacc)^t + terminal_value(fcff_T, tg, wacc)
         per share = (EV − net_debt) / shares
 
@@ -506,6 +581,14 @@ class DriverDCF:
                 f"Roles {ROLE_DRIVERS} plus each segment's growth driver must exist."
             )
 
+        for d in model.drivers:
+            if d.schedule is not None and len(d.schedule) != projection_years:
+                raise ValueError(
+                    f"Driver {d.name!r}: schedule has {len(d.schedule)} entries "
+                    f"but projection_years={projection_years} — a schedule must "
+                    "declare exactly one value per projection year."
+                )
+
         self.model = model
         self.segments = list(segments)
         self.net_debt = net_debt
@@ -516,22 +599,27 @@ class DriverDCF:
 
     def _valuation(
         self, draws: Dict[str, np.ndarray]
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """(per_share, fcff, pv_fcff, pv_terminal) from a full draws dict."""
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]:
+        """(per_share, fcff, pv_fcff, pv_terminal, tg_pinned_fraction) from a
+        full draws dict."""
         years = self.projection_years
         growth = {s.name: draws[s.growth_driver] for s in self.segments}
         bases = {s.name: s.base_revenue for s in self.segments}
-        revenue = revenue_paths(bases, growth, years)
+        pins = {
+            s.name: s.year1_growth
+            for s in self.segments if s.year1_growth is not None
+        }
+        revenue = revenue_paths(bases, growth, years, year1_growth=pins)
 
         margin = fcff_margin(
-            draws["core_margin"], draws["sbc_ratio"],
+            draws["core_margin"], draws["margin_mix_drift"], draws["sbc_ratio"],
             draws["ma_ratio"], draws["ma_recurrence"],
         )
         fcff = revenue * margin
 
         wacc = wacc_capm(
             draws["rf"], draws["beta"], draws["erp"],
-            draws["kd_after_tax"], draws["equity_weight"],
+            draws["kd_spread"], draws["tax_rate"], draws["equity_weight"],
         )
         if (wacc <= 0.0).any():
             raise ValueError(
@@ -539,16 +627,27 @@ class DriverDCF:
                 "drivers (dist='truncnorm') so discounting stays meaningful."
             )
 
+        tg = draws["terminal_growth"]
+        pinned = float(np.mean(tg > wacc - _TG_WACC_GAP))
+
         t = np.arange(1, years + 1).reshape(-1, 1)
         pv_fcff = fcff / (1.0 + wacc) ** t
-        pv_term = terminal_value(fcff[-1], draws["terminal_growth"], wacc, years)
+        pv_term = terminal_value(fcff[-1], tg, wacc, years)
         ev = pv_fcff.sum(axis=0) + pv_term
         per_share = (ev - self.net_debt) / self.shares
-        return per_share, fcff, pv_fcff, pv_term
+        return per_share, fcff, pv_fcff, pv_term, pinned
 
     def _mean_draws(self) -> Dict[str, np.ndarray]:
-        """Every driver pinned at its mean — a single deterministic path."""
-        return {d.name: np.full(1, d.mean) for d in self.model.drivers}
+        """Every driver pinned at its mean — a single deterministic path.
+        Scheduled drivers keep their per-year schedule (that IS their
+        deterministic path)."""
+        draws: Dict[str, np.ndarray] = {}
+        for d in self.model.drivers:
+            if d.schedule is not None:
+                draws[d.name] = np.asarray(d.schedule, dtype=float).reshape(-1, 1)
+            else:
+                draws[d.name] = np.full(1, d.mean)
+        return draws
 
     @staticmethod
     def _p50(per_share: np.ndarray) -> float:
@@ -570,7 +669,7 @@ class DriverDCF:
             seed = int(np.random.default_rng().integers(0, 2**32))
 
         draws = self.model.sample(n_simulations, seed)
-        per_share, fcff, pv_fcff, pv_term = self._valuation(draws)
+        per_share, fcff, pv_fcff, pv_term, tg_pinned = self._valuation(draws)
         base_p50 = self._p50(per_share)
 
         attribution: Dict[str, DriverAttribution] = {}
@@ -581,13 +680,13 @@ class DriverDCF:
                     n_simulations, seed,
                     mean_overrides={d.name: d.mean + direction * d.std},
                 )
-                shifted_per_share, _, _, _ = self._valuation(shifted)
+                shifted_per_share, _, _, _, _ = self._valuation(shifted)
                 deltas.append(self._p50(shifted_per_share) - base_p50)
             attribution[d.name] = DriverAttribution(
                 driver=d.name, p50_minus_1sd=deltas[0], p50_plus_1sd=deltas[1],
             )
 
-        _, _, mean_pv_fcff, mean_pv_term = self._valuation(self._mean_draws())
+        _, _, mean_pv_fcff, mean_pv_term, _ = self._valuation(self._mean_draws())
         mean_ev = float(mean_pv_fcff.sum(axis=0)[0] + mean_pv_term[0])
         tv_ev = float(mean_pv_term[0]) / mean_ev
 
@@ -596,6 +695,7 @@ class DriverDCF:
             per_share_p50=base_p50,
             per_share_p90=float(np.percentile(per_share, 90)),
             tv_ev_share_at_means=tv_ev,
+            tg_pinned_fraction=tg_pinned,
             attribution=attribution,
             per_share_paths=per_share,
             fcff=fcff,

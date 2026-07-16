@@ -32,6 +32,8 @@ def _standard_drivers() -> list[Driver]:
         Driver("core_margin", stochastic=True, mean=0.20, std=0.02,
                dist="truncnorm", lo=0.0, hi=0.35,
                rationale="historical FCFF margin band"),
+        Driver("margin_mix_drift", stochastic=False, mean=0.0,
+               rationale="no mix drift in the standard fixture"),
         Driver("sbc_ratio", stochastic=False, mean=0.03,
                rationale="stable SBC/revenue, policy-set"),
         Driver("ma_ratio", stochastic=False, mean=0.02,
@@ -44,8 +46,10 @@ def _standard_drivers() -> list[Driver]:
                rationale="regression beta, stable"),
         Driver("erp", stochastic=False, mean=0.05,
                rationale="Damodaran implied ERP, pinned"),
-        Driver("kd_after_tax", stochastic=False, mean=0.035,
-               rationale="observed debt cost x (1-tax)"),
+        Driver("kd_spread", stochastic=False, mean=0.0025,
+               rationale="credit spread over the rf draw, fair-value calibrated"),
+        Driver("tax_rate", stochastic=False, mean=0.21,
+               rationale="statutory rate on the debt shield"),
         Driver("equity_weight", stochastic=False, mean=0.85,
                rationale="market-value capital structure"),
         Driver("terminal_growth", stochastic=True, mean=0.025, std=0.005,
@@ -115,6 +119,22 @@ def test_mean_outside_bounds_rejected():
 def test_unknown_dist_rejected():
     with pytest.raises(ValueError, match="dist"):
         Driver("g", stochastic=True, mean=0.05, std=0.01, dist="lognormal")
+
+
+def test_stochastic_driver_rejects_schedule():
+    with pytest.raises(ValueError, match="schedule"):
+        Driver("g", stochastic=True, mean=0.05, std=0.01,
+               schedule=(0.05, 0.06))
+
+
+def test_empty_schedule_rejected():
+    with pytest.raises(ValueError, match="non-empty"):
+        Driver("g", stochastic=False, mean=0.05, schedule=())
+
+
+def test_schedule_mean_must_be_first_entry():
+    with pytest.raises(ValueError, match=r"schedule\[0\]"):
+        Driver("g", stochastic=False, mean=0.05, schedule=(0.04, 0.06))
 
 
 # ---------------------------------------------------------------------------
@@ -254,6 +274,24 @@ def test_mean_override_unknown_driver_rejected():
         _two_driver_model(0.0).sample(10, seed=SEED, mean_overrides={"zzz": 1.0})
 
 
+def test_scheduled_driver_samples_as_year_column():
+    model = DriverModel(drivers=[
+        Driver("s", stochastic=False, mean=0.02, schedule=(0.02, 0.03, 0.04)),
+    ])
+    draws = model.sample(5, seed=SEED)
+    assert draws["s"].shape == (3, 1)
+    assert np.allclose(draws["s"][:, 0], [0.02, 0.03, 0.04])
+
+
+def test_mean_override_shifts_whole_schedule():
+    model = DriverModel(drivers=[
+        Driver("s", stochastic=False, mean=0.02, schedule=(0.02, 0.03, 0.04)),
+    ])
+    shifted = model.sample(5, seed=SEED, mean_overrides={"s": 0.03})
+    # override - mean = +0.01, applied to every year
+    assert np.allclose(shifted["s"][:, 0], [0.03, 0.04, 0.05])
+
+
 # ---------------------------------------------------------------------------
 # Item formulas vs hand-computed values
 # ---------------------------------------------------------------------------
@@ -274,24 +312,73 @@ def test_revenue_paths_missing_growth_draw_rejected():
         revenue_paths({"a": 100.0}, {}, years=3)
 
 
+def test_revenue_paths_year1_pinned_hand_computed():
+    rev = revenue_paths(
+        {"a": 100.0}, {"a": np.array([0.10, -0.05])}, years=3,
+        year1_growth={"a": 0.02},
+    )
+    # year 1 is pinned exactly at base*(1+2%) on every path
+    assert rev[0] == pytest.approx([102.0, 102.0])
+    # drawn growth applies from year 2, compounding from the year-1 level
+    assert rev[1] == pytest.approx([102.0 * 1.10, 102.0 * 0.95])
+    assert rev[2] == pytest.approx([102.0 * 1.10**2, 102.0 * 0.95**2])
+
+
+def test_revenue_paths_year1_pin_for_unknown_segment_rejected():
+    with pytest.raises(ValueError, match="unknown segment"):
+        revenue_paths(
+            {"a": 100.0}, {"a": np.array([0.10])}, years=2,
+            year1_growth={"zzz": 0.05},
+        )
+
+
 def test_fcff_margin_hand_computed():
     m = fcff_margin(
         core_margin=np.array([0.30, 0.30]),
+        mix_drift=np.array([0.0, 0.01]),
         sbc_ratio=np.array([0.05, 0.05]),
         ma_ratio=np.array([0.02, 0.02]),
         ma_recurrence=np.array([1.0, 0.5]),
     )
-    # 0.30 - 0.05 - 1.0*0.02 = 0.23 ; 0.30 - 0.05 - 0.5*0.02 = 0.24
-    assert m == pytest.approx([0.23, 0.24])
+    # 0.30 + 0.0 - 0.05 - 1.0*0.02 = 0.23 ; 0.30 + 0.01 - 0.05 - 0.5*0.02 = 0.25
+    assert m == pytest.approx([0.23, 0.25])
+
+
+def test_fcff_margin_schedule_column_broadcasts():
+    m = fcff_margin(
+        core_margin=np.array([0.30, 0.28]),          # (n,) = 2 paths
+        mix_drift=np.array([[0.0], [0.01]]),         # (years, 1) = 2-year schedule
+        sbc_ratio=np.array([[0.02], [0.03]]),        # (years, 1)
+        ma_ratio=np.array([0.02, 0.02]),
+        ma_recurrence=np.array([1.0, 1.0]),
+    )
+    assert m.shape == (2, 2)
+    # year 1: core - 0.02 - 0.02 ; year 2: core + 0.01 - 0.03 - 0.02
+    assert m[0] == pytest.approx([0.26, 0.24])
+    assert m[1] == pytest.approx([0.26, 0.24])
 
 
 def test_wacc_capm_hand_computed():
     w = wacc_capm(
         rf=np.array([0.04]), beta=np.array([1.2]), erp=np.array([0.05]),
-        kd_after_tax=np.array([0.03]), equity_weight=np.array([0.8]),
+        kd_spread=np.array([0.0]), tax_rate=np.array([0.25]),
+        equity_weight=np.array([0.8]),
     )
+    # kd_at = (0.04+0.0)*(1-0.25) = 0.03
     # 0.8*(0.04 + 1.2*0.05) + 0.2*0.03 = 0.8*0.10 + 0.006 = 0.086
     assert w == pytest.approx([0.086])
+
+
+def test_wacc_kd_after_tax_derived_from_rf_exactly():
+    rf = np.linspace(0.01, 0.08, 50)
+    kd_spread = np.full(50, -0.001)
+    tax_rate = np.full(50, 0.21)
+    beta = np.full(50, 0.9)
+    erp = np.full(50, 0.05)
+    ew = np.full(50, 0.7)
+    w = wacc_capm(rf, beta, erp, kd_spread, tax_rate, ew)
+    kd_at = (rf + kd_spread) * (1.0 - tax_rate)   # kd inherits the rf path
+    assert np.array_equal(w, ew * (rf + beta * erp) + (1.0 - ew) * kd_at)
 
 
 def test_terminal_value_hand_computed_guard_not_binding():
@@ -321,7 +408,8 @@ def test_effective_terminal_growth_guard_never_violated():
     draws = model.sample(50_000, seed=SEED)
     wacc = wacc_capm(
         rf=draws["rf"], beta=np.full(50_000, 0.9), erp=np.full(50_000, 0.05),
-        kd_after_tax=np.full(50_000, 0.035), equity_weight=np.full(50_000, 0.85),
+        kd_spread=np.full(50_000, 0.0025), tax_rate=np.full(50_000, 0.21),
+        equity_weight=np.full(50_000, 0.85),
     )
     eff = effective_terminal_growth(draws["terminal_growth"], wacc)
     assert (wacc - eff >= 0.02 - 1e-12).all()
@@ -432,3 +520,104 @@ def test_nonpositive_shares_rejected():
 def test_segment_nonpositive_base_revenue_rejected():
     with pytest.raises(ValueError, match="base_revenue"):
         SegmentSpec("software", base_revenue=0.0, growth_driver="g_software")
+
+
+# ---------------------------------------------------------------------------
+# Schedules, year-1 pinning, pinned fraction (engine level)
+# ---------------------------------------------------------------------------
+
+def _scheduled_drivers_2y() -> list[Driver]:
+    """All-deterministic 2-year model with scheduled margin terms."""
+    return [
+        Driver("g", stochastic=False, mean=0.10,
+               rationale="deterministic growth for hand computation"),
+        Driver("core_margin", stochastic=False, mean=0.30,
+               rationale="hand case"),
+        Driver("margin_mix_drift", stochastic=False, mean=0.0,
+               schedule=(0.0, 0.02), rationale="mix drift ramp"),
+        Driver("sbc_ratio", stochastic=False, mean=0.02,
+               schedule=(0.02, 0.03), rationale="SBC ramp"),
+        Driver("ma_ratio", stochastic=False, mean=0.02, rationale="hand case"),
+        Driver("ma_recurrence", stochastic=False, mean=1.0, rationale="hand case"),
+        Driver("rf", stochastic=False, mean=0.04, rationale="hand case"),
+        Driver("beta", stochastic=False, mean=1.0, rationale="hand case"),
+        Driver("erp", stochastic=False, mean=0.05, rationale="hand case"),
+        Driver("kd_spread", stochastic=False, mean=0.0, rationale="hand case"),
+        Driver("tax_rate", stochastic=False, mean=0.25, rationale="hand case"),
+        Driver("equity_weight", stochastic=False, mean=0.8, rationale="hand case"),
+        Driver("terminal_growth", stochastic=False, mean=0.02, rationale="hand case"),
+    ]
+
+
+def _scheduled_engine_2y(**segment_kwargs) -> DriverDCF:
+    return DriverDCF(
+        DriverModel(drivers=_scheduled_drivers_2y()),
+        [SegmentSpec("s", base_revenue=100.0, growth_driver="g",
+                     **segment_kwargs)],
+        net_debt=0.0, shares=1.0, projection_years=2,
+    )
+
+
+def test_schedule_wrong_length_rejected_by_engine():
+    drivers = _standard_drivers()
+    drivers = [
+        Driver("sbc_ratio", stochastic=False, mean=0.02, schedule=(0.02, 0.03),
+               rationale="2-year ramp against a 10-year engine")
+        if d.name == "sbc_ratio" else d
+        for d in drivers
+    ]
+    model = DriverModel(drivers=drivers,
+                        corr={("g_software", "g_infra"): 0.3})
+    with pytest.raises(ValueError, match="projection year"):
+        DriverDCF(
+            model,
+            [SegmentSpec("software", 30e9, "g_software"),
+             SegmentSpec("infra", 20e9, "g_infra")],
+            net_debt=50e9, shares=1e9, projection_years=10,
+        )
+
+
+def test_schedule_broadcast_hand_computed_2y():
+    result = _scheduled_engine_2y().run(n_simulations=4, seed=SEED)
+    # revenue: 110, 121 ; margins: y1 0.30-0.02-0.02=0.26, y2 0.30+0.02-0.03-0.02=0.27
+    assert result.fcff.shape == (2, 4)
+    assert result.fcff[0] == pytest.approx(np.full(4, 110.0 * 0.26))
+    assert result.fcff[1] == pytest.approx(np.full(4, 121.0 * 0.27))
+    # wacc = 0.8*(0.04 + 1.0*0.05) + 0.2*(0.04+0.0)*(1-0.25) = 0.078
+    wacc = 0.078
+    fcff1, fcff2 = 110.0 * 0.26, 121.0 * 0.27
+    tv = fcff2 * 1.02 / (wacc - 0.02)   # guard slack: 0.02 < 0.078-0.02
+    expected = fcff1 / (1 + wacc) + fcff2 / (1 + wacc) ** 2 + tv / (1 + wacc) ** 2
+    assert result.per_share_paths == pytest.approx(np.full(4, expected))
+    assert result.tg_pinned_fraction == 0.0
+
+
+def test_year1_growth_pins_first_year_revenue_exactly():
+    result = _scheduled_engine_2y(year1_growth=0.05).run(n_simulations=2, seed=SEED)
+    # year-1 revenue exactly 100*(1+5%) = 105; drawn g=10% applies from year 2
+    assert result.fcff[0] == pytest.approx(np.full(2, 105.0 * 0.26))
+    assert result.fcff[1] == pytest.approx(np.full(2, 105.0 * 1.10 * 0.27))
+
+
+def test_tg_pinned_fraction_in_unit_interval():
+    result = _standard_engine().run(n_simulations=2000, seed=SEED)
+    assert 0.0 <= result.tg_pinned_fraction <= 1.0
+
+
+def test_tg_pinned_fraction_reports_binding_guard():
+    drivers = [
+        Driver("terminal_growth", stochastic=True, mean=0.06, std=0.02,
+               rationale="deliberately high so the T-DCF-2 guard binds often")
+        if d.name == "terminal_growth" else d
+        for d in _standard_drivers()
+    ]
+    model = DriverModel(drivers=drivers,
+                        corr={("g_software", "g_infra"): 0.3})
+    engine = DriverDCF(
+        model,
+        [SegmentSpec("software", 30e9, "g_software"),
+         SegmentSpec("infra", 20e9, "g_infra")],
+        net_debt=50e9, shares=1e9,
+    )
+    result = engine.run(n_simulations=2000, seed=SEED)
+    assert 0.0 < result.tg_pinned_fraction < 1.0
