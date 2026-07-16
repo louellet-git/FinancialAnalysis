@@ -1,9 +1,10 @@
-"""CLI: export financial statements for a ticker to a six-tab xlsx file.
+"""CLI: export financial statements for a ticker to an eight-tab xlsx file.
 
 Usage:
     python -m scripts.analyze NVDA
     python -m scripts.analyze NVDA --refresh
     python -m scripts.analyze NVDA --no-market
+    python -m scripts.analyze NVDA --no-options
     python -m scripts.analyze NVDA --out path/to/custom.xlsx
 """
 from __future__ import annotations
@@ -21,6 +22,7 @@ from financial_analysis.importer import UnsupportedFilingError, import_company
 from financial_analysis.edgar import EdgarClientError
 from financial_analysis.fmp import FMPClientError, load_estimates, load_surprises, load_fmp_statements
 from financial_analysis.market_data import load_earnings_surprises, load_prices
+from financial_analysis.options import compute_chain_metrics, fetch_option_chain
 from financial_analysis.schema import CompanyFinancials, PeriodFinancials
 from financial_analysis.xbrl_tags import STATEMENT_MAP, UNIT_MAP
 
@@ -31,6 +33,17 @@ COLUMNS = [
 
 PRICE_COLUMNS = ["ticker", "date", "open", "high", "low", "close", "volume"]
 ESTIMATE_COLUMNS = ["ticker", "period_end", "period_type", "metric", "value", "unit"]
+OPTION_COLUMNS = [
+    "ticker", "snapshot_date", "expiry", "option_type", "contract_symbol",
+    "strike", "last_price", "bid", "ask", "volume", "open_interest",
+    "implied_volatility", "in_the_money",
+]
+OPTION_SUMMARY_COLUMNS = [
+    "ticker", "snapshot_date", "spot_price", "expiry", "atm_strike", "atm_iv",
+    "straddle_mid", "implied_move", "skew", "call_volume", "put_volume",
+    "call_open_interest", "put_open_interest",
+    "put_call_volume_ratio", "put_call_oi_ratio",
+]
 
 _TAB_FOR = {
     "income_statement": "Income Statement",
@@ -56,6 +69,8 @@ def _flatten(company: CompanyFinancials) -> dict[str, list[dict[str, Any]]]:
         "Raw": [],
         "Prices": [],
         "Estimates": [],
+        "Options": [],
+        "Options Summary": [],
     }
 
     for p in company.periods:
@@ -154,6 +169,58 @@ def _flatten(company: CompanyFinancials) -> dict[str, list[dict[str, Any]]]:
                 "unit": "USD/share" if "eps" in metric or metric == "surprise" else "ratio",
             })
 
+    snap = company.option_chain
+    if snap is not None:
+        for q in snap.quotes:
+            tabs["Options"].append({
+                "ticker": snap.ticker,
+                "snapshot_date": snap.snapshot_date.isoformat(),
+                "expiry": q.expiry.isoformat(),
+                "option_type": q.option_type,
+                "contract_symbol": q.contract_symbol,
+                "strike": q.strike,
+                "last_price": q.last_price,
+                "bid": q.bid,
+                "ask": q.ask,
+                "volume": q.volume,
+                "open_interest": q.open_interest,
+                "implied_volatility": q.implied_volatility,
+                "in_the_money": q.in_the_money,
+            })
+
+        chain_metrics = compute_chain_metrics(snap)
+        for em in chain_metrics.expiries:
+            tabs["Options Summary"].append({
+                "ticker": snap.ticker,
+                "snapshot_date": snap.snapshot_date.isoformat(),
+                "spot_price": snap.spot_price,
+                "expiry": em.expiry.isoformat(),
+                "atm_strike": em.atm_strike,
+                "atm_iv": em.atm_iv,
+                "straddle_mid": em.straddle_mid,
+                "implied_move": em.implied_move,
+                "skew": em.skew,
+                "call_volume": em.call_volume,
+                "put_volume": em.put_volume,
+                "call_open_interest": em.call_open_interest,
+                "put_open_interest": em.put_open_interest,
+                "put_call_volume_ratio": em.put_call_volume_ratio,
+                "put_call_oi_ratio": em.put_call_oi_ratio,
+            })
+        if chain_metrics.expiries:
+            tabs["Options Summary"].append({
+                "ticker": snap.ticker,
+                "snapshot_date": snap.snapshot_date.isoformat(),
+                "spot_price": snap.spot_price,
+                "expiry": "ALL",
+                "call_volume": sum(em.call_volume for em in chain_metrics.expiries),
+                "put_volume": sum(em.put_volume for em in chain_metrics.expiries),
+                "call_open_interest": sum(em.call_open_interest for em in chain_metrics.expiries),
+                "put_open_interest": sum(em.put_open_interest for em in chain_metrics.expiries),
+                "put_call_volume_ratio": chain_metrics.put_call_volume_ratio,
+                "put_call_oi_ratio": chain_metrics.put_call_oi_ratio,
+            })
+
     return tabs
 
 
@@ -167,6 +234,8 @@ def write_xlsx(company: CompanyFinancials, out_path: Path) -> int:
     tab_columns = {
         "Prices": PRICE_COLUMNS,
         "Estimates": ESTIMATE_COLUMNS,
+        "Options": OPTION_COLUMNS,
+        "Options Summary": OPTION_SUMMARY_COLUMNS,
     }
 
     for tab_name, rows in tabs.items():
@@ -188,6 +257,7 @@ def main() -> None:
     parser.add_argument("--refresh", action="store_true", help="Force re-fetch from SEC API")
     parser.add_argument("--out", type=Path, help="Output file path (default: data/processed/TICKER_financials.xlsx)")
     parser.add_argument("--no-market", action="store_true", dest="no_market", help="Skip stock prices and analyst estimates")
+    parser.add_argument("--no-options", action="store_true", dest="no_options", help="Skip the option-chain snapshot")
     args = parser.parse_args()
 
     ticker = args.ticker.upper()
@@ -236,7 +306,17 @@ def main() -> None:
         except FMPClientError as e:
             print(f"  FMP unavailable ({e}) — using yfinance earnings only")
 
-    n_tabs = 4 if args.no_market else 6
+        if not args.no_options:
+            print("Fetching option chain (yfinance)...")
+            try:
+                company.option_chain = fetch_option_chain(ticker, cache_dir=cache_dir, refresh=args.refresh)
+                n_expiries = len({q.expiry for q in company.option_chain.quotes})
+                print(f"  {len(company.option_chain.quotes)} option contracts across {n_expiries} expiries loaded")
+            except Exception as e:
+                print(f"  Warning: option-chain fetch failed — {e}")
+
+    with_options = not args.no_market and not args.no_options
+    n_tabs = 4 if args.no_market else (8 if with_options else 6)
     print(f"Writing {out_path} ...")
     total = write_xlsx(company, out_path)
     print(f"Done: {out_path} ({total} rows across {n_tabs} tabs)")

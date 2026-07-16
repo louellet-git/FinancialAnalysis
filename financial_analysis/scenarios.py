@@ -48,20 +48,33 @@ DEFAULT_SCENARIOS: Tuple[Scenario, ...] = (
     Scenario("bull", "Bull  (growth re-accelerates)", _preset(0.06, 0.08, 0.03)),
 )
 
+def _ibm_v3(growth: float, wacc: float, terminal: float, margin: float) -> DCFAssumptions:
+    # v3 framework (analysis/IBM/REVIEW.md): FCFF after SBC with paired M&A charge,
+    # margins pinned from the FY2021-25 build in analysis/IBM/dcf_scenarios.py.
+    return DCFAssumptions(
+        growth_rate_mean=growth, growth_rate_std=0.02,
+        wacc_mean=wacc, wacc_std=0.0075,
+        terminal_growth_mean=terminal, terminal_growth_std=0.005,
+        fcf_margin_mean=margin, fcf_margin_std=0.02,
+        seed=SCENARIO_SEED,
+    )
+
+
 _SCENARIO_OVERRIDES: Dict[str, Tuple[Scenario, ...]] = {
     "IBM": (
-        Scenario("bear", "Bear  (AI disruption is real, growth stalls)",
-                 _preset(0.01, 0.095, 0.015)),
-        Scenario("base", "Base  (mature grower, historical trend)",
-                 _preset(0.04, 0.085, 0.025)),
-        Scenario("bull", "Bull  (Q2 was timing; software/AI momentum resumes)",
-                 _preset(0.06, 0.08, 0.03)),
+        Scenario("bear", "Bear  (disruption: g 1%, 100% M&A charged)",
+                 _ibm_v3(0.01, 0.0825, 0.015, 0.092)),
+        Scenario("base", "Base  (organic + half-paid acquired growth)",
+                 _ibm_v3(0.0215, 0.075, 0.0225, 0.145)),
+        Scenario("bull", "Bull  (guidance-anchored recovery)",
+                 _ibm_v3(0.045, 0.0725, 0.025, 0.161)),
     ),
 }
 
 CAPITAL_OVERRIDES: Dict[str, CapitalStructure] = {
-    # FY2025 10-K: $61.3B total debt + finance leases (incl. current) - $13.6B cash - $0.8B securities
-    "IBM": CapitalStructure(net_debt=46.9e9, shares=936_952_129),
+    # v3 bridge (analysis/IBM/REVIEW.md F15): $61.3B debt + $7.1B after-tax pension
+    # - $14.4B cash & securities; diluted shares, held flat (SBC charged in margin)
+    "IBM": CapitalStructure(net_debt=54.0e9, shares=948_675_228),
 }
 
 

@@ -61,7 +61,7 @@ def test_default_scenario_assumptions():
 def test_ibm_override_lookup_is_case_insensitive():
     scenarios = scenarios_for("ibm")
     assert scenarios is not DEFAULT_SCENARIOS
-    assert "AI disruption" in scenarios[0].label
+    assert "disruption" in scenarios[0].label
 
 
 # --- capital structure ---
@@ -70,8 +70,8 @@ def test_ibm_capital_override():
     company = CompanyFinancials(ticker="IBM", cik="0", company_name="IBM", periods=[])
     cap = capital_structure_for(company)
     assert cap == CAPITAL_OVERRIDES["IBM"]
-    assert cap.net_debt == 46.9e9
-    assert cap.shares == 936_952_129
+    assert cap.net_debt == 54.0e9
+    assert cap.shares == 948_675_228
 
 
 def test_net_debt_derived_with_short_term_borrowings():
