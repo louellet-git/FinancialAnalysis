@@ -6,11 +6,12 @@ Python pipeline that pulls public-company financials from SEC EDGAR, enriches th
 
 ```
 scripts/analyze.py TICKER
-    ├── SEC EDGAR XBRL API  →  PeriodFinancials[]   (income stmt / balance sheet / cash flow)
-    ├── yfinance            →  PricePoint[]          (daily OHLCV, full history)
-    └── yfinance            →  EarningsSurprise[]    (EPS estimate vs actual, ~25 quarters)
+    ├── SEC EDGAR XBRL API  →  PeriodFinancials[]     (income stmt / balance sheet / cash flow)
+    ├── yfinance            →  PricePoint[]           (daily OHLCV, full history)
+    ├── yfinance            →  EarningsSurprise[]     (EPS estimate vs actual, ~25 quarters)
+    └── yfinance            →  OptionChainSnapshot    (full option chain + derived metrics)
                 ↓
-    data/processed/TICKER_financials.xlsx  (6 tabs)
+    data/processed/TICKER_financials.xlsx  (8 tabs)
 ```
 
 All remote data is disk-cached under `data/raw/TICKER/` — re-runs are instant.
@@ -25,6 +26,9 @@ python -m scripts.analyze NVDA
 
 # Skip market data (SEC data only, faster)
 python -m scripts.analyze NVDA --no-market
+
+# Skip the option-chain snapshot (keep prices and earnings)
+python -m scripts.analyze NVDA --no-options
 
 # Force re-fetch everything from remote APIs
 python -m scripts.analyze NVDA --refresh
@@ -71,6 +75,8 @@ print(result.median_per_share)            # None if shares outstanding unavailab
 | Raw | All other unmapped XBRL concepts (100–200 rows per period) |
 | Prices | Daily OHLCV from yfinance (~6,800 rows for NVDA) |
 | Estimates | Earnings surprises — actual vs estimated EPS per quarter |
+| Options | Full option chain, one row per contract (strike, bid/ask, volume, OI, IV, ITM flag) |
+| Options Summary | Per-expiry derived metrics — ATM IV, implied move (ATM straddle ÷ spot), 90/110 skew, put/call ratios — plus a chain-wide `ALL` row |
 
 All financial tabs use a long format: one row per `(period, metric)`.
 
@@ -81,7 +87,20 @@ All financial tabs use a long format: one row per `(period, metric)`.
 | Financial statements | SEC EDGAR XBRL JSON API | None (public) |
 | Daily stock prices | yfinance | None |
 | Earnings surprises | yfinance | None |
+| Option chains (current snapshot only) | yfinance | None |
+| Option chain history (backfill) | FMP / Polygon (optional, requires paid plan) | API key in `.env` |
 | Analyst estimates (forward) | FMP API (optional, requires paid plan) | `FMP_API_KEY` in `.env` |
+
+### Option-chain history
+
+yfinance only serves the **current** option chain — there is no free historical
+endpoint. The pipeline therefore persists every pull as a dated snapshot at
+`data/raw/TICKER/options/YYYY-MM-DD.json` (one per calendar day; a same-day
+re-run reads from disk, `--refresh` overwrites). History accumulates from the
+first time you run a ticker. Use `financial_analysis.options.list_snapshots(ticker, cache_dir)`
+and `load_snapshot(ticker, cache_dir, snapshot_date=None)` (None → latest) to
+query accumulated snapshots. If backfilled history is required, FMP or Polygon
+paid plans are the upgrade path.
 
 ## Environment
 
@@ -108,7 +127,8 @@ financial_analysis/
     fmp.py          — FMP API client (analyst estimates, IFRS stub)
     importer.py     — XBRL → PeriodFinancials orchestration
     market_data.py  — yfinance price and earnings loader
-    schema.py       — PeriodFinancials, CompanyFinancials, PricePoint, EarningsSurprise
+    options.py      — yfinance option-chain snapshots + derived metrics (ATM IV, implied move, skew, P/C)
+    schema.py       — PeriodFinancials, CompanyFinancials, PricePoint, EarningsSurprise, OptionQuote, OptionChainSnapshot
     store.py        — JSON persistence and in-memory session cache
     xbrl_api.py     — SEC XBRL JSON API client
     xbrl_tags.py    — XBRL concept registry (TagSpec, sign_flip, fallbacks)
@@ -122,6 +142,7 @@ scripts/
 
 data/
     raw/TICKER/         — remote data cache (gitignored)
+    raw/TICKER/options/ — dated option-chain snapshots, YYYY-MM-DD.json (gitignored)
     processed/          — JSON and xlsx outputs (gitignored)
 
 PLANNING/tickets.md     — all tickets with acceptance criteria and smoke test results
