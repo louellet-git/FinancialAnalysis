@@ -92,6 +92,28 @@ def test_dcf_per_share_none_when_shares_missing():
     assert result.median_per_share is None
 
 
+def test_dcf_per_year_arrays_shapes():
+    n, years = 500, 10
+    result = StochasticDCF(
+        _make_company(), DCFAssumptions(n_simulations=n, projection_years=years)
+    ).run()
+    assert result.fcfs.shape == (years, n)
+    assert result.pv_fcfs.shape == (years, n)
+    assert result.pv_terminal.shape == (n,)
+
+
+def test_dcf_per_year_arrays_sum_to_simulations():
+    result = StochasticDCF(_make_company(), DCFAssumptions(n_simulations=500)).run()
+    totals = result.pv_fcfs.sum(axis=0) + result.pv_terminal
+    assert np.allclose(totals, result.simulations)
+
+
+def test_dcf_per_year_pv_never_exceeds_fcf():
+    # WACC is clipped positive, so each year's PV is below its undiscounted FCF
+    result = StochasticDCF(_make_company(), DCFAssumptions(n_simulations=500)).run()
+    assert (result.pv_fcfs <= result.fcfs).all()
+
+
 def test_dcf_fewer_than_4_positive_fcf_periods_raises():
     company = _make_company(n_periods=3)
     with pytest.raises(ValueError, match="positive FCF"):

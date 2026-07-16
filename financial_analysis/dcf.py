@@ -35,6 +35,29 @@ class DCFResult:
     std_value: float
     median_per_share: Optional[float]
     simulations: np.ndarray = field(repr=False)
+    fcfs: np.ndarray = field(repr=False)          # (projection_years, n_simulations)
+    pv_fcfs: np.ndarray = field(repr=False)       # (projection_years, n_simulations)
+    pv_terminal: np.ndarray = field(repr=False)   # (n_simulations,)
+
+
+def derive_fcf_margin(company: CompanyFinancials) -> tuple[float, float]:
+    """Historical FCF margin (mean, std) over the last annual periods.
+
+    Same derivation StochasticDCF applies when assumptions leave the margin
+    unset — exposed so callers (e.g. sensitivity analysis) can pin it explicitly.
+    """
+    annuals = [p for p in company.periods if p.form in _ANNUAL_FORMS]
+    margins = [
+        p.fcf_margin for p in annuals[-_MARGIN_LOOKBACK:]
+        if p.fcf_margin is not None
+    ]
+    if not margins:
+        raise ValueError(
+            f"{company.ticker}: FCF margin cannot be derived — no annual "
+            "periods with both FCF and revenue data."
+        )
+    arr = np.array(margins)
+    return float(arr.mean()), max(float(arr.std()), 0.01)
 
 
 class StochasticDCF:
@@ -65,17 +88,7 @@ class StochasticDCF:
             )
 
     def _derive_fcf_margin(self, annuals: list[PeriodFinancials]) -> tuple[float, float]:
-        margins = [
-            p.fcf_margin for p in annuals[-_MARGIN_LOOKBACK:]
-            if p.fcf_margin is not None
-        ]
-        if not margins:
-            raise ValueError(
-                f"{self.company.ticker}: FCF margin cannot be derived — no annual "
-                "periods with both FCF and revenue data."
-            )
-        arr = np.array(margins)
-        return float(arr.mean()), max(float(arr.std()), 0.01)
+        return derive_fcf_margin(self.company)
 
     def _base_revenue(self, annuals: list[PeriodFinancials]) -> float:
         for p in reversed(annuals):
@@ -118,14 +131,14 @@ class StochasticDCF:
         fcfs = revenues * fcf_margins
 
         discount_factors = 1 / (1 + wacc) ** years
-        pv_fcfs = (fcfs * discount_factors).sum(axis=0)
+        pv_fcfs = fcfs * discount_factors
 
         # Terminal value: Gordon Growth on final-year FCF
         terminal_fcf = fcfs[-1] * (1 + terminal_growth)
         terminal_value = terminal_fcf / np.clip(wacc - terminal_growth, 0.001, None)
         pv_terminal = terminal_value / (1 + wacc) ** a.projection_years
 
-        total_values = pv_fcfs + pv_terminal
+        total_values = pv_fcfs.sum(axis=0) + pv_terminal
 
         median_value = float(np.percentile(total_values, 50))
         shares = self._shares_outstanding(annuals)
@@ -138,4 +151,7 @@ class StochasticDCF:
             std_value=float(total_values.std()),
             median_per_share=(median_value / shares) if shares else None,
             simulations=total_values,
+            fcfs=fcfs,
+            pv_fcfs=pv_fcfs,
+            pv_terminal=pv_terminal,
         )

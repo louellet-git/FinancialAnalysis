@@ -1,5 +1,6 @@
 numpy>=1.26
 openpyxl>=3.1
+plotly>=5.20
 yfinance>=0.2
 python-dotenv>=1.0
 requests>=2.31
