@@ -144,7 +144,8 @@ Disclosure runs: supply-shock correlation regime (rf·g = −0.15) P50 $151.89 w
 1. **Did the slipped deals close?** Management attributed the majority of the Q2 shortfall to slipped large deals [1]. Closure is the bull gate; failure to close converts “timing” into demand loss.
 2. **FY2026 FCF guide versus ~$15.7B.** IBM reported FY2025 FCF of $14.7B (its definition) and guided FY2026 up “about $1B” pre-warning [8]. A guide materially below ~$15.7B quantifies the damage in management’s own currency.
 3. **Margin at the FY2025 endpoint.** The v4 base already concedes the adversarial review’s margin-trend finding (F19) — core margin is set at the FY2025 endpoint (19.4% pre-SBC, pre-M&A basis), not the flattering 5-year mean. July 22 tests whether even that holds: each further point of core margin is worth ≈ $16/share (attribution above).
-4. **Segment actuals versus the year-1 pins.** Software +5%, Consulting flat, Infrastructure ~$14.6B implied for the year. Software materially below +5% undercuts the g_software mean from above; Infrastructure above the pin suggests the cycle haircut was too harsh.
+4. **Remaining performance obligation (RPO) in the Q2 10-Q.** IBM’s contracted backlog was $71.0B at FY2025 — 105.1% of revenue, up from 97.5% in FY2022, with ~67% recognized within two years [10]. Watch whether coverage holds at or above 105% and whether the year-over-year change stays positive — read net of acquisition effects, since the FY2025 +12.7% print consolidates HashiCorp’s acquired obligations.
+5. **Segment actuals versus the year-1 pins.** Software +5%, Consulting flat, Infrastructure ~$14.6B implied for the year. Software materially below +5% undercuts the g_software mean from above; Infrastructure above the pin suggests the cycle haircut was too harsh.
 
 ## 6. Data and limitations
 
@@ -153,6 +154,7 @@ Honest limits, all disclosed in the underlying artifacts:
 - **Model debt (ticketed model improvements).** T-DCF-1: growth is one draw per path — AR(1) mean reversion is the largest known distortion (a reviewer experiment with φ = 0.6 cut the v3 median ~10% and P90 ~16%). T-DCF-3: terminal growth should derive per path from faded segment draws; today it is correlationally, not structurally, anchored. Mixture/lognormal marginals (consulting left skew, M&A right tail) and Harris–Pringle re-levered beta with target weights are ticketed. FX is unmodeled; the WACC term structure is flat.
 - **Pipeline defects (disclosed).** The data store contains phantom “10-K” rows (2012–2019 stubs) that carry no FCF and don’t enter the model. FY2019–20 recast mismatch makes margin windows longer than five years unusable. Dividends, post-2019 buybacks, and the prices array are null in the pipeline: the price ($212.40), pre-crash close ($290.23), dividend (~$6.3B), analyst targets, and guidance figures are hand-entered from the cited sources, not pipeline outputs. Importer fixes are ticketed model improvements (T-IMP-1).
 - **Structural.** Segment history is hand-entered from the 8-Ks (sourced). The headline is conditional on f = 0.50 by construction; there is no model-internal way to estimate f — it is the analysis’s central judgment, which is why the locus is published.
+- **Unused-source audit (RPO).** The $71.0B RPO was flagged by the source audit as unused by the model; a targeted review concluded it corroborates but does not move the growth priors (two-year contracted cover cannot rebut a ten-year cannibalization thesis, and the backlog growth partly consolidates acquisitions). It is consumed as documented evidence in the assumption register and expires at the Q2 10-Q [10].
 
 **Reproduce:** `python -m scripts.analyze IBM` (financials, prices, option chain) · `python -m analysis.IBM.dcf_drivers_run` (v4 headline, loci, attribution, disclosure runs) · `python -m analysis.IBM.dcf_scenarios` (v3 scenarios, retained for the review trail).
 
@@ -186,6 +188,7 @@ External:
 7. Investing.com, Argus target cut — https://www.investing.com/news/analyst-ratings/argus-cuts-ibm-stock-price-target-to-280-on-weak-q2-guidance-93CH-4795696
 8. IBM Q4-2025 8-K, Exhibit 99.1 (Jan 28, 2026; FY2025 results, segment detail, FY2026 FCF guide) — https://www.sec.gov/Archives/edgar/data/51143/000005114326000004/ibm-20260128xex991.htm — plus Q4 8-K Ex. 99.1 filings 2022–2026 for segment history
 9. A. Damodaran, implied equity risk premium (July 2026 update; 4.45% cited, 4.23% Jan 2026) — https://pages.stern.nyu.edu/~adamodar/
+10. IBM FY2025 Form 10-K (RPO $71.0B and duration split, revenue note) — https://www.sec.gov/Archives/edgar/data/51143/000005114326000010/ibm-20251231.htm
 
 Internal (repo artifacts; all numbers above trace to these):
 
@@ -193,4 +196,5 @@ Internal (repo artifacts; all numbers above trace to these):
 - `analysis/IBM/driver_model.py` — normative executable model definition
 - `analysis/IBM/README.md` (v3) — crash narrative, fundamentals, net-debt bridge, options snapshot, data notes
 - `analysis/IBM/REVIEW.md` — v1→v3 adversarial review ledger (19 findings, dispositions, deferred tickets)
-- `analysis/IBM/DRIVER-REVIEW.md` — v4 driver-level reviews (19 round-1 + 4 consolidation) and dispositions
+- `analysis/IBM/DRIVER-REVIEW.md` — v4 driver-level reviews (19 round-1 + 4 consolidation) and dispositions, including the RPO re-look (all proposed parameter changes rejected; v4 numbers unchanged)
+- `analysis/IBM/research-ledger.md` — frozen, source-tagged facts consumed by the model (RPO facts expire at the Q2-2026 10-Q)
