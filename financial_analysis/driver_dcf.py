@@ -532,6 +532,12 @@ class DriverDCFResult:
     fcff: np.ndarray = field(repr=False)             # (years, n)
     pv_fcff: np.ndarray = field(repr=False)          # (years, n)
     pv_terminal: np.ndarray = field(repr=False)      # (n,)
+    #: Per-path sampled values for every STOCHASTIC driver (name → (n,)),
+    #: exactly the draws the valuation consumed (post-clip, correlations
+    #: realized). Deterministic drivers are excluded — constants would add
+    #: noise-free columns nobody needs. Defaults empty for backward
+    #: compatibility with callers constructing results without draws.
+    driver_draws: Dict[str, np.ndarray] = field(repr=False, default_factory=dict)
 
 
 class DriverDCF:
@@ -701,4 +707,7 @@ class DriverDCF:
             fcff=fcff,
             pv_fcff=pv_fcff,
             pv_terminal=pv_term,
+            driver_draws={
+                d.name: draws[d.name] for d in self.model.stochastic_drivers
+            },
         )

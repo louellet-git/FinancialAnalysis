@@ -4,6 +4,7 @@ import re
 from datetime import date, timedelta
 from unittest import mock
 
+import numpy as np
 import pytest
 
 from financial_analysis.driver_dcf import Driver, DriverModel, SegmentSpec
@@ -18,6 +19,7 @@ from scripts.visualize_dcf import (
     PANEL_TITLES,
     SECTION_TITLES,
     _load_driver_build,
+    _stratified_path_sample,
     write_report,
 )
 
@@ -353,6 +355,94 @@ def test_driver_section_bad_contract_degrades(tmp_path, full_cache):
 
 def test_load_driver_build_returns_none_for_unknown_ticker():
     assert _load_driver_build("NOSUCHTICKER") is None
+
+
+# ---------------------------------------------------------------------------
+# Path explorer (inside the driver section)
+# ---------------------------------------------------------------------------
+
+def test_path_explorer_panels_present(report_html):
+    assert "Path explorer — FCFF path spaghetti" in report_html
+    assert "Path explorer — parallel coordinates" in report_html
+    assert "Path explorer — outlier paths" in report_html
+
+
+def test_path_explorer_spaghetti_content(report_html):
+    # Sample-size disclosure in the card caption, and the direct-labeled
+    # median path.
+    assert re.search(r"of 10,000 paths shown \(all beyond P1/P99 \+ stratified",
+                     report_html)
+    assert "Median path" in report_html
+    # Grouped traces carry per-path hover data in customdata.
+    assert "customdata" in report_html
+    assert "Bottom 1%" in report_html
+    assert "Top 1%" in report_html
+
+
+def test_path_explorer_parcoords_content(report_html):
+    # The parcoords trace ends on the per-share value dimension.
+    assert "parcoords" in report_html.lower()
+    assert "$/sh" in report_html
+
+
+def test_path_explorer_outlier_table_content(report_html):
+    assert "Bottom 10 by per-share value" in report_html
+    assert "Top 10 by per-share value" in report_html
+    # z-scores are printed in parentheses; extremes are bolded.
+    assert re.search(r"<strong>[^<]*\([+-]\d+\.\d\)</strong>", report_html)
+
+
+def test_path_explorer_absent_without_driver_model(bare_report_html):
+    assert "Path explorer" not in bare_report_html
+
+
+# ---------------------------------------------------------------------------
+# Stratified path sampler
+# ---------------------------------------------------------------------------
+
+def _sample_paths(n: int = 5000) -> np.ndarray:
+    return np.random.default_rng(0).normal(100.0, 20.0, n)
+
+
+def test_sampler_includes_every_tail_path():
+    ps = _sample_paths()
+    bottom, middle, top = _stratified_path_sample(ps, 300)
+    p1, p99 = np.percentile(ps, [1, 99])
+    assert set(bottom.tolist()) == set(np.flatnonzero(ps < p1).tolist())
+    assert set(top.tolist()) == set(np.flatnonzero(ps > p99).tolist())
+
+
+def test_sampler_reaches_target_count():
+    ps = _sample_paths()
+    bottom, middle, top = _stratified_path_sample(ps, 300)
+    assert bottom.size + middle.size + top.size == 300
+
+
+def test_sampler_middle_stays_inside_the_band():
+    ps = _sample_paths()
+    _, middle, _ = _stratified_path_sample(ps, 300)
+    p1, p99 = np.percentile(ps, [1, 99])
+    assert (ps[middle] >= p1).all()
+    assert (ps[middle] <= p99).all()
+
+
+def test_sampler_is_deterministic_under_seed():
+    ps = _sample_paths()
+    a = _stratified_path_sample(ps, 300, seed=7)
+    b = _stratified_path_sample(ps, 300, seed=7)
+    for x, y in zip(a, b):
+        assert np.array_equal(x, y)
+    c = _stratified_path_sample(ps, 300, seed=8)
+    assert not np.array_equal(a[1], c[1])
+
+
+def test_sampler_target_below_tail_count_keeps_all_tails():
+    ps = _sample_paths()
+    bottom, middle, top = _stratified_path_sample(ps, 10)
+    p1, p99 = np.percentile(ps, [1, 99])
+    assert middle.size == 0
+    assert bottom.size == np.count_nonzero(ps < p1)
+    assert top.size == np.count_nonzero(ps > p99)
 
 
 # ---------------------------------------------------------------------------

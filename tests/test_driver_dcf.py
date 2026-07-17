@@ -599,6 +599,60 @@ def test_year1_growth_pins_first_year_revenue_exactly():
     assert result.fcff[1] == pytest.approx(np.full(2, 105.0 * 1.10 * 0.27))
 
 
+# ---------------------------------------------------------------------------
+# Driver draws exposed on the result (feeds the path-explorer panels)
+# ---------------------------------------------------------------------------
+
+def test_driver_draws_keys_are_exactly_the_stochastic_drivers():
+    result = _standard_engine().run(n_simulations=500, seed=SEED)
+    stochastic = {d.name for d in _standard_model().drivers if d.stochastic}
+    assert set(result.driver_draws) == stochastic
+
+
+def test_driver_draws_shapes():
+    n = 500
+    result = _standard_engine().run(n_simulations=n, seed=SEED)
+    for arr in result.driver_draws.values():
+        assert arr.shape == (n,)
+
+
+def test_driver_draws_are_post_clip():
+    # core_margin is truncnorm [0, 0.35] — the exposed draws must be the
+    # clipped values the valuation consumed, not the raw normals.
+    result = _standard_engine().run(n_simulations=5000, seed=SEED)
+    cm = result.driver_draws["core_margin"]
+    assert cm.min() >= 0.0
+    assert cm.max() <= 0.35
+
+
+def test_driver_draws_reproduce_fcff_revenue_basis():
+    # Value consistency: recomputing revenue from the returned growth draws
+    # (2-segment fixture) and margin from the returned margin draws must
+    # reproduce result.fcff exactly.
+    n, years = 500, 10
+    result = _standard_engine().run(n_simulations=n, seed=SEED)
+    rev = revenue_paths(
+        {"software": 30e9, "infra": 20e9},
+        {"software": result.driver_draws["g_software"],
+         "infra": result.driver_draws["g_infra"]},
+        years,
+    )
+    # Deterministic margin terms at their declared means (fixture values):
+    # mix_drift 0.0, sbc 0.03, ma 0.02 at full recurrence.
+    margin = result.driver_draws["core_margin"] + 0.0 - 0.03 - 1.0 * 0.02
+    assert np.allclose(rev * margin, result.fcff)
+
+
+def test_driver_draws_default_empty_for_backward_compat():
+    result = DriverDCFResult(
+        per_share_p10=1.0, per_share_p50=2.0, per_share_p90=3.0,
+        tv_ev_share_at_means=0.5, tg_pinned_fraction=0.0, attribution={},
+        per_share_paths=np.zeros(1), fcff=np.zeros((1, 1)),
+        pv_fcff=np.zeros((1, 1)), pv_terminal=np.zeros(1),
+    )
+    assert result.driver_draws == {}
+
+
 def test_tg_pinned_fraction_in_unit_interval():
     result = _standard_engine().run(n_simulations=2000, seed=SEED)
     assert 0.0 <= result.tg_pinned_fraction <= 1.0
