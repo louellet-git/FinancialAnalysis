@@ -1448,8 +1448,17 @@ def _implied_move_figure(metrics) -> Optional[go.Figure]:
     return fig
 
 
+# Wing IVs on nearly-expired contracts are solver noise — penny quotes with
+# hours of time value produce triple-digit "skews" (observed: DUOL 0DTE at
+# -106 pts vs -10..+9 everywhere else) — so the skew panel drops expiries
+# closer to the snapshot than this.
+_SKEW_MIN_DTE = 2
+
+
 def _skew_figure(metrics) -> Optional[go.Figure]:
-    ems = [em for em in metrics.expiries if em.skew is not None]
+    ems = [em for em in metrics.expiries
+           if em.skew is not None
+           and (em.expiry - metrics.snapshot_date).days >= _SKEW_MIN_DTE]
     if not ems:
         return None
     x = [_expiry_label(em.expiry) for em in ems]
@@ -1612,9 +1621,12 @@ def _options_section(ticker: str, cache_dir: Path, price: Optional[float]) -> st
         "Implied move unavailable — no expiry has both ATM legs quoted.")
     cards += chart_card(
         "Volatility skew by expiry",
-        "IV of the ~90%-moneyness put minus the ~110%-moneyness call (positive = downside bid)",
+        "IV of the ~90%-moneyness put minus the ~110%-moneyness call (positive "
+        "= downside bid) — expiries under 2 days out are excluded: wing IVs on "
+        "dying options are solver noise, not skew",
         _skew_figure(metrics),
-        "Skew unavailable — wings not quoted with solvable IVs.")
+        "Skew unavailable — wings not quoted with solvable IVs "
+        "(near-snapshot expiries are excluded as solver noise).")
     cards += chart_card(
         "Open interest by strike",
         "Calls + puts open interest, four nearest expiries, strikes within ±25% of spot",

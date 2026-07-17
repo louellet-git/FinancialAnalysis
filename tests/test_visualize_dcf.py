@@ -530,3 +530,32 @@ def test_footer_provenance(report_html):
 
 def test_footer_reports_missing_options(bare_report_html):
     assert "no snapshot on disk" in bare_report_html
+
+
+# ---------------------------------------------------------------------------
+# Skew near-expiry exclusion
+# ---------------------------------------------------------------------------
+
+def _skew_metrics(*expiries):
+    from financial_analysis.options import ChainMetrics, ExpiryMetrics
+    return ChainMetrics(
+        ticker="ACME", snapshot_date=_SNAPSHOT_DATE, spot_price=_SPOT,
+        expiries=[ExpiryMetrics(expiry=e, skew=s) for e, s in expiries])
+
+
+def test_skew_figure_drops_near_expiry_wings():
+    from scripts.visualize_dcf import _skew_figure
+    # 0-1 DTE wing IVs are solver noise (observed -106 pts on a dying expiry);
+    # only the 7-days-out expiry may survive.
+    fig = _skew_figure(_skew_metrics(
+        (_SNAPSHOT_DATE, -1.06),
+        (_SNAPSHOT_DATE + timedelta(days=1), 0.55),
+        (_SNAPSHOT_DATE + timedelta(days=7), 0.07),
+    ))
+    assert list(fig.data[0].x) == ["17 Jul 26"]
+    assert fig.data[0].y[0] == pytest.approx(7.0)
+
+
+def test_skew_figure_none_when_only_near_expiry():
+    from scripts.visualize_dcf import _skew_figure
+    assert _skew_figure(_skew_metrics((_SNAPSHOT_DATE, -1.06))) is None
