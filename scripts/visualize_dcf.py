@@ -45,6 +45,7 @@ from plotly.subplots import make_subplots
 from plotly.offline import get_plotlyjs
 
 from financial_analysis import store
+from financial_analysis.backtest import BacktestResult, run_backtest, _clean_annuals
 from financial_analysis.dcf import (
     _ANNUAL_FORMS,
     DCFAssumptions,
@@ -74,6 +75,7 @@ SECTION_TITLES = (
     "Fundamentals",
     "Aggregate DCF scenarios",
     "Driver-based model",
+    "Backtest — mechanical vintages",
     "Options market",
 )
 
@@ -265,6 +267,23 @@ def _apply_chrome(fig: go.Figure, *, x_title: str = "", y_title: str = "",
                                 font=dict(size=11, color=_INK_MUTED)), **axis_kw)
 
 
+def _rangeselector(buttons: Sequence[Tuple[str, Optional[int]]]) -> dict:
+    """Range-window buttons (label, months; None = all) styled to the chrome —
+    same plate treatment as the linear/log updatemenu toggle."""
+    btns = [
+        dict(label=label, step="all") if months is None
+        else dict(label=label, count=months, step="month", stepmode="backward")
+        for label, months in buttons
+    ]
+    return dict(
+        x=0, xanchor="left", y=1.18, yanchor="top",
+        bgcolor=_RAISED, activecolor=_ACCENT_TINT,
+        bordercolor=_HAIRLINE, borderwidth=1,
+        font=dict(size=11, color=_INK_SECONDARY),
+        buttons=btns,
+    )
+
+
 def _fig_html(fig: go.Figure, height: int = 380) -> str:
     return pio.to_html(fig, full_html=False, include_plotlyjs=False,
                        config={"displayModeBar": False, "responsive": True},
@@ -341,7 +360,15 @@ def _header_html(company: CompanyFinancials, cap: CapitalStructure,
 # ---------------------------------------------------------------------------
 
 def _price_history_figure(points: List[PricePoint]) -> go.Figure:
-    pts = _weekly(points) if len(points) > 2600 else points
+    if len(points) > 2600:
+        # Weekly before the trailing year, daily inside it — the 1M/6M/1Y
+        # range buttons stay at daily resolution while the full history
+        # keeps the file light.
+        cut = points[-1].date - timedelta(days=365)
+        pts = (_weekly([p for p in points if p.date < cut])
+               + [p for p in points if p.date >= cut])
+    else:
+        pts = points
     x = [p.date for p in pts]
     y = [p.close for p in pts]
     fig = go.Figure(go.Scatter(
@@ -366,13 +393,18 @@ def _price_history_figure(points: List[PricePoint]) -> go.Figure:
             ],
         )],
     )
+    fig.update_xaxes(rangeselector=_rangeselector(
+        (("1M", 1), ("6M", 6), ("1Y", 12), ("5Y", 60), ("Max", None))))
     return fig
 
 
 def _valuation_zoom_figure(points: List[PricePoint],
                            scenarios: Tuple[Scenario, ...],
                            stats: Dict[str, Tuple[float, float, float]]) -> go.Figure:
-    cutoff = points[-1].date - timedelta(days=183)
+    # Two years of dailies feed the chart; the default window is the trailing
+    # six months, widened/narrowed by the range buttons. The valuation lines
+    # and band are hlines/hrect, so they span whatever window is active.
+    cutoff = points[-1].date - timedelta(days=730)
     recent = [p for p in points if p.date >= cutoff] or points
     x = [p.date for p in recent]
     y = [p.close for p in recent]
@@ -384,8 +416,11 @@ def _valuation_zoom_figure(points: List[PricePoint],
                       line_width=0)
         # Page-ground knockout behind the label so the bull P50 line (which can
         # sit within a few px of the band top) never strikes through the text.
-        fig.add_annotation(x=x[0], y=b90, text="Base P10–P90", showarrow=False,
-                           xanchor="left", yshift=10, bgcolor=_PAGE,
+        # Paper-anchored so the label stays at the left edge of whichever
+        # range window is active.
+        fig.add_annotation(xref="paper", x=0.01, y=b90, text="Base P10–P90",
+                           showarrow=False, xanchor="left", yshift=10,
+                           bgcolor=_PAGE,
                            font=dict(size=11, color=_INK_MUTED))
     for sc in scenarios:
         p50 = stats[sc.key][1]
@@ -409,8 +444,13 @@ def _valuation_zoom_figure(points: List[PricePoint],
     pad = (hi - lo) * 0.06 or 1.0
     _apply_chrome(fig, y_title="Price / value per share ($)", show_legend=False)
     fig.update_yaxes(range=[lo - pad, hi + pad])
-    # Wide right margin kept for the scenario-P50 direct end-labels.
-    fig.update_layout(margin=dict(l=46, r=130, t=12, b=38))
+    fig.update_xaxes(
+        range=[x[-1] - timedelta(days=183), x[-1]],
+        rangeselector=_rangeselector(
+            (("1M", 1), ("3M", 3), ("6M", 6), ("1Y", 12), ("2Y", None))))
+    # Wide right margin kept for the scenario-P50 direct end-labels; top
+    # margin for the range buttons.
+    fig.update_layout(margin=dict(l=46, r=130, t=30, b=38))
     return fig
 
 
@@ -427,12 +467,14 @@ def _price_section(company: CompanyFinancials, cache_dir: Path,
     cards = _card(
         "Price history",
         f"Closes {points[0].date.isoformat()} → {points[-1].date.isoformat()}"
-        + (" (weekly resolution to keep the file light)" if len(points) > 2600
-           else "") + " — linear/log toggle top right",
+        + (" (weekly resolution before the trailing year to keep the file light)"
+           if len(points) > 2600 else "")
+        + " — range buttons top left, linear/log toggle top right",
         _fig_html(_price_history_figure(points)), wide=True)
     cards += _card(
-        "Price vs valuation — 6-month view",
-        "Recent closes with each scenario's P50 per-share value and the base P10–P90 band",
+        "Price vs valuation",
+        "Closes with each scenario's P50 per-share value and the base P10–P90 "
+        "band — defaults to the trailing 6 months, range buttons 1M–2Y",
         _fig_html(_valuation_zoom_figure(points, scenarios, stats)), wide=True)
     return _section(SECTION_TITLES[0], cards)
 
@@ -1186,7 +1228,168 @@ def _driver_section(ticker: str, base_stats: Optional[Tuple[float, float, float]
 
 
 # ---------------------------------------------------------------------------
-# Section 6 — options market (conditional)
+# Section 6 — backtest (mechanical vintages)
+# ---------------------------------------------------------------------------
+
+_BACKTEST_METRICS = (("revenue", "Revenue"), ("fcf", "FCF"))
+
+
+def _actuals_by_year(company: CompanyFinancials, metric: str) -> Dict[int, float]:
+    """Fiscal year → realized metric value, from the backtest's own clean-annual
+    filter so the hedgehog's ink line and the scorecard agree on what counts."""
+    out: Dict[int, float] = {}
+    for p in _clean_annuals(company):
+        v = p.revenue if metric == "revenue" else p.free_cash_flow
+        if v is not None:
+            out[p.period_end.year] = float(v)
+    return out
+
+
+def _hedgehog_figure(result: BacktestResult, actuals: Dict[int, float],
+                     label: str) -> go.Figure:
+    """Actuals as an ink line; each vintage's P50 projection as an accent spur
+    fanning off its base-year actual, P10–P90 as whiskers on each spur point."""
+    fig = go.Figure()
+    spur = _rgba(_ACCENT, 0.55)
+    whisker = _rgba(_ACCENT, 0.35)
+    for v in result.vintages:
+        proj = v.projection
+        p10s, p50s, p90s = (
+            (proj.rev_p10, proj.rev_p50, proj.rev_p90) if label == "Revenue"
+            else (proj.fcf_p10, proj.fcf_p50, proj.fcf_p90))
+        base_fy = v.params.base_fiscal_year
+        xs = list(proj.target_fiscal_years)
+        ys = [p / 1e9 for p in p50s]
+        err_up = [(hi - mid) / 1e9 for hi, mid in zip(p90s, p50s)]
+        err_dn = [(mid - lo) / 1e9 for mid, lo in zip(p50s, p10s)]
+        origin = actuals.get(base_fy)
+        if origin is not None:
+            xs = [base_fy] + xs
+            ys = [origin / 1e9] + ys
+            err_up = [0.0] + err_up
+            err_dn = [0.0] + err_dn
+        vlabel = (v.params.as_of.isoformat() if v.params.as_of
+                  else f"FY{base_fy}+lag")
+        fig.add_trace(go.Scatter(
+            x=xs, y=ys, mode="lines+markers",
+            line=dict(color=spur, width=1.4),
+            marker=dict(size=4, color=spur),
+            error_y=dict(type="data", array=err_up, arrayminus=err_dn,
+                         color=whisker, thickness=1, width=3),
+            name=f"v{base_fy}",
+            hovertemplate=("FY%{x} P50 $%{y:,.1f}B"
+                           f"<extra>vintage {vlabel}</extra>"),
+        ))
+    yrs = sorted(actuals)
+    fig.add_trace(go.Scatter(
+        x=yrs, y=[actuals[y] / 1e9 for y in yrs], mode="lines+markers",
+        line=dict(color=_INK, width=2.2), marker=dict(size=5, color=_INK),
+        name="Actual",
+        hovertemplate="FY%{x} actual $%{y:,.1f}B<extra></extra>",
+    ))
+    _apply_chrome(fig, x_title="Fiscal year", y_title=f"{label} ($B)",
+                  show_legend=False)
+    fig.update_xaxes(dtick=1, tickformat="d")
+    return fig
+
+
+def _backtest_chips(result: BacktestResult) -> str:
+    hits, total = result.coverage()
+    if total:
+        chips = [_chip("P10–P90 coverage", f"{hits}/{total}",
+                       sub=f"{hits / total:.0%} of realized (nominal 80%)")]
+    else:
+        chips = [_chip("P10–P90 coverage", "—", sub="no realized outcomes yet")]
+    for h, metrics in sorted(result.bias_by_horizon().items()):
+        for key, label in _BACKTEST_METRICS:
+            if key in metrics:
+                mean_err, n = metrics[key]
+                chips.append(_chip(
+                    f"+{h}y {label} bias", f"{mean_err:+.1f}%",
+                    sub=f"mean err vs P50 · n={n}",
+                    value_color=_DELTA_UP if mean_err >= 0 else _DELTA_DOWN))
+    return f'<div class="chips wide-chips">{"".join(chips)}</div>'
+
+
+def _backtest_table(result: BacktestResult) -> str:
+    head = ("<thead><tr><th>Vintage as-of</th><th>Base FY</th>"
+            "<th>Target FY</th><th>Metric</th><th>P10</th><th>P50</th>"
+            "<th>P90</th><th>Actual</th><th>Err vs P50</th><th>In band</th>"
+            "</tr></thead>")
+    rows = []
+    for r in result.table():
+        err = r["error_pct"]
+        if err is None:
+            err_html = "—"
+        else:
+            color = _DELTA_UP if err >= 0 else _DELTA_DOWN
+            err_html = f'<span style="color:{color}">{err:+.1f}%</span>'
+        in_band = {True: "✓", False: "✗", None: "—"}[r["in_band"]]
+        flag = " ⚑" if r["data_flags"] else ""
+        vin = r["vintage"].isoformat() if r["vintage"] else "—"
+        rows.append(
+            f"<tr><td>{vin}{flag}</td><td>{r['base_fy']}</td>"
+            f"<td>{r['target_fy']}</td><td>{html.escape(r['metric'])}</td>"
+            f"<td>{_money_b(r['p10'])}</td><td>{_money_b(r['p50'])}</td>"
+            f"<td>{_money_b(r['p90'])}</td><td>{_money_b(r['actual'])}</td>"
+            f"<td>{err_html}</td><td>{in_band}</td></tr>")
+    return _table(head, "<tbody>" + "".join(rows) + "</tbody>")
+
+
+def _backtest_notes(result: BacktestResult) -> str:
+    notes = [
+        "Mechanical vintages: parameters (trailing revenue CAGR, FCF-margin "
+        "mean/std over ≤5 annuals) derive from each vintage's point-in-time "
+        "filings alone — no judgment inputs, no forward information. Sampling "
+        "mirrors the aggregate engine (one growth and one margin draw per "
+        "path). Operating projections only — no WACC, no terminal value.",
+        "filed_date visibility: a period enters a vintage only once filed; "
+        "companyfacts-sourced figures can carry a later filing's date, so a "
+        "vintage may see fewer periods than a real-time observer did (the "
+        "conservative direction). Actuals are as currently reported — "
+        "restatements included, deliberately asymmetric.",
+    ]
+    flags = sorted({f for v in result.vintages for f in v.params.data_flags})
+    if flags:
+        notes.append("⚑ data flags surfaced, not repaired: " + " · ".join(flags))
+    if result.skipped:
+        dates = ", ".join(d.isoformat() for d, _ in result.skipped)
+        notes.append(f"Skipped vintage dates (insufficient history): {dates}.")
+    return "".join(_note(t) for t in notes)
+
+
+def _backtest_section(company: CompanyFinancials) -> str:
+    title = SECTION_TITLES[4]
+    result = run_backtest(company)
+    if not result.vintages:
+        reasons = "; ".join(f"{d.isoformat()}" for d, _ in result.skipped)
+        return _section(title, _card(
+            "Vintage backtest",
+            "Walk-forward scoring of mechanical operating projections",
+            _note("No vintage date has the 3 clean annual periods needed to "
+                  "derive mechanical parameters"
+                  + (f" (candidate dates skipped: {reasons})" if reasons else "")
+                  + "."),
+            wide=True))
+    cards = _backtest_chips(result)
+    for key, label in _BACKTEST_METRICS:
+        cards += _card(
+            f"{label} hedgehog",
+            "Ink: actuals as currently reported. Each accent spur is one "
+            "vintage's P50 projection off its base-year actual; whiskers "
+            "span P10–P90.",
+            _fig_html(_hedgehog_figure(result, _actuals_by_year(company, key),
+                                       label)))
+    cards += _card(
+        "Vintage scorecard",
+        f"One row per vintage × target year × metric (horizon {result.horizon}y)"
+        " — ⚑ marks vintages whose parameter window touches a flagged year",
+        _backtest_table(result) + _backtest_notes(result), wide=True)
+    return _section(title, cards)
+
+
+# ---------------------------------------------------------------------------
+# Section 7 — options market (conditional)
 # ---------------------------------------------------------------------------
 
 def _expiry_label(d: date) -> str:
@@ -1375,13 +1578,13 @@ def _options_section(ticker: str, cache_dir: Path, price: Optional[float]) -> st
     try:
         snapshot = load_snapshot(ticker, cache_dir)
     except FileNotFoundError:
-        return _section(SECTION_TITLES[4], _card(
+        return _section(SECTION_TITLES[5], _card(
             "Option chain", f"data/raw/{ticker.upper()}/options/",
             _note("No option-chain snapshot available — run "
                   f"financial_analysis.options.fetch_option_chain('{ticker.upper()}', ...) "
                   "to capture one."), wide=True))
     if not snapshot.quotes:
-        return _section(SECTION_TITLES[4], _card(
+        return _section(SECTION_TITLES[5], _card(
             "Option chain", f"Snapshot {snapshot.snapshot_date.isoformat()}",
             _note("The snapshot contains no quotes — no listed options found."),
             wide=True))
@@ -1434,7 +1637,7 @@ def _options_section(ticker: str, cache_dir: Path, price: Optional[float]) -> st
         f"Expiry {target.isoformat()} ({target_note}); ATM row highlighted",
         _chain_table(snapshot, target, atm), wide=True)
 
-    return _section(SECTION_TITLES[4], cards)
+    return _section(SECTION_TITLES[5], cards)
 
 
 # ---------------------------------------------------------------------------
@@ -1485,6 +1688,7 @@ def build_report_html(company, scenarios: Tuple[Scenario, ...], results: dict,
         + _fundamentals_section(company)
         + _aggregate_section(company, scenarios, results, cap, price, base_year)
         + _driver_section(company.ticker, stats.get("base"), price, base_year)
+        + _backtest_section(company)
         + _options_section(company.ticker, cache_dir, price)
     )
     footer = _footer_html(company, base_year, n_sims, horizon,
