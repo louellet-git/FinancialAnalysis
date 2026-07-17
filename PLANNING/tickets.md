@@ -3,7 +3,54 @@
 > Each ticket must end with a mandatory smoke test before it is closed.
 > A ticket is not done until real output is printed and verified consumable by the next ticket.
 
+This file has two parts: **OPEN TICKETS** (consolidated 2026-07-17 from every ledger in
+the repo — each line carries its source pointer; the sources remain authoritative for
+detail) and **HISTORICAL — CLOSED TICKETS 1–6** (the original build, preserved
+verbatim). Ticket 7 (open) keeps its full spec in the historical section's format below.
+
 ---
+
+## OPEN TICKETS (consolidated 2026-07-17)
+
+### Queued work (session handoff)
+
+- **Visualizer final pass**: plotly rangeselector buttons on the price charts + a Backtest section (vintage table from `financial_analysis/backtest.py` + hedgehog chart, honesty labels) — PLANNING/HANDOFF.md item 2. STATUS 2026-07-17: landed on branch `viz-final-pass` (PR #9, commit `ef036cb`); remaining: merge + regenerate IBM html.
+- **ORCL frontier run** (ticker #2) under the cheapened pipeline; then basket (IBM/ORCL/MSFT/ACN/CSCO); then cross-sectional gap decomposition — PLANNING/HANDOFF.md item 3; vision ✦1 basket amendment.
+- **July 22 IBM Q2**: run `scripts.analyze IBM` (captures options IV crush), grade the 4-item watch list (report §5), first bet-ledger entries, grade the 2026 mechanical vintage (FY2026 revenue P50 $70.3B vs consensus $71.1B) — PLANNING/HANDOFF.md item 4.
+- **Gitignore churn cleanup**: `git rm --cached data/processed/NVDA_financials.xlsx` (+ stray .pyc) — PLANNING/HANDOFF.md §Known state.
+
+### Factory P1 (vision phasing — the active frontier)
+
+- **Rulebook extraction**: promote the 9-item backlog (endpoint-not-flattering-mean; growth/cost pairing; stock-or-flow; decade-CAGR dispersion for cyclicals; bridge income-stripped-or-absent; kd co-moves with rf; single-source pairing constants; quantitative immateriality thresholds; reference-resolving exclusions) into RULES.md rows with validators + specimens — PLANNING/RULES.md backlog.
+- **`validators.py`**: machine-checkable rule subset, run at model build + CI; R1 coverage validator (RPO-class concepts classified, unclassified = fail) — PLANNING/RULES.md R1; vision L4.
+- **Red-team corpus + injection harness** (✦2): known-bad models seeded with past accepted findings; every accepted finding generates a validator AND a specimen — vision L4/P1.
+- **Statement-coverage validator** (✦7): every mapped field + raw_extras concept classified used/excluded-with-reason, run retroactively on the IBM register — vision L4/P1.
+- **Research Ledger formal schema** (✦5): expiry policies + schema-enforced provenance tiers (interim format in use) — analysis/IBM/research-ledger.md header; vision L1/P1.
+- **RPO expiry**: the consumed RPO facts expire at the Q2-2026 10-Q (late July) — analysis/IBM/research-ledger.md; report watch-list item 4.
+
+### Engine tickets (deferred with dispositions — do not re-litigate, implement)
+
+- **T-DCF-1**: AR(1) mean-reverting growth / correlated year-to-year sampling — until then P10/P90 are decorative — analysis/IBM/REVIEW.md §Deferred tickets (from F6).
+- **T-DCF-3**: derive terminal growth per path from faded segment draws — analysis/IBM/driver_model.py terminal_growth rationale; DRIVER-REVIEW.md.
+- **Lognormal marginal for ma_ratio** (fat right tail) — analysis/IBM/DRIVER-REVIEW.md ma_ratio disposition.
+- **Mixture marginal for g_consulting** (GenAI-cannibalization left skew; current normal is a proxy) — analysis/IBM/DRIVER-REVIEW.md g_consulting disposition.
+- **Non-stationary E/V + Harris-Pringle relever** as debt grows — analysis/IBM/DRIVER-REVIEW.md equity_weight disposition.
+- **T-IMP-1** (importer): drop phantom annual periods; align recast revenue with recast OCF across divestiture boundaries; persist prices to the JSON store — analysis/IBM/REVIEW.md §Deferred tickets (from F13). (Dividends/interest-income/RPO mapping already landed, commit e2c711a.)
+
+### Importer / pipeline
+
+- **Ticket 7 — segment revenue extraction** from filing-level XBRL instance documents (companyfacts strips dimensional facts) — full spec below in this file.
+- **requirements.txt kept current** with actual needs on every dependency change — THOUGHTS item 1.
+- **News-scan idea** (unscoped): scan ticker news for knock-on effects on statement items; shock the valuation — THOUGHTS item 2.
+
+### Standing per-run duties (not one-shot tickets)
+
+- Update PLANNING/token-ledger.md per run; targets: frontier ≤ 500k, repeat ≤ 50k subagent tokens — PLANNING/token-ledger.md.
+- Charter review must ACCEPT before any publication; Luc signs off frontier/reservation runs (✦6a) — PLANNING/reusable-dcf-vision.md L5.
+
+---
+
+## HISTORICAL — CLOSED TICKETS 1–6 (original build, June 2026; preserved verbatim)
 
 ## Ticket 1 — EDGAR Import ✅ CLOSED
 - **Title:** Verify SEC EDGAR filing retrieval end-to-end
@@ -169,6 +216,10 @@
   - Mentions `context.json` and `PLANNING/tickets.md` as agent orientation files
 
 ---
+
+---
+
+# OPEN TICKET SPECS
 
 ## Ticket 7 — Segment Revenue Extraction ⬜ OPEN
 - **Title:** Extract per-segment revenue from filing-level XBRL (dimensional facts)
