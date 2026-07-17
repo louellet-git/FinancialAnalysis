@@ -1,40 +1,40 @@
-# Session handoff — open work as of 2026-07-17 ~2:45pm EST
+# Session handoff — open work as of 2026-07-17 ~5:30pm EST
 
 Live work-state for the next session/agent. Delete items as completed; delete the file
-when empty. Everything below is committed on `main` unless stated.
+when empty. Onboarding: read CLAUDE.md first, then docs/HIDDEN-ASSUMPTIONS.md.
 
-## In-flight (interrupted by session token limits, resets ~3:10pm EST)
+## Done (all merged to main: PRs #5–#11)
 
-1. **Documentation overhaul** — an agent was dispatched with a 7-deliverable brief
-   (root CLAUDE.md, docs/ARCHITECTURE.md, docs/HIDDEN-ASSUMPTIONS.md, README rewrite,
-   context.json refresh, PLANNING/tickets.md consolidation, docs/INDEX.md) and a
-   verify-don't-transcribe mandate. It died at the reading stage — restart it with the
-   same brief (the orchestrator has it in-conversation; core requirements recoverable
-   from the git log message of this file's commit and the vision doc).
-2. **Final visualizer pass** (one focused change-set to scripts/visualize_dcf.py):
-   (a) plotly rangeselector buttons on Price history (1M/6M/1Y/5Y/Max) and on
-   Price-vs-valuation (1M/3M/6M/1Y/2Y — valuation lines/band span the window);
-   (b) a Backtest section: vintage table from `financial_analysis/backtest.py`
-   (run_backtest) + hedgehog chart (actual revenue/FCF line with each vintage's P50
-   projection fanning off its origin, P10-P90 whiskers), honesty labels: mechanical
-   vintages, DATA_FLAGS surfaced, filed_date visibility lag. Then regenerate IBM html,
-   full suite, commit, push.
+IBM v4/v4.1 + audited report (gate-to-gate) · driver engine + path explorer · vintage
+backtest · importer completeness (RPO/dividends/estimates) · everything-visualizer +
+blueprint restyle + range buttons + backtest section · DUOL first pass · docs overhaul
+(CLAUDE.md, ARCHITECTURE, HIDDEN-ASSUMPTIONS, README/context/tickets/INDEX).
+
+## Newly opened by the docs verification (assign before/with ORCL)
+
+1. **v3 reproducibility drift** (HIDDEN-ASSUMPTIONS #14): `analysis.IBM.dcf_scenarios`
+   derives margins live from the re-imported store and now prints $43/$149/$243 vs the
+   signed-off $37/$141/$232. Decide: pin the v3 inputs as constants (preserving the
+   record) or stamp the output with a reproduces-as-of note. v4 immune (pinned).
+2. **filed_date fabrication** (= period_end on rows without a matched revenue fact) →
+   fold into T-IMP-1; backtest point-in-time logic must not trust sparse rows.
+3. **Bridge-per-ticker rule**: the default capital-structure derivation is a different
+   net-debt definition than the reviewed IBM bridge — every basket ticker needs a
+   reviewed bridge before its gap is comparable (candidate RULES.md R2 + validator).
 
 ## Queued next (approved plan)
 
-3. ORCL frontier run (ticker #2) under the cheapened pipeline; then basket
-   (IBM/ORCL/MSFT/ACN/CSCO); then cross-sectional gap decomposition (vision ✦1
-   basket amendment). P1 remainder first: validators + red-team corpus + coverage
-   validator (RULES.md has R1 + the extraction backlog).
-4. July 22: IBM Q2 report — run scripts.analyze IBM (captures options IV crush),
-   grade the 4-item watch list (report §5), first bet-ledger entries. The 2026
-   mechanical vintage (FY2026 revenue P50 $70.3B vs consensus $71.1B) also grades.
+4. P1 remainder: validators + red-team corpus + statement-coverage validator
+   (RULES.md R1 + extraction backlog; audit flags C1–C5 seed the coverage audit).
+5. ORCL frontier run (ticker #2, cheapened pipeline, token-metered) → basket
+   (IBM/ORCL/MSFT/ACN/CSCO) → cross-sectional gap decomposition (vision ✦1 amendment).
+6. **July 22: IBM Q2 report** — run `scripts.analyze IBM` that day (captures the
+   options IV crush); grade the report §5 watch list (deal conversion, FCF guide vs
+   $15.7B, margin level, RPO print); first bet-ledger entries. The 2026 mechanical
+   vintage (FY2026 revenue P50 $70.3B vs consensus $71.1B) also grades.
 
-## Known state
+## Standing housekeeping
 
-- Worktrees: wt-path-explorer (collected, disposable), wt-{dcf-viz,options,review,
-  mega-viz} (stale, disposable). Local `main` ref in the main tree may lag origin;
-  work happens on feature branches off origin/main.
-- Tracked-but-gitignored churn: data/processed/NVDA_financials.xlsx + a .pyc — never
-  commit them (candidate: git rm --cached).
-- Token ledger: PLANNING/token-ledger.md (update per run).
+Worktrees wt-* are stale/disposable (wt-path-explorer holds `main` — remove before any
+local main checkout). Never commit the tracked-but-ignored churn (2 xlsx + 4 .pyc;
+candidate `git rm --cached`). Token ledger: PLANNING/token-ledger.md, update per run.
