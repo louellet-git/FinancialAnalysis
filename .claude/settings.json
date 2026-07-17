@@ -1,0 +1,31 @@
+{
+  "$comment": "Doc-review framework hooks vendored from louellet-git/doc-review-framework@d9d9075: SessionStart checks officecli availability; PostToolUse requires a memo-reviewer pass whenever a .docx is produced.",
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|clear|compact|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/setup-officecli.sh\"",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/memo-review-reminder.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}
