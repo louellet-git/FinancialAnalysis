@@ -43,7 +43,7 @@ The v4 model separates *items* — accounting identities computed the same way o
 | WACC | E/V × (rf + β × ERP) + (1 − E/V) × (rf + spread) × (1 − τ) | kd derived per path from rf (no negative-spread paths); flat term structure — one WACC for years 1–10 and terminal |
 | Terminal value | Gordon at min(tg, WACC − 2%), discounted 10 years | guard pinned on 0.09% of paths (seed 7) |
 
-Equity value per share = (PV of FCFF + PV of TV − net debt $54.0B) / 948.7M diluted shares. Both figures carry over from the v3 stock-vs-flow bridge (README v3): net debt = total debt $61.3B + after-tax pension deficit $7.1B − cash and marketable securities $14.4B, with operating leases and financing receivables deliberately excluded because their flows already live in the margin; shares are held flat because stock-based compensation (SBC) is charged as a cash cost — growing the count too would double-charge dilution [8].
+Equity value per share = (PV of FCFF + PV of TV − net debt $54.0B) / 948.7M diluted shares. Both figures carry over from the v3 stock-vs-flow bridge (README v3): net debt = total debt $61.3B + after-tax pension liability $7.1B (liability-only; the overfunded-plan surplus asset is deliberately excluded) − cash and marketable securities $14.4B, with operating leases and financing receivables deliberately excluded because their flows already live in the margin; shares are held flat because stock-based compensation (SBC) is charged as a cash cost — growing the count too would double-charge dilution [8].
 
 Segment bases are FY2025 actuals from the Q4 8-K [8] (Software $29,962M, Consulting $21,055M, Financing $737M), except Infrastructure, which uses the FY24/25 average $14,869M as a mainframe-cycle-peak haircut. Year-1 growth is pinned to the July 14 warning: Software +5%, Consulting 0%, Financing 0%, and Infrastructure −1.69% on the haircut base — level-targeted to the warning-implied $14,618M so the cycle correction is not double-counted. Draws apply from year 2.
 
@@ -59,7 +59,7 @@ All rationales are reproduced in full in DRIVERS.md and as executable strings in
 | g_financing | D | — | 0.0% | — | — | 1.1% of revenue; below materiality for sampling |
 | core_margin | S | normal | 19.4% (FY2025 endpoint) | 2.0% | — | F19: three-year decline makes the endpoint, not the 5-year mean, the honest base |
 | margin_mix_drift | D | schedule | 0 → +1.2pp by y10 | — | linear | mechanical software-mix consequence of the growth means |
-| sbc_ratio | D | schedule | 2.54% → 3.5% by y10 | — | linear | ratio rose 1.74% → 2.54% since 2021; constant embeds a trend break |
+| sbc_ratio | D | schedule | 2.54% → 3.5% by y10 | — | linear | ratio rose ~1.7% → 2.54% since 2021; constant embeds a trend break |
 | ma_ratio | S | truncnorm | 7.1% | 2.4% | lo 0 (3.0σ) | FY21–25 average 7.06%; decade-average dispersion at AR(1) ρ ≈ 0.8 |
 | ma_recurrence | D | — | **f = 0.50 (headline judgment)** | — | — | pairing coherence; headline conditional on f; locus published |
 | rf | S | truncnorm | 4.6% (10y spot, Jul 2026) | 0.5% | lo 1% (formal guard) | permanent-component uncertainty, not annual rate vol |
@@ -137,7 +137,7 @@ Disclosure runs: supply-shock correlation regime (rf·g = −0.15) P50 $151.89 w
 
 **The price sits above every published median.** At the base f = 0.50 the market pays $60 (40%) over the model’s median; at f = 0 — conceding that IBM’s entire acquisition program is optional — the gap is still $15. The cheapest published route toward $212 is the discount rate: at trailing β 0.68 the WACC build lands at ≈6.5% and the median reaches $179.42, still $33 short. Stacked generosity (f = 0 *and* trailing beta) was not run and is not claimed; within the published grid, $212 requires a sub-6.5% discount rate or the bull path. **Assumption.** To be explicit about boundaries: f = 0.50 and β = 0.85 are judgments, and both loci are published precisely because reasonable readers can sit elsewhere on them.
 
-**The options market is pricing the event, not the verdict.** As of the 2026-07-16 snapshot (README v3): the Jul-24 expiry implies a **7.6% earnings move** (ATM IV 60.4% versus ~48% on adjacent expiries), skew is mildly call-bid, and put/call open interest is 0.69 — positioning leans toward recovery.
+**Our reading of the options market: it is pricing the event, not the verdict.** As of the 2026-07-16 snapshot (README v3): the Jul-24 expiry implies a **7.6% earnings move** (ATM IV 60.4% versus ~48% on adjacent expiries), skew is mildly call-bid, and put/call open interest is 0.69 — positioning leans toward recovery.
 
 **July 22 watch list (falsifiable, with the numbers):**
 
