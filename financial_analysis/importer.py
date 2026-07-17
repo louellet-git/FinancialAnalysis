@@ -1,3 +1,17 @@
+"""SEC companyfacts XBRL → PeriodFinancials importer.
+
+Segment revenue finding (P1 importer-completeness, 2026-07-17):
+the SEC ``companyfacts`` JSON API returns only non-dimensional (consolidated)
+facts. Every fact entry carries exactly the keys
+``{accn, end, filed, form, fp, frame, fy, start, val}`` — there is no segment
+axis / member metadata anywhere in the payload (verified by scanning every
+entry of every us-gaap concept in IBM's cached companyfacts: no other keys
+occur). Per-segment revenue therefore CANNOT be extracted from this data
+source, and ``PeriodFinancials.segment_revenue`` stays None rather than being
+faked from another source. Segment-tagged facts DO exist in the filing-level
+XBRL instance documents (and the frames API); extraction from those is
+ticketed — see PLANNING/tickets.md, Ticket 7.
+"""
 from __future__ import annotations
 from dataclasses import fields as dataclass_fields
 from datetime import date
@@ -11,6 +25,7 @@ from financial_analysis.xbrl_api import _deduplicate, extract_series
 from financial_analysis.xbrl_tags import (
     BALANCE_SHEET_TAGS,
     CASH_FLOW_TAGS,
+    DISCLOSURE_TAGS,
     INCOME_STATEMENT_TAGS,
     TagSpec,
 )
@@ -22,6 +37,7 @@ _ALL_TAGS: dict[str, TagSpec] = {
     **INCOME_STATEMENT_TAGS,
     **BALANCE_SHEET_TAGS,
     **CASH_FLOW_TAGS,
+    **DISCLOSURE_TAGS,
 }
 
 _PERIOD_FIELDS = {f.name for f in dataclass_fields(PeriodFinancials)}

@@ -56,6 +56,23 @@ class OptionChainSnapshot:
 
 
 @dataclass
+class ConsensusEstimates:
+    """Dated snapshot of yfinance forward consensus (see estimates.py).
+
+    revenue_estimate / earnings_estimate: {period: {column: value}} where period
+    is yfinance's forward-period key ("0q", "+1q", "0y", "+1y") and columns are
+    kept as reported (avg, low, high, numberOfAnalysts, growth, ...).
+    analyst_price_targets: {current, low, high, mean, median} — whatever subset
+    yfinance returns. Empty dicts mean the data was unavailable for the ticker.
+    """
+    ticker: str
+    snapshot_date: date
+    revenue_estimate: Dict[str, Dict[str, Optional[float]]] = field(default_factory=dict)
+    earnings_estimate: Dict[str, Dict[str, Optional[float]]] = field(default_factory=dict)
+    analyst_price_targets: Dict[str, Optional[float]] = field(default_factory=dict)
+
+
+@dataclass
 class PeriodFinancials:
     ticker: str
     period_end: date
@@ -128,6 +145,16 @@ class PeriodFinancials:
     repayment_of_debt: Optional[float] = None
     net_cash_from_financing: Optional[float] = None
 
+    # --- Disclosures (point-in-time facts from the notes) ---
+    # Total remaining performance obligation (RPO). The current/noncurrent
+    # duration split is a text-only disclosure and is not extracted.
+    remaining_performance_obligation: Optional[float] = None
+    # Per-segment revenue {segment_name: value}. Always None when imported from
+    # the SEC companyfacts API, which strips dimensional (segment-axis) facts —
+    # see the importer.py module docstring. Extraction from filing-level XBRL
+    # instance documents is ticketed (PLANNING/tickets.md, Ticket 7).
+    segment_revenue: Optional[Dict[str, float]] = None
+
     # --- Unmapped XBRL concepts ---
     raw_extras: Dict[str, Any] = field(default_factory=dict)
 
@@ -157,3 +184,4 @@ class CompanyFinancials:
     estimates: List[EarningsEstimate] = field(default_factory=list)
     surprises: List[EarningsSurprise] = field(default_factory=list)
     option_chain: Optional[OptionChainSnapshot] = None
+    consensus: Optional[ConsensusEstimates] = None

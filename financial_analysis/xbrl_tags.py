@@ -26,9 +26,15 @@ INCOME_STATEMENT_TAGS: dict[str, TagSpec] = {
     "opex_amortization": TagSpec(["us-gaap/AmortizationOfIntangibleAssets"]),
     "opex_restructuring": TagSpec(["us-gaap/RestructuringCharges"]),
     "operating_income": TagSpec(["us-gaap/OperatingIncomeLoss"]),
+    # Precedence: InterestIncomeNonoperating (the most specific "interest earned,
+    # non-operating" concept) > InvestmentIncomeInterest (interest on investments;
+    # common for cash-rich tech filers) > InterestIncomeOther (catch-all "other
+    # interest income"; IBM reports ONLY this one). Specific-before-generic so a
+    # filer tagging both never gets the catch-all.
     "interest_income": TagSpec([
         "us-gaap/InterestIncomeNonoperating",
         "us-gaap/InvestmentIncomeInterest",
+        "us-gaap/InterestIncomeOther",
     ]),
     "interest_expense": TagSpec(["us-gaap/InterestExpense"]),
     "gains_losses_on_investments": TagSpec(["us-gaap/GainLossOnInvestments"]),
@@ -119,7 +125,17 @@ CASH_FLOW_TAGS: dict[str, TagSpec] = {
     "taxes_paid_net_share_settlement": TagSpec([
         "us-gaap/PaymentsRelatedToTaxWithholdingForShareBasedCompensation",
     ], sign_flip=True),
-    "dividends_paid": TagSpec(["us-gaap/PaymentsOfDividends"], sign_flip=True),
+    # Precedence: PaymentsOfDividends (total cash dividends paid, all classes) >
+    # PaymentsOfDividendsCommonStock (common-only cash paid; IBM reports ONLY this
+    # one) > DividendsCommonStockCash (dividends DECLARED, an equity charge, not a
+    # cash-flow line — last-resort proxy; for steady payers declared ~= paid).
+    # First-wins merging means the declared proxy is used only for periods where
+    # neither payments concept exists.
+    "dividends_paid": TagSpec([
+        "us-gaap/PaymentsOfDividends",
+        "us-gaap/PaymentsOfDividendsCommonStock",
+        "us-gaap/DividendsCommonStockCash",
+    ], sign_flip=True),
     "proceeds_issuance_debt": TagSpec(["us-gaap/ProceedsFromIssuanceOfLongTermDebt"]),
     "repayment_of_debt": TagSpec([
         "us-gaap/RepaymentsOfLongTermDebt",
@@ -128,10 +144,21 @@ CASH_FLOW_TAGS: dict[str, TagSpec] = {
     "net_cash_from_financing": TagSpec(["us-gaap/NetCashProvidedByUsedInFinancingActivities"]),
 }
 
+# Point-in-time (instant) facts disclosed in the notes, not statement line items.
+# remaining_performance_obligation: total RPO (RULES.md R1 — forward-looking
+# disclosures bearing on growth drivers must be consumed). The current/noncurrent
+# duration split is a text disclosure only — not extractable from XBRL numerics.
+DISCLOSURE_TAGS: dict[str, TagSpec] = {
+    "remaining_performance_obligation": TagSpec([
+        "us-gaap/RevenueRemainingPerformanceObligation",
+    ]),
+}
+
 STATEMENT_MAP: dict[str, str] = {
     **{k: "income_statement" for k in INCOME_STATEMENT_TAGS},
     **{k: "balance_sheet" for k in BALANCE_SHEET_TAGS},
     **{k: "cash_flow" for k in CASH_FLOW_TAGS},
+    **{k: "disclosure" for k in DISCLOSURE_TAGS},
     "free_cash_flow": "cash_flow",
     "fcf_margin": "cash_flow",
 }
