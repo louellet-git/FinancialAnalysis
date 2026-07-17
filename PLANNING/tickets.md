@@ -5,6 +5,78 @@
 
 ---
 
+# CURRENT OPEN TICKETS (consolidated 2026-07-17)
+
+One list of everything open, with the source that created each item. Detailed specs live
+at the cited sources; Ticket 7 has its full spec at the bottom of this file. The
+completed pipeline build-out (Tickets 1–6 + 1.5/3.5/4.5/4.6) follows below as
+**historical record — closed, preserved verbatim**.
+
+## Engine (driver_dcf.py)
+
+- **T-DCF-1 — AR(1)/mean-reverting growth** *(source: REVIEW.md F6 ticket; DRIVER-REVIEW
+  deferred list)*. One draw held constant per path is the single largest known
+  distortion (both the infrastructure and correlation reviewers converged on it;
+  reviewer experiment: φ=0.6 reverting to 2.5% cut base P50 ~10%, P90 ~16%). Includes
+  the single-factor correlation structure across (g, tg, margin) from the original F6
+  spec. Until it lands, P10/P90 are decorative — no margin-of-safety claims.
+- **T-DCF-3 — terminal growth derived per path** from faded, mix-weighted segment draws
+  *(source: DRIVER-REVIEW terminal_growth disposition + TV consolidation: the current
+  tg anchoring is correlational, not structural)*.
+- **Lognormal / mixture marginals** — g_consulting left-skew mixture (GenAI
+  cannibalization), ma_ratio fat right tail *(source: DRIVER-REVIEW g_consulting and
+  ma_ratio dispositions; deferred list)*.
+- **Harris-Pringle re-levered β + target capital-structure weights**; non-stationary
+  E/V as debt grows *(source: DRIVER-REVIEW equity_weight / beta dispositions)*.
+- **Correlation upgrades** — replace pairwise judgment entries with a single-factor
+  model where defensible; estimate the rf·erp entry from market history instead of
+  judgment *(source: REVIEW.md T-DCF-1 spec; DRIVERS.md matrix note — every entry is
+  currently a reviewed judgment, none estimated)*.
+
+## Importer / data (T-IMP-1 family)
+
+- **T-IMP-1 — importer fidelity** *(source: REVIEW.md F13 ticket; now evidence-backed by
+  the backtest build)*:
+  - **filed_date fidelity** — `filed_date` is currently the filing date of the
+    latest-filed (often comparative-column) source, lagging real filings by up to ~2
+    years, and falls back to a period_end placeholder where no revenue fact matched
+    (verified in IBM.json; see docs/HIDDEN-ASSUMPTIONS.md #3–#4). The backtest treats
+    this as conservative-by-construction, but true first-filed dates would sharpen
+    vintages.
+  - **Persist prices into the JSON store** (currently cache/xlsx only).
+  - Drop phantom annual rows (2012-06-30, 2018-01-01, 2019-01-01 pattern); align recast
+    revenue with recast OCF across divestiture boundaries.
+  - ~~dividends_paid as first-class field~~ ✅ DONE (commit `e2c711a`, with
+    interest_income and RPO; SOURCE-AUDIT flag C5 closed). Buybacks post-2019: verified
+    genuinely absent, nothing to import.
+- **Ticket 7 — segment revenue from filing-level XBRL** *(spec below; opened 2026-07-17;
+  companyfacts has no dimensional facts — verified)*.
+
+## Factory P1 remainder (source: reusable-dcf-vision.md phasing; RULES.md backlog)
+
+- **validators.py** — machine-checkable subset of RULES.md, run at model build + CI
+  (R1's RPO-class coverage check is the first).
+- **Red-team corpus + injection harness (✦2)** — known-bad models seeded with past
+  accepted findings (F2 debt double-count, F16 cost-without-growth, stale parameters,
+  negative credit spreads); every accepted finding generates a validator AND a specimen.
+- **Statement-coverage validator (✦7)** — every statement item classified used/excluded
+  with checkable reason codes; run retroactively on the IBM register (SOURCE-AUDIT
+  flags C1–C5 are the seed backlog).
+- **Charter-review wiring** — reviewer must ACCEPT the rules+assumptions package on
+  every run before publication.
+- **Rulebook extraction** — promote the DRIVER-REVIEW/REVIEW lessons listed in RULES.md
+  backlog into numbered rules with validators.
+
+## Report pipeline
+
+- **Deterministic report-generator templating** *(source: token-ledger.md — the analyst
+  share (~0.77M tokens) of the report pipeline must be cut ~80% by templating the
+  deterministic parts; vision L7)*.
+
+---
+
+# HISTORICAL RECORD — Tickets 1–6 (all CLOSED; preserved verbatim)
+
 ## Ticket 1 — EDGAR Import ✅ CLOSED
 - **Title:** Verify SEC EDGAR filing retrieval end-to-end
 - **Status:** Closed 2026-06-03. Smoke test passed.
@@ -169,6 +241,8 @@
   - Mentions `context.json` and `PLANNING/tickets.md` as agent orientation files
 
 ---
+
+# OPEN TICKET SPECS (not part of the historical record)
 
 ## Ticket 7 — Segment Revenue Extraction ⬜ OPEN
 - **Title:** Extract per-segment revenue from filing-level XBRL (dimensional facts)

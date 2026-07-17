@@ -1,16 +1,47 @@
 {
   "project": "FinancialAnalysis",
-  "summary": "Python pipeline: SEC EDGAR → XBRL JSON API → time-series financial schema → Monte Carlo stochastic DCF. Future: options valuation (Black-Scholes, real options).",
-  "initial_target": "Palo Alto Networks (PANW)",
-  "xbrl_path": "SEC XBRL JSON API — data.sec.gov/api/xbrl/companyfacts/CIK{padded_cik}.json. Primary parse path. Raw .txt EDGAR downloads are archival fallback only.",
-  "dcf_direction": "Stochastic DCF via Monte Carlo (numpy). Fit growth/margin/WACC distributions from historical data. Output P10/P50/P90. Architecture must support future options valuation extension.",
+  "as_of": "2026-07-17",
+  "summary": "Valuation factory in the making: SEC EDGAR/XBRL + yfinance data pipeline → two Monte Carlo DCF engines (aggregate StochasticDCF; driver-based DriverDCF, normative for IBM) → adversarial review machine (analyst/skeptic/memo-reviewer/report-auditor) → client-grade audited .docx reports. Roadmap: PLANNING/reusable-dcf-vision.md (7 layers, amendments ✦1-✦7).",
+  "read_first": ["CLAUDE.md", "docs/ARCHITECTURE.md", "docs/HIDDEN-ASSUMPTIONS.md", "docs/INDEX.md"],
+  "normative": {
+    "assumption_register": "analysis/<TICKER>/driver_model.py rationale strings (DRIVERS.md is the human summary)",
+    "binding_review_records": ["analysis/IBM/REVIEW.md (F1-F19; never resurrect retracted claims)", "analysis/IBM/DRIVER-REVIEW.md (19+4 reviews, consolidations, RPO re-look)"],
+    "roadmap": "PLANNING/reusable-dcf-vision.md",
+    "rulebook": "PLANNING/RULES.md (R1 + extraction backlog)",
+    "audit_record": "analysis/IBM/report/SOURCE-AUDIT.md",
+    "numbers": "the engine governs over stale doc numbers — published values must reproduce at seed 7"
+  },
+  "headline": "IBM v4 driver DCF (python -m analysis.IBM.dcf_drivers_run, seed 7, 10k): P10 $83.84 / P50 $151.84 / P90 $258.03, TV/EV 64.1%, CONDITIONAL on f=MA_RECURRENCE=0.50 (f-locus $197.79 to $101.44). v3 record ($37/$141/$232) is frozen history and no longer reproduces from the current store (docs/HIDDEN-ASSUMPTIONS.md #14).",
+  "phase_state": {
+    "phase": "P1 (post IBM v4 report)",
+    "done": [
+      "IBM v4 frontier run: driver engine + register, 19+4 reviews, RPO exception re-look, report + source audit PASS",
+      "P1 importer completeness: dividends_paid, interest_income, RPO mapped; segment-axis absence verified and documented (Ticket 7 opened)",
+      "backtest harness (point-in-time vintages, mechanical params, DATA_FLAGS) — merged to main via PR #7, 2026-07-17",
+      "RULES.md seeded (R1); research-ledger.md with expiry; token-ledger.md"
+    ],
+    "pending_p1": ["validators.py", "red-team corpus + injection harness (✦2)", "statement-coverage validator (✦7, IBM retro-run)", "charter-review wiring"],
+    "next": ["ORCL frontier run (ticker #2) under cheapened pipeline", "basket IBM/ORCL/MSFT/ACN/CSCO", "cross-sectional gap decomposition (✦1 basket amendment)", "2026-07-22: IBM Q2 — run scripts.analyze IBM, grade watch list + first bet-ledger entries"]
+  },
+  "entry_points": {
+    "full_pipeline": "python -m scripts.analyze TICKER  [--refresh|--no-market|--no-options|--no-estimates|--out PATH]",
+    "import_only": "python -m scripts.import_financials TICKER [--refresh]",
+    "aggregate_dcf": "python -m scripts.run_dcf TICKER --seed 7",
+    "visualizer": "python -m scripts.visualize_dcf TICKER [--price X]",
+    "ibm_v3_scenarios": "python -m analysis.IBM.dcf_scenarios (live-derives margins from store — output drifts from the frozen v3 record)",
+    "ibm_v4_driver_run": "python -m analysis.IBM.dcf_drivers_run (normative headline; reproduces exactly)",
+    "backtest": "python -m scripts.backtest TICKER [--horizon N]",
+    "tests": "python -m pytest -q (no network; 309 collected post-merge 2026-07-17, ~3 min — run it for the current count)"
+  },
+  "engines": {
+    "aggregate": "financial_analysis/dcf.py StochasticDCF — independent normal draws (growth/margin/WACC/tg), one per path; scenarios.py presets seed 7; IBM registry entries are v3-era",
+    "driver": "financial_analysis/driver_dcf.py DriverDCF — only drivers stochastic, correlated joint draw (Cholesky) held constant per path (parameter-MC, no AR(1): T-DCF-1); per-path CAPM WACC with kd derived from rf; flat term structure; tg guard min(tg, wacc-2%) with pinned fraction reported; clip-after-correlation truncation; percentiles only, no mean/std; driver_draws exposed per path"
+  },
+  "dcf_implementation_superseded_note": "Earlier versions of this file described only Tickets 1-6 and the aggregate DCF; that content is superseded by the above and by docs/ARCHITECTURE.md. The Tickets 1-6 history is preserved in PLANNING/tickets.md.",
   "completed_tickets": ["1", "1.5", "2", "3", "3.5", "4", "4.5", "4.6", "5", "6"],
-  "current_focus": [
-    "options valuation extension (Black-Scholes, real options) — future"
-  ],
-  "dcf_implementation": "financial_analysis/dcf.py — StochasticDCF + DCFAssumptions + DCFResult. Vectorized numpy Monte Carlo (default 10k sims, 10y). Samples growth/FCF-margin/WACC/terminal-growth. FCF margin derived from last 5 annual periods if not given. Annual (10-K) periods only. Min-history guard: requires >=4 annual periods with positive FCF, else ValueError (blocks post-IPO/loss-makers). CLI: scripts/run_dcf.py. Loads from store, no live API call at valuation time.",
   "fcf_sign_note": "capex is stored sign-flipped (negative) by the importer; schema.free_cash_flow uses OCF - abs(capex). Fixed 2026-06-12 (was overstating FCF by 2x capex).",
   "smoke_test_policy": "Every ticket requires a live smoke test before closing. A ticket is not done until real output is printed and confirmed consumable by the next ticket.",
+  "orchestration_norms": "Subagents do not commit (orchestrator does); parallel file work uses git worktrees; review .docx via a COPY (officecli mutates on open); memo-review PostToolUse hook fires on any produced .docx; fixed seeds (7); persist resume-state in files (PLANNING/HANDOFF.md pattern); never commit the tracked-but-gitignored xlsx/.pyc warts.",
   "notes": "Agents should be concise when updating README.md and context.json.",
   "placement": "root context.json for agent awareness"
 }
