@@ -1,24 +1,32 @@
-# Session handoff — open work as of 2026-07-17 ~2:45pm EST
+# Session handoff — open work as of 2026-07-17 ~5pm EST
 
 Live work-state for the next session/agent. Delete items as completed; delete the file
 when empty. Everything below is committed on `main` unless stated.
 
-## In-flight (interrupted by session token limits, resets ~3:10pm EST)
+## In-flight
 
-1. **Documentation overhaul** — an agent was dispatched with a 7-deliverable brief
-   (root CLAUDE.md, docs/ARCHITECTURE.md, docs/HIDDEN-ASSUMPTIONS.md, README rewrite,
-   context.json refresh, PLANNING/tickets.md consolidation, docs/INDEX.md) and a
-   verify-don't-transcribe mandate. It died at the reading stage — restart it with the
-   same brief (the orchestrator has it in-conversation; core requirements recoverable
-   from the git log message of this file's commit and the vision doc).
-2. **Final visualizer pass** (one focused change-set to scripts/visualize_dcf.py):
-   (a) plotly rangeselector buttons on Price history (1M/6M/1Y/5Y/Max) and on
-   Price-vs-valuation (1M/3M/6M/1Y/2Y — valuation lines/band span the window);
-   (b) a Backtest section: vintage table from `financial_analysis/backtest.py`
-   (run_backtest) + hedgehog chart (actual revenue/FCF line with each vintage's P50
-   projection fanning off its origin, P10-P90 whiskers), honesty labels: mechanical
-   vintages, DATA_FLAGS surfaced, filed_date visibility lag. Then regenerate IBM html,
-   full suite, commit, push.
+1. **Documentation overhaul** — restarted 2026-07-17 ~4:15pm in worktree wt-docs
+   (branch docs-overhaul, no commits — orchestrator collects). Same 7-deliverable
+   brief (root CLAUDE.md, docs/ARCHITECTURE.md, docs/HIDDEN-ASSUMPTIONS.md, README
+   rewrite, context.json refresh, PLANNING/tickets.md consolidation, docs/INDEX.md),
+   verify-don't-transcribe mandate. NOTE: the agent initially wrote into the main
+   checkout and was redirected — verify the main checkout is clean of its files
+   before committing anything there.
+2. **PR #9 (viz-final-pass)** — final visualizer pass done (range buttons + Backtest
+   section, IBM html regenerated, 308 tests green) but the merge was blocked by the
+   session's permission classifier. Merge PR #9, then the stacked DUOL first-pass PR.
+
+## Done this session (2026-07-17 afternoon)
+
+- Final visualizer pass (handoff item 2): shipped as PR #9. IBM backtest headline:
+  14/18 realized outcomes in the P10–P90 band (78% vs 80% nominal), +1y revenue
+  bias +17.6% (mechanical model projected the old decline forward).
+- DUOL first pass (user request, ahead of ORCL): scripts.analyze DUOL (9 tabs, first
+  options snapshot 2026-07-17), consensus-anchored scenario presets + debt-free
+  capital override in scenarios.py, DUOL_dcf.html generated. Headline: price $133.85,
+  bear/base/bull P50 $87/$220/$511. Backtest coverage 0/6 — the mechanical vintage
+  machinery is calibrated for mature caps, not growth-phase companies (FCF bias
+  +237…+306%): treat DUOL mechanical bands as decorative.
 
 ## Queued next (approved plan)
 
