@@ -60,7 +60,32 @@ def _ibm_v3(growth: float, wacc: float, terminal: float, margin: float) -> DCFAs
     )
 
 
+def _duol(growth: float, wacc: float, terminal: float, margin: float,
+          growth_std: float) -> DCFAssumptions:
+    # First-pass consensus-anchored presets, NOT a vetted driver build.
+    # Anchors (estimates snapshot data/raw/DUOL/estimates/2026-07-17.json):
+    # consensus revenue FY2026 +16.3%, FY2027 +13.9% — a hard deceleration
+    # from FY2025's +38.7%; consensus FY2026 EPS -43% signals margin
+    # pressure vs the FY2024-25 35-37% FCF run-rate; mean price target
+    # $108 sits BELOW the $134 spot. WACC ~ rf 4.2% + high-beta equity.
+    return DCFAssumptions(
+        growth_rate_mean=growth, growth_rate_std=growth_std,
+        wacc_mean=wacc, wacc_std=0.0125,
+        terminal_growth_mean=terminal, terminal_growth_std=0.005,
+        fcf_margin_mean=margin, fcf_margin_std=0.04,
+        seed=SCENARIO_SEED,
+    )
+
+
 _SCENARIO_OVERRIDES: Dict[str, Tuple[Scenario, ...]] = {
+    "DUOL": (
+        Scenario("bear", "Bear  (AI commoditizes app learning)",
+                 _duol(0.04, 0.115, 0.02, 0.24, 0.05)),
+        Scenario("base", "Base  (consensus deceleration glide)",
+                 _duol(0.14, 0.105, 0.03, 0.30, 0.05)),
+        Scenario("bull", "Bull  (AI-native re-acceleration)",
+                 _duol(0.22, 0.10, 0.035, 0.36, 0.06)),
+    ),
     "IBM": (
         Scenario("bear", "Bear  (disruption: g 1%, 100% M&A charged)",
                  _ibm_v3(0.01, 0.0825, 0.015, 0.092)),
@@ -75,6 +100,12 @@ CAPITAL_OVERRIDES: Dict[str, CapitalStructure] = {
     # v3 bridge (analysis/IBM/REVIEW.md F15): $61.3B debt + $7.1B after-tax pension
     # - $14.4B cash & securities; diluted shares, held flat (SBC charged in margin)
     "IBM": CapitalStructure(net_debt=54.0e9, shares=948_675_228),
+    # Debt-free (no borrowings tagged in the FY2025 10-K): debt-like side is
+    # the $0.101B operating-lease liability; cash side is $1.036B cash &
+    # equivalents + $0.104B current HTM securities + $0.135B long-term
+    # investments => net cash $1.175B. Diluted share count (the store carries
+    # no shares_outstanding for DUOL).
+    "DUOL": CapitalStructure(net_debt=-1.1746e9, shares=48_308_000),
 }
 
 
