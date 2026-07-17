@@ -97,6 +97,97 @@ def test_import_company_captures_raw_extras(tmp_path):
     assert "us-gaap/PaymentsToAcquireEquitySecuritiesFvNi" in annual.raw_extras
 
 
+def _import(facts, tmp_path):
+    with patch("financial_analysis.importer.load_company_facts", return_value=facts), \
+         patch("financial_analysis.importer.store.save"):
+        return import_company("NVDA", save=False, cache_dir=tmp_path)
+
+
+def _annual(result):
+    return [p for p in result.periods if p.form == "10-K"][0]
+
+
+def _add_concept(facts, name, val, unit="USD"):
+    facts["facts"]["us-gaap"][name] = {
+        "units": {unit: [{"end": "2024-01-28", "val": val, "form": "10-K", "filed": "2024-02-21"}]}
+    }
+
+
+# ---------------------------------------------------------------------------
+# P1 importer completeness: dividends, buybacks, interest income, RPO, segments
+# ---------------------------------------------------------------------------
+
+def test_dividends_paid_maps_payments_of_dividends_common_stock(tmp_path):
+    """IBM-style filer: only the common-stock payments concept is tagged."""
+    facts = _make_facts()
+    _add_concept(facts, "PaymentsOfDividendsCommonStock", 6_147_000_000)
+    assert _annual(_import(facts, tmp_path)).dividends_paid == -6_147_000_000
+
+
+def test_dividends_paid_prefers_total_payments_over_common_stock(tmp_path):
+    facts = _make_facts()
+    _add_concept(facts, "PaymentsOfDividends", 6_200_000_000)
+    _add_concept(facts, "PaymentsOfDividendsCommonStock", 6_147_000_000)
+    assert _annual(_import(facts, tmp_path)).dividends_paid == -6_200_000_000
+
+
+def test_dividends_paid_falls_back_to_declared(tmp_path):
+    facts = _make_facts()
+    _add_concept(facts, "DividendsCommonStockCash", 6_100_000_000)
+    assert _annual(_import(facts, tmp_path)).dividends_paid == -6_100_000_000
+
+
+def test_dividends_paid_none_when_absent(tmp_path):
+    assert _annual(_import(_make_facts(), tmp_path)).dividends_paid is None
+
+
+def test_repurchases_common_stock_mapped_when_present(tmp_path):
+    facts = _make_facts()
+    _add_concept(facts, "PaymentsForRepurchaseOfCommonStock", 4_400_000_000)
+    assert _annual(_import(facts, tmp_path)).repurchases_common_stock == -4_400_000_000
+
+
+def test_repurchases_common_stock_none_when_absent(tmp_path):
+    assert _annual(_import(_make_facts(), tmp_path)).repurchases_common_stock is None
+
+
+def test_interest_income_maps_interest_income_other(tmp_path):
+    """IBM-style filer: only the catch-all InterestIncomeOther is tagged."""
+    facts = _make_facts()
+    _add_concept(facts, "InterestIncomeOther", 966_000_000)
+    assert _annual(_import(facts, tmp_path)).interest_income == 966_000_000
+
+
+def test_interest_income_prefers_specific_concepts_over_catch_all(tmp_path):
+    facts = _make_facts()
+    _add_concept(facts, "InvestmentIncomeInterest", 500_000_000)
+    _add_concept(facts, "InterestIncomeOther", 966_000_000)
+    assert _annual(_import(facts, tmp_path)).interest_income == 500_000_000
+
+
+def test_interest_income_none_when_absent(tmp_path):
+    assert _annual(_import(_make_facts(), tmp_path)).interest_income is None
+
+
+def test_rpo_mapped_when_present(tmp_path):
+    facts = _make_facts()
+    _add_concept(facts, "RevenueRemainingPerformanceObligation", 71_000_000_000)
+    annual = _annual(_import(facts, tmp_path))
+    assert annual.remaining_performance_obligation == 71_000_000_000
+    # now canonical → must no longer sit in raw_extras
+    assert "us-gaap/RevenueRemainingPerformanceObligation" not in annual.raw_extras
+
+
+def test_rpo_none_when_absent(tmp_path):
+    assert _annual(_import(_make_facts(), tmp_path)).remaining_performance_obligation is None
+
+
+def test_segment_revenue_always_none_from_companyfacts(tmp_path):
+    """companyfacts strips dimensional facts — see importer.py module docstring."""
+    result = _import(_make_facts(), tmp_path)
+    assert all(p.segment_revenue is None for p in result.periods)
+
+
 def test_import_company_saves_when_save_true(tmp_path):
     facts = _make_facts()
     with patch("financial_analysis.importer.load_company_facts", return_value=facts), \

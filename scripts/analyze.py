@@ -1,10 +1,11 @@
-"""CLI: export financial statements for a ticker to an eight-tab xlsx file.
+"""CLI: export financial statements for a ticker to a nine-tab xlsx file.
 
 Usage:
     python -m scripts.analyze NVDA
     python -m scripts.analyze NVDA --refresh
     python -m scripts.analyze NVDA --no-market
     python -m scripts.analyze NVDA --no-options
+    python -m scripts.analyze NVDA --no-estimates
     python -m scripts.analyze NVDA --out path/to/custom.xlsx
 """
 from __future__ import annotations
@@ -18,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import openpyxl
 
 from financial_analysis import store
+from financial_analysis.estimates import fetch_estimates
 from financial_analysis.importer import UnsupportedFilingError, import_company
 from financial_analysis.edgar import EdgarClientError
 from financial_analysis.fmp import FMPClientError, load_estimates, load_surprises, load_fmp_statements
@@ -33,6 +35,7 @@ COLUMNS = [
 
 PRICE_COLUMNS = ["ticker", "date", "open", "high", "low", "close", "volume"]
 ESTIMATE_COLUMNS = ["ticker", "period_end", "period_type", "metric", "value", "unit"]
+ESTIMATES_FWD_COLUMNS = ["ticker", "snapshot_date", "kind", "period", "metric", "value"]
 OPTION_COLUMNS = [
     "ticker", "snapshot_date", "expiry", "option_type", "contract_symbol",
     "strike", "last_price", "bid", "ask", "volume", "open_interest",
@@ -49,6 +52,9 @@ _TAB_FOR = {
     "income_statement": "Income Statement",
     "balance_sheet": "Balance Sheet",
     "cash_flow": "Cash Flow",
+    # Instant note disclosures (e.g. RPO) share the Balance Sheet tab; the
+    # `statement` column still reads "disclosure".
+    "disclosure": "Balance Sheet",
 }
 
 _DERIVED_METRICS = {
@@ -69,6 +75,7 @@ def _flatten(company: CompanyFinancials) -> dict[str, list[dict[str, Any]]]:
         "Raw": [],
         "Prices": [],
         "Estimates": [],
+        "Estimates Fwd": [],
         "Options": [],
         "Options Summary": [],
     }
@@ -169,6 +176,36 @@ def _flatten(company: CompanyFinancials) -> dict[str, list[dict[str, Any]]]:
                 "unit": "USD/share" if "eps" in metric or metric == "surprise" else "ratio",
             })
 
+    consensus = company.consensus
+    if consensus is not None:
+        fwd_base = {
+            "ticker": consensus.ticker,
+            "snapshot_date": consensus.snapshot_date.isoformat(),
+        }
+        for kind, periods in [
+            ("revenue_estimate", consensus.revenue_estimate),
+            ("earnings_estimate", consensus.earnings_estimate),
+        ]:
+            for period, metrics in periods.items():
+                for metric, val in metrics.items():
+                    if val is not None:
+                        tabs["Estimates Fwd"].append({
+                            **fwd_base,
+                            "kind": kind,
+                            "period": period,
+                            "metric": metric,
+                            "value": val,
+                        })
+        for metric, val in consensus.analyst_price_targets.items():
+            if val is not None:
+                tabs["Estimates Fwd"].append({
+                    **fwd_base,
+                    "kind": "price_target",
+                    "period": "current",
+                    "metric": metric,
+                    "value": val,
+                })
+
     snap = company.option_chain
     if snap is not None:
         for q in snap.quotes:
@@ -234,6 +271,7 @@ def write_xlsx(company: CompanyFinancials, out_path: Path) -> int:
     tab_columns = {
         "Prices": PRICE_COLUMNS,
         "Estimates": ESTIMATE_COLUMNS,
+        "Estimates Fwd": ESTIMATES_FWD_COLUMNS,
         "Options": OPTION_COLUMNS,
         "Options Summary": OPTION_SUMMARY_COLUMNS,
     }
@@ -258,6 +296,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path, help="Output file path (default: data/processed/TICKER_financials.xlsx)")
     parser.add_argument("--no-market", action="store_true", dest="no_market", help="Skip stock prices and analyst estimates")
     parser.add_argument("--no-options", action="store_true", dest="no_options", help="Skip the option-chain snapshot")
+    parser.add_argument("--no-estimates", action="store_true", dest="no_estimates", help="Skip the forward consensus estimates snapshot")
     args = parser.parse_args()
 
     ticker = args.ticker.upper()
@@ -306,6 +345,19 @@ def main() -> None:
         except FMPClientError as e:
             print(f"  FMP unavailable ({e}) — using yfinance earnings only")
 
+        if not args.no_estimates:
+            print("Fetching forward consensus estimates (yfinance)...")
+            try:
+                company.consensus = fetch_estimates(ticker, cache_dir=cache_dir, refresh=args.refresh)
+                n_fwd = (
+                    len(company.consensus.revenue_estimate)
+                    + len(company.consensus.earnings_estimate)
+                    + len(company.consensus.analyst_price_targets)
+                )
+                print(f"  {n_fwd} forward consensus records loaded")
+            except Exception as e:
+                print(f"  Warning: consensus estimates fetch failed — {e}")
+
         if not args.no_options:
             print("Fetching option chain (yfinance)...")
             try:
@@ -315,8 +367,13 @@ def main() -> None:
             except Exception as e:
                 print(f"  Warning: option-chain fetch failed — {e}")
 
-    with_options = not args.no_market and not args.no_options
-    n_tabs = 4 if args.no_market else (8 if with_options else 6)
+    n_tabs = 4
+    if not args.no_market:
+        n_tabs += 2  # Prices, Estimates
+        if not args.no_estimates:
+            n_tabs += 1  # Estimates Fwd
+        if not args.no_options:
+            n_tabs += 2  # Options, Options Summary
     print(f"Writing {out_path} ...")
     total = write_xlsx(company, out_path)
     print(f"Done: {out_path} ({total} rows across {n_tabs} tabs)")

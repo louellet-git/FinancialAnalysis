@@ -102,7 +102,12 @@ model, specifically?** Solve for the assumption set that reproduces the market p
 (market-implied recurrence/growth/WACC vs ours), decompose the gap into named
 per-assumption contributions ($/share each). Output: an explicit list of bets we are
 taking against the market, each with evidence and rationale — opportunity identification,
-not conformity. Calibration survives as lean scorekeeping on those bets: (a) the
+not conformity. **Basket-relative decomposition (amendment, 2026-07-17):** each ticker's
+gap is further split into *shared-convention components* (the M&A charge, SBC charge, ERP
+level — anything our conventions apply to every ticker) vs *idiosyncratic components*
+(this ticker's growth/margin bets), and reported relative to the basket median gap. A gap
+explained by shared conventions is a stance, not a mispricing signal; only the residual
+after the basket median is a named bet against THIS ticker's pricing. Calibration survives as lean scorekeeping on those bets: (a) the
 **per-bet ledger** — every named disagreement recorded and graded when reality adjudicates
 it (a factory that flags mispricings without tracking its hit rate is a story generator);
 (b) the **sub-claim ledger** for near-term falsifiable predictions (F19 margins, guidance

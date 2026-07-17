@@ -81,7 +81,11 @@ DRIVERS = [
                      f"organic run-rate; guide ~10% and Q2-26 warning +5% bracket the near "
                      f"term. hi=11%: ten straight years at 11%+ on a $30B base has no "
                      f"precedent — the truncation caps that tail. Stochastic: demand-driven, "
-                     f"the main uncertainty."),
+                     f"the main uncertainty. RPO evidence (research-ledger.md, consumed per "
+                     f"rule R1, expires at the Q2-2026 10-Q): $71.0B backlog, coverage 105% "
+                     f"— corroborates the mean; the +12.7% YoY print consolidates HashiCorp "
+                     f"obligations and is NOT organic evidence (RPO re-look verdict), so no "
+                     f"parameter change."),
     Driver("g_consulting", stochastic=True, mean=0.0175, std=0.025,
            rationale="FY22-25: +7.1/+5/-1/+2% (recast footnote: Jan-2024 segment change "
                      "moved Security Services Software->Consulting; growth across that "
@@ -90,7 +94,13 @@ DRIVERS = [
                      "the heavier side: mean 1.75% and std 2.5% proxy the left-skewed "
                      "mixture the reviewer derived (implied mean ~1.75%); a true mixture "
                      "marginal is an engine ticket. Stochastic: cyclical + secular "
-                     "uncertainty."),
+                     "uncertainty. RPO evidence (research-ledger.md, R1, expires at the "
+                     "Q2-2026 10-Q): 2-year contracted cover cannot rebut the 10-year "
+                     "cannibalization thesis (contracts run off; the tail is renewals "
+                     "after AI substitution) — mean unchanged; bear-tail vs backlog "
+                     "reconciliation: violation probability identically zero (year-1 "
+                     "pinned revenue alone exceeds the 2-year contracted amount), so "
+                     "evidence floors were rejected as cosmetic."),
     Driver("g_infrastructure", stochastic=True, mean=-0.010, std=0.025,
            dist="truncnorm", hi=0.03,
            rationale="Mainframe-cycle sawtooth (+7.8/-5/-4/+12); guide down low singles; "

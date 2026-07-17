@@ -2,6 +2,7 @@ from financial_analysis.xbrl_tags import (
     INCOME_STATEMENT_TAGS,
     BALANCE_SHEET_TAGS,
     CASH_FLOW_TAGS,
+    DISCLOSURE_TAGS,
     STATEMENT_MAP,
     UNIT_MAP,
     TagSpec,
@@ -39,12 +40,12 @@ def test_shares_diluted_uses_shares_unit():
     assert INCOME_STATEMENT_TAGS["shares_diluted"].unit == "shares"
 
 def test_statement_map_covers_all_tags():
-    all_tags = {**INCOME_STATEMENT_TAGS, **BALANCE_SHEET_TAGS, **CASH_FLOW_TAGS}
+    all_tags = {**INCOME_STATEMENT_TAGS, **BALANCE_SHEET_TAGS, **CASH_FLOW_TAGS, **DISCLOSURE_TAGS}
     for field_name in all_tags:
         assert field_name in STATEMENT_MAP, f"{field_name} missing from STATEMENT_MAP"
 
 def test_statement_map_values_are_valid():
-    valid = {"income_statement", "balance_sheet", "cash_flow"}
+    valid = {"income_statement", "balance_sheet", "cash_flow", "disclosure"}
     for field_name, statement in STATEMENT_MAP.items():
         assert statement in valid, f"{field_name} maps to unknown statement '{statement}'"
 
@@ -55,3 +56,10 @@ def test_no_duplicate_field_names_across_dicts():
     assert not (is_keys & bs_keys), f"IS/BS overlap: {is_keys & bs_keys}"
     assert not (is_keys & cf_keys), f"IS/CF overlap: {is_keys & cf_keys}"
     assert not (bs_keys & cf_keys), f"BS/CF overlap: {bs_keys & cf_keys}"
+
+def test_rpo_is_a_disclosure_tag():
+    assert "remaining_performance_obligation" in DISCLOSURE_TAGS
+    assert DISCLOSURE_TAGS["remaining_performance_obligation"].concepts == [
+        "us-gaap/RevenueRemainingPerformanceObligation"
+    ]
+    assert STATEMENT_MAP["remaining_performance_obligation"] == "disclosure"

@@ -93,6 +93,31 @@ gap attribution, term-structure and FX disclosures.**
 **Round-2 close-out (v4 final, seed 7, 10k):** P10 $83.84 / P50 $151.84 / P90 $258.03,
 TV/EV 64.1%, tg pinned 0.09%. All reopened items fixed and re-verified (220 tests).
 
+## RPO re-look (round 3, exception scope — 2026-07-17, per rule R1 / coverage flag C1)
+
+New primary evidence (research-ledger.md): RPO $71.0B, +12.7% YoY, coverage 105.1%, ~67%
+within 2 years. Author proposed: g_consulting mean 1.75→2.0%, floors on both segment
+growths. Two targeted reviewers:
+
+**Segment growth: ALL FOUR CHANGES REJECTED.** (a) The author's premise misstated round 1
+— the consulting discount is the GenAI-cannibalization mixture, not backlog doubts
+(grep-verified); (b) RPO is company-total and 2-year cover cannot rebut a 10-year
+cannibalization thesis; (c) bear-tail violation probability is IDENTICALLY ZERO (year-1
+pinned SW+Cons revenue $52.5B > $47.6B two-year contracted cover; even −4σ joint draws
+clear it) → floors cosmetic, rejected per the mandate's own test; (d) author missed that
++12.7% consolidates HashiCorp obligations — not organic evidence; it supports the
+existing guide-discounting. R1 satisfied by documented consumption: corroborating-
+evidence footnotes on both rationales, expiring at the Q2-2026 10-Q.
+
+**Terminal growth: ACCEPT UNCHANGED.** Rising coverage is a visibility/durability fact,
+not perpetuity growth; the mix shift is already priced structurally (year-10 software
+weight, margin_mix_drift, fade anchor); recomputed fade anchor moves +0.06pp ≈ 0.08σ.
+
+**Author disposition: rejections accepted in full — parameters unchanged, v4 numbers
+unchanged.** RPO consumed as: rationale footnotes (driver_model.py), research-ledger.md,
+report data-note, and July-22 watch-list item #4 (the Q2 10-Q RPO print: coverage ≥105%
+and YoY sign, read net of acquisition consolidation).
+
 ## Reviewer conflicts adjudicated by the author (consolidators' rulings above: #1 overturned to std 2.4%, #2 and #3 upheld)
 
 1. **ma_ratio**: driver reviewer wants mean ≥7.1 AND fatter right tail; margin-formula reviewer wants dispersion shrunk to decade-average scale. Resolution: mean 7.1%, std 1.8% — level honesty and averaging honesty; the tail lives in the ticket.

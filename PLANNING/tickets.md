@@ -167,3 +167,28 @@
   - Includes usage examples for `import_edgar` and `import_financials` scripts
   - Lists smoke test command for each ticket stage
   - Mentions `context.json` and `PLANNING/tickets.md` as agent orientation files
+
+---
+
+## Ticket 7 — Segment Revenue Extraction ⬜ OPEN
+- **Title:** Extract per-segment revenue from filing-level XBRL (dimensional facts)
+- **Opened:** 2026-07-17 (P1 importer-completeness)
+- **Finding that motivates it:** The SEC `companyfacts` JSON API strips dimensional
+  facts — every entry carries exactly `{accn, end, filed, form, fp, frame, fy, start,
+  val}`, no segment axis/member metadata (verified across all us-gaap concepts in
+  IBM's cached payload). `PeriodFinancials.segment_revenue` therefore stays `None`
+  from this source; the field is reserved and documented in `importer.py`.
+- **Description:** Segment-tagged revenue (e.g. `us-gaap/RevenueFromContractWithCustomerExcludingAssessedTax`
+  dimensioned by `us-gaap:StatementBusinessSegmentsAxis`) lives in the filing-level
+  XBRL instance documents (R-files / `_htm.xml` under the filing accession) and in
+  third-party APIs. Parse the instance document for the latest 10-K/10-Q, map
+  segment member names to human-readable labels, and populate
+  `PeriodFinancials.segment_revenue: Dict[str, float]`.
+- **Acceptance criteria:**
+  - `segment_revenue` populated for IBM FY2023-25 (Software / Consulting /
+    Infrastructure / Financing / Other) and reconciles to total revenue ±1%
+  - Member-label mapping documented; unmapped members carry the raw QName
+  - No change to behavior when instance parsing fails: field stays `None`, warning logged
+  - Tests with a synthetic instance-document fixture; no network
+- **Smoke test:** `python -m scripts.import_financials IBM --refresh` prints per-segment
+  revenue for FY2025 summing to ~$65B total revenue

@@ -39,7 +39,7 @@ def test_flatten_returns_all_tabs():
     tabs = _flatten(company)
     assert set(tabs.keys()) == {
         "Income Statement", "Balance Sheet", "Cash Flow", "Raw",
-        "Prices", "Estimates", "Options", "Options Summary",
+        "Prices", "Estimates", "Estimates Fwd", "Options", "Options Summary",
     }
 
 
@@ -94,7 +94,7 @@ def test_write_xlsx_creates_file_with_all_tabs(tmp_path):
     wb = openpyxl.load_workbook(out)
     assert set(wb.sheetnames) == {
         "Income Statement", "Balance Sheet", "Cash Flow", "Raw",
-        "Prices", "Estimates", "Options", "Options Summary",
+        "Prices", "Estimates", "Estimates Fwd", "Options", "Options Summary",
     }
 
 
@@ -158,3 +158,44 @@ def test_flatten_no_option_chain_gives_empty_tabs():
     tabs = _flatten(_make_company())
     assert tabs["Options"] == []
     assert tabs["Options Summary"] == []
+
+
+def _attach_consensus(company: CompanyFinancials) -> CompanyFinancials:
+    from financial_analysis.schema import ConsensusEstimates
+    company.consensus = ConsensusEstimates(
+        ticker="TEST",
+        snapshot_date=date(2026, 7, 17),
+        revenue_estimate={"0y": {"avg": 66.5e9, "numberOfAnalysts": 18.0, "growth": None}},
+        earnings_estimate={"0y": {"avg": 10.95}},
+        analyst_price_targets={"mean": 271.3, "high": None},
+    )
+    return company
+
+
+def test_flatten_estimates_fwd_rows_from_consensus():
+    tabs = _flatten(_attach_consensus(_make_company()))
+    rows = tabs["Estimates Fwd"]
+    kinds = {r["kind"] for r in rows}
+    assert kinds == {"revenue_estimate", "earnings_estimate", "price_target"}
+    rev_avg = next(r for r in rows if r["kind"] == "revenue_estimate" and r["metric"] == "avg")
+    assert rev_avg["period"] == "0y"
+    assert rev_avg["value"] == 66.5e9
+    assert rev_avg["snapshot_date"] == "2026-07-17"
+    # None values (no growth figure, no high target) are dropped, not written
+    assert all(r["value"] is not None for r in rows)
+    assert len(rows) == 4  # avg + numberOfAnalysts (revenue), avg (eps), mean (target)
+
+
+def test_flatten_no_consensus_gives_empty_estimates_fwd_tab():
+    tabs = _flatten(_make_company())
+    assert tabs["Estimates Fwd"] == []
+
+
+def test_flatten_rpo_lands_on_balance_sheet_tab_as_disclosure():
+    company = _make_company()
+    company.periods[0].remaining_performance_obligation = 71_000_000_000
+    tabs = _flatten(company)
+    rpo_rows = [r for r in tabs["Balance Sheet"] if r["metric"] == "remaining_performance_obligation"]
+    assert len(rpo_rows) == 1
+    assert rpo_rows[0]["statement"] == "disclosure"
+    assert rpo_rows[0]["value"] == 71_000_000_000
