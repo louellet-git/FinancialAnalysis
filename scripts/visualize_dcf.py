@@ -81,6 +81,11 @@ SECTION_TITLES = (
 DRIVER_SIMS = 10_000
 DRIVER_SEED = 7
 
+# Path-explorer sampling (fixed for reproducibility; see _stratified_path_sample).
+PATH_SAMPLE_SEED = 7
+_SPAGHETTI_TARGET = 300     # FCFF spaghetti paths
+_PARCOORDS_TARGET = 2_000   # parallel-coordinates paths
+
 _DEFAULT_CACHE_DIR = Path("data/raw")
 
 # Chart chrome — "Ratings-desk blueprint" tokens
@@ -875,8 +880,228 @@ def _driver_tornado_figure(result: DriverDCFResult) -> go.Figure:
     return _tornado_bars(result.per_share_p50, rows)
 
 
+# ---------------------------------------------------------------------------
+# Section 5b — path explorer (Monte Carlo path sample inside the driver section)
+# ---------------------------------------------------------------------------
+
+def _stratified_path_sample(
+    per_share: np.ndarray, target: int, seed: int = PATH_SAMPLE_SEED,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Tail-guaranteed stratified sample of path indices.
+
+    Returns (bottom, middle, top): ALL indices below P1 and above P99 of
+    ``per_share`` (the tails are never subsampled — outliers are the point),
+    plus a seeded uniform random sample of the middle band topping the total
+    up to ``target``. Middle indices come back sorted; the split is
+    deterministic for a given seed.
+    """
+    p1, p99 = np.percentile(per_share, [1, 99])
+    bottom = np.flatnonzero(per_share < p1)
+    top = np.flatnonzero(per_share > p99)
+    middle = np.flatnonzero((per_share >= p1) & (per_share <= p99))
+    n_mid = max(0, target - bottom.size - top.size)
+    if n_mid < middle.size:
+        rng = np.random.default_rng(seed)
+        middle = np.sort(rng.choice(middle, size=n_mid, replace=False))
+    return bottom, middle, top
+
+
+#: Compact axis/hover labels for the register drivers; unknown names truncate.
+_DRIVER_SHORT = {
+    "g_software": "g_sw", "g_consulting": "g_cons", "g_infrastructure": "g_infra",
+    "g_financing": "g_fin", "core_margin": "margin", "ma_ratio": "ma",
+    "rf": "rf", "erp": "erp", "terminal_growth": "tg", "sbc_ratio": "sbc",
+    "beta": "beta", "kd_spread": "kd", "tax_rate": "tax",
+    "equity_weight": "e/v", "margin_mix_drift": "mix", "ma_recurrence": "ma_rec",
+}
+
+
+def _driver_short(name: str) -> str:
+    return _DRIVER_SHORT.get(name, name if len(name) <= 8 else name[:8])
+
+
+def _rate_like(name: str, values: np.ndarray) -> bool:
+    """Format as a percentage? True for growth/margin/rate drivers — anything
+    whose draws live well inside (−1.5, 1.5) except beta (a pure ratio)."""
+    return name != "beta" and float(np.abs(values).max()) < 1.5
+
+
+def _path_hover(stoch_names: List[str], draws: Dict[str, np.ndarray],
+                group: str) -> str:
+    """Hovertemplate for path traces: path id, per-share value, then every
+    stochastic driver's drawn value (customdata columns 2+i)."""
+    parts = []
+    for i, name in enumerate(stoch_names):
+        fmt = ".1%" if _rate_like(name, draws[name]) else ".2f"
+        parts.append(f"{_driver_short(name)} %{{customdata[{i + 2}]:{fmt}}}")
+    lines = [" · ".join(parts[i:i + 4]) for i in range(0, len(parts), 4)]
+    return ("Path %{customdata[0]:.0f} · %{customdata[1]:$,.2f}/sh<br>"
+            + "<br>".join(lines) + f"<extra>{group}</extra>")
+
+
+def _spaghetti_figure(result: DriverDCFResult, stoch_names: List[str],
+                      base_year: int) -> Tuple[go.Figure, int]:
+    """FCFF path spaghetti: sampled paths over the projection years — one
+    trace per GROUP (middle / bottom 1% / top 1%) with None-separated
+    segments, per-path hover data in customdata (not one trace per path).
+    Returns (figure, number of distinct paths drawn)."""
+    per_share = result.per_share_paths
+    fcff_b = result.fcff / 1e9
+    years = [base_year + 1 + i for i in range(fcff_b.shape[0])]
+    bottom, middle, top = _stratified_path_sample(per_share, _SPAGHETTI_TARGET)
+
+    def custom_row(i: int) -> list:
+        return ([float(i), round(float(per_share[i]), 2)]
+                + [round(float(result.driver_draws[n][i]), 5) for n in stoch_names])
+
+    def group_trace(idx: np.ndarray, name: str, color: str,
+                    width: float) -> go.Scatter:
+        xs: list = []
+        ys: list = []
+        cd: list = []
+        for i in idx:
+            row = custom_row(int(i))
+            xs.extend(years + [None])
+            ys.extend([round(float(v), 3) for v in fcff_b[:, i]] + [None])
+            cd.extend([row] * (len(years) + 1))
+        return go.Scatter(
+            x=xs, y=ys, customdata=cd, mode="lines", name=name,
+            line=dict(color=color, width=width),
+            hovertemplate=_path_hover(stoch_names, result.driver_draws, name),
+        )
+
+    fig = go.Figure()
+    # Middle band in faint ink; the P1/P99 tails carry the scenario tail hues.
+    fig.add_trace(group_trace(middle, "Middle (P1–P99)",
+                              _rgba(_INK_MUTED, 0.12), 1))
+    fig.add_trace(group_trace(bottom, "Bottom 1%",
+                              _rgba(_SCENARIO_COLORS["bear"], 0.6), 1.5))
+    fig.add_trace(group_trace(top, "Top 1%",
+                              _rgba(_SCENARIO_COLORS["bull"], 0.6), 1.5))
+
+    # The median path: per-share value closest to P50, full ink, direct-labeled.
+    med = int(np.argmin(np.abs(per_share - np.percentile(per_share, 50))))
+    med_row = custom_row(med)
+    fig.add_trace(go.Scatter(
+        x=years, y=[round(float(v), 3) for v in fcff_b[:, med]],
+        customdata=[med_row] * len(years), mode="lines", name="Median path",
+        line=dict(color=_INK, width=2.5),
+        hovertemplate=_path_hover(stoch_names, result.driver_draws, "Median path"),
+    ))
+    fig.add_annotation(x=years[-1], y=float(fcff_b[-1, med]), text="Median path",
+                       xanchor="left", xshift=6, showarrow=False,
+                       font=dict(size=11, color=_INK))
+    _apply_chrome(fig, x_title="Projection year", y_title="FCFF ($B)")
+    # Wider right margin for the median direct end-label.
+    fig.update_layout(margin=dict(l=46, r=76, t=12, b=38))
+    fig.update_xaxes(tickmode="array", tickvals=years)
+    n_shown = len(set(np.concatenate([bottom, middle, top]).tolist()) | {med})
+    return fig, n_shown
+
+
+def _parcoords_figure(result: DriverDCFResult, stoch_names: List[str]) -> go.Figure:
+    """Parallel coordinates: the stochastic drivers (register order) then the
+    per-share value; line color = value on the sequential steel ramp.
+    Parcoords ignores some global layout fonts — styled explicitly."""
+    per_share = result.per_share_paths
+    bottom, middle, top = _stratified_path_sample(per_share, _PARCOORDS_TARGET)
+    idx = np.concatenate([bottom, middle, top])
+
+    dims = []
+    for name in stoch_names:
+        vals = result.driver_draws[name][idx]
+        if _rate_like(name, result.driver_draws[name]):
+            vals = vals * 100.0  # parcoords has no tickformat — show rates in %
+        dims.append(dict(label=_driver_short(name),
+                         values=np.round(vals, 3)))
+    dims.append(dict(label="$/sh", values=np.round(per_share[idx], 2)))
+
+    fig = go.Figure(go.Parcoords(
+        dimensions=dims,
+        line=dict(color=np.round(per_share[idx], 2), colorscale=_SEQ_STEEL,
+                  showscale=False),
+        labelfont=dict(family=_FONT, size=12, color=_INK_SECONDARY),
+        tickfont=dict(family=_FONT, size=10, color=_INK_MUTED),
+        rangefont=dict(family=_FONT, size=9, color=_INK_MUTED),
+    ))
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family=_FONT, size=12, color=_INK_SECONDARY),
+        margin=dict(l=48, r=48, t=44, b=24),
+    )
+    return fig
+
+
+def _outlier_table(result: DriverDCFResult, stoch_names: List[str]) -> str:
+    """Bottom/top 10 paths by per-share value with each stochastic driver's
+    drawn value and its z-score — |z| ≥ 1.5 in bold: the 'why' made legible
+    (and the print-safe carrier of the spaghetti hover data)."""
+    per_share = result.per_share_paths
+    order = np.argsort(per_share)
+    stats = {n: (float(result.driver_draws[n].mean()),
+                 float(result.driver_draws[n].std()))
+             for n in stoch_names}
+
+    def cell(name: str, i: int) -> str:
+        v = float(result.driver_draws[name][i])
+        mean, std = stats[name]
+        z = (v - mean) / std if std > 0 else 0.0
+        rate = _rate_like(name, result.driver_draws[name])
+        txt = f"{v:.1%}" if rate else f"{v:,.3g}"
+        txt = f"{txt} ({z:+.1f})"
+        return f"<td><strong>{txt}</strong></td>" if abs(z) >= 1.5 else f"<td>{txt}</td>"
+
+    n_cols = 2 + len(stoch_names)
+    head = ("<tr><th>Path</th><th>Value $/sh</th>"
+            + "".join(f"<th>{html.escape(_driver_short(n))}</th>" for n in stoch_names)
+            + "</tr>")
+    rows = []
+    for label, idx in (("Bottom 10 by per-share value", order[:10]),
+                       ("Top 10 by per-share value", order[-10:][::-1])):
+        rows.append(f'<tr><th colspan="{n_cols}">{label}</th></tr>')
+        for i in idx:
+            i = int(i)
+            v = float(per_share[i])
+            val = f"-${abs(v):,.2f}" if v < 0 else f"${v:,.2f}"
+            rows.append(f"<tr><td>{i}</td><td>{val}</td>"
+                        + "".join(cell(n, i) for n in stoch_names) + "</tr>")
+    return _table(head, "".join(rows))
+
+
+def _path_explorer_cards(result: DriverDCFResult, model: DriverModel,
+                         base_year: int) -> str:
+    """The three path-explorer panels (wide cards inside the driver section)."""
+    stoch_names = [d.name for d in model.stochastic_drivers]
+    if not stoch_names:
+        return _card("Path explorer", "Monte Carlo path sample",
+                     _note("No stochastic drivers — every simulated path is "
+                           "identical, so there is no dispersion to explore."),
+                     wide=True)
+    n = result.per_share_paths.size
+    spaghetti, n_shown = _spaghetti_figure(result, stoch_names, base_year)
+    cards = _card(
+        "Path explorer — FCFF path spaghetti",
+        f"{n_shown:,} of {n:,} paths shown (all beyond P1/P99 + stratified "
+        "sample); hover a path for its drawn driver values",
+        _fig_html(spaghetti), wide=True)
+    n_pc = sum(part.size for part in
+               _stratified_path_sample(result.per_share_paths, _PARCOORDS_TARGET))
+    cards += _card(
+        "Path explorer — parallel coordinates",
+        f"{n_pc:,} of {n:,} paths (all beyond P1/P99 + stratified sample) across "
+        "every stochastic driver to the per-share value — darker steel = higher "
+        "value; drag along an axis to brush",
+        _fig_html(_parcoords_figure(result, stoch_names), height=420), wide=True)
+    cards += _card(
+        "Path explorer — outlier paths",
+        "Bottom 10 and top 10 paths by per-share value; each stochastic driver's "
+        "drawn value with its z-score in parentheses — bold where |z| ≥ 1.5",
+        _outlier_table(result, stoch_names), wide=True)
+    return cards
+
+
 def _driver_section(ticker: str, base_stats: Optional[Tuple[float, float, float]],
-                    price: Optional[float]) -> str:
+                    price: Optional[float], base_year: int) -> str:
     build = _load_driver_build(ticker)
     if build is None:
         return _section(SECTION_TITLES[3], _card(
@@ -946,6 +1171,8 @@ def _driver_section(ticker: str, base_stats: Optional[Tuple[float, float, float]
         "Driver attribution tornado",
         "P50 per-share delta when one driver's mean shifts ±1σ — same seed, correlations intact",
         _fig_html(_driver_tornado_figure(result)), wide=True)
+
+    cards += _path_explorer_cards(result, model, base_year)
 
     engine_meta = (f"DriverDCF: {DRIVER_SIMS:,} simulations · seed {DRIVER_SEED} · "
                    f"{engine.projection_years}y horizon · net debt {_money_b(net_debt)} · "
@@ -1257,7 +1484,7 @@ def build_report_html(company, scenarios: Tuple[Scenario, ...], results: dict,
         _price_section(company, cache_dir, scenarios, stats)
         + _fundamentals_section(company)
         + _aggregate_section(company, scenarios, results, cap, price, base_year)
-        + _driver_section(company.ticker, stats.get("base"), price)
+        + _driver_section(company.ticker, stats.get("base"), price, base_year)
         + _options_section(company.ticker, cache_dir, price)
     )
     footer = _footer_html(company, base_year, n_sims, horizon,
