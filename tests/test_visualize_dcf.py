@@ -284,7 +284,7 @@ def test_header_without_price_omits_delta_chip(bare_report_html):
 
 def test_price_section_present(report_html):
     assert "Price history" in report_html
-    assert "Price vs valuation — 6-month view" in report_html
+    assert "Price vs valuation" in report_html
     # Valuation band annotation lives inside plotly JSON, where the en dash is
     # serialized as – — assert on the ASCII prefix.
     assert "Base P10" in report_html
@@ -293,7 +293,15 @@ def test_price_section_present(report_html):
 
 def test_price_section_absent(bare_report_html):
     assert "Price history not available" in bare_report_html
-    assert "Price vs valuation — 6-month view" not in bare_report_html
+    assert "Price vs valuation" not in bare_report_html
+
+
+def test_price_charts_have_range_buttons(report_html):
+    # Both price figures carry a rangeselector; button labels are serialized
+    # into the figures' plotly JSON. (The plotly.js bundle itself also
+    # mentions "rangeselector", so assert on the labels, not the key.)
+    for label in ("1M", "3M", "6M", "1Y", "5Y", "2Y", "Max"):
+        assert f'"{label}"' in report_html
 
 
 # ---------------------------------------------------------------------------
@@ -446,6 +454,44 @@ def test_sampler_target_below_tail_count_keeps_all_tails():
 
 
 # ---------------------------------------------------------------------------
+# Backtest — mechanical vintages
+# ---------------------------------------------------------------------------
+
+def test_backtest_section_present(report_html):
+    assert "Backtest — mechanical vintages" in report_html
+    assert "Revenue hedgehog" in report_html
+    assert "FCF hedgehog" in report_html
+    assert "Vintage scorecard" in report_html
+    assert "P10–P90 coverage" in report_html
+
+
+def test_backtest_skipped_vintages_disclosed(report_html):
+    # ACME's first two fiscal-year-end vintage dates lack the 3-period
+    # minimum — they must be listed, not silently dropped.
+    assert "Skipped vintage dates (insufficient history)" in report_html
+
+
+def test_backtest_scorecard_scores_realized_years(report_html):
+    # The FY2023 vintage is scored against realized FY2024/FY2025 (in-band
+    # symbols) while unrealized target years carry the dash.
+    assert "✓" in report_html or "✗" in report_html
+    assert "filed_date visibility" in report_html   # honesty note
+
+
+def test_backtest_no_flags_for_unflagged_ticker(report_html):
+    # ACME has no DATA_FLAGS entry — the flag note must not render.
+    assert "data flags surfaced" not in report_html
+
+
+def test_backtest_section_degrades_without_history():
+    from scripts.visualize_dcf import _backtest_section
+    company = _make_company()
+    company.periods = company.periods[:2]   # < 3 clean annuals at every vintage
+    section = _backtest_section(company)
+    assert "No vintage date has the 3 clean annual periods" in section
+
+
+# ---------------------------------------------------------------------------
 # Options market (conditional)
 # ---------------------------------------------------------------------------
 
@@ -484,3 +530,32 @@ def test_footer_provenance(report_html):
 
 def test_footer_reports_missing_options(bare_report_html):
     assert "no snapshot on disk" in bare_report_html
+
+
+# ---------------------------------------------------------------------------
+# Skew near-expiry exclusion
+# ---------------------------------------------------------------------------
+
+def _skew_metrics(*expiries):
+    from financial_analysis.options import ChainMetrics, ExpiryMetrics
+    return ChainMetrics(
+        ticker="ACME", snapshot_date=_SNAPSHOT_DATE, spot_price=_SPOT,
+        expiries=[ExpiryMetrics(expiry=e, skew=s) for e, s in expiries])
+
+
+def test_skew_figure_drops_near_expiry_wings():
+    from scripts.visualize_dcf import _skew_figure
+    # 0-1 DTE wing IVs are solver noise (observed -106 pts on a dying expiry);
+    # only the 7-days-out expiry may survive.
+    fig = _skew_figure(_skew_metrics(
+        (_SNAPSHOT_DATE, -1.06),
+        (_SNAPSHOT_DATE + timedelta(days=1), 0.55),
+        (_SNAPSHOT_DATE + timedelta(days=7), 0.07),
+    ))
+    assert list(fig.data[0].x) == ["17 Jul 26"]
+    assert fig.data[0].y[0] == pytest.approx(7.0)
+
+
+def test_skew_figure_none_when_only_near_expiry():
+    from scripts.visualize_dcf import _skew_figure
+    assert _skew_figure(_skew_metrics((_SNAPSHOT_DATE, -1.06))) is None
