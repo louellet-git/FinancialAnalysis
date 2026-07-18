@@ -25,12 +25,13 @@ Two engines, both live (details in docs/ARCHITECTURE.md):
   path, per-path WACC with kd derived from rf, joint tg < WACC − 2% guard; per-ticker
   register in `analysis/<TICKER>/driver_model.py`).
 
-**Current phase** (as of 2026-07-17): IBM v4.1 shipped and audited; vintage backtest
-harness and MC path explorer landed; the visualizer's backtest section + price range
-buttons are on branch `viz-final-pass` (PR #9) pending merge; P1 of the vision (rulebook
-extraction, validators, red-team corpus, coverage validator) is the active frontier,
-with the ORCL run queued as ticker #2. Open work: `PLANNING/tickets.md` §OPEN TICKETS
-and `PLANNING/HANDOFF.md`.
+**Current phase** (as of 2026-07-17 evening): IBM v4.1 shipped and audited; vintage
+backtest harness and MC path explorer landed; the visualizer's backtest section + price
+range buttons merged (PR #9), 0DTE skew exclusion merged (PR #14); DUOL first pass done
+(consensus-anchored presets + capital override, PR #14 — labeled NOT a vetted driver
+build); P1 of the vision (rulebook extraction, validators, red-team corpus, coverage
+validator) is the active frontier, with the ORCL run queued as ticker #2. Open work:
+`PLANNING/tickets.md` §OPEN TICKETS and `PLANNING/HANDOFF.md`.
 
 ## Normativity map — which source governs when docs disagree
 

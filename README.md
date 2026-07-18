@@ -89,8 +89,7 @@ filings' comparative columns), derives mechanical parameters, projects revenue/F
 +1..+3y, and scores against actuals as currently reported. Known input defects are
 surfaced as data flags, not fixed. Operating projections only — no WACC, no terminal
 value, no price. A "Backtest — mechanical vintages" section of the HTML report (vintage
-table + hedgehog chart) landed on branch `viz-final-pass` (PR #9) and appears in
-`visualize_dcf` output once merged.
+table + hedgehog chart, merged in PR #9) renders it in `visualize_dcf` output.
 
 ## xlsx structure (nine tabs)
 

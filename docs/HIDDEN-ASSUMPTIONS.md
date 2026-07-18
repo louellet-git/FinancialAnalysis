@@ -167,7 +167,106 @@ labels and assumptions. Net-debt derivation also reads short-term borrowings fro
 `raw_extras` keys and treats absence as 0. Evidence:
 `financial_analysis/scenarios.py:45-49, 92-125`.
 
+## Carried from the parallel registry (PR #11, verified there against code/data 2026-07-17)
+
+Two documentation agents ran the same brief in parallel on 2026-07-17 (see CLAUDE.md
+orchestration norms); these entries existed only in the other agent's registry and are
+carried over with their original evidence pointers.
+
+**21. `filed_date` can be outright fabricated (placeholder = period_end).** The importer
+initializes `filed_date` to the period end and only overwrites it where a *revenue*
+concept fact matched that (end, form). Phantom rows and sparse pre-2018 rows keep the
+placeholder — e.g. IBM's 2012-06-30 row claims it was "filed" 2012-06-30. Never trust
+`filed_date` on a row without revenue.
+*Evidence:* `importer.py` (`"filed_date": end,  # placeholder`) and
+`_populate_filed_dates` (revenue concepts only); IBM.json phantom rows show
+filed_date == period_end.
+
+**22. The correlation matrix is reviewed *judgment*, and it moves tails only.** All 28
+entries (including the 3 deliberate zeros) are argued assumptions (rationales in
+DRIVERS.md / driver_model.py), PSD-verified (min eigenvalue 0.419). The supply-shock
+regime flip (rf·g = −0.15) leaves P50 essentially unchanged ($151.89 vs $151.84) and
+widens tails. Do not treat correlation entries as estimated from data — none are.
+*Evidence:* `driver_model.py` CORR; dcf_drivers_run.py disclosure runs; SOURCE-AUDIT
+claim 32.
+
+**23. RPO was consumed as evidence WITH AN EXPIRY — it lapses at the Q2-2026 10-Q.**
+The $71.0B RPO facts corroborate the growth means (they changed no parameter — all four
+proposed changes were rejected in the round-3 re-look) and expire when the Q2-2026 10-Q
+prints (late July 2026). After that, the rationale footnotes in driver_model.py and the
+ledger rows are stale until re-consumed. The +12.7% YoY print consolidates HashiCorp and
+is NOT organic evidence.
+*Evidence:* `analysis/IBM/research-ledger.md`; DRIVER-REVIEW.md RPO re-look; rule R1 in
+PLANNING/RULES.md.
+
+**24. The published v3 numbers no longer reproduce from the current store (store drift).**
+`analysis/IBM/dcf_scenarios.py` derives FCFF margins live from `IBM.json`; the
+p1-importer re-import shifted the derived margins (5y mean 17.8% → 18.4%), so a fresh run
+prints Bear $43 / Base $149 / Bull $243 against the signed-off record of
+**$37 / $141 / $232**. The record (README/REVIEW.md) is frozen history; the script output
+is live. Do not "correct" either to match the other — cite the record for v3, the engine
+for anything current. (The v4 driver run does NOT drift: its inputs are pinned constants.)
+*Evidence:* run of `python -m analysis.IBM.dcf_scenarios` on 2026-07-17 vs
+analysis/IBM/README.md; `dcf_scenarios.py` `fcff_v3_margins` reads the store.
+
+**25. Default capital-structure derivation ≠ the reviewed IBM bridge.** For tickers
+without a `CAPITAL_OVERRIDES` entry, net debt = long-term debt + short-term borrowings −
+cash — **no pension, no marketable securities, no stock-vs-flow review**. The IBM
+override embeds the F15-reviewed bridge (debt + after-tax pension − cash&securities);
+the DUOL override includes HTM securities + LT investments on the cash side. A
+cross-ticker comparison (the ORCL/basket runs) that mixes overridden and derived capital
+structures compares different net-debt definitions.
+*Evidence:* `scenarios.py` `capital_structure_for` vs `CAPITAL_OVERRIDES` entries +
+analysis/IBM/README.md bridge table.
+
+**26. officecli mutates a .docx on open.** Reviews and audits must run against a COPY
+(`cp doc /tmp/review.docx`); only deliberate edits touch the master. officecli lives at
+`~/.local/bin/officecli` (`export PATH="$HOME/.local/bin:$PATH"`).
+*Evidence:* `.claude/agents/memo-reviewer.md` ("Review a COPY, never the original").
+
+**27. A PostToolUse hook fires on any produced .docx.** `scripts/memo-review-reminder.sh`
+exits 2 (surfacing a demand for a memo-reviewer pass) whenever a Bash command creates a
+.docx by any route (officecli create/merge, pandoc, python-docx save, libreoffice
+convert). Expect it; don't fight it.
+*Evidence:* `.claude/settings.json` hooks + the script.
+
+**28. Timed/background tasks in this environment can be killed mid-run — persist resume
+state in files.** A documentation agent died at the reading stage to a session token
+limit on 2026-07-17; PLANNING/HANDOFF.md is the live pattern: write open work-state to a
+file as you go, delete items as completed. Interrupted fan-outs must resume, never
+restart (vision ✦6b).
+*Evidence:* PLANNING/HANDOFF.md history; reusable-dcf-vision.md ✦6b.
+
+**29. Branch fragmentation — "done" work may not be on your branch.** Two live examples
+from the day this file was written: (a) the backtest harness sat complete-with-tests on
+`factory-builds` while `handoff` (then checked out) lacked it — `python -m
+scripts.backtest` failed and a doc claiming "backtest ✓" looked wrong until PRs #7/#8
+merged both to main; (b) PR #10 (DUOL scenarios) was based on `viz-final-pass` and merged
+into that branch *after* #9 had landed, stranding the commit off main until PR #14
+cherry-picked it back. Lessons: check `git log --all --oneline -- <path>` before
+concluding something doesn't exist; base PRs on `main` unless deliberately stacking (and
+retarget after the base merges); never switch branches in a shared tree while agents are
+working — use the `wt-*` worktrees for parallel work.
+*Evidence:* git history around `8153323`/`9751523` and `c7dfb95`/`a082339` (2026-07-17).
+
+**30. LF/CRLF warnings are normal; PowerShell 5.1 quirks are real.** `core.autocrlf=true`
+on this checkout — "LF will be replaced by CRLF" warnings are expected noise, not damage.
+The primary shell is Windows PowerShell 5.1: no `&&`/`||` chaining, no ternary, UTF-16
+default file encoding (`-Encoding utf8` when writing files other tools read), quirky
+native-arg quoting (`--%` stop-parsing token when needed). Git Bash is available for
+POSIX scripts.
+*Evidence:* `git config core.autocrlf`; environment.
+
+**31. Tests are no-network by construction — keep them that way.** The whole suite runs
+on synthetic fixtures (mocked HTTP, synthetic yfinance/consensus/company objects), fixed
+seeds (7) everywhere randomness exists: `SCENARIO_SEED = 7`, dcf_drivers_run `SEED = 7`,
+backtest default `seed=7`. A test that needs the network or a floating seed is a defect.
+Run `pytest -q` for the current count rather than trusting any doc.
+*Evidence:* `pytest -q` runs of 2026-07-17; grep "no network" in tests/.
+
 ## Could not verify
 
 - (none of the named traps failed verification — all located in current code/docs; the
   scenarios-registry item was re-checked and is still true as stated in #13.)
+- Entries 21–31 were verified by the parallel PR #11 agent on the same day, not
+  independently re-verified by this registry's author; their evidence pointers stand.

@@ -101,6 +101,32 @@ only instance): drivers with written rationales, the correlation matrix, segment
 net debt, shares, exposing `build()`. The rationale strings in `driver_model.py` are
 normative over DRIVERS.md prose (see CLAUDE.md).
 
+## The backtest harness
+
+`run_backtest(company, horizon=3, n=10_000, seed=7)` in `financial_analysis/backtest.py`
+— walk-forward vintages, one per clean fiscal-year-end + 90 days:
+
+- **Point-in-time estimates**: a vintage sees only periods with `filed_date <= as_of`.
+  Because the importer's `filed_date` is the filing date of the (often later) 10-K whose
+  comparative column supplied the figure, vintages are *conservative* — they may see
+  fewer periods than a real-time observer did, never more. The leakage direction is safe.
+- **Mechanical parameters, no judgment**: trailing revenue CAGR + YoY std, FCF-margin
+  mean/std over ≤5 clean annuals (stds floored at 0.01); mirrors `StochasticDCF`'s
+  sampling structure (one growth + one margin draw per path).
+- **Asymmetric actuals, disclosed**: actuals join from the store *as currently reported*
+  (restatements included) — how forecasts are judged in practice.
+- **DATA_FLAGS, not fixes**: vintages whose parameter window touches IBM FY2019/FY2020
+  carry the recast-mismatch flag; inputs are marked, never silently repaired.
+- `_clean_annuals` requires both revenue and OCF — this is what filters the phantom
+  10-K rows (HIDDEN-ASSUMPTIONS #2).
+- Scope: revenue/FCF projections only — no WACC, no terminal value, no price.
+
+The HTML report renders it as section 6 ("Backtest — mechanical vintages"): coverage +
+per-horizon bias chips, revenue/FCF hedgehog charts, vintage scorecard. Calibration to
+date: IBM 14/18 realized outcomes in the P10–P90 band (78% vs 80% nominal); DUOL 0/6 —
+mechanical extrapolation fails on growth-phase tickers, so treat their bands as
+decorative until a driver build exists.
+
 ## `financial_analysis/` modules (verified 2026-07-17)
 
 | Module | Lines | What it does |
@@ -131,7 +157,7 @@ normative over DRIVERS.md prose (see CLAUDE.md).
 | `import_edgar.py` | `python -m scripts.import_edgar TICKER VALUATION_DATE [--output-dir data/raw] [--lookback-months 18] [--lookahead-months 6]` | Bulk full-index filing download (archival fallback path — companyfacts is the primary parse path). |
 | `run_dcf.py` | `python -m scripts.run_dcf TICKER [--simulations 10000] [--years 10] [--growth 0.15] [--wacc 0.10] [--terminal-growth 0.03] [--seed N]` | Classic-engine MC DCF on stored data; no network. |
 | `backtest.py` | `python -m scripts.backtest TICKER [--horizon 3] [--simulations 10000] [--seed 7]` | Vintage backtest console report: per-vintage P10/P50/P90 vs actuals, band coverage vs nominal 80%, signed bias by horizon, data flags, skipped vintages. No network. |
-| `visualize_dcf.py` | `python -m scripts.visualize_dcf TICKER [--price X] [--out PATH]` | Single-page self-contained HTML report (plotly.js inlined, ~5.9k lines of output): header chips, price & valuation, fundamentals, the four aggregate-DCF panels (fan / distribution / waterfall / tornado), the driver-model section (segment history, driver table, correlation heatmap, driver-vs-aggregate compare, attribution tornado, **MC path explorer**: stratified 301-path spaghetti, 2,000-path parallel coordinates, bottom/top-10 outlier table with \|z\|≥1.5 drivers bolded), options section (IV term structure, implied move, skew, OI heatmap). Driver section renders only if `analysis/<TICKER>/driver_model.py` exposes `build()`; every section degrades to a labeled "not available" note. Styling follows docs/design-specs/2026-07-16-ratings-desk-blueprint.md. NOTE: branch `viz-final-pass` (PR #9, commit `ef036cb`, verified 2026-07-17) adds a sixth section "Backtest — mechanical vintages" (vintage table + hedgehog chart from `financial_analysis/backtest.py`, honesty labels) and rangeselector buttons on the price charts — once merged, the report has six sections. |
+| `visualize_dcf.py` | `python -m scripts.visualize_dcf TICKER [--price X] [--out PATH]` | Single-page self-contained HTML report (plotly.js inlined, ~5.9k lines of output): header chips, price & valuation, fundamentals, the four aggregate-DCF panels (fan / distribution / waterfall / tornado), the driver-model section (segment history, driver table, correlation heatmap, driver-vs-aggregate compare, attribution tornado, **MC path explorer**: stratified 301-path spaghetti, 2,000-path parallel coordinates, bottom/top-10 outlier table with \|z\|≥1.5 drivers bolded), options section (IV term structure, implied move, skew, OI heatmap). Driver section renders only if `analysis/<TICKER>/driver_model.py` exposes `build()`; every section degrades to a labeled "not available" note. Styling follows docs/design-specs/2026-07-16-ratings-desk-blueprint.md. The sixth section "Backtest — mechanical vintages" (vintage table + hedgehog charts from `financial_analysis/backtest.py`, honesty labels, merged PR #9) makes SECTION_TITLES six entries. The skew panel excludes expiries under 2 days from the snapshot (`_SKEW_MIN_DTE`, PR #14) — near-expiry wing IVs are solver noise. |
 | `memo-review-reminder.sh` | (PostToolUse hook, not a CLI) | Blocks freshly produced .docx memos until a memo-reviewer pass (exit 2 surfaces the policy message). |
 | `setup-officecli.sh` | `scripts/setup-officecli.sh [--install]` | Checks (default) or installs (`--install`, manual only) the officecli binary for the docx toolchain. |
 

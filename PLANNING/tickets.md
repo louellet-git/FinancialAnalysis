@@ -14,7 +14,8 @@ verbatim). Ticket 7 (open) keeps its full spec in the historical section's forma
 
 ### Queued work (session handoff)
 
-- **Visualizer final pass**: plotly rangeselector buttons on the price charts + a Backtest section (vintage table from `financial_analysis/backtest.py` + hedgehog chart, honesty labels) — PLANNING/HANDOFF.md item 2. STATUS 2026-07-17: landed on branch `viz-final-pass` (PR #9, commit `ef036cb`); remaining: merge + regenerate IBM html.
+- ~~**Visualizer final pass**~~ DONE 2026-07-17: merged as PR #9 (rangeselector buttons + Backtest section), IBM html regenerated; 0DTE skew exclusion followed in PR #14. IBM backtest headline: 14/18 in band (78% vs 80% nominal).
+- **DUOL driver build**: DUOL first pass (PR #14) is consensus-anchored only — mechanical backtest coverage 0/6, bands decorative; promote to a driver-model frontier run (needs Luc's sign-off, vision ✦6) or leave as screening output.
 - **ORCL frontier run** (ticker #2) under the cheapened pipeline; then basket (IBM/ORCL/MSFT/ACN/CSCO); then cross-sectional gap decomposition — PLANNING/HANDOFF.md item 3; vision ✦1 basket amendment.
 - **July 22 IBM Q2**: run `scripts.analyze IBM` (captures options IV crush), grade the 4-item watch list (report §5), first bet-ledger entries, grade the 2026 mechanical vintage (FY2026 revenue P50 $70.3B vs consensus $71.1B) — PLANNING/HANDOFF.md item 4.
 - **Gitignore churn cleanup**: `git rm --cached data/processed/NVDA_financials.xlsx` (+ stray .pyc) — PLANNING/HANDOFF.md §Known state.
