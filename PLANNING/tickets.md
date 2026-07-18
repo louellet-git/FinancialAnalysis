@@ -3,79 +3,55 @@
 > Each ticket must end with a mandatory smoke test before it is closed.
 > A ticket is not done until real output is printed and verified consumable by the next ticket.
 
----
-
-# CURRENT OPEN TICKETS (consolidated 2026-07-17)
-
-One list of everything open, with the source that created each item. Detailed specs live
-at the cited sources; Ticket 7 has its full spec at the bottom of this file. The
-completed pipeline build-out (Tickets 1–6 + 1.5/3.5/4.5/4.6) follows below as
-**historical record — closed, preserved verbatim**.
-
-## Engine (driver_dcf.py)
-
-- **T-DCF-1 — AR(1)/mean-reverting growth** *(source: REVIEW.md F6 ticket; DRIVER-REVIEW
-  deferred list)*. One draw held constant per path is the single largest known
-  distortion (both the infrastructure and correlation reviewers converged on it;
-  reviewer experiment: φ=0.6 reverting to 2.5% cut base P50 ~10%, P90 ~16%). Includes
-  the single-factor correlation structure across (g, tg, margin) from the original F6
-  spec. Until it lands, P10/P90 are decorative — no margin-of-safety claims.
-- **T-DCF-3 — terminal growth derived per path** from faded, mix-weighted segment draws
-  *(source: DRIVER-REVIEW terminal_growth disposition + TV consolidation: the current
-  tg anchoring is correlational, not structural)*.
-- **Lognormal / mixture marginals** — g_consulting left-skew mixture (GenAI
-  cannibalization), ma_ratio fat right tail *(source: DRIVER-REVIEW g_consulting and
-  ma_ratio dispositions; deferred list)*.
-- **Harris-Pringle re-levered β + target capital-structure weights**; non-stationary
-  E/V as debt grows *(source: DRIVER-REVIEW equity_weight / beta dispositions)*.
-- **Correlation upgrades** — replace pairwise judgment entries with a single-factor
-  model where defensible; estimate the rf·erp entry from market history instead of
-  judgment *(source: REVIEW.md T-DCF-1 spec; DRIVERS.md matrix note — every entry is
-  currently a reviewed judgment, none estimated)*.
-
-## Importer / data (T-IMP-1 family)
-
-- **T-IMP-1 — importer fidelity** *(source: REVIEW.md F13 ticket; now evidence-backed by
-  the backtest build)*:
-  - **filed_date fidelity** — `filed_date` is currently the filing date of the
-    latest-filed (often comparative-column) source, lagging real filings by up to ~2
-    years, and falls back to a period_end placeholder where no revenue fact matched
-    (verified in IBM.json; see docs/HIDDEN-ASSUMPTIONS.md #3–#4). The backtest treats
-    this as conservative-by-construction, but true first-filed dates would sharpen
-    vintages.
-  - **Persist prices into the JSON store** (currently cache/xlsx only).
-  - Drop phantom annual rows (2012-06-30, 2018-01-01, 2019-01-01 pattern); align recast
-    revenue with recast OCF across divestiture boundaries.
-  - ~~dividends_paid as first-class field~~ ✅ DONE (commit `e2c711a`, with
-    interest_income and RPO; SOURCE-AUDIT flag C5 closed). Buybacks post-2019: verified
-    genuinely absent, nothing to import.
-- **Ticket 7 — segment revenue from filing-level XBRL** *(spec below; opened 2026-07-17;
-  companyfacts has no dimensional facts — verified)*.
-
-## Factory P1 remainder (source: reusable-dcf-vision.md phasing; RULES.md backlog)
-
-- **validators.py** — machine-checkable subset of RULES.md, run at model build + CI
-  (R1's RPO-class coverage check is the first).
-- **Red-team corpus + injection harness (✦2)** — known-bad models seeded with past
-  accepted findings (F2 debt double-count, F16 cost-without-growth, stale parameters,
-  negative credit spreads); every accepted finding generates a validator AND a specimen.
-- **Statement-coverage validator (✦7)** — every statement item classified used/excluded
-  with checkable reason codes; run retroactively on the IBM register (SOURCE-AUDIT
-  flags C1–C5 are the seed backlog).
-- **Charter-review wiring** — reviewer must ACCEPT the rules+assumptions package on
-  every run before publication.
-- **Rulebook extraction** — promote the DRIVER-REVIEW/REVIEW lessons listed in RULES.md
-  backlog into numbered rules with validators.
-
-## Report pipeline
-
-- **Deterministic report-generator templating** *(source: token-ledger.md — the analyst
-  share (~0.77M tokens) of the report pipeline must be cut ~80% by templating the
-  deterministic parts; vision L7)*.
+This file has two parts: **OPEN TICKETS** (consolidated 2026-07-17 from every ledger in
+the repo — each line carries its source pointer; the sources remain authoritative for
+detail) and **HISTORICAL — CLOSED TICKETS 1–6** (the original build, preserved
+verbatim). Ticket 7 (open) keeps its full spec in the historical section's format below.
 
 ---
 
-# HISTORICAL RECORD — Tickets 1–6 (all CLOSED; preserved verbatim)
+## OPEN TICKETS (consolidated 2026-07-17)
+
+### Queued work (session handoff)
+
+- ~~**Visualizer final pass**~~ DONE 2026-07-17: merged as PR #9 (rangeselector buttons + Backtest section), IBM html regenerated; 0DTE skew exclusion followed in PR #14. IBM backtest headline: 14/18 in band (78% vs 80% nominal).
+- **DUOL driver build**: DUOL first pass (PR #14) is consensus-anchored only — mechanical backtest coverage 0/6, bands decorative; promote to a driver-model frontier run (needs Luc's sign-off, vision ✦6) or leave as screening output.
+- **ORCL frontier run** (ticker #2) under the cheapened pipeline; then basket (IBM/ORCL/MSFT/ACN/CSCO); then cross-sectional gap decomposition — PLANNING/HANDOFF.md item 3; vision ✦1 basket amendment.
+- **July 22 IBM Q2**: run `scripts.analyze IBM` (captures options IV crush), grade the 4-item watch list (report §5), first bet-ledger entries, grade the 2026 mechanical vintage (FY2026 revenue P50 $70.3B vs consensus $71.1B) — PLANNING/HANDOFF.md item 4.
+- **Gitignore churn cleanup**: `git rm --cached data/processed/NVDA_financials.xlsx` (+ stray .pyc) — PLANNING/HANDOFF.md §Known state.
+
+### Factory P1 (vision phasing — the active frontier)
+
+- **Rulebook extraction**: promote the 9-item backlog (endpoint-not-flattering-mean; growth/cost pairing; stock-or-flow; decade-CAGR dispersion for cyclicals; bridge income-stripped-or-absent; kd co-moves with rf; single-source pairing constants; quantitative immateriality thresholds; reference-resolving exclusions) into RULES.md rows with validators + specimens — PLANNING/RULES.md backlog.
+- **`validators.py`**: machine-checkable rule subset, run at model build + CI; R1 coverage validator (RPO-class concepts classified, unclassified = fail) — PLANNING/RULES.md R1; vision L4.
+- **Red-team corpus + injection harness** (✦2): known-bad models seeded with past accepted findings; every accepted finding generates a validator AND a specimen — vision L4/P1.
+- **Statement-coverage validator** (✦7): every mapped field + raw_extras concept classified used/excluded-with-reason, run retroactively on the IBM register — vision L4/P1.
+- **Research Ledger formal schema** (✦5): expiry policies + schema-enforced provenance tiers (interim format in use) — analysis/IBM/research-ledger.md header; vision L1/P1.
+- **RPO expiry**: the consumed RPO facts expire at the Q2-2026 10-Q (late July) — analysis/IBM/research-ledger.md; report watch-list item 4.
+
+### Engine tickets (deferred with dispositions — do not re-litigate, implement)
+
+- **T-DCF-1**: AR(1) mean-reverting growth / correlated year-to-year sampling — until then P10/P90 are decorative — analysis/IBM/REVIEW.md §Deferred tickets (from F6).
+- **T-DCF-3**: derive terminal growth per path from faded segment draws — analysis/IBM/driver_model.py terminal_growth rationale; DRIVER-REVIEW.md.
+- **Lognormal marginal for ma_ratio** (fat right tail) — analysis/IBM/DRIVER-REVIEW.md ma_ratio disposition.
+- **Mixture marginal for g_consulting** (GenAI-cannibalization left skew; current normal is a proxy) — analysis/IBM/DRIVER-REVIEW.md g_consulting disposition.
+- **Non-stationary E/V + Harris-Pringle relever** as debt grows — analysis/IBM/DRIVER-REVIEW.md equity_weight disposition.
+- **T-IMP-1** (importer): drop phantom annual periods; align recast revenue with recast OCF across divestiture boundaries; persist prices to the JSON store — analysis/IBM/REVIEW.md §Deferred tickets (from F13). (Dividends/interest-income/RPO mapping already landed, commit e2c711a.)
+
+### Importer / pipeline
+
+- **Ticket 7 — segment revenue extraction** from filing-level XBRL instance documents (companyfacts strips dimensional facts) — full spec below in this file.
+- **requirements.txt kept current** with actual needs on every dependency change — THOUGHTS item 1.
+- **News-scan idea** (unscoped): scan ticker news for knock-on effects on statement items; shock the valuation — THOUGHTS item 2.
+
+### Standing per-run duties (not one-shot tickets)
+
+- Update PLANNING/token-ledger.md per run; targets: frontier ≤ 500k, repeat ≤ 50k subagent tokens — PLANNING/token-ledger.md.
+- Charter review must ACCEPT before any publication; Luc signs off frontier/reservation runs (✦6a) — PLANNING/reusable-dcf-vision.md L5.
+
+---
+
+## HISTORICAL — CLOSED TICKETS 1–6 (original build, June 2026; preserved verbatim)
 
 ## Ticket 1 — EDGAR Import ✅ CLOSED
 - **Title:** Verify SEC EDGAR filing retrieval end-to-end
@@ -242,7 +218,9 @@ completed pipeline build-out (Tickets 1–6 + 1.5/3.5/4.5/4.6) follows below as
 
 ---
 
-# OPEN TICKET SPECS (not part of the historical record)
+---
+
+# OPEN TICKET SPECS
 
 ## Ticket 7 — Segment Revenue Extraction ⬜ OPEN
 - **Title:** Extract per-segment revenue from filing-level XBRL (dimensional facts)

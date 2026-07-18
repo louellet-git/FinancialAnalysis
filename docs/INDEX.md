@@ -1,43 +1,45 @@
 # Documentation index
 
-Every document in the repo, one line each. **Status**: `normative` = binds future work
-(change only via review of equal weight) · `informational` = kept accurate, does not
-bind · `transient` = live state, expected to change/disappear. **Freshness** = last
-substantive update (verified via git/content, 2026-07-17).
+Every document in the repo, its purpose, and its normativity. Inventory verified
+2026-07-17. Normativity classes: **binding** (governs decisions; conflicts resolved per
+the CLAUDE.md normativity map), **live** (working state — edit/delete as work
+completes), **informative** (orientation; code governs on conflict), **historical**
+(frozen record — do not edit, supersede), **generated/audited** (produced by the
+pipeline or an audit gate; regenerate, don't hand-edit).
 
-| Path | Purpose (one line) | Status | Freshness |
-|---|---|---|---|
-| `CLAUDE.md` | Agent onboarding contract: normativity map, orchestration norms, pointer table | informational | 2026-07-17 |
-| `README.md` | Pipeline overview, commands, xlsx structure, engines, IBM headline, roadmap pointer | informational | 2026-07-17 |
-| `context.json` | Machine-readable orientation: summary, phase state, entry points, normativity pointers | informational | 2026-07-17 |
-| `docs/ARCHITECTURE.md` | Code-verified data flow, module map, the two engines, backtest harness | informational | 2026-07-17 |
-| `docs/HIDDEN-ASSUMPTIONS.md` | Trap registry — 22 verified traps with evidence pointers | informational | 2026-07-17 |
-| `docs/INDEX.md` | This catalogue | informational | 2026-07-17 |
-| `docs/visualizer-design-brief.md` | Contract for cosmetic restyles of the HTML company report (hard constraints included) | informational | 2026-07-16 |
-| `docs/design-specs/2026-07-16-ratings-desk-blueprint.md` | ACCEPTED visualizer design spec (applied; "Ledger serif" alternative not applied) | informational | 2026-07-16 |
-| `docs/superpowers/plans/*` (3 files) | Historical implementation plans from the Tickets 1–6 build-out (June 2026) | informational (historical) | 2026-06-03/05 |
-| `docs/superpowers/specs/*` (3 files) | Historical design specs from the same build-out | informational (historical) | 2026-06-04/05 |
-| `PLANNING/reusable-dcf-vision.md` | The valuation-factory roadmap: 7 layers, amendments ✦1–✦7, phasing, metrics | **normative** | 2026-07-17 (✦1 basket amendment) |
-| `PLANNING/RULES.md` | Rulebook (L4 ratchet): R1 + extraction backlog; every rule → validator + red-team specimen | **normative** | 2026-07-17 |
-| `PLANNING/tickets.md` | Current open tickets (consolidated) + closed Tickets 1–6 historical record + Ticket 7 spec | informational (open list) / historical | 2026-07-17 |
-| `PLANNING/HANDOFF.md` | Live open-work state for the next session — delete items as completed, delete file when empty | **transient** | 2026-07-17 |
-| `PLANNING/token-ledger.md` | Cost per orchestrated run (success metric #1) + compression targets | informational | 2026-07-17 |
-| `analysis/IBM/README.md` | IBM v3 analysis record (frozen: Bear $37 / Base $141 / Bull $232; fresh runs drift — HIDDEN-ASSUMPTIONS #14) | **normative** (frozen record) | 2026-07-16 |
-| `analysis/IBM/REVIEW.md` | v1→v3 adversarial findings ledger F1–F19 + deferred tickets; dispositions bind | **normative** | 2026-07-16 |
-| `analysis/IBM/DRIVERS.md` | Human assumption register for the v4 driver model (driver_model.py governs on divergence) | **normative** (summary of register) | 2026-07-17 (RPO footnotes) |
-| `analysis/IBM/DRIVER-REVIEW.md` | 19 round-1 reviews → dispositions → 4 consolidations → RPO re-look; rejections bind | **normative** | 2026-07-17 |
-| `analysis/IBM/research-ledger.md` | Frozen source-tagged evidence (RPO block) — **expires at the Q2-2026 10-Q** | **normative** (with expiry) | 2026-07-17 |
-| `analysis/IBM/report/IBM-valuation-2026-07.md` | Report markdown master (content-identical to the shipped .docx) | informational (shipped artifact) | 2026-07-17 (v4.1) |
-| `analysis/IBM/report/SOURCE-AUDIT.md` | Report-auditor PASS record: claim→source table, softens E1–E3, coverage flags C1–C5 | **normative** (audit record) | 2026-07-16 |
-| `.claude/agents/FRAMEWORK.md` | Vendoring provenance of the doc-review framework (@d9d9075) + pipeline order | informational | 2026-07-16 |
-| `.claude/agents/valuation-analyst.md` | Analyst agent: drafts reports; REVIEW.md dispositions bind it | informational (agent def) | 2026-07-16 |
-| `.claude/agents/valuation-skeptic.md` | Skeptic agent: reproduces every number with the engine before judging | informational (agent def) | 2026-07-16 |
-| `.claude/agents/memo-reviewer.md` | Craft reviewer for .docx (reviews a COPY — officecli mutates on open) | informational (agent def) | 2026-07-16 |
-| `.claude/agents/memo-review-rubric.md` | The 7-category scoring rubric memo-reviewer applies | informational | 2026-07-16 |
-| `.claude/agents/report-auditor.md` | Final gate: claim→source taxonomy, re-derivation, softening | informational (agent def) | 2026-07-16 |
-| `.claude/skills/officecli/SKILL.md` | officecli usage for .docx/.xlsx/.pptx (vendored) | informational | 2026-07-16 |
-| `THOUGHTS` | Luc's raw idea scratchpad (requirements.txt upkeep; news-shock scanning idea) | informational (raw notes) | pre-2026-07 |
-
-Not documentation but worth knowing: `financial_analysis/driver_dcf.py` and
-`analysis/IBM/driver_model.py` carry extensive normative docstrings/rationales — treat
-those strings as part of the assumption register, not as comments.
+| Doc | Purpose | Normativity |
+|---|---|---|
+| `CLAUDE.md` | Agent orientation: repo identity, normativity map, orchestration norms, review-pipeline roles | binding (process) |
+| `README.md` | Human-facing overview: verified CLI commands, engines, xlsx tabs, layout, tests | informative |
+| `context.json` | Machine-readable project summary + phase state for agents | informative |
+| `THOUGHTS` | Raw idea scratchpad (2 items, consolidated into tickets.md OPEN TICKETS) | live |
+| `docs/ARCHITECTURE.md` | Code-verified module map, data flow, the two engines' mechanics | informative (code governs) |
+| `docs/HIDDEN-ASSUMPTIONS.md` | Trap registry: 20 non-obvious assumptions/landmines with evidence pointers | informative (code governs) |
+| `docs/INDEX.md` | This file | informative |
+| `docs/visualizer-design-brief.md` | Contract for cosmetic restyles of the HTML report (structure + hard constraints) | binding (for visualizer restyles) |
+| `docs/design-specs/2026-07-16-ratings-desk-blueprint.md` | Accepted visual design spec applied to `visualize_dcf.py` (tokens, chart chrome) | binding (visualizer styling) |
+| `docs/superpowers/plans/2026-06-03-financial-analysis-pipeline.md` | Original pipeline implementation plan | historical |
+| `docs/superpowers/plans/2026-06-05-financial-statement-automation.md` | Ticket 4/4.5 implementation plan | historical |
+| `docs/superpowers/plans/2026-06-05-ticket-4-6-market-data-enrichment.md` | Ticket 4.6 implementation plan | historical |
+| `docs/superpowers/specs/2026-06-04-expanded-financial-schema-design.md` | Expanded schema design | historical |
+| `docs/superpowers/specs/2026-06-05-financial-statement-automation-design.md` | Statement-automation design | historical |
+| `docs/superpowers/specs/2026-06-05-ticket-4-6-market-data-enrichment.md` | Market-data enrichment design | historical |
+| `PLANNING/reusable-dcf-vision.md` | The valuation-factory standing initiative: 7-layer architecture, 7 amendments + basket amendment, phasing P1–P4, success metrics | binding (design) |
+| `PLANNING/RULES.md` | Canonical rulebook (L4): R1 + the P1 extraction backlog; rules bind at declared scope, deprecation needs equal-weight review | binding |
+| `PLANNING/tickets.md` | OPEN TICKETS (consolidated, with source pointers) + historical closed tickets 1–6 + Ticket 7 spec | live (open) / historical (closed) |
+| `PLANNING/HANDOFF.md` | Session handoff — live open-work state; delete items as completed, delete file when empty | live |
+| `PLANNING/token-ledger.md` | Cost-per-run ledger (success metric #1) + targets; update per run | live |
+| `analysis/IBM/README.md` | IBM v3 analysis: fundamentals, net-debt bridge, v3 scenarios ($37/$141/$232), data notes | historical (v3 — superseded by the v4 report for headline numbers; bridge/data notes still referenced by v4) |
+| `analysis/IBM/DRIVERS.md` | v4 assumption register companion table (drivers, items, correlations) | binding, EXCEPT that `driver_model.py` rationale strings govern over its prose (stated in its own header) |
+| `analysis/IBM/DRIVER-REVIEW.md` | Round-1 driver/formula/matrix reviews (19 + 4 consolidations) → dispositions | binding (recorded dispositions; do not re-litigate) |
+| `analysis/IBM/REVIEW.md` | v1→v3 adversarial review: findings F1–F19, dispositions, deferred tickets T-DCF-1/2, T-IMP-1 | binding (recorded dispositions; do not re-litigate) |
+| `analysis/IBM/research-ledger.md` | Frozen source-tagged facts consumed by the model (RPO; expiry at Q2-2026 10-Q) | binding (evidence record, with expiry) |
+| `analysis/IBM/report/IBM-valuation-2026-07.md` | The v4.1 published report (markdown master of the .docx) | historical (frozen published artifact) |
+| `analysis/IBM/report/SOURCE-AUDIT.md` | Final audit gate record: claim→source table, engine re-run verification | generated/audited (frozen) |
+| `.claude/agents/FRAMEWORK.md` | Vendored review-framework manifest + pipeline description | binding (process) |
+| `.claude/agents/valuation-analyst.md` | Analyst agent definition (drafts reports) | binding (agent spec) |
+| `.claude/agents/valuation-skeptic.md` | Adversarial reviewer agent definition | binding (agent spec) |
+| `.claude/agents/memo-reviewer.md` | .docx craft reviewer (scores, never edits) | binding (agent spec) |
+| `.claude/agents/memo-review-rubric.md` | Scoring rubric for memo-reviewer | binding (agent spec) |
+| `.claude/agents/report-auditor.md` | Final audit gate agent (claim traceability + soften) | binding (agent spec) |
+| `.claude/skills/officecli/SKILL.md` | officecli docx tooling skill | informative (tooling) |

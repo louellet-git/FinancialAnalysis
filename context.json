@@ -1,47 +1,23 @@
 {
   "project": "FinancialAnalysis",
-  "as_of": "2026-07-17",
-  "summary": "Valuation factory in the making: SEC EDGAR/XBRL + yfinance data pipeline → two Monte Carlo DCF engines (aggregate StochasticDCF; driver-based DriverDCF, normative for IBM) → adversarial review machine (analyst/skeptic/memo-reviewer/report-auditor) → client-grade audited .docx reports. Roadmap: PLANNING/reusable-dcf-vision.md (7 layers, amendments ✦1-✦7).",
-  "read_first": ["CLAUDE.md", "docs/ARCHITECTURE.md", "docs/HIDDEN-ASSUMPTIONS.md", "docs/INDEX.md"],
-  "normative": {
-    "assumption_register": "analysis/<TICKER>/driver_model.py rationale strings (DRIVERS.md is the human summary)",
-    "binding_review_records": ["analysis/IBM/REVIEW.md (F1-F19; never resurrect retracted claims)", "analysis/IBM/DRIVER-REVIEW.md (19+4 reviews, consolidations, RPO re-look)"],
-    "roadmap": "PLANNING/reusable-dcf-vision.md",
-    "rulebook": "PLANNING/RULES.md (R1 + extraction backlog)",
-    "audit_record": "analysis/IBM/report/SOURCE-AUDIT.md",
-    "numbers": "the engine governs over stale doc numbers — published values must reproduce at seed 7"
-  },
-  "headline": "IBM v4 driver DCF (python -m analysis.IBM.dcf_drivers_run, seed 7, 10k): P10 $83.84 / P50 $151.84 / P90 $258.03, TV/EV 64.1%, CONDITIONAL on f=MA_RECURRENCE=0.50 (f-locus $197.79 to $101.44). v3 record ($37/$141/$232) is frozen history and no longer reproduces from the current store (docs/HIDDEN-ASSUMPTIONS.md #14).",
-  "phase_state": {
-    "phase": "P1 (post IBM v4 report)",
-    "done": [
-      "IBM v4 frontier run: driver engine + register, 19+4 reviews, RPO exception re-look, report + source audit PASS",
-      "P1 importer completeness: dividends_paid, interest_income, RPO mapped; segment-axis absence verified and documented (Ticket 7 opened)",
-      "backtest harness (point-in-time vintages, mechanical params, DATA_FLAGS) — merged to main via PR #7, 2026-07-17",
-      "RULES.md seeded (R1); research-ledger.md with expiry; token-ledger.md"
-    ],
-    "pending_p1": ["validators.py", "red-team corpus + injection harness (✦2)", "statement-coverage validator (✦7, IBM retro-run)", "charter-review wiring"],
-    "next": ["ORCL frontier run (ticker #2) under cheapened pipeline", "basket IBM/ORCL/MSFT/ACN/CSCO", "cross-sectional gap decomposition (✦1 basket amendment)", "2026-07-22: IBM Q2 — run scripts.analyze IBM, grade watch list + first bet-ledger entries"]
-  },
-  "entry_points": {
-    "full_pipeline": "python -m scripts.analyze TICKER  [--refresh|--no-market|--no-options|--no-estimates|--out PATH]",
-    "import_only": "python -m scripts.import_financials TICKER [--refresh]",
-    "aggregate_dcf": "python -m scripts.run_dcf TICKER --seed 7",
-    "visualizer": "python -m scripts.visualize_dcf TICKER [--price X]",
-    "ibm_v3_scenarios": "python -m analysis.IBM.dcf_scenarios (live-derives margins from store — output drifts from the frozen v3 record)",
-    "ibm_v4_driver_run": "python -m analysis.IBM.dcf_drivers_run (normative headline; reproduces exactly)",
-    "backtest": "python -m scripts.backtest TICKER [--horizon N]",
-    "tests": "python -m pytest -q (no network; 309 collected post-merge 2026-07-17, ~3 min — run it for the current count)"
-  },
-  "engines": {
-    "aggregate": "financial_analysis/dcf.py StochasticDCF — independent normal draws (growth/margin/WACC/tg), one per path; scenarios.py presets seed 7; IBM registry entries are v3-era",
-    "driver": "financial_analysis/driver_dcf.py DriverDCF — only drivers stochastic, correlated joint draw (Cholesky) held constant per path (parameter-MC, no AR(1): T-DCF-1); per-path CAPM WACC with kd derived from rf; flat term structure; tg guard min(tg, wacc-2%) with pinned fraction reported; clip-after-correlation truncation; percentiles only, no mean/std; driver_draws exposed per path"
-  },
-  "dcf_implementation_superseded_note": "Earlier versions of this file described only Tickets 1-6 and the aggregate DCF; that content is superseded by the above and by docs/ARCHITECTURE.md. The Tickets 1-6 history is preserved in PLANNING/tickets.md.",
-  "completed_tickets": ["1", "1.5", "2", "3", "3.5", "4", "4.5", "4.6", "5", "6"],
+  "summary": "Valuation factory: SEC EDGAR XBRL import → typed statement store → two Monte Carlo DCF engines (classic scenario + driver-based) → adversarial review pipeline → published report + single-page HTML visualizer. Standing initiative: PLANNING/reusable-dcf-vision.md (self-improving: accepted review findings compound into rules/validators).",
+  "phase": "Post IBM v4.1 (2026-07-17). Vision P1 is the active frontier: rulebook extraction (RULES.md has R1 + backlog), validators, red-team corpus, coverage validator. Queued: visualizer final pass, ORCL frontier run, July 22 IBM Q2 grading. Live open-work state: PLANNING/HANDOFF.md; consolidated open tickets: PLANNING/tickets.md §OPEN TICKETS.",
+  "flagship_analysis": "IBM v4.1 — analysis/IBM/report/IBM-valuation-2026-07.md. Headline (driver engine, seed 7, conditional on f=0.50): P10 $83.84 / P50 $151.84 / P90 $258.03 vs price $212.40. Watch list grades at the July 22, 2026 Q2 report.",
+  "docs": "CLAUDE.md (norms + normativity map, read first) · docs/INDEX.md (every doc + normativity) · docs/ARCHITECTURE.md (code-verified module map) · docs/HIDDEN-ASSUMPTIONS.md (trap registry) · PLANNING/reusable-dcf-vision.md (standing design, 7 amendments + basket amendment)",
+  "entry_points": "scripts.analyze TICKER (import + market data → 9-tab xlsx) · scripts.import_financials · scripts.import_edgar · scripts.run_dcf (classic engine) · scripts.backtest (point-in-time vintages) · scripts.visualize_dcf (single-page HTML report) · analysis.IBM.dcf_drivers_run (v4 headline) · analysis.IBM.dcf_scenarios (v3, historical) · python -m pytest (302 tests, no network)",
+  "engines": "financial_analysis/dcf.py — classic: samples growth/margin/WACC/tg directly, presets in scenarios.py (IBM entries there are the v3 framework, deliberate). financial_analysis/driver_dcf.py — driver-based: deterministic vetted item formulas over correlated stochastic drivers, one draw per path, per-path WACC (kd derived from rf), joint tg<WACC-2% guard, percentiles only, ±1σ same-seed attribution. Per-ticker register: analysis/<TICKER>/driver_model.py (rationale strings are NORMATIVE over DRIVERS.md prose).",
+  "xbrl_path": "SEC companyfacts JSON API — data.sec.gov/api/xbrl/companyfacts/CIK{padded_cik}.json. Primary parse path; raw EDGAR downloads are archival fallback (scripts.import_edgar). companyfacts strips dimensional facts: segment revenue is NOT extractable from it (Ticket 7).",
+  "store_note": "data/processed/TICKER.json persists statement periods ONLY — prices/options/estimates live in the xlsx and dated snapshots under data/raw/TICKER/. filed_date on companyfacts-sourced periods is the filing the figure was drawn from (often a later 10-K's comparative column) — backtest vintages are conservative, not optimistic.",
   "fcf_sign_note": "capex is stored sign-flipped (negative) by the importer; schema.free_cash_flow uses OCF - abs(capex). Fixed 2026-06-12 (was overstating FCF by 2x capex).",
+  "historical_tickets": ["1", "1.5", "2", "3", "3.5", "4", "4.5", "4.6", "5", "6"],
+  "current_focus": [
+    "P1: validators.py + red-team corpus + coverage validator (vision P1; RULES.md backlog)",
+    "visualizer final pass: rangeselector buttons + backtest section (HANDOFF item 2)",
+    "ORCL frontier run under the cheapened pipeline, then basket + gap decomposition (HANDOFF item 3)",
+    "July 22: run scripts.analyze IBM, grade the 4-item watch list + 2026 mechanical vintage, first bet-ledger entries (HANDOFF item 4)"
+  ],
+  "orchestration": "Subagents do not commit — the orchestrator collects and commits. Parallel work in git worktrees off origin/main; never check out a branch in the shared main tree (see CLAUDE.md). Token ledger updated per run: PLANNING/token-ledger.md.",
   "smoke_test_policy": "Every ticket requires a live smoke test before closing. A ticket is not done until real output is printed and confirmed consumable by the next ticket.",
-  "orchestration_norms": "Subagents do not commit (orchestrator does); parallel file work uses git worktrees; review .docx via a COPY (officecli mutates on open); memo-review PostToolUse hook fires on any produced .docx; fixed seeds (7); persist resume-state in files (PLANNING/HANDOFF.md pattern); never commit the tracked-but-gitignored xlsx/.pyc warts.",
   "notes": "Agents should be concise when updating README.md and context.json.",
   "placement": "root context.json for agent awareness"
 }
