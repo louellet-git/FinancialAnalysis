@@ -75,6 +75,7 @@ def main(argv=None) -> int:
         risk = RiskConfig(starting_equity=args.equity, risk_per_trade=args.risk,
                           commission_per_contract=args.commission)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+    tag = f"_risk{int(args.max_risk)}" if args.max_risk else ""  # keep the two risk modes apart
     md_cache, rows = {}, []
     for n in names:
         t0 = time.time()
@@ -88,8 +89,8 @@ def main(argv=None) -> int:
         if result.rejections:
             print(f"  rejections: {result.rejections}")
         trades = result.trades_frame()
-        trades.to_csv(OUT_DIR / f"{n}_trades.csv", index=False)
-        result.equity.to_csv(OUT_DIR / f"{n}_equity.csv", header=["equity"])
+        trades.to_csv(OUT_DIR / f"{n}{tag}_trades.csv", index=False)
+        result.equity.to_csv(OUT_DIR / f"{n}{tag}_equity.csv", header=["equity"])
         if args.verbose and len(trades):
             with pd.option_context("display.width", 200, "display.max_rows", 60):
                 print(trades[["entry_time", "exit_time", "structure", "units", "entry_net", "exit_net", "pnl", "exit_reason"]].tail(60))
@@ -97,8 +98,8 @@ def main(argv=None) -> int:
 
     if rows:
         board = pd.DataFrame(rows)[LEADERBOARD_COLS].sort_values("oos_sharpe", ascending=False)
-        tag = f"_risk{int(args.max_risk)}" if args.max_risk else ""
-        board.to_csv(OUT_DIR / f"leaderboard{tag}.csv", index=False)
+        if not args.strategies:  # a subset run must not clobber the full leaderboard
+            board.to_csv(OUT_DIR / f"leaderboard{tag}.csv", index=False)
         with pd.option_context("display.width", 250, "display.max_columns", 30, "display.float_format", "{:.2f}".format):
             print("LEADERBOARD (sorted by out-of-sample Sharpe; option prices are model-priced)")
             print(board.to_string(index=False))
