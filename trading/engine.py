@@ -143,6 +143,10 @@ class Context:
     def spot(self, symbol: Optional[str] = None) -> float:
         return float(self._e.md.bars[symbol or self._e.symbols[0]]["close"].iat[self._e.i])
 
+    def vol_history(self, symbol: Optional[str] = None) -> pd.DataFrame:
+        """Vol per bar up to now (decimals): atm_* = VIX/VXN, short_* = VIX1D-based."""
+        return self._e.md.vol[symbol or self._e.symbols[0]].iloc[: self._e.i + 1]
+
     def vol(self, symbol: Optional[str] = None) -> VolSnapshot:
         return self._e.vol_at(symbol or self._e.symbols[0], self._e.i, "close")
 
