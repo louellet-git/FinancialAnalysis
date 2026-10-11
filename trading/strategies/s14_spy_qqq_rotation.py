@@ -53,6 +53,7 @@ class SpyQqqRotation(Strategy):
     MAX_POSITIONS = 3
     CLOSE_ON_FLIP = False  # closing on signal flips crystallised whipsaw losses (-$1.5k/96 trades)
     MODE = "leader"        # "leader" or "pair"
+    FIXED_LEADER = None    # "SPY"/"QQQ" disables rotation (ablation; see s14b)
 
     def on_start(self, ctx):
         ctx.state["leader"] = None
@@ -72,6 +73,8 @@ class SpyQqqRotation(Strategy):
         elif leader is None:
             leader = "QQQ" if mom > 0 else "SPY"
         ctx.state["leader"] = leader
+        if self.FIXED_LEADER:
+            leader = self.FIXED_LEADER
         px = ctx.bars(leader)["close"]
         trend_ok = px.iat[-1] > px.iloc[-self.TREND_SMA:].mean()
         iv_ok = ctx.vol(leader).atm < self.MAX_IV

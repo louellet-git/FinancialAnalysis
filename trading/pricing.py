@@ -7,6 +7,8 @@ Every backtest number from this harness is model-priced:
 - Spread: half-spread = clip(0.5% of mid, $0.01, $0.05) per leg (SPY/QQQ near-the-money
   quotes are typically 1-10 cents wide); long legs pay ask, short
   legs receive bid. Commission is charged by the engine.
+- Time to expiry is a variance clock (``year_fraction``): overnight decay and a
+  U-shaped intraday variance profile, so a close-to-close day is 1/252 of a year.
 - European Black-Scholes, settled at intrinsic on expiry (SPY/QQQ options are American
   and physically settled; early assignment and pin risk are ignored).
 
@@ -26,7 +28,7 @@ import pandas as pd
 from trading.data import SESSION_MINUTES
 
 TRADING_DAYS = 252
-MINUTES_PER_YEAR = TRADING_DAYS * SESSION_MINUTES
+MINUTES_PER_YEAR = TRADING_DAYS * SESSION_MINUTES  # floor for tiny T only
 _SQRT2 = math.sqrt(2.0)
 _ONE_DAY = timedelta(days=1)
 
@@ -59,17 +61,42 @@ def bs_delta(cp: str, spot: float, strike: float, t: float, rate: float, vol: fl
     return norm_cdf(d1) if cp == "C" else norm_cdf(d1) - 1.0
 
 
+# Variance clock. Annualized vols mean close-to-close variance of vol^2/252 per day, and
+# that day includes the overnight. SPY's overnight carries ~20% of daily variance
+# (OVERNIGHT_WEIGHT sessions' worth relative to the 390-minute session), and intraday
+# variance is U-shaped: heavy first/last half hour, quieter midday.
+OVERNIGHT_WEIGHT = 0.25
+_OPEN_W, _CLOSE_W, _EDGE = 2.0, 1.5, 30.0
+_MID_W = (SESSION_MINUTES - _EDGE * (_OPEN_W + _CLOSE_W)) / (SESSION_MINUTES - 2 * _EDGE)
+VARIANCE_UNITS_PER_YEAR = TRADING_DAYS * SESSION_MINUTES * (1 + OVERNIGHT_WEIGHT)
+
+
+def _cum_weight(x: float) -> float:
+    """Variance units accumulated from the open to ``x`` minutes into the session."""
+    x = min(max(x, 0.0), SESSION_MINUTES)
+    late = SESSION_MINUTES - _EDGE
+    return (_OPEN_W * min(x, _EDGE)
+            + _MID_W * min(max(x - _EDGE, 0.0), late - _EDGE)
+            + _CLOSE_W * max(x - late, 0.0))
+
+
 def year_fraction(now: pd.Timestamp, expiry: date) -> float:
-    """Trading-time years from ``now`` to the 16:00 close on ``expiry`` (weekends skipped)."""
+    """Variance-time years from ``now`` to the 16:00 close on ``expiry``.
+
+    Counts the U-shaped remainder of today's session, one overnight per session
+    boundary crossed (weekends count as one overnight), and full later sessions.
+    A full close-to-close day is exactly 1/252.
+    """
     today = now.date()
     if expiry < today:
         return 0.0
     close_today = now.normalize() + pd.Timedelta(hours=16)
-    mins_today = min(max((close_today - now).total_seconds() / 60.0, 0.0), SESSION_MINUTES)
-    if expiry == today:
-        return mins_today / MINUTES_PER_YEAR
-    sessions_after = int(np.busday_count(today + _ONE_DAY, expiry + _ONE_DAY))
-    return (mins_today + sessions_after * SESSION_MINUTES) / MINUTES_PER_YEAR
+    mins_left = min(max((close_today - now).total_seconds() / 60.0, 0.0), SESSION_MINUTES)
+    units = SESSION_MINUTES - _cum_weight(SESSION_MINUTES - mins_left)
+    if expiry > today:
+        sessions_after = int(np.busday_count(today + _ONE_DAY, expiry + _ONE_DAY))
+        units += sessions_after * SESSION_MINUTES * (1 + OVERNIGHT_WEIGHT)
+    return units / VARIANCE_UNITS_PER_YEAR
 
 
 @dataclass(frozen=True)

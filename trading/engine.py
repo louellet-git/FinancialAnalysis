@@ -31,8 +31,11 @@ from trading.structures import MULTIPLIER, Structure
 
 @dataclass
 class RiskConfig:
+    """Account rules. ``with_max_risk(250)`` gives the "risk up to $250/trade" mode."""
+
     starting_equity: float = 2_000.0
     risk_per_trade: float = 0.03        # max loss per trade as fraction of equity
+    max_risk_dollars: Optional[float] = None  # hard $ cap on top of the fraction
     max_open_positions: int = 3
     max_total_risk: float = 0.12        # sum of open max-loss / equity
     daily_loss_limit: float = 0.06      # no new entries once down this much today
@@ -41,6 +44,14 @@ class RiskConfig:
     pdt: bool = True
     pdt_equity_threshold: float = 25_000.0
     pdt_max_day_trades: int = 3         # per rolling 5 sessions
+
+    @classmethod
+    def with_max_risk(cls, dollars: float, starting_equity: float = 2_000.0, **kw) -> "RiskConfig":
+        """Per-trade max loss of ``dollars`` at the starting equity, scaling down (never
+        up past ``dollars``) with equity; total open risk allows ~3 such trades (<= 50%)."""
+        frac = dollars / starting_equity
+        return cls(starting_equity=starting_equity, risk_per_trade=frac, max_risk_dollars=dollars,
+                   max_total_risk=min(0.5, 3 * frac), **kw)
 
 
 @dataclass
@@ -169,7 +180,7 @@ class Context:
         d = lambda k: abs(self.quote(symbol, cp, k, expiry).delta)
         # |delta| is monotone in strike (falls for calls, rises for puts): bisect.
         lo, hi = spot * 0.5, spot * 1.5
-        for _ in range(40):
+        for _ in range(22):
             m = 0.5 * (lo + hi)
             if (d(m) > target_delta) == (cp == "C"):
                 lo = m
@@ -191,6 +202,16 @@ class Context:
     @property
     def equity(self) -> float:
         return self._e.equity_now()
+
+    @property
+    def day_trades_left(self) -> int:
+        """Same-day round trips still allowed under PDT in the rolling 5 sessions."""
+        e = self._e
+        if not e.risk.pdt or e.equity_now() >= e.risk.pdt_equity_threshold:
+            return 10**9
+        window_start = np.busday_offset(self.today, -4, roll="backward").astype(object)
+        used = sum(1 for d in e._day_trades if d >= window_start)
+        return max(e.risk.pdt_max_day_trades - used, 0)
 
     @property
     def pending_entries(self) -> int:
@@ -328,6 +349,8 @@ class Backtester:
             if loss_per_unit <= 0:
                 self._reject("nonpositive_max_loss"); continue  # arbitrage-looking quote; skip
             budget = equity * self.risk.risk_per_trade
+            if self.risk.max_risk_dollars is not None:
+                budget = min(budget, self.risk.max_risk_dollars)
             units = min(int(budget // loss_per_unit), self.risk.max_units, o.max_units or 10**9)
             if units < 1:
                 self._reject("too_risky_for_account"); continue

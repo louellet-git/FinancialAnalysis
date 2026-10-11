@@ -25,11 +25,14 @@ def main(argv=None) -> int:
     ap.add_argument("--no-refresh", action="store_true", help="use cached data only")
     ap.add_argument("--no-live", action="store_true", help="price signals synthetically, skip live chain")
     ap.add_argument("--equity", type=float, default=2000.0)
+    ap.add_argument("--max-risk", type=float, metavar="DOLLARS",
+                    help="risk up to this many $ per trade (e.g. 250); overrides --risk")
     ap.add_argument("--risk", type=float, default=0.03)
     args = ap.parse_args(argv)
 
     bots = args.bots or list(discover())
-    risk = RiskConfig(starting_equity=args.equity, risk_per_trade=args.risk)
+    risk = (RiskConfig.with_max_risk(args.max_risk, args.equity) if args.max_risk
+            else RiskConfig(starting_equity=args.equity, risk_per_trade=args.risk))
     rc = 0
     for b in bots:
         try:

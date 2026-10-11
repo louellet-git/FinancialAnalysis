@@ -31,12 +31,27 @@ def test_put_call_parity():
     assert c - p == pytest.approx(S - K * np.exp(-r * t), abs=1e-9)
 
 
-def test_year_fraction_0dte_and_weekend():
-    fri_noon = pd.Timestamp("2026-10-09 12:00", tz=NY)
-    assert year_fraction(fri_noon, date(2026, 10, 9)) == pytest.approx(240 / (252 * 390))
-    # Friday noon -> Monday close: 240 min today + 1 full session (weekend skipped)
-    assert year_fraction(fri_noon, date(2026, 10, 12)) == pytest.approx((240 + 390) / (252 * 390))
-    assert year_fraction(fri_noon, date(2026, 10, 8)) == 0.0
+def test_year_fraction_variance_clock():
+    thu_close = pd.Timestamp("2026-10-08 16:00", tz=NY)
+    fri_open = pd.Timestamp("2026-10-09 09:30", tz=NY)
+    fri_1030 = pd.Timestamp("2026-10-09 10:30", tz=NY)
+    fri = date(2026, 10, 9)
+    # a full close-to-close day is exactly 1/252; the session alone is 1/(252*1.25)
+    assert year_fraction(thu_close, fri) == pytest.approx(1 / 252)
+    assert year_fraction(fri_open, fri) == pytest.approx(1 / 252 / 1.25)
+    # U-shape: after the busy first hour, less than 330/390 of the session variance is left
+    assert year_fraction(fri_1030, fri) < year_fraction(fri_open, fri) * 330 / 390
+    # weekend counts as one overnight: Friday close -> Monday close == one full day
+    assert year_fraction(pd.Timestamp("2026-10-09 16:00", tz=NY), date(2026, 10, 12)) == pytest.approx(1 / 252)
+    assert year_fraction(fri_open, date(2026, 10, 8)) == 0.0
+
+
+def test_overnight_decay_for_long_option():
+    p, vs = SyntheticPricer(), VolSnapshot(0.15, 0.15, 0.0)
+    exp = date(2026, 10, 16)
+    at_close = p.quote("SPY", "C", 500, exp, pd.Timestamp("2026-10-08 16:00", tz=NY), 500, vs).mid
+    next_open = p.quote("SPY", "C", 500, exp, pd.Timestamp("2026-10-09 09:30", tz=NY), 500, vs).mid
+    assert next_open < at_close
 
 
 def test_skew_puts_richer_and_spread_bounds():
@@ -95,6 +110,14 @@ def test_entry_fills_next_bar_open_not_signal_bar():
     strat = _BuyOnce(lambda ctx: vertical("SPY", ctx.expiry(3), "C", 515, 516))
     res = Backtester(strat, md).run()
     assert res.trades[0].entry_time.date() == md.index[1].date()
+
+
+def test_max_risk_dollars_mode_allows_bigger_trades():
+    md = _md([500.0] * 5)
+    wide = lambda ctx: vertical("SPY", ctx.expiry(3), "C", 500, 503)  # ~$150 max loss
+    assert not Backtester(_BuyOnce(wide), md).run().trades
+    res = Backtester(_BuyOnce(wide), md, RiskConfig.with_max_risk(250)).run()
+    assert len(res.trades) == 1 and res.trades[0].max_loss <= 250
 
 
 def test_too_risky_trade_is_rejected():

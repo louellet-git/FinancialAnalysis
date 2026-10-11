@@ -49,6 +49,8 @@ def main(argv=None) -> int:
     ap.add_argument("--include-templates", action="store_true", help="also run _template bots")
     ap.add_argument("--start"), ap.add_argument("--end")
     ap.add_argument("--equity", type=float, default=2000.0)
+    ap.add_argument("--max-risk", type=float, metavar="DOLLARS",
+                    help="risk up to this many $ per trade (e.g. 250); overrides --risk")
     ap.add_argument("--risk", type=float, default=0.03, help="max loss per trade, fraction of equity")
     ap.add_argument("--commission", type=float, default=0.65, help="$ per contract per leg")
     ap.add_argument("--is-fraction", type=float, default=0.7)
@@ -67,8 +69,11 @@ def main(argv=None) -> int:
         print(f"unknown bots: {missing}\navailable: {list(bots)}", file=sys.stderr)
         return 2
 
-    risk = RiskConfig(starting_equity=args.equity, risk_per_trade=args.risk,
-                      commission_per_contract=args.commission)
+    if args.max_risk:
+        risk = RiskConfig.with_max_risk(args.max_risk, args.equity, commission_per_contract=args.commission)
+    else:
+        risk = RiskConfig(starting_equity=args.equity, risk_per_trade=args.risk,
+                          commission_per_contract=args.commission)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     md_cache, rows = {}, []
     for n in names:
@@ -92,7 +97,8 @@ def main(argv=None) -> int:
 
     if rows:
         board = pd.DataFrame(rows)[LEADERBOARD_COLS].sort_values("oos_sharpe", ascending=False)
-        board.to_csv(OUT_DIR / "leaderboard.csv", index=False)
+        tag = f"_risk{int(args.max_risk)}" if args.max_risk else ""
+        board.to_csv(OUT_DIR / f"leaderboard{tag}.csv", index=False)
         with pd.option_context("display.width", 250, "display.max_columns", 30, "display.float_format", "{:.2f}".format):
             print("LEADERBOARD (sorted by out-of-sample Sharpe; option prices are model-priced)")
             print(board.to_string(index=False))
