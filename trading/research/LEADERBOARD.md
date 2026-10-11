@@ -27,6 +27,18 @@ overlapping positions) into -80% to -95% wipeouts. **More risk per trade is not 
 for these bots**; the $250 budget is only useful if a bot is redesigned to use it for
 structures the $60 cap forbade (16-delta condors, wider credit spreads) at 1–2 units.
 
+## Added after the first round: s21 Bollinger Band fade (user request)
+
+Fades the first SPY close outside the 20-day, 2-sigma bands with 0.25-delta credit
+spreads: a bear call spread above the upper band, a bull put spread below the lower
+band, 10 sessions out, 50% profit target. **It needs the $250 budget** (at $60 no
+credit spread fits). At $250: 206 trades, **91% winners**, profit factor 1.60, +84% over
+2005–2026 (2.8%/yr), max drop −15%, in the market about 24% of days. Last 30%: 89%
+winners, +11%. Average win ≈ $24 vs average loss ≈ $155, so one loss erases about six
+wins. Buying put debit spreads at the upper band loses (33–39% winners): SPY doesn't
+actually reverse after the band, it just rarely runs much further. Details:
+`s21_bollinger_fade.md`.
+
 ## What held up, and the caveats
 
 1. **Trend-filtered weekly SPY call debit spreads, held to expiry (s14b / s14).** The

@@ -204,6 +204,19 @@ class Context:
         return self._e.equity_now()
 
     @property
+    def risk_budget(self) -> float:
+        """Max $ loss the engine will allow on a new trade right now (incl. commissions)."""
+        e = self._e
+        budget = e.equity_now() * e.risk.risk_per_trade
+        if e.risk.max_risk_dollars is not None:
+            budget = min(budget, e.risk.max_risk_dollars)
+        return budget
+
+    @property
+    def commission_per_contract(self) -> float:
+        return self._e.risk.commission_per_contract
+
+    @property
     def day_trades_left(self) -> int:
         """Same-day round trips still allowed under PDT in the rolling 5 sessions."""
         e = self._e
