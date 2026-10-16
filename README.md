@@ -48,7 +48,7 @@ python -m analysis.IBM.dcf_drivers_run
 python -m analysis.IBM.dcf_scenarios
 
 # 8b. Investor verdict over the driver engine (no network; price is an input)
-python -m scripts.verdict IBM --price 212.40 --dividend-yield 0.0313
+python -m scripts.verdict IBM --price 212.40
 
 # 9. Test suite — 302 tests, no network (~12s); pytest not in requirements.txt
 python -m pytest

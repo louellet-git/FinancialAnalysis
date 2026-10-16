@@ -29,7 +29,7 @@ pipeline or an audit gate; regenerate, don't hand-edit).
 | `PLANNING/tickets.md` | OPEN TICKETS (consolidated, with source pointers) + historical closed tickets 1–6 + Ticket 7 spec | live (open) / historical (closed) |
 | `PLANNING/HANDOFF.md` | Session handoff — live open-work state; delete items as completed, delete file when empty | live |
 | `PLANNING/token-ledger.md` | Cost-per-run ledger (success metric #1) + targets; update per run | live |
-| `PLANNING/proposals/2026-10-15-investor-verdict-layer.md` | Proposal: investor verdict layer (verdict band, price-implied drivers, convergence-aware returns, scored ledger) + first shipped slice | proposed (for review) |
+| `PLANNING/proposals/2026-10-15-investor-verdict-layer.md` | Proposal: investor verdict layer as five small pieces, each with a value test; piece 2 (verdict band) shipped first | proposed (for review) |
 | `analysis/IBM/README.md` | IBM v3 analysis: fundamentals, net-debt bridge, v3 scenarios ($37/$141/$232), data notes | historical (v3 — superseded by the v4 report for headline numbers; bridge/data notes still referenced by v4) |
 | `analysis/IBM/DRIVERS.md` | v4 assumption register companion table (drivers, items, correlations) | binding, EXCEPT that `driver_model.py` rationale strings govern over its prose (stated in its own header) |
 | `analysis/IBM/DRIVER-REVIEW.md` | Round-1 driver/formula/matrix reviews (19 + 4 consolidations) → dispositions | binding (recorded dispositions; do not re-litigate) |
