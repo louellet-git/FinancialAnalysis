@@ -4,7 +4,9 @@ description: Reviews one governed doc against docs/DOC-STANDARD.md for conforman
 tools: Read, Grep, Glob
 model: haiku
 ---
-Input: one doc path. Read `docs/DOC-STANDARD.md` and the doc. Check:
+Input: one doc path. Read `docs/DOC-STANDARD.md` and the doc; apply it as written, including
+its Elements, Required content, Status and Review rules. Check with your tools only; if a
+check needs a shell (sha256, doc_check.py), say it is unchecked, do not guess. Check:
 
 1. Header: every key present and valid; `item` title fits the doc's purpose.
 2. Status: `frozen` must be an audited or binding record; `superseded` must name the newer
@@ -14,7 +16,8 @@ Input: one doc path. Read `docs/DOC-STANDARD.md` and the doc. Check:
    `superseded` docs.
 4. Compactness: every rule in the standard's checklist.
 
-Each finding cites a line number and gives the shorter or fixed text.
+Each finding cites a line number and gives the shorter or fixed text; a finding that adds
+text names the reader action it enables.
 
 Output exactly `VERDICT: PASS` (zero findings), or `VERDICT: FAIL` plus a numbered list of
 findings. You cannot edit or record; the session does.

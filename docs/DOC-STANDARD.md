@@ -4,7 +4,7 @@ type: plan
 item: 10.22 Information management plan
 status: current
 date: 2026-10-25
-scope: Rules every governed document must meet and how they are checked, for the two owners and their agents.
+scope: Rules every governed document must meet and how they are checked.
 ---
 # Documentation standard
 
@@ -39,7 +39,7 @@ Front matter between `---` lines, `key: value`, exactly these keys:
 | item | `10.<n> <2019 title>`, n in 2..74; or `9 record` |
 | status | draft, current, frozen, superseded |
 | date | YYYY-MM-DD, date of issue |
-| scope | one sentence: purpose, audience, scope |
+| scope | one sentence: purpose and scope. Audience is always the two owners and their agents |
 
 The registry of items is the headers: `python scripts/doc_check.py list`.
 
@@ -49,13 +49,17 @@ The registry of items is the headers: `python scripts/doc_check.py list`.
 - Change history: `git log -- <path>` plus the PR.
 - Approval: merge of the PR carrying the item's PASS review row; either owner may merge.
 - References: inline paths or links.
-- Glossary: omitted by tailoring (audience: the two owners and their agents). A doc
-  defines any non-standard term at first use.
+- Glossary: omitted (T). Standard finance, accounting, statistics and software terms and
+  ticker symbols need no definition; define a repo-coined term at first use or link its
+  defining doc.
 
 ## Required content by type
 
-The header meets date, status and scope for every type. R = by reference (above), T = omitted
-by tailoring. The body holds the rest, each element present or tailored out; the critic judges.
+Header: date, status, scope for every type. R = by reference (above); T = tailored out. Body:
+every other element the doc has content for, present or met by a link to the governed doc
+holding it. Never add a section only to state an element is absent. The scope line is the
+summary unless the conclusions need more; notation is needed only for symbols defined neither
+at use nor in a linked source.
 
 | Type | R | T | Body |
 |---|---|---|---|
@@ -70,10 +74,13 @@ by tailoring. The body holds the rest, each element present or tailored out; the
 
 ## Status
 
-- `frozen`: an audited or binding record (e.g. `analysis/IBM/report/*`, `REVIEW.md`,
-  `DRIVER-REVIEW.md`). `superseded`: replaced by a newer item, named in the doc. Both get the
-  header check only, are never compacted, and are outside the duplicate-line rule.
-- `draft` and `current`: full critic review. Every status needs a PASS row (see Review).
+- `frozen`: an audited or binding record (e.g. `analysis/IBM/report/*`,
+  `analysis/IBM/REVIEW.md`, `analysis/IBM/DRIVER-REVIEW.md`). `superseded`: replaced by a newer
+  item, named in its scope line. Both get the header check only, are never compacted, and are
+  outside the duplicate-line rule. The header governs over any status line in the body.
+- `draft` and `current`: full critic review.
+- Records (type record): history is the body, so Compactness 3 does not apply; rows are
+  append-only, never edited.
 
 ## Compactness (the critic's checklist)
 
@@ -88,7 +95,8 @@ by tailoring. The body holds the rest, each element present or tailored out; the
 
 ## Review
 
-1. Run the `doc-critic` agent on the doc.
+1. Run the `doc-critic` agent on the doc. A finding that adds text names the reader action it
+   enables; prefer cuts.
 2. On PASS: `python scripts/doc_check.py record <path> PASS`, then commit `docs/doc-reviews.tsv`
    with the doc.
 3. On FAIL: fix, re-run.
@@ -111,7 +119,7 @@ not that the critic ran.
 ## Plan elements
 
 - Tasks, tools and methods, quality measures, review and reporting: Review, Compactness,
-  Enforcement. Responsibilities: the session records, either owner merges (Approval).
+  Enforcement. Responsibilities: Review, Approval.
 - Interfaces: CI and the hook. Other plans: `docs/COLLABORATION.md`. Risks: the unseen paths
   in Enforcement. Change procedure: edit through a PR; Review voids old rows.
 - Tailored out: schedule (standing), budget (none), resources (none), environment and
