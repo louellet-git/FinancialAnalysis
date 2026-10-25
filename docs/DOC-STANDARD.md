@@ -94,6 +94,8 @@ recorded for the current content, not that the critic ran.
 ## Enforcement
 
 `python scripts/doc_check.py check` fails on a bad header, a duplicate id, a `draft` or
-`current` doc without a PASS row, or a line of 60+ characters in two docs (code fences and
-table separators excepted). A PreToolUse hook denies `git commit` while the staged docs
-fail; CI runs the same check.
+`current` doc without a PASS row, or a line of 60+ characters in two docs (code fences,
+table separators and `frozen` or `superseded` docs excepted). A PreToolUse hook denies
+`git commit` while the docs it would commit fail (the index; the worktree for `-a` or a
+pathspec); CI runs the same check. The hook does not see GitHub MCP writes (`push_files`,
+`create_or_update_file`) or commits not made through Bash; CI still catches them.

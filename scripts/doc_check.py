@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 from datetime import date, datetime
@@ -20,12 +21,19 @@ EXEMPT = re.compile(r"(\.claude|\.github)/.*|PLANNING/board/T-[^/]*\.md")
 ITEM = re.compile(r"10\.([1-9]\d?) \S.*")
 SEPARATOR = re.compile(r"[|:\s-]+")
 COMMIT = re.compile(r"(?:^|[;&|])\s*git(?:\s+-C\s+\S+)?\s+commit\b", re.M)
+ARG_OPTS = {"--message", "--file", "--author", "--date", "--template", "--cleanup", "--fixup", "--squash",
+            "--reuse-message", "--reedit-message", "--trailer", "--pathspec-from-file"}
 REVIEWS = "docs/doc-reviews.tsv"
 FIX = "Fix: run the doc-critic agent on each doc, then python scripts/doc_check.py record <path> PASS and git add " + REVIEWS
 
 
 def _git(root, *args, check=True):
     return subprocess.run(["git", "-C", str(root), *args], capture_output=True, check=check).stdout
+
+
+def _sha(raw):
+    """sha256 hex of the content with CRLF read as LF."""
+    return hashlib.sha256(raw.replace(b"\r\n", b"\n")).hexdigest()
 
 
 def _is_date(s):
@@ -82,10 +90,11 @@ def problems(root, staged=False):
             out += [f"{name}: unknown key {k}" for k in h if k not in KEYS]
             out += [f"{name}: bad {k} {h[k]}" for k, ok in RULES.items() if h.get(k) and not ok(h[k])]
             ids.setdefault(h.get("id"), []).append(name)
-            if h.get("status") in ("draft", "current") and reviews.get((name, hashlib.sha256(raw).hexdigest())) != "PASS":
+            if h.get("status") in ("draft", "current") and reviews.get((name, _sha(raw))) != "PASS":
                 out.append(f"{name}: no PASS review row for current content")
+        frozen = h is not None and h.get("status") in ("frozen", "superseded")
         fenced = False
-        for ln in raw.decode().splitlines():
+        for ln in ([] if frozen else raw.decode().splitlines()):
             s = ln.strip()
             fenced ^= s.startswith("```")
             if not fenced and not s.startswith("```") and len(s) >= 60 and not SEPARATOR.fullmatch(s):
@@ -93,6 +102,37 @@ def problems(root, staged=False):
     out += [f"duplicate id {i}: {', '.join(ns)}" for i, ns in ids.items() if i and len(ns) > 1]
     out += [f"duplicate line in {', '.join(sorted(ns))}: {s[:50]}" for s, ns in lines.items() if len(ns) > 1]
     return out
+
+
+def worktree_commit(command):
+    """True when the first `git commit` in command takes worktree content: -a/--all or a pathspec."""
+    lex = shlex.shlex(command[COMMIT.search(command).end():], posix=True, punctuation_chars=True)
+    lex.commenters = ""
+    try:
+        args = iter(list(lex))
+    except ValueError:
+        return False
+    for t in args:
+        if set(t) <= set(";&|"):
+            return False
+        if t == "--":
+            return next(args, None) is not None
+        if t.startswith("--"):
+            if t == "--all":
+                return True
+            if t in ARG_OPTS:
+                next(args, None)
+        elif t.startswith("-") and len(t) > 1:
+            for j, c in enumerate(t[1:]):
+                if c == "a":
+                    return True
+                if c in "mFcCt":
+                    if j == len(t) - 2:
+                        next(args, None)
+                    break
+        else:
+            return True
+    return False
 
 
 def hook():
@@ -104,7 +144,7 @@ def hook():
         root = os.environ.get("CLAUDE_PROJECT_DIR") or _git(".", "rev-parse", "--show-toplevel").decode().strip()
         if not Path(root, "docs/DOC-STANDARD.md").exists():
             return 0
-        found = problems(root, staged=True)
+        found = problems(root, staged=not worktree_commit(command))
         if not found:
             return 0
         more = [f"... and {len(found) - 20} more"] if len(found) > 20 else []
@@ -146,7 +186,7 @@ def main(argv=None):
         if not ledger.exists():
             ledger.write_text("date\tpath\tsha256\tverdict\treviewer\n")
         row = [date.today().isoformat(), f.resolve().relative_to(Path(a.root).resolve()).as_posix(),
-               hashlib.sha256(f.read_bytes()).hexdigest(), a.verdict, a.reviewer]
+               _sha(f.read_bytes()), a.verdict, a.reviewer]
         with ledger.open("a") as fh:
             fh.write("\t".join(row) + "\n")
         return 0
