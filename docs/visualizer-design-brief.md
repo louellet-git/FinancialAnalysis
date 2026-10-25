@@ -4,7 +4,7 @@ type: description
 item: 10.15 Design description
 status: current
 date: 2026-10-25
-scope: Contract for a purely cosmetic restyle of the single-page report from scripts/visualize_dcf.py, for a design agent.
+scope: Contract for a purely cosmetic restyle of the single-page report from scripts/visualize_dcf.py.
 ---
 # Visualizer design brief
 
@@ -15,7 +15,7 @@ by Python, not served: static HTML (header, stat chips, tables, notes, footer)
 interleaved with interactive plotly.js charts. No app shell, routing or data fetching
 (constraint 1); opened from disk, emailed or printed (constraint 4).
 
-Engines: "aggregate" = scenario MC (`financial_analysis/dcf.py`, presets in `scenarios.py`); "driver" = `financial_analysis/driver_dcf.py`; "mechanical vintages" = point-in-time backtest (`financial_analysis/backtest.py`).
+Labels: "aggregate" = classic engine, "driver" = driver engine, "mechanical vintages" = backtest; modules: docs/ARCHITECTURE.md.
 
 Reference render: `python -m scripts.visualize_dcf IBM` (needs the repo's IBM data).
 Page length is ≈4,900 px at 1440 px wide.
@@ -93,7 +93,7 @@ muted block with a labeled "not available" message.
 - **Scenario summary** — wide HTML table: 3 rows × 8–9 columns; first column
   carries a color dot (`span.dot`) keying the scenario hue.
 
-### 5. Driver-based model (conditional; when present: 3 wide + 2 half cards + meta line)
+### 5. Driver-based model (conditional on `analysis/<TICKER>/driver_model.py` exposing `build()`; when present: 6 wide + 2 half cards + meta line)
 - **Segment revenue history** — stacked columns per fiscal year (~3–8 years,
   2–8 segments), categorical slot colors in fixed order, 2 px surface gap
   between stack segments (white marker outline). Legend present.
@@ -112,6 +112,11 @@ muted block with a labeled "not available" message.
   below the top row); 2 px ink price line labeled above the plot.
 - **Driver attribution tornado** — same construction as the aggregate
   tornado, one row per stochastic driver.
+- **Path explorer (3 wide cards)** — FCFF path spaghetti (~300 sampled paths,
+  `_SPAGHETTI_TARGET`: every path beyond P1/P99 plus a seeded middle sample); parallel
+  coordinates (2,000 paths, `_PARCOORDS_TARGET`); outlier-paths table (bottom/top 10 by
+  per-share value, each driver's draw with its z-score, |z| ≥ 1.5 bold; the print-safe
+  table form of the spaghetti hover data).
 - **Engine meta line** — a full-width muted paragraph (sims, seed,
   horizon, net debt, shares, TV share; optionally the fraction of paths with
   pinned terminal growth).
@@ -149,7 +154,8 @@ muted block with a labeled "not available" message.
   bars, −35° tick labels. Value labels on bars only when ≤8 bars; otherwise
   tooltips carry the values.
 - **Volatility skew by expiry** — diverging columns around a zero hairline:
-  positive cool, negative warm. Same labeling rule as implied move.
+  positive cool, negative warm. Same labeling rule as implied move. Expiries under 2 days
+  (`_SKEW_MIN_DTE`) are dropped: near-expiry wing IVs are solver noise.
 - **Open interest by strike** — heatmap, 4 expiry rows × ~40 strike columns,
   sequential ramp (first → last step) with a thin colorbar
   ("OI"), 2 px cell gaps, 2 px ink spot line labeled "Spot $S" above
@@ -208,7 +214,7 @@ docs/design-specs/2026-07-16-ratings-desk-blueprint.md; a restyle changes those 
 6. **Color discipline.** Categorical hue order stays fixed; scenario hues
    follow the scenario (bear/base/bull) everywhere they appear; diverging
    midpoint stays neutral; sequential ramp stays single-hue. If the palette
-   is re-branded, validate it (lightness band, chroma floor, adjacent-pair CVD ΔE ≥ 12, 3:1 surface contrast) as in `docs/design-specs/2026-07-16-ratings-desk-blueprint.md`, paragraph "CVD / contrast confirmation", before shipping.
+   is re-branded, validate it (adjacent-pair CVD ΔE ≥ 12, 3:1 surface contrast) as in `docs/design-specs/2026-07-16-ratings-desk-blueprint.md`, "CVD / contrast confirmation", before shipping.
 7. **Responsive floor.** Two-column grid ≥1100 px, single column below;
    tables scroll horizontally inside their cards; the page body must never
    scroll horizontally.

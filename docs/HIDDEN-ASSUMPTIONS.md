@@ -4,7 +4,7 @@ type: description
 item: 10.15 Design description
 status: current
 date: 2026-10-25
-scope: Registry of non-obvious assumptions and traps in the pipeline and IBM model, for agents and both owners; entry numbers are cited elsewhere and stay stable.
+scope: Registry of non-obvious assumptions and traps in the pipeline and IBM model; entry numbers are cited elsewhere and stay stable.
 ---
 # Trap registry
 
@@ -106,7 +106,7 @@ judgment, not a fitted parameter. Evidence: `analysis/IBM/driver_model.py`
 `analysis/IBM/DRIVER-REVIEW.md` ma_recurrence row.
 
 **12. "Tails are decorative."** Each path holds one growth draw for all ten years (no
-mean reversion — ticket T-DCF-1, the largest known distortion), so the left tail is
+mean reversion — ticket T-DCF-1, PLANNING/tickets.md, the largest known distortion), so the left tail is
 understated even after the v4 correlation matrix fattened it. Standing language: "P50s
 are robust; P10s are optimistic. No margin-of-safety claim is made from these tails."
 Do not quote P10/P90 as decision-grade. Evidence:
@@ -114,8 +114,7 @@ Do not quote P10/P90 as decision-grade. Evidence:
 `analysis/IBM/REVIEW.md` (T-DCF-1: "Until then, P10/P90 are decorative");
 `financial_analysis/driver_dcf.py` (module docstring, disclosed limitation).
 
-**13. The scenarios registry still carries IBM v3 values while the engine moved to
-v4 — deliberate.**
+**13. The scenarios registry carries IBM v3 values; the engine is v4 — deliberate.**
 `financial_analysis/scenarios.py` (`_ibm_v3`, `_SCENARIO_OVERRIDES["IBM"]`,
 `CAPITAL_OVERRIDES["IBM"]`) encodes the v3 aggregate framework (base P50 $141 family:
 g 2.15%, WACC 7.5%, margin 14.5%). The v4 headline is recorded in analysis/IBM/DRIVERS.md (Output) and computed only by
@@ -127,14 +126,13 @@ model"). Net debt ($54.0B) and shares (948.7M) agree across both. If you read
 **14. Truncation is clip-after-correlation.** `truncnorm` drivers are clipped to
 [lo, hi] AFTER the correlated transform — not a true truncated normal: mass piles on the
 bounds and realized correlations distort. Second-order for mild truncations; check no
-bound sits within ~2σ of its mean (g_infrastructure's hi=+3% sits at 1.6σ — the bound
-mass is disclosed in DRIVERS.md). Evidence: `financial_analysis/driver_dcf.py` (module
-docstring); `analysis/IBM/DRIVERS.md` driver table.
+bound sits within ~2σ of its mean (bound masses: analysis/IBM/DRIVERS.md driver table).
+Evidence: `financial_analysis/driver_dcf.py` (module docstring).
 
 **15. The two engines guard degenerate terminal values differently.** Classic engine:
 `np.clip(wacc − tg, 0.001, None)` — near-degenerate paths CAN dominate its tails (F12).
-Driver engine: joint guard `tg_eff = min(tg, wacc − 0.02)` with the pinned fraction
-reported. Do not assume classic-engine tail output has the driver engine's protections.
+Driver engine: joint guard, pinned fraction reported (docs/ARCHITECTURE.md, Driver-based
+engine). Do not assume classic-engine tail output has the driver engine's protections.
 Evidence: `financial_analysis/dcf.py` (terminal-value clip);
 `driver_dcf.effective_terminal_growth`; `analysis/IBM/REVIEW.md` F12/T-DCF-2.
 
@@ -151,8 +149,8 @@ usable periods per vintage and records skips. Evidence:
 header-only sheets, while the "Done: ... across N tabs" message counts populated groups.
 Evidence: `scripts/analyze.py` (`write_xlsx`, sheet table).
 
-**18. `data/` outputs are gitignored and untracked**. Never commit pipeline-output churn. Evidence: `git ls-files data/`;
-`.gitignore`; `CLAUDE.md` §Orchestration norms.
+**18. `data/` outputs are gitignored and untracked.** Commit rule: CLAUDE.md §Orchestration
+norms. Evidence: `git ls-files data/`; `.gitignore`.
 
 **19. RPO rows hide on the Balance Sheet tab.** `remaining_performance_obligation` is a
 disclosure fact but is written to the Balance Sheet tab with `statement="disclosure"`
@@ -219,8 +217,7 @@ never restart (vision ✦6b).
 Evidence: `PLANNING/handoff/`; reusable-dcf-vision.md ✦6b.
 
 **29. Done work may sit on another branch.** Check `git log --all --oneline -- <path>`
-before concluding something is missing. Base PRs on `main`; never switch branches in a
-shared tree; use `wt-*` worktrees.
+before concluding something is missing. Branch rules: CLAUDE.md §Orchestration norms.
 Evidence: `git log --all --oneline -- <path>`.
 
 **30. LF/CRLF warnings are normal; PowerShell 5.1 quirks are real.** `core.autocrlf` may

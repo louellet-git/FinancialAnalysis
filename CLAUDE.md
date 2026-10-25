@@ -48,13 +48,12 @@ yet ticketed: `PLANNING/tickets.md` §OPEN TICKETS.
    `analysis/IBM/README.md` is superseded (v3); keep its net-debt bridge and data notes,
    which v4 still cites.
 6. **Reports and `frozen`/`superseded` docs are never edited.** `analysis/IBM/report/*`
-   was audited (`analysis/IBM/report/SOURCE-AUDIT.md`) against the engine on its date; do not edit published
-   reports to "fix" them — supersede with a new version.
+   was audited (`analysis/IBM/report/SOURCE-AUDIT.md`) against the engine on its date; do
+   not edit published reports to "fix" them — supersede with a new version.
 7. **Evidence and design contracts bind.** `analysis/IBM/research-ledger.md` holds the
-   frozen source-tagged facts the model consumes; 
-   `docs/visualizer-design-brief.md` and
-   `docs/design-specs/2026-07-16-ratings-desk-blueprint.md` bind restyles of
-   `visualize_dcf` output.
+   frozen source-tagged facts the model consumes; `docs/visualizer-design-brief.md` and
+   `docs/design-specs/2026-07-16-ratings-desk-blueprint.md` bind restyles of `visualize_dcf`
+   output.
 8. `README.md`, `context.json`, `docs/ARCHITECTURE.md`, `docs/HIDDEN-ASSUMPTIONS.md` are
    informative orientation; `THOUGHTS` is a raw idea scratchpad.
 

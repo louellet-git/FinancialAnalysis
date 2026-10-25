@@ -10,13 +10,13 @@ scope: Backlog not yet on the board, with its sources.
 
 > A ticket is done when its smoke test prints real output the next ticket consumes.
 
-Open lines name their authoritative source. Work in progress: `python scripts/board.py status`.
+Open lines name their authoritative source. "Vision" = PLANNING/reusable-dcf-vision.md (✦n amendments, Ln layers, Pn phases). Work in progress: `python scripts/board.py status`.
 
 ## OPEN TICKETS
 
 ### Queued work (session handoff)
 
-- **DUOL driver build**: DUOL is consensus-anchored only, bands decorative (`PLANNING/token-ledger.md` DUOL row); promote to a driver-model frontier run (needs either person's sign-off, vision ✦6a) or leave as screening output.
+- **DUOL driver build**: DUOL is consensus-anchored only, bands decorative (mechanical backtest 0/6: docs/ARCHITECTURE.md, Backtest harness; run record: `PLANNING/token-ledger.md` DUOL row); promote to a driver-model frontier run (needs either person's sign-off, vision ✦6a) or leave as screening output.
 - **ORCL frontier run** (ticker #2), then basket and cross-sectional gap decomposition — board T-20261025-orcl-frontier-run; vision ✦1 basket amendment.
 - **IBM Q2 grading** — board T-20261025-ibm-q2-grading (scope: 5-item watch list, first bet-ledger entries, 2026 mechanical vintage).
 
@@ -40,7 +40,7 @@ Open lines name their authoritative source. Work in progress: `python scripts/bo
 
 ### Importer / pipeline
 
-- **Ticket 7 — segment revenue extraction** from filing-level XBRL instance documents (companyfacts strips dimensional facts) — full spec below in this file.
+- **Ticket 7 — segment revenue extraction** from filing-level XBRL instance documents — full spec below in this file.
 - **requirements.txt kept current** with actual needs on every dependency change — THOUGHTS item 1.
 - **News-scan idea** (unscoped): scan ticker news for knock-on effects on statement items; shock the valuation — THOUGHTS item 2.
 
@@ -50,12 +50,8 @@ Open lines name their authoritative source. Work in progress: `python scripts/bo
 
 ## Ticket 7 — Segment Revenue Extraction ⬜ OPEN
 - **Title:** Extract per-segment revenue from filing-level XBRL (dimensional facts)
-- **Opened:** 2026-07-17 (P1 importer-completeness)
-- **Finding that motivates it:** The SEC `companyfacts` JSON API strips dimensional
-  facts — every entry carries exactly `{accn, end, filed, form, fp, frame, fy, start,
-  val}`, no segment axis/member metadata (verified across all us-gaap concepts in
-  IBM's cached payload). `PeriodFinancials.segment_revenue` therefore stays `None`
-  from this source; the field is reserved and documented in `importer.py`.
+- **Phase:** P1 importer-completeness.
+- **Finding:** SEC `companyfacts` strips dimensional facts (every entry has only `{accn, end, filed, form, fp, frame, fy, start, val}`; checked on all us-gaap concepts in IBM's cached payload). `PeriodFinancials.segment_revenue` stays `None` from this source; reserved in `importer.py`.
 - **Description:** Segment-tagged revenue (e.g. `us-gaap/RevenueFromContractWithCustomerExcludingAssessedTax`
   dimensioned by `us-gaap:StatementBusinessSegmentsAxis`) lives in the filing-level
   XBRL instance documents (R-files / `_htm.xml` under the filing accession) and in
