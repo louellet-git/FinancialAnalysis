@@ -79,19 +79,11 @@ yet ticketed: `PLANNING/tickets.md` §OPEN TICKETS.
   targets: frontier ticker ≤ 500k, repeat run ≤ 50k subagent tokens).
 - Session handoffs live in `PLANNING/handoff/<first name>.md` (rules in its README).
 
-## Review pipeline (roles as evidenced in .claude/agents/ and PLANNING docs)
+## Review pipeline
 
-Vendored doc-review framework (`.claude/agents/FRAMEWORK.md`, from
-doc-review-framework@d9d9075). Every client-grade report runs:
-
-1. **valuation-analyst** drafts the report;
-2. **valuation-skeptic** adversarial substance review, loop until sign-off (this loop
-   produced the IBM v1→v3 retraction, REVIEW.md, and the 19+4 driver reviews);
-3. **memo-reviewer** grades content/format against `memo-review-rubric.md` (scores,
-   never edits), analyst fixes, loop until PASS — a PostToolUse hook
-   (`scripts/memo-review-reminder.sh`) enforces this on any freshly produced .docx;
-4. **report-auditor** — final gate: claim→source traceability, re-derives every number
-   with the engine, softens over-claims (output: `analysis/IBM/report/SOURCE-AUDIT.md`).
+Every governed doc follows `docs/DOC-STANDARD.md` (ISO/IEC/IEEE 15289, tailored); the
+Haiku `doc-critic` agent reviews conformance and compactness, enforced by hook and CI.
+(The doc-review-framework agents were removed 2026-10-25.)
 
 The vision doc (L5) extends this to three tiers — frontier fan-outs for new
 templates/mappings, a **charter review on every run** (ACCEPT required before
