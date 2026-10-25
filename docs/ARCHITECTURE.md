@@ -17,26 +17,24 @@ SEC EDGAR (companyfacts JSON API)          yfinance
         │                  │             estimates.py   (forward consensus snapshots)
         ▼                  ▼             options.py     (option-chain snapshots)
    cache.py ──► importer.py + xbrl_tags.py    │
-                     │                        │
-                     ▼                        │
-              schema.py (PeriodFinancials)    │
-                     │                        │
-                     ▼                        ▼
-              store.py (data/processed/TICKER.json — statements ONLY)
-                     │
-        ┌────────────┼───────────────────────────────┐
-        ▼            ▼                               ▼
-   dcf.py       driver_dcf.py                  backtest.py
- (classic MC)  (driver-based MC engine)     (point-in-time vintages)
-        │            │
-        │      analysis/IBM/driver_model.py (per-ticker register)
-        ▼            ▼
-  scenarios.py   scripts/visualize_dcf.py ──► data/processed/TICKER_dcf.html
-        │
-  scripts/analyze.py ──► data/processed/TICKER_financials.xlsx (9 tabs)
+                     │                        └─────────────────────────────┐
+                     ▼                                                      │
+              schema.py (PeriodFinancials)                                  │
+                     │                                                      │
+                     ▼                                                      │
+              store.py (data/processed/TICKER.json — statements ONLY)       │
+                     │                                                      │
+        ┌────────────┼───────────────────────────────┐                      │
+        ▼            ▼                               ▼                      │
+   dcf.py       driver_dcf.py                  backtest.py                  │
+ (classic MC)  (driver-based MC engine)     (point-in-time vintages)        │
+        │            │                                                      │
+        │      analysis/IBM/driver_model.py (per-ticker register)           │
+        ▼            ▼                                                      ▼
+  scenarios.py   scripts/visualize_dcf.py ──► TICKER_dcf.html     scripts/analyze.py ──► TICKER_financials.xlsx (9 tabs)
 ```
 
-Market data stays out of the JSON store: docs/HIDDEN-ASSUMPTIONS.md #6.
+(`analyze.py` also reads the statements from `store.py`.)
 
 ## The two DCF engines
 
@@ -59,13 +57,11 @@ stochastic objects.
 
 - **Parameter-MC, one draw per path.** Each of the 10,000 paths draws one value per
   stochastic driver (e.g. one software growth rate) and holds it constant across all 10
-  projection years. There is no year-to-year dynamics (no AR(1) mean reversion — that is
-  ticket T-DCF-1, PLANNING/tickets.md, disclosed in the module docstring). This widens far-year dispersion
-  and understates the left tail; tails are decorative (HIDDEN-ASSUMPTIONS #12).
+  projection years. No year-to-year dynamics (HIDDEN-ASSUMPTIONS #12).
 - **Joint sampling.** Stochastic drivers are drawn as correlated standard normals (full
   pairwise correlation matrix, Cholesky-factorized, validated positive-definite — never
   silently repaired), then transformed to each driver's marginal as `mean + std·z`.
-  Truncated drivers are clipped after correlation (HIDDEN-ASSUMPTIONS #14).
+  Truncated drivers: HIDDEN-ASSUMPTIONS #14.
 - **Per-path WACC.** WACC is computed per path from CAPM drivers (`rf`, `beta`, `erp`,
   `kd_spread`, `tax_rate`, `equity_weight`), and the after-tax cost of debt is *derived*
   from the same path's risk-free draw: `(rf + spread)·(1 − tax)`. Deriving kd from rf
@@ -125,9 +121,9 @@ so treat their bands as decorative until a driver build exists.
 | `market_data.py` | yfinance daily OHLCV (`load_prices`, cached at `data/raw/TICKER/prices.json`) and earnings surprises (`load_earnings_surprises`). |
 | `options.py` | yfinance option-chain snapshots (dated, one per day, `data/raw/TICKER/options/YYYY-MM-DD.json`) + derived per-expiry metrics: ATM IV, straddle-mid implied move, 90/110 skew, put/call volume & OI ratios (`fetch_option_chain`, `compute_chain_metrics`, `list_snapshots`, `load_snapshot`). |
 | `scenarios.py` | Bear/base/bull presets (`DEFAULT_SCENARIOS` generic mature-large-cap; `_SCENARIO_OVERRIDES["IBM"]` = v3 framework), `CAPITAL_OVERRIDES` (IBM: HIDDEN-ASSUMPTIONS #13), `capital_structure_for` (derives net debt from latest 10-K: long_term_debt + short-term borrowings from raw_extras − cash; shares_outstanding falling back to diluted). |
-| `schema.py` | Dataclasses: `PeriodFinancials` (~60 statement fields + `remaining_performance_obligation`, reserved `segment_revenue`, `raw_extras`; derived `free_cash_flow = OCF − abs(capex)` and `fcf_margin`), `CompanyFinancials`, `PricePoint`, `EarningsEstimate`, `EarningsSurprise`, `OptionQuote`, `OptionChainSnapshot`, `ConsensusEstimates`. |
+| `schema.py` | Dataclasses: `PeriodFinancials` (~60 statement fields + `remaining_performance_obligation`, reserved `segment_revenue`, `raw_extras`; derived `free_cash_flow` (sign trap: HIDDEN-ASSUMPTIONS #7) and `fcf_margin`), `CompanyFinancials`, `PricePoint`, `EarningsEstimate`, `EarningsSurprise`, `OptionQuote`, `OptionChainSnapshot`, `ConsensusEstimates`. |
 | `store.py` | JSON persistence `data/processed/TICKER.json`, periods only (see Data flow); in-memory session cache; `get_series`/`compare` query helpers with metric-name validation. |
-| `xbrl_api.py` | companyfacts fetch + series extraction: filters by form type/unit, deduplicates by end date keeping the **latest-filed** entry, returns last `n` entries. |
+| `xbrl_api.py` | companyfacts fetch + series extraction: filters by form type/unit, deduplicates by end date (HIDDEN-ASSUMPTIONS #4), returns last `n` entries. |
 | `xbrl_tags.py` | The concept registry: `TagSpec` (fallback concept lists, unit, sign_flip) for income statement / balance sheet / cash flow / disclosure (RPO) fields, plus `STATEMENT_MAP` and `UNIT_MAP`. Inline comments document precedence rationales (interest_income, dividends_paid). |
 
 ## `scripts/`
@@ -136,7 +132,7 @@ CLI flags for the first six scripts below (the pipeline): README.md §Pipeline c
 
 | Script | What it does |
 |---|---|
-| `analyze.py` | Full pipeline: import → attach prices/surprises/consensus/options → `data/processed/TICKER_financials.xlsx`. Writes the nine-sheet workbook (Income Statement, Balance Sheet, Cash Flow, Raw, Prices, Estimates, Estimates Fwd, Options, Options Summary; HIDDEN-ASSUMPTIONS #17). RPO rows share the Balance Sheet tab with `statement=disclosure`. |
+| `analyze.py` | Full pipeline: import → attach prices/surprises/consensus/options → `data/processed/TICKER_financials.xlsx`. Writes the nine-sheet workbook (Income Statement, Balance Sheet, Cash Flow, Raw, Prices, Estimates, Estimates Fwd, Options, Options Summary; HIDDEN-ASSUMPTIONS #17). RPO rows: HIDDEN-ASSUMPTIONS #19. |
 | `import_financials.py` | Import + save JSON only, no xlsx. |
 | `import_edgar.py` | Bulk full-index filing download (archival fallback path — companyfacts is the primary parse path). |
 | `run_dcf.py` | Classic-engine MC DCF on stored data; no network. |
@@ -156,7 +152,7 @@ CI (`.github/workflows/`): `tests.yml`, `main-guard.yml`, `branch-cleanup.yml` (
 | Entry point | What it does |
 |---|---|
 | `python -m analysis.IBM.dcf_scenarios` | v3 aggregate framework console report: FCFF v3 margins, paired (growth, f) scenarios, WACC grid, f-locus. Not a headline source (see next row); kept reproducible. |
-| `python -m analysis.IBM.dcf_drivers_run` | v4 driver-engine runner: headline P10/P50/P90 + attribution, E/V fixed-point iteration, f-locus (sweep of f from 0 to 1; g_software mean moves WITH f; HIDDEN-ASSUMPTIONS #11), SBC-drift locus, beta locus, supply-shock correlation and τ=0 (no debt tax shield) disclosure runs, implied-reinvestment check. Seed 7, 10k sims, 10y. |
+| `python -m analysis.IBM.dcf_drivers_run` | v4 driver-engine runner: headline P10/P50/P90 + attribution, E/V fixed-point iteration, f-locus (HIDDEN-ASSUMPTIONS #11), SBC-drift locus, beta locus, supply-shock correlation and τ=0 (no debt tax shield) disclosure runs, implied-reinvestment check. Seed 7, 10k sims, 10y. |
 
 ## Tests
 

@@ -24,20 +24,20 @@ Page length is ≈4,900 px at 1440 px wide.
 
 ```
 <body>
-├── <header>                          h1 title, 2 meta lines, stat-chip row
+├── <header>                          h1 title, meta lines, stat-chip row
 ├── section.rsec  "Price & valuation"        (h2.section-h + div.grid)
 ├── section.rsec  "Fundamentals"
 ├── section.rsec  "Aggregate DCF scenarios"
 ├── section.rsec  "Driver-based model"       (conditional content)
 ├── section.rsec  "Backtest — mechanical vintages"
 ├── section.rsec  "Options market"           (conditional content)
-└── <footer>                          3 provenance/engine lines
+└── <footer>                          provenance/engine lines
 ```
 
-Each `section.rsec` holds an `h2.section-h` (hairline bottom border) and a
-`div.grid`: 2 columns (`repeat(2, minmax(0,1fr))`); breakpoint per constraint 7. Cards are
-`section.card` blocks (1 px hairline border, `overflow-x: auto`); `.card.wide` spans
-both columns. Every card is `h3` title + `p.sub`
+Each `section.rsec` holds an `h2.section-h` (flex row; hairline `::after` rule to its right)
+and a `div.grid`: 2 columns (`repeat(2, minmax(0,1fr))`); breakpoint per constraint 7.
+Cards: `section.card`, 1 px hairline border; tables scroll in `div.tblwrap`
+(`overflow-x: auto`); `.card.wide` spans both columns. Every card is `h3` title + `p.sub`
 caption (muted) + body (a plotly div, an HTML table, or a `p.note`).
 
 When a section's data is missing the card body is a `p.note` — a quiet
@@ -46,8 +46,8 @@ muted block with a labeled "not available" message.
 ## Section inventory (every panel)
 
 ### 1. Header band (static HTML)
-- `h1` "TICKER — Company report", company name and a meta line (as-of date, net
-  debt, share count, price source) in secondary ink.
+- `h1` "TICKER — Company report", then two meta lines: company name; as-of date, net
+  debt, share count, price source; both in muted ink.
 - **Stat-chip row** (`div.chips`, flex, 12 px gap): 6 chips (4 when the price is unavailable: no Market cap, no accent). Each `div.chip`
   is muted label / semibold ink value / optional muted sub-label. Chips: Last
   price, Market cap, Bear P50, Base P50, Bull P50, and "Base P50 vs price" — the
@@ -55,14 +55,14 @@ muted block with a labeled "not available" message.
   delta-up (upside) or delta-down (downside) color.
 
 ### 2. Price & valuation (two wide chart cards)
-- **Price history** — plotly line (2 px, categorical slot 1), up to ~3,300 weekly
-  points spanning decades. One direct end-label (last close). Linear/log
+- **Price history** — plotly line (2 px, categorical slot 1), up to ~3,300
+  points spanning decades (weekly before the trailing year, daily within it). One direct end-label (last close). Linear/log
   toggle (see Current interactions). Height 380 px.
 - **Price vs valuation — 6-month view** — daily close line (2 px, primary
-  ink, ~126 points) over: a translucent band (base scenario P10–P90, base
+  ink; two years of dailies, default window the trailing 6 months, ~126 points) over: a translucent band (base scenario P10–P90, base
   scenario hue at 10% opacity) and three 2 px horizontal scenario-P50
   lines (bear / base / bull scenario hues), each direct-labeled at the
-  right edge ("Bull P50 $232"). Band labeled "Base P10–P90" at top-left.
+  right edge ("Bull P50 $V"). Band labeled "Base P10–P90" at top-left.
 
 ### 3. Fundamentals (two wide cards)
 - **Revenue, free cash flow & margin** — one plotly figure, two stacked
@@ -86,14 +86,14 @@ muted block with a labeled "not available" message.
 - **PV build-up — median base case** — plotly waterfall, 13 bars: 10 years +
   terminal value (increases: diverging cool), net debt (decrease: diverging warm),
   equity total (secondary ink); x labels at −45°; two
-  annotations ("60% of gross PV", "$141/share").
+  annotations ("60% of gross PV", "$V/share").
 - **Sensitivity tornado** — 4 horizontal paired bars (−1σ cool / +1σ warm,
   overlay on a shared base), signed delta labels outside bar ends, thin
   vertical base-P50 rule + label.
 - **Scenario summary** — wide HTML table: 3 rows × 8–9 columns; first column
   carries a color dot (`span.dot`) keying the scenario hue.
 
-### 5. Driver-based model (conditional on `analysis/<TICKER>/driver_model.py` exposing `build()`; when present: 6 wide + 2 half cards + meta line)
+### 5. Driver-based model (conditional on a per-ticker driver register, docs/ARCHITECTURE.md, Driver-based engine; when present: 6 wide + 2 half cards + meta line)
 - **Segment revenue history** — stacked columns per fiscal year (~3–8 years,
   2–8 segments), categorical slot colors in fixed order, 2 px surface gap
   between stack segments (white marker outline). Legend present.
@@ -177,7 +177,7 @@ seeds), and a generated-by line.
   history, 6-month view, fan chart, and fundamentals subplots (one readout
   listing all series at the hovered x); per-mark hover on bars, histogram
   bins, waterfall steps, tornado bars, dumbbell markers, and heatmap cells.
-  Tooltip templates are custom (e.g. "FY20XX: $X.XB", "24 Jul 26 · $P: N
+  Tooltip templates are custom (e.g. "FY20XX: $X.XB", "24 Jul 26 · $K: N
   contracts") with the series name in the tooltip's side tag.
 - **Scale toggle**: the price-history card has a two-button Linear/Log
   updatemenu (top-right inside the plot area). This is the only control on the page.

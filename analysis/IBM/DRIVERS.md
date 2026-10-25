@@ -9,8 +9,8 @@ scope: Reviewer-facing assumption register of the IBM v4 driver model; driver_mo
 # IBM driver model — assumption register
 
 Companion to `driver_model.py` and `financial_analysis/driver_dcf.py` (engine). Review
-records: analysis/IBM/REVIEW.md (F-IDs), analysis/IBM/DRIVER-REVIEW.md. Tickets (T-DCF-n):
-PLANNING/tickets.md.
+records: analysis/IBM/REVIEW.md (F-IDs), analysis/IBM/DRIVER-REVIEW.md. Tickets:
+PLANNING/tickets.md §Engine tickets; importer segment capture: docs/HIDDEN-ASSUMPTIONS.md #5.
 
 Notation: S/D = stochastic/deterministic driver; f = `ma_recurrence`; ma = `ma_ratio`;
 truncnorm = truncated normal (bounds in the Bounds column); tg = terminal_growth;
@@ -26,13 +26,13 @@ Analysis entry points).
 | WACC | E/V × (rf + β×ERP) + (1−E/V) × (rf + spread) × (1−τ) | kd derived per path from rf (no negative-spread paths); **flat term structure disclosed** — one WACC for years 1-10 + terminal |
 | Terminal value | Gordon at the joint guard (docs/ARCHITECTURE.md, Driver-based engine), discounted 10y | — |
 
-Equity/share = (PV FCFF + PV TV − net debt $54.0B) / 948.7M diluted (bridge: analysis/IBM/README.md).
+Equity/share: bridge in analysis/IBM/README.md.
 
-## Drivers (post-review values; rationales live in driver_model.py)
+## Driver values
 
 | Driver | S/D | Dist | Mean | Std | Bounds/Schedule | Review |
 |---|---|---|---|---|---|---|
-| g_software | S | truncnorm | **5.0% = 4.0% organic + f×2.0% acquired (derived from MA_RECURRENCE)** | 2.5% | hi 11% | F16 organic/acquired split; credit derived from f |
+| g_software | S | truncnorm | **5.0% = 4.0% organic + f×2.0% acquired (`SOFTWARE_ORGANIC_G + f × SOFTWARE_ACQUIRED_G`, f = `MA_RECURRENCE`)** | 2.5% | hi 11% | F16 organic/acquired split; credit derived from f |
 | g_consulting | S | normal | 1.75% | 2.5% | — | skew proxy; mixture ticketed |
 | g_infrastructure | S | truncnorm | −1.0% | 2.5% | hi +3% | decade-CAGR dispersion; hi at 1.6σ, bound mass disclosed |
 | g_financing | D | — | 0.0% | — | — | disclosures in driver_model.py rationale |
@@ -67,30 +67,17 @@ docs/HIDDEN-ASSUMPTIONS.md #22.
 At means: 0.72 × (4.6% + 0.85 × 4.5%) + 0.28 × (4.6% − 0.10%) × (1 − 21%) = **7.06%**
 (MC std 0.56%). Gap attribution 7.50% → 7.06% and the WACC-level value per share (vs
 7.34% and vs 7.50%): `analysis/IBM/report/IBM-valuation-2026-07.md` §3.3. Residual conservatism sits in β = 0.85
-(trailing ~0.68; Output below).
+(trailing ~0.68; beta locus: report §4).
 
-## Output (v4 final, seed 7, 10k sims, 10y, conditional on f=0.50)
+## Output
 
-**P10 $83.84 / P50 $151.84 / P90 $258.03** · TV/EV at means 64.1% · tg guard pinned 0.09%.
-
-Attribution leaders (±1σ, correlations intact): core_margin ∓31 ·
-terminal_growth −19/+26 · rf +23/−19 · erp +23/−19 · g_software −18/+21 · ma_ratio ±18.7.
-
-Published loci (`python -m analysis.IBM.dcf_drivers_run`, engine governs — these are the
-current run's values): ma_recurrence f=0→1 (paired, derived from
-`SOFTWARE_ORGANIC_G + f × SOFTWARE_ACQUIRED_G`): P50 $197.79→$101.44 ·
-SBC drift flat/3.5%/4.5%: $164.11/$151.84/$139.20 · β 0.68/0.85/1.00:
-$179.42/$151.84/$132.34 · supply-shock correlations and τ=0 disclosure runs ·
-implied terminal reinvestment rate 20.8%; ROIC 10.8% > WACC 7.06% at means.
-
-## Deferred tickets
-
-T-DCF-1 AR(1) growth (largest known distortion) · T-DCF-3 derived per-path tg ·
-mixture/lognormal marginals · Harris-Pringle re-levered β / target weights ·
-importer segment capture (HIDDEN-ASSUMPTIONS #5).
+`python -m analysis.IBM.dcf_drivers_run` (v4 final, seed 7, 10k sims, 10y, conditional on f=0.50);
+headline, attribution, loci and terminal check in report §4
+(analysis/IBM/report/IBM-valuation-2026-07.md).
 
 ## Source ledger
 
-Segment data: Q4 8-K Ex. 99.1 filings 2022-2026 + Jul 14 2026 warning 8-K (links: report
-Appendix B items 1–2, 8). Market params: 10y Treasury spot, Damodaran ERP (Jul 2026).
+Segment data: Q4 8-K Ex. 99.1 filings 2022-2026 (report Appendix B item 8) + Jul 14 2026
+warning (press: report Appendix B items 1-2). Market params: 10y Treasury spot (FRED DGS10),
+Damodaran ERP (Jul 2026).
 Bridge/margin basis: analysis/IBM/README.md (v3) + REVIEW.md.
