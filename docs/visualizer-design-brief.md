@@ -209,7 +209,7 @@ docs/design-specs/2026-07-16-ratings-desk-blueprint.md; a restyle changes those 
 6. **Color discipline.** Categorical hue order stays fixed; scenario hues
    follow the scenario (bear/base/bull) everywhere they appear; diverging
    midpoint stays neutral; sequential ramp stays single-hue. If the palette
-   is re-branded, validate it per `docs/design-specs/2026-07-16-ratings-desk-blueprint.md`, paragraph "CVD / contrast confirmation".
+   is re-branded, validate it (lightness band, chroma floor, adjacent-pair CVD ΔE ≥ 12, 3:1 surface contrast) as in `docs/design-specs/2026-07-16-ratings-desk-blueprint.md`, paragraph "CVD / contrast confirmation", before shipping.
 7. **Responsive floor.** Two-column grid ≥1100 px, single column below;
    tables scroll horizontally inside their cards; the page body must never
    scroll horizontally.
