@@ -114,7 +114,7 @@ def _roots(command, cwd):
     directory the command names."""
     base = cwd or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
     roots, bad = set(), []
-    for t in [""] + [t.strip("\"'") for t in TARGET.findall(command)]:
+    for t in [t.strip("\"'") for t in TARGET.findall(command)]:
         d = Path(base, os.path.expandvars(os.path.expanduser(t)))
         try:
             roots.add(_git(d, "rev-parse", "--show-toplevel").decode().strip())

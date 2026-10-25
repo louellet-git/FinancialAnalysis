@@ -1,1 +1,13 @@
 date	path	sha256	verdict	reviewer
+2026-10-25	analysis/IBM/DRIVER-REVIEW.md	d7009bb9fa534a0cbe5b69457c925d91a77dd1f47d7db24654e3d988e3455ad7	PASS	doc-critic/haiku
+2026-10-25	analysis/IBM/README.md	9f87a20a56752914952c13321c06e44b7e933b6a291a04d9c373dcc6b3ae0b5f	PASS	doc-critic/haiku
+2026-10-25	analysis/IBM/REVIEW.md	59dbeca2582322c5ae9ee32ca3ed8670b0d04a9a4ee1da91312076a5d1a2eafb	PASS	doc-critic/haiku
+2026-10-25	analysis/IBM/research-ledger.md	341b3b155b03e9d8c584d38892f7c0a3da14a0daac37f80c3a00eecdfc3b9cbb	PASS	doc-critic/haiku
+2026-10-25	docs/design-specs/2026-07-16-ratings-desk-blueprint.md	8c5afbf28757fc801711edbd55194544cf0ee34784fffe38847728e4e1526dad	PASS	doc-critic/haiku
+2026-10-25	docs/superpowers/plans/2026-06-03-financial-analysis-pipeline.md	ae5846c75e9142c032efdc5d998ddee384e875be9176a9de5ddbc19bcfa7d173	PASS	doc-critic/haiku
+2026-10-25	docs/superpowers/plans/2026-06-05-financial-statement-automation.md	e2d5ba37eba0fbcc6154efad07791421566eca423c187599c42430386d334c6e	PASS	doc-critic/haiku
+2026-10-25	docs/superpowers/plans/2026-06-05-ticket-4-6-market-data-enrichment.md	f7ea1aa394f4cdc85fbecf0c89bf4562fca2a5ea27373751911f6ee2da23e4fc	PASS	doc-critic/haiku
+2026-10-25	docs/superpowers/specs/2026-06-04-expanded-financial-schema-design.md	495fcd5d27cc394385a8b2d190415258675d6d286cad41115c6a9a1e65bb23d1	PASS	doc-critic/haiku
+2026-10-25	docs/superpowers/specs/2026-06-05-financial-statement-automation-design.md	3a0515e0d41603a269cb9130f4a7983c4e76084c6b7516a74e4757fcce2fc7c8	PASS	doc-critic/haiku
+2026-10-25	docs/superpowers/specs/2026-06-05-ticket-4-6-market-data-enrichment.md	eec54bdf80c22bd134f7cfb9695e374e42964f02f100d90dbb21485b1289906d	PASS	doc-critic/haiku
+2026-10-25	PLANNING/board/README.md	850e98fbdecf205275ad47cc11c2bbf0e9d3ef2b15c983715f0595398ddbc1f7	PASS	doc-critic/haiku
