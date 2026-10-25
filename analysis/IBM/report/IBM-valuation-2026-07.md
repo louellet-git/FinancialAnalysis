@@ -4,7 +4,7 @@ type: report
 item: 10.17 Evaluation report
 status: frozen
 date: 2026-07-17
-scope: Published IBM v4.1 valuation report (July 2026) for investors and the two owners; frozen, supersede with a new version.
+scope: Published IBM v4.1 valuation report (July 2026); frozen, supersede with a new version.
 ---
 # IBM — Valuation Report
 

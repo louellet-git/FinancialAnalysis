@@ -83,7 +83,7 @@ Sections never disappear; they degrade to these notes.
   (projection years); scenario names direct-labeled at line ends + legend.
 - **Per-share value distribution** — 3 overlaid histograms (~60 bins each,
   opacity 0.55, same scenario hues), a 2 px vertical ink price line labeled
-  "Price $218.00". Legend present.
+  "Price $P". Legend present.
 - **PV build-up — median base case** — plotly waterfall, 13 bars: 10 years +
   terminal value (increases: diverging cool), net debt (decrease: diverging warm),
   equity total (secondary ink); x labels at −45°; two
@@ -145,7 +145,7 @@ Sections never disappear; they degrade to these notes.
 - **ATM implied-volatility term structure** — line+markers (categorical slot 1, 2 px, 8 px
   ringed markers), ~10–18 expiries over ~2.5 years; a 1 px vertical rule at
   the earnings date labeled at the plot bottom, and an arrowed annotation
-  "Earnings hump — 60.4%" on the first post-earnings expiry.
+  "Earnings hump — X%" on the first post-earnings expiry.
 - **Implied move by expiry** — single-hue (categorical slot 1) columns (0.55 width), ~18
   bars, −35° tick labels. Value labels on bars only when ≤8 bars; otherwise
   tooltips carry the values.
@@ -153,7 +153,7 @@ Sections never disappear; they degrade to these notes.
   positive cool, negative warm. Same labeling rule as implied move.
 - **Open interest by strike** — heatmap, 4 expiry rows × ~40 strike columns,
   sequential ramp (first → last step) with a thin colorbar
-  ("OI"), 2 px cell gaps, 2 px ink spot line labeled "Spot $214.16" above
+  ("OI"), 2 px cell gaps, 2 px ink spot line labeled "Spot $S" above
   the plot.
 - **Chain detail — ATM ±10 strikes** — wide HTML table, 21 rows × 11 columns
   (5 call cols, bold strike, 5 put cols) with a two-tier header (Calls /
@@ -172,8 +172,8 @@ seeds), and a generated-by line.
   history, 6-month view, fan chart, and fundamentals subplots (one readout
   listing all series at the hovered x); per-mark hover on bars, histogram
   bins, waterfall steps, tornado bars, dumbbell markers, and heatmap cells.
-  Tooltip templates are custom (e.g. "FY2025: $67.5B", "24 Jul 26 · $215:
-  2,714 contracts") with the series name in the tooltip's side tag.
+  Tooltip templates are custom (e.g. "FY20XX: $X.XB", "24 Jul 26 · $P: N
+  contracts") with the series name in the tooltip's side tag.
 - **Scale toggle**: the price-history card has a two-button Linear/Log
   updatemenu (top-right inside the plot area). This is the only control on the page.
 - **Zoom/pan**: plotly's default drag-zoom and double-click-reset remain

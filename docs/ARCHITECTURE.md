@@ -36,7 +36,7 @@ SEC EDGAR (companyfacts JSON API)          yfinance
   scripts/analyze.py ──► data/processed/TICKER_financials.xlsx (9 tabs)
 ```
 
-Market data is never persisted to the JSON store; see HIDDEN-ASSUMPTIONS #6.
+Market data stays out of the JSON store: HIDDEN-ASSUMPTIONS #6.
 
 ## The two DCF engines
 
@@ -50,8 +50,8 @@ horizon by default). FCF margin is derived from the last 5 annual periods when n
 pinned. Gordon terminal value; its denominator floor (one reason the driver engine
 exists) is HIDDEN-ASSUMPTIONS #15. Minimum-history guard: HIDDEN-ASSUMPTIONS #16.
 `financial_analysis/scenarios.py` supplies bear/base/bull assumption presets and a
-per-ticker net-debt/shares registry for it. IBM entries in `scenarios.py` are the v3
-aggregate framework; v4 values: see docs/HIDDEN-ASSUMPTIONS.md #13.
+per-ticker net-debt/shares registry for it. IBM entries here are the v3 aggregate
+framework; see HIDDEN-ASSUMPTIONS #13.
 
 ### 2. Driver-based engine — `financial_analysis/driver_dcf.py` (`DriverDCF`)
 
@@ -91,7 +91,7 @@ stochastic objects.
 
 Per-ticker parameterization lives in `analysis/<TICKER>/driver_model.py` (IBM is the
 only instance): drivers with written rationales, the correlation matrix, segment bases,
-net debt, shares, exposing `build()`. Its rationale strings govern over DRIVERS.md (CLAUDE.md, normativity 2).
+net debt, shares, exposing `build()`. Precedence: CLAUDE.md, normativity 2.
 
 ## Backtest harness
 
@@ -126,7 +126,7 @@ driver build exists.
 | `driver_dcf.py` | Driver-based engine (above): `Driver`, `Item`, `DriverModel`, `SegmentSpec`, `DriverDCF`, `DriverDCFResult` (incl. `driver_draws` per-path values for the path explorer), vetted item formulas `revenue_paths`, `fcff_margin`, `wacc_capm`, `terminal_value`, registered in `ITEMS`. |
 | `edgar.py` | SEC HTTP client (User-Agent, 0.15s rate limit), CIK lookup from company_tickers.json, full-index filing downloads (`EdgarClient.download_for_ticker`), `EdgarClientError`. |
 | `estimates.py` | yfinance **forward** consensus (revenue/EPS estimates, price targets) → `ConsensusEstimates`; persisted as dated snapshots `data/raw/TICKER/estimates/YYYY-MM-DD.json` (history: HIDDEN-ASSUMPTIONS #9). `fetch_estimates`, `list_snapshots`, `load_snapshot`. |
-| `fmp.py` | Optional FMP API client (`FMP_API_KEY` in `.env`): analyst estimates/surprises, IFRS statements stub (`NotImplementedError`). Free-plan v3 endpoints are unavailable (since Aug 2025); the pipeline falls back to yfinance. |
+| `fmp.py` | Optional FMP API client (`FMP_API_KEY` in `.env`): analyst estimates/surprises, IFRS statements stub (`NotImplementedError`). Free-plan v3 endpoints are unavailable; the pipeline falls back to yfinance. |
 | `importer.py` | companyfacts → `PeriodFinancials`: maps concepts via `xbrl_tags` (first-wins merge across fallback concepts per period_end, sign flips), collects unmapped us-gaap USD concepts into `raw_extras`, best-effort `filed_date` from revenue-concept `filed` fields, raises `UnsupportedFilingError` for non-us-gaap filers. `segment_revenue` is always None from this source (HIDDEN-ASSUMPTIONS #5). |
 | `market_data.py` | yfinance daily OHLCV (`load_prices`, cached at `data/raw/TICKER/prices.json`) and earnings surprises (`load_earnings_surprises`). |
 | `options.py` | yfinance option-chain snapshots (dated, one per day, `data/raw/TICKER/options/YYYY-MM-DD.json`) + derived per-expiry metrics: ATM IV, straddle-mid implied move, 90/110 skew, put/call volume & OI ratios (`fetch_option_chain`, `compute_chain_metrics`, `list_snapshots`, `load_snapshot`). |

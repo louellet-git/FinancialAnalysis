@@ -26,8 +26,8 @@ end, so stray XBRL facts create annual rows with 1–2 fields and no revenue/OCF
 2012-06-30, 2018-01-01, 2019-01-01; placeholder `filed_date`, see #21). They carry no FCF and never enter the DCF
 engines, but any code iterating `company.periods` naively will hit them.
 `backtest._clean_annuals` filters them by requiring revenue AND OCF. Evidence:
-`financial_analysis/importer.py` (`all_periods[key]` row creation; `"filed_date": end`
-placeholder); `backtest._clean_annuals`; `tests/test_backtest.py`;
+`financial_analysis/importer.py` (`all_periods[key]` row creation);
+`backtest._clean_annuals`; `tests/test_backtest.py`;
 `analysis/IBM/README.md` §Data notes.
 
 **3. `n_periods=8` is per-concept, not per-company.** `extract_series` returns the last
@@ -118,9 +118,8 @@ Do not quote P10/P90 as decision-grade. Evidence:
 v4 — deliberate.**
 `financial_analysis/scenarios.py` (`_ibm_v3`, `_SCENARIO_OVERRIDES["IBM"]`,
 `CAPITAL_OVERRIDES["IBM"]`) encodes the v3 aggregate framework (base P50 $141 family:
-g 2.15%, WACC 7.5%, margin 14.5%). The current v4 headline (P50 $151.84, conditional on
-f=0.50) exists ONLY in `analysis/IBM/driver_model.py` + `driver_dcf.py`. The visualizer
-runs both, in separate labeled sections ("Aggregate DCF scenarios" vs "Driver-based
+g 2.15%, WACC 7.5%, margin 14.5%). The v4 headline is in analysis/IBM/DRIVERS.md (Output) and exists ONLY in
+`analysis/IBM/driver_model.py` + `driver_dcf.py`. The visualizer runs both, in separate labeled sections ("Aggregate DCF scenarios" vs "Driver-based
 model"). Net debt ($54.0B) and shares (948.7M) agree across both. If you read
 `scenarios.py` for "the IBM valuation," you get v3. Evidence: files cited;
 `scripts/visualize_dcf.py` (`SECTION_TITLES`, `_driver_compare_figure`).
@@ -168,7 +167,7 @@ labels and assumptions. Net-debt derivation also reads short-term borrowings fro
 `raw_extras` keys and treats absence as 0. Evidence:
 `financial_analysis/scenarios.py` (`DEFAULT_SCENARIOS`, `capital_structure_for`).
 
-## Carried entries (21–31; pointers not re-verified)
+## Entries 21–31 (pointers unverified)
 
 **21. `filed_date` can be outright fabricated (placeholder = period_end).** The importer
 initializes `filed_date` to the period end and only overwrites it where a *revenue*
@@ -181,24 +180,22 @@ filed_date == period_end.
 
 **22. The correlation matrix is reviewed *judgment*, and it moves tails only.** All 28
 entries (including the 3 deliberate zeros) are argued assumptions (rationales in
-DRIVERS.md / driver_model.py), PSD-verified (min eigenvalue 0.419). The supply-shock
+DRIVERS.md / driver_model.py), PSD-verified (see analysis/IBM/DRIVERS.md, Correlation matrix). The supply-shock
 regime flip (rf·g = −0.15) moves P50 by $0.05 ($151.89 vs $151.84) and
 widens tails. Do not treat correlation entries as estimated from data — none are.
 Evidence: `driver_model.py` CORR; dcf_drivers_run.py disclosure runs; SOURCE-AUDIT
 claim 32.
 
-**23. RPO was consumed as evidence WITH AN EXPIRY — it lapsed at the Q2-2026 10-Q.**
-The $71.0B RPO facts corroborate the growth means (changed no parameter; DRIVER-REVIEW.md RPO re-look) and expired when the Q2-2026 10-Q
-printed (late July 2026). The rationale footnotes in driver_model.py and the
-ledger rows are stale until re-consumed. The +12.7% YoY print consolidates HashiCorp and
+**23. RPO evidence lapsed at the Q2-2026 10-Q (late July 2026).** Rationale footnotes in
+`driver_model.py` and the RPO rows of `research-ledger.md` are stale until re-consumed.
+The +12.7% YoY print consolidates HashiCorp and
 is NOT organic evidence.
 Evidence: `analysis/IBM/research-ledger.md`; DRIVER-REVIEW.md RPO re-look; rule R1 in
 PLANNING/RULES.md.
 
 **24. The published v3 numbers do not reproduce from the current store.**
 `analysis/IBM/dcf_scenarios.py` derives FCFF margins live from `IBM.json`, so its output
-drifts with store re-imports (2026-07-17 run: 5y mean margin 17.8% → 18.4%, Bear $43 /
-Base $149 / Bull $243) and does not match the signed-off v3 record ($37 / $141 / $232,
+drifts with store re-imports and does not match the signed-off v3 record ($37 / $141 / $232,
 `analysis/IBM/README.md`). Cite the record for v3 and the engine for current values; do
 not "correct" either to match the other. The v4 driver run does not drift: its inputs are
 pinned constants.
@@ -209,14 +206,14 @@ without a `CAPITAL_OVERRIDES` entry, net debt = long-term debt + short-term borr
 cash — **no pension, no marketable securities, no stock-vs-flow review**. The IBM
 override embeds the F15-reviewed bridge (debt + after-tax pension − cash&securities);
 the DUOL override includes HTM securities + LT investments on the cash side. A
-cross-ticker comparison (the ORCL/basket runs) that mixes overridden and derived capital
+cross-ticker comparison (the ORCL/basket runs; basket amendment in PLANNING/reusable-dcf-vision.md) that mixes overridden and derived capital
 structures compares different net-debt definitions.
 Evidence: `scenarios.py` `capital_structure_for` vs `CAPITAL_OVERRIDES` entries +
 analysis/IBM/README.md bridge table.
 
-**26. Retired 2026-10-25** (tooling removed).
+**26. Retired.**
 
-**27. Retired 2026-10-25** (tooling removed).
+**27. Retired.**
 
 **28. Background tasks can be killed mid-run.** Persist resume state in
 `PLANNING/handoff/` as you go; delete items as completed. Interrupted fan-outs resume,

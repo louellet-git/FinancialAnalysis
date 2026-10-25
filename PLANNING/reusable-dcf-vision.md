@@ -119,7 +119,7 @@ after the basket median is a named bet against THIS ticker's pricing. Calibratio
 **per-bet ledger** — every named disagreement recorded and graded when reality adjudicates
 it (unscored flags cannot be falsified);
 (b) the **sub-claim ledger** for near-term falsifiable predictions (F19 margins, guidance
-growth, implied-move comparisons — the Q2 print (2026-07-22) is datapoint #1; watch list: analysis/IBM/report/IBM-valuation-2026-07.md; grading is open). Full distribution scoring
+growth, implied-move comparisons — the Q2 print (2026-07-22) is datapoint #1; status and watch list: `PLANNING/board/T-20261025-ibm-q2-grading.md`). Full distribution scoring
 (CRPS/PIT/market-adjusted horizons) is a **deferred optional P4 module**, not core;
 backtesting mode is out of core scope.
 

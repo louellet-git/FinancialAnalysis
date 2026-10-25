@@ -12,7 +12,9 @@ Companion to `driver_model.py` and `financial_analysis/driver_dcf.py` (engine). 
 record: analysis/IBM/DRIVER-REVIEW.md.
 
 Notation: S/D = stochastic/deterministic driver; f = `ma_recurrence`; ma = `ma_ratio`;
-truncnorm = truncated normal (bounds in the Bounds column).
+truncnorm = truncated normal (bounds in the Bounds column); tg = terminal_growth;
+τ = tax_rate; E/V = equity_weight; ERP = erp; locus = one-driver sweep (docs/ARCHITECTURE.md,
+Analysis entry points).
 
 ## Items (deterministic formulas)
 
@@ -84,7 +86,7 @@ implied terminal reinvestment rate 20.8%, ROIC 10.8% > WACC (no free growth at m
 
 T-DCF-1 AR(1) growth (largest known distortion) · T-DCF-3 derived per-path tg ·
 mixture/lognormal marginals · Harris-Pringle re-levered β / target weights ·
-importer segment capture (segment history is hand-entered from 8-Ks, sourced).
+importer segment capture (HIDDEN-ASSUMPTIONS #5).
 
 ## Source ledger
 

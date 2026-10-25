@@ -18,18 +18,10 @@ Two people work this repo in parallel. Follow `docs/COLLABORATION.md` before any
 
 ## What this repo is
 
-A **valuation factory**: SEC EDGAR XBRL import → typed statement store → two Monte Carlo
-DCF engines → adversarial review → published report, whose accepted review findings
-compound into deterministic infrastructure (rules → validators → red-team specimens)
-instead of being re-paid every run. Design: `PLANNING/reusable-dcf-vision.md`.
-
-Flagship: IBM v4.1, `analysis/IBM/report/IBM-valuation-2026-07.md` (Headline). Open work:
-grade its five-item watch list.
-
-Two engines, both live (mechanics: docs/ARCHITECTURE.md):
-- `financial_analysis/dcf.py` — classic scenario MC (presets in `scenarios.py`).
-- `financial_analysis/driver_dcf.py` — driver-based parameter-MC (per-ticker register in
-  `analysis/<TICKER>/driver_model.py`).
+Valuation factory: README.md. Engines: `financial_analysis/dcf.py`,
+`financial_analysis/driver_dcf.py` (mechanics: docs/ARCHITECTURE.md). Design:
+`PLANNING/reusable-dcf-vision.md`. Flagship report: `analysis/IBM/report/IBM-valuation-2026-07.md`
+(Headline); open: grade its five-item watch list.
 
 **Open work:** the board, `PLANNING/board/` (`python scripts/board.py status`); backlog not
 yet ticketed: `PLANNING/tickets.md` §OPEN TICKETS.

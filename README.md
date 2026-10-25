@@ -11,8 +11,10 @@ scope: Overview of the pipeline, its CLI commands, outputs and layout.
 A **valuation factory**: Python pipeline that pulls public-company financials from SEC
 EDGAR, enriches them with market data (prices, earnings surprises, forward consensus,
 option chains), and runs Monte Carlo DCF valuations through two engines — a classic
-scenario engine and a driver-based engine — feeding an adversarial review pipeline and
-a single-page HTML company report. Flagship analysis: IBM (`analysis/IBM/`, v4.1
+scenario engine and a driver-based engine (mechanics: docs/ARCHITECTURE.md) — feeding an
+adversarial review pipeline and a single-page HTML company report. Accepted review
+findings compound into deterministic infrastructure (rules → validators → red-team
+specimens) instead of being re-paid every run. Flagship analysis: IBM (`analysis/IBM/`, v4.1
 report).
 
 Agents: start with **CLAUDE.md**.
@@ -61,10 +63,6 @@ Remote data is disk-cached under `data/raw/TICKER/`; re-runs are instant. Option
 and forward consensus are dated snapshots (yfinance serves current data only);
 `--refresh` overwrites.
 
-## The two DCF engines
-
-Classic scenario engine and driver-based engine, plus the backtest: see docs/ARCHITECTURE.md.
-
 ## xlsx structure (nine tabs)
 
 `scripts/analyze.py` writes all nine sheets on every run (skipped groups are
@@ -103,7 +101,7 @@ PLANNING/tickets.md Ticket 7.
 CLAUDE.md                    agent orientation: norms + normativity map (read first)
 context.json                 machine-readable project summary for agents
 README.md                    this file
-THOUGHTS                     raw idea scratchpad
+THOUGHTS                     raw idea scratchpad (see CLAUDE.md, normativity item 8)
 requirements.txt             runtime deps (no pytest)
 
 financial_analysis/          the package; see docs/ARCHITECTURE.md

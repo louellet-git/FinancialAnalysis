@@ -90,8 +90,8 @@ at use nor in a linked source.
 4. Use the shortest form that keeps the meaning; a table or list over prose when shorter.
 5. No hedges or filler.
 6. Every sentence must change what a reader does or knows.
-7. No 60+-character line appears in two docs (code fences, table separators, `frozen` and
-   `superseded` docs excepted).
+7. No 60+-character line appears in two docs (code fences and table separators excepted;
+   frozen and superseded docs per Status).
 
 ## Review
 
