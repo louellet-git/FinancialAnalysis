@@ -1,21 +1,22 @@
-# Visualizer design brief — cosmetic redesign handoff
-
-Audience: a design agent doing a **purely cosmetic** restyle of the single-page
-company report produced by `scripts/visualize_dcf.py` (e.g.
-`data/processed/IBM_dcf.html`). This document is the contract: everything a
-designer needs to restyle the page without reading the code, plus the hard
-constraints that must survive the redesign.
+---
+id: DOC-VISUALIZER-DESIGN-BRIEF
+type: description
+item: 10.15 Design description
+status: current
+date: 2026-10-25
+scope: Contract for a purely cosmetic restyle of the single-page report from scripts/visualize_dcf.py, for a design agent; lets it restyle without reading the code.
+---
+# Visualizer design brief
 
 ## What the page is
 
-One self-contained HTML file per ticker. All content is generated server-side
-by Python and baked into the file: static HTML (header, stat chips, tables,
-notes, footer) interleaved with interactive plotly.js charts. There is no
-app shell, no routing, no data fetching — the page is an artifact meant to be
-opened from disk, attached to an email, or printed.
+One self-contained HTML file per ticker (e.g. `data/processed/IBM_dcf.html`), generated
+server-side by Python: static HTML (header, stat chips, tables, notes, footer)
+interleaved with interactive plotly.js charts. No app shell, routing or data fetching;
+it is opened from disk, emailed, or printed.
 
-Reference renders: `python -m scripts.visualize_dcf IBM` (requires the repo's
-IBM data). Page length is roughly 4,900 px at 1440 px wide.
+Reference render: `python -m scripts.visualize_dcf IBM` (needs the repo's IBM data).
+Page length is roughly 4,900 px at 1440 px wide.
 
 ## Page structure
 
@@ -30,9 +31,8 @@ IBM data). Page length is roughly 4,900 px at 1440 px wide.
 └── <footer>                          3 provenance/engine lines
 ```
 
-Each `section.rsec` contains an `h2.section-h` (17 px, hairline bottom border)
-and a `div.grid` — a 2-column CSS grid (`repeat(2, minmax(0,1fr))`, 16 px gap)
-that collapses to 1 column below 1100 px. Cards are `section.card` blocks
+Each `section.rsec` holds an `h2.section-h` (17 px, hairline bottom border) and a
+`div.grid`: 2 columns (`repeat(2, minmax(0,1fr))`, 16 px gap), 1 column below 1100 px. Cards are `section.card` blocks
 (surface background, 1 px hairline border `rgba(11,11,11,0.10)`, 8 px radius,
 16 px padding, `overflow-x: auto`); `.card.wide` spans both columns. Every
 card is `h3` title (15 px) + `p.sub` caption (12 px, muted) + body (a plotly
@@ -167,8 +167,8 @@ seeds), and a generated-by line.
 
 ## Current style tokens
 
-All values below are hard-coded hex in `scripts/visualize_dcf.py` (module
-constants) and in the single `<style>` block of the emitted page.
+Hard-coded hex in `scripts/visualize_dcf.py` (module constants) and the single
+`<style>` block of the emitted page.
 
 **Typeface** — `system-ui, -apple-system, "Segoe UI", sans-serif` everywhere
 (page and charts). No display/serif face. `font-variant-numeric:

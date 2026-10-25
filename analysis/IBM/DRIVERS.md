@@ -1,10 +1,17 @@
-# IBM driver-based model — assumption register (POST-REVIEW r1, consolidated)
+---
+id: DOC-IBM-DRIVERS
+type: description
+item: 10.15 Design description
+status: current
+date: 2026-10-25
+scope: Reviewer-facing assumption register of the IBM v4 driver model (post-review, consolidated); driver_model.py governs on disagreement.
+---
+# IBM driver model — assumption register
 
-Companion to `driver_model.py` (the executable, NORMATIVE definition — its rationale
-strings govern) and `financial_analysis/driver_dcf.py` (engine). Review record:
-DRIVER-REVIEW.md (19 round-1 reviews → dispositions → 4 consolidation reviews; the
-reopened items are implemented here). **Status: CONSOLIDATED** — headline is
-conditional on f = 0.50 (see ma_recurrence).
+Companion to `driver_model.py` (its rationale strings govern: CLAUDE.md normativity map)
+and `financial_analysis/driver_dcf.py` (engine). Review record: DRIVER-REVIEW.md (19
+round-1 reviews → dispositions → 4 consolidation reviews; reopened items are implemented
+here). Headline is conditional on f = 0.50 (see ma_recurrence).
 
 ## Items (deterministic formulas)
 
