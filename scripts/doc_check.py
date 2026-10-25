@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 from datetime import date, datetime
@@ -18,10 +19,16 @@ TYPES = ["description", "plan", "policy", "procedure", "report", "request", "spe
 STATUSES = ["draft", "current", "frozen", "superseded"]
 EXEMPT = re.compile(r"(\.claude/(agents|commands|skills)|\.github)/.*|PLANNING/board/T-[^/]*\.md")
 SEPARATOR = re.compile(r"[|:\s-]+")
-GIT = re.compile(r"\bgit\b")
-VERB = re.compile(r"(?<![\w-])(commit|merge|cherry-pick|revert|pull|am|rebase|push)(?![\w-])")
-TARGET = re.compile(r"""(?:\b(?:cd|pushd|Set-Location)\s+(?:-\w+\s+)?|\bgit\s+-C\s+|--(?:git-dir|work-tree)[=\s]+"""
-                    r"""|\bGIT_(?:DIR|WORK_TREE)=)("[^"]*"|'[^']*'|[^\s;&|]+)""")
+GATED = {"commit", "merge", "cherry-pick", "revert", "pull", "am", "rebase", "push"}
+STAGING = {"add", "stage"}
+SHELLS = {"bash", "sh", "zsh", "pwsh", "powershell"}
+DIR_OPTS = {"-C", "--git-dir", "--work-tree"}
+VALUE_OPTS = {"-c", "--namespace", "--config-env"}
+COMMIT_VALUE_OPTS = {"--message", "--file", "--author", "--date", "--template", "--cleanup", "--fixup", "--squash",
+                     "--reuse-message", "--reedit-message", "--trailer", "--pathspec-from-file"}
+EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+TARGET = re.compile(r"""(?:\b(?:cd|pushd|Set-Location)\s+(?:-\w+\s+)?|\bGIT_(?:DIR|WORK_TREE)=)"""
+                    r"""("[^"]*"|'[^']*'|[^\s;&|]+)""")
 REVIEWS = "docs/doc-reviews.tsv"
 FIX = "Fix: run the doc-critic agent on each doc, then python scripts/doc_check.py record <path> PASS and git add " + REVIEWS
 
@@ -66,15 +73,22 @@ def _reviews(root):
     return {(r[1], r[2]): r[3] for r in rows if len(r) >= 4}
 
 
-def changed(root):
-    """*.md files this branch carries: untracked, or differing (worktree) from the merge-base with origin/main
-    (else the root commit). None when there is no HEAD."""
-    if not _git(root, "rev-parse", "--verify", "-q", "HEAD", check=False):
+def changed(root, commit=False, paths=None):
+    """*.md files a git command carries. commit=False: the branch, i.e. untracked or differing (worktree) from the
+    merge-base with origin/main (else the root commit); None when there is no HEAD. commit=True: index vs HEAD,
+    or with `paths` the worktree vs HEAD limited to them."""
+    head = _git(root, "rev-parse", "--verify", "-q", "HEAD", check=False).decode().strip()
+    if commit:
+        cmds = (("diff", "--name-only", "-z", *(["--cached"] if paths is None else []), head or EMPTY_TREE,
+                 "--", *(paths or [])),)
+    elif not head:
         return None
-    base = (_git(root, "merge-base", "HEAD", "origin/main", check=False)
-            or _git(root, "rev-list", "--max-parents=0", "HEAD")).decode().split()[0]
-    cmds = (("diff", "--name-only", "-z", base), ("ls-files", "-z", "--others", "--exclude-standard"))
-    return {n for c in cmds for n in _git(root, *c, "--", "*.md").decode().split("\0") if n}
+    else:
+        base = (_git(root, "merge-base", "HEAD", "origin/main", check=False)
+                or _git(root, "rev-list", "--max-parents=0", "HEAD")).decode().split()[0]
+        cmds = (("diff", "--name-only", "-z", base, "--", "*.md"),
+                ("ls-files", "-z", "--others", "--exclude-standard", "--", "*.md"))
+    return {n for c in cmds for n in _git(root, *c).decode().split("\0") if n}
 
 
 def problems(root, scope=None):
@@ -85,7 +99,7 @@ def problems(root, scope=None):
     for p in governed(root):
         name, mine = p.as_posix(), []
         raw = Path(root, p).read_bytes()
-        h = header(raw.decode())
+        h = header(raw.decode(errors="replace"))
         if h is None:
             mine.append(f"{name}: no header")
         else:
@@ -98,7 +112,7 @@ def problems(root, scope=None):
         out += mine if hit([name]) else []
         frozen = h is not None and h.get("status") in ("frozen", "superseded")
         fenced = False
-        for ln in ([] if frozen else raw.decode().splitlines()):
+        for ln in ([] if frozen else raw.decode(errors="replace").splitlines()):
             s = ln.strip()
             fenced ^= s.startswith("```")
             if not fenced and not s.startswith("```") and len(s) >= 60 and not SEPARATOR.fullmatch(s):
@@ -109,12 +123,67 @@ def problems(root, scope=None):
     return out
 
 
-def _roots(command, cwd):
+def _calls(command):
+    """[(subcommand, args, dirs)] for every `git` in the command: the subcommand is the first non-option token
+    after git's global options; dirs are the -C, --git-dir and --work-tree values among them."""
+    command = command.replace("\\\n", " ").replace("\n", ";")
+    lex = shlex.shlex(command, posix=True, punctuation_chars=True)
+    lex.commenters = ""
+    try:
+        toks = list(lex)
+    except ValueError:
+        toks = command.split()
+    calls, seg = [], []
+    for t in toks + [";"]:
+        if not (t and set(t) <= set(";&|()<>")):
+            seg.append(t)
+            continue
+        if seg and seg[0].rsplit("/", 1)[-1] in SHELLS:
+            calls += _calls(" ".join(seg[1:]))
+        i = next((i for i, w in enumerate(seg) if w.replace("\\", "/").rsplit("/", 1)[-1] in ("git", "git.exe")), None)
+        it, dirs = iter(seg[i + 1:] if i is not None else []), []
+        for w in it:
+            if w in DIR_OPTS | VALUE_OPTS:
+                v = next(it, "")
+                dirs += [v] * (w in DIR_OPTS)
+            elif w.startswith(("--git-dir=", "--work-tree=")):
+                dirs.append(w.partition("=")[2])
+            elif not w.startswith("-"):
+                calls.append((w, list(it), dirs))
+        seg = []
+    return calls
+
+
+def _pathspecs(args):
+    """None for a plain `git commit`; else its pathspecs (["."] for -a/--all)."""
+    paths, it = [], iter(args)
+    for t in it:
+        if t == "--":
+            paths += it
+        elif t.startswith("--"):
+            if t == "--all":
+                return ["."]
+            if t in COMMIT_VALUE_OPTS:
+                next(it, None)
+        elif t.startswith("-") and len(t) > 1:
+            for j, c in enumerate(t[1:]):
+                if c == "a":
+                    return ["."]
+                if c in "mFcCt":
+                    if j == len(t) - 2:
+                        next(it, None)
+                    break
+        else:
+            paths.append(t)
+    return paths or None
+
+
+def _roots(command, cwd, dirs):
     """(git toplevels, unresolved targets) for the base dir (payload cwd, else CLAUDE_PROJECT_DIR) and every
     directory the command names."""
     base = cwd or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
     roots, bad = set(), []
-    for t in [""] + [t.strip("\"'") for t in TARGET.findall(command)]:
+    for t in [""] + [t.strip("\"'") for t in TARGET.findall(command)] + dirs:
         d = Path(base, os.path.expandvars(os.path.expanduser(t)))
         try:
             roots.add(_git(d, "rev-parse", "--show-toplevel").decode().strip())
@@ -124,22 +193,26 @@ def _roots(command, cwd):
 
 
 def hook():
-    """PreToolUse: deny a history-changing git command while a doc this branch carries has problems."""
+    """PreToolUse: deny a history-changing git command while a doc it carries has problems."""
     try:
         payload = json.load(sys.stdin)
         command = payload.get("tool_input", {}).get("command") or ""
-        if not (GIT.search(command) and VERB.search(command)):
+        calls = _calls(command)
+        gated = [c for c in calls if c[0] in GATED]
+        if not gated:
             return 0
-        roots, bad = _roots(command, payload.get("cwd"))
+        specs = [_pathspecs(a) for v, a, _ in gated if v == "commit"]
+        commit = {v for v, _, _ in gated} == {"commit"} and not any(v in STAGING for v, _, _ in calls)
+        paths = None if all(x is None for x in specs) else [p for x in specs for p in x or []]
+        roots, bad = _roots(command, payload.get("cwd"), [d for _, _, ds in calls for d in ds])
         found = [m for r in sorted(roots) if Path(r, "docs/DOC-STANDARD.md").exists()
-                 for m in problems(r, scope=changed(r))]
+                 for m in problems(r, scope=changed(r, commit, paths))]
         if not (found or bad):
             return 0
         reason = "\n".join([f"cannot resolve a git repo for {t}" for t in bad]
-                          + (["A governed doc changed on this branch fails:"] + found if found else [])
-                          + [FIX])
+                          + (["A governed doc changed on this branch fails:"] + found if found else []) + [FIX])
     except Exception as e:
-        reason = f"doc_check internal error: {e}"
+        reason = f"doc_check internal error: {type(e).__name__}: {e}"
     print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
                                              "permissionDecisionReason": reason}}))
     return 0

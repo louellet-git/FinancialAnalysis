@@ -310,7 +310,7 @@ def test_hook_gates_every_history_verb(tmp_path, command):
     assert "a.md: no header" in denied(hook(tmp_path, command))
 
 
-def test_hook_merge_does_not_launder_a_bad_doc(tmp_path):
+def test_hook_push_catches_a_bad_doc_merged_in(tmp_path):
     repo(tmp_path, base=True)
     git(tmp_path, "checkout", "-qb", "feat")
     put(tmp_path, "a.md", raw=BAD)
@@ -318,7 +318,8 @@ def test_hook_merge_does_not_launder_a_bad_doc(tmp_path):
     git(tmp_path, "checkout", "-q", "-")
     git(tmp_path, "merge", "-q", "--no-edit", "feat")
     put(tmp_path, "code.py", raw="x = 1\n")
-    reason = denied(hook(tmp_path))
+    assert hook(tmp_path).stdout == ""
+    reason = denied(hook(tmp_path, "git push origin HEAD"))
     assert "changed on this branch" in reason and "a.md: no header" in reason
 
 
@@ -350,3 +351,71 @@ def test_hook_denies_on_internal_error(tmp_path):
     r = subprocess.run([sys.executable, str(SCRIPT), "--hook"], input="not json", capture_output=True, text=True,
                        env={**os.environ, "CLAUDE_PROJECT_DIR": str(tmp_path)})
     assert denied(r)
+
+
+def clean_with_legacy(tmp_path):
+    """Base with a good, reviewed legacy.md on origin/main; then an unreviewed unstaged edit to it, a staged
+    code.py, and an untracked scratch note."""
+    repo(tmp_path, base=True)
+    put(tmp_path, "legacy.md")
+    commit(tmp_path, origin=True)
+    Path(tmp_path, "legacy.md").write_text(Path(tmp_path, "legacy.md").read_text() + "WIP.\n")
+    Path(tmp_path, "scratch.md").write_text(BAD)
+    Path(tmp_path, "code.py").write_text("x = 1\n")
+    git(tmp_path, "add", "code.py")
+    return tmp_path
+
+
+@pytest.mark.parametrize("command,deny", [
+    ("git commit -m x", False),
+    ("git commit -m x code.py", False),
+    ("git commit -am x", True),
+    ("git commit --all -m x", True),
+    ("git commit -m x legacy.md", True),
+    ("git commit -m x -- legacy.md", True),
+    ("git commit -m 'push -a' ", False),
+    ("git push origin HEAD", True),
+])
+def test_hook_commit_scope_is_what_the_commit_carries(tmp_path, command, deny):
+    clean_with_legacy(tmp_path)
+    assert bool(denied(hook(tmp_path, command))) is deny
+
+
+@pytest.mark.parametrize("command", [
+    "grep -rn 'git commit' docs/ || true", "git log --oneline --grep=push", "echo push later", "git status",
+    "git -C . diff --stat",
+])
+def test_hook_ignores_commands_that_are_not_a_gated_subcommand(tmp_path, command):
+    repo(tmp_path, base=True)
+    put(tmp_path, "a.md", raw=BAD)
+    assert hook(tmp_path, command).stdout == ""
+
+
+@pytest.mark.parametrize("command", [
+    "git -c user.name=t -C {wt} commit -m x", "git -C {wt} -c user.name=t commit -m x",
+    "git --no-pager -C {wt} commit -m x", "git -c user.name=t -C {wt} merge feat",
+    'bash -c "git -C {wt} commit -m x"', "sudo git -C {wt} push", "git \\\n -C {wt} commit",
+])
+def test_hook_finds_the_subcommand_behind_global_options(tmp_path, command):
+    main = repo(tmp_path / "main", base=True)
+    git(main, "worktree", "add", "-q", str(tmp_path / "wt"), "-b", "b")
+    put(tmp_path / "wt", "a.md", raw=BAD)
+    assert "a.md: no header" in denied(hook(main, command.format(wt=tmp_path / "wt"), cwd=main))
+
+
+@pytest.mark.parametrize("command", ["git commit -m x", "git push origin HEAD", "git status"])
+def test_non_utf8_doc_elsewhere_does_not_break_the_hook(tmp_path, command):
+    repo(tmp_path, base=True)
+    Path(tmp_path, "word.md").write_bytes(b"---\nid: DOC-W\n---\nSmart quote \x92 from Word.\n")
+    commit(tmp_path, origin=True)
+    put(tmp_path, "code.py", raw="x = 1\n")
+    assert hook(tmp_path, command).stdout == ""
+
+
+def test_non_utf8_doc_in_scope_is_checked_not_crashed(tmp_path):
+    repo(tmp_path)
+    Path(tmp_path, "a.md").write_bytes(("---\n" + "".join(f"{k}: {v}\n" for k, v in HEAD.items()) + "---\nQuote \x92\n")
+                                       .encode("latin-1"))
+    assert any("no PASS" in m for m in doc_check.problems(tmp_path))
+    record(tmp_path, "a.md")
+    assert doc_check.problems(tmp_path) == []
