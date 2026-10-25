@@ -10,14 +10,14 @@ scope: Backlog not yet on the board, with its sources.
 
 > A ticket is done when its smoke test prints real output the next ticket consumes.
 
-Open lines name their authoritative source. "Vision" = PLANNING/reusable-dcf-vision.md (✦n amendments, Ln layers, Pn phases). Work in progress: `python scripts/board.py status`.
+Open lines name their authoritative source. "Vision" = PLANNING/reusable-dcf-vision.md (✦n amendments, Ln layers, Pn phases). Work in progress: CLAUDE.md, Open work.
 
 ## OPEN TICKETS
 
-### Queued work (session handoff)
+### Queued work
 
 - **DUOL driver build**: DUOL is consensus-anchored only, bands decorative (mechanical backtest 0/6: docs/ARCHITECTURE.md, Backtest harness; run record: `PLANNING/token-ledger.md` DUOL row); promote to a driver-model frontier run (needs either person's sign-off, vision ✦6a) or leave as screening output.
-- **ORCL frontier run** (ticker #2), then basket and cross-sectional gap decomposition — board T-20261025-orcl-frontier-run; vision ✦1 basket amendment.
+- **ORCL frontier run** (ticker #2), then basket and cross-sectional gap decomposition — board T-20261025-orcl-frontier-run; basket amendment (vision L6).
 - **IBM Q2 grading** — board T-20261025-ibm-q2-grading (scope: 5-item watch list, first bet-ledger entries, 2026 mechanical vintage).
 
 ### Factory P1 (vision phasing — the active frontier)
@@ -27,7 +27,7 @@ Open lines name their authoritative source. "Vision" = PLANNING/reusable-dcf-vis
 - **Red-team corpus + injection harness** (✦2) — vision L4/P1.
 - **Statement-coverage validator** (✦7), run retroactively on the IBM register — vision L4/P1.
 - **Research Ledger formal schema** (✦5): expiry policies + schema-enforced provenance tiers (interim format in use) — analysis/IBM/research-ledger.md header; vision L1/P1.
-- **RPO expiry** (overdue): consumed RPO facts expired at the Q2-2026 10-Q (late July 2026); refresh analysis/IBM/research-ledger.md; report watch-list item 4.
+- **RPO expiry** (overdue): consumed RPO facts expired at the Q2-2026 10-Q (late July 2026); append the Q2-2026 10-Q RPO row to analysis/IBM/research-ledger.md; report watch-list item 4.
 
 ### Engine tickets (deferred with dispositions — do not re-litigate, implement)
 
@@ -41,8 +41,8 @@ Open lines name their authoritative source. "Vision" = PLANNING/reusable-dcf-vis
 ### Importer / pipeline
 
 - **Ticket 7 — segment revenue extraction** from filing-level XBRL instance documents — full spec below in this file.
-- **requirements.txt kept current** with actual needs on every dependency change — THOUGHTS item 1.
-- **News-scan idea** (unscoped): scan ticker news for knock-on effects on statement items; shock the valuation — THOUGHTS item 2.
+- **requirements.txt kept current** with actual needs on every dependency change — THOUGHTS, paragraph 1 (requirements.txt).
+- **News-scan idea** (unscoped): scan ticker news for knock-on effects on statement items; shock the valuation — THOUGHTS, paragraph 2.
 
 ---
 
@@ -50,8 +50,7 @@ Open lines name their authoritative source. "Vision" = PLANNING/reusable-dcf-vis
 
 ## Ticket 7 — Segment Revenue Extraction ⬜ OPEN
 - **Title:** Extract per-segment revenue from filing-level XBRL (dimensional facts)
-- **Phase:** P1 importer-completeness.
-- **Finding:** SEC `companyfacts` strips dimensional facts (every entry has only `{accn, end, filed, form, fp, frame, fy, start, val}`; checked on all us-gaap concepts in IBM's cached payload). `PeriodFinancials.segment_revenue` stays `None` from this source; reserved in `importer.py`.
+- **Finding:** SEC `companyfacts` strips dimensional facts (docs/HIDDEN-ASSUMPTIONS.md #5). `PeriodFinancials.segment_revenue` stays `None` from this source; reserved in `importer.py`.
 - **Description:** Segment-tagged revenue (e.g. `us-gaap/RevenueFromContractWithCustomerExcludingAssessedTax`
   dimensioned by `us-gaap:StatementBusinessSegmentsAxis`) lives in the filing-level
   XBRL instance documents (R-files / `_htm.xml` under the filing accession) and in
@@ -65,4 +64,4 @@ Open lines name their authoritative source. "Vision" = PLANNING/reusable-dcf-vis
   - No change to behavior when instance parsing fails: field stays `None`, warning logged
   - Tests with a synthetic instance-document fixture; no network
 - **Smoke test:** `python -m scripts.import_financials IBM --refresh` prints per-segment
-  revenue for FY2025 summing to ~$65B total revenue
+  revenue for FY2025 summing to ~$67.5B total revenue (FY2025 `SEGMENT_HISTORY` sum, analysis/IBM/driver_model.py)

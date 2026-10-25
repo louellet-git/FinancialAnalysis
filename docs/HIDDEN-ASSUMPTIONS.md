@@ -176,8 +176,8 @@ pinned constants.
 Evidence: `dcf_scenarios.py` `fcff_v3_margins` reads the store.
 
 **25. Default capital-structure derivation ≠ the reviewed IBM bridge.** For tickers
-without a `CAPITAL_OVERRIDES` entry, net debt = long-term debt + short-term borrowings −
-cash — **no pension, no marketable securities, no stock-vs-flow review**. The IBM
+without a `CAPITAL_OVERRIDES` entry, the derived net debt (docs/ARCHITECTURE.md, `scenarios.py`
+row) has **no pension, no marketable securities, no stock-vs-flow review**. The IBM
 override embeds the F15-reviewed bridge (debt + after-tax pension − cash&securities);
 the DUOL override includes HTM securities + LT investments on the cash side. A
 cross-ticker comparison (the ORCL/basket runs; basket amendment in PLANNING/reusable-dcf-vision.md) that mixes overridden and derived capital
@@ -206,8 +206,8 @@ is not extracted. Evidence: `scripts/analyze.py` (`_TAB_FOR`);
 **20. Default scenario presets are generic mature-large-cap.** `DEFAULT_SCENARIOS`
 (bear 1%/base 4%/bull 6% growth) applies to ANY ticker without an override — running
 `visualize_dcf` on a hypergrowth name silently produces mature-large-cap scenario
-labels and assumptions. Net-debt derivation also reads short-term borrowings from
-`raw_extras` keys and treats absence as 0. Evidence:
+labels and assumptions. Net-debt derivation (docs/ARCHITECTURE.md, `scenarios.py` row)
+treats absent short-term borrowings as 0. Evidence:
 `financial_analysis/scenarios.py` (`DEFAULT_SCENARIOS`, `capital_structure_for`).
 
 **28. Background tasks can be killed mid-run.** Persist resume state in
@@ -220,8 +220,8 @@ before concluding something is missing. Branch rules: CLAUDE.md §Orchestration 
 Evidence: `git log --all --oneline -- <path>`.
 
 **30. LF/CRLF warnings are normal; PowerShell 5.1 quirks apply.** `core.autocrlf` may
-be true. The primary shell (the owner's local Windows setup) is Windows PowerShell 5.1: no `&&`/`||` chaining, no ternary, UTF-16
-default file encoding (`-Encoding utf8` when writing files other tools read), quirky
+be true. The primary shell (the owner's local Windows setup) is Windows PowerShell 5.1:
+no `&&`/`||` chaining, no ternary, UTF-16 default file encoding (`-Encoding utf8` when writing files other tools read), quirky
 native-arg quoting (`--%` stop-parsing token when needed). Git Bash is available for
 POSIX scripts.
 Evidence: `git config core.autocrlf`; `$PSVersionTable.PSVersion`.

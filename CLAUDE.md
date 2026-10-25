@@ -11,8 +11,8 @@ scope: Orientation and norms for working this repo; read first.
 Objective: an agent works this repo correctly without re-deriving its norms.
 
 Start with `docs/ARCHITECTURE.md` (code-verified module map) and
-`docs/HIDDEN-ASSUMPTIONS.md` (trap registry). Every doc and its header:
-`python scripts/doc_check.py list`; doc rules: `docs/DOC-STANDARD.md`.
+`docs/HIDDEN-ASSUMPTIONS.md` (trap registry). Doc rules, and the command listing every doc
+and its header: `docs/DOC-STANDARD.md` §Header.
 
 ## Collaboration
 
@@ -33,16 +33,16 @@ yet ticketed: `PLANNING/tickets.md` §OPEN TICKETS.
 1. **Engine code governs over doc prose and stale doc numbers.**
    `financial_analysis/driver_dcf.py` and `dcf.py` define what the engines actually do;
    any number in a README/report that disagrees with a fresh engine run is stale.
-2. **`driver_model.py` inline rationales govern over DRIVERS.md prose.** DRIVERS.md
-   says so itself ("the executable, NORMATIVE definition — its rationale strings
-   govern"). DRIVERS.md is the reviewer-facing companion table.
+2. **`analysis/IBM/driver_model.py` governs over `analysis/IBM/DRIVERS.md`** (DRIVERS.md
+   scope line).
 3. **Recorded dispositions bind.** `analysis/IBM/REVIEW.md` (F1–F19) and
    `analysis/IBM/DRIVER-REVIEW.md` (19 + 4 reviews) are settled rulings: do not
-   re-litigate; reopening one needs a review of item 4's weight.
+   re-litigate; reopening one needs a review of the same weight as the RULES.md deprecation
+   rule (item 4).
 4. **`PLANNING/RULES.md` rules are binding at their declared scope**
    (universal / archetype-bound / ticker-bound); deprecation requires a review fan-out
    of the same weight that created the rule.
-5. **`scenarios.py` IBM entries are the v3 aggregate framework, kept deliberately** —
+5. **`financial_analysis/scenarios.py` IBM entries are the v3 aggregate framework, kept deliberately** —
    they are NOT stale v4 values (see docs/HIDDEN-ASSUMPTIONS.md #13). v4 headline
    numbers come only from `python -m analysis.IBM.dcf_drivers_run`.
    `analysis/IBM/README.md` is superseded (v3); keep its net-debt bridge and data notes,
@@ -56,6 +56,8 @@ yet ticketed: `PLANNING/tickets.md` §OPEN TICKETS.
    output.
 8. `README.md`, `context.json`, `docs/ARCHITECTURE.md`, `docs/HIDDEN-ASSUMPTIONS.md` are
    informative orientation; `THOUGHTS` is a raw idea scratchpad.
+
+Items 1-8 are enforced by review under `docs/DOC-STANDARD.md` §Review; none is automated.
 
 ## Orchestration norms
 
@@ -74,8 +76,7 @@ token-ledger rules: session discipline only.
   untracked.
 - **Smoke-test policy:** see `PLANNING/tickets.md` header.
 - **Token ledger:** update `PLANNING/token-ledger.md` per run (success metric #1; targets there).
-- Session handoffs: `PLANNING/handoff/<first name>.md`, live state (rules in its README;
-  delete items as completed).
+- Session handoffs: `PLANNING/handoff/<first name>.md` (rules in its README).
 
 ## Review pipeline
 

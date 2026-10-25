@@ -14,7 +14,7 @@ Tailored conformance to ISO/IEC/IEEE 15289:2019 (normative references 12207:2017
 15288:2015); process claimed: information management. Generic content (clause 7) is taken
 from the 2017 text via GOST R 58609-2019; the 2019 text is unverified. Staleness triggers:
 buying the 2019 text, or IEEE P15289 publishing. Declaration (5.2(a)): "the contract" means
-the owner rulings plus `docs/COLLABORATION.md`.
+the rulings of the two owners plus `docs/COLLABORATION.md`.
 
 ## Governed set
 
@@ -47,7 +47,8 @@ The registry of items is the headers: `python scripts/doc_check.py list`.
 
 - Issuing organization: this repo.
 - Change history: `git log -- <path>` plus the PR.
-- Approval: merge of the PR carrying the item's PASS review row; either owner may merge.
+- Approval: merge of the PR carrying the item's PASS row in `docs/doc-reviews.tsv`; see
+  `docs/COLLABORATION.md` §Finish and merge.
 - References: inline paths or links.
 - Glossary: standard finance, accounting, statistics and software terms and
   ticker symbols need no definition; define a repo-coined term at first use or link its
@@ -64,7 +65,7 @@ at use nor in a linked source.
 | Type | R | T | Body |
 |---|---|---|---|
 | description | issuer, references, history | glossary | context, notation, body, summary |
-| plan | issuer, references, approval, history | glossary | tasks, tools and methods, schedule, budget, resources, responsibilities, interfaces, risks, quality measures, environment and safety, training, review and reporting, other plans, change procedure, completion |
+| plan | issuer, references, approval, history | glossary; schedule (standing), budget (none), resources (none), environment and safety (none), training (self-describing), completion (open-ended) | tasks, tools and methods, responsibilities, interfaces, risks, quality measures, review and reporting, other plans, change procedure |
 | policy | issuer, references, approval, history | glossary | objectives, enforcers, effective date if not `date` |
 | procedure | issuer, references, approval, history | glossary | related plans and procedures, inputs and outputs, ordered steps per participant, error resolution |
 | report | issuer, references, history | glossary | participants, summary, context, methods, conclusions and recommendations |
@@ -95,7 +96,7 @@ at use nor in a linked source.
 
 ## Review
 
-1. Run the `doc-critic` agent on the doc. A finding that adds text names the reader action it
+1. Run the `doc-critic` agent (`.claude/agents/doc-critic.md`) on the doc. A finding that adds text names the reader action it
    enables; prefer cuts.
 2. On PASS: `python scripts/doc_check.py record <path> PASS`, then commit `docs/doc-reviews.tsv`
    with the doc.
@@ -124,5 +125,3 @@ not that the critic ran.
   Enforcement. Responsibilities: Review, Approval.
 - Interfaces: CI and the hook. Other plans: `docs/COLLABORATION.md`. Risks: the unseen paths
   in Enforcement. Change procedure: edit through a PR; Review voids old rows.
-- Tailored out: schedule (standing), budget (none), resources (none), environment and
-  safety (none), training (self-describing), completion (open-ended).

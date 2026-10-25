@@ -21,7 +21,7 @@ Analysis entry points).
 
 | Item | Formula (words) | Notes |
 |---|---|---|
-| Revenue | Σ segments: base × (1+g_seg)^t; **year 1 pinned** to warning-implied levels (Jul 14 2026 8-K; see Source ledger), draws from t=2 | growth constant per path (T-DCF-1 ticket); **FX: growth is nominal all-in, FX unmodeled** |
+| Revenue | Σ segments: base × (1+g_seg)^t; **year 1 pinned** to warning-implied levels (Jul 14 2026 warning; see Source ledger), draws from t=2 | growth constant per path (T-DCF-1 ticket); **FX: growth is nominal all-in, FX unmodeled** |
 | FCFF margin | core + mix_drift(t) − sbc(t) − f × ma | mix_drift and sbc are deterministic per-year schedules |
 | WACC | E/V × (rf + β×ERP) + (1−E/V) × (rf + spread) × (1−τ) | kd derived per path from rf (no negative-spread paths); **flat term structure disclosed** — one WACC for years 1-10 + terminal |
 | Terminal value | Gordon at the joint guard (docs/ARCHITECTURE.md, Driver-based engine), discounted 10y | — |
