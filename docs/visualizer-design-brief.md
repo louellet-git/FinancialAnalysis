@@ -11,7 +11,7 @@ scope: Contract for a purely cosmetic restyle of the single-page report from scr
 ## What the page is
 
 One self-contained HTML file per ticker (e.g. `data/processed/IBM_dcf.html`), generated
-server-side by Python: static HTML (header, stat chips, tables, notes, footer)
+by Python, not served: static HTML (header, stat chips, tables, notes, footer)
 interleaved with interactive plotly.js charts. No app shell, routing or data fetching
 (constraint 1); opened from disk, emailed or printed (constraint 4).
 
@@ -42,14 +42,13 @@ caption (muted) + body (a plotly div, an HTML table, or a `p.note`).
 
 When a section's data is missing the card body is a `p.note` — a quiet
 muted block with a labeled "not available" message.
-Sections never disappear; they degrade to these notes.
 
 ## Section inventory (every panel)
 
 ### 1. Header band (static HTML)
 - `h1` "TICKER — Company report", company name and a meta line (as-of date, net
   debt, share count, price source) in secondary ink.
-- **Stat-chip row** (`div.chips`, flex, 12 px gap): 5–6 chips. Each `div.chip`
+- **Stat-chip row** (`div.chips`, flex, 12 px gap): 6 chips (4 when the price is unavailable: no Market cap, no accent). Each `div.chip`
   is muted label / semibold ink value / optional muted sub-label. Chips: Last
   price, Market cap, Bear P50, Base P50, Bull P50, and "Base P50 vs price" — the
   one *accent* chip (`.chip.accent`, the only solid-filled chip) whose value takes the
@@ -57,8 +56,8 @@ Sections never disappear; they degrade to these notes.
 
 ### 2. Price & valuation (two wide chart cards)
 - **Price history** — plotly line (2 px, categorical slot 1), up to ~3,300 weekly
-  points spanning decades. One direct end-label (last close). Two-button
-  linear/log scale toggle, top-right (plotly updatemenus). Height 380 px.
+  points spanning decades. One direct end-label (last close). Linear/log
+  toggle (see Current interactions). Height 380 px.
 - **Price vs valuation — 6-month view** — daily close line (2 px, primary
   ink, ~126 points) over: a translucent band (base scenario P10–P90, base
   scenario hue at 10% opacity) and three 2 px horizontal scenario-P50
@@ -98,7 +97,7 @@ Sections never disappear; they degrade to these notes.
 - **Segment revenue history** — stacked columns per fiscal year (~3–8 years,
   2–8 segments), categorical slot colors in fixed order, 2 px surface gap
   between stack segments (white marker outline). Legend present.
-- **Driver assumptions** — wide HTML table (~12 rows × 7 cols: Driver, Type,
+- **Driver assumptions** — wide HTML table (one row per driver, 16 for IBM, × 7 cols: Driver, Type,
   Dist, Mean, Std, Bounds, Rationale). Type column holds pill badges
   (`span.badge.stoch` accent-tinted / `span.badge.det` raised-fill) — the only pill
   component on the page. Rationale column wraps (`td.wrap`, min 260 px).
@@ -186,7 +185,7 @@ seeds), and a generated-by line.
 ## Current style tokens
 
 Current tokens: `scripts/visualize_dcf.py` (constants and `:root`), applied from
-docs/design-specs/2026-07-16-ratings-desk-blueprint.md; a restyle changes those values only.
+docs/design-specs/2026-07-16-ratings-desk-blueprint.md; a restyle changes those values and the CSS rules in that file.
 
 ## Hard constraints (must survive any redesign)
 

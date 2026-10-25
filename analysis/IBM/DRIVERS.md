@@ -38,7 +38,7 @@ Equity/share = (PV FCFF + PV TV − net debt $54.0B) / 948.7M diluted (bridge: a
 | core_margin | S | normal | 19.4% (FY2025 endpoint, F19) | 2.0% | — | F19; endpoint basis and mix drift together |
 | margin_mix_drift | D | schedule | 0 → +1.2pp by y10 | — | linear | mechanical software-mix consequence |
 | sbc_ratio | D | schedule | 2.54% → 3.5% by y10 | — | linear | drift locus published (flat/3.5%/4.5%) |
-| ma_ratio | S | truncnorm | 7.1% | **2.4%** | lo 0 (3.0σ) | std 2.4% = decade-average scale at AR(1) ρ≈0.8 |
+| ma_ratio | S | truncnorm | 7.1% | **2.4%** | lo 0 (3.0σ) | decade-average scale at AR(1) ρ≈0.8 |
 | ma_recurrence | D | — | 0.50 (`MA_RECURRENCE`, single source + assert) | — | — | paired with g_software; headline conditional on f |
 | rf | S | truncnorm | 4.6% (spot 10y, Jul-2026) | 0.5% | lo 1% (formal guard) | permanent-component std |
 | beta | D | — | 0.85 | — | locus 0.68–1.00 published | epistemic, not sampled |
@@ -46,7 +46,7 @@ Equity/share = (PV FCFF + PV TV − net debt $54.0B) / 948.7M diluted (bridge: a
 | kd_spread | D | — | −0.10% over rf | — | — | fair-value calibrated |
 | tax_rate | D | — | 21% | — | — | τ=0 run published |
 | equity_weight | D | — | 0.72 | — | — | price-value fixed point |
-| terminal_growth | S | normal | 2.25% | 0.75% | joint guard | std 0.75%; T-DCF-3 (derived tg) ticketed |
+| terminal_growth | S | normal | 2.25% | 0.75% | joint guard | T-DCF-3 (derived tg) ticketed |
 
 Segments: bases = FY2025 8-K actuals, EXCEPT Infrastructure = FY24/25 average $14,869M
 (cycle-peak haircut). Year-1 pins: Software +5%, Consulting 0%, Financing 0% on FY2025
@@ -58,8 +58,8 @@ warning-implied $14,618M so the cycle correction is not double-counted.
 Full matrix: `CORR` in analysis/IBM/driver_model.py (PSD min eigenvalue 0.419).
 Entries: ma_ratio·rf = −0.15; terminal_growth·ma_ratio = +0.15 (bought growth
 priced into terminal). Regime disclosure: rf·g_* > 0 assumes demand-driven rates; the
-supply-shock sensitivity (rf·g_* = −0.15) is published by `dcf_drivers_run.py` — P50
-nearly unchanged, tails widen.
+supply-shock case (rf·g_* = −0.15) is published by `dcf_drivers_run.py`; effect in
+HIDDEN-ASSUMPTIONS #22.
 
 ## WACC
 

@@ -19,7 +19,7 @@ and the per-run charter review enforce it. Deprecation rules:
 
 | # | Rule | Scope | Provenance | Validator | Specimen |
 |---|---|---|---|---|---|
-| R1 | **Forward-looking disclosures bearing on sampled drivers must be consumed or excluded with reason.** RPO/backlog, guidance, and order books are evidence about the growth drivers; ignoring them silently is the C1 failure mode. | universal | IBM coverage flag C1 (analysis/IBM/report/SOURCE-AUDIT.md, 2026-07-17). | P1: coverage validator classifies RPO-class concepts; unclassified = fail | P1: known-material RPO omitted from a seeded model |
+| R1 | **Forward-looking disclosures bearing on sampled drivers must be consumed or excluded with reason.** RPO/backlog, guidance, and order books are evidence about the growth drivers. | universal | IBM coverage flag C1 (analysis/IBM/report/SOURCE-AUDIT.md, 2026-07-17). | P1: coverage validator classifies RPO-class concepts; unclassified = fail | P1: known-material RPO omitted from a seeded model |
 
 Backlog for P1 rulebook extraction (from analysis/IBM/REVIEW.md and analysis/IBM/DRIVER-REVIEW.md):
 endpoint-not-flattering-mean; growth-credited-must-match-cost-charged (pairing); bridge

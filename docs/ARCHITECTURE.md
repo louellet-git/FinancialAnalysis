@@ -72,11 +72,9 @@ stochastic objects.
   `kd_spread`, `tax_rate`, `equity_weight`), and the after-tax cost of debt is *derived*
   from the same path's risk-free draw: `(rf + spread)·(1 − tax)`. Deriving kd from rf
   keeps credit spreads non-negative by construction.
-- **Degenerate-draw guard (T-DCF-2).** Effective terminal growth per path is
-  `min(tg_draw, wacc_path − 0.02)`, so the Gordon denominator is at least 2% on every
-  path — no 0.001-clip absurdities. The fraction of paths where the guard binds is
-  reported (`tg_pinned_fraction`; 0.0009 for IBM at seed 7). Results expose percentiles
-  only — mean/std are deliberately absent (fat tails make moments misleading).
+- **Degenerate-draw guard (T-DCF-2).** Per path, `tg_eff = min(tg_draw, wacc_path - 0.02)`;
+  pinned share in `tg_pinned_fraction` (0.0009 for IBM, seed 7). Classic-engine contrast:
+  HIDDEN-ASSUMPTIONS #15. Results expose percentiles only (fat tails make moments misleading).
 - **Attribution.** `run()` re-runs the full valuation per stochastic driver with its
   mean shifted ±1σ under the **same seed** (identical z-draws, correlations intact) and
   reports the P50 per-share delta — the tornado chart and per-driver review inputs.
@@ -138,7 +136,7 @@ driver build exists.
 
 ## `scripts/`
 
-CLI flags for the six pipeline scripts: README.md §Pipeline commands.
+CLI flags for the first six scripts below (the pipeline): README.md §Pipeline commands.
 
 | Script | What it does |
 |---|---|
@@ -148,10 +146,10 @@ CLI flags for the six pipeline scripts: README.md §Pipeline commands.
 | `run_dcf.py` | Classic-engine MC DCF on stored data; no network. |
 | `backtest.py` | Vintage backtest console report: per-vintage P10/P50/P90 vs actuals, band coverage vs nominal 80%, signed bias by horizon, data flags, skipped vintages. No network. |
 | `visualize_dcf.py` | Single-page self-contained HTML report (plotly.js inlined, ~5.9k lines of output); sections in `SECTION_TITLES` (six), content in docs/visualizer-design-brief.md. The driver section renders only if `analysis/<TICKER>/driver_model.py` exposes `build()`; every section degrades to a labeled "not available" note. MC path explorer: stratified 301-path spaghetti, 2,000-path parallel coordinates, bottom/top-10 outlier table with \|z\|≥1.5 drivers bolded. The skew panel excludes expiries under 2 days (`_SKEW_MIN_DTE`): near-expiry wing IVs are solver noise. Styling: `docs/design-specs/2026-07-16-ratings-desk-blueprint.md`. |
-| `board.py` | `python scripts/board.py check \| status \| branch NAME \| new --title --area --owner --branch --acceptance [--status]`. Scrum-board checker and ticket creator over `PLANNING/board/` (rules in its README). CI runs `check` and `branch <PR head>`. |
-| `board_gate.py` | (PreToolUse hook, not a CLI) Denies edits, commits, pushes, PRs and GitHub write tools unless the target repo's branch has an active ticket on its `origin/main`; pushes that could update main must be board-only fast-forwards. Rules and limits: docs/COLLABORATION.md. |
-| `main_guard.py` | `git diff --no-renames --name-only B A \| python -m scripts.main_guard <1 if A merges a PR, else 0>`. Exit 2 = revert: a push to main must be a merged PR or touch only `PLANNING/board/` (`.github/workflows/main-guard.yml`). |
-| `stale_branches.py` | `python -m scripts.stale_branches BRANCHES MERGED OPEN_PR_HEADS`. Which remote branches the daily cleanup deletes: merged into main, not main, not an open PR head, not an active ticket's branch (`.github/workflows/branch-cleanup.yml`). |
+| `board.py` | `python scripts/board.py check \| status \| branch NAME \| new --title --area --owner --branch --acceptance [--status]`. Scrum-board checker and ticket creator over `PLANNING/board/` (rules in its README). CI use: docs/COLLABORATION.md. |
+| `board_gate.py` | (PreToolUse hook, not a CLI) Board gate on edits, commits, pushes and PRs. Rules and limits: docs/COLLABORATION.md. |
+| `main_guard.py` | `git diff --no-renames --name-only B A \| python -m scripts.main_guard <1 if A merges a PR, else 0>`. Exit 2 = revert (`.github/workflows/main-guard.yml`; rule: docs/COLLABORATION.md). |
+| `stale_branches.py` | `python -m scripts.stale_branches BRANCHES MERGED OPEN_PR_HEADS`. Selects the remote branches the daily cleanup deletes (`.github/workflows/branch-cleanup.yml`; criteria: docs/COLLABORATION.md). |
 | `doc_check.py` | `python scripts/doc_check.py check \| list \| record <path> <PASS\|FAIL>`; also the commit hook. Rules: docs/DOC-STANDARD.md. |
 | `cloud-setup.sh` | `bash scripts/cloud-setup.sh`. Idempotent environment setup: installs requirements.txt and requirements-dev.txt (pytest). |
 
@@ -166,6 +164,5 @@ CI (`.github/workflows/`): `tests.yml`, `main-guard.yml`, `branch-cleanup.yml` (
 
 ## Tests
 
-`python -m pytest` from the repo root runs the full suite; modules under `tests/` mirror the package and scripts
-(largest: `test_driver_dcf.py`, `test_visualize_dcf.py`, `test_board_gate.py`,
-`test_options.py`). No network calls: HTTP is mocked and files use `tmp_path`.
+`python -m pytest` from the repo root runs the full suite; tests under `tests/` mirror the
+package and scripts. No network (HIDDEN-ASSUMPTIONS #31).

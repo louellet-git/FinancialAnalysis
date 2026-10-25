@@ -49,7 +49,7 @@ The registry of items is the headers: `python scripts/doc_check.py list`.
 - Change history: `git log -- <path>` plus the PR.
 - Approval: merge of the PR carrying the item's PASS review row; either owner may merge.
 - References: inline paths or links.
-- Glossary: omitted (T). Standard finance, accounting, statistics and software terms and
+- Glossary: standard finance, accounting, statistics and software terms and
   ticker symbols need no definition; define a repo-coined term at first use or link its
   defining doc.
 
@@ -110,12 +110,13 @@ not that the critic ran.
 - `python scripts/doc_check.py check`: whole repo; the hard gate, in CI on pull requests and
   pushes to main (after the fact). Fails on a bad header, a duplicate id, a missing PASS row,
   or a breach of Compactness 7.
-- Hook (`--hook`), the early gate: denies a command naming `git` and commit, merge,
-  cherry-pick, revert, pull, am, rebase or push while a governed doc changed on this branch
-  (worktree content vs the merge-base with `origin/main`, or untracked) fails, in every repo
-  the command names (`cd`, `pushd`, `Set-Location`, `git -C`, `--git-dir`, `--work-tree`,
-  `GIT_DIR=`, else cwd); an unresolvable target denies. WIP docs on the branch block its
-  commits; docs clean on `origin/main` do not.
+- Hook (`--hook`), the early gate: acts on each git subcommand commit, merge, cherry-pick,
+  revert, pull, am, rebase or push (after git's global options, per command segment), in every
+  repo the command names (`cd`, `pushd`, `Set-Location`, `git -C`, `--git-dir`, `--work-tree`,
+  `GIT_DIR=`, else cwd; unresolvable denies). `commit` checks the docs it carries (index vs
+  HEAD; worktree for `-a` or a pathspec; the branch if `git add` is chained); the others check
+  the branch (worktree vs the merge-base with `origin/main`, plus untracked). A failing doc
+  denies.
 - Not seen by the hook: GitHub MCP writes, non-Bash commits, wrapper scripts, sessions
   without python; CI catches them.
 

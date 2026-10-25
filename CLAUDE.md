@@ -21,7 +21,7 @@ Two people work this repo in parallel. Follow `docs/COLLABORATION.md` before any
 Valuation factory: README.md. Engines: `financial_analysis/dcf.py`,
 `financial_analysis/driver_dcf.py` (mechanics: docs/ARCHITECTURE.md). Design:
 `PLANNING/reusable-dcf-vision.md`. Flagship report: `analysis/IBM/report/IBM-valuation-2026-07.md`
-(Headline); open: grade its five-item watch list.
+(§4 headline).
 
 **Open work:** the board, `PLANNING/board/` (`python scripts/board.py status`); backlog not
 yet ticketed: `PLANNING/tickets.md` §OPEN TICKETS.
@@ -44,13 +44,13 @@ yet ticketed: `PLANNING/tickets.md` §OPEN TICKETS.
 5. **`scenarios.py` IBM entries are the v3 aggregate framework, kept deliberately** —
    they are NOT stale v4 values (see docs/HIDDEN-ASSUMPTIONS.md #13). v4 headline
    numbers come only from `python -m analysis.IBM.dcf_drivers_run`.
-   `analysis/IBM/README.md` is v3 (superseded); v4 still references its net-debt bridge
-   and data notes.
+   `analysis/IBM/README.md` is superseded (v3); keep its net-debt bridge and data notes,
+   which v4 still cites.
 6. **Reports and `frozen`/`superseded` docs are never edited.** `analysis/IBM/report/*`
    was audited (`analysis/IBM/report/SOURCE-AUDIT.md`) against the engine on its date; do not edit published
    reports to "fix" them — supersede with a new version.
 7. **Evidence and design contracts bind.** `analysis/IBM/research-ledger.md` holds the
-   frozen source-tagged facts the model consumes (RPO expired at the Q2-2026 10-Q);
+   frozen source-tagged facts the model consumes; RPO expiry is open in `PLANNING/tickets.md`;
    `docs/visualizer-design-brief.md` and
    `docs/design-specs/2026-07-16-ratings-desk-blueprint.md` bind restyles of
    `visualize_dcf` output.
@@ -73,8 +73,7 @@ token-ledger rules: none (session discipline).
   **`origin/main`**, not local `main`.
 - Never commit `data/` churn: `data/` outputs and `__pycache__/` are gitignored and
   untracked.
-- **Smoke-test policy:** a ticket is not done until real output is printed and
-  confirmed consumable by the next stage (`PLANNING/tickets.md` header; `context.json`).
+- **Smoke-test policy:** see `PLANNING/tickets.md` header.
 - **Token ledger:** update `PLANNING/token-ledger.md` per run (success metric #1; targets there).
 - Session handoffs: `PLANNING/handoff/<first name>.md`, live state (rules in its README;
   delete items as completed).

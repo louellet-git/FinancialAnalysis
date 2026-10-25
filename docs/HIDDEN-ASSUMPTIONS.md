@@ -118,8 +118,8 @@ Do not quote P10/P90 as decision-grade. Evidence:
 v4 — deliberate.**
 `financial_analysis/scenarios.py` (`_ibm_v3`, `_SCENARIO_OVERRIDES["IBM"]`,
 `CAPITAL_OVERRIDES["IBM"]`) encodes the v3 aggregate framework (base P50 $141 family:
-g 2.15%, WACC 7.5%, margin 14.5%). The v4 headline is in analysis/IBM/DRIVERS.md (Output) and exists ONLY in
-`analysis/IBM/driver_model.py` + `driver_dcf.py`. The visualizer runs both, in separate labeled sections ("Aggregate DCF scenarios" vs "Driver-based
+g 2.15%, WACC 7.5%, margin 14.5%). The v4 headline is recorded in analysis/IBM/DRIVERS.md (Output) and computed only by
+`analysis/IBM/driver_model.py` + `financial_analysis/driver_dcf.py`. The visualizer runs both, in separate labeled sections ("Aggregate DCF scenarios" vs "Driver-based
 model"). Net debt ($54.0B) and shares (948.7M) agree across both. If you read
 `scenarios.py` for "the IBM valuation," you get v3. Evidence: files cited;
 `scripts/visualize_dcf.py` (`SECTION_TITLES`, `_driver_compare_figure`).
@@ -151,7 +151,7 @@ usable periods per vintage and records skips. Evidence:
 header-only sheets, while the "Done: ... across N tabs" message counts populated groups.
 Evidence: `scripts/analyze.py` (`write_xlsx`, sheet table).
 
-**18. `data/` outputs are gitignored and untracked** . Never commit pipeline-output churn. Evidence: `git ls-files data/`;
+**18. `data/` outputs are gitignored and untracked**. Never commit pipeline-output churn. Evidence: `git ls-files data/`;
 `.gitignore`; `CLAUDE.md` §Orchestration norms.
 
 **19. RPO rows hide on the Balance Sheet tab.** `remaining_performance_obligation` is a
@@ -211,9 +211,7 @@ structures compares different net-debt definitions.
 Evidence: `scenarios.py` `capital_structure_for` vs `CAPITAL_OVERRIDES` entries +
 analysis/IBM/README.md bridge table.
 
-**26. Retired.**
-
-**27. Retired.**
+**26-27. Retired.** Numbers are not reused.
 
 **28. Background tasks can be killed mid-run.** Persist resume state in
 `PLANNING/handoff/` as you go; delete items as completed. Interrupted fan-outs resume,

@@ -16,7 +16,7 @@ Open lines name their authoritative source. Work in progress: `python scripts/bo
 
 ### Queued work (session handoff)
 
-- **DUOL driver build**: DUOL first pass (PR #14) is consensus-anchored only, bands decorative (`PLANNING/token-ledger.md` DUOL row); promote to a driver-model frontier run (needs either person's sign-off, vision ✦6a as amended 2026-10-25) or leave as screening output.
+- **DUOL driver build**: DUOL is consensus-anchored only, bands decorative (`PLANNING/token-ledger.md` DUOL row); promote to a driver-model frontier run (needs either person's sign-off, vision ✦6a) or leave as screening output.
 - **ORCL frontier run** (ticker #2), then basket and cross-sectional gap decomposition — board T-20261025-orcl-frontier-run; vision ✦1 basket amendment.
 - **IBM Q2 grading** — board T-20261025-ibm-q2-grading (scope: 5-item watch list, first bet-ledger entries, 2026 mechanical vintage).
 
@@ -43,10 +43,6 @@ Open lines name their authoritative source. Work in progress: `python scripts/bo
 - **Ticket 7 — segment revenue extraction** from filing-level XBRL instance documents (companyfacts strips dimensional facts) — full spec below in this file.
 - **requirements.txt kept current** with actual needs on every dependency change — THOUGHTS item 1.
 - **News-scan idea** (unscoped): scan ticker news for knock-on effects on statement items; shock the valuation — THOUGHTS item 2.
-
-### Standing per-run duties (not one-shot tickets)
-
-- Per-run duties: `PLANNING/token-ledger.md` (update; targets) · `PLANNING/reusable-dcf-vision.md` L5 (charter gate, ✦6a sign-off).
 
 ---
 
