@@ -19,8 +19,10 @@ STATUSES = ["draft", "current", "frozen", "superseded"]
 EXEMPT = re.compile(r"(\.claude/(agents|commands|skills)|\.github)/.*|PLANNING/board/T-[^/]*\.md")
 ITEM = re.compile(r"10\.([1-9]\d?) \S.*")
 SEPARATOR = re.compile(r"[|:\s-]+")
-COMMIT = re.compile(r"\bgit\b.*\bcommit\b", re.S)
-TARGET = re.compile(r"""(?:\bcd|\bgit\s+-C)\s+("[^"]*"|'[^']*'|\S+)""")
+GIT = re.compile(r"\bgit\b")
+VERB = re.compile(r"(?<![\w-])(commit|merge|cherry-pick|revert|pull|am|rebase|push)(?![\w-])")
+TARGET = re.compile(r"""(?:\b(?:cd|pushd|Set-Location)\s+(?:-\w+\s+)?|\bgit\s+-C\s+|--(?:git-dir|work-tree)[=\s]+"""
+                    r"""|\bGIT_(?:DIR|WORK_TREE)=)("[^"]*"|'[^']*'|[^\s;&|]+)""")
 REVIEWS = "docs/doc-reviews.tsv"
 FIX = "Fix: run the doc-critic agent on each doc, then python scripts/doc_check.py record <path> PASS and git add " + REVIEWS
 
@@ -71,12 +73,13 @@ def _reviews(root):
 
 
 def changed(root):
-    """Names of *.md files a commit could carry: differing from HEAD in index or worktree, or untracked.
-    None when there is no HEAD (everything is new)."""
+    """*.md files this branch carries: untracked, or whose worktree content differs from the merge-base with
+    origin/main (else the root commit). None when there is no HEAD."""
     if not _git(root, "rev-parse", "--verify", "-q", "HEAD", check=False):
         return None
-    cmds = (("diff", "--name-only", "-z", "HEAD"), ("diff", "--name-only", "-z", "--cached"),
-            ("ls-files", "-z", "--others", "--exclude-standard"))
+    base = (_git(root, "merge-base", "HEAD", "origin/main", check=False)
+            or _git(root, "rev-list", "--max-parents=0", "HEAD")).decode().split()[0]
+    cmds = (("diff", "--name-only", "-z", base), ("ls-files", "-z", "--others", "--exclude-standard"))
     return {n for c in cmds for n in _git(root, *c, "--", "*.md").decode().split("\0") if n}
 
 
@@ -112,30 +115,36 @@ def problems(root, scope=None):
     return out
 
 
-def _repo_of(command, cwd):
-    """Git toplevel the command's `git commit` runs in: payload cwd (else CLAUDE_PROJECT_DIR), then each
-    `cd <dir>` / `git -C <dir>` target in order."""
-    d = cwd or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
-    for t in TARGET.findall(command):
-        d = Path(d, os.path.expandvars(os.path.expanduser(t.strip("\"'"))))
-    return _git(d, "rev-parse", "--show-toplevel").decode().strip()
+def _roots(command, cwd):
+    """(git toplevels, unresolved targets) for the base dir (payload cwd, else CLAUDE_PROJECT_DIR) and every
+    directory the command names."""
+    base = cwd or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+    roots, bad = set(), []
+    for t in [""] + [t.strip("\"'") for t in TARGET.findall(command)]:
+        d = Path(base, os.path.expandvars(os.path.expanduser(t)))
+        try:
+            roots.add(_git(d, "rev-parse", "--show-toplevel").decode().strip())
+        except (subprocess.CalledProcessError, OSError):
+            bad.append(t or str(base))
+    return roots, bad
 
 
 def hook():
-    """PreToolUse: deny a `git commit` while a doc it could carry has problems. Always exits 0."""
+    """PreToolUse: deny a history-changing git command while a doc this branch carries has problems."""
     try:
         payload = json.load(sys.stdin)
         command = payload.get("tool_input", {}).get("command") or ""
-        if not COMMIT.search(command):
+        if not (GIT.search(command) and VERB.search(command)):
             return 0
-        root = _repo_of(command, payload.get("cwd"))
-        if not Path(root, "docs/DOC-STANDARD.md").exists():
-            return 0
-        found = problems(root, scope=changed(root))
-        if not found:
+        roots, bad = _roots(command, payload.get("cwd"))
+        found = [m for r in sorted(roots) if Path(r, "docs/DOC-STANDARD.md").exists()
+                 for m in problems(r, scope=changed(r))]
+        if not (found or bad):
             return 0
         more = [f"... and {len(found) - 20} more"] if len(found) > 20 else []
-        reason = "\n".join(found[:20] + more + [FIX])
+        reason = "\n".join([f"cannot resolve a git repo for {t}" for t in bad]
+                          + (["A governed doc changed on this branch fails:"] + found[:20] + more if found else [])
+                          + [FIX])
     except Exception as e:
         reason = f"doc_check internal error: {e}"
     print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
