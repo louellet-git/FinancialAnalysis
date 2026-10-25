@@ -323,7 +323,7 @@ def test_hook_merge_does_not_launder_a_bad_doc(tmp_path):
 
 
 def test_hook_legacy_bad_doc_on_origin_does_not_block(tmp_path):
-    repo(tmp_path)
+    repo(tmp_path, base=True)
     put(tmp_path, "legacy.md", raw=BAD, review=False)
     commit(tmp_path, origin=True)
     put(tmp_path, "code.py", raw="x = 1\n")
