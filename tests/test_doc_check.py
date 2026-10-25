@@ -334,7 +334,7 @@ def test_hook_legacy_bad_doc_on_origin_does_not_block(tmp_path):
 def test_hook_fires_on_any_git_and_commit(tmp_path):
     repo(tmp_path, base=True)
     put(tmp_path, "a.md", raw=BAD)
-    for command in ("echo git commit", "git add a.md; git  commit -m x", 'git commit -m "$(cat <<\'EOF\'\nmsg\nEOF\n)"'):
+    for command in ("echo git commit", "git add a.md; git  commit -m x", "git status\ngit commit -m x", 'git commit -m "$(cat <<\'EOF\'\nmsg\nEOF\n)"'):
         assert denied(hook(tmp_path, command)), command
     for command in ("git status", "ls", "echo commit", "git log"):
         assert hook(tmp_path, command).stdout == "", command

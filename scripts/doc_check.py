@@ -4,6 +4,7 @@
 """
 import argparse
 import hashlib
+import itertools
 import json
 import os
 import re
@@ -20,13 +21,10 @@ STATUSES = ["draft", "current", "frozen", "superseded"]
 EXEMPT = re.compile(r"(\.claude/(agents|commands|skills)|\.github)/.*|PLANNING/board/T-[^/]*\.md")
 SEPARATOR = re.compile(r"[|:\s-]+")
 GATED = {"commit", "merge", "cherry-pick", "revert", "pull", "am", "rebase", "push"}
-STAGING = {"add", "stage"}
 SHELLS = {"bash", "sh", "zsh", "pwsh", "powershell"}
-DIR_OPTS = {"-C", "--git-dir", "--work-tree"}
-VALUE_OPTS = {"-c", "--namespace", "--config-env"}
+GIT = re.compile(r"(^|[\\/])git(\.exe)?$")
 COMMIT_VALUE_OPTS = {"--message", "--file", "--author", "--date", "--template", "--cleanup", "--fixup", "--squash",
                      "--reuse-message", "--reedit-message", "--trailer", "--pathspec-from-file"}
-EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 TARGET = re.compile(r"""(?:\b(?:cd|pushd|Set-Location)\s+(?:-\w+\s+)?|\bGIT_(?:DIR|WORK_TREE)=)"""
                     r"""("[^"]*"|'[^']*'|[^\s;&|]+)""")
 REVIEWS = "docs/doc-reviews.tsv"
@@ -74,15 +72,13 @@ def _reviews(root):
 
 
 def changed(root, commit=False, paths=None):
-    """*.md files a git command carries. commit=False: the branch, i.e. untracked or differing (worktree) from the
-    merge-base with origin/main (else the root commit); None when there is no HEAD. commit=True: index vs HEAD,
-    or with `paths` the worktree vs HEAD limited to them."""
-    head = _git(root, "rev-parse", "--verify", "-q", "HEAD", check=False).decode().strip()
-    if commit:
-        cmds = (("diff", "--name-only", "-z", *(["--cached"] if paths is None else []), head or EMPTY_TREE,
-                 "--", *(paths or [])),)
-    elif not head:
+    """*.md files a git command carries (None: all, when there is no HEAD). commit: index vs HEAD, or with
+    `paths` the worktree vs HEAD limited to them. Else the branch: untracked, or differing (worktree) from the
+    merge-base with origin/main (else the root commit)."""
+    if not _git(root, "rev-parse", "--verify", "-q", "HEAD", check=False):
         return None
+    if commit:
+        cmds = (("diff", "--name-only", "-z", *(["--cached"] * (paths is None)), "HEAD", "--", *(paths or [])),)
     else:
         base = (_git(root, "merge-base", "HEAD", "origin/main", check=False)
                 or _git(root, "rev-list", "--max-parents=0", "HEAD")).decode().split()[0]
@@ -133,47 +129,38 @@ def _calls(command):
         toks = list(lex)
     except ValueError:
         toks = command.split()
-    calls, seg = [], []
-    for t in toks + [";"]:
-        if not (t and set(t) <= set(";&|()<>")):
-            seg.append(t)
+    calls = []
+    for sep, grp in itertools.groupby(toks, lambda t: bool(t) and set(t) <= set(";&|()<>")):
+        seg = list(grp)
+        if sep:
             continue
-        if seg and seg[0].rsplit("/", 1)[-1] in SHELLS:
+        if seg[0].rsplit("/", 1)[-1] in SHELLS:
             calls += _calls(" ".join(seg[1:]))
-        i = next((i for i, w in enumerate(seg) if w.replace("\\", "/").rsplit("/", 1)[-1] in ("git", "git.exe")), None)
-        it, dirs = iter(seg[i + 1:] if i is not None else []), []
+        g = next((i for i, w in enumerate(seg) if GIT.search(w)), None)
+        it, dirs = iter(seg[g + 1:] if g is not None else []), []
         for w in it:
-            if w in DIR_OPTS | VALUE_OPTS:
-                v = next(it, "")
-                dirs += [v] * (w in DIR_OPTS)
+            if w in ("-C", "--git-dir", "--work-tree"):
+                dirs.append(next(it, ""))
+            elif w in ("-c", "--namespace", "--config-env"):
+                next(it, None)
             elif w.startswith(("--git-dir=", "--work-tree=")):
                 dirs.append(w.partition("=")[2])
             elif not w.startswith("-"):
                 calls.append((w, list(it), dirs))
-        seg = []
     return calls
 
 
 def _pathspecs(args):
-    """None for a plain `git commit`; else its pathspecs (["."] for -a/--all)."""
+    """None for a plain `git commit`; else its pathspecs (["."] for -a/--all). Over-approximates short flags."""
     paths, it = [], iter(args)
     for t in it:
         if t == "--":
             paths += it
-        elif t.startswith("--"):
-            if t == "--all":
-                return ["."]
-            if t in COMMIT_VALUE_OPTS:
-                next(it, None)
-        elif t.startswith("-") and len(t) > 1:
-            for j, c in enumerate(t[1:]):
-                if c == "a":
-                    return ["."]
-                if c in "mFcCt":
-                    if j == len(t) - 2:
-                        next(it, None)
-                    break
-        else:
+        elif t == "--all" or re.fullmatch(r"-[a-zA-Z]*a[a-zA-Z]*", t):
+            return ["."]
+        elif t in COMMIT_VALUE_OPTS or re.fullmatch(r"-[a-zA-Z]*[mFcCt]", t):
+            next(it, None)
+        elif not t.startswith("-"):
             paths.append(t)
     return paths or None
 
@@ -202,7 +189,7 @@ def hook():
         if not gated:
             return 0
         specs = [_pathspecs(a) for v, a, _ in gated if v == "commit"]
-        commit = {v for v, _, _ in gated} == {"commit"} and not any(v in STAGING for v, _, _ in calls)
+        commit = {v for v, _, _ in gated} == {"commit"} and not any(v in ("add", "stage") for v, _, _ in calls)
         paths = None if all(x is None for x in specs) else [p for x in specs for p in x or []]
         roots, bad = _roots(command, payload.get("cwd"), [d for _, _, ds in calls for d in ds])
         found = [m for r in sorted(roots) if Path(r, "docs/DOC-STANDARD.md").exists()
