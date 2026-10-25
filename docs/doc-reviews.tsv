@@ -16,3 +16,6 @@ date	path	sha256	verdict	reviewer
 2026-10-25	PLANNING/handoff/luc.md	55c59a364c0a5a07bb9a79a056393981ecf68b17787f6f04f5846be983ed7a9c	PASS	doc-critic/haiku
 2026-10-25	PLANNING/tickets-closed.md	bcbe0d2b0916ce44f63083295d53a4dbf9b6754d88329a519ee4ea1f9cbd667f	PASS	doc-critic/haiku
 2026-10-25	PLANNING/token-ledger.md	a82bcf9d46f5fe77006f08a499ddfe442c0fc079055e921c1d305d3c0901f9ea	PASS	doc-critic/haiku
+2026-10-25	README.md	cada36f3602722775504798ff08ca9b44f345bd8ed6dca6d9b7330dcd5defe56	PASS	doc-critic/haiku
+2026-10-25	analysis/IBM/report/IBM-valuation-2026-07.md	d9ff19848471b6d02bb756a7134226f445025185cc188b58252a89036b84bf90	PASS	doc-critic/haiku
+2026-10-25	PLANNING/reusable-dcf-vision.md	1973c1cca566a4167894988e137ebe04098eccb2d9e7f274cde90cd3a69d99f9	PASS	doc-critic/haiku
