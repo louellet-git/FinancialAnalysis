@@ -20,8 +20,7 @@ Agent onboarding: **CLAUDE.md** (norms + normativity map) → `docs/ARCHITECTURE
 
 ## Pipeline commands
 
-Verified against the code on 2026-07-17 (flags from each script's argparse; defaults
-shown). Run from the repo root.
+Run from the repo root. Flags follow each script's argparse; `--help` lists defaults.
 
 ```bash
 pip install -r requirements.txt   # numpy, openpyxl, plotly, yfinance, python-dotenv, requests
@@ -59,27 +58,17 @@ python -m analysis.IBM.dcf_scenarios
 python -m pytest
 ```
 
-All remote data is disk-cached under `data/raw/TICKER/` — re-runs are instant; option
-chains and forward consensus are saved as **dated snapshots** (yfinance serves current
-data only, so history accumulates from the first pull; a same-day re-run reads disk,
-`--refresh` overwrites).
+Remote data is disk-cached under `data/raw/TICKER/`; re-runs are instant. Option chains
+and forward consensus are dated snapshots (yfinance serves current data only);
+`--refresh` overwrites.
 
 ## The two DCF engines
 
-Mechanics, guards and backtest: docs/ARCHITECTURE.md.
-
-- **Classic scenario engine** — `financial_analysis/dcf.py` (`StochasticDCF`). Samples
-  revenue growth, FCF margin, WACC and terminal growth directly. Presets and the
-  per-ticker net-debt/shares registry: `financial_analysis/scenarios.py` (the IBM
-  entries there implement the **v3** framework — deliberate; see
-  docs/HIDDEN-ASSUMPTIONS.md #13).
-- **Driver-based engine** — `financial_analysis/driver_dcf.py` (`DriverDCF`). Vetted
-  item formulas over named, correlated stochastic drivers, each with a written
-  rationale; percentiles only. Per-ticker registers: `analysis/<TICKER>/driver_model.py`
-  (IBM is the only one).
-- **Backtest harness** — `financial_analysis/backtest.py`. Point-in-time vintages of
-  operating projections, scored against actuals; rendered as a section of the
-  `visualize_dcf` HTML report.
+- **Classic engine** — `financial_analysis/dcf.py` (`StochasticDCF`); presets in
+  `financial_analysis/scenarios.py`; IBM entries are v3 (docs/HIDDEN-ASSUMPTIONS.md #13).
+- **Driver engine** — `financial_analysis/driver_dcf.py` (`DriverDCF`); per-ticker
+  registers in `analysis/<TICKER>/driver_model.py` (IBM only).
+- **Backtest** — `financial_analysis/backtest.py`; mechanics in docs/ARCHITECTURE.md.
 
 ## xlsx structure (nine tabs)
 
@@ -108,12 +97,11 @@ caches under `data/raw/TICKER/`.
 |------|--------|------|
 | Financial statements | SEC EDGAR companyfacts XBRL JSON API | None (public; User-Agent set in `edgar.py`) |
 | Daily prices, earnings surprises, forward consensus, option chains (current snapshot) | yfinance | None |
-| Analyst estimates / option history backfill | FMP (v3 legacy endpoints unavailable on free plan since Aug 2025) / Polygon | `FMP_API_KEY` in `.env` (gitignored) |
+| Analyst estimates / option history backfill | FMP (v3 legacy endpoints unavailable on free plan) / Polygon | `FMP_API_KEY` in `.env` (gitignored) |
 
-Supported: any US-GAAP filer on EDGAR (verified: NVDA, PANW, WMT, TGT, DUOL, IBM,
-MSFT, AAPL). ETFs and IFRS filers raise a clear `UnsupportedFilingError` instead of
-producing bad data. Segment-level revenue is NOT available from companyfacts (the API
-strips dimensional facts) — see PLANNING/tickets.md Ticket 7.
+Any US-GAAP EDGAR filer (verified: NVDA, PANW, WMT, TGT, DUOL, IBM, MSFT, AAPL). ETFs
+and IFRS filers raise `UnsupportedFilingError`. Segment revenue is unavailable:
+PLANNING/tickets.md Ticket 7.
 
 ## Project layout
 
@@ -124,7 +112,7 @@ README.md                    this file
 THOUGHTS                     raw idea scratchpad
 requirements.txt             runtime deps (no pytest)
 
-financial_analysis/          the package — 16 modules; see docs/ARCHITECTURE.md
+financial_analysis/          the package — 15 modules; see docs/ARCHITECTURE.md
     edgar.py xbrl_api.py cache.py xbrl_tags.py importer.py schema.py store.py
     market_data.py estimates.py options.py fmp.py
     dcf.py scenarios.py      classic engine + presets/capital registry

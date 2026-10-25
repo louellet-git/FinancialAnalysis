@@ -8,9 +8,6 @@ scope: Code-verified module map, data flow and engine mechanics, for agents and 
 ---
 # Architecture
 
-Every claim was checked against the named module. Where doc and code disagree, the code
-governs.
-
 ## Data flow
 
 ```
@@ -39,15 +36,12 @@ SEC EDGAR (companyfacts JSON API)          yfinance
   scripts/analyze.py ──► data/processed/TICKER_financials.xlsx (9 tabs)
 ```
 
-Market data (prices, estimates, options) is attached to the in-memory
-`CompanyFinancials` by `scripts/analyze.py` and written to the xlsx, but it is **never
-persisted to the JSON store** — `store.save()` serializes `periods` only
-(`financial_analysis/store.py`). Dated per-day snapshots under `data/raw/TICKER/`
-(options/, estimates/, prices.json) are the durable market-data record.
+Market data is never persisted to the JSON store (`store.save()` writes `periods` only);
+dated snapshots under `data/raw/TICKER/` are the durable record.
 
 ## The two DCF engines
 
-Two distinct Monte Carlo DCF engines coexist deliberately; neither replaces the other.
+Two Monte Carlo DCF engines coexist; neither replaces the other.
 
 ### 1. Classic scenario engine — `financial_analysis/dcf.py` (`StochasticDCF`)
 
@@ -58,9 +52,8 @@ pinned. Gordon terminal value with a 0.001 floor on the `wacc − tg` denominato
 lets near-degenerate paths dominate the tails — one reason the driver engine exists).
 Minimum-history guard: raises `ValueError` unless ≥ 4 annual periods have positive FCF.
 `financial_analysis/scenarios.py` supplies bear/base/bull assumption presets and a
-per-ticker net-debt/shares registry for it. Note: the IBM entries in `scenarios.py` are
-the **v3** aggregate framework (base P50 $141 family); the v4 numbers live only in the
-driver engine's register (docs/HIDDEN-ASSUMPTIONS.md #13).
+per-ticker net-debt/shares registry for it. IBM entries in `scenarios.py` are the v3
+aggregate framework; v4 values: see docs/HIDDEN-ASSUMPTIONS.md #13.
 
 ### 2. Driver-based engine — `financial_analysis/driver_dcf.py` (`DriverDCF`)
 
@@ -82,8 +75,7 @@ stochastic objects.
 - **Per-path WACC.** WACC is computed per path from CAPM drivers (`rf`, `beta`, `erp`,
   `kd_spread`, `tax_rate`, `equity_weight`), and the after-tax cost of debt is *derived*
   from the same path's risk-free draw: `(rf + spread)·(1 − tax)`. Deriving kd from rf
-  keeps credit spreads non-negative by construction (a fixed kd against a floating rf
-  produced negative-spread paths — DRIVER-REVIEW finding, fixed).
+  keeps credit spreads non-negative by construction.
 - **Degenerate-draw guard (T-DCF-2).** Effective terminal growth per path is
   `min(tg_draw, wacc_path − 0.02)`, so the Gordon denominator is at least 2% on every
   path — no 0.001-clip absurdities. The fraction of paths where the guard binds is
@@ -125,8 +117,9 @@ net debt, shares, exposing `build()`. Precedence over DRIVERS.md: CLAUDE.md.
   10-K rows (HIDDEN-ASSUMPTIONS #2).
 - Scope: revenue/FCF projections only — no WACC, no terminal value, no price.
 
-The HTML report renders it as section 6 ("Backtest — mechanical vintages"): coverage and
-per-horizon bias chips, revenue/FCF hedgehog charts, vintage scorecard. Calibration: IBM
+The HTML report renders it as the "Backtest — mechanical vintages" section: coverage and
+per-horizon bias chips, revenue/FCF hedgehog charts (actuals as a line, each vintage's
+P50 projection as a spur off its base-year actual, P10–P90 whiskers), vintage scorecard. Calibration: IBM
 14/18 realized outcomes in the P10–P90 band (78% vs 80% nominal); DUOL 0/6 — mechanical
 extrapolation fails on growth-phase tickers, so treat their bands as decorative until a
 driver build exists.
@@ -136,19 +129,19 @@ driver build exists.
 | Module | Lines | What it does |
 |---|---|---|
 | `__init__.py` | 3 | Re-exports `EdgarClient`. |
-| `backtest.py` | 407 | Point-in-time vintage backtest of *operating* projections (revenue, FCF — no WACC, no TV, no price). One vintage per clean fiscal-year-end + 90-day filing lag; `vintage_periods` filters on `filed_date <= as_of` (true point-in-time); mechanical parameters (trailing CAGR, margin mean/std over ≤ 5 clean annuals, std floored 0.01, ≥ 3 periods required); projects +1..+horizon with StochasticDCF-style one-draw-per-path sampling; scores vs actuals as currently reported (asymmetry disclosed); `DATA_FLAGS` surfaces (never fixes) known input defects, e.g. IBM's FY2019–20 recast mismatch; skipped vintages are recorded with reasons. |
+| `backtest.py` | 407 | Vintage backtest of revenue/FCF projections; see Backtest harness. Needs ≥ 3 periods per vintage; skipped vintages are recorded with reasons. |
 | `cache.py` | 28 | Disk cache for SEC companyfacts JSON at `data/raw/TICKER/company_facts.json`; re-fetches on `refresh` or corrupt cache. |
 | `dcf.py` | 157 | Classic engine (above): `DCFAssumptions`, `DCFResult`, `StochasticDCF`, `derive_fcf_margin`. Annual (10-K/10-K/A) periods only. |
 | `driver_dcf.py` | 713 | Driver-based engine (above): `Driver`, `Item`, `DriverModel`, `SegmentSpec`, `DriverDCF`, `DriverDCFResult` (incl. `driver_draws` per-path values for the path explorer), vetted item formulas `revenue_paths`, `fcff_margin`, `wacc_capm`, `terminal_value`, registered in `ITEMS`. |
 | `edgar.py` | 272 | SEC HTTP client (User-Agent, 0.15s rate limit), CIK lookup from company_tickers.json, full-index filing downloads (`EdgarClient.download_for_ticker`), `EdgarClientError`. |
 | `estimates.py` | 193 | yfinance **forward** consensus (revenue/EPS estimates, price targets) → `ConsensusEstimates`; persisted as dated snapshots `data/raw/TICKER/estimates/YYYY-MM-DD.json` (yfinance has no history — history accumulates from first pull; empty snapshots saved so absence is dated evidence). `fetch_estimates`, `list_snapshots`, `load_snapshot`. |
-| `fmp.py` | 120 | Optional FMP API client (`FMP_API_KEY` in `.env`): analyst estimates/surprises, IFRS statements stub (`NotImplementedError`). Free-plan v3 endpoints unavailable since Aug 2025 — pipeline degrades to yfinance. |
+| `fmp.py` | 120 | Optional FMP API client (`FMP_API_KEY` in `.env`): analyst estimates/surprises, IFRS statements stub (`NotImplementedError`). Free-plan v3 endpoints are unavailable (since Aug 2025); the pipeline falls back to yfinance. |
 | `importer.py` | 196 | companyfacts → `PeriodFinancials`: maps concepts via `xbrl_tags` (first-wins merge across fallback concepts per period_end, sign flips), collects unmapped us-gaap USD concepts into `raw_extras`, best-effort `filed_date` from revenue-concept `filed` fields, raises `UnsupportedFilingError` for non-us-gaap filers. Module docstring documents why `segment_revenue` is always None from this source (companyfacts strips dimensional facts — Ticket 7). |
 | `market_data.py` | 136 | yfinance daily OHLCV (`load_prices`, cached at `data/raw/TICKER/prices.json`) and earnings surprises (`load_earnings_surprises`). |
 | `options.py` | 375 | yfinance option-chain snapshots (dated, one per day, `data/raw/TICKER/options/YYYY-MM-DD.json`) + derived per-expiry metrics: ATM IV, straddle-mid implied move, 90/110 skew, put/call volume & OI ratios (`fetch_option_chain`, `compute_chain_metrics`, `list_snapshots`, `load_snapshot`). |
 | `scenarios.py` | 156 | Bear/base/bull presets (`DEFAULT_SCENARIOS` generic mature-large-cap; `_SCENARIO_OVERRIDES["IBM"]` = v3 framework), `CAPITAL_OVERRIDES` (IBM: net debt $54.0B, 948,675,228 diluted shares), `capital_structure_for` (derives net debt from latest 10-K: long_term_debt + short-term borrowings from raw_extras − cash; shares_outstanding falling back to diluted). |
 | `schema.py` | 187 | Dataclasses: `PeriodFinancials` (~60 statement fields + `remaining_performance_obligation`, reserved `segment_revenue`, `raw_extras`; derived `free_cash_flow = OCF − abs(capex)` and `fcf_margin`), `CompanyFinancials`, `PricePoint`, `EarningsEstimate`, `EarningsSurprise`, `OptionQuote`, `OptionChainSnapshot`, `ConsensusEstimates`. |
-| `store.py` | 105 | JSON persistence `data/processed/TICKER.json` (**periods only** — no market data), in-memory session cache, `get_series`/`compare` query helpers with metric-name validation. |
+| `store.py` | 105 | JSON persistence `data/processed/TICKER.json`, periods only (see Data flow); in-memory session cache; `get_series`/`compare` query helpers with metric-name validation. |
 | `xbrl_api.py` | 74 | companyfacts fetch + series extraction: filters by form type/unit, deduplicates by end date keeping the **latest-filed** entry, returns last `n` entries. |
 | `xbrl_tags.py` | 173 | The concept registry: `TagSpec` (fallback concept lists, unit, sign_flip) for income statement / balance sheet / cash flow / disclosure (RPO) fields, plus `STATEMENT_MAP` and `UNIT_MAP`. Inline comments document precedence rationales (interest_income, dividends_paid). |
 
@@ -163,7 +156,7 @@ CLI flags for the six pipeline scripts: README.md §Pipeline commands.
 | `import_edgar.py` | Bulk full-index filing download (archival fallback path — companyfacts is the primary parse path). |
 | `run_dcf.py` | Classic-engine MC DCF on stored data; no network. |
 | `backtest.py` | Vintage backtest console report: per-vintage P10/P50/P90 vs actuals, band coverage vs nominal 80%, signed bias by horizon, data flags, skipped vintages. No network. |
-| `visualize_dcf.py` | Single-page self-contained HTML report (plotly.js inlined, ~5.9k lines of output): header chips, price & valuation, fundamentals, the four aggregate-DCF panels (fan / distribution / waterfall / tornado), the driver-model section (segment history, driver table, correlation heatmap, driver-vs-aggregate compare, attribution tornado, **MC path explorer**: stratified 301-path spaghetti, 2,000-path parallel coordinates, bottom/top-10 outlier table with \|z\|≥1.5 drivers bolded), the backtest section (vintage table + hedgehog charts from `financial_analysis/backtest.py`, honesty labels), options section (IV term structure, implied move, skew, OI heatmap). `SECTION_TITLES` has six entries. The driver section renders only if `analysis/<TICKER>/driver_model.py` exposes `build()`; every section degrades to a labeled "not available" note. The skew panel excludes expiries under 2 days from the snapshot (`_SKEW_MIN_DTE`) — near-expiry wing IVs are solver noise. Styling: `docs/design-specs/2026-07-16-ratings-desk-blueprint.md`, `docs/visualizer-design-brief.md`. |
+| `visualize_dcf.py` | Single-page self-contained HTML report (plotly.js inlined, ~5.9k lines of output); sections in `SECTION_TITLES` (six), content in docs/visualizer-design-brief.md. The driver section renders only if `analysis/<TICKER>/driver_model.py` exposes `build()`; every section degrades to a labeled "not available" note. MC path explorer: stratified 301-path spaghetti, 2,000-path parallel coordinates, bottom/top-10 outlier table with \|z\|≥1.5 drivers bolded. The skew panel excludes expiries under 2 days (`_SKEW_MIN_DTE`): near-expiry wing IVs are solver noise. Styling: `docs/design-specs/2026-07-16-ratings-desk-blueprint.md`. |
 | `board.py` | `python scripts/board.py check \| status \| branch NAME \| new --title --area --owner --branch --acceptance [--status]`. Scrum-board checker and ticket creator over `PLANNING/board/` (rules in its README). CI runs `check` and `branch <PR head>`. |
 | `board_gate.py` | (PreToolUse hook, not a CLI) Denies edits, commits, pushes, PRs and GitHub write tools unless the target repo's branch has an active ticket on its `origin/main`; pushes that could update main must be board-only fast-forwards. Rules and limits: docs/COLLABORATION.md. |
 | `main_guard.py` | `git diff --no-renames --name-only B A \| python -m scripts.main_guard <1 if A merges a PR, else 0>`. Exit 2 = revert: a push to main must be a merged PR or touch only `PLANNING/board/` (`.github/workflows/main-guard.yml`). |
@@ -177,8 +170,8 @@ CI (`.github/workflows/`): `tests.yml`, `main-guard.yml`, `branch-cleanup.yml` (
 
 | Entry point | What it does |
 |---|---|
-| `python -m analysis.IBM.dcf_scenarios` | v3 aggregate framework console report: FCFF v3 margins, paired (growth, f) scenarios, WACC grid, f-locus. Historical — superseded by the driver run for headline numbers, kept reproducible. |
-| `python -m analysis.IBM.dcf_drivers_run` | v4 driver-engine runner: headline P10/P50/P90 + attribution, E/V fixed-point iteration, f-locus (g_software mean moves WITH f), SBC-drift locus, beta locus, supply-shock correlation and τ=0 disclosure runs, implied-reinvestment check. Seed 7, 10k sims, 10y. |
+| `python -m analysis.IBM.dcf_scenarios` | v3 aggregate framework console report: FCFF v3 margins, paired (growth, f) scenarios, WACC grid, f-locus. Not a headline source (see next row); kept reproducible. |
+| `python -m analysis.IBM.dcf_drivers_run` | v4 driver-engine runner: headline P10/P50/P90 + attribution, E/V fixed-point iteration, f-locus (sweep of f from 0 to 1; g_software mean moves WITH f; HIDDEN-ASSUMPTIONS #11), SBC-drift locus, beta locus, supply-shock correlation and τ=0 (no debt tax shield) disclosure runs, implied-reinvestment check. Seed 7, 10k sims, 10y. |
 
 ## Tests
 
