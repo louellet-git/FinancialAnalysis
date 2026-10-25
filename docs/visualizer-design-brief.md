@@ -4,7 +4,7 @@ type: description
 item: 10.15 Design description
 status: current
 date: 2026-10-25
-scope: Contract for a purely cosmetic restyle of the single-page report from scripts/visualize_dcf.py, for a design agent; lets it restyle without reading the code.
+scope: Contract for a purely cosmetic restyle of the single-page report from scripts/visualize_dcf.py, for a design agent.
 ---
 # Visualizer design brief
 
@@ -15,8 +15,10 @@ server-side by Python: static HTML (header, stat chips, tables, notes, footer)
 interleaved with interactive plotly.js charts. No app shell, routing or data fetching
 (constraint 1); opened from disk, emailed or printed (constraint 4).
 
+Engines: "aggregate" = scenario MC (`financial_analysis/dcf.py`, presets in `scenarios.py`); "driver" = `financial_analysis/driver_dcf.py`; "mechanical vintages" = point-in-time backtest (`financial_analysis/backtest.py`).
+
 Reference render: `python -m scripts.visualize_dcf IBM` (needs the repo's IBM data).
-Page length is roughly 4,900 px at 1440 px wide.
+Page length is ≈4,900 px at 1440 px wide.
 
 ## Page structure
 
@@ -33,7 +35,7 @@ Page length is roughly 4,900 px at 1440 px wide.
 ```
 
 Each `section.rsec` holds an `h2.section-h` (hairline bottom border) and a
-`div.grid`: 2 columns (`repeat(2, minmax(0,1fr))`), 1 column below 1100 px. Cards are
+`div.grid`: 2 columns (`repeat(2, minmax(0,1fr))`); breakpoint per constraint 7. Cards are
 `section.card` blocks (1 px hairline border, `overflow-x: auto`); `.card.wide` spans
 both columns. Every card is `h3` title + `p.sub`
 caption (muted) + body (a plotly div, an HTML table, or a `p.note`).
@@ -114,7 +116,7 @@ Sections never disappear; they degrade to these notes.
 - **Engine meta line** — a full-width muted paragraph (sims, seed,
   horizon, net debt, shares, TV share; optionally the fraction of paths with
   pinned terminal growth).
-- Absent state: a single wide card titled "Driver model" with a note.
+- Absent: card "Driver model".
 
 ### 6. Backtest — mechanical vintages (always rendered; chip row + 2 half cards + 1 wide table)
 - **Backtest stat-chip row** (`div.chips.wide-chips`, same chip component as the
@@ -134,8 +136,7 @@ Sections never disappear; they degrade to these notes.
   ✓ / ✗ / —. Below the table, `p.note` blocks: method (mechanical, point-in-time,
   operating projections only), `filed_date` visibility and as-currently-reported
   actuals, the ⚑ data flags, and skipped vintage dates when any.
-- Absent state: when no vintage has the 3 clean annual periods needed, one wide
-  card "Vintage backtest" with a note (lists the skipped candidate dates).
+- Absent (no vintage with 3 clean annual periods): card "Vintage backtest"; note lists skipped dates.
 
 ### 7. Options market (conditional; chip row + 4 half cards + 1 wide table)
 - **Chain stat-chip row** — 6 chips (Snapshot date, Spot, P/C volume, P/C
@@ -158,7 +159,7 @@ Sections never disappear; they degrade to these notes.
   (5 call cols, bold strike, 5 put cols) with a two-tier header (Calls /
   Strike / Puts group row, then Bid Ask Last IV OI). The ATM row is
   highlighted (`tr.atm`, accent tint).
-- Absent state: one wide card with a note.
+- Absent: card "Option chain".
 
 ### 8. Footer (static HTML)
 Three muted lines: data provenance (EDGAR periods, price cache,
@@ -174,16 +175,13 @@ seeds), and a generated-by line.
   Tooltip templates are custom (e.g. "FY2025: $67.5B", "24 Jul 26 · $215:
   2,714 contracts") with the series name in the tooltip's side tag.
 - **Scale toggle**: the price-history card has a two-button Linear/Log
-  updatemenu (top-right inside the plot area). This is the only control on
-  the page — there are no global filters, date pickers, or cross-chart
-  interactions.
+  updatemenu (top-right inside the plot area). This is the only control on the page.
 - **Zoom/pan**: plotly's default drag-zoom and double-click-reset remain
   active on all charts. The plotly modebar is disabled
   (`displayModeBar: false`) — no floating toolbar appears.
 - **Responsive**: charts are `responsive: true`, width 100% of the card; a
   `resize` event is dispatched on load.
-- No keyboard-specific affordances, no animations or transitions beyond
-  plotly defaults.
+- No keyboard-specific affordances; plotly default motion only.
 
 ## Current style tokens
 
@@ -211,8 +209,7 @@ docs/design-specs/2026-07-16-ratings-desk-blueprint.md; a restyle changes those 
 6. **Color discipline.** Categorical hue order stays fixed; scenario hues
    follow the scenario (bear/base/bull) everywhere they appear; diverging
    midpoint stays neutral; sequential ramp stays single-hue. If the palette
-   is re-branded, validate it (lightness band, chroma floor, adjacent-pair
-   CVD ΔE ≥ 12, 3:1 surface contrast) before shipping.
+   is re-branded, validate it per `docs/design-specs/2026-07-16-ratings-desk-blueprint.md`, paragraph "CVD / contrast confirmation".
 7. **Responsive floor.** Two-column grid ≥1100 px, single column below;
    tables scroll horizontally inside their cards; the page body must never
    scroll horizontally.

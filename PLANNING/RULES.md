@@ -8,14 +8,14 @@ scope: Canonical rulebook (L4) of the valuation factory; rules bind at their dec
 ---
 # Rulebook (L4)
 
+L4, ✦2, ✦3 and the fan-out: `PLANNING/reusable-dcf-vision.md` §L4, §L5. P1 (validators, red-team
+corpus): `PLANNING/board/T-20261025-p1-validators-redteam.md`.
+
 Objective: rules won in adversarial review, each with provenance and scope (✦3:
 universal / archetype-bound / ticker-bound), so no run re-pays them. Every rule
 generates a validator (where machine-expressible) and a red-team specimen (✦2); these
 and the per-run charter review enforce it. Deprecation requires a review fan-out of the
 same weight that created the rule, recorded here.
-
-L4, ✦2, ✦3 and the fan-out: `PLANNING/reusable-dcf-vision.md` §L4, §L5. P1 (validators, red-team
-corpus): `PLANNING/board/T-20261025-p1-validators-redteam.md`.
 
 | # | Rule | Scope | Provenance | Validator | Specimen |
 |---|---|---|---|---|---|

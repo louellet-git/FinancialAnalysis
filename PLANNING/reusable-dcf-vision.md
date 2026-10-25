@@ -8,10 +8,9 @@ scope: Standing design of the reusable, self-improving DCF (the valuation factor
 ---
 # The Valuation Factory — reusable, self-improving DCF
 
-Context: standing initiative, design approved 2026-07-16 (Luc). Notation: ✦n marks an
-amendment (✦1–✦7, plus the basket amendment 2026-07-17 and the ✦6a amendment 2026-10-25). Manager agent: Claude (this
-vision's completion falls on the manager). Universe: **non-financial US large-caps
-first**; archetype expansion is the frontier.
+Context: standing initiative, owner-approved 2026-07-16. Notation: ✦n marks an amendment (✦1–✦7,
+plus the basket amendment 2026-07-17 and the ✦6a amendment 2026-10-25). Manager: Claude.
+Universe: **non-financial US large-caps first**; archetype expansion is the frontier.
 
 ## The idea (summary)
 
@@ -107,7 +106,7 @@ incomplete (a session limit must never produce a half-reviewed model that looks 
 
 ### L6 — Gap attribution + bet ledger (✦1)
 The headline artifact of every published run: **why does the market price differ from the
-model, specifically?** Solve for the assumption set that reproduces the market price
+model?** Solve for the assumption set that reproduces the market price
 (market-implied recurrence/growth/WACC vs ours), decompose the gap into named
 per-assumption contributions ($/share each). Output: an explicit list of bets we are
 taking against the market, each with evidence and rationale — opportunity identification,

@@ -10,9 +10,9 @@ scope: Luc's live session state; rules in PLANNING/handoff/README.md.
 
 Participant: Luc.
 
-## Decision open for Luc
+## Open decision
 
-Luc's call: how deep to go on DUOL, and whether ORCL comes next (PR #15 open).
+Luc's call: DUOL depth; whether ORCL is next ([PR #15](https://github.com/louellet-git/FinancialAnalysis/pull/15) open).
 
 ## Standing housekeeping
 

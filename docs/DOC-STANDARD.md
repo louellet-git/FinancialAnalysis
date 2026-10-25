@@ -38,7 +38,7 @@ Front matter between `---` lines, `key: value`, exactly these keys:
 | type | description, plan, policy, procedure, report, request, specification, record |
 | item | `10.<n> <2019 title>`, n in 2..74; or `9 record` |
 | status | draft, current, frozen, superseded |
-| date | YYYY-MM-DD, date of issue |
+| date | YYYY-MM-DD, date of issue; frozen/superseded: date of the item's last commit |
 | scope | one sentence: purpose and scope. Audience is always the two owners and their agents |
 
 The registry of items is the headers: `python scripts/doc_check.py list`.
@@ -107,14 +107,17 @@ not that the critic ran.
 
 ## Enforcement
 
-- `python scripts/doc_check.py check`: the whole repo, in CI on pull requests and pushes to
-  main, after the fact. Fails on a bad header, a duplicate id, a missing PASS row, or a
-  breach of Compactness 7.
-- Hook (`--hook`): denies a command containing `git` and `commit` while any doc the commit
-  could carry fails: differing from HEAD in the index or worktree, or untracked. It reads
-  worktree content and ledger, in the repo the command targets (`cd`, `git -C`, else cwd).
-- Not seen by the hook: GitHub MCP writes (`push_files`, `create_or_update_file`), commits
-  not made through Bash, sessions without python. CI catches them later.
+- `python scripts/doc_check.py check`: whole repo; the hard gate, in CI on pull requests and
+  pushes to main (after the fact). Fails on a bad header, a duplicate id, a missing PASS row,
+  or a breach of Compactness 7.
+- Hook (`--hook`), the early gate: denies a command naming `git` and commit, merge,
+  cherry-pick, revert, pull, am, rebase or push while a governed doc changed on this branch
+  (worktree content vs the merge-base with `origin/main`, or untracked) fails, in every repo
+  the command names (`cd`, `pushd`, `Set-Location`, `git -C`, `--git-dir`, `--work-tree`,
+  `GIT_DIR=`, else cwd); an unresolvable target denies. WIP docs on the branch block its
+  commits; docs clean on `origin/main` do not.
+- Not seen by the hook: GitHub MCP writes, non-Bash commits, wrapper scripts, sessions
+  without python; CI catches them.
 
 ## Plan elements
 

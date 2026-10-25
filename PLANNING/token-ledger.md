@@ -19,3 +19,5 @@ Subagent output tokens only; orchestrator overhead excluded.
 | DUOL first pass | 2026-07-17 | import + consensus-anchored presets + capital override + html | ~0 (inline) | orchestrator-inline, no subagents: analyze, two scenarios.py registry entries, report. NOT a frontier run — no driver model, no reviews; mechanical backtest coverage 0/6 says growth-phase tickers need the driver engine |
 
 Targets: frontier ticker ≤500k · repeat run ≤50k.
+
+Run evidence: analysis/IBM/REVIEW.md, analysis/IBM/DRIVER-REVIEW.md, analysis/IBM/report/. Counts: session usage, not in repo.

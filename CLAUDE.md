@@ -14,8 +14,7 @@ Start with `docs/ARCHITECTURE.md` (code-verified module map) and
 
 ## Collaboration
 
-Two people work this repo in parallel, each with their own Claude Code session. Follow
-`docs/COLLABORATION.md` before any work.
+Two people work this repo in parallel. Follow `docs/COLLABORATION.md` before any work.
 
 ## What this repo is
 
@@ -46,7 +45,7 @@ yet ticketed: `PLANNING/tickets.md` §OPEN TICKETS.
 3. **Recorded dispositions bind.** `analysis/IBM/REVIEW.md` (F1–F19) and
    `analysis/IBM/DRIVER-REVIEW.md` (19 + 4 reviews) are settled rulings — do not
    re-litigate them in later work; reopening one requires a review of the same weight
-   (same principle as RULES.md deprecation).
+   (same weight rule as item 4).
 4. **`PLANNING/RULES.md` rules are binding at their declared scope**
    (universal / archetype-bound / ticker-bound); deprecation requires a review fan-out
    of the same weight that created the rule.
@@ -56,10 +55,10 @@ yet ticketed: `PLANNING/tickets.md` §OPEN TICKETS.
    `analysis/IBM/README.md` is v3 (superseded); v4 still references its net-debt bridge
    and data notes.
 6. **Reports and `frozen`/`superseded` docs are never edited.** `analysis/IBM/report/*`
-   was audited (SOURCE-AUDIT.md) against the engine on its date; do not edit published
+   was audited (`analysis/IBM/report/SOURCE-AUDIT.md`) against the engine on its date; do not edit published
    reports to "fix" them — supersede with a new version.
 7. **Evidence and design contracts bind.** `analysis/IBM/research-ledger.md` holds the
-   frozen source-tagged facts the model consumes (RPO expires at the Q2-2026 10-Q);
+   frozen source-tagged facts the model consumes (RPO expired at the Q2-2026 10-Q);
    `docs/visualizer-design-brief.md` and
    `docs/design-specs/2026-07-16-ratings-desk-blueprint.md` bind restyles of
    `visualize_dcf` output.
@@ -68,9 +67,12 @@ yet ticketed: `PLANNING/tickets.md` §OPEN TICKETS.
 
 ## Orchestration norms
 
-- **Subagents do not commit.** Subagents leave work uncommitted in their worktree; the
-  orchestrator (each person's own manager session) reviews, collects, and commits.
-  Every commit goes through one person's orchestrator.
+Objective: an agent works this repo correctly without re-deriving its norms.
+Enforcement: docs/COLLABORATION.md §Enforcement and limits (hook, CI); smoke-test and
+token-ledger rules: none (session discipline).
+
+- **Subagents do not commit.** The orchestrator (each person's manager session) reviews and
+  commits their worktree output.
 - **Parallel work happens in git worktrees, one branch per worktree** (`git worktree
   add ../wt-<name> -b <branch> origin/main`). **Checking out a branch in the shared
   main tree is forbidden.** Assume the main checkout has
@@ -81,8 +83,7 @@ yet ticketed: `PLANNING/tickets.md` §OPEN TICKETS.
   untracked.
 - **Smoke-test policy:** a ticket is not done until real output is printed and
   confirmed consumable by the next stage (`PLANNING/tickets.md` header; `context.json`).
-- **Token ledger:** update `PLANNING/token-ledger.md` per run (success metric #1;
-  targets: frontier ticker ≤ 500k, repeat run ≤ 50k subagent tokens).
+- **Token ledger:** update `PLANNING/token-ledger.md` per run (success metric #1; targets there).
 - Session handoffs: `PLANNING/handoff/<first name>.md`, live state (rules in its README;
   delete items as completed).
 

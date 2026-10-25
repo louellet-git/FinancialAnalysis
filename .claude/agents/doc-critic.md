@@ -16,8 +16,10 @@ check needs a shell (sha256, doc_check.py), say it is unchecked, do not guess. C
    `superseded` docs.
 4. Compactness: every rule in the standard's checklist.
 
-Each finding cites a line number and gives the shorter or fixed text; a finding that adds
-text names the reader action it enables.
+Each finding cites a line number and the numbered rule of the standard it breaks, and gives
+the shorter or fixed text; a finding that adds text names the reader action it enables.
+Doubts you cannot verify (e.g. 2019 titles) and unchecked items go under "Unchecked", never
+as findings.
 
-Output exactly `VERDICT: PASS` (zero findings), or `VERDICT: FAIL` plus a numbered list of
-findings. You cannot edit or record; the session does.
+Output exactly `VERDICT: PASS` (no findings remain), or `VERDICT: FAIL` plus a numbered list
+of findings; an optional "Unchecked" list follows either verdict. You cannot edit or record; the session does.

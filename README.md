@@ -4,7 +4,7 @@ type: description
 item: 10.67 User documentation
 status: current
 date: 2026-10-25
-scope: Human-facing overview of the pipeline, its CLI commands, outputs and layout.
+scope: Overview of the pipeline, its CLI commands, outputs and layout.
 ---
 # FinancialAnalysis
 
@@ -15,12 +15,11 @@ scenario engine and a driver-based engine — feeding an adversarial review pipe
 a single-page HTML company report. Flagship analysis: IBM (`analysis/IBM/`, v4.1
 report).
 
-Agent onboarding: **CLAUDE.md** (norms + normativity map) → `docs/ARCHITECTURE.md` →
-`docs/HIDDEN-ASSUMPTIONS.md`.
+Agents: start with **CLAUDE.md**.
 
 ## Pipeline commands
 
-Run from the repo root. Flags follow each script's argparse; `--help` lists defaults.
+Run from the repo root. `--help` on each script lists flags and defaults.
 
 ```bash
 pip install -r requirements.txt   # numpy, openpyxl, plotly, yfinance, python-dotenv, requests
@@ -64,11 +63,7 @@ and forward consensus are dated snapshots (yfinance serves current data only);
 
 ## The two DCF engines
 
-- **Classic engine** — `financial_analysis/dcf.py` (`StochasticDCF`); presets in
-  `financial_analysis/scenarios.py`; IBM entries are v3 (docs/HIDDEN-ASSUMPTIONS.md #13).
-- **Driver engine** — `financial_analysis/driver_dcf.py` (`DriverDCF`); per-ticker
-  registers in `analysis/<TICKER>/driver_model.py` (IBM only).
-- **Backtest** — `financial_analysis/backtest.py`; mechanics in docs/ARCHITECTURE.md.
+Classic scenario engine and driver-based engine, plus the backtest: see docs/ARCHITECTURE.md.
 
 ## xlsx structure (nine tabs)
 
@@ -88,8 +83,7 @@ header-only):
 | Options Summary | Per-expiry ATM IV, implied move (ATM straddle ÷ spot), 90/110 skew, put/call ratios + chain-wide `ALL` row |
 
 Financial tabs use long format: one row per `(period, metric)`. The JSON store persists
-statements only (docs/ARCHITECTURE.md); market data lives in the xlsx and the dated
-caches under `data/raw/TICKER/`.
+statements only (docs/ARCHITECTURE.md); market data lives in the xlsx and the caches above.
 
 ## Data sources
 
@@ -112,17 +106,8 @@ README.md                    this file
 THOUGHTS                     raw idea scratchpad
 requirements.txt             runtime deps (no pytest)
 
-financial_analysis/          the package — 15 modules; see docs/ARCHITECTURE.md
-    edgar.py xbrl_api.py cache.py xbrl_tags.py importer.py schema.py store.py
-    market_data.py estimates.py options.py fmp.py
-    dcf.py scenarios.py      classic engine + presets/capital registry
-    driver_dcf.py            driver-based engine
-    backtest.py              point-in-time vintage backtest
-
-scripts/                     CLI entry points (analyze, import_financials, import_edgar,
-                             run_dcf, backtest, visualize_dcf), board.py + board_gate.py
-                             (scrum board, edit gate), doc_check.py (doc standard),
-                             main_guard.py, stale_branches.py, cloud-setup.sh
+financial_analysis/          the package; see docs/ARCHITECTURE.md
+scripts/                     CLI entry points and tooling; see docs/ARCHITECTURE.md
 tests/                       test suite (no network; see docs/ARCHITECTURE.md §Tests)
 analysis/IBM/                flagship analysis: driver_model.py (v4 register),
                              dcf_drivers_run.py, dcf_scenarios.py (v3), DRIVERS.md,
