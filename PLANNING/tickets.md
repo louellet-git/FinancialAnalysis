@@ -1,31 +1,37 @@
+---
+id: DOC-TICKETS
+type: record
+item: 9 record
+status: current
+date: 2026-10-25
+scope: Register of tickets not on the board (open backlog, Ticket 7) and the closed build tickets 1–6.
+---
 # Planning Tickets
 
 > Each ticket must end with a mandatory smoke test before it is closed.
 > A ticket is not done until real output is printed and verified consumable by the next ticket.
 
-This file has two parts: **OPEN TICKETS** (consolidated 2026-07-17 from every ledger in
-the repo — each line carries its source pointer; the sources remain authoritative for
-detail; work in progress lives on the board, `PLANNING/board/`) and **HISTORICAL — CLOSED TICKETS 1–6** (the original build, preserved
-verbatim). Ticket 7 (open) keeps its full spec in the historical section's format below.
+Parts: **OPEN TICKETS** (consolidated 2026-07-17 from every ledger in the repo; each line
+names its source, which stays authoritative for detail; work in progress is on the board,
+`PLANNING/board/`), **CLOSED TICKETS 1–6** (original build) and Ticket 7 (open, full spec
+below).
 
----
-
-## OPEN TICKETS (consolidated 2026-07-17)
+## OPEN TICKETS
 
 ### Queued work (session handoff)
 
 - ~~**Visualizer final pass**~~ DONE 2026-07-17: merged as PR #9 (rangeselector buttons + Backtest section), IBM html regenerated; 0DTE skew exclusion followed in PR #14. IBM backtest headline: 14/18 in band (78% vs 80% nominal).
 - **DUOL driver build**: DUOL first pass (PR #14) is consensus-anchored only — mechanical backtest coverage 0/6, bands decorative; promote to a driver-model frontier run (needs either person's sign-off, vision ✦6a as amended 2026-10-25) or leave as screening output.
-- **ORCL frontier run** (ticker #2) under the cheapened pipeline; then basket (IBM/ORCL/MSFT/ACN/CSCO); then cross-sectional gap decomposition — board T-20261025-orcl-frontier-run; vision ✦1 basket amendment.
-- **IBM Q2 grading** (reported July 22, 2026; still open): grade the 5-item watch list (report §5), first bet-ledger entries, grade the 2026 mechanical vintage (FY2026 revenue P50 $70.3B vs consensus $71.1B) — board T-20261025-ibm-q2-grading.
+- **ORCL frontier run** (ticker #2), then basket and cross-sectional gap decomposition — board T-20261025-orcl-frontier-run; vision ✦1 basket amendment.
+- **IBM Q2 grading** (reported July 22, 2026; still open) — board T-20261025-ibm-q2-grading (scope: 5-item watch list, first bet-ledger entries, 2026 mechanical vintage).
 - ~~**Gitignore churn cleanup**~~ DONE on merge of T-20261025-collab-board-workflow: NVDA/PANW xlsx + stray .pyc untracked (`git rm --cached`).
 
 ### Factory P1 (vision phasing — the active frontier)
 
-- **Rulebook extraction**: promote the 9-item backlog (endpoint-not-flattering-mean; growth/cost pairing; stock-or-flow; decade-CAGR dispersion for cyclicals; bridge income-stripped-or-absent; kd co-moves with rf; single-source pairing constants; quantitative immateriality thresholds; reference-resolving exclusions) into RULES.md rows with validators + specimens — PLANNING/RULES.md backlog.
-- **`validators.py`**: machine-checkable rule subset, run at model build + CI; R1 coverage validator (RPO-class concepts classified, unclassified = fail) — PLANNING/RULES.md R1; vision L4.
-- **Red-team corpus + injection harness** (✦2): known-bad models seeded with past accepted findings; every accepted finding generates a validator AND a specimen — vision L4/P1.
-- **Statement-coverage validator** (✦7): every mapped field + raw_extras concept classified used/excluded-with-reason, run retroactively on the IBM register — vision L4/P1.
+- **Rulebook extraction**: promote the 9-item backlog into RULES.md rows with validators + specimens — PLANNING/RULES.md backlog.
+- **`validators.py`**: machine-checkable rule subset, run at model build + CI; R1 coverage validator — PLANNING/RULES.md R1; vision L4.
+- **Red-team corpus + injection harness** (✦2) — vision L4/P1.
+- **Statement-coverage validator** (✦7), run retroactively on the IBM register — vision L4/P1.
 - **Research Ledger formal schema** (✦5): expiry policies + schema-enforced provenance tiers (interim format in use) — analysis/IBM/research-ledger.md header; vision L1/P1.
 - **RPO expiry**: the consumed RPO facts expire at the Q2-2026 10-Q (late July) — analysis/IBM/research-ledger.md; report watch-list item 4.
 
@@ -51,7 +57,7 @@ verbatim). Ticket 7 (open) keeps its full spec in the historical section's forma
 
 ---
 
-## HISTORICAL — CLOSED TICKETS 1–6 (original build, June 2026; preserved verbatim)
+## CLOSED TICKETS 1–6 (original build, June 2026)
 
 ## Ticket 1 — EDGAR Import ✅ CLOSED
 - **Title:** Verify SEC EDGAR filing retrieval end-to-end
@@ -190,7 +196,6 @@ verbatim). Ticket 7 (open) keeps its full spec in the historical section's forma
   - **SpaceX (SPCX) sample requested:** ticker resolves to SPACE EXPLORATION TECHNOLOGIES CORP (CIK 0001181412) but only a Form D (`ffd` namespace) is on file — no `us-gaap` financials, no 10-K (IPO'd 2026-06-12). Importer raises `UnsupportedFilingError`; DCF guard independently rejects post-IPO single-period histories. Both layers verified.
 
 ### Original spec
-- **Title:** Implement Monte Carlo stochastic DCF model
 - **Description:** Create `financial_analysis/dcf.py` with a `StochasticDCF` class that fits distributions to historical FCF data from `CompanyFinancials`, runs a vectorized Monte Carlo simulation, and outputs P10/P50/P90 present value estimates. Architecture must support future extension to options valuation (Black-Scholes, real options on growth).
 - **Acceptance criteria:**
   - `DCFAssumptions` dataclass: `growth_rate_mean`, `growth_rate_std`, `terminal_growth_mean`, `terminal_growth_std`, `wacc_mean`, `wacc_std`, `n_simulations` (default 10 000), `projection_years` (default 10), optional `fcf_margin_mean`/`fcf_margin_std`
@@ -215,8 +220,6 @@ verbatim). Ticket 7 (open) keeps its full spec in the historical section's forma
   - Includes usage examples for `import_edgar` and `import_financials` scripts
   - Lists smoke test command for each ticket stage
   - Mentions `context.json` and `PLANNING/tickets.md` as agent orientation files
-
----
 
 ---
 

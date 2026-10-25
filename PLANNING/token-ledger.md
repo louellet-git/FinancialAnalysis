@@ -1,3 +1,11 @@
+---
+id: DOC-TOKEN-LEDGER
+type: record
+item: 9 record
+status: current
+date: 2026-10-25
+scope: Subagent token cost per valuation run (success metric 1); append-only, one row per run.
+---
 # Token ledger — cost per run (success metric #1)
 
 Instrumented from run one, per the approved industrialization plan. Subagent output

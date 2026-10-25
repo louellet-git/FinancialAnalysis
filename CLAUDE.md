@@ -1,8 +1,17 @@
+---
+id: DOC-CLAUDE
+type: procedure
+item: 10.30 Life-cycle procedure
+status: current
+date: 2026-10-25
+scope: Orientation and norms for agents and both owners working this repo; read first.
+---
 # CLAUDE.md — agent orientation
 
-Read this first. Then: `docs/INDEX.md` (every doc, with normativity),
-`docs/ARCHITECTURE.md` (code-verified module map), `docs/HIDDEN-ASSUMPTIONS.md` (the
-trap registry), `PLANNING/handoff/` (per-person session state).
+Read this first. Then: `docs/ARCHITECTURE.md` (code-verified module map),
+`docs/HIDDEN-ASSUMPTIONS.md` (trap registry), `PLANNING/handoff/` (per-person session
+state). Every doc and its header: `python scripts/doc_check.py list`; doc rules:
+`docs/DOC-STANDARD.md`.
 
 ## Collaboration
 
@@ -24,12 +33,10 @@ Flagship analysis: **IBM v4.1** (`analysis/IBM/`, report
 conditional on f = 0.50, price at writing $212.40. IBM reported Q2 on July 22, 2026;
 grading the report's five-item watch list and first bet-ledger entries is open work.
 
-Two engines, both live (details in docs/ARCHITECTURE.md):
-- `financial_analysis/dcf.py` — classic scenario MC (samples growth/margin/WACC/tg
-  directly; presets in `scenarios.py`).
-- `financial_analysis/driver_dcf.py` — driver-based MC (parameter-MC, one draw per
-  path, per-path WACC with kd derived from rf, joint tg < WACC − 2% guard; per-ticker
-  register in `analysis/<TICKER>/driver_model.py`).
+Two engines, both live (mechanics: docs/ARCHITECTURE.md):
+- `financial_analysis/dcf.py` — classic scenario MC (presets in `scenarios.py`).
+- `financial_analysis/driver_dcf.py` — driver-based parameter-MC (per-ticker register in
+  `analysis/<TICKER>/driver_model.py`).
 
 **Open work:** the board, `PLANNING/board/` (`python scripts/board.py status`); backlog not
 yet ticketed: `PLANNING/tickets.md` §OPEN TICKETS.
@@ -52,22 +59,29 @@ yet ticketed: `PLANNING/tickets.md` §OPEN TICKETS.
 5. **`scenarios.py` IBM entries are the v3 aggregate framework, kept deliberately** —
    they are NOT stale v4 values (see docs/HIDDEN-ASSUMPTIONS.md #13). v4 headline
    numbers come only from `python -m analysis.IBM.dcf_drivers_run`.
-6. **Reports are frozen artifacts.** `analysis/IBM/report/*` was audited
-   (SOURCE-AUDIT.md) against the engine on its date; do not edit published reports to
-   "fix" them — supersede with a new version.
-7. `README.md`, `context.json`, `docs/` are informative orientation; `PLANNING/handoff/`
-   is live state (delete items as completed); `THOUGHTS` is a raw idea scratchpad.
+   `analysis/IBM/README.md` is v3 (superseded); v4 still references its net-debt bridge
+   and data notes.
+6. **Reports and `frozen`/`superseded` docs are never edited.** `analysis/IBM/report/*`
+   was audited (SOURCE-AUDIT.md) against the engine on its date; do not edit published
+   reports to "fix" them — supersede with a new version.
+7. **Evidence and design contracts bind.** `analysis/IBM/research-ledger.md` holds the
+   frozen source-tagged facts the model consumes (RPO expires at the Q2-2026 10-Q);
+   `docs/visualizer-design-brief.md` and
+   `docs/design-specs/2026-07-16-ratings-desk-blueprint.md` bind restyles of
+   `visualize_dcf` output.
+8. `README.md`, `context.json`, `docs/ARCHITECTURE.md`, `docs/HIDDEN-ASSUMPTIONS.md` are
+   informative orientation (code governs); `PLANNING/handoff/` is live state (delete
+   items as completed); `THOUGHTS` is a raw idea scratchpad.
 
-## Orchestration norms (learned the hard way)
+## Orchestration norms
 
 - **Subagents do not commit.** Subagents leave work uncommitted in their worktree; the
   orchestrator (each person's own manager session) reviews, collects, and commits.
   Every commit goes through one person's orchestrator.
 - **Parallel work happens in git worktrees, one branch per worktree** (`git worktree
   add ../wt-<name> -b <branch> origin/main`). **Checking out a branch in the shared
-  main tree is forbidden** — on 2026-07-17 an agent avoided clobbering another agent's
-  uncommitted `p1-importer` work sitting in the main checkout only because it created
-  its own worktree instead of switching branches in place. Assume the main checkout has
+  main tree is forbidden** (2026-07-17: an agent avoided clobbering uncommitted
+  `p1-importer` work there only by using its own worktree). Assume the main checkout has
   someone's uncommitted state at all times.
 - The local `main` ref in the main tree may lag `origin/main`; branch new work off
   **`origin/main`**, not local `main`.
@@ -81,25 +95,18 @@ yet ticketed: `PLANNING/tickets.md` §OPEN TICKETS.
 
 ## Review pipeline
 
-Every governed doc follows `docs/DOC-STANDARD.md` (ISO/IEC/IEEE 15289, tailored); the
-Haiku `doc-critic` agent reviews conformance and compactness, enforced by hook and CI.
-(The doc-review-framework agents were removed 2026-10-25.)
+Docs: every governed doc follows `docs/DOC-STANDARD.md` (ISO/IEC/IEEE 15289, tailored);
+the Haiku `doc-critic` agent reviews conformance and compactness, enforced by hook and
+CI.
 
-The vision doc (L5) extends this to three tiers — frontier fan-outs for new
+Runs: the vision doc (L5) sets three tiers — frontier fan-outs for new
 templates/mappings, a **charter review on every run** (ACCEPT required before
 publication), exception reviews on validator/staleness triggers — with **either person
 as the accountability terminus** (✦6a, amended 2026-10-25): frontier runs and
 accepted-with-reservations runs need one person's explicit sign-off; routine repeat runs
 publish on charter ACCEPT alone.
 
-## Quick commands
+## Commands
 
-```bash
-python -m pytest                          # full suite, no network
-python -m scripts.analyze IBM             # full import → 9-tab xlsx
-python -m scripts.visualize_dcf IBM       # single-page HTML report
-python -m scripts.backtest IBM            # point-in-time vintage backtest
-python -m analysis.IBM.dcf_drivers_run    # v4 headline numbers (seed 7)
-```
-
-Full verified CLI list: README.md; per-module detail: docs/ARCHITECTURE.md.
+Verified CLI list: README.md §Pipeline commands; per-module detail:
+docs/ARCHITECTURE.md.

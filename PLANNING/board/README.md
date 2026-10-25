@@ -1,8 +1,17 @@
+---
+id: DOC-BOARD-README
+type: procedure
+item: 10.10 Configuration management procedure
+status: current
+date: 2026-10-25
+scope: Format, lifecycle and rules of the scrum board PLANNING/board/, enforced by scripts/board.py; audience both owners and their agents.
+---
 # Scrum board
 
 One ticket per file: `PLANNING/board/<id>.md`, id `T-YYYYMMDD-<slug>` (slug: lowercase
 `a-z0-9` and hyphens). Date plus slug keeps two people from colliding. The filename
-must equal the id. `python scripts/board.py check` enforces everything below.
+must equal the id. `python scripts/board.py check` enforces everything below; on a
+violation it prints the failing ticket and rule: fix the ticket file, re-run.
 
 ## Format
 

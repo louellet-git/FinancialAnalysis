@@ -1,3 +1,11 @@
+---
+id: DOC-README
+type: description
+item: 10.67 User documentation
+status: current
+date: 2026-10-25
+scope: Human-facing overview of the pipeline, its CLI commands, outputs and layout.
+---
 # FinancialAnalysis
 
 A **valuation factory**: Python pipeline that pulls public-company financials from SEC
@@ -7,13 +15,13 @@ scenario engine and a driver-based engine — feeding an adversarial review pipe
 a single-page HTML company report. Flagship analysis: IBM (`analysis/IBM/`, v4.1
 report).
 
-Agent onboarding: **CLAUDE.md** (norms + normativity map) → `docs/INDEX.md` →
-`docs/ARCHITECTURE.md` → `docs/HIDDEN-ASSUMPTIONS.md`.
+Agent onboarding: **CLAUDE.md** (norms + normativity map) → `docs/ARCHITECTURE.md` →
+`docs/HIDDEN-ASSUMPTIONS.md`.
 
 ## Pipeline commands
 
-All commands below were verified against the code on 2026-07-17 (flags read from each
-script's argparse; defaults shown). Run from the repo root.
+Verified against the code on 2026-07-17 (flags from each script's argparse; defaults
+shown). Run from the repo root.
 
 ```bash
 pip install -r requirements.txt   # numpy, openpyxl, plotly, yfinance, python-dotenv, requests
@@ -51,10 +59,6 @@ python -m analysis.IBM.dcf_scenarios
 python -m pytest
 ```
 
-(Two shell scripts also live in `scripts/`: `memo-review-reminder.sh`, a .docx
-review-gate hook, and `setup-officecli.sh`, the officecli check/installer — neither is
-a pipeline command.)
-
 All remote data is disk-cached under `data/raw/TICKER/` — re-runs are instant; option
 chains and forward consensus are saved as **dated snapshots** (yfinance serves current
 data only, so history accumulates from the first pull; a same-day re-run reads disk,
@@ -62,34 +66,20 @@ data only, so history accumulates from the first pull; a same-day re-run reads d
 
 ## The two DCF engines
 
-**Classic scenario engine** — `financial_analysis/dcf.py` (`StochasticDCF`). Samples
-revenue growth, FCF margin, WACC, and terminal growth directly (independent normal
-draws, 10k sims × 10y default), Gordon terminal value, P10/P50/P90 + per-share.
-FCF margin derives from the last 5 annual periods when not pinned; only annual
-(10-K) periods feed the model; a minimum-history guard raises unless ≥ 4 annual periods
-have positive FCF. Bear/base/bull presets and the per-ticker net-debt/shares registry
-live in `financial_analysis/scenarios.py` (the IBM entries there implement the **v3**
-framework — deliberate; see docs/HIDDEN-ASSUMPTIONS.md #13).
+Mechanics, guards and backtest: docs/ARCHITECTURE.md.
 
-**Driver-based engine** — `financial_analysis/driver_dcf.py` (`DriverDCF`). Top-level
-items (revenue, FCFF margin, WACC, terminal value) are deterministic vetted formulas;
-all randomness lives in named *drivers*, each declaring stochastic-vs-deterministic
-with a written rationale. One draw per stochastic driver per path (held constant across
-years), jointly sampled through a validated correlation matrix; per-path WACC with the
-cost of debt derived from the same path's risk-free draw; terminal growth jointly
-guarded at `min(tg, WACC − 2%)` per path (pinned fraction reported); percentiles only —
-no mean/std. ±1σ per-driver attribution runs under the same seed. Per-ticker registers:
-`analysis/<TICKER>/driver_model.py` (IBM is the only one). Full mechanics:
-docs/ARCHITECTURE.md.
-
-**Backtest harness** — `financial_analysis/backtest.py`. Walk-forward vintages at each
-fiscal-year-end + 90 days; each vintage sees only periods with `filed_date <= as_of`
-(true point-in-time — conservative, because companyfacts filed dates come from later
-filings' comparative columns), derives mechanical parameters, projects revenue/FCF
-+1..+3y, and scores against actuals as currently reported. Known input defects are
-surfaced as data flags, not fixed. Operating projections only — no WACC, no terminal
-value, no price. A "Backtest — mechanical vintages" section of the HTML report (vintage
-table + hedgehog chart, merged in PR #9) renders it in `visualize_dcf` output.
+- **Classic scenario engine** — `financial_analysis/dcf.py` (`StochasticDCF`). Samples
+  revenue growth, FCF margin, WACC and terminal growth directly. Presets and the
+  per-ticker net-debt/shares registry: `financial_analysis/scenarios.py` (the IBM
+  entries there implement the **v3** framework — deliberate; see
+  docs/HIDDEN-ASSUMPTIONS.md #13).
+- **Driver-based engine** — `financial_analysis/driver_dcf.py` (`DriverDCF`). Vetted
+  item formulas over named, correlated stochastic drivers, each with a written
+  rationale; percentiles only. Per-ticker registers: `analysis/<TICKER>/driver_model.py`
+  (IBM is the only one).
+- **Backtest harness** — `financial_analysis/backtest.py`. Point-in-time vintages of
+  operating projections, scored against actuals; rendered as a section of the
+  `visualize_dcf` HTML report.
 
 ## xlsx structure (nine tabs)
 
@@ -108,9 +98,9 @@ header-only):
 | Options | Full option chain, one row per contract |
 | Options Summary | Per-expiry ATM IV, implied move (ATM straddle ÷ spot), 90/110 skew, put/call ratios + chain-wide `ALL` row |
 
-Financial tabs use long format: one row per `(period, metric)`. The JSON store
-(`data/processed/TICKER.json`) persists **statements only** — market data lives in the
-xlsx and the dated caches under `data/raw/TICKER/`.
+Financial tabs use long format: one row per `(period, metric)`. The JSON store persists
+statements only (docs/ARCHITECTURE.md); market data lives in the xlsx and the dated
+caches under `data/raw/TICKER/`.
 
 ## Data sources
 
@@ -124,15 +114,6 @@ Supported: any US-GAAP filer on EDGAR (verified: NVDA, PANW, WMT, TGT, DUOL, IBM
 MSFT, AAPL). ETFs and IFRS filers raise a clear `UnsupportedFilingError` instead of
 producing bad data. Segment-level revenue is NOT available from companyfacts (the API
 strips dimensional facts) — see PLANNING/tickets.md Ticket 7.
-
-## Tests
-
-```bash
-python -m pytest        # full suite, no network
-```
-
-No network calls in the suite (HTTP mocked, `tmp_path` fixtures). `pytest` is in
-`requirements-dev.txt` (`scripts/cloud-setup.sh` installs both files).
 
 ## Project layout
 
@@ -152,19 +133,18 @@ financial_analysis/          the package — 16 modules; see docs/ARCHITECTURE.m
 
 scripts/                     CLI entry points (analyze, import_financials, import_edgar,
                              run_dcf, backtest, visualize_dcf), board.py + board_gate.py
-                             (scrum board, edit gate), stale_branches.py, 3 shell scripts
-tests/                       test suite
+                             (scrum board, edit gate), doc_check.py (doc standard),
+                             main_guard.py, stale_branches.py, cloud-setup.sh
+tests/                       test suite (no network; see docs/ARCHITECTURE.md §Tests)
 analysis/IBM/                flagship analysis: driver_model.py (v4 register),
                              dcf_drivers_run.py, dcf_scenarios.py (v3), DRIVERS.md,
                              REVIEW.md, DRIVER-REVIEW.md, research-ledger.md, report/
-docs/                        COLLABORATION.md (two-person workflow), ARCHITECTURE.md,
-                             HIDDEN-ASSUMPTIONS.md, INDEX.md,
+docs/                        COLLABORATION.md (two-person workflow), DOC-STANDARD.md,
+                             ARCHITECTURE.md, HIDDEN-ASSUMPTIONS.md,
                              visualizer design brief + accepted design spec,
                              superpowers/ (historical plans/specs)
 PLANNING/                    reusable-dcf-vision.md (standing initiative), RULES.md,
                              tickets.md, token-ledger.md, board/ (tickets), handoff/ (state)
-.claude/agents/              vendored review pipeline: valuation-analyst/-skeptic,
-                             memo-reviewer + rubric, report-auditor (FRAMEWORK.md)
-vendor/ .github/workflows/   vendored delegation framework; CI (tests, main guard, cleanup)
+.github/workflows/           CI (tests, main guard, branch cleanup)
 data/raw/ data/processed/    caches and outputs (gitignored)
 ```

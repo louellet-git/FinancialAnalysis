@@ -1,8 +1,17 @@
-# RULES.md — canonical rulebook (L4 of the valuation factory)
+---
+id: DOC-RULES
+type: policy
+item: 10.45 Quality management policy
+status: current
+date: 2026-10-25
+scope: Canonical rulebook (L4) of the valuation factory; rules bind at their declared scope, for both owners and their agents.
+---
+# Rulebook (L4)
 
-Rules won in adversarial review, each with provenance and scope (✦3: universal /
-archetype-bound / ticker-bound). Every rule generates a validator (where machine-
-expressible) and a red-team specimen (✦2). Deprecation requires a review fan-out of the
+Objective: rules won in adversarial review, each with provenance and scope (✦3:
+universal / archetype-bound / ticker-bound), so no run re-pays them. Every rule
+generates a validator (where machine-expressible) and a red-team specimen (✦2); these
+and the per-run charter review enforce it. Deprecation requires a review fan-out of the
 same weight that created the rule, recorded here.
 
 | # | Rule | Scope | Provenance | Validator | Specimen |

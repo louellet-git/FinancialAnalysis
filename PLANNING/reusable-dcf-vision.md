@@ -1,11 +1,19 @@
-# The Valuation Factory — reusable, self-improving DCF (standing initiative)
+---
+id: DOC-REUSABLE-DCF-VISION
+type: description
+item: 10.8 Concept of operations
+status: current
+date: 2026-10-25
+scope: Standing design of the reusable, self-improving DCF (the valuation factory); owner-approved, amendments carry owner quotes.
+---
+# The Valuation Factory — reusable, self-improving DCF
 
-Design approved 2026-07-16 (Luc), with seven amendments incorporated (marked ✦). Manager
-agent: Claude (this vision's completion falls on the manager; work starts when the IBM v4
-report pipeline completes). Universe: **non-financial US large-caps first**; archetype
-expansion is the frontier.
+Context: standing initiative, design approved 2026-07-16 (Luc). Notation: ✦n marks an
+amendment (seven, plus the basket amendment 2026-07-17). Manager agent: Claude (this
+vision's completion falls on the manager). Universe: **non-financial US large-caps
+first**; archetype expansion is the frontier.
 
-## The idea
+## The idea (summary)
 
 A DCF that is used repeatedly and deterministically: inputs from financial statements and
 frozen research artifacts; a mapping from inputs to the DCF that is deterministic +
@@ -18,7 +26,7 @@ evidence-backed bets against the market price** (✦1).
 ## Architecture — seven layers
 
 ### L1 — Data + Research Ledger
-Exists: XBRL importer, market data, option-chain snapshots. New: the **Research Ledger** —
+Importer, market data and option-chain snapshots: docs/ARCHITECTURE.md. New: the **Research Ledger** —
 LLM-gathered facts frozen as versioned, source-tagged records `{fact, value, unit, as_of,
 source, tier, expiry_policy, confidence}`. ✦5: every record carries an **expiry policy by
 fact type** (guidance expires at next earnings; segment history on restatement; market data
@@ -83,8 +91,7 @@ red-team corpus (✦2): a known-material item mislabeled `immaterial` that the c
 reviewer must catch — gate sensitivity applies to this gate like every other.
 
 ### L5 — Review system (three tiers + terminus)
-Exists (vendored doc-review framework + the valuation-analyst/skeptic/report-auditor
-agents). Tiers: **frontier reviews** (full per-driver/per-formula fan-out + per-item
+Tiers: **frontier reviews** (full per-driver/per-formula fan-out + per-item
 consolidation — the IBM pattern) for new templates/mappings; **charter review on EVERY
 run** — a reviewer examines the applied rules + assumptions + formulas as a package and
 must ACCEPT before publication (integral, non-negotiable); **exception reviews** —
@@ -92,7 +99,8 @@ validator violations, staleness, secondary-provenance triggers. ✦6a: **the acc
 terminus is Luc, not an agent** — frontier runs and any run accepted-with-reservations
 require his explicit sign-off before publication; routine repeat runs on proven templates
 publish on charter ACCEPT alone.
-**✦6a amendment (2026-10-25):** owner ruling, "Either of you": either of the two collaborators may give the ✦6a sign-off on frontier and accepted-with-reservations runs.
+**✦6a amendment (2026-10-25):** owner ruling, "Either of you": either of the two
+collaborators may give the ✦6a sign-off on frontier and accepted-with-reservations runs.
 ✦6b: **resumable fan-out semantics** — every fan-out
 records per-review state; interrupted runs resume, never restart; every review is classed
 **load-bearing or advisory**; publication is hard-blocked while any load-bearing review is
@@ -118,9 +126,7 @@ growth, implied-move comparisons — July 22 is datapoint #1). Full distribution
 backtesting mode is out of core scope.
 
 ### L7 — Report pipeline
-Exists: valuation-analyst ↔ valuation-skeptic → memo-reviewer cleanup loop →
-report-auditor claim-traceability gate → .docx. Invoked per run at configurable depth;
-the gap-attribution bet list is the report's spine.
+Invoked per run at configurable depth; the gap-attribution bet list is the report's spine.
 
 ## Steady-state run
 
@@ -155,7 +161,6 @@ routes to exactly as much LLM as the failure needs.
 ## Current-state inventory (what already exists, 2026-07-16)
 
 Engine (driver_dcf.py, 220 tests) · IBM register (driver_model.py, consolidated v4) ·
-review framework (vendored doc-review-framework@d9d9075 + renamed agents) · review
-records proving the loop (REVIEW.md 19 findings, DRIVER-REVIEW.md 19+4 reviews) ·
+review records proving the loop (REVIEW.md 19 findings, DRIVER-REVIEW.md 19+4 reviews) ·
 options pipeline · visualizer (aggregate; everything-visualizer in flight) ·
 first sub-claims for the ledger: the July-22 watch list.
