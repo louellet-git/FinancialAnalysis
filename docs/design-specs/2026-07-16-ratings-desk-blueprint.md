@@ -1,3 +1,11 @@
+---
+id: DOC-RATINGS-DESK-BLUEPRINT
+type: description
+item: 10.15 Design description
+status: frozen
+date: 2026-07-16
+scope: Accepted visual redesign spec for the HTML report, as received 2026-07-16; frozen.
+---
 # Redesign spec — "Ratings-desk blueprint"
 
 **Received: 2026-07-16** (from the Claude design pass, responding to

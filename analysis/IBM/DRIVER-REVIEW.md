@@ -1,3 +1,11 @@
+---
+id: DOC-IBM-DRIVER-REVIEW
+type: report
+item: 10.17 Evaluation report
+status: frozen
+date: 2026-07-17
+scope: Binding record of the IBM driver reviews and author dispositions; frozen, not to be re-litigated.
+---
 # Driver review — round 1 verdicts and author dispositions
 
 19 independent reviews (one per driver incl. deterministic ones, one per item formula, one

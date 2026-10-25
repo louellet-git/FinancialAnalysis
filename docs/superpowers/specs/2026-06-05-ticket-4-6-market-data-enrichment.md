@@ -1,3 +1,11 @@
+---
+id: DOC-SPEC-MARKET-DATA-ENRICHMENT
+type: description
+item: 10.15 Design description
+status: superseded
+date: 2026-06-05
+scope: Historical design of the price and estimates enrichment; superseded by docs/ARCHITECTURE.md and the code.
+---
 # Ticket 4.6 — Market Data Enrichment Design Spec
 
 **Date:** 2026-06-05  

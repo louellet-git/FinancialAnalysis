@@ -1,3 +1,11 @@
+---
+id: DOC-IBM-README-V3
+type: report
+item: 10.17 Evaluation report
+status: superseded
+date: 2026-07-16
+scope: IBM v3 valuation summary (July 2026); superseded by v4.
+---
 # IBM — post-crash valuation (July 2026), v3
 
 Analysis date: **2026-07-16**. Price at writing: **$212.40** (down ~27% from the $290.23 close on July 13).

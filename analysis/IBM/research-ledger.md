@@ -1,3 +1,11 @@
+---
+id: DOC-IBM-RESEARCH-LEDGER
+type: record
+item: 9 record
+status: frozen
+date: 2026-07-17
+scope: Frozen, source-tagged IBM facts consumed by the model, for the two owners and their agents.
+---
 # IBM research ledger (interim format — formal ✦5 schema lands in P1)
 
 Frozen, source-tagged facts consumed by the model. Tier: PRIMARY = filing/XBRL; SECONDARY = press/transcript. Expiry policy per fact type (✦5): RPO facts expire at the next 10-Q/10-K.
