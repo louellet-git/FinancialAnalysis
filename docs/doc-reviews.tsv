@@ -12,3 +12,7 @@ date	path	sha256	verdict	reviewer
 2026-10-25	docs/superpowers/specs/2026-06-05-ticket-4-6-market-data-enrichment.md	eec54bdf80c22bd134f7cfb9695e374e42964f02f100d90dbb21485b1289906d	PASS	doc-critic/haiku
 2026-10-25	PLANNING/board/README.md	850e98fbdecf205275ad47cc11c2bbf0e9d3ef2b15c983715f0595398ddbc1f7	PASS	doc-critic/haiku
 2026-10-25	analysis/IBM/report/SOURCE-AUDIT.md	8b4c7f34bd71e4a112e454f4721976c6e7a6081e916156093f2e10d037211dc8	PASS	doc-critic/haiku
+2026-10-25	PLANNING/handoff/README.md	653d943ef6722dfd2d3d601cc419be2c5cba67c7bcfd0fd821a69a4d3b74781d	PASS	doc-critic/haiku
+2026-10-25	PLANNING/handoff/luc.md	55c59a364c0a5a07bb9a79a056393981ecf68b17787f6f04f5846be983ed7a9c	PASS	doc-critic/haiku
+2026-10-25	PLANNING/tickets-closed.md	bcbe0d2b0916ce44f63083295d53a4dbf9b6754d88329a519ee4ea1f9cbd667f	PASS	doc-critic/haiku
+2026-10-25	PLANNING/token-ledger.md	a82bcf9d46f5fe77006f08a499ddfe442c0fc079055e921c1d305d3c0901f9ea	PASS	doc-critic/haiku
