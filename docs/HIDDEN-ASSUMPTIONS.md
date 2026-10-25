@@ -68,7 +68,7 @@ cited sources, not pipeline outputs (disclosed). Evidence:
 **7. Capex sign convention.** The importer stores capex sign-flipped (negative);
 `free_cash_flow = OCF − abs(capex)`. Dropping abs() overstates FCF by 2×capex. Evidence: `financial_analysis/schema.py` (`free_cash_flow`);
 `financial_analysis/xbrl_tags.py` (`capex`, `sign_flip=True`); `context.json`
-`fcf_sign_note`; `PLANNING/tickets.md` Ticket 5 results.
+`fcf_sign_note`; `PLANNING/tickets-closed.md` Ticket 5 results.
 
 **8. `dividends_paid` third fallback is dividends DECLARED, not paid.**
 `us-gaap/DividendsCommonStockCash` is an equity charge used as a last-resort proxy when
