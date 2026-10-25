@@ -36,8 +36,7 @@ SEC EDGAR (companyfacts JSON API)          yfinance
   scripts/analyze.py ──► data/processed/TICKER_financials.xlsx (9 tabs)
 ```
 
-Market data is never persisted to the JSON store (`store.save()` writes `periods` only);
-dated snapshots under `data/raw/TICKER/` are the durable record.
+Market data is never persisted to the JSON store; see HIDDEN-ASSUMPTIONS #6.
 
 ## The two DCF engines
 
@@ -48,9 +47,8 @@ Two Monte Carlo DCF engines coexist; neither replaces the other.
 Samples the **top-level valuation items directly**: revenue growth, FCF margin, WACC,
 and terminal growth, each an independent normal draw per path (10,000 sims, 10-year
 horizon by default). FCF margin is derived from the last 5 annual periods when not
-pinned. Gordon terminal value with a 0.001 floor on the `wacc − tg` denominator (which
-lets near-degenerate paths dominate the tails — one reason the driver engine exists).
-Minimum-history guard: raises `ValueError` unless ≥ 4 annual periods have positive FCF.
+pinned. Gordon terminal value; its denominator floor (one reason the driver engine
+exists) is HIDDEN-ASSUMPTIONS #15. Minimum-history guard: HIDDEN-ASSUMPTIONS #16.
 `financial_analysis/scenarios.py` supplies bear/base/bull assumption presets and a
 per-ticker net-debt/shares registry for it. IBM entries in `scenarios.py` are the v3
 aggregate framework; v4 values: see docs/HIDDEN-ASSUMPTIONS.md #13.
@@ -65,13 +63,11 @@ stochastic objects.
   stochastic driver (e.g. one software growth rate) and holds it constant across all 10
   projection years. There is no year-to-year dynamics (no AR(1) mean reversion — that is
   ticket T-DCF-1, disclosed in the module docstring). This widens far-year dispersion
-  and understates the left tail; the report calls the tails decorative.
+  and understates the left tail; tails are decorative (HIDDEN-ASSUMPTIONS #12).
 - **Joint sampling.** Stochastic drivers are drawn as correlated standard normals (full
   pairwise correlation matrix, Cholesky-factorized, validated positive-definite — never
   silently repaired), then transformed to each driver's marginal as `mean + std·z`.
-  Truncated drivers (`dist="truncnorm"`) are **clipped after correlation** — disclosed
-  as piling probability mass on the bounds; reviewers must check bounds sit > ~2σ from
-  the mean.
+  Truncated drivers are clipped after correlation (HIDDEN-ASSUMPTIONS #14).
 - **Per-path WACC.** WACC is computed per path from CAPM drivers (`rf`, `beta`, `erp`,
   `kd_spread`, `tax_rate`, `equity_weight`), and the after-tax cost of debt is *derived*
   from the same path's risk-free draw: `(rf + spread)·(1 − tax)`. Deriving kd from rf
@@ -95,26 +91,21 @@ stochastic objects.
 
 Per-ticker parameterization lives in `analysis/<TICKER>/driver_model.py` (IBM is the
 only instance): drivers with written rationales, the correlation matrix, segment bases,
-net debt, shares, exposing `build()`. Precedence over DRIVERS.md: CLAUDE.md.
+net debt, shares, exposing `build()`. Its rationale strings govern over DRIVERS.md (CLAUDE.md, normativity 2).
 
 ## Backtest harness
 
 `run_backtest(company, horizon=3, n=10_000, seed=7)` in `financial_analysis/backtest.py`
 — walk-forward vintages, one per clean fiscal-year-end + 90 days:
 
-- **Point-in-time estimates**: a vintage sees only periods with `filed_date <= as_of`.
-  Because the importer's `filed_date` is the filing date of the (often later) 10-K whose
-  comparative column supplied the figure, vintages are *conservative* — they may see
-  fewer periods than a real-time observer did, never more. The leakage direction is safe.
+- **Point-in-time estimates**: a vintage sees only periods with `filed_date <= as_of`; vintages are conservative (HIDDEN-ASSUMPTIONS #4).
 - **Mechanical parameters, no judgment**: trailing revenue CAGR + YoY std, FCF-margin
   mean/std over ≤5 clean annuals (stds floored at 0.01); mirrors `StochasticDCF`'s
   sampling structure (one growth + one margin draw per path).
 - **Asymmetric actuals, disclosed**: actuals join from the store *as currently reported*
   (restatements included) — how forecasts are judged in practice.
-- **DATA_FLAGS, not fixes**: vintages whose parameter window touches IBM FY2019/FY2020
-  carry the recast-mismatch flag; inputs are marked, never silently repaired.
-- `_clean_annuals` requires both revenue and OCF — this is what filters the phantom
-  10-K rows (HIDDEN-ASSUMPTIONS #2).
+- **DATA_FLAGS, not fixes**: IBM FY2019/FY2020 windows carry the recast flag (HIDDEN-ASSUMPTIONS #1).
+- Phantom rows are filtered by `_clean_annuals` (HIDDEN-ASSUMPTIONS #2).
 - Scope: revenue/FCF projections only — no WACC, no terminal value, no price.
 
 The HTML report renders it as the "Backtest — mechanical vintages" section: coverage and
@@ -126,24 +117,24 @@ driver build exists.
 
 ## `financial_analysis/` modules
 
-| Module | Lines | What it does |
-|---|---|---|
-| `__init__.py` | 3 | Re-exports `EdgarClient`. |
-| `backtest.py` | 407 | Vintage backtest of revenue/FCF projections; see Backtest harness. Needs ≥ 3 periods per vintage; skipped vintages are recorded with reasons. |
-| `cache.py` | 28 | Disk cache for SEC companyfacts JSON at `data/raw/TICKER/company_facts.json`; re-fetches on `refresh` or corrupt cache. |
-| `dcf.py` | 157 | Classic engine (above): `DCFAssumptions`, `DCFResult`, `StochasticDCF`, `derive_fcf_margin`. Annual (10-K/10-K/A) periods only. |
-| `driver_dcf.py` | 713 | Driver-based engine (above): `Driver`, `Item`, `DriverModel`, `SegmentSpec`, `DriverDCF`, `DriverDCFResult` (incl. `driver_draws` per-path values for the path explorer), vetted item formulas `revenue_paths`, `fcff_margin`, `wacc_capm`, `terminal_value`, registered in `ITEMS`. |
-| `edgar.py` | 272 | SEC HTTP client (User-Agent, 0.15s rate limit), CIK lookup from company_tickers.json, full-index filing downloads (`EdgarClient.download_for_ticker`), `EdgarClientError`. |
-| `estimates.py` | 193 | yfinance **forward** consensus (revenue/EPS estimates, price targets) → `ConsensusEstimates`; persisted as dated snapshots `data/raw/TICKER/estimates/YYYY-MM-DD.json` (yfinance has no history — history accumulates from first pull; empty snapshots saved so absence is dated evidence). `fetch_estimates`, `list_snapshots`, `load_snapshot`. |
-| `fmp.py` | 120 | Optional FMP API client (`FMP_API_KEY` in `.env`): analyst estimates/surprises, IFRS statements stub (`NotImplementedError`). Free-plan v3 endpoints are unavailable (since Aug 2025); the pipeline falls back to yfinance. |
-| `importer.py` | 196 | companyfacts → `PeriodFinancials`: maps concepts via `xbrl_tags` (first-wins merge across fallback concepts per period_end, sign flips), collects unmapped us-gaap USD concepts into `raw_extras`, best-effort `filed_date` from revenue-concept `filed` fields, raises `UnsupportedFilingError` for non-us-gaap filers. Module docstring documents why `segment_revenue` is always None from this source (companyfacts strips dimensional facts — Ticket 7). |
-| `market_data.py` | 136 | yfinance daily OHLCV (`load_prices`, cached at `data/raw/TICKER/prices.json`) and earnings surprises (`load_earnings_surprises`). |
-| `options.py` | 375 | yfinance option-chain snapshots (dated, one per day, `data/raw/TICKER/options/YYYY-MM-DD.json`) + derived per-expiry metrics: ATM IV, straddle-mid implied move, 90/110 skew, put/call volume & OI ratios (`fetch_option_chain`, `compute_chain_metrics`, `list_snapshots`, `load_snapshot`). |
-| `scenarios.py` | 156 | Bear/base/bull presets (`DEFAULT_SCENARIOS` generic mature-large-cap; `_SCENARIO_OVERRIDES["IBM"]` = v3 framework), `CAPITAL_OVERRIDES` (IBM: net debt $54.0B, 948,675,228 diluted shares), `capital_structure_for` (derives net debt from latest 10-K: long_term_debt + short-term borrowings from raw_extras − cash; shares_outstanding falling back to diluted). |
-| `schema.py` | 187 | Dataclasses: `PeriodFinancials` (~60 statement fields + `remaining_performance_obligation`, reserved `segment_revenue`, `raw_extras`; derived `free_cash_flow = OCF − abs(capex)` and `fcf_margin`), `CompanyFinancials`, `PricePoint`, `EarningsEstimate`, `EarningsSurprise`, `OptionQuote`, `OptionChainSnapshot`, `ConsensusEstimates`. |
-| `store.py` | 105 | JSON persistence `data/processed/TICKER.json`, periods only (see Data flow); in-memory session cache; `get_series`/`compare` query helpers with metric-name validation. |
-| `xbrl_api.py` | 74 | companyfacts fetch + series extraction: filters by form type/unit, deduplicates by end date keeping the **latest-filed** entry, returns last `n` entries. |
-| `xbrl_tags.py` | 173 | The concept registry: `TagSpec` (fallback concept lists, unit, sign_flip) for income statement / balance sheet / cash flow / disclosure (RPO) fields, plus `STATEMENT_MAP` and `UNIT_MAP`. Inline comments document precedence rationales (interest_income, dividends_paid). |
+| Module | What it does |
+|---|---|
+| `__init__.py` | Re-exports `EdgarClient`. |
+| `backtest.py` | Vintage backtest of revenue/FCF projections; see Backtest harness. Needs ≥ 3 periods per vintage; skipped vintages are recorded with reasons. |
+| `cache.py` | Disk cache for SEC companyfacts JSON at `data/raw/TICKER/company_facts.json`; re-fetches on `refresh` or corrupt cache. |
+| `dcf.py` | Classic engine (above): `DCFAssumptions`, `DCFResult`, `StochasticDCF`, `derive_fcf_margin`. Annual (10-K/10-K/A) periods only. |
+| `driver_dcf.py` | Driver-based engine (above): `Driver`, `Item`, `DriverModel`, `SegmentSpec`, `DriverDCF`, `DriverDCFResult` (incl. `driver_draws` per-path values for the path explorer), vetted item formulas `revenue_paths`, `fcff_margin`, `wacc_capm`, `terminal_value`, registered in `ITEMS`. |
+| `edgar.py` | SEC HTTP client (User-Agent, 0.15s rate limit), CIK lookup from company_tickers.json, full-index filing downloads (`EdgarClient.download_for_ticker`), `EdgarClientError`. |
+| `estimates.py` | yfinance **forward** consensus (revenue/EPS estimates, price targets) → `ConsensusEstimates`; persisted as dated snapshots `data/raw/TICKER/estimates/YYYY-MM-DD.json` (history: HIDDEN-ASSUMPTIONS #9). `fetch_estimates`, `list_snapshots`, `load_snapshot`. |
+| `fmp.py` | Optional FMP API client (`FMP_API_KEY` in `.env`): analyst estimates/surprises, IFRS statements stub (`NotImplementedError`). Free-plan v3 endpoints are unavailable (since Aug 2025); the pipeline falls back to yfinance. |
+| `importer.py` | companyfacts → `PeriodFinancials`: maps concepts via `xbrl_tags` (first-wins merge across fallback concepts per period_end, sign flips), collects unmapped us-gaap USD concepts into `raw_extras`, best-effort `filed_date` from revenue-concept `filed` fields, raises `UnsupportedFilingError` for non-us-gaap filers. `segment_revenue` is always None from this source (HIDDEN-ASSUMPTIONS #5). |
+| `market_data.py` | yfinance daily OHLCV (`load_prices`, cached at `data/raw/TICKER/prices.json`) and earnings surprises (`load_earnings_surprises`). |
+| `options.py` | yfinance option-chain snapshots (dated, one per day, `data/raw/TICKER/options/YYYY-MM-DD.json`) + derived per-expiry metrics: ATM IV, straddle-mid implied move, 90/110 skew, put/call volume & OI ratios (`fetch_option_chain`, `compute_chain_metrics`, `list_snapshots`, `load_snapshot`). |
+| `scenarios.py` | Bear/base/bull presets (`DEFAULT_SCENARIOS` generic mature-large-cap; `_SCENARIO_OVERRIDES["IBM"]` = v3 framework), `CAPITAL_OVERRIDES` (IBM: HIDDEN-ASSUMPTIONS #13), `capital_structure_for` (derives net debt from latest 10-K: long_term_debt + short-term borrowings from raw_extras − cash; shares_outstanding falling back to diluted). |
+| `schema.py` | Dataclasses: `PeriodFinancials` (~60 statement fields + `remaining_performance_obligation`, reserved `segment_revenue`, `raw_extras`; derived `free_cash_flow = OCF − abs(capex)` and `fcf_margin`), `CompanyFinancials`, `PricePoint`, `EarningsEstimate`, `EarningsSurprise`, `OptionQuote`, `OptionChainSnapshot`, `ConsensusEstimates`. |
+| `store.py` | JSON persistence `data/processed/TICKER.json`, periods only (see Data flow); in-memory session cache; `get_series`/`compare` query helpers with metric-name validation. |
+| `xbrl_api.py` | companyfacts fetch + series extraction: filters by form type/unit, deduplicates by end date keeping the **latest-filed** entry, returns last `n` entries. |
+| `xbrl_tags.py` | The concept registry: `TagSpec` (fallback concept lists, unit, sign_flip) for income statement / balance sheet / cash flow / disclosure (RPO) fields, plus `STATEMENT_MAP` and `UNIT_MAP`. Inline comments document precedence rationales (interest_income, dividends_paid). |
 
 ## `scripts/`
 
@@ -151,7 +142,7 @@ CLI flags for the six pipeline scripts: README.md §Pipeline commands.
 
 | Script | What it does |
 |---|---|
-| `analyze.py` | Full pipeline: import → attach prices/surprises/consensus/options → `data/processed/TICKER_financials.xlsx`. The workbook **always contains all nine sheets** (Income Statement, Balance Sheet, Cash Flow, Raw, Prices, Estimates, Estimates Fwd, Options, Options Summary); skipped groups leave header-only sheets, and the console "N tabs" count refers to populated groups. RPO rows share the Balance Sheet tab with `statement=disclosure`. |
+| `analyze.py` | Full pipeline: import → attach prices/surprises/consensus/options → `data/processed/TICKER_financials.xlsx`. Writes the nine-sheet workbook (Income Statement, Balance Sheet, Cash Flow, Raw, Prices, Estimates, Estimates Fwd, Options, Options Summary; HIDDEN-ASSUMPTIONS #17). RPO rows share the Balance Sheet tab with `statement=disclosure`. |
 | `import_financials.py` | Import + save JSON only, no xlsx. |
 | `import_edgar.py` | Bulk full-index filing download (archival fallback path — companyfacts is the primary parse path). |
 | `run_dcf.py` | Classic-engine MC DCF on stored data; no network. |
@@ -175,7 +166,6 @@ CI (`.github/workflows/`): `tests.yml`, `main-guard.yml`, `branch-cleanup.yml` (
 
 ## Tests
 
-`python -m pytest` from the repo root runs the full suite (all passing as of 2026-10-25);
-modules under `tests/` mirror the package and scripts (largest: `test_driver_dcf.py`,
-`test_visualize_dcf.py`, `test_board_gate.py`, `test_options.py`). No network calls: HTTP
-is mocked and files use `tmp_path`.
+`python -m pytest` from the repo root runs the full suite; modules under `tests/` mirror the package and scripts
+(largest: `test_driver_dcf.py`, `test_visualize_dcf.py`, `test_board_gate.py`,
+`test_options.py`). No network calls: HTTP is mocked and files use `tmp_path`.
