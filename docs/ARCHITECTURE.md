@@ -148,7 +148,7 @@ decorative until a driver build exists.
 | `xbrl_api.py` | 74 | companyfacts fetch + series extraction: filters by form type/unit, deduplicates by end date keeping the **latest-filed** entry, returns last `n` entries. |
 | `xbrl_tags.py` | 173 | The concept registry: `TagSpec` (fallback concept lists, unit, sign_flip) for income statement / balance sheet / cash flow / disclosure (RPO) fields, plus `STATEMENT_MAP` and `UNIT_MAP`. Inline comments document precedence rationales (interest_income, dividends_paid). |
 
-## `scripts/` (verified 2026-07-17)
+## `scripts/` (verified 2026-07-17; board, gate, cleanup and setup rows 2026-10-25)
 
 | Script | CLI (verified against argparse) | What it does |
 |---|---|---|
@@ -158,8 +158,14 @@ decorative until a driver build exists.
 | `run_dcf.py` | `python -m scripts.run_dcf TICKER [--simulations 10000] [--years 10] [--growth 0.15] [--wacc 0.10] [--terminal-growth 0.03] [--seed N]` | Classic-engine MC DCF on stored data; no network. |
 | `backtest.py` | `python -m scripts.backtest TICKER [--horizon 3] [--simulations 10000] [--seed 7]` | Vintage backtest console report: per-vintage P10/P50/P90 vs actuals, band coverage vs nominal 80%, signed bias by horizon, data flags, skipped vintages. No network. |
 | `visualize_dcf.py` | `python -m scripts.visualize_dcf TICKER [--price X] [--out PATH]` | Single-page self-contained HTML report (plotly.js inlined, ~5.9k lines of output): header chips, price & valuation, fundamentals, the four aggregate-DCF panels (fan / distribution / waterfall / tornado), the driver-model section (segment history, driver table, correlation heatmap, driver-vs-aggregate compare, attribution tornado, **MC path explorer**: stratified 301-path spaghetti, 2,000-path parallel coordinates, bottom/top-10 outlier table with \|z\|≥1.5 drivers bolded), options section (IV term structure, implied move, skew, OI heatmap). Driver section renders only if `analysis/<TICKER>/driver_model.py` exposes `build()`; every section degrades to a labeled "not available" note. Styling follows docs/design-specs/2026-07-16-ratings-desk-blueprint.md. The sixth section "Backtest — mechanical vintages" (vintage table + hedgehog charts from `financial_analysis/backtest.py`, honesty labels, merged PR #9) makes SECTION_TITLES six entries. The skew panel excludes expiries under 2 days from the snapshot (`_SKEW_MIN_DTE`, PR #14) — near-expiry wing IVs are solver noise. |
+| `board.py` | `python scripts/board.py check \| status \| branch NAME \| new --title --area --owner --branch --acceptance [--status]` | Scrum-board checker and ticket creator over `PLANNING/board/` (rules in its README). CI runs `check` and `branch <PR head>`. |
+| `board_gate.py` | (PreToolUse hook, not a CLI) | Denies edits, commits, pushes, PRs and GitHub write tools unless the target repo's branch has an active ticket on its `origin/main`; pushes that could update main must be board-only fast-forwards. Rules and limits: docs/COLLABORATION.md. |
+| `stale_branches.py` | `python -m scripts.stale_branches BRANCHES MERGED OPEN_PR_HEADS` | Which remote branches the daily cleanup deletes: merged into main, not main, not an open PR head, not an active ticket's branch (`.github/workflows/branch-cleanup.yml`). |
+| `cloud-setup.sh` | `bash scripts/cloud-setup.sh` | Idempotent environment setup: installs requirements.txt and requirements-dev.txt. |
 | `memo-review-reminder.sh` | (PostToolUse hook, not a CLI) | Blocks freshly produced .docx memos until a memo-reviewer pass (exit 2 surfaces the policy message). |
 | `setup-officecli.sh` | `scripts/setup-officecli.sh [--install]` | Checks (default) or installs (`--install`, manual only) the officecli binary for the docx toolchain. |
+
+CI (`.github/workflows/`): `tests.yml`, `main-guard.yml`, `branch-cleanup.yml` (behavior: docs/COLLABORATION.md).
 
 ## Root-level analysis entry points
 
@@ -170,8 +176,8 @@ decorative until a driver build exists.
 
 ## Tests
 
-`python -m pytest` from the repo root — **302 tests, all passing** as of 2026-07-17
-(11.6s). 17 test modules under `tests/`, mirroring the package (largest:
+`python -m pytest` from the repo root — **the full suite, all passing** as of 2026-10-25.
+Test modules under `tests/` mirror the package (largest:
 `test_driver_dcf.py`, `test_visualize_dcf.py`, `test_options.py`, `test_backtest.py`).
-No network calls in the suite; HTTP is mocked and files use `tmp_path`. `pytest` is not
-in `requirements.txt` — install it separately.
+No network calls in the suite; HTTP is mocked and files use `tmp_path`. `pytest` is in
+`requirements-dev.txt` (`scripts/cloud-setup.sh` installs both files).

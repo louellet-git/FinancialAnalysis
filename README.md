@@ -47,7 +47,7 @@ python -m analysis.IBM.dcf_drivers_run
 # 8. IBM v3 aggregate framework (historical, kept reproducible)
 python -m analysis.IBM.dcf_scenarios
 
-# 9. Test suite — 302 tests, no network (~12s); pytest not in requirements.txt
+# 9. Test suite — no network; pytest is in requirements-dev.txt
 python -m pytest
 ```
 
@@ -128,11 +128,11 @@ strips dimensional facts) — see PLANNING/tickets.md Ticket 7.
 ## Tests
 
 ```bash
-python -m pytest        # 302 tests, all passing as of 2026-07-17 (~12s)
+python -m pytest        # full suite, no network
 ```
 
-No network calls in the suite (HTTP mocked, `tmp_path` fixtures). `pytest` itself is
-not in `requirements.txt` — install separately.
+No network calls in the suite (HTTP mocked, `tmp_path` fixtures). `pytest` is in
+`requirements-dev.txt` (`scripts/cloud-setup.sh` installs both files).
 
 ## Project layout
 
@@ -151,17 +151,20 @@ financial_analysis/          the package — 16 modules; see docs/ARCHITECTURE.m
     backtest.py              point-in-time vintage backtest
 
 scripts/                     CLI entry points (analyze, import_financials, import_edgar,
-                             run_dcf, backtest, visualize_dcf) + 2 shell hooks
-tests/                       302 tests across 17 modules
+                             run_dcf, backtest, visualize_dcf), board.py + board_gate.py
+                             (scrum board, edit gate), stale_branches.py, 3 shell scripts
+tests/                       test suite
 analysis/IBM/                flagship analysis: driver_model.py (v4 register),
                              dcf_drivers_run.py, dcf_scenarios.py (v3), DRIVERS.md,
                              REVIEW.md, DRIVER-REVIEW.md, research-ledger.md, report/
-docs/                        ARCHITECTURE.md, HIDDEN-ASSUMPTIONS.md, INDEX.md,
+docs/                        COLLABORATION.md (two-person workflow), ARCHITECTURE.md,
+                             HIDDEN-ASSUMPTIONS.md, INDEX.md,
                              visualizer design brief + accepted design spec,
                              superpowers/ (historical plans/specs)
 PLANNING/                    reusable-dcf-vision.md (standing initiative), RULES.md,
-                             tickets.md, token-ledger.md, HANDOFF.md (live state)
+                             tickets.md, token-ledger.md, board/ (tickets), handoff/ (state)
 .claude/agents/              vendored review pipeline: valuation-analyst/-skeptic,
                              memo-reviewer + rubric, report-auditor (FRAMEWORK.md)
+vendor/ .github/workflows/   vendored delegation framework; CI (tests, main guard, cleanup)
 data/raw/ data/processed/    caches and outputs (gitignored)
 ```

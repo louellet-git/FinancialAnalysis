@@ -2,7 +2,13 @@
 
 Read this first. Then: `docs/INDEX.md` (every doc, with normativity),
 `docs/ARCHITECTURE.md` (code-verified module map), `docs/HIDDEN-ASSUMPTIONS.md` (the
-trap registry), `PLANNING/HANDOFF.md` (live open-work state, if present).
+trap registry), `PLANNING/handoff/` (per-person session state).
+
+## Collaboration
+
+Two people work this repo in parallel, each with their own Claude Code session. Before
+any work, follow `docs/COLLABORATION.md`: it owns the workflow, the hook and CI that
+enforce it, and their limits.
 
 ## What this repo is
 
@@ -15,8 +21,8 @@ amendments + basket amendment 2026-07-17).
 
 Flagship analysis: **IBM v4.1** (`analysis/IBM/`, report
 `analysis/IBM/report/IBM-valuation-2026-07.md`): P10 $83.84 / P50 $151.84 / P90 $258.03,
-conditional on f = 0.50, price at writing $212.40. IBM reports Q2 on **July 22, 2026**
-— the report's four-item watch list and the first bet-ledger entries grade then.
+conditional on f = 0.50, price at writing $212.40. IBM reported Q2 on July 22, 2026;
+grading the report's five-item watch list and first bet-ledger entries is open work.
 
 Two engines, both live (details in docs/ARCHITECTURE.md):
 - `financial_analysis/dcf.py` — classic scenario MC (samples growth/margin/WACC/tg
@@ -25,13 +31,8 @@ Two engines, both live (details in docs/ARCHITECTURE.md):
   path, per-path WACC with kd derived from rf, joint tg < WACC − 2% guard; per-ticker
   register in `analysis/<TICKER>/driver_model.py`).
 
-**Current phase** (as of 2026-07-17 evening): IBM v4.1 shipped and audited; vintage
-backtest harness and MC path explorer landed; the visualizer's backtest section + price
-range buttons merged (PR #9), 0DTE skew exclusion merged (PR #14); DUOL first pass done
-(consensus-anchored presets + capital override, PR #14 — labeled NOT a vetted driver
-build); P1 of the vision (rulebook extraction, validators, red-team corpus, coverage
-validator) is the active frontier, with the ORCL run queued as ticker #2. Open work:
-`PLANNING/tickets.md` §OPEN TICKETS and `PLANNING/HANDOFF.md`.
+**Open work:** the board, `PLANNING/board/` (`python scripts/board.py status`); backlog not
+yet ticketed: `PLANNING/tickets.md` §OPEN TICKETS.
 
 ## Normativity map — which source governs when docs disagree
 
@@ -54,14 +55,14 @@ validator) is the active frontier, with the ORCL run queued as ticker #2. Open w
 6. **Reports are frozen artifacts.** `analysis/IBM/report/*` was audited
    (SOURCE-AUDIT.md) against the engine on its date; do not edit published reports to
    "fix" them — supersede with a new version.
-7. `README.md`, `context.json`, `docs/` are informative orientation; `PLANNING/HANDOFF.md`
+7. `README.md`, `context.json`, `docs/` are informative orientation; `PLANNING/handoff/`
    is live state (delete items as completed); `THOUGHTS` is a raw idea scratchpad.
 
 ## Orchestration norms (learned the hard way)
 
 - **Subagents do not commit.** Subagents leave work uncommitted in their worktree; the
-  orchestrator reviews, collects, and commits. Every commit in this repo's history went
-  through the orchestrator.
+  orchestrator (each person's own manager session) reviews, collects, and commits.
+  Every commit goes through one person's orchestrator.
 - **Parallel work happens in git worktrees, one branch per worktree** (`git worktree
   add ../wt-<name> -b <branch> origin/main`). **Checking out a branch in the shared
   main tree is forbidden** — on 2026-07-17 an agent avoided clobbering another agent's
@@ -70,15 +71,13 @@ validator) is the active frontier, with the ORCL run queued as ticker #2. Open w
   someone's uncommitted state at all times.
 - The local `main` ref in the main tree may lag `origin/main`; branch new work off
   **`origin/main`**, not local `main`.
-- Never commit `data/` churn: `data/processed/NVDA_financials.xlsx` and
-  `PANW_financials.xlsx` are tracked-but-gitignored leftovers that dirty on every
-  pipeline run (HANDOFF known-state; candidate `git rm --cached`).
+- Never commit `data/` churn: `data/` outputs and `__pycache__/` are gitignored and
+  untracked (the NVDA/PANW xlsx and stray .pyc leftovers were untracked 2026-10-25).
 - **Smoke-test policy:** a ticket is not done until real output is printed and
   confirmed consumable by the next stage (`PLANNING/tickets.md` header; `context.json`).
 - **Token ledger:** update `PLANNING/token-ledger.md` per run (success metric #1;
   targets: frontier ticker ≤ 500k, repeat run ≤ 50k subagent tokens).
-- Session handoffs live in `PLANNING/HANDOFF.md` — delete items as completed, delete
-  the file when empty.
+- Session handoffs live in `PLANNING/handoff/<first name>.md` (rules in its README).
 
 ## Review pipeline (roles as evidenced in .claude/agents/ and PLANNING docs)
 
@@ -96,14 +95,15 @@ doc-review-framework@d9d9075). Every client-grade report runs:
 
 The vision doc (L5) extends this to three tiers — frontier fan-outs for new
 templates/mappings, a **charter review on every run** (ACCEPT required before
-publication), exception reviews on validator/staleness triggers — with **Luc as the
-accountability terminus** (✦6a): frontier runs and accepted-with-reservations runs need
-his explicit sign-off; routine repeat runs publish on charter ACCEPT alone.
+publication), exception reviews on validator/staleness triggers — with **either person
+as the accountability terminus** (✦6a, amended 2026-10-25): frontier runs and
+accepted-with-reservations runs need one person's explicit sign-off; routine repeat runs
+publish on charter ACCEPT alone.
 
 ## Quick commands
 
 ```bash
-python -m pytest                          # 302 tests, no network (~12s)
+python -m pytest                          # full suite, no network
 python -m scripts.analyze IBM             # full import → 9-tab xlsx
 python -m scripts.visualize_dcf IBM       # single-page HTML report
 python -m scripts.backtest IBM            # point-in-time vintage backtest

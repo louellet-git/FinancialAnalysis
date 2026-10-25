@@ -1,0 +1,51 @@
+# Merged branches must not outlive their merge: delete on PR merge, sweep daily for the rest.
+# Unverified on GitHub (run workflow_dispatch once after landing): DELETE of a slash-named ref,
+# and that fetch-depth 0 lists every remote branch.
+name: branch-cleanup
+on:
+  pull_request:
+    types: [closed]
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: read
+env:
+  GH_TOKEN: ${{ github.token }}
+jobs:
+  on-merge:
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.pull_request.merged
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && github.event.pull_request.head.ref != 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          REPO: ${{ github.repository }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: gh api -X DELETE "repos/$REPO/git/refs/heads/$HEAD_REF" || echo "already gone"
+  sweep:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Delete branches merged into main
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          set -eo pipefail
+          test -d PLANNING/board
+          git for-each-ref --format='%(refname:strip=3)' refs/remotes/origin | sed '/^HEAD$/d' > all.txt
+          git branch -r --merged origin/main --format='%(refname:strip=3)' | sed '/^HEAD$/d' > merged.txt
+          gh api "repos/$REPO/pulls?state=open&per_page=100" --paginate -q '.[].head.ref' > open.txt
+          python -m scripts.stale_branches all.txt merged.txt open.txt > stale.txt
+          while read -r b; do
+            gh api -X DELETE "repos/$REPO/git/refs/heads/$b" && echo "deleted $b" || echo "skipped $b"
+          done < stale.txt

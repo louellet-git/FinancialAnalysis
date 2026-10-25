@@ -5,7 +5,7 @@
 
 This file has two parts: **OPEN TICKETS** (consolidated 2026-07-17 from every ledger in
 the repo — each line carries its source pointer; the sources remain authoritative for
-detail) and **HISTORICAL — CLOSED TICKETS 1–6** (the original build, preserved
+detail; work in progress lives on the board, `PLANNING/board/`) and **HISTORICAL — CLOSED TICKETS 1–6** (the original build, preserved
 verbatim). Ticket 7 (open) keeps its full spec in the historical section's format below.
 
 ---
@@ -15,10 +15,10 @@ verbatim). Ticket 7 (open) keeps its full spec in the historical section's forma
 ### Queued work (session handoff)
 
 - ~~**Visualizer final pass**~~ DONE 2026-07-17: merged as PR #9 (rangeselector buttons + Backtest section), IBM html regenerated; 0DTE skew exclusion followed in PR #14. IBM backtest headline: 14/18 in band (78% vs 80% nominal).
-- **DUOL driver build**: DUOL first pass (PR #14) is consensus-anchored only — mechanical backtest coverage 0/6, bands decorative; promote to a driver-model frontier run (needs Luc's sign-off, vision ✦6) or leave as screening output.
-- **ORCL frontier run** (ticker #2) under the cheapened pipeline; then basket (IBM/ORCL/MSFT/ACN/CSCO); then cross-sectional gap decomposition — PLANNING/HANDOFF.md item 3; vision ✦1 basket amendment.
-- **July 22 IBM Q2**: run `scripts.analyze IBM` (captures options IV crush), grade the 4-item watch list (report §5), first bet-ledger entries, grade the 2026 mechanical vintage (FY2026 revenue P50 $70.3B vs consensus $71.1B) — PLANNING/HANDOFF.md item 4.
-- **Gitignore churn cleanup**: `git rm --cached data/processed/NVDA_financials.xlsx` (+ stray .pyc) — PLANNING/HANDOFF.md §Known state.
+- **DUOL driver build**: DUOL first pass (PR #14) is consensus-anchored only — mechanical backtest coverage 0/6, bands decorative; promote to a driver-model frontier run (needs either person's sign-off, vision ✦6a as amended 2026-10-25) or leave as screening output.
+- **ORCL frontier run** (ticker #2) under the cheapened pipeline; then basket (IBM/ORCL/MSFT/ACN/CSCO); then cross-sectional gap decomposition — board T-20261025-orcl-frontier-run; vision ✦1 basket amendment.
+- **IBM Q2 grading** (reported July 22, 2026; still open): grade the 5-item watch list (report §5), first bet-ledger entries, grade the 2026 mechanical vintage (FY2026 revenue P50 $70.3B vs consensus $71.1B) — board T-20261025-ibm-q2-grading.
+- ~~**Gitignore churn cleanup**~~ DONE on merge of T-20261025-collab-board-workflow: NVDA/PANW xlsx + stray .pyc untracked (`git rm --cached`).
 
 ### Factory P1 (vision phasing — the active frontier)
 
@@ -47,7 +47,7 @@ verbatim). Ticket 7 (open) keeps its full spec in the historical section's forma
 ### Standing per-run duties (not one-shot tickets)
 
 - Update PLANNING/token-ledger.md per run; targets: frontier ≤ 500k, repeat ≤ 50k subagent tokens — PLANNING/token-ledger.md.
-- Charter review must ACCEPT before any publication; Luc signs off frontier/reservation runs (✦6a) — PLANNING/reusable-dcf-vision.md L5.
+- Charter review must ACCEPT before any publication; either person signs off frontier/reservation runs (✦6a, amended 2026-10-25) — PLANNING/reusable-dcf-vision.md L5.
 
 ---
 

@@ -1,0 +1,25 @@
+name: tests
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - run: python -m pytest -q
+      - run: python scripts/board.py check
+      # The head branch's ticket must already be on the BASE board (a claim counts once pushed to main).
+      - if: github.event_name == 'pull_request'
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --depth=1 origin "$BASE_REF"
+          git worktree add "$RUNNER_TEMP/base" FETCH_HEAD
+          python scripts/board.py --root "$RUNNER_TEMP/base" branch "$HEAD_REF"

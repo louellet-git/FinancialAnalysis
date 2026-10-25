@@ -1,7 +1,7 @@
 # Documentation index
 
 Every document in the repo, its purpose, and its normativity. Inventory verified
-2026-07-17. Normativity classes: **binding** (governs decisions; conflicts resolved per
+2026-10-25. Normativity classes: **binding** (governs decisions; conflicts resolved per
 the CLAUDE.md normativity map), **live** (working state — edit/delete as work
 completes), **informative** (orientation; code governs on conflict), **historical**
 (frozen record — do not edit, supersede), **generated/audited** (produced by the
@@ -16,6 +16,9 @@ pipeline or an audit gate; regenerate, don't hand-edit).
 | `docs/ARCHITECTURE.md` | Code-verified module map, data flow, the two engines' mechanics | informative (code governs) |
 | `docs/HIDDEN-ASSUMPTIONS.md` | Trap registry: 20 non-obvious assumptions/landmines with evidence pointers | informative (code governs) |
 | `docs/INDEX.md` | This file | informative |
+| `docs/COLLABORATION.md` | Two-person workflow: enforcement and limits, ticket, branch, finish, conflict, handoff, environment | binding (process) |
+| `.github/pull_request_template.md` | PR body: ticket, changes, rulings touched, tests, delegation review, ✦6a sign-off | binding (process) |
+| `.github/workflows/` | CI: tests, main guard, branch cleanup (rules: COLLABORATION) | binding (process) |
 | `docs/visualizer-design-brief.md` | Contract for cosmetic restyles of the HTML report (structure + hard constraints) | binding (for visualizer restyles) |
 | `docs/design-specs/2026-07-16-ratings-desk-blueprint.md` | Accepted visual design spec applied to `visualize_dcf.py` (tokens, chart chrome) | binding (visualizer styling) |
 | `docs/superpowers/plans/2026-06-03-financial-analysis-pipeline.md` | Original pipeline implementation plan | historical |
@@ -27,7 +30,11 @@ pipeline or an audit gate; regenerate, don't hand-edit).
 | `PLANNING/reusable-dcf-vision.md` | The valuation-factory standing initiative: 7-layer architecture, 7 amendments + basket amendment, phasing P1–P4, success metrics | binding (design) |
 | `PLANNING/RULES.md` | Canonical rulebook (L4): R1 + the P1 extraction backlog; rules bind at declared scope, deprecation needs equal-weight review | binding |
 | `PLANNING/tickets.md` | OPEN TICKETS (consolidated, with source pointers) + historical closed tickets 1–6 + Ticket 7 spec | live (open) / historical (closed) |
-| `PLANNING/HANDOFF.md` | Session handoff — live open-work state; delete items as completed, delete file when empty | live |
+| `PLANNING/HANDOFF.md` | Pointer to `PLANNING/handoff/` | informative |
+| `PLANNING/handoff/README.md` | Per-person handoff rules: one file per person, owner-edited | binding (process) |
+| `PLANNING/board/README.md` | Scrum board: one ticket file per piece of work; format, statuses, rules (`scripts/board.py` checks them) | binding (process) |
+| `PLANNING/board/T-*.md` | The tickets: open work, one per file; claimed only once on `origin/main` | live |
+| `PLANNING/handoff/luc.md` | Luc's session state; delete items as completed | live |
 | `PLANNING/token-ledger.md` | Cost-per-run ledger (success metric #1) + targets; update per run | live |
 | `analysis/IBM/README.md` | IBM v3 analysis: fundamentals, net-debt bridge, v3 scenarios ($37/$141/$232), data notes | historical (v3 — superseded by the v4 report for headline numbers; bridge/data notes still referenced by v4) |
 | `analysis/IBM/DRIVERS.md` | v4 assumption register companion table (drivers, items, correlations) | binding, EXCEPT that `driver_model.py` rationale strings govern over its prose (stated in its own header) |
@@ -43,3 +50,5 @@ pipeline or an audit gate; regenerate, don't hand-edit).
 | `.claude/agents/memo-review-rubric.md` | Scoring rubric for memo-reviewer | binding (agent spec) |
 | `.claude/agents/report-auditor.md` | Final audit gate agent (claim traceability + soften) | binding (agent spec) |
 | `.claude/skills/officecli/SKILL.md` | officecli docx tooling skill | informative (tooling) |
+| `.claude/agents/skeptic.md`, `steward.md`; `.claude/commands/`; `.claude/skills/{consolidating-review,delegating,skeptical-review}` | Installed copies of the delegation framework (`/delegate`, `/review-panel`, `/skeptic-review`) | binding (process) |
+| `vendor/delegation-framework/` | Vendored delegation framework (source of the installed copies, hooks and commit gate); tested upstream | binding (process) |

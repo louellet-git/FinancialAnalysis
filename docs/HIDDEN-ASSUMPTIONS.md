@@ -152,7 +152,7 @@ Evidence: `scripts/analyze.py:70-81, 279-284, 370-379`.
 `data/processed/PANW_financials.xlsx` are tracked in git although `data/processed/` is
 gitignored — running the pipeline dirties them. Never commit those changes (candidate
 fix: `git rm --cached`). Evidence: `git ls-files data/`; `.gitignore`;
-`PLANNING/HANDOFF.md` §Known state.
+`CLAUDE.md` §Orchestration norms (untracked 2026-10-25).
 
 **19. RPO rows hide on the Balance Sheet tab.** `remaining_performance_obligation` is a
 disclosure fact but is written to the Balance Sheet tab with `statement="disclosure"`
@@ -232,7 +232,7 @@ convert). Expect it; don't fight it.
 
 **28. Timed/background tasks in this environment can be killed mid-run — persist resume
 state in files.** A documentation agent died at the reading stage to a session token
-limit on 2026-07-17; PLANNING/HANDOFF.md is the live pattern: write open work-state to a
+limit on 2026-07-17; `PLANNING/handoff/` is the live pattern: write open work-state to a
 file as you go, delete items as completed. Interrupted fan-outs must resume, never
 restart (vision ✦6b).
 *Evidence:* PLANNING/HANDOFF.md history; reusable-dcf-vision.md ✦6b.

@@ -1,0 +1,2 @@
+# Append-only row ledger: union merge keeps both people's new rows without conflict markers (local git merges only).
+PLANNING/token-ledger.md merge=union

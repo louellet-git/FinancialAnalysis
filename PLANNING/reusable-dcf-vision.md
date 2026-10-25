@@ -91,7 +91,9 @@ must ACCEPT before publication (integral, non-negotiable); **exception reviews**
 validator violations, staleness, secondary-provenance triggers. ✦6a: **the accountability
 terminus is Luc, not an agent** — frontier runs and any run accepted-with-reservations
 require his explicit sign-off before publication; routine repeat runs on proven templates
-publish on charter ACCEPT alone. ✦6b: **resumable fan-out semantics** — every fan-out
+publish on charter ACCEPT alone.
+**✦6a amendment (2026-10-25):** owner ruling, "Either of you": either of the two collaborators may give the ✦6a sign-off on frontier and accepted-with-reservations runs.
+✦6b: **resumable fan-out semantics** — every fan-out
 records per-review state; interrupted runs resume, never restart; every review is classed
 **load-bearing or advisory**; publication is hard-blocked while any load-bearing review is
 incomplete (a session limit must never produce a half-reviewed model that looks done).

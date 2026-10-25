@@ -1,0 +1,46 @@
+# Server-side main guard (detective: GitHub's free plan has no branch protection). A push to main
+# must be the merge of a merged PR, or touch only PLANNING/board/ (and pass the board check);
+# anything else is reverted by a new commit (never a force push) and this run fails.
+name: main-guard
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+  pull-requests: read
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      BEFORE: ${{ github.event.before }}
+      AFTER: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - id: decide
+        run: |
+          set -eo pipefail
+          gh api "repos/$REPO/commits/$AFTER/pulls" --jq '.[] | select(.merged_at != null) | .merge_commit_sha' > merges.txt
+          merged=0; grep -qx "$AFTER" merges.txt && merged=1 || true
+          git diff --no-renames --name-only "$BEFORE" "$AFTER" > paths.txt
+          rc=0; python -m scripts.main_guard "$merged" < paths.txt || rc=$?
+          [ "$rc" = 0 ] && echo "revert=no" >> "$GITHUB_OUTPUT"
+          [ "$rc" = 2 ] && echo "revert=yes" >> "$GITHUB_OUTPUT"
+          [ "$rc" = 0 ] || [ "$rc" = 2 ]
+      - if: steps.decide.outputs.revert == 'no'
+        run: python scripts/board.py check
+      - if: steps.decide.outputs.revert == 'yes'
+        run: |
+          set -eo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git revert --no-edit "$BEFORE..$AFTER"
+          git push origin HEAD:main
+          echo "::error::direct push to main reverted (see the log above); open a PR instead"
+          exit 1
