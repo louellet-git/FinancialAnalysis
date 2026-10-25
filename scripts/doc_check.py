@@ -17,7 +17,6 @@ KEYS = ["id", "type", "item", "status", "date", "scope"]
 TYPES = ["description", "plan", "policy", "procedure", "report", "request", "specification", "record"]
 STATUSES = ["draft", "current", "frozen", "superseded"]
 EXEMPT = re.compile(r"(\.claude/(agents|commands|skills)|\.github)/.*|PLANNING/board/T-[^/]*\.md")
-ITEM = re.compile(r"10\.([1-9]\d?) \S.*")
 SEPARATOR = re.compile(r"[|:\s-]+")
 GIT = re.compile(r"\bgit\b")
 VERB = re.compile(r"(?<![\w-])(commit|merge|cherry-pick|revert|pull|am|rebase|push)(?![\w-])")
@@ -38,17 +37,12 @@ def _sha(raw):
 
 def _is_date(s):
     try:
-        return bool(re.fullmatch(r"\d{4}-\d\d-\d\d", s)) and bool(datetime.strptime(s, "%Y-%m-%d"))
+        return len(s) == 10 and bool(datetime.strptime(s, "%Y-%m-%d"))
     except ValueError:
         return False
 
 
-def _is_item(s):
-    m = ITEM.fullmatch(s)
-    return s == "9 record" or bool(m and 2 <= int(m[1]) <= 74)
-
-
-RULES = {"id": lambda s: re.fullmatch(r"DOC-[A-Z0-9-]+", s), "type": TYPES.__contains__, "item": _is_item,
+RULES = {"id": lambda s: re.fullmatch(r"DOC-[A-Z0-9-]+", s), "type": TYPES.__contains__, "item": lambda s: s == "9 record" or re.fullmatch(r"10\.([2-9]|[1-6]\d|7[0-4]) \S.*", s),
          "status": STATUSES.__contains__, "date": _is_date}
 
 
@@ -73,8 +67,8 @@ def _reviews(root):
 
 
 def changed(root):
-    """*.md files this branch carries: untracked, or whose worktree content differs from the merge-base with
-    origin/main (else the root commit). None when there is no HEAD."""
+    """*.md files this branch carries: untracked, or differing (worktree) from the merge-base with origin/main
+    (else the root commit). None when there is no HEAD."""
     if not _git(root, "rev-parse", "--verify", "-q", "HEAD", check=False):
         return None
     base = (_git(root, "merge-base", "HEAD", "origin/main", check=False)
@@ -141,9 +135,8 @@ def hook():
                  for m in problems(r, scope=changed(r))]
         if not (found or bad):
             return 0
-        more = [f"... and {len(found) - 20} more"] if len(found) > 20 else []
         reason = "\n".join([f"cannot resolve a git repo for {t}" for t in bad]
-                          + (["A governed doc changed on this branch fails:"] + found[:20] + more if found else [])
+                          + (["A governed doc changed on this branch fails:"] + found if found else [])
                           + [FIX])
     except Exception as e:
         reason = f"doc_check internal error: {e}"
@@ -178,13 +171,10 @@ def main(argv=None):
         f = Path(a.root, a.path)
         if not f.is_file():
             return print(f"no such file: {a.path}", file=sys.stderr) or 1
-        ledger = Path(a.root, REVIEWS)
-        if not ledger.exists():
-            ledger.write_text("date\tpath\tsha256\tverdict\treviewer\n")
         row = [date.today().isoformat(), f.resolve().relative_to(Path(a.root).resolve()).as_posix(),
                _sha(f.read_bytes()), a.verdict, a.reviewer]
-        with ledger.open("a") as fh:
-            fh.write("\t".join(row) + "\n")
+        with Path(a.root, REVIEWS).open("a") as fh:
+            fh.write(("" if fh.tell() else "date\tpath\tsha256\tverdict\treviewer\n") + "\t".join(row) + "\n")
         return 0
     p.print_help()
     return 2
