@@ -1,0 +1,158 @@
+"""Documentation-standard checker (rules: docs/DOC-STANDARD.md).
+
+    python scripts/doc_check.py check | list | record <path> <PASS|FAIL> | --hook
+"""
+import argparse
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+from datetime import date, datetime
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+KEYS = ["id", "type", "item", "status", "date", "scope"]
+TYPES = ["description", "plan", "policy", "procedure", "report", "request", "specification", "record"]
+STATUSES = ["draft", "current", "frozen", "superseded"]
+EXEMPT = re.compile(r"(\.claude|\.github)/.*|PLANNING/board/T-[^/]*\.md")
+ITEM = re.compile(r"10\.([1-9]\d?) \S.*")
+SEPARATOR = re.compile(r"[|:\s-]+")
+COMMIT = re.compile(r"(?:^|[;&|])\s*git(?:\s+-C\s+\S+)?\s+commit\b", re.M)
+REVIEWS = "docs/doc-reviews.tsv"
+FIX = "Fix: run the doc-critic agent on each doc, then python scripts/doc_check.py record <path> PASS and git add " + REVIEWS
+
+
+def _git(root, *args, check=True):
+    return subprocess.run(["git", "-C", str(root), *args], capture_output=True, check=check).stdout
+
+
+def _is_date(s):
+    try:
+        return bool(re.fullmatch(r"\d{4}-\d\d-\d\d", s)) and bool(datetime.strptime(s, "%Y-%m-%d"))
+    except ValueError:
+        return False
+
+
+def _is_item(s):
+    m = ITEM.fullmatch(s)
+    return s == "9 record" or bool(m and 2 <= int(m[1]) <= 74)
+
+
+RULES = {"id": lambda s: re.fullmatch(r"DOC-[A-Z0-9-]+", s), "type": TYPES.__contains__, "item": _is_item,
+         "status": STATUSES.__contains__, "date": _is_date}
+
+
+def governed(root):
+    """Tracked *.md paths (relative to root) minus the exempt ones."""
+    names = _git(root, "ls-files", "-z", "*.md").decode().split("\0")
+    return [Path(n) for n in names if n and not EXEMPT.fullmatch(n)]
+
+
+def header(text):
+    """Front-matter key/value dict, or None when there is no header."""
+    m = re.match(r"---\r?\n(.*?\n)---\r?\n", text, re.S)
+    return None if not m else {k.strip(): v.strip() for k, _, v in (ln.partition(":") for ln in m[1].splitlines())}
+
+
+def _reviews(root, staged):
+    """{(path, sha256): last verdict} from the review ledger (index copy when staged)."""
+    if staged:
+        text = _git(root, "show", ":" + REVIEWS, check=False).decode()
+    else:
+        text = Path(root, REVIEWS).read_text() if Path(root, REVIEWS).exists() else ""
+    rows = [ln.split("\t") for ln in text.splitlines()[1:]]
+    return {(r[1], r[2]): r[3] for r in rows if len(r) >= 4}
+
+
+def problems(root, staged=False):
+    """Every rule violation across the governed docs, one string each."""
+    out, ids, lines, reviews = [], {}, {}, _reviews(root, staged)
+    for p in governed(root):
+        name = p.as_posix()
+        if not staged and not Path(root, p).exists():
+            continue
+        raw = _git(root, "show", ":" + name) if staged else Path(root, p).read_bytes()
+        h = header(raw.decode())
+        if h is None:
+            out.append(f"{name}: no header")
+        else:
+            out += [f"{name}: missing key {k}" for k in KEYS if not h.get(k)]
+            out += [f"{name}: unknown key {k}" for k in h if k not in KEYS]
+            out += [f"{name}: bad {k} {h[k]}" for k, ok in RULES.items() if h.get(k) and not ok(h[k])]
+            ids.setdefault(h.get("id"), []).append(name)
+            if h.get("status") in ("draft", "current") and reviews.get((name, hashlib.sha256(raw).hexdigest())) != "PASS":
+                out.append(f"{name}: no PASS review row for current content")
+        fenced = False
+        for ln in raw.decode().splitlines():
+            s = ln.strip()
+            fenced ^= s.startswith("```")
+            if not fenced and not s.startswith("```") and len(s) >= 60 and not SEPARATOR.fullmatch(s):
+                lines.setdefault(s, set()).add(name)
+    out += [f"duplicate id {i}: {', '.join(ns)}" for i, ns in ids.items() if i and len(ns) > 1]
+    out += [f"duplicate line in {', '.join(sorted(ns))}: {s[:50]}" for s, ns in lines.items() if len(ns) > 1]
+    return out
+
+
+def hook():
+    """PreToolUse: deny `git commit` while the staged docs have problems. Always exits 0."""
+    try:
+        command = json.load(sys.stdin).get("tool_input", {}).get("command") or ""
+        if not COMMIT.search(command):
+            return 0
+        root = os.environ.get("CLAUDE_PROJECT_DIR") or _git(".", "rev-parse", "--show-toplevel").decode().strip()
+        if not Path(root, "docs/DOC-STANDARD.md").exists():
+            return 0
+        found = problems(root, staged=True)
+        if not found:
+            return 0
+        more = [f"... and {len(found) - 20} more"] if len(found) > 20 else []
+        reason = "\n".join(found[:20] + more + [FIX])
+    except Exception as e:
+        reason = f"doc_check internal error: {e}"
+    print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+                                             "permissionDecisionReason": reason}}))
+    return 0
+
+
+def main(argv=None):
+    p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    p.add_argument("--root", default=ROOT)
+    p.add_argument("--hook", action="store_true")
+    sub = p.add_subparsers(dest="cmd")
+    sub.add_parser("check")
+    sub.add_parser("list")
+    r = sub.add_parser("record")
+    r.add_argument("path")
+    r.add_argument("verdict", choices=["PASS", "FAIL"])
+    r.add_argument("--reviewer", default="doc-critic/haiku")
+    a = p.parse_args(argv)
+    if a.hook:
+        return hook()
+    if a.cmd == "check":
+        found = problems(a.root)
+        print("\n".join(found) or "docs ok")
+        return 1 if found else 0
+    if a.cmd == "list":
+        hs = [(header(Path(a.root, f).read_text()) or {}, f.as_posix()) for f in governed(a.root)]
+        print("\n".join(" ".join([h.get(k, "-") for k in ("id", "type", "status")] + [f]) for h, f in hs))
+        return 0
+    if a.cmd == "record":
+        f = Path(a.root, a.path)
+        if not f.is_file():
+            return print(f"no such file: {a.path}", file=sys.stderr) or 1
+        ledger = Path(a.root, REVIEWS)
+        if not ledger.exists():
+            ledger.write_text("date\tpath\tsha256\tverdict\treviewer\n")
+        row = [date.today().isoformat(), f.resolve().relative_to(Path(a.root).resolve()).as_posix(),
+               hashlib.sha256(f.read_bytes()).hexdigest(), a.verdict, a.reviewer]
+        with ledger.open("a") as fh:
+            fh.write("\t".join(row) + "\n")
+        return 0
+    p.print_help()
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

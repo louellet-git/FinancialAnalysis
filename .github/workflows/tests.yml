@@ -14,6 +14,7 @@ jobs:
       - run: pip install -r requirements.txt -r requirements-dev.txt
       - run: python -m pytest -q
       - run: python scripts/board.py check
+      - run: python scripts/doc_check.py check
       # The head branch's ticket must already be on the BASE board (a claim counts once pushed to main).
       - if: github.event_name == 'pull_request'
         env:
