@@ -1,20 +1,10 @@
 {
-  "$comment": "Hooks from three sources. (1) Doc-review framework, vendored from louellet-git/doc-review-framework@d9d9075: SessionStart checks officecli availability; PostToolUse requires a memo-reviewer pass whenever a .docx is produced. (2) Delegation framework, vendored in vendor/delegation-framework: session-start, commit-gate (PreToolUse), subagent-reminder and stop-reminder. (3) This repo's board (scripts/board.py, scripts/board_gate.py): SessionStart lists active tickets; PreToolUse denies edits, commits, pushes and PRs without an active ticket on the branch. Hooks fail open when no python runs (framework limit 1).",
+  "$comment": "Hooks: (1) delegation framework, a local install in vendor/delegation-framework (never committed): session-start, commit-gate, subagent-reminder, stop-reminder; each exits 0 when absent. (2) This repo's board (scripts/board.py, scripts/board_gate.py): SessionStart lists active tickets; PreToolUse denies edits, commits, pushes and PRs without an active ticket on the branch. Hooks fail open when no python runs.",
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true
   },
   "hooks": {
     "SessionStart": [
-      {
-        "matcher": "startup|clear|compact|resume",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/setup-officecli.sh\"",
-            "async": true
-          }
-        ]
-      },
       {
         "matcher": "startup|clear|compact|resume",
         "hooks": [
@@ -52,17 +42,6 @@
             "type": "command",
             "command": "python3 \"$CLAUDE_PROJECT_DIR/vendor/delegation-framework/scripts/commit-gate.py\" || python \"$CLAUDE_PROJECT_DIR/vendor/delegation-framework/scripts/commit-gate.py\" || py -3 \"$CLAUDE_PROJECT_DIR/vendor/delegation-framework/scripts/commit-gate.py\" || exit 0",
             "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/memo-review-reminder.sh\""
           }
         ]
       }
