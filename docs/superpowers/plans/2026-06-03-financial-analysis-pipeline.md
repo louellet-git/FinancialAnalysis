@@ -4,7 +4,7 @@ type: plan
 item: 10.16 Development plan
 status: superseded
 date: 2026-06-03
-scope: Historical implementation plan for the EDGAR import and Monte Carlo pipeline; superseded by the shipped code.
+scope: Historical implementation plan for the EDGAR import and Monte Carlo pipeline; superseded by docs/ARCHITECTURE.md.
 ---
 # Financial Analysis Pipeline Implementation Plan
 

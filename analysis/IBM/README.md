@@ -4,7 +4,7 @@ type: report
 item: 10.17 Evaluation report
 status: superseded
 date: 2026-07-16
-scope: IBM v3 valuation summary (July 2026); superseded by v4.
+scope: IBM v3 valuation summary (July 2026); superseded by analysis/IBM/report/IBM-valuation-2026-07.md.
 ---
 # IBM — post-crash valuation (July 2026), v3
 

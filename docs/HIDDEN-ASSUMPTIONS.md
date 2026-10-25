@@ -8,9 +8,8 @@ scope: Registry of non-obvious assumptions and traps in the pipeline and IBM mod
 ---
 # Trap registry
 
-Each entry carries an evidence pointer (symbols, not line numbers, which drift). New trap:
-add it with a pointer. Entries 21–31 were carried from PR #11's registry and verified
-there; their pointers were not independently re-verified.
+Each entry has an evidence pointer (symbols, not line numbers). Add new traps with a
+pointer. Entries 21–31: pointers not re-verified.
 
 ## Data layer
 
@@ -18,14 +17,13 @@ there; their pointers were not independently re-verified.
 (recast) revenue with unrecast consolidated OCF across the Kyndryl divestiture boundary,
 so the FY2020 "28.2% FCF margin" is spurious and **margin windows longer than 5 years
 are unusable** for IBM until the importer aligns recasts. The backtest surfaces (never
-fixes) this via `DATA_FLAGS`; every realized IBM vintage window touches a flagged year.
+fixes) this via `DATA_FLAGS`; every realized IBM vintage (a backtest as-of date and its point-in-time data window) touches a flagged year.
 Evidence: `analysis/IBM/README.md` §Data notes; `backtest.DATA_FLAGS`;
 `analysis/IBM/REVIEW.md` F13; commit `8153323` (IBM backtest bias driven by the recast).
 
 **2. Phantom "10-K" rows.** The importer keys periods off *any* mapped concept's period
 end, so stray XBRL facts create annual rows with 1–2 fields and no revenue/OCF (IBM:
-2012-06-30, 2018-01-01, 2019-01-01 — the latter two also have `filed_date` equal to
-`period_end`, the importer's placeholder). They carry no FCF and never enter the DCF
+2012-06-30, 2018-01-01, 2019-01-01; placeholder `filed_date`, see #21). They carry no FCF and never enter the DCF
 engines, but any code iterating `company.periods` naively will hit them.
 `backtest._clean_annuals` filters them by requiring revenue AND OCF. Evidence:
 `financial_analysis/importer.py` (`all_periods[key]` row creation; `"filed_date": end`
@@ -39,13 +37,11 @@ IBM buybacks populated FY2012–19 while revenue is None before FY2018). Do not 
 older rows as complete statements. Evidence: `financial_analysis/importer.py` (`_resolve_field`, `n_periods`);
 `financial_analysis/xbrl_api.py` (`_deduplicate(filtered)[-n:]`).
 
-**4. Filed-date visibility lag (point-in-time honesty).** For companyfacts-sourced
-data, `filed_date` is the date of the filing the figure was *drawn from* — usually a
-LATER 10-K's comparative column, because deduplication keeps the latest-filed entry per
-end date (IBM FY2019 carries filed 2022-02-22; FY2023 carries 2026-02-24). The backtest
-filters vintages on `filed_date <= as_of`, so vintages are **conservative** (see fewer
-periods than a real-time observer), never optimistic — the safe leakage direction, but
-do not read `filed_date` as "when this became public." Evidence:
+**4. Filed-date visibility lag.** `filed_date` is the filing the figure was drawn from,
+usually a later 10-K's comparative column (dedup keeps the latest-filed entry per end
+date; IBM FY2019 carries 2022-02-22, FY2023 2026-02-24). The backtest filters
+`filed_date <= as_of`, so vintages are conservative, never optimistic. Do not read it as
+when a figure became public. Evidence:
 `financial_analysis/backtest.py` (module docstring, caveat #1);
 `financial_analysis/xbrl_api.py` (`_deduplicate`); `financial_analysis/importer.py`
 (`_populate_filed_dates`).
@@ -70,8 +66,8 @@ cited sources, not pipeline outputs (disclosed). Evidence:
 `analysis/IBM/report/SOURCE-AUDIT.md` row 43.
 
 **7. Capex sign convention.** The importer stores capex sign-flipped (negative);
-`free_cash_flow = OCF − abs(capex)`. A 2026-06-12 bug overstated FCF by 2×capex before
-the abs() fix — do not "simplify" it away. Evidence: `financial_analysis/schema.py` (`free_cash_flow`);
+`free_cash_flow = OCF − abs(capex)`. Dropping abs() overstates FCF by 2×capex (bug
+fixed 2026-06-12). Evidence: `financial_analysis/schema.py` (`free_cash_flow`);
 `financial_analysis/xbrl_tags.py` (`capex`, `sign_flip=True`); `context.json`
 `fcf_sign_note`; `PLANNING/tickets.md` Ticket 5 results.
 
@@ -84,7 +80,7 @@ precedence comment).
 **9. yfinance surfaces are current-only; history accumulates from first pull.** Option
 chains and forward consensus estimates have no free historical endpoint — each pull is
 persisted as a dated snapshot (one per calendar day; same-day re-run reads disk,
-`--refresh` overwrites). If you never ran a ticker, there is no history to load.
+`--refresh` overwrites).
 Evidence: `financial_analysis/options.py`, `financial_analysis/estimates.py` (module
 docstrings).
 
@@ -94,7 +90,7 @@ docstrings).
 share count is held FLAT (948,675,228 diluted) because SBC is charged as a full cash
 cost — also growing the count would double-charge dilution (REVIEW F5). The store's
 null `repurchases_common_stock` for FY2020+ mirrors reality (IBM's buybacks stopped;
-the mapping itself works — FY2012–19 values are populated) and the source audit
+the mapping itself works, see #3) and the source audit
 verified the nulls. Capital-return arithmetic in the analysis treats dividends + M&A as
 the (debt-funded) return channel. Evidence: `analysis/IBM/driver_model.py` (`SHARES ... held flat (SBC charged in margin)`);
 `analysis/IBM/REVIEW.md` F5, F13; `analysis/IBM/report/IBM-valuation-2026-07.md` §3.4;
@@ -157,11 +153,9 @@ usable periods per vintage and records skips. Evidence:
 header-only sheets, while the "Done: ... across N tabs" message counts populated groups.
 Evidence: `scripts/analyze.py` (`write_xlsx`, sheet table).
 
-**18. Tracked-but-gitignored churn.** `data/processed/NVDA_financials.xlsx` and
-`data/processed/PANW_financials.xlsx` are tracked in git although `data/processed/` is
-gitignored — running the pipeline dirties them. Never commit those changes (candidate
-fix: `git rm --cached`). Evidence: `git ls-files data/`; `.gitignore`;
-`CLAUDE.md` §Orchestration norms (untracked 2026-10-25).
+**18. `data/` outputs are gitignored and untracked** (NVDA/PANW xlsx untracked
+2026-10-25). Never commit pipeline-output churn. Evidence: `git ls-files data/`;
+`.gitignore`; `CLAUDE.md` §Orchestration norms.
 
 **19. RPO rows hide on the Balance Sheet tab.** `remaining_performance_obligation` is a
 disclosure fact but is written to the Balance Sheet tab with `statement="disclosure"`
@@ -183,35 +177,34 @@ initializes `filed_date` to the period end and only overwrites it where a *reven
 concept fact matched that (end, form). Phantom rows and sparse pre-2018 rows keep the
 placeholder — e.g. IBM's 2012-06-30 row claims it was "filed" 2012-06-30. Never trust
 `filed_date` on a row without revenue.
-*Evidence:* `importer.py` (`"filed_date": end,  # placeholder`) and
+Evidence: `importer.py` (`"filed_date": end,  # placeholder`) and
 `_populate_filed_dates` (revenue concepts only); IBM.json phantom rows show
 filed_date == period_end.
 
 **22. The correlation matrix is reviewed *judgment*, and it moves tails only.** All 28
 entries (including the 3 deliberate zeros) are argued assumptions (rationales in
 DRIVERS.md / driver_model.py), PSD-verified (min eigenvalue 0.419). The supply-shock
-regime flip (rf·g = −0.15) leaves P50 essentially unchanged ($151.89 vs $151.84) and
+regime flip (rf·g = −0.15) moves P50 by $0.05 ($151.89 vs $151.84) and
 widens tails. Do not treat correlation entries as estimated from data — none are.
-*Evidence:* `driver_model.py` CORR; dcf_drivers_run.py disclosure runs; SOURCE-AUDIT
+Evidence: `driver_model.py` CORR; dcf_drivers_run.py disclosure runs; SOURCE-AUDIT
 claim 32.
 
 **23. RPO was consumed as evidence WITH AN EXPIRY — it lapses at the Q2-2026 10-Q.**
-The $71.0B RPO facts corroborate the growth means (they changed no parameter — all four
-proposed changes were rejected in the round-3 re-look) and expire when the Q2-2026 10-Q
+The $71.0B RPO facts corroborate the growth means (changed no parameter; DRIVER-REVIEW.md RPO re-look) and expire when the Q2-2026 10-Q
 prints (late July 2026). After that, the rationale footnotes in driver_model.py and the
 ledger rows are stale until re-consumed. The +12.7% YoY print consolidates HashiCorp and
 is NOT organic evidence.
-*Evidence:* `analysis/IBM/research-ledger.md`; DRIVER-REVIEW.md RPO re-look; rule R1 in
+Evidence: `analysis/IBM/research-ledger.md`; DRIVER-REVIEW.md RPO re-look; rule R1 in
 PLANNING/RULES.md.
 
 **24. The published v3 numbers no longer reproduce from the current store (store drift).**
-`analysis/IBM/dcf_scenarios.py` derives FCFF margins live from `IBM.json`; the
-p1-importer re-import shifted the derived margins (5y mean 17.8% → 18.4%), so a fresh run
+`analysis/IBM/dcf_scenarios.py` derives FCFF margins live from `IBM.json`; a
+store re-import shifted the derived margins (5y mean 17.8% → 18.4%), so a fresh run
 prints Bear $43 / Base $149 / Bull $243 against the signed-off record of
 **$37 / $141 / $232**. The record (README/REVIEW.md) is frozen history; the script output
 is live. Do not "correct" either to match the other — cite the record for v3, the engine
 for anything current. (The v4 driver run does NOT drift: its inputs are pinned constants.)
-*Evidence:* run of `python -m analysis.IBM.dcf_scenarios` on 2026-07-17 vs
+Evidence: run of `python -m analysis.IBM.dcf_scenarios` on 2026-07-17 vs
 analysis/IBM/README.md; `dcf_scenarios.py` `fcff_v3_margins` reads the store.
 
 **25. Default capital-structure derivation ≠ the reviewed IBM bridge.** For tickers
@@ -221,31 +214,22 @@ override embeds the F15-reviewed bridge (debt + after-tax pension − cash&secur
 the DUOL override includes HTM securities + LT investments on the cash side. A
 cross-ticker comparison (the ORCL/basket runs) that mixes overridden and derived capital
 structures compares different net-debt definitions.
-*Evidence:* `scenarios.py` `capital_structure_for` vs `CAPITAL_OVERRIDES` entries +
+Evidence: `scenarios.py` `capital_structure_for` vs `CAPITAL_OVERRIDES` entries +
 analysis/IBM/README.md bridge table.
 
 **26. Retired 2026-10-25** (tooling removed).
 
 **27. Retired 2026-10-25** (tooling removed).
 
-**28. Timed/background tasks in this environment can be killed mid-run — persist resume
-state in files.** A documentation agent died to a session token limit on
-2026-07-17; the pattern is `PLANNING/handoff/`: write open work-state to a file as you
-go, delete items as completed. Interrupted fan-outs must resume, never
-restart (vision ✦6b).
-*Evidence:* `PLANNING/handoff/`; reusable-dcf-vision.md ✦6b.
+**28. Background tasks can be killed mid-run.** Persist resume state in
+`PLANNING/handoff/` as you go; delete items as completed. Interrupted fan-outs resume,
+never restart (vision ✦6b).
+Evidence: `PLANNING/handoff/`; reusable-dcf-vision.md ✦6b.
 
-**29. Branch fragmentation — "done" work may not be on your branch.** Two live examples
-from the day this file was written: (a) the backtest harness sat complete-with-tests on
-`factory-builds` while `handoff` (then checked out) lacked it — `python -m
-scripts.backtest` failed and a doc claiming "backtest ✓" looked wrong until PRs #7/#8
-merged both to main; (b) PR #10 (DUOL scenarios) was based on `viz-final-pass` and merged
-into that branch *after* #9 had landed, stranding the commit off main until PR #14
-cherry-picked it back. Lessons: check `git log --all --oneline -- <path>` before
-concluding something doesn't exist; base PRs on `main` unless deliberately stacking (and
-retarget after the base merges); never switch branches in a shared tree while agents are
-working — use the `wt-*` worktrees for parallel work.
-*Evidence:* git history around `8153323`/`9751523` and `c7dfb95`/`a082339` (2026-07-17).
+**29. Done work may sit on another branch.** Check `git log --all --oneline -- <path>`
+before concluding something is missing. Base PRs on `main`; never switch branches in a
+shared tree; use `wt-*` worktrees.
+Evidence: git history around `8153323`/`9751523` and `c7dfb95`/`a082339` (2026-07-17).
 
 **30. LF/CRLF warnings are normal; PowerShell 5.1 quirks are real.** `core.autocrlf=true`
 on this checkout — "LF will be replaced by CRLF" warnings are expected noise, not damage.
@@ -253,11 +237,11 @@ The primary shell is Windows PowerShell 5.1: no `&&`/`||` chaining, no ternary, 
 default file encoding (`-Encoding utf8` when writing files other tools read), quirky
 native-arg quoting (`--%` stop-parsing token when needed). Git Bash is available for
 POSIX scripts.
-*Evidence:* `git config core.autocrlf`; environment.
+Evidence: `git config core.autocrlf`; environment.
 
 **31. Tests are no-network by construction — keep them that way.** The whole suite runs
 on synthetic fixtures (mocked HTTP, synthetic yfinance/consensus/company objects), fixed
 seeds (7) everywhere randomness exists: `SCENARIO_SEED = 7`, dcf_drivers_run `SEED = 7`,
 backtest default `seed=7`. A test that needs the network or a floating seed is a defect.
 Run `pytest -q` for the current count rather than trusting any doc.
-*Evidence:* `pytest -q` runs of 2026-07-17; grep "no network" in tests/.
+Evidence: `pytest -q` runs of 2026-07-17; grep "no network" in tests/.

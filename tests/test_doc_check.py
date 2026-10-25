@@ -17,7 +17,8 @@ BAD = "No header.\n"
 
 
 def git(root, *args):
-    subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(root), "-c", "user.name=t", "-c", "user.email=t@t", *args], check=True,
+                   capture_output=True)
 
 
 def record(root, rel, verdict="PASS"):
@@ -36,9 +37,12 @@ def put(root, rel, raw=None, body="Body.\n", review=True, **over):
     git(root, "add", "-A")
 
 
-def commit(root):
+def commit(root, origin=False):
+    """Commit everything; origin=True also makes it origin/main."""
     git(root, "add", "-A")
-    git(root, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base")
+    git(root, "commit", "-qm", "c")
+    if origin:
+        git(root, "update-ref", "refs/remotes/origin/main", "HEAD")
 
 
 def repo(path, standard=True, base=False):
@@ -47,7 +51,7 @@ def repo(path, standard=True, base=False):
     if standard:
         put(path, "docs/DOC-STANDARD.md", id="DOC-STD")
     if base:
-        commit(path)
+        commit(path, origin=True)
     return path
 
 
@@ -219,24 +223,16 @@ def test_hook_denies_bad_doc_staged_or_chained(tmp_path):
     assert "a.md: no header" in denied(hook(tmp_path, "git add a.md && git commit -m x"))
 
 
-def test_hook_code_only_commit_ignores_legacy_docs(tmp_path):
+@pytest.mark.parametrize("origin", [True, False])
+def test_hook_code_only_commit_ignores_legacy_docs(tmp_path, origin):
     repo(tmp_path)
     put(tmp_path, "legacy.md", raw=LONG + "\n", review=False)
     put(tmp_path, "legacy2.md", raw=LONG + "\n", review=False)
-    commit(tmp_path)
+    commit(tmp_path, origin=origin)
     put(tmp_path, "code.py", raw="x = 1\n")
     r = hook(tmp_path)
     assert (r.returncode, r.stdout) == (0, "")
     put(tmp_path, "legacy.md", raw=LONG + "\nmore\n", review=False)
-    assert "legacy.md: no header" in denied(hook(tmp_path))
-
-
-def test_hook_scope_includes_docs_changed_only_in_the_index(tmp_path):
-    repo(tmp_path)
-    put(tmp_path, "legacy.md", raw=LONG + "\n", review=False)
-    commit(tmp_path)
-    put(tmp_path, "legacy.md", raw=LONG + "\nmore\n", review=False)
-    Path(tmp_path, "legacy.md").write_text(LONG + "\n")
     assert "legacy.md: no header" in denied(hook(tmp_path))
 
 
@@ -274,7 +270,64 @@ def test_hook_finds_the_repo_a_commit_targets(tmp_path):
 
 def test_hook_denies_unresolvable_root(tmp_path):
     repo(tmp_path, base=True)
-    assert denied(hook(tmp_path, "cd /nonexistent/dir && git commit -m x"))
+    assert "/nonexistent/dir" in denied(hook(tmp_path, "cd /nonexistent/dir && git commit -m x"))
+
+
+@pytest.mark.parametrize("command", [
+    "git commit -m x && cd {wt}",
+    "git commit -m x; git -C {wt} status",
+    "cd {wt} && git commit -m x && cd {main}",
+])
+def test_hook_checks_every_repo_the_command_names(tmp_path, command):
+    main = repo(tmp_path / "main", base=True)
+    git(main, "worktree", "add", "-q", str(tmp_path / "wt"), "-b", "b")
+    put(main if "{main}" not in command else tmp_path / "wt", "a.md", raw=BAD)
+    assert "a.md: no header" in denied(hook(main, command.format(wt=tmp_path / "wt", main=main), cwd=main))
+
+
+@pytest.mark.parametrize("command", [
+    "pushd {wt} >/dev/null && git commit -m x",
+    "Set-Location {wt}; git commit -m x",
+    "cd -P {wt} && git commit -m x",
+    "git --git-dir={main}/.git/worktrees/wt --work-tree={wt} commit -m x",
+    "GIT_WORK_TREE={wt} git commit -m x",
+])
+def test_hook_directory_forms(tmp_path, command):
+    main = repo(tmp_path / "main", base=True)
+    git(main, "worktree", "add", "-q", str(tmp_path / "wt"), "-b", "b")
+    put(tmp_path / "wt", "a.md", raw=BAD)
+    assert "a.md: no header" in denied(hook(main, command.format(wt=tmp_path / "wt", main=main), cwd=main))
+
+
+@pytest.mark.parametrize("command", [
+    "git merge --no-edit feat", "git cherry-pick feat", "git revert --no-edit HEAD", "git pull --no-rebase . feat",
+    "git push origin HEAD", "git am x.patch", "git rebase origin/main",
+])
+def test_hook_gates_every_history_verb(tmp_path, command):
+    repo(tmp_path, base=True)
+    put(tmp_path, "a.md", raw=BAD)
+    commit(tmp_path)
+    assert "a.md: no header" in denied(hook(tmp_path, command))
+
+
+def test_hook_merge_does_not_launder_a_bad_doc(tmp_path):
+    repo(tmp_path, base=True)
+    git(tmp_path, "checkout", "-qb", "feat")
+    put(tmp_path, "a.md", raw=BAD)
+    commit(tmp_path)
+    git(tmp_path, "checkout", "-q", "-")
+    git(tmp_path, "merge", "-q", "--no-edit", "feat")
+    put(tmp_path, "code.py", raw="x = 1\n")
+    reason = denied(hook(tmp_path))
+    assert "changed on this branch" in reason and "a.md: no header" in reason
+
+
+def test_hook_legacy_bad_doc_on_origin_does_not_block(tmp_path):
+    repo(tmp_path)
+    put(tmp_path, "legacy.md", raw=BAD, review=False)
+    commit(tmp_path, origin=True)
+    put(tmp_path, "code.py", raw="x = 1\n")
+    assert hook(tmp_path).stdout == ""
 
 
 def test_hook_fires_on_any_git_and_commit(tmp_path):

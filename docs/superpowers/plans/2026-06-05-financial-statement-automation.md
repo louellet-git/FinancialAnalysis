@@ -4,7 +4,7 @@ type: plan
 item: 10.16 Development plan
 status: superseded
 date: 2026-06-05
-scope: Historical implementation plan for the analyze command and xlsx export; superseded by the shipped code.
+scope: Historical implementation plan for the analyze command and xlsx export; superseded by docs/ARCHITECTURE.md.
 ---
 # Financial Statement Automation Implementation Plan
 

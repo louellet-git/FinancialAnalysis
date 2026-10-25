@@ -11,20 +11,16 @@ scope: Register of tickets not on the board (open backlog, Ticket 7) and the clo
 > Each ticket must end with a mandatory smoke test before it is closed.
 > A ticket is not done until real output is printed and verified consumable by the next ticket.
 
-Parts: **OPEN TICKETS** (consolidated 2026-07-17 from every ledger in the repo; each line
-names its source, which stays authoritative for detail; work in progress is on the board,
-`PLANNING/board/`), **CLOSED TICKETS 1–6** (original build) and Ticket 7 (open, full spec
-below).
+Each open line names its source, which stays authoritative for detail. Work in progress:
+`python scripts/board.py status`.
 
 ## OPEN TICKETS
 
 ### Queued work (session handoff)
 
-- ~~**Visualizer final pass**~~ DONE 2026-07-17: merged as PR #9 (rangeselector buttons + Backtest section), IBM html regenerated; 0DTE skew exclusion followed in PR #14. IBM backtest headline: 14/18 in band (78% vs 80% nominal).
 - **DUOL driver build**: DUOL first pass (PR #14) is consensus-anchored only — mechanical backtest coverage 0/6, bands decorative; promote to a driver-model frontier run (needs either person's sign-off, vision ✦6a as amended 2026-10-25) or leave as screening output.
 - **ORCL frontier run** (ticker #2), then basket and cross-sectional gap decomposition — board T-20261025-orcl-frontier-run; vision ✦1 basket amendment.
 - **IBM Q2 grading** (reported July 22, 2026; still open) — board T-20261025-ibm-q2-grading (scope: 5-item watch list, first bet-ledger entries, 2026 mechanical vintage).
-- ~~**Gitignore churn cleanup**~~ DONE on merge of T-20261025-collab-board-workflow: NVDA/PANW xlsx + stray .pyc untracked (`git rm --cached`).
 
 ### Factory P1 (vision phasing — the active frontier)
 
@@ -52,8 +48,7 @@ below).
 
 ### Standing per-run duties (not one-shot tickets)
 
-- Update PLANNING/token-ledger.md per run; targets: frontier ≤ 500k, repeat ≤ 50k subagent tokens — PLANNING/token-ledger.md.
-- Charter review must ACCEPT before any publication; either person signs off frontier/reservation runs (✦6a, amended 2026-10-25) — PLANNING/reusable-dcf-vision.md L5.
+- Per-run duties: `PLANNING/token-ledger.md` (update; targets) · `PLANNING/reusable-dcf-vision.md` L5 (charter gate, ✦6a sign-off).
 
 ---
 
@@ -66,7 +61,7 @@ below).
   - 217 files downloaded for PANW under `data/raw/PANW/`
   - CIK confirmed as `1327567`
   - `0001327567-23-000024.txt` opens with `<SEC-DOCUMENT>` and is a real `10-K` ✓
-- **Finding:** The bulk of downloaded files are form type `144` (insider stock sale notices), not financial filings. The importer does not filter by form type — it downloads everything matching the CIK in the date window. This is expected behaviour; form-type cataloguing is Ticket 1.5's responsibility.
+- **Finding:** The bulk of downloaded files are form type `144` (insider stock sale notices), not financial filings. The importer does not filter by form type — it downloads everything matching the CIK in the date window. Form-type cataloguing is Ticket 1.5's responsibility.
 
 ---
 
@@ -157,7 +152,7 @@ below).
 
 ## Ticket 4.5 — Financial Statement xlsx Export ✅ CLOSED
 - **Title:** Export financial statements for any ticker to a four-tab xlsx file
-- **Status:** ✅ CLOSED 2026-06-05. Smoke test passed.
+- **Status:** Closed 2026-06-05. Smoke test passed.
 - **Results:**
   - NVDA: 4,886 rows across 4 tabs (IS: 356, BS: 391, CF: 213, Raw: 3,926)
   - FY2026 revenue: 215,938,000,000 ✓; capex: -6,042,000,000 ✓ (negative); FCF: 108,760,000,000 ✓

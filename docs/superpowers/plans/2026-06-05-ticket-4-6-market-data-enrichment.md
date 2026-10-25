@@ -4,7 +4,7 @@ type: plan
 item: 10.16 Development plan
 status: superseded
 date: 2026-06-05
-scope: Historical implementation plan for the price and estimates enrichment; superseded by the shipped code.
+scope: Historical implementation plan for the price and estimates enrichment; superseded by docs/ARCHITECTURE.md.
 ---
 # Ticket 4.6 — Market Data Enrichment Implementation Plan
 
