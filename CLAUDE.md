@@ -8,6 +8,8 @@ scope: Orientation and norms for working this repo; read first.
 ---
 # CLAUDE.md — agent orientation
 
+Objective: an agent works this repo correctly without re-deriving its norms.
+
 Start with `docs/ARCHITECTURE.md` (code-verified module map) and
 `docs/HIDDEN-ASSUMPTIONS.md` (trap registry). Every doc and its header:
 `python scripts/doc_check.py list`; doc rules: `docs/DOC-STANDARD.md`.
@@ -35,9 +37,8 @@ yet ticketed: `PLANNING/tickets.md` §OPEN TICKETS.
    says so itself ("the executable, NORMATIVE definition — its rationale strings
    govern"). DRIVERS.md is the reviewer-facing companion table.
 3. **Recorded dispositions bind.** `analysis/IBM/REVIEW.md` (F1–F19) and
-   `analysis/IBM/DRIVER-REVIEW.md` (19 + 4 reviews) are settled rulings — do not
-   re-litigate them in later work; reopening one requires a review of the same weight
-   (same weight rule as item 4).
+   `analysis/IBM/DRIVER-REVIEW.md` (19 + 4 reviews) are settled rulings: do not
+   re-litigate; reopening one needs a review of item 4's weight.
 4. **`PLANNING/RULES.md` rules are binding at their declared scope**
    (universal / archetype-bound / ticker-bound); deprecation requires a review fan-out
    of the same weight that created the rule.
@@ -50,18 +51,17 @@ yet ticketed: `PLANNING/tickets.md` §OPEN TICKETS.
    was audited (`analysis/IBM/report/SOURCE-AUDIT.md`) against the engine on its date; do not edit published
    reports to "fix" them — supersede with a new version.
 7. **Evidence and design contracts bind.** `analysis/IBM/research-ledger.md` holds the
-   frozen source-tagged facts the model consumes; RPO expiry is open in `PLANNING/tickets.md`;
+   frozen source-tagged facts the model consumes; 
    `docs/visualizer-design-brief.md` and
    `docs/design-specs/2026-07-16-ratings-desk-blueprint.md` bind restyles of
    `visualize_dcf` output.
 8. `README.md`, `context.json`, `docs/ARCHITECTURE.md`, `docs/HIDDEN-ASSUMPTIONS.md` are
-   informative orientation (code governs); `THOUGHTS` is a raw idea scratchpad.
+   informative orientation; `THOUGHTS` is a raw idea scratchpad.
 
 ## Orchestration norms
 
-Objective: an agent works this repo correctly without re-deriving its norms.
-Enforcement: docs/COLLABORATION.md §Enforcement and limits (hook, CI); smoke-test and
-token-ledger rules: none (session discipline).
+Enforcement: docs/COLLABORATION.md §Enforcement and limits (hook, CI). Smoke-test and
+token-ledger rules: session discipline only.
 
 - **Subagents do not commit.** The orchestrator (each person's manager session) reviews and
   commits their worktree output.
