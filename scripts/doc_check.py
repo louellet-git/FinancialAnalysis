@@ -7,7 +7,6 @@ import hashlib
 import json
 import os
 import re
-import shlex
 import subprocess
 import sys
 from datetime import date, datetime
@@ -17,12 +16,11 @@ ROOT = Path(__file__).resolve().parent.parent
 KEYS = ["id", "type", "item", "status", "date", "scope"]
 TYPES = ["description", "plan", "policy", "procedure", "report", "request", "specification", "record"]
 STATUSES = ["draft", "current", "frozen", "superseded"]
-EXEMPT = re.compile(r"(\.claude|\.github)/.*|PLANNING/board/T-[^/]*\.md")
+EXEMPT = re.compile(r"(\.claude/(agents|commands|skills)|\.github)/.*|PLANNING/board/T-[^/]*\.md")
 ITEM = re.compile(r"10\.([1-9]\d?) \S.*")
 SEPARATOR = re.compile(r"[|:\s-]+")
-COMMIT = re.compile(r"(?:^|[;&|])\s*git(?:\s+-C\s+\S+)?\s+commit\b", re.M)
-ARG_OPTS = {"--message", "--file", "--author", "--date", "--template", "--cleanup", "--fixup", "--squash",
-            "--reuse-message", "--reedit-message", "--trailer", "--pathspec-from-file"}
+COMMIT = re.compile(r"\bgit\b.*\bcommit\b", re.S)
+TARGET = re.compile(r"""(?:\bcd|\bgit\s+-C)\s+("[^"]*"|'[^']*'|\S+)""")
 REVIEWS = "docs/doc-reviews.tsv"
 FIX = "Fix: run the doc-critic agent on each doc, then python scripts/doc_check.py record <path> PASS and git add " + REVIEWS
 
@@ -53,9 +51,10 @@ RULES = {"id": lambda s: re.fullmatch(r"DOC-[A-Z0-9-]+", s), "type": TYPES.__con
 
 
 def governed(root):
-    """Tracked *.md paths (relative to root) minus the exempt ones."""
-    names = _git(root, "ls-files", "-z", "*.md").decode().split("\0")
-    return [Path(n) for n in names if n and not EXEMPT.fullmatch(n)]
+    """Tracked or untracked-not-ignored *.md files (relative to root) minus the exempt ones."""
+    names = _git(root, "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "*.md")
+    return [Path(n) for n in sorted(set(names.decode().split("\0"))) if n and not EXEMPT.fullmatch(n)
+            and Path(root, n).is_file()]
 
 
 def header(text):
@@ -64,34 +63,42 @@ def header(text):
     return None if not m else {k.strip(): v.strip() for k, _, v in (ln.partition(":") for ln in m[1].splitlines())}
 
 
-def _reviews(root, staged):
-    """{(path, sha256): last verdict} from the review ledger (index copy when staged)."""
-    if staged:
-        text = _git(root, "show", ":" + REVIEWS, check=False).decode()
-    else:
-        text = Path(root, REVIEWS).read_text() if Path(root, REVIEWS).exists() else ""
-    rows = [ln.split("\t") for ln in text.splitlines()[1:]]
+def _reviews(root):
+    """{(path, sha256): last verdict} from the review ledger."""
+    f = Path(root, REVIEWS)
+    rows = [ln.split("\t") for ln in (f.read_text().splitlines()[1:] if f.exists() else [])]
     return {(r[1], r[2]): r[3] for r in rows if len(r) >= 4}
 
 
-def problems(root, staged=False):
-    """Every rule violation across the governed docs, one string each."""
-    out, ids, lines, reviews = [], {}, {}, _reviews(root, staged)
+def changed(root):
+    """Names of *.md files a commit could carry: differing from HEAD in index or worktree, or untracked.
+    None when there is no HEAD (everything is new)."""
+    if not _git(root, "rev-parse", "--verify", "-q", "HEAD", check=False):
+        return None
+    cmds = (("diff", "--name-only", "-z", "HEAD"), ("diff", "--name-only", "-z", "--cached"),
+            ("ls-files", "-z", "--others", "--exclude-standard"))
+    return {n for c in cmds for n in _git(root, *c, "--", "*.md").decode().split("\0") if n}
+
+
+def problems(root, scope=None):
+    """Rule violations across the governed docs, one string each; only those touching `scope` (a set of
+    names) when given. Duplicates are found over all docs and reported when any doc involved is in scope."""
+    out, ids, lines, reviews = [], {}, {}, _reviews(root)
+    hit = lambda names: scope is None or any(n in scope for n in names)
     for p in governed(root):
-        name = p.as_posix()
-        if not staged and not Path(root, p).exists():
-            continue
-        raw = _git(root, "show", ":" + name) if staged else Path(root, p).read_bytes()
+        name, mine = p.as_posix(), []
+        raw = Path(root, p).read_bytes()
         h = header(raw.decode())
         if h is None:
-            out.append(f"{name}: no header")
+            mine.append(f"{name}: no header")
         else:
-            out += [f"{name}: missing key {k}" for k in KEYS if not h.get(k)]
-            out += [f"{name}: unknown key {k}" for k in h if k not in KEYS]
-            out += [f"{name}: bad {k} {h[k]}" for k, ok in RULES.items() if h.get(k) and not ok(h[k])]
+            mine += [f"{name}: missing key {k}" for k in KEYS if not h.get(k)]
+            mine += [f"{name}: unknown key {k}" for k in h if k not in KEYS]
+            mine += [f"{name}: bad {k} {h[k]}" for k, ok in RULES.items() if h.get(k) and not ok(h[k])]
             ids.setdefault(h.get("id"), []).append(name)
-            if h.get("status") in ("draft", "current") and reviews.get((name, _sha(raw))) != "PASS":
-                out.append(f"{name}: no PASS review row for current content")
+            if reviews.get((name, _sha(raw))) != "PASS":
+                mine.append(f"{name}: no PASS review row for current content")
+        out += mine if hit([name]) else []
         frozen = h is not None and h.get("status") in ("frozen", "superseded")
         fenced = False
         for ln in ([] if frozen else raw.decode().splitlines()):
@@ -99,52 +106,32 @@ def problems(root, staged=False):
             fenced ^= s.startswith("```")
             if not fenced and not s.startswith("```") and len(s) >= 60 and not SEPARATOR.fullmatch(s):
                 lines.setdefault(s, set()).add(name)
-    out += [f"duplicate id {i}: {', '.join(ns)}" for i, ns in ids.items() if i and len(ns) > 1]
-    out += [f"duplicate line in {', '.join(sorted(ns))}: {s[:50]}" for s, ns in lines.items() if len(ns) > 1]
+    out += [f"duplicate id {i}: {', '.join(ns)}" for i, ns in ids.items() if i and len(ns) > 1 and hit(ns)]
+    out += [f"duplicate line in {', '.join(sorted(ns))}: {s[:50]}" for s, ns in lines.items()
+            if len(ns) > 1 and hit(ns)]
     return out
 
 
-def worktree_commit(command):
-    """True when the first `git commit` in command takes worktree content: -a/--all or a pathspec."""
-    lex = shlex.shlex(command[COMMIT.search(command).end():], posix=True, punctuation_chars=True)
-    lex.commenters = ""
-    try:
-        args = iter(list(lex))
-    except ValueError:
-        return False
-    for t in args:
-        if set(t) <= set(";&|"):
-            return False
-        if t == "--":
-            return next(args, None) is not None
-        if t.startswith("--"):
-            if t == "--all":
-                return True
-            if t in ARG_OPTS:
-                next(args, None)
-        elif t.startswith("-") and len(t) > 1:
-            for j, c in enumerate(t[1:]):
-                if c == "a":
-                    return True
-                if c in "mFcCt":
-                    if j == len(t) - 2:
-                        next(args, None)
-                    break
-        else:
-            return True
-    return False
+def _repo_of(command, cwd):
+    """Git toplevel the command's `git commit` runs in: payload cwd (else CLAUDE_PROJECT_DIR), then each
+    `cd <dir>` / `git -C <dir>` target in order."""
+    d = cwd or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+    for t in TARGET.findall(command):
+        d = Path(d, os.path.expandvars(os.path.expanduser(t.strip("\"'"))))
+    return _git(d, "rev-parse", "--show-toplevel").decode().strip()
 
 
 def hook():
-    """PreToolUse: deny `git commit` while the staged docs have problems. Always exits 0."""
+    """PreToolUse: deny a `git commit` while a doc it could carry has problems. Always exits 0."""
     try:
-        command = json.load(sys.stdin).get("tool_input", {}).get("command") or ""
+        payload = json.load(sys.stdin)
+        command = payload.get("tool_input", {}).get("command") or ""
         if not COMMIT.search(command):
             return 0
-        root = os.environ.get("CLAUDE_PROJECT_DIR") or _git(".", "rev-parse", "--show-toplevel").decode().strip()
+        root = _repo_of(command, payload.get("cwd"))
         if not Path(root, "docs/DOC-STANDARD.md").exists():
             return 0
-        found = problems(root, staged=not worktree_commit(command))
+        found = problems(root, scope=changed(root))
         if not found:
             return 0
         more = [f"... and {len(found) - 20} more"] if len(found) > 20 else []
