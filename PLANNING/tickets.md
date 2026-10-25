@@ -3,14 +3,19 @@
 > Each ticket must end with a mandatory smoke test before it is closed.
 > A ticket is not done until real output is printed and verified consumable by the next ticket.
 
+> **Open work moved to the project board on 2026-10-25.** See `PLANNING/BOARD.md` for the
+> board link, the workflow and a table mapping every open item below to its `FA-<n>`
+> ticket. The OPEN TICKETS section is kept as the record of what was migrated; do not
+> add to it.
+
 This file has two parts: **OPEN TICKETS** (consolidated 2026-07-17 from every ledger in
-the repo — each line carries its source pointer; the sources remain authoritative for
-detail) and **HISTORICAL — CLOSED TICKETS 1–6** (the original build, preserved
-verbatim). Ticket 7 (open) keeps its full spec in the historical section's format below.
+the repo, migrated to the board 2026-10-25) and **HISTORICAL — CLOSED TICKETS 1–6** (the
+original build, preserved verbatim). Ticket 7 (now FA-17) keeps its full spec in the
+historical section's format below.
 
 ---
 
-## OPEN TICKETS (consolidated 2026-07-17)
+## OPEN TICKETS (consolidated 2026-07-17; migrated to the board 2026-10-25)
 
 ### Queued work (session handoff)
 

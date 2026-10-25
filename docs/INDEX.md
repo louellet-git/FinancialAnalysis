@@ -12,7 +12,7 @@ pipeline or an audit gate; regenerate, don't hand-edit).
 | `CLAUDE.md` | Agent orientation: repo identity, normativity map, orchestration norms, review-pipeline roles | binding (process) |
 | `README.md` | Human-facing overview: verified CLI commands, engines, xlsx tabs, layout, tests | informative |
 | `context.json` | Machine-readable project summary + phase state for agents | informative |
-| `THOUGHTS` | Raw idea scratchpad (2 items, consolidated into tickets.md OPEN TICKETS) | live |
+| `THOUGHTS` | Raw idea scratchpad (2 items, now board tickets FA-21 and Definition of Done item 4) | live |
 | `docs/ARCHITECTURE.md` | Code-verified module map, data flow, the two engines' mechanics | informative (code governs) |
 | `docs/HIDDEN-ASSUMPTIONS.md` | Trap registry: 20 non-obvious assumptions/landmines with evidence pointers | informative (code governs) |
 | `docs/INDEX.md` | This file | informative |
@@ -26,8 +26,9 @@ pipeline or an audit gate; regenerate, don't hand-edit).
 | `docs/superpowers/specs/2026-06-05-ticket-4-6-market-data-enrichment.md` | Market-data enrichment design | historical |
 | `PLANNING/reusable-dcf-vision.md` | The valuation-factory standing initiative: 7-layer architecture, 7 amendments + basket amendment, phasing P1–P4, success metrics | binding (design) |
 | `PLANNING/RULES.md` | Canonical rulebook (L4): R1 + the P1 extraction backlog; rules bind at declared scope, deprecation needs equal-weight review | binding |
-| `PLANNING/tickets.md` | OPEN TICKETS (consolidated, with source pointers) + historical closed tickets 1–6 + Ticket 7 spec | live (open) / historical (closed) |
-| `PLANNING/HANDOFF.md` | Session handoff — live open-work state; delete items as completed, delete file when empty | live |
+| `PLANNING/BOARD.md` | Project board link, ticket-first workflow, Definition of Done, board data schema, migration table | binding (process) |
+| `PLANNING/board/board.html` | Source of the project board page (republish to the same URL from this path) | live |
+| `PLANNING/tickets.md` | Open tickets as migrated to the board 2026-10-25 + historical closed tickets 1–6 + Ticket 7 spec | historical |
 | `PLANNING/token-ledger.md` | Cost-per-run ledger (success metric #1) + targets; update per run | live |
 | `analysis/IBM/README.md` | IBM v3 analysis: fundamentals, net-debt bridge, v3 scenarios ($37/$141/$232), data notes | historical (v3 — superseded by the v4 report for headline numbers; bridge/data notes still referenced by v4) |
 | `analysis/IBM/DRIVERS.md` | v4 assumption register companion table (drivers, items, correlations) | binding, EXCEPT that `driver_model.py` rationale strings govern over its prose (stated in its own header) |

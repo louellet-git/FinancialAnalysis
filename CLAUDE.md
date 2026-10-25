@@ -2,7 +2,25 @@
 
 Read this first. Then: `docs/INDEX.md` (every doc, with normativity),
 `docs/ARCHITECTURE.md` (code-verified module map), `docs/HIDDEN-ASSUMPTIONS.md` (the
-trap registry), `PLANNING/HANDOFF.md` (live open-work state, if present).
+trap registry), `PLANNING/BOARD.md` (the workflow and the project board, where all open
+work lives).
+
+## Work tracking: ticket first (binding)
+
+All work is planned and tracked on the project board,
+https://claude.ai/artifact/82X6JYs9eBHaVrzbLyeJht; `PLANNING/BOARD.md` has the workflow,
+the Definition of Done and the data schema. Before you change code, docs or analysis:
+
+1. Find the ticket for the work on the board, or create one with acceptance criteria.
+2. Set yourself (`"claude"`) as assignee, move it to In progress and post an update
+   saying what you are about to do.
+3. Name the key in every commit (`FA-12: ...`) and add the commits or PR to its Links.
+4. Before stopping, post an update on every ticket you touched: what changed, what is
+   next, what you need. Hand finished work to In review, not Done.
+
+Work you find along the way that is outside the ticket becomes a new ticket. Read and
+write the board with the `ArtifactData` tool (see `PLANNING/BOARD.md`). If the board
+cannot be reached, say so and record the same updates in your reply.
 
 ## What this repo is
 
@@ -30,8 +48,9 @@ backtest harness and MC path explorer landed; the visualizer's backtest section 
 range buttons merged (PR #9), 0DTE skew exclusion merged (PR #14); DUOL first pass done
 (consensus-anchored presets + capital override, PR #14 — labeled NOT a vetted driver
 build); P1 of the vision (rulebook extraction, validators, red-team corpus, coverage
-validator) is the active frontier, with the ORCL run queued as ticker #2. Open work:
-`PLANNING/tickets.md` §OPEN TICKETS and `PLANNING/HANDOFF.md`.
+validator) is the active frontier, with the ORCL run queued as ticker #2. Open work is
+on the project board (`PLANNING/BOARD.md`); Sprint 1 (from 2026-10-25) catches the IBM
+model up with its Q2 and Q3 2026 results.
 
 ## Normativity map — which source governs when docs disagree
 
@@ -54,8 +73,8 @@ validator) is the active frontier, with the ORCL run queued as ticker #2. Open w
 6. **Reports are frozen artifacts.** `analysis/IBM/report/*` was audited
    (SOURCE-AUDIT.md) against the engine on its date; do not edit published reports to
    "fix" them — supersede with a new version.
-7. `README.md`, `context.json`, `docs/` are informative orientation; `PLANNING/HANDOFF.md`
-   is live state (delete items as completed); `THOUGHTS` is a raw idea scratchpad.
+7. `README.md`, `context.json`, `docs/` are informative orientation; the project board
+   (`PLANNING/BOARD.md`) is live state; `THOUGHTS` is a raw idea scratchpad.
 
 ## Orchestration norms (learned the hard way)
 
@@ -72,13 +91,13 @@ validator) is the active frontier, with the ORCL run queued as ticker #2. Open w
   **`origin/main`**, not local `main`.
 - Never commit `data/` churn: `data/processed/NVDA_financials.xlsx` and
   `PANW_financials.xlsx` are tracked-but-gitignored leftovers that dirty on every
-  pipeline run (HANDOFF known-state; candidate `git rm --cached`).
+  pipeline run (ticket FA-4: `git rm --cached`).
 - **Smoke-test policy:** a ticket is not done until real output is printed and
-  confirmed consumable by the next stage (`PLANNING/tickets.md` header; `context.json`).
+  confirmed consumable by the next stage (`PLANNING/BOARD.md` Definition of Done).
 - **Token ledger:** update `PLANNING/token-ledger.md` per run (success metric #1;
   targets: frontier ticker ≤ 500k, repeat run ≤ 50k subagent tokens).
-- Session handoffs live in `PLANNING/HANDOFF.md` — delete items as completed, delete
-  the file when empty.
+- Session handoffs live on the board: an update on each ticket you touched.
+  `PLANNING/HANDOFF.md` was retired on 2026-10-25.
 
 ## Review pipeline (roles as evidenced in .claude/agents/ and PLANNING docs)
 

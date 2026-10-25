@@ -160,7 +160,8 @@ docs/                        ARCHITECTURE.md, HIDDEN-ASSUMPTIONS.md, INDEX.md,
                              visualizer design brief + accepted design spec,
                              superpowers/ (historical plans/specs)
 PLANNING/                    reusable-dcf-vision.md (standing initiative), RULES.md,
-                             tickets.md, token-ledger.md, HANDOFF.md (live state)
+                             BOARD.md (workflow + project board), board/ (board page
+                             source), tickets.md (historical), token-ledger.md
 .claude/agents/              vendored review pipeline: valuation-analyst/-skeptic,
                              memo-reviewer + rubric, report-auditor (FRAMEWORK.md)
 data/raw/ data/processed/    caches and outputs (gitignored)
