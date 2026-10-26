@@ -11,8 +11,8 @@ scope: How the two owners and their Claude sessions change this repo in parallel
 Input: a goal in one area. Output: the work merged to main, its branch deleted, its ticket
 `done`; pushing to a branch is never finished. Everything is jointly owned, "Just maybe not
 by two at the same time.": every piece of work starts from a filled ticket on
-`PLANNING/board/` (format: its [README](../PLANNING/board/README.md)), one active
-(`in-progress` or `review`) ticket per area and branch (TK10 there). Worktrees: `CLAUDE.md`
+`PLANNING/board/` (format and rules, incl. one active ticket per area and branch: its
+[README](../PLANNING/board/README.md)). Worktrees: `CLAUDE.md`
 §Orchestration norms. Participants: the ticket's owner (a person and their session); either
 person may merge ("Either person", owner).
 
@@ -38,8 +38,8 @@ where `/delegate` armed `.delegation/`; a worktree without it skips the delegati
 1. `git fetch origin && git switch --detach origin/main`.
 2. Create or edit the ticket (as Start step 2; `review` is set on the branch by Finish step 2
    instead).
-3. `/skeptic-review` it: one skeptic on Haiku (owner: "Panel per ticket"; "for critics use haiku"; pass model
-   haiku), lens `correctness`. The all-PLEASED `.delegation/review-artifact.json` covers one
+3. `/skeptic-review` it: one skeptic (owner: "Panel per ticket"; "for critics use haiku"; pass model haiku),
+   lens `correctness`. The all-PLEASED `.delegation/review-artifact.json` covers one
    commit at the current HEAD; re-run it after any edit.
 4. `git add PLANNING/board/<id>.md && git commit -m "board: <id>" && git push origin HEAD:main`.
 
@@ -69,12 +69,12 @@ A head change after review returns to steps 1 and 3. Locally use the `gh` form (
 
 - **Push to main rejected** (not a fast-forward) or area now taken: redo §Ticket commits from
   step 1 on the fresh `origin/main`, `python scripts/board.py check`, pick another area if taken.
-- **Hook denial:** its message names the fix; `board gate error:` is a hook fault: report it, do
+- **Hook denial** (board or doc gate): its message names the fix; `board gate error:` is a hook fault: report it, do
   not work around it. **Board check failure:** fix the file the check names.
 - **Conflict with main:** on the branch `git fetch origin && git merge --no-commit
   origin/main`, resolve, `python -m pytest -q`, run `/review-panel` on the integrated tree,
-  then one `git commit` (the resolution is new code). `merge=union` works only in local git
-  (GitHub's server merge did not); check the unioned rows' order.
+  then one `git commit` (the resolution is new code). `merge=union` works only in local git;
+  check the unioned rows' order.
 - **Branch predates the board:** merge `origin/main` as above; if no ticket names it, create one
   (§Start).
 - **Dead or resumed session:** `git fetch origin`, `python scripts/board.py status`, `git
@@ -114,15 +114,14 @@ CI (`.github/workflows/`):
 - `tests.yml`, every push to main and PR: pytest (`PLANNING/` excluded), `board.py check`,
   `doc_check.py check`. On a PR also: the head branch has an active ticket on the base board,
   and the PR sets no ticket `done`.
-- `main-guard.yml`: a push whose tip is a merged PR's merge commit is ok (only the tip is
-  checked); a board-only push runs `board.py check` and fails the run if it fails, with no
-  revert. Any other push is undone by one tree-restore commit authored `main-guard` (no force
+- `main-guard.yml`: a merged-PR merge-commit tip (only the tip is checked) or a board-only push
+  is ok and runs `board.py check` (a failure fails the run, no revert). Any other push is undone by one tree-restore commit authored `main-guard` (no force
   push); the run then fails, as it does if the revert fails or `gh api` fails ("could not
   decide; NOT reverted").
 - `branch-cleanup.yml`: deletes the head branch when its PR merges (no ticket check); daily,
   deletes branches merged into main, never main, an open PR head or a not-done ticket's branch.
 
-Limits. The owner kept the free plan ("Keep repo on github as is. Free version."): no branch
+Limits. Free plan (owner: "Keep repo on github as is. Free version."): no branch
 protection or required checks, so CI-green before merge is a session rule. Strictness
 (owner, provisional, 2026-10-25): "Not very tight constraints, keep it loose for now."
 
@@ -133,7 +132,7 @@ protection or required checks, so CI-green before merge is a session rule. Stric
   already `done` (new file) is not covered. Squash and rebase merges have no merge commit, so
   they block the `done` edit.
 - The other-branch ticket rule is hook-only; main-guard checks paths only.
-- "Always ask first" is not enforceable.
+- The "Always ask first" rule (§Board, handoff and decisions) is not enforceable.
 - Unseen by the hook: Bash file writes; git inside scripts, `source`, `eval "$(...)"`
   indirection, make, aliases or an IDE; `gh pr merge`; `gh api`; the web UI; backtick command
   substitution; `--push-option=value` (and `-o value`, misread as a refspec, so denied); tag
@@ -171,7 +170,7 @@ privately, never committed (locally: `.env`); anyone using an environment can re
 person needs write access and GitHub connected on claude.ai. `gh` fails in cloud sessions
 (403): use `mcp__github__*` (owner `louellet-git`, repo `FinancialAnalysis`). The delegation
 framework is not committed (`.gitignore`: `vendor/` and its `.claude` files). Each person
-installs it locally from a private clone of `louellet-git/delegation-exp` (`python3
-scripts/install-into.py <path to this repo>`) before `/delegate`, `/skeptic-review` and
-`/review-panel`; without it those commands are absent and its hooks exit 0. Each session runs
+installs it locally before `/delegate`, `/skeptic-review` and `/review-panel`: in a private
+clone of `louellet-git/delegation-exp`, run `python3 scripts/install-into.py <path to this
+repo>`. Without it those commands are absent and its hooks exit 0. Each session runs
 `/delegate`, which arms its own untracked `.delegation/`.
