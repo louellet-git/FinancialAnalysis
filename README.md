@@ -42,7 +42,7 @@ python -m scripts.run_dcf PANW [--simulations 10000] [--years 10] [--growth 0.15
 # 5. Point-in-time vintage backtest of operating projections (no network)
 python -m scripts.backtest IBM [--horizon 3] [--simulations 10000] [--seed 7]
 
-# 6. Single-page interactive company report → data/processed/TICKER_dcf.html (price: yfinance last close unless --price)
+# 6. Single-page interactive company report → data/processed/TICKER_dcf.html (price: yfinance last price unless --price)
 python -m scripts.visualize_dcf IBM [--price 195.40] [--out report.html]
 
 # 7. IBM v4 driver-engine run: headline, E/V fixed point, loci, disclosure, reinvestment check (seed 7)
