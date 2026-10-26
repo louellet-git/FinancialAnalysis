@@ -8,8 +8,8 @@ scope: Registry of non-obvious assumptions and traps in the pipeline and IBM mod
 ---
 # Trap registry
 
-Each entry has an evidence pointer (symbols, not line numbers). Add new traps with a
-pointer. Claims about IBM.json contents (entries 2, 3, 4, 6, 10, 21) need
+Each entry has an evidence pointer (symbols, not line numbers). Claims about IBM.json
+contents (entries 1, 2, 3, 4, 6, 10, 21) need
 `python -m scripts.import_financials IBM` to check.
 
 ## Data layer
@@ -25,7 +25,7 @@ Evidence: `analysis/IBM/README.md` §Data notes; `backtest.DATA_FLAGS`;
 **2. Phantom "10-K" rows.** The importer keys periods off *any* mapped concept's period
 end, so stray XBRL facts create annual rows with 1–2 fields and no revenue/OCF (IBM:
 2012-06-30, 2018-01-01, 2019-01-01; placeholder `filed_date`, see #21). They carry no FCF and are skipped by the `fcf_margin is not None` filter, but
-`derive_fcf_margin` slices the last five annual rows before that filter (dcf.py:49-52), so a
+`derive_fcf_margin` (`financial_analysis/dcf.py`) slices the last five annual rows before that filter, so a
 phantom row inside that window shrinks it. Any code iterating `company.periods` naively
 will hit them.
 `backtest._clean_annuals` filters them by requiring revenue AND OCF. Evidence:
@@ -111,7 +111,7 @@ recurrence judgment `f` charges f × M&A spend in the margin AND credits f × ac
 growth in `g_software`'s mean — a paired judgment with a single source of truth
 (`MA_RECURRENCE`, guarded by a module-level assert so the two legs cannot drift apart).
 Changing one leg without the other silently breaks pairing coherence. The f-locus
-(0→1, growth credit moving WITH f) is published by `dcf_drivers_run.py`; f is a
+(analysis/IBM/DRIVERS.md Notation; 0→1, growth credit moving WITH f) is published by `dcf_drivers_run.py`; f is a
 judgment, not a fitted parameter. Evidence: `analysis/IBM/driver_model.py`
 (`MA_RECURRENCE`, `G_SOFTWARE_MEAN`, the `ma_recurrence` driver, the module-level assert);
 `analysis/IBM/DRIVER-REVIEW.md` ma_recurrence row.
@@ -128,17 +128,17 @@ Do not quote P10/P90 as decision-grade. Evidence:
 **13. The scenarios registry carries IBM v3 values; the engine is v4 — deliberate.**
 `financial_analysis/scenarios.py` (`_ibm_v3`, `_SCENARIO_OVERRIDES["IBM"]`,
 `CAPITAL_OVERRIDES["IBM"]`) encodes the v3 aggregate framework (g 2.15%,
-WACC 7.5%, margin 14.5%; the v3 record does not reproduce: #24). The v4 headline is recorded in analysis/IBM/report/IBM-valuation-2026-07.md §4 and computed only by
+WACC 7.5%, margin 14.5%; the v3 record does not reproduce: #24). The v4 headline is recorded in `analysis/IBM/report/IBM-valuation-2026-07.md` §4 and computed only by
 `analysis/IBM/driver_model.py` + `financial_analysis/driver_dcf.py`. The visualizer runs both, in separate labeled sections ("Aggregate DCF scenarios" vs "Driver-based
 model"). Net debt ($54.0B) agrees across both; shares agree (#10). If you read
-`scenarios.py` for "the IBM valuation," you get v3. Evidence: files cited;
-`scripts/visualize_dcf.py` (`SECTION_TITLES`, `_driver_compare_figure`).
+`scenarios.py` for "the IBM valuation," you get v3. Evidence: `financial_analysis/scenarios.py`, `analysis/IBM/driver_model.py`,
+`financial_analysis/driver_dcf.py`; `scripts/visualize_dcf.py` (`SECTION_TITLES`, `_driver_compare_figure`).
 
 **14. Truncation is clip-after-correlation.** `truncnorm` drivers are clipped to
 [lo, hi] AFTER the correlated transform — not a true truncated normal: mass piles on the
-bounds and realized correlations distort. Second-order for mild truncations; check no
-bound sits within ~2σ of its mean (bound masses: analysis/IBM/DRIVERS.md driver table).
-Evidence: `financial_analysis/driver_dcf.py` (module docstring).
+bounds and realized correlations distort. Second-order for mild truncations. Apply the
+~2σ bound check in `financial_analysis/driver_dcf.py` (module docstring); bound masses are in
+the `analysis/IBM/DRIVERS.md` driver table.
 
 **15. The two engines guard degenerate terminal values differently.** Classic engine
 (docs/ARCHITECTURE.md §1):
@@ -157,15 +157,15 @@ usable periods per vintage and records skips. Evidence:
 **20. Default scenario presets are generic mature-large-cap.** `DEFAULT_SCENARIOS`
 (bear 1%/base 4%/bull 6% growth) applies to ANY ticker without an override — running
 `visualize_dcf` on a hypergrowth name silently produces mature-large-cap scenario
-labels and assumptions. Net-debt derivation (docs/ARCHITECTURE.md, `scenarios.py` row)
+labels and assumptions. Net-debt derivation (`financial_analysis/scenarios.py` `capital_structure_for`)
 treats absent short-term borrowings as 0. Evidence:
 `financial_analysis/scenarios.py` (`DEFAULT_SCENARIOS`, `capital_structure_for`).
 
 **22. The correlation matrix is reviewed *judgment*, and it moves tails only.** All 28
 entries (including the 3 deliberate zeros) are argued assumptions (rationales in
 DRIVERS.md / driver_model.py), PSD-verified (see analysis/IBM/DRIVERS.md, Correlation matrix). The supply-shock
-regime flip (rf·g = −0.15) moves P50 by $0.05 ($151.89 vs $151.84) and
-widens tails. Do not treat correlation entries as estimated from data — none are.
+correlation regime (rf·g_* = −0.15, set in `dcf_drivers_run.py`) barely moves P50 and widens
+tails (report §3.2). Do not treat correlation entries as estimated from data — none are.
 Evidence: `driver_model.py` CORR; dcf_drivers_run.py disclosure runs;
 `analysis/IBM/report/SOURCE-AUDIT.md` row 32.
 
@@ -178,15 +178,15 @@ PLANNING/RULES.md.
 
 **24. The published v3 numbers do not reproduce from the current store.**
 `analysis/IBM/dcf_scenarios.py` derives FCFF margins live from `IBM.json`, so its output
-drifts with store re-imports and does not match the signed-off v3 record ($37 / $141 / $232,
-`analysis/IBM/README.md`). Cite the record for v3 and the engine for current values; do
+drifts with store re-imports and does not match the signed-off v3 record (`analysis/IBM/README.md` §Monte Carlo DCF v3:
+$37 / $141 / $232). Cite the record for v3 and the engine for current values; do
 not "correct" either to match the other. The v4 driver run does not drift: its inputs are
 pinned constants.
-Evidence: `dcf_scenarios.py` `fcff_v3_margins` reads the store.
+Evidence: `analysis/IBM/dcf_scenarios.py` `main` (`store.load("IBM")`) passing the company to
+`fcff_v3_margins`.
 
 **25. Default capital-structure derivation ≠ the reviewed IBM bridge.** For tickers
-without a `CAPITAL_OVERRIDES` entry, the derived net debt (docs/ARCHITECTURE.md, `scenarios.py`
-row) has **no pension, no marketable securities, no stock-vs-flow review**. The IBM
+without a `CAPITAL_OVERRIDES` entry, the derived net debt (`capital_structure_for`) has **no pension, no marketable securities, no stock-vs-flow review**. The IBM
 override embeds the F15-reviewed bridge (debt + after-tax pension − cash&securities);
 the DUOL override includes HTM securities + LT investments on the cash side. A
 cross-ticker comparison (the ORCL/basket runs; basket amendment in PLANNING/reusable-dcf-vision.md) that mixes overridden and derived capital

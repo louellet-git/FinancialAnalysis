@@ -49,12 +49,12 @@ Missing data: card body is `p.note` (constraint 5).
 - **Stat-chip row** (`div.chips`, flex, 12 px gap): 6 chips (4 when the price is unavailable: no Market cap, no accent). Each `div.chip`
   is muted label / semibold ink value / optional muted sub-label. Chips: Last
   price, Market cap, Bear P50, Base P50, Bull P50, and "Base P50 vs price" — the
-  one *accent* chip (`.chip.accent`, the only solid-filled chip) whose value takes the
-  delta-up (upside) or delta-down (downside) color.
+  one *accent* chip (`.chip.accent`, the only solid-filled chip); its value renders white
+  via CSS, and direction is carried by the sign alone.
 
 ### 2. Price & valuation (two wide chart cards)
-- **Price history** — plotly line (2 px, categorical slot 1), up to ~3,300
-  points spanning decades (weekly before the trailing year, daily within it). One direct end-label (last close). Linear/log
+- **Price history** — plotly line (2 px, categorical slot 1), thinned only when the history has more than 2,600 points (weekly before the trailing
+  year and daily within it, otherwise every close daily). One direct end-label (last close). Linear/log
   toggle (see Current interactions). Height 380 px.
 - **Price vs valuation** — daily close line (2 px, primary
   ink; two years of dailies, default window the trailing 6 months, ~126 points) over: a translucent band (base scenario P10–P90, base
@@ -80,7 +80,7 @@ Missing data: card body is `p.note` (constraint 5).
   (projection years); scenario names direct-labeled at line ends + legend.
 - **Per-share value distribution** — 3 overlaid histograms (~60 bins each,
   opacity 0.55, same scenario hues), a 2 px vertical ink price line labeled
-  "Price $P". Legend present.
+  "Price $P" (omitted when price is unavailable). Legend present.
 - **PV build-up — median base case** — plotly waterfall, 13 bars: 10 years +
   terminal value (increases: diverging cool), net debt (decrease: diverging warm),
   equity total (secondary ink); x labels at −45°; two
@@ -88,26 +88,26 @@ Missing data: card body is `p.note` (constraint 5).
 - **Sensitivity tornado** — 4 horizontal paired bars (−1σ cool / +1σ warm,
   overlay on a shared base), signed delta labels outside bar ends, thin
   vertical base-P50 rule + label.
-- **Scenario summary** — wide HTML table: 3 rows × 8–9 columns; first column
+- **Scenario summary** — wide HTML table: 3 rows × 8–9 columns ("vs price", the last, omitted when price is unavailable); first column
   carries a color dot (`span.dot`) keying the scenario hue.
 
 ### 5. Driver-based model (conditional on `analysis/<TICKER>/driver_model.py` exposing `build()`; docs/ARCHITECTURE.md §2. Driver-based engine; when present: 6 wide + 2 half cards + meta line)
 - **Segment revenue history** — stacked columns per fiscal year (~3–8 years,
   2–8 segments), categorical slot colors in fixed order, 2 px surface gap
-  between stack segments (white marker outline). Legend present.
+  between stack segments (2 px outline in the surface colour, `_SURFACE`). Legend present.
 - **Driver assumptions** — wide HTML table (one row per driver, 16 for IBM, × 7 cols: Driver, Type,
   Dist, Mean, Std, Bounds, Rationale). Type column holds badges
   (`span.badge.stoch` accent-tinted / `span.badge.det` raised-fill), the only badge
   component on the page. Rationale column wraps (`td.wrap`, min 260 px).
-- **Driver correlation matrix** — plotly heatmap, N×N for N stochastic
-  drivers (4–8), diverging scale warm → neutral midpoint → cool over [−1, 1],
+- **Driver correlation matrix** — plotly heatmap, N×N for N ≥ 2 stochastic
+  drivers (IBM: 8; N < 2 gives a `p.note`), diverging scale warm → neutral midpoint → cool over [−1, 1],
   2 px cell gaps, values annotated on off-diagonal cells only (secondary ink, per
   type scale), no colorbar.
 - **Driver model vs aggregate base** — two horizontal dumbbell rows: a 6 px
   35%-opacity range line P10→P90 with 9/13/9 px markers (P10/P50/P90, 2 px
   surface rings); driver row in the driver-model color, aggregate row
   in the base scenario hue. All six values direct-labeled (labels above the bottom row,
-  below the top row); 2 px ink price line labeled above the plot.
+  below the top row); 2 px ink price line labeled above the plot (omitted when price is unavailable).
 - **Driver attribution tornado** — same construction as the aggregate
   tornado, one row per stochastic driver.
 - **Path explorer (3 wide cards)** — FCFF path spaghetti (~300 sampled paths,
@@ -123,7 +123,7 @@ Missing data: card body is `p.note` (constraint 5).
 ### 6. Backtest — mechanical vintages (always rendered; chip row + 2 half cards + 1 wide table)
 - **Backtest stat-chip row** (`div.chips.wide-chips`, same chip component as the
   header) — "P10–P90 coverage" (hits/total, sub-label "% of realized (nominal
-  80%)"; "—" when no outcome is realized yet), then one "+Ny Revenue bias" and one
+  80%)"; "—" with sub-label "no realized outcomes yet" when no outcome is realized), then one "+Ny Revenue bias" and one
   "+Ny FCF bias" chip per horizon (mean error vs P50, sub-label "mean err vs P50 ·
   n="), value colored delta-up (≥ 0) or delta-down.
 - **Revenue hedgehog** and **FCF hedgehog** (half cards) — plotly scatter, $B on y,
@@ -158,7 +158,7 @@ Missing data: card body is `p.note` (constraint 5).
   sequential ramp (first → last step) with a thin colorbar
   ("OI"), 2 px cell gaps, 2 px ink spot line labeled "Spot $S" above
   the plot.
-- **Chain detail — ATM ±10 strikes** — wide HTML table, 21 rows × 11 columns
+- **Chain detail — ATM ±10 strikes** — wide HTML table, up to 21 rows × 11 columns
   (5 call cols, bold strike, 5 put cols) with a two-tier header (Calls /
   Strike / Puts group row, then Bid Ask Last IV OI). The ATM row is
   highlighted (`tr.atm`, accent tint).
@@ -171,7 +171,7 @@ seeds), and a generated-by line.
 
 ## Current interactions
 
-- **Hover tooltips on every chart** (plotly): unified x-hover on the
+- **Hover tooltips on every chart except the parallel-coordinates plot** (plotly): unified x-hover on the
   fundamentals subplots and the fan chart (one readout
   listing all series at the hovered x); per-mark hover on bars, histogram
   bins, waterfall steps, tornado bars, dumbbell markers, and heatmap cells.
@@ -181,7 +181,7 @@ seeds), and a generated-by line.
   area) and the range buttons (both price cards, top-left). These are the only controls on
   the page.
 - **Zoom/pan**: plotly's default drag-zoom and double-click-reset remain
-  active on all charts. The plotly modebar is disabled
+  active on all other charts; parallel coordinates uses axis brushing instead. The plotly modebar is disabled
   (`displayModeBar: false`) — no floating toolbar appears.
 - **Responsive**: charts are `responsive: true`, width 100% of the card; a
   `resize` event is dispatched on load.
@@ -203,7 +203,10 @@ docs/design-specs/2026-07-16-ratings-desk-blueprint.md; a restyle changes those 
    or hand-edit the generated trace JSON.
 3. **Generated page.** All markup comes from Python f-strings — the deliverable
    of a redesign is new tokens/CSS/layout specs (and plotly layout values),
-   not a hand-edited HTML file. Class names listed above are the stable hooks.
+   not a hand-edited HTML file. Class names listed above are the stable hooks, plus: `.chip-label`, `.chip-value`, `.chip-sub`
+   (a chip's label, value and sub-label); `header .meta` / `p.meta` (the header's meta lines);
+   `div.wide-chips` (a full-width chip row, backtest and options); `p.sub.wide-note` (the
+   driver section's engine meta line).
 4. **Print-readable.** The page is printed/PDF'd. Keep light backgrounds,
    ≥3:1 mark contrast or a labeled relief channel (tables/direct labels
    already provide this), and avoid hover-only information: every hover
