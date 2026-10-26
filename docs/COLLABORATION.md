@@ -16,8 +16,7 @@ by two at the same time.": every piece of work starts from a filled ticket on
 §Orchestration norms. Participants: the ticket's owner (a person and their session); either
 person may merge ("Either person", owner).
 
-**Board-only** means exactly `PLANNING/board/T-*.md` and `PLANNING/board/README.md`; any other
-file there fails `board.py check`.
+**Board-only** means exactly `PLANNING/board/T-*.md` and `PLANNING/board/README.md`.
 
 ## Start
 
@@ -70,8 +69,10 @@ A head change after review returns to steps 1 and 3. Locally use the `gh` form (
 
 - **Push to main rejected** (not a fast-forward) or area now taken: redo §Ticket commits from
   step 1 on the fresh `origin/main`, `python scripts/board.py check`, pick another area if taken.
-- **Hook denial** (board or doc gate): its message names the fix. `board gate error:` is a hook fault: report it, do not
-  work around it. `cannot resolve a git repo` means a bad path: fix the path. **Board check failure:** fix the file the check names.
+- **Hook denial** (board or doc gate): its message names the fix. `cannot resolve a git repo
+  for <dir>` (shown after `board gate error:`) means a bad path: fix the path. Any other
+  `board gate error:` or `doc_check internal error:` is a hook fault: report it, do not work
+  around it. **Board check failure:** fix the file the check names.
 - **Conflict with main:** on the branch `git fetch origin && git merge --no-commit
   origin/main`, resolve, `python -m pytest -q`, run `/review-panel` on the integrated tree,
   then one `git commit` (the resolution is new code). `merge=union` works only in local git;
@@ -84,8 +85,7 @@ A head change after review returns to steps 1 and 3. Locally use the `gh` form (
   first, §Board, handoff and decisions): the hook denies releasing another branch's ticket
   from detached `origin/main`. Delete the remote branch if the work is dropped (Finish step 6),
   then in the branch's worktree `git switch -C <branch> origin/main`, set the ticket
-  `backlog` with `branch:` blank, commit, `git push origin HEAD:main` (a worktree has no
-  `.delegation/`, so no skeptic review; for the skeptic review, use an armed checkout:
+  `backlog` with `branch:` blank, commit, `git push origin HEAD:main` (armed checkout only:
   §Ticket commits).
 - **Main-guard reverted a push, or its job says "NOT reverted" or "could not decide":** open a
   PR; fix main by hand in the last two cases.

@@ -27,7 +27,7 @@ acceptance: One checkable sentence.
 | TK2 | id is `T-YYYYMMDD-<slug>`, slug lowercase `a-z0-9` and hyphens; unique on the board. |
 | TK3 | Front matter sits between `---` lines, one `key: value` per line, with all eight keys above, each non-empty except `branch`; the body is free text. |
 | TK4 | `area` is `engine`, `importer`, `docs`, `planning`, or `ticker:<TICKER>` (`ticker:[A-Z]{1,5}(\.[A-Z])?`). |
-| TK5 | `status` is `backlog`, `in-progress`, `review` or `done`. |
+| TK5 | `status` is one of the statuses below. |
 | TK6 | `owner` is a GitHub login. |
 | TK7 | `branch` is the git branch doing the work; required when status is `in-progress` or `review`. |
 | TK8 | `created` is `YYYY-MM-DD`. |
@@ -45,5 +45,5 @@ Constraint: transitions and ownership of tickets are in `docs/COLLABORATION.md`.
 
 Assurance: `python scripts/board.py check` enforces TK1–TK5 (TK2: shape, not date), TK7, TK8
 and TK10 (TK6 and TK9 by review). Any other file under `PLANNING/board/` also fails. On a
-violation it prints the failing ticket and rule: fix the ticket file, re-run.
+violation it prints the failing ticket and rule.
 `python scripts/board.py branch <name>` prints the active ticket id for a branch (exit 1 if none).
