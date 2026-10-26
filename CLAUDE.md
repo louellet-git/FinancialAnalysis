@@ -23,7 +23,7 @@ Follow `docs/COLLABORATION.md` before any work.
 Valuation factory: README.md. Engines: `financial_analysis/dcf.py`,
 `financial_analysis/driver_dcf.py` (mechanics: docs/ARCHITECTURE.md). Design:
 `PLANNING/reusable-dcf-vision.md`. Flagship report: `analysis/IBM/report/IBM-valuation-2026-07.md`
-(§4 headline).
+(§4 Results).
 
 **Open work:** the board, `PLANNING/board/` (`python scripts/board.py status`); backlog not
 yet ticketed: `PLANNING/tickets.md` §OPEN TICKETS.
@@ -36,19 +36,17 @@ yet ticketed: `PLANNING/tickets.md` §OPEN TICKETS.
 2. **`analysis/IBM/driver_model.py` governs over `analysis/IBM/DRIVERS.md`** (DRIVERS.md
    scope line).
 3. **Recorded dispositions bind.** `analysis/IBM/REVIEW.md` (F1–F19) and
-   `analysis/IBM/DRIVER-REVIEW.md` are settled rulings: do not
-   re-litigate; reopening one needs a review of the same weight as the deprecation rule in
-   `PLANNING/reusable-dcf-vision.md` §L4 (item 4).
+   `analysis/IBM/DRIVER-REVIEW.md` are settled rulings; reopening one takes item 4's
+   deprecation weight.
 4. **`PLANNING/RULES.md` rules are binding at their declared scope**
    (universal / archetype-bound / ticker-bound); deprecation requires a review fan-out
    of the same weight that created the rule (`PLANNING/reusable-dcf-vision.md` §L4).
-5. **`financial_analysis/scenarios.py` IBM entries are the v3 aggregate framework, kept deliberately** —
-   they are NOT stale v4 values (see docs/HIDDEN-ASSUMPTIONS.md #13). v4 headline
-   numbers come only from `python -m analysis.IBM.dcf_drivers_run`.
+5. **`financial_analysis/scenarios.py` IBM entries are v3, kept deliberately**
+   (`docs/HIDDEN-ASSUMPTIONS.md` #13). v4 headline numbers come only from `python -m analysis.IBM.dcf_drivers_run`.
    `analysis/IBM/README.md` is superseded (v3); keep its net-debt bridge and data notes,
    which v4 still cites.
-6. **Reports and `frozen`/`superseded` docs are never edited.** `analysis/IBM/report/*`
-   was audited (`analysis/IBM/report/SOURCE-AUDIT.md`) against the engine on its date; do
+6. **Published reports (`analysis/IBM/report/*`) and `frozen`/`superseded` docs are never
+   edited.** The reports were audited (`analysis/IBM/report/SOURCE-AUDIT.md`) against the engine on its date; do
    not edit published reports to "fix" them — supersede with a new version.
 7. **Evidence and design contracts bind.** `analysis/IBM/research-ledger.md` holds the
    frozen source-tagged facts the model consumes; `docs/visualizer-design-brief.md` and

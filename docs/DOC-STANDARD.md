@@ -24,7 +24,7 @@ Every `*.md` file, tracked or untracked and not ignored, except:
   configuration read by models or GitHub.
 - `PLANNING/board/T-*.md`: request items, fields checked by `scripts/board.py`. Mapping:
   created=date, area=scope, title=subject, owner=originator, acceptance=requested response
-  and description, body=rationale; no due date (board items have none).
+  and description, body=rationale.
 
 One item per file. The ledger `docs/doc-reviews.tsv` is a clause 9 record, not governed.
 
@@ -71,7 +71,7 @@ at use nor in a linked source.
 | policy | issuer, references, approval, history | glossary | objectives, enforcers, effective date if not `date` |
 | procedure | issuer, references, approval, history | glossary | related plans and procedures, inputs and outputs, ordered steps per participant, error resolution |
 | report | issuer, references, history | glossary | participants, summary, context, methods, conclusions and recommendations |
-| request | none: clause 7 gives a request no issuer, references, history or glossary | none | subject, originator, requested response, description with due date, rationale |
+| request | none: clause 7 gives a request no issuer, references, history or glossary | due date (board: none) | subject, originator, requested response, description with due date, rationale |
 | specification | issuer, references, approval, history | glossary | body, assurance requirements, constraints, one unambiguous identified statement per requirement |
 | record | issuer, references | none | subject or category, body; `id` is the record identifier |
 
@@ -85,7 +85,7 @@ at use nor in a linked source.
 - `draft` and `current`: full critic review.
 - Records (type record): history is the body, so Compactness 3 does not apply; rows are
   append-only, never edited. A record's PASS row covers its header; appended rows are data
-  and do not void it.
+  and do not void it (doc_check hashes a record's front matter only).
 
 ## Compactness (the critic's checklist)
 
@@ -100,7 +100,7 @@ at use nor in a linked source.
 
 ## Review
 
-1. Run the `doc-critic` agent (`.claude/agents/doc-critic.md`) on the doc. A finding that
+1. Run the `doc-critic` agent (`.claude/agents/doc-critic.md`) on the doc (frozen/superseded: header and Status only). A finding that
    adds text names the reader action it enables; prefer cuts.
 2. On PASS: `python scripts/doc_check.py record <path> PASS`, then commit `docs/doc-reviews.tsv`
    with the doc.
@@ -118,7 +118,7 @@ not that the critic ran.
   frozen/superseded date, superseded successor, item title.
 - Hook (`--hook`), the early gate: runs on git commit, merge, cherry-pick, revert, pull, am,
   rebase or push, in each repo the command names (else the payload cwd, then $CLAUDE_PROJECT_DIR; unresolvable denies; forms in
-  `scripts/doc_check.py`). `commit` checks the docs it carries (index vs HEAD; worktree for `-a`
+  `scripts/gitcmd.py`). `commit` checks the docs it carries (index vs HEAD; worktree for `-a`
   or a pathspec; branch if `git add` is chained). Other subcommands check the branch (worktree
   vs merge-base with `origin/main`, plus untracked). A failing doc denies.
 - Not seen by the hook: GitHub MCP writes, non-Bash commits, wrapper scripts, sessions

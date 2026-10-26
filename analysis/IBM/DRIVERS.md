@@ -4,7 +4,7 @@ type: description
 item: 10.15 Design description
 status: current
 date: 2026-10-25
-scope: Reviewer-facing assumption register of the IBM v4 driver model; driver_model.py governs on disagreement.
+scope: Assumption register of the IBM v4 driver model; driver_model.py governs on disagreement.
 ---
 # IBM driver model — assumption register
 
@@ -24,7 +24,7 @@ moves g_software's mean with f; docs/ARCHITECTURE.md, Analysis entry points).
 |---|---|---|
 | Revenue | Σ segments: t=1 base × (1+pin_seg); t≥2 t=1 level × (1+g_seg)^(t−1); pins = warning-implied year-1 levels (Jul 14 2026 warning; see Source ledger) | growth constant per path (T-DCF-1 ticket); **FX: growth is nominal all-in, FX unmodeled** |
 | FCFF margin | core + mix_drift(t) − sbc(t) − f × ma | mix_drift and sbc are deterministic per-year schedules |
-| WACC | E/V × (rf + β×ERP) + (1−E/V) × (rf + spread) × (1−τ) | kd = (rf + spread) × (1−τ) per path, so kd moves with rf (no negative-spread paths); **flat term structure disclosed** — one WACC for years 1-10 + terminal |
+| WACC | E/V × (rf + β×ERP) + (1−E/V) × (rf + spread) × (1−τ) | kd = (rf + spread) × (1−τ) per path, so kd moves with rf on every path (spread fixed at −10bp, kd_spread row); **flat term structure disclosed** — one WACC for years 1-10 + terminal |
 | Terminal value | Gordon at the joint guard (docs/ARCHITECTURE.md, Driver-based engine), discounted 10y | — |
 
 Equity/share: bridge in analysis/IBM/README.md.
@@ -55,7 +55,7 @@ Segments: bases = FY2025 8-K actuals, EXCEPT Infrastructure = FY24/25 average $1
 bases; Infrastructure **−1.69% on the haircut base** — level-targeted to the
 warning-implied $14,618M so the cycle correction is not double-counted.
 
-## Correlation matrix (post-review)
+## Correlation matrix
 
 Full matrix: `CORR` in analysis/IBM/driver_model.py (PSD min eigenvalue 0.419); every entry,
 zeros included, is an assumption. Regime disclosure: rf·g_* > 0 assumes demand-driven rates; the
@@ -74,7 +74,7 @@ docs/HIDDEN-ASSUMPTIONS.md #22.
 | g_consulting · ma_ratio | +0.10 | occasional consulting tuck-ins |
 | rf · erp | −0.30 | risk-off: rates down, premium up |
 | rf · g_software / g_consulting / g_infrastructure | +0.15 / +0.15 / +0.10 | strong nominal economy: rates and demand up together (demand-regime sign) |
-| ma_ratio · rf | −0.15 | cheap money fuels deals; was the least defensible zero |
+| ma_ratio · rf | −0.15 | cheap money fuels deals |
 | erp · g_software / g_consulting / g_infrastructure | −0.25 / −0.25 / −0.15 | risk aversion rises in weak-demand worlds |
 | erp · core_margin | −0.15 | margin pressure in risk-off worlds |
 | erp · ma_ratio | −0.10 | M&A slows when risk premia blow out |
@@ -91,7 +91,7 @@ docs/HIDDEN-ASSUMPTIONS.md #22.
 
 At means: **7.06%** (MC std 0.56%). v3-to-v4 WACC bridge and per-share effect:
 `analysis/IBM/report/IBM-valuation-2026-07.md` §3.3. Residual conservatism sits in β = 0.85
-(trailing ~0.68; beta locus: report §4).
+(beta row; trailing ~0.68; beta locus: report §4).
 
 ## Output
 
@@ -103,6 +103,6 @@ headline, attribution, loci and terminal check in report §4
 
 Segment data: Q4 8-K Ex. 99.1 filings 2022-2026 (report Appendix B item 8) + Jul 14 2026
 warning (press: report Appendix B items 1-2). Market params: 10y Treasury spot
-(https://fred.stlouisfed.org/series/DGS10; observation date not recorded), Damodaran ERP
+(https://fred.stlouisfed.org/series/DGS10; observation date: July 2026, day not recorded), Damodaran ERP
 (Jul 2026; report Appendix B item 9).
 Bridge/margin basis: analysis/IBM/README.md (v3) + REVIEW.md.

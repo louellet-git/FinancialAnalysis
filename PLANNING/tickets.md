@@ -17,7 +17,7 @@ Open lines name their authoritative source. "Vision" = PLANNING/reusable-dcf-vis
 ### Queued work
 
 - **DUOL driver build**: DUOL is consensus-anchored only; see docs/ARCHITECTURE.md §Backtest harness and the PLANNING/token-ledger.md DUOL row; promote to a driver-model frontier run (needs either person's sign-off, vision ✦6a) or leave as screening output.
-- On the board, not repeated here: T-20261025-orcl-frontier-run (basket amendment: vision L6), T-20261025-ibm-q2-grading (bet-ledger: vision L6), T-20261025-p1-validators-redteam (validators run at model build + CI, vision L4; red-team corpus with injection harness, ✦2; statement-coverage validator, ✦7, run retroactively on the IBM register).
+- On the board, not repeated here: T-20261025-orcl-frontier-run (basket amendment: vision L6), T-20261025-ibm-q2-grading (bet-ledger: vision L6), T-20261025-p1-validators-redteam (vision P1).
 
 ### Factory P1 (vision phasing — the active frontier)
 
@@ -33,10 +33,10 @@ Open lines name their authoritative source. "Vision" = PLANNING/reusable-dcf-vis
 - **Lognormal marginal for ma_ratio** (fat right tail) — analysis/IBM/DRIVER-REVIEW.md ma_ratio disposition.
 - **Mixture marginal for g_consulting** (GenAI-cannibalization left skew; current normal is a proxy) — analysis/IBM/DRIVER-REVIEW.md g_consulting disposition.
 - **Non-stationary E/V + Harris-Pringle relever** as debt grows — analysis/IBM/DRIVER-REVIEW.md equity_weight disposition.
-- **T-IMP-1** (importer): drop phantom annual periods; align recast revenue with recast OCF across divestiture boundaries; persist prices to the JSON store; populate dividends/buybacks/interest income as first-class fields; stop the filed_date = period_end placeholder on rows without revenue (board T-20261025-filed-date-fabrication) — analysis/IBM/REVIEW.md §Deferred-fix tickets (from F13).
 
 ### Importer / pipeline
 
+- **T-IMP-1** (importer): drop phantom annual periods; align recast revenue with recast OCF across divestiture boundaries; persist prices to the JSON store; populate dividends/buybacks/interest income as first-class fields; stop the filed_date = period_end placeholder on rows without revenue (board T-20261025-filed-date-fabrication; close when T-IMP-1 lands) — analysis/IBM/REVIEW.md §Deferred-fix tickets (from F13).
 - **Ticket 7 — segment revenue extraction** from filing-level XBRL instance documents — full spec below in this file.
 - **requirements.txt kept current** with actual needs on every dependency change — THOUGHTS, paragraph 1 (requirements.txt).
 - **News-scan idea** (unscoped): scan ticker news for knock-on effects on statement items; shock the valuation — THOUGHTS, paragraph 2.
@@ -53,7 +53,7 @@ Open lines name their authoritative source. "Vision" = PLANNING/reusable-dcf-vis
   XBRL instance documents (R-files / `_htm.xml` under the filing accession) and in
   third-party APIs. Parse the instance document for the latest 10-K/10-Q, map
   segment member names to human-readable labels, and populate
-  `PeriodFinancials.segment_revenue: Dict[str, float]`.
+  `PeriodFinancials.segment_revenue` (`Optional[Dict[str, float]]`, default None; schema.py:156).
 - **Acceptance criteria:**
   - `segment_revenue` populated for IBM FY2023-25 (Software / Consulting /
     Infrastructure / Financing; Other if the filing reports it) and reconciles to total revenue ±1%
