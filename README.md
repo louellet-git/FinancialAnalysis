@@ -17,7 +17,7 @@ report `analysis/IBM/report/IBM-valuation-2026-07.md`).
 
 ## Pipeline commands
 
-Run from the repo root. `--help` on each argparse-based `scripts/` entry point lists flags and defaults; the `analysis/IBM` runs take no flags.
+Run from the repo root. `--help` on each argparse-based `scripts/` entry point lists its flags; the `analysis/IBM` runs take no flags.
 
 ```bash
 pip install -r requirements.txt   # runtime deps
@@ -42,7 +42,7 @@ python -m scripts.run_dcf PANW [--simulations 10000] [--years 10] [--growth 0.15
 # 5. Point-in-time vintage backtest of operating projections (no network)
 python -m scripts.backtest IBM [--horizon 3] [--simulations 10000] [--seed 7]
 
-# 6. Single-page interactive company report → data/processed/TICKER_dcf.html
+# 6. Single-page interactive company report → data/processed/TICKER_dcf.html (price: yfinance last close unless --price)
 python -m scripts.visualize_dcf IBM [--price 195.40] [--out report.html]
 
 # 7. IBM v4 driver-engine run: headline, E/V fixed point, loci, disclosure, reinvestment check (seed 7)
@@ -64,7 +64,7 @@ and forward consensus are dated snapshots, re-fetched each calendar day (HIDDEN-
 
 | Tab | Contents |
 |-----|----------|
-| Income Statement | ~25 mapped metrics per period (revenue → EPS, SBC, D&A) |
+| Income Statement | ~23 mapped metrics per period (revenue → EPS, SBC, D&A) |
 | Balance Sheet | ~24 mapped metrics + RPO disclosure rows (`statement=disclosure`) |
 | Cash Flow | OCF, capex, FCF, buybacks, dividends, debt flows + derived FCF/margin |
 | Raw | All unmapped us-gaap USD concepts (100–200 rows per period) |
@@ -87,7 +87,7 @@ statements only (docs/ARCHITECTURE.md); market data lives in the xlsx and the ca
 
 Any US-GAAP EDGAR filer (verified: NVDA, PANW, WMT, TGT, DUOL, IBM, MSFT, AAPL). ETFs
 and IFRS filers raise `UnsupportedFilingError`. Segment revenue is unavailable:
-PLANNING/tickets.md Ticket 7. Option history: none; upgrade path FMP or Polygon (HIDDEN-ASSUMPTIONS #9).
+PLANNING/tickets.md Ticket 7. Option history: none (HIDDEN-ASSUMPTIONS #9); upgrade path FMP or Polygon (`financial_analysis/options.py` docstring).
 
 ## Project layout
 
