@@ -107,6 +107,29 @@ def test_record_item_accepted(tmp_path):
     assert doc_check.problems(tmp_path) == []
 
 
+def test_item_9_record_needs_type_record(tmp_path):
+    repo(tmp_path)
+    put(tmp_path, "a.md", type="plan", item="9 record")
+    assert any("a.md" in m and "item 9 record" in m for m in doc_check.problems(tmp_path))
+
+
+def test_record_doc_review_covers_only_the_front_matter(tmp_path):
+    repo(tmp_path)
+    put(tmp_path, "a.md", type="record", item="9 record", body="Row 1.\n")
+    assert doc_check.problems(tmp_path) == []
+    f = tmp_path / "a.md"
+    f.write_text(f.read_text() + "Row 2 appended.\n")  # an appended row keeps the PASS
+    assert doc_check.problems(tmp_path) == []
+    f.write_text(f.read_text().replace("status: current", "status: draft"))  # a header change voids it
+    assert any("no PASS" in m for m in doc_check.problems(tmp_path))
+    record(tmp_path, "a.md")
+    assert doc_check.problems(tmp_path) == []
+    g = tmp_path / "b.md"  # a non-record doc is still hashed whole
+    put(tmp_path, "b.md", id="DOC-B", body="Body one.\n")
+    g.write_text(g.read_text() + "More.\n")
+    assert any("b.md: no PASS" in m for m in doc_check.problems(tmp_path))
+
+
 def test_duplicate_id_fails(tmp_path):
     repo(tmp_path)
     put(tmp_path, "a.md")

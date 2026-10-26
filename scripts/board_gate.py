@@ -67,20 +67,27 @@ def advise(base, branch):
     return msg + (" To resume an existing ticket:" + resume if resume else "") + " " + FIX
 
 
+def finished(t, base, pushed, f, x):
+    """Is f's only change status -> done, on a ticket whose branch no longer exists on origin (merged and deleted)?"""
+    new, was = (Path(d, BOARD, f) for d in (pushed, base))
+    gone = run(t, "ls-remote", "--heads", "origin", "refs/heads/" + x["branch"])
+    return new.is_file() and new.read_text() == was.read_text().replace(f"status: {x['status']}\n", "status: done\n", 1) \
+        and gone.returncode == 0 and not gone.stdout.strip()
+
+
 def main_push(t, base, branch, src):
     """Why pushing `src` to main is denied: stale, not board-only, invalid pushed board, or another branch's ticket."""
     if run(t, "merge-base", "--is-ancestor", "origin/main", src).returncode:
         return STALE
     changes = git(t, "diff", "--no-renames", "--name-only", "origin/main", src).splitlines()
-    if not all(p.startswith(BOARD) for p in changes):
-        return DIRECT
-    owner = {x["_file"]: x.get("branch") for x in board.load(base)}
-    for p in changes:
-        if owner.get(Path(p).name, "") not in ("", branch):
-            return (f"A board push to main may change only tickets of the current branch ({branch}); {Path(p).name} "
-                    f"belongs to {owner[Path(p).name]}: ask its owner first.")
     with tempfile.TemporaryDirectory() as pushed:
-        return None if extract(t, src, pushed) and not board.problems(pushed) else DIRECT
+        if not all(p.startswith(BOARD) for p in changes) or not extract(t, src, pushed) or board.problems(pushed):
+            return DIRECT
+        old = {x["_file"]: x for x in board.load(base)}
+        for f in (Path(p).name for p in changes):
+            if (x := old.get(f)) and x.get("branch") not in ("", branch) and not finished(t, base, pushed, f, x):
+                return (f"A board push to main may change only tickets of the current branch ({branch}), or mark done "
+                        f"one whose branch is deleted from origin; {f} belongs to {x['branch']}: ask its owner first.")
 
 
 def push_reason(t, base, branch, args, why):

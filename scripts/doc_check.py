@@ -26,8 +26,12 @@ FIX = "Fix: run the doc-critic agent on each doc, then python scripts/doc_check.
 
 
 def _sha(raw):
-    """sha256 hex of the content with CRLF read as LF."""
-    return hashlib.sha256(raw.replace(b"\r\n", b"\n")).hexdigest()
+    """sha256 hex of the content with CRLF read as LF; of a `type: record` doc, of its front matter only."""
+    raw = raw.replace(b"\r\n", b"\n")
+    m = re.match(rb"---\n.*?\n---\n", raw, re.S)
+    if m and (header(raw.decode(errors="replace")) or {}).get("type") == "record":
+        raw = m[0]
+    return hashlib.sha256(raw).hexdigest()
 
 
 def _is_date(s):
@@ -92,6 +96,7 @@ def problems(root, scope=None):
             mine += [f"{name}: missing key {k}" for k in KEYS if not h.get(k)]
             mine += [f"{name}: unknown key {k}" for k in h if k not in KEYS]
             mine += [f"{name}: bad {k} {h[k]}" for k, ok in RULES.items() if h.get(k) and not ok(h[k])]
+            mine += [f"{name}: item 9 record needs type record"] * (h.get("item") == "9 record" and h.get("type") != "record")
             ids.setdefault(h.get("id"), []).append(name)
             if reviews.get((name, _sha(raw))) != "PASS":
                 mine.append(f"{name}: no PASS review row for current content")

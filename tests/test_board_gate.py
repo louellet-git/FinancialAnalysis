@@ -360,12 +360,29 @@ def board_commit(repo, tweak):
 
 def test_b1_board_push_to_main_may_change_only_own_branch_tickets(repo):
     f = "PLANNING/board/T-20261025-feat.md"
+    git(repo, "push", "origin", "feat")
     board_commit(repo, lambda r: (r / f).write_text((r / f).read_text().replace("in-progress", "done")))
-    denied(bash(repo, "git push origin HEAD:main"), "feat", "two", "ask")
+    denied(bash(repo, "git push origin HEAD:main"), "feat", "two", "ask")  # feat still exists on origin
     git(repo, "reset", "--hard", "main")
     g = "PLANNING/board/T-20261025-two.md"
     board_commit(repo, lambda r: (r / g).write_text((r / g).read_text().replace("in-progress", "review")))
     assert bash(repo, "git push origin HEAD:main") is None
+
+
+def test_b1_done_edit_of_another_branchs_ticket_allowed_only_once_its_branch_is_deleted(repo):
+    f = "PLANNING/board/T-20261025-feat.md"
+    git(repo, "push", "origin", "feat")
+    git(repo, "push", "origin", "--delete", "feat")
+    edits = {"done": lambda t: t.replace("in-progress", "done"),
+             "more": lambda t: t.replace("in-progress", "done").replace("title: T", "title: U"),
+             "other": lambda t: t.replace("title: T", "title: U")}
+    for name, ok in (("done", True), ("more", False), ("other", False)):
+        board_commit(repo, lambda r: (r / f).write_text(edits[name]((r / f).read_text())))
+        assert (bash(repo, "git push origin HEAD:main") is None) is ok, name
+        git(repo, "reset", "--hard", "main")
+    git(repo, "push", "origin", "feat")  # branch exists again
+    board_commit(repo, lambda r: (r / f).write_text(edits["done"]((r / f).read_text())))
+    denied(bash(repo, "git push origin HEAD:main"), "feat", "ask")
 
 
 def test_b1_board_push_to_main_may_add_tickets_and_claim_backlog_ones(repo):
