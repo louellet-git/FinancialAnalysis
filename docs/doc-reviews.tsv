@@ -28,3 +28,6 @@ date	path	sha256	verdict	reviewer
 2026-10-26	PLANNING/handoff/README.md	af533f10b86243e5c72004c6d42e874ed48c44e637326747e2448af97446dca4	PASS	doc-critic/haiku
 2026-10-26	docs/DOC-STANDARD.md	cb0d2e07d9ef3f68aa24f8758284df2b1b2053906ca99d11795afce7257809fb	PASS	doc-critic
 2026-10-26	analysis/IBM/DRIVERS.md	ee3852a2fe3763e88be9cf73ed1641620245c0c7c626b0303cf117d6545a6ea4	PASS	doc-critic
+2026-10-26	docs/ARCHITECTURE.md	26ca34db3d0ef2c4a9a06bb660cb52f671bb838f5a65e8069b748ec3311d6f4c	PASS	doc-critic
+2026-10-26	docs/HIDDEN-ASSUMPTIONS.md	957325ee1e98f6e75a384cabbfefbbe645337d1d57e4d54da3f14977cde1fa8c	PASS	doc-critic
+2026-10-26	docs/visualizer-design-brief.md	8f44611ec4f4e6d270a3f2bf442fc3f5814fabfa48b2d49197588837bffcfcc2	PASS	doc-critic
