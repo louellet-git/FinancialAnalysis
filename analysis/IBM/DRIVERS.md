@@ -24,7 +24,7 @@ moves g_software's mean with f; docs/ARCHITECTURE.md, Analysis entry points).
 |---|---|---|
 | Revenue | Σ segments: t=1 base × (1+pin_seg); t≥2 t=1 level × (1+g_seg)^(t−1); pins = warning-implied year-1 levels (Jul 14 2026 warning; see Source ledger) | growth constant per path (T-DCF-1 ticket); **FX: growth is nominal all-in, FX unmodeled** |
 | FCFF margin | core + mix_drift(t) − sbc(t) − f × ma | mix_drift and sbc are deterministic per-year schedules |
-| WACC | E/V × (rf + β×ERP) + (1−E/V) × (rf + spread) × (1−τ) | kd = (rf + spread) × (1−τ) per path, so kd moves with rf on every path (spread fixed at −10bp, kd_spread row); **flat term structure disclosed** — one WACC for years 1-10 + terminal |
+| WACC | E/V × (rf + β×ERP) + (1−E/V) × (rf + spread) × (1−τ) | kd = (rf + spread) × (1−τ) per path, so kd moves with rf on every path (spread fixed, kd_spread row); **flat term structure disclosed** — one WACC for years 1-10 + terminal |
 | Terminal value | Gordon at the joint guard (docs/ARCHITECTURE.md, Driver-based engine), discounted 10y | — |
 
 Equity/share: bridge in analysis/IBM/README.md.
@@ -34,10 +34,10 @@ Equity/share: bridge in analysis/IBM/README.md.
 | Driver | S/D | Dist | Mean | Std | Bounds/Schedule | Review |
 |---|---|---|---|---|---|---|
 | g_software | S | truncnorm | **5.0% = 4.0% organic + f×2.0% acquired (`SOFTWARE_ORGANIC_G + f × SOFTWARE_ACQUIRED_G`, f = `MA_RECURRENCE`)** | 2.5% | hi 11% | F16 organic/acquired split; credit derived from f |
-| g_consulting | S | normal | 1.75% | 2.5% | — | skew proxy; mixture ticketed |
+| g_consulting | S | normal | 1.75% | 2.5% | — | skew proxy; mixture: PLANNING/tickets.md §Engine tickets |
 | g_infrastructure | S | truncnorm | −1.0% | 2.5% | hi +3% | decade-CAGR dispersion; hi at 1.6σ: ≈5.5% of draws clip at +3% (analytic, normal marginal: Φ(−1.6)) |
 | g_financing | D | — | 0.0% | — | — | disclosures in driver_model.py rationale |
-| core_margin | S | normal | 19.4% (FY2025 endpoint, F19) | 2.0% | — | F19; endpoint basis and mix drift together |
+| core_margin | S | normal | 19.4% pre-SBC, pre-M&A (FY2025 endpoint, F19) | 2.0% | — | F19; endpoint basis and mix drift together |
 | margin_mix_drift | D | — | 0 → +1.2pp by y10 | — | linear | mechanical software-mix consequence |
 | sbc_ratio | D | — | 2.54% → 3.5% by y10 | — | linear | drift locus published (flat/3.5%/4.5%) |
 | ma_ratio | S | truncnorm | 7.1% | **2.4%** | lo 0 (3.0σ) | decade-average scale; source series AR(1) ρ≈0.8 (data persistence, not engine dynamics) |
@@ -102,7 +102,7 @@ headline, attribution, loci and terminal check in report §4
 ## Source ledger
 
 Segment data: Q4 8-K Ex. 99.1 filings 2022-2026 (report Appendix B item 8) + Jul 14 2026
-warning (press: report Appendix B items 1-2). Market params: 10y Treasury spot
+warning (press: report Appendix B items 1-2; driver_model.py cites the Q2-26 8-K). Market params: 10y Treasury spot
 (https://fred.stlouisfed.org/series/DGS10; observation date: July 2026, day not recorded), Damodaran ERP
 (Jul 2026; report Appendix B item 9).
-Bridge/margin basis: analysis/IBM/README.md (v3) + REVIEW.md.
+Bridge/margin basis: analysis/IBM/REVIEW.md.

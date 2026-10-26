@@ -9,7 +9,7 @@ scope: Registry of non-obvious assumptions and traps in the pipeline and IBM mod
 # Trap registry
 
 Each entry has an evidence pointer (symbols, not line numbers). Claims about IBM.json
-contents (entries 1, 2, 3, 4, 6, 10, 21) need
+contents (entries 1, 2, 3, 4, 10, 21) need
 `python -m scripts.import_financials IBM` to check.
 
 ## Data layer
@@ -33,7 +33,7 @@ will hit them.
 `backtest._clean_annuals`; `tests/test_backtest.py`;
 `analysis/IBM/README.md` §Data notes.
 
-**3. `n_periods=8` is per-concept, not per-company.** `extract_series` returns the last
+**3. `n_periods=8` is per-concept, not per-company.** `import_company` defaults `n_periods=8`, so `extract_series` returns the last
 8 entries *per concept*; the union of period-ends across ~60 concepts yields far more
 than 8 periods (IBM: 22 annual rows), with older rows only partially populated (e.g.
 IBM buybacks populated FY2012–19 while revenue is None before FY2018). Do not treat
@@ -108,8 +108,9 @@ the (debt-funded) return channel. Evidence: `analysis/IBM/driver_model.py` (`SHA
 
 **11. f-conditionality: every headline number is conditional on f = 0.50.** The M&A
 recurrence judgment `f` charges f × M&A spend in the margin AND credits f × acquired
-growth in `g_software`'s mean — a paired judgment with a single source of truth
-(`MA_RECURRENCE`, guarded by a module-level assert so the two legs cannot drift apart).
+growth in `g_software`'s mean — a paired judgment. `MA_RECURRENCE` is the single source for
+both legs (`G_SOFTWARE_MEAN` is derived from it); a module-level assert ties the
+`ma_recurrence` driver to it.
 Changing one leg without the other silently breaks pairing coherence. The f-locus
 (analysis/IBM/DRIVERS.md Notation; 0→1, growth credit moving WITH f) is published by `dcf_drivers_run.py`; f is a
 judgment, not a fitted parameter. Evidence: `analysis/IBM/driver_model.py`
@@ -117,7 +118,7 @@ judgment, not a fitted parameter. Evidence: `analysis/IBM/driver_model.py`
 `analysis/IBM/DRIVER-REVIEW.md` ma_recurrence row.
 
 **12. "Tails are decorative."** Each path holds one growth draw for all ten years (no
-mean reversion — ticket T-DCF-1, PLANNING/tickets.md, the largest known distortion; far-year dispersion widens), so the left tail is
+mean reversion — ticket T-DCF-1, PLANNING/tickets.md; analysis/IBM/DRIVER-REVIEW.md rates it the largest known distortion; far-year dispersion widens), so the left tail is
 understated even after the v4 correlation matrix fattened it. Standing wording: the
 tail caveat in `analysis/IBM/report/IBM-valuation-2026-07.md` §4 (verbatim there, per REVIEW F6).
 Do not quote P10/P90 as decision-grade. Evidence:
@@ -137,8 +138,9 @@ model"). Net debt ($54.0B) agrees across both; shares agree (#10). If you read
 **14. Truncation is clip-after-correlation.** `truncnorm` drivers are clipped to
 [lo, hi] AFTER the correlated transform — not a true truncated normal: mass piles on the
 bounds and realized correlations distort. Second-order for mild truncations. Apply the
-~2σ bound check in `financial_analysis/driver_dcf.py` (module docstring); bound masses are in
-the `analysis/IBM/DRIVERS.md` driver table.
+~2σ bound check in `financial_analysis/driver_dcf.py` (module docstring). Bounds are in the
+`analysis/IBM/DRIVERS.md` driver table (g_infrastructure: ≈5.5% of draws clip at +3%); the
+ma_ratio clip mass is in `analysis/IBM/DRIVER-REVIEW.md` (recorded before its std revision).
 
 **15. The two engines guard degenerate terminal values differently.** Classic engine
 (docs/ARCHITECTURE.md §1):
@@ -186,7 +188,7 @@ Evidence: `analysis/IBM/dcf_scenarios.py` `main` (`store.load("IBM")`) passing t
 `fcff_v3_margins`.
 
 **25. Default capital-structure derivation ≠ the reviewed IBM bridge.** For tickers
-without a `CAPITAL_OVERRIDES` entry, the derived net debt (`capital_structure_for`) has **no pension, no marketable securities, no stock-vs-flow review**. The IBM
+without a `CAPITAL_OVERRIDES` entry, the derived net debt (`capital_structure_for`) has **no pension, no marketable securities, no stock-vs-flow review** (a balance-sheet item credited in the bridge while its income flow stays in the margin is double-counted; `analysis/IBM/REVIEW.md` F15). The IBM
 override embeds the F15-reviewed bridge (debt + after-tax pension − cash&securities);
 the DUOL override includes HTM securities + LT investments on the cash side. A
 cross-ticker comparison (the ORCL/basket runs; basket amendment in PLANNING/reusable-dcf-vision.md) that mixes overridden and derived capital
@@ -194,13 +196,12 @@ structures compares different net-debt definitions.
 Evidence: `scenarios.py` `capital_structure_for` vs `CAPITAL_OVERRIDES` entries +
 analysis/IBM/README.md bridge table.
 
-**26-27. Retired.** Numbers are not reused.
-
 ## Pipeline/repo layer
 
 **17. The xlsx always has nine sheets; the console tab count lies by omission.**
 `write_xlsx` creates every sheet regardless of flags; `--no-market` etc. just leave
-header-only sheets, while the "Done: ... across N tabs" message counts populated groups.
+header-only sheets, while the "Done: ... across N tabs" message counts the groups not skipped by flags,
+whether or not they returned rows.
 Evidence: `scripts/analyze.py` (`_flatten` tab dict, `write_xlsx`).
 
 **18. `data/` outputs are gitignored and untracked.** Commit rule: CLAUDE.md §Orchestration
@@ -212,6 +213,8 @@ disclosure fact but is written to the Balance Sheet tab with `statement="disclos
 is not extracted. Evidence: `scripts/analyze.py` (`_TAB_FOR`);
 `financial_analysis/xbrl_tags.py` (`DISCLOSURE_TAGS`).
 
+**26-27. Retired.** Numbers are not reused.
+
 **28. Background tasks can be killed mid-run.** Persist resume state in
 `PLANNING/handoff/` as you go; delete items as completed. Interrupted fan-outs resume,
 never restart (vision ✦6b).
@@ -221,8 +224,8 @@ Evidence: `PLANNING/handoff/`; reusable-dcf-vision.md ✦6b.
 before concluding something is missing. Branch rules: CLAUDE.md §Orchestration norms.
 Evidence: `git log --all --oneline -- <path>`.
 
-**30. LF/CRLF warnings are normal; PowerShell 5.1 quirks apply.** `core.autocrlf` may
-be true. The primary shell (the owner's local Windows setup) is Windows PowerShell 5.1:
+**30. PowerShell 5.1 quirks apply; LF/CRLF warnings are normal.** Check
+`git config core.autocrlf`. The primary shell (the owner's local Windows setup) is Windows PowerShell 5.1:
 no `&&`/`||` chaining, no ternary, UTF-16 default file encoding (`-Encoding utf8` when writing files other tools read), quirky
 native-arg quoting (`--%` stop-parsing token when needed). Git Bash is available for
 POSIX scripts.

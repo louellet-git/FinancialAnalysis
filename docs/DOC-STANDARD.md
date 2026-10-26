@@ -79,7 +79,7 @@ at use nor in a linked source.
 
 - `frozen`: an audited or binding record (e.g. the frozen docs in
   CLAUDE.md normativity items 3 and 6). `superseded`: replaced by a newer
-  item, named in its scope line. Both get a header-only critic review and need a PASS
+  item, named in its scope line. Both get a header-and-Status critic review and need a PASS
   row (Review); Compactness does not apply to them. The header governs over any status line
   in the body.
 - `draft` and `current`: full critic review.

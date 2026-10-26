@@ -4,13 +4,13 @@ type: plan
 item: 10.16 Development plan
 status: current
 date: 2026-10-25
-scope: Backlog not yet on the board, with its sources.
+scope: Backlog not yet ticketed, with its sources.
 ---
 # Planning Tickets
 
 > A ticket is done when its smoke test prints real output the next ticket consumes.
 
-Open lines name their authoritative source. "Vision" = PLANNING/reusable-dcf-vision.md (✦n amendments, Ln layers, Pn phases). In progress: `python scripts/board.py status` (CLAUDE.md §Open work).
+Open lines name their authoritative source. "Vision" = PLANNING/reusable-dcf-vision.md (✦n amendments, Ln layers, Pn phases). In progress: see CLAUDE.md, Open work.
 
 ## OPEN TICKETS
 
@@ -23,12 +23,12 @@ Open lines name their authoritative source. "Vision" = PLANNING/reusable-dcf-vis
 
 - **Rulebook extraction**: promote the 9-item backlog into RULES.md rows with validators + specimens — PLANNING/RULES.md backlog.
 - **Research Ledger formal schema** (✦5): expiry policies + schema-enforced provenance tiers (interim format in use) — analysis/IBM/research-ledger.md header; vision L1/P1.
-- **RPO expiry** (overdue): consumed RPO facts expired at the Q2-2026 10-Q (late July 2026); record the Q2-2026 10-Q RPO facts in a new ledger item that supersedes analysis/IBM/research-ledger.md (expiry: its line 24; report watch-list item 4).
+- **RPO expiry** (overdue): consumed RPO facts expired at the Q2-2026 10-Q (late July 2026); record the Q2-2026 10-Q RPO facts in a new ledger item that supersedes analysis/IBM/research-ledger.md (expiry: its Expiry line; report watch-list item 4).
 
 ### Engine tickets (deferred with dispositions — do not re-litigate, implement)
 
-- **T-DCF-1**: AR(1) mean-reverting growth (year-to-year persistence) — analysis/IBM/REVIEW.md §Deferred-fix tickets (from F6).
-- **T-DCF-2** (classic engine): truncated/lognormal WACC and tg draws; winsorize DCFResult mean/std — analysis/IBM/REVIEW.md §Deferred-fix tickets (from F12).
+- **T-DCF-1** (from F6): AR(1) mean-reverting growth, and single-factor correlated sampling across (g, tg, margin) for the classic engine — analysis/IBM/REVIEW.md §Deferred-fix tickets; driver engine: DRIVER-REVIEW.md.
+- **T-DCF-2** (classic engine, from F12): truncated/lognormal WACC and tg draws, enforce wacc > tg + 2% jointly; remove or winsorize DCFResult mean/std — analysis/IBM/REVIEW.md §Deferred-fix tickets.
 - **T-DCF-3**: derive terminal growth per path from faded segment draws — analysis/IBM/driver_model.py terminal_growth rationale; DRIVER-REVIEW.md.
 - **Lognormal marginal for ma_ratio** (fat right tail) — analysis/IBM/DRIVER-REVIEW.md ma_ratio disposition.
 - **Mixture marginal for g_consulting** (GenAI-cannibalization left skew; current normal is a proxy) — analysis/IBM/DRIVER-REVIEW.md g_consulting disposition.

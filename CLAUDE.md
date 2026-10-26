@@ -74,7 +74,7 @@ token-ledger rules: session discipline only.
   **`origin/main`**, not local `main`.
 - Never commit `data/` churn; `.gitignore` covers `data/raw/`, `data/processed/` and
   `__pycache__/` (HIDDEN-ASSUMPTIONS #18).
-- **Smoke-test policy:** see `PLANNING/tickets.md` header.
+- **Smoke-test policy:** see the blockquote atop `PLANNING/tickets.md`.
 - **Token ledger:** update `PLANNING/token-ledger.md` per run (success metric #1; targets there).
 - Session handoffs: `PLANNING/handoff/<first name>.md` (rules in its README).
 
