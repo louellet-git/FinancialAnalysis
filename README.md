@@ -47,6 +47,9 @@ python -m analysis.IBM.dcf_drivers_run
 # 8. IBM v3 aggregate framework (historical, kept reproducible)
 python -m analysis.IBM.dcf_scenarios
 
+# 8b. Investor verdict over the driver engine (no network; price is an input)
+python -m scripts.verdict IBM --price 212.40
+
 # 9. Test suite — 302 tests, no network (~12s); pytest not in requirements.txt
 python -m pytest
 ```
