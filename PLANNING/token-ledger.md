@@ -1,8 +1,14 @@
+---
+id: DOC-TOKEN-LEDGER
+type: record
+item: 9 record
+status: current
+date: 2026-10-25
+scope: Subagent token cost per valuation run (success metric 1); append-only, one row per run.
+---
 # Token ledger — cost per run (success metric #1)
 
-Instrumented from run one, per the approved industrialization plan. Subagent output
-tokens summed from orchestration records; orchestrator overhead excluded (roughly
-constant per run).
+Subagent output tokens only; orchestrator overhead excluded.
 
 | Run | Date | Scope | Subagent tokens (approx) | Notes |
 |---|---|---|---|---|
@@ -12,5 +18,6 @@ constant per run).
 | IBM v4.1 RPO update | 2026-07-17 | targeted: 2 driver re-looks + report delta | ~160k | first exception-scope run: 2 re-looks (~79k) + analyst delta (~82k). vs the 2.6M frontier run — the compression the validators must make routine |
 | DUOL first pass | 2026-07-17 | import + consensus-anchored presets + capital override + html | ~0 (inline) | orchestrator-inline, no subagents: analyze, two scenarios.py registry entries, report. NOT a frontier run — no driver model, no reviews; mechanical backtest coverage 0/6 says growth-phase tickers need the driver engine |
 
-Targets: frontier ticker ≤500k · repeat run ≤50k · ORCL (ticker #2) is the first measured
-frontier run under the cheapened pipeline.
+Targets: frontier ticker ≤500k · repeat run ≤50k.
+
+Run evidence: analysis/IBM/REVIEW.md, analysis/IBM/DRIVER-REVIEW.md, analysis/IBM/report/. Counts: session usage, not in repo.

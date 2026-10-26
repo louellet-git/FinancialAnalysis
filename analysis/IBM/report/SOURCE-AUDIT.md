@@ -1,3 +1,11 @@
+---
+id: DOC-IBM-SOURCE-AUDIT
+type: report
+item: 10.74 Verification report
+status: frozen
+date: 2026-07-16
+scope: Claim-to-source audit of the IBM July 2026 report against the engine, for the two owners; frozen.
+---
 # Source audit — IBM-valuation-2026-07 (docx + md master)
 
 Auditor: report-auditor (final gate). Date: 2026-07-16. Audited artifact: `IBM-valuation-2026-07.docx`

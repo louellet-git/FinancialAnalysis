@@ -18,3 +18,19 @@ data/processed/
 
 # Claude local settings
 .claude/settings.local.json
+CLAUDE.local.md
+.claude/worktrees/
+
+# delegation-framework records (local only; a committed marker disarms the gate)
+.delegation/
+
+# Private delegation framework: local install only, never committed (FA is public)
+vendor/
+.claude/agents/skeptic.md
+.claude/agents/steward.md
+.claude/commands/delegate.md
+.claude/commands/review-panel.md
+.claude/commands/skeptic-review.md
+.claude/skills/consolidating-review/
+.claude/skills/delegating/
+.claude/skills/skeptical-review/

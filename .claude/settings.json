@@ -1,5 +1,5 @@
 {
-  "$comment": "Doc-review framework hooks vendored from louellet-git/doc-review-framework@d9d9075: SessionStart checks officecli availability; PostToolUse requires a memo-reviewer pass whenever a .docx is produced.",
+  "$comment": "Hooks: (1) delegation framework, a local install in vendor/delegation-framework (never committed): session-start, commit-gate, subagent-reminder, stop-reminder; each exits 0 when absent. (2) This repo's board (scripts/board.py, scripts/board_gate.py): SessionStart lists active tickets; PreToolUse denies edits, commits, pushes and PRs without an active ticket on the branch. Hooks fail open when no python runs.",
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true
   },
@@ -10,19 +10,69 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/setup-officecli.sh\"",
-            "async": true
+            "command": "echo 'Active board tickets (id area owner branch):'; python3 \"$CLAUDE_PROJECT_DIR/scripts/board.py\" status || python \"$CLAUDE_PROJECT_DIR/scripts/board.py\" status"
+          }
+        ]
+      },
+      {
+        "matcher": "startup|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/vendor/delegation-framework/scripts/session-start.py\" || python \"$CLAUDE_PROJECT_DIR/vendor/delegation-framework/scripts/session-start.py\" || py -3 \"$CLAUDE_PROJECT_DIR/vendor/delegation-framework/scripts/session-start.py\" || exit 0",
+            "timeout": 10
           }
         ]
       }
     ],
-    "PostToolUse": [
+    "PreToolUse": [
       {
-        "matcher": "Bash",
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell|mcp__github__create_pull_request|mcp__github__create_or_update_file|mcp__github__push_files|mcp__github__delete_file|mcp__github__create_branch",
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/memo-review-reminder.sh\""
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/board_gate.py\" || python \"$CLAUDE_PROJECT_DIR/scripts/board_gate.py\" || py -3 \"$CLAUDE_PROJECT_DIR/scripts/board_gate.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/vendor/delegation-framework/scripts/commit-gate.py\" || python \"$CLAUDE_PROJECT_DIR/vendor/delegation-framework/scripts/commit-gate.py\" || py -3 \"$CLAUDE_PROJECT_DIR/vendor/delegation-framework/scripts/commit-gate.py\" || exit 0",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/doc_check.py\" --hook || python \"$CLAUDE_PROJECT_DIR/scripts/doc_check.py\" --hook || py -3 \"$CLAUDE_PROJECT_DIR/scripts/doc_check.py\" --hook"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/vendor/delegation-framework/scripts/subagent-reminder.py\" || python \"$CLAUDE_PROJECT_DIR/vendor/delegation-framework/scripts/subagent-reminder.py\" || py -3 \"$CLAUDE_PROJECT_DIR/vendor/delegation-framework/scripts/subagent-reminder.py\" || exit 0",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/vendor/delegation-framework/scripts/stop-reminder.py\" || python \"$CLAUDE_PROJECT_DIR/vendor/delegation-framework/scripts/stop-reminder.py\" || py -3 \"$CLAUDE_PROJECT_DIR/vendor/delegation-framework/scripts/stop-reminder.py\" || exit 0",
+            "timeout": 10
           }
         ]
       }

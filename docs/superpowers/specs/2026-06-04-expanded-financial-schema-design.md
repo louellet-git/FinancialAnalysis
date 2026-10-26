@@ -1,3 +1,11 @@
+---
+id: DOC-SPEC-EXPANDED-FINANCIAL-SCHEMA
+type: description
+item: 10.14 Database design description
+status: superseded
+date: 2026-06-04
+scope: Historical design of the expanded statement-store schema; superseded by docs/ARCHITECTURE.md and the code.
+---
 # Expanded Financial Schema Design
 
 **Date:** 2026-06-04

@@ -1,3 +1,11 @@
+---
+id: DOC-SPEC-FINANCIAL-STATEMENT-AUTOMATION
+type: description
+item: 10.15 Design description
+status: superseded
+date: 2026-06-05
+scope: Historical design of the analyze command and xlsx export; superseded by docs/ARCHITECTURE.md and the code.
+---
 # Financial Statement Automation Design
 
 **Date:** 2026-06-05

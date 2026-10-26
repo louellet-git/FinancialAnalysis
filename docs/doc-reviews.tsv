@@ -1,0 +1,36 @@
+date	path	sha256	verdict	reviewer
+2026-10-25	analysis/IBM/DRIVER-REVIEW.md	d7009bb9fa534a0cbe5b69457c925d91a77dd1f47d7db24654e3d988e3455ad7	PASS	doc-critic/haiku
+2026-10-25	analysis/IBM/README.md	9f87a20a56752914952c13321c06e44b7e933b6a291a04d9c373dcc6b3ae0b5f	PASS	doc-critic/haiku
+2026-10-25	analysis/IBM/REVIEW.md	59dbeca2582322c5ae9ee32ca3ed8670b0d04a9a4ee1da91312076a5d1a2eafb	PASS	doc-critic/haiku
+2026-10-25	analysis/IBM/research-ledger.md	341b3b155b03e9d8c584d38892f7c0a3da14a0daac37f80c3a00eecdfc3b9cbb	PASS	doc-critic/haiku
+2026-10-25	docs/design-specs/2026-07-16-ratings-desk-blueprint.md	8c5afbf28757fc801711edbd55194544cf0ee34784fffe38847728e4e1526dad	PASS	doc-critic/haiku
+2026-10-25	docs/superpowers/plans/2026-06-03-financial-analysis-pipeline.md	ae5846c75e9142c032efdc5d998ddee384e875be9176a9de5ddbc19bcfa7d173	PASS	doc-critic/haiku
+2026-10-25	docs/superpowers/plans/2026-06-05-financial-statement-automation.md	e2d5ba37eba0fbcc6154efad07791421566eca423c187599c42430386d334c6e	PASS	doc-critic/haiku
+2026-10-25	docs/superpowers/plans/2026-06-05-ticket-4-6-market-data-enrichment.md	f7ea1aa394f4cdc85fbecf0c89bf4562fca2a5ea27373751911f6ee2da23e4fc	PASS	doc-critic/haiku
+2026-10-25	docs/superpowers/specs/2026-06-04-expanded-financial-schema-design.md	495fcd5d27cc394385a8b2d190415258675d6d286cad41115c6a9a1e65bb23d1	PASS	doc-critic/haiku
+2026-10-25	docs/superpowers/specs/2026-06-05-financial-statement-automation-design.md	3a0515e0d41603a269cb9130f4a7983c4e76084c6b7516a74e4757fcce2fc7c8	PASS	doc-critic/haiku
+2026-10-25	docs/superpowers/specs/2026-06-05-ticket-4-6-market-data-enrichment.md	eec54bdf80c22bd134f7cfb9695e374e42964f02f100d90dbb21485b1289906d	PASS	doc-critic/haiku
+2026-10-25	PLANNING/board/README.md	850e98fbdecf205275ad47cc11c2bbf0e9d3ef2b15c983715f0595398ddbc1f7	PASS	doc-critic/haiku
+2026-10-25	analysis/IBM/report/SOURCE-AUDIT.md	8b4c7f34bd71e4a112e454f4721976c6e7a6081e916156093f2e10d037211dc8	PASS	doc-critic/haiku
+2026-10-25	PLANNING/handoff/README.md	653d943ef6722dfd2d3d601cc419be2c5cba67c7bcfd0fd821a69a4d3b74781d	PASS	doc-critic/haiku
+2026-10-25	PLANNING/handoff/luc.md	55c59a364c0a5a07bb9a79a056393981ecf68b17787f6f04f5846be983ed7a9c	PASS	doc-critic/haiku
+2026-10-25	PLANNING/tickets-closed.md	bcbe0d2b0916ce44f63083295d53a4dbf9b6754d88329a519ee4ea1f9cbd667f	PASS	doc-critic/haiku
+2026-10-25	PLANNING/token-ledger.md	a82bcf9d46f5fe77006f08a499ddfe442c0fc079055e921c1d305d3c0901f9ea	PASS	doc-critic/haiku
+2026-10-25	README.md	cada36f3602722775504798ff08ca9b44f345bd8ed6dca6d9b7330dcd5defe56	PASS	doc-critic/haiku
+2026-10-25	analysis/IBM/report/IBM-valuation-2026-07.md	d9ff19848471b6d02bb756a7134226f445025185cc188b58252a89036b84bf90	PASS	doc-critic/haiku
+2026-10-25	PLANNING/reusable-dcf-vision.md	1973c1cca566a4167894988e137ebe04098eccb2d9e7f274cde90cd3a69d99f9	PASS	doc-critic/haiku
+2026-10-25	PLANNING/RULES.md	fff30ac2305b1de51fe38186764c8b47edd573928f5b420f4dd85cae63da1e79	PASS	doc-critic/haiku
+2026-10-26	PLANNING/tickets-closed.md	04fb57a7e6d9bb2774034de6b8fe43598f9c4fa77cabea3570b51aa1a6c5f9fb	PASS	doc-critic/haiku (rehash: record header-only)
+2026-10-26	PLANNING/token-ledger.md	56a41d73cc32f66b1eb0f191eb90d4774fa9860d6414d7fb1cce5e71577b8b95	PASS	doc-critic/haiku (rehash: record header-only)
+2026-10-26	analysis/IBM/research-ledger.md	6326f137fff8f21bb7daac5285d70f7d4af273fb6a36c4d0172b99e78224bc62	PASS	doc-critic/haiku (rehash: record header-only)
+2026-10-26	PLANNING/tickets.md	1a773482c4ce4e3115ee3ffea7bcc154c285f6d31fb973ed90e3284f9fbe7d94	PASS	doc-critic/haiku
+2026-10-26	CLAUDE.md	d5b288c347f7ad5e47b75cdb88b112aed795ae84e19dc6f04572110f0fffb5a1	PASS	doc-critic/haiku
+2026-10-26	PLANNING/handoff/README.md	af533f10b86243e5c72004c6d42e874ed48c44e637326747e2448af97446dca4	PASS	doc-critic/haiku
+2026-10-26	docs/DOC-STANDARD.md	cb0d2e07d9ef3f68aa24f8758284df2b1b2053906ca99d11795afce7257809fb	PASS	doc-critic
+2026-10-26	analysis/IBM/DRIVERS.md	ee3852a2fe3763e88be9cf73ed1641620245c0c7c626b0303cf117d6545a6ea4	PASS	doc-critic
+2026-10-26	docs/ARCHITECTURE.md	26ca34db3d0ef2c4a9a06bb660cb52f671bb838f5a65e8069b748ec3311d6f4c	PASS	doc-critic
+2026-10-26	docs/HIDDEN-ASSUMPTIONS.md	957325ee1e98f6e75a384cabbfefbbe645337d1d57e4d54da3f14977cde1fa8c	PASS	doc-critic
+2026-10-26	docs/visualizer-design-brief.md	8f44611ec4f4e6d270a3f2bf442fc3f5814fabfa48b2d49197588837bffcfcc2	PASS	doc-critic
+2026-10-26	docs/COLLABORATION.md	55d37e261423ce55c24951508775ac01138bfe79a9ec9aaaaa8460c79ba0a45c	PASS	doc-critic
+2026-10-26	PLANNING/board/README.md	26e0253a07e95949eeb7fb99ef1a959d440c0a472cd2935d8189e5c8df401054	PASS	doc-critic
+2026-10-26	README.md	e330c25b06865e6ce893c40909fa9807aff1dca5b8d099a2c42d8c4c9a0b0353	PASS	doc-critic

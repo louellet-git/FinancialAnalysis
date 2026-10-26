@@ -1,3 +1,11 @@
+---
+id: DOC-PLAN-FINANCIAL-ANALYSIS-PIPELINE
+type: plan
+item: 10.16 Development plan
+status: superseded
+date: 2026-06-03
+scope: Historical implementation plan for the EDGAR import and Monte Carlo pipeline; superseded by docs/ARCHITECTURE.md.
+---
 # Financial Analysis Pipeline Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

@@ -1,11 +1,18 @@
-# The Valuation Factory — reusable, self-improving DCF (standing initiative)
+---
+id: DOC-REUSABLE-DCF-VISION
+type: description
+item: 10.8 Concept of operations
+status: current
+date: 2026-10-25
+scope: Standing design of the reusable, self-improving DCF (the valuation factory); owner-approved, amendments carry owner quotes.
+---
+# The Valuation Factory — reusable, self-improving DCF
 
-Design approved 2026-07-16 (Luc), with seven amendments incorporated (marked ✦). Manager
-agent: Claude (this vision's completion falls on the manager; work starts when the IBM v4
-report pipeline completes). Universe: **non-financial US large-caps first**; archetype
-expansion is the frontier.
+Context: standing initiative, owner-approved 2026-07-16. Notation: ✦n marks an amendment (✦1–✦7,
+plus the basket amendment 2026-07-17 and the ✦6a amendment 2026-10-25). Manager: Claude.
+Universe: **non-financial US large-caps first**; archetype expansion is the frontier.
 
-## The idea
+## The idea (summary)
 
 A DCF that is used repeatedly and deterministically: inputs from financial statements and
 frozen research artifacts; a mapping from inputs to the DCF that is deterministic +
@@ -18,7 +25,7 @@ evidence-backed bets against the market price** (✦1).
 ## Architecture — seven layers
 
 ### L1 — Data + Research Ledger
-Exists: XBRL importer, market data, option-chain snapshots. New: the **Research Ledger** —
+Importer, market data and option-chain snapshots: docs/ARCHITECTURE.md. New: the **Research Ledger** —
 LLM-gathered facts frozen as versioned, source-tagged records `{fact, value, unit, as_of,
 source, tier, expiry_policy, confidence}`. ✦5: every record carries an **expiry policy by
 fact type** (guidance expires at next earnings; segment history on restatement; market data
@@ -54,7 +61,7 @@ not fail the run, it forces the charter reviewer to explicitly disposition the s
 "our model prices X at Nx FCF vs peers at Mx" (an acceptable disposition is "yes, and
 gap-attribution says why" — the sentence must be confronted, not won by the market).
 ✦2: **gate-injection testing** — a red-team corpus of known-bad models seeded with past
-accepted findings (F2 debt double-count, F16 cost-without-growth, stale parameters,
+accepted findings (analysis/IBM/REVIEW.md: F2 debt double-count, F16 cost-without-growth, stale parameters,
 negative credit spreads) is injected periodically through the FULL pipeline; every gate
 must fail them; **each accepted finding generates both a validator and a red-team
 specimen** (standing rule). A dead gate is observationally identical to a clean pipeline —
@@ -70,35 +77,36 @@ created or changed), and the charter review verifies on every run that the cover
 is current against the latest filing (a new XBRL concept appearing in a fresh 10-K arrives
 unclassified and therefore forces attention). This kills the silent-omission failure mode:
 nothing in the statements can be ignored by accident, only by argued decision.
-**Reason-code anti-inflation (the codes that absorb everything under deadline pressure):**
+**Reason-code anti-inflation:**
 (a) `immaterial-below-threshold` is quantitative in the schema — each such item states its
 measured share (< 0.5% of revenue or EV, per item), so the claim is checkable, not vibes;
 the validator recomputes it against the current filing. (b) `duplicative-of-X` must point
 at a real X: the validator verifies the reference RESOLVES to an existing driver/formula/
 bridge line, and the coverage reviewer's mandate includes spot-checking that the economics
 actually flow through the named destination — an item marked duplicative-of-X where X does
-not capture it recreates F15's stock-or-flow error in the paperwork layer, the most
-dangerous misclassification of all. (c) A **coverage-classification specimen** joins the
+not capture it recreates F15's stock-or-flow error in the paperwork layer. (c) A **coverage-classification specimen** joins the
 red-team corpus (✦2): a known-material item mislabeled `immaterial` that the coverage
 reviewer must catch — gate sensitivity applies to this gate like every other.
 
 ### L5 — Review system (three tiers + terminus)
-Exists (vendored doc-review framework + the valuation-analyst/skeptic/report-auditor
-agents). Tiers: **frontier reviews** (full per-driver/per-formula fan-out + per-item
+Tiers: **frontier reviews** (full per-driver/per-formula fan-out + per-item
 consolidation — the IBM pattern) for new templates/mappings; **charter review on EVERY
 run** — a reviewer examines the applied rules + assumptions + formulas as a package and
-must ACCEPT before publication (integral, non-negotiable); **exception reviews** —
+must ACCEPT before publication (integral); **exception reviews** —
 validator violations, staleness, secondary-provenance triggers. ✦6a: **the accountability
 terminus is Luc, not an agent** — frontier runs and any run accepted-with-reservations
 require his explicit sign-off before publication; routine repeat runs on proven templates
-publish on charter ACCEPT alone. ✦6b: **resumable fan-out semantics** — every fan-out
+publish on charter ACCEPT alone.
+**✦6a amendment (2026-10-25):** owner ruling, "Either of you": either of the two
+collaborators may give the ✦6a sign-off on frontier and accepted-with-reservations runs.
+✦6b: **resumable fan-out semantics** — every fan-out
 records per-review state; interrupted runs resume, never restart; every review is classed
 **load-bearing or advisory**; publication is hard-blocked while any load-bearing review is
 incomplete (a session limit must never produce a half-reviewed model that looks done).
 
-### L6 — Gap attribution + bet ledger (✦1 — the centerpiece)
+### L6 — Gap attribution + bet ledger (✦1)
 The headline artifact of every published run: **why does the market price differ from the
-model, specifically?** Solve for the assumption set that reproduces the market price
+model?** Solve for the assumption set that reproduces the market price
 (market-implied recurrence/growth/WACC vs ours), decompose the gap into named
 per-assumption contributions ($/share each). Output: an explicit list of bets we are
 taking against the market, each with evidence and rationale — opportunity identification,
@@ -109,22 +117,20 @@ level — anything our conventions apply to every ticker) vs *idiosyncratic comp
 explained by shared conventions is a stance, not a mispricing signal; only the residual
 after the basket median is a named bet against THIS ticker's pricing. Calibration survives as lean scorekeeping on those bets: (a) the
 **per-bet ledger** — every named disagreement recorded and graded when reality adjudicates
-it (a factory that flags mispricings without tracking its hit rate is a story generator);
+it (unscored flags cannot be falsified);
 (b) the **sub-claim ledger** for near-term falsifiable predictions (F19 margins, guidance
-growth, implied-move comparisons — July 22 is datapoint #1). Full distribution scoring
+growth, implied-move comparisons — the Q2 print (2026-07-22) is datapoint #1; status and watch list: `PLANNING/board/T-20261025-ibm-q2-grading.md`). Full distribution scoring
 (CRPS/PIT/market-adjusted horizons) is a **deferred optional P4 module**, not core;
 backtesting mode is out of core scope.
 
 ### L7 — Report pipeline
-Exists: valuation-analyst ↔ valuation-skeptic → memo-reviewer cleanup loop →
-report-auditor claim-traceability gate → .docx. Invoked per run at configurable depth;
-the gap-attribution bet list is the report's spine.
+Invoked per run at configurable depth; the gap-attribution bet list is the report's spine.
 
 ## Steady-state run
 
 `value TICKER` → refresh data (ledger expiry checks) → validity conditions → parameterize
 → engine → validators (incl. multiples tripwire) → gap attribution → charter review →
-[frontier/reservation ⇒ Luc sign-off] → report + bet-ledger record. Every gate failure
+[frontier/reservation ⇒ either owner's sign-off (✦6a)] → report + bet-ledger record. Every gate failure
 routes to exactly as much LLM as the failure needs.
 
 ## Success metrics (five)
@@ -135,13 +141,13 @@ routes to exactly as much LLM as the failure needs.
 4. **Gate sensitivity: red-team injection catch rate (must stay ~100%)** (✦2)
 5. Bet-ledger hit rate, graded as reality adjudicates (✦1)
 
-## Phasing (after IBM v4 report completes)
+## Phasing
 
-- **P1** — Rulebook extraction from IBM's three review rounds; first validators; register
-  schema with validity conditions; **red-team corpus + injection harness (✦2)**;
-  **Research Ledger schema with expiry + provenance tiers (✦5)**; **statement-coverage
-  validator built and run retroactively on the IBM register (✦7)** — the backlog of
-  unclassified IBM items becomes the first coverage review.
+- **P1** — Rulebook extraction from IBM's three review rounds (analysis/IBM/REVIEW.md);
+  first validators; register schema with validity conditions; red-team corpus + injection
+  harness (✦2); Research Ledger schema (✦5); statement-coverage validator built and run
+  retroactively on the IBM register (✦7) — the backlog of unclassified IBM items becomes
+  the first coverage review.
 - **P2** — Second ticker (NVDA or PANW; data cached) end-to-end; template extraction;
   **rule scoping/deprecation exercised by the new mapping (✦3)**; **multiples tripwire
   validator (✦4)**.
@@ -150,10 +156,6 @@ routes to exactly as much LLM as the failure needs.
 - **P4** — Archetype expansion (the frontier); optional distribution-scoring module if
   ever promoted.
 
-## Current-state inventory (what already exists, 2026-07-16)
+## Current state
 
-Engine (driver_dcf.py, 220 tests) · IBM register (driver_model.py, consolidated v4) ·
-review framework (vendored doc-review-framework@d9d9075 + renamed agents) · review
-records proving the loop (REVIEW.md 19 findings, DRIVER-REVIEW.md 19+4 reviews) ·
-options pipeline · visualizer (aggregate; everything-visualizer in flight) ·
-first sub-claims for the ledger: the July-22 watch list.
+See docs/ARCHITECTURE.md; open work: `python scripts/board.py status`.

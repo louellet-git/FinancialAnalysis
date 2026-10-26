@@ -1,3 +1,11 @@
+---
+id: DOC-IBM-REVIEW
+type: report
+item: 10.17 Evaluation report
+status: frozen
+date: 2026-07-16
+scope: Binding record of the three-round adversarial review (F1-F19) of the IBM valuation; frozen, not to be re-litigated.
+---
 # Adversarial review record — IBM valuation (July 2026)
 
 Three rounds between the analysis author and an independent skeptical reviewer, 2026-07-16. The reviewer reproduced every published number with the repo's own engine (seed 7) before judging it; the author re-ran every accepted correction the same way. **Outcome: the original conclusion was retracted and the analysis rewritten (v3).**

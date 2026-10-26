@@ -1,3 +1,11 @@
+---
+id: DOC-IBM-VALUATION-2026-07
+type: report
+item: 10.17 Evaluation report
+status: frozen
+date: 2026-07-17
+scope: Published IBM v4.1 valuation report (July 2026); frozen, supersede with a new version.
+---
 # IBM — Valuation Report
 
 **Post-crash driver-based valuation · July 2026 · Model v4**
