@@ -55,8 +55,8 @@ python -m analysis.IBM.dcf_scenarios
 python -m pytest
 ```
 
-Remote data is disk-cached under `data/raw/TICKER/`; re-runs are instant. Option chains
-and forward consensus are dated snapshots (HIDDEN-ASSUMPTIONS #9).
+Remote data is disk-cached under `data/raw/TICKER/`; re-runs read the cache unless `--refresh`. Option chains
+and forward consensus are dated snapshots, re-fetched each calendar day (HIDDEN-ASSUMPTIONS #9).
 
 ## xlsx structure (nine tabs)
 
@@ -87,7 +87,7 @@ statements only (docs/ARCHITECTURE.md); market data lives in the xlsx and the ca
 
 Any US-GAAP EDGAR filer (verified: NVDA, PANW, WMT, TGT, DUOL, IBM, MSFT, AAPL). ETFs
 and IFRS filers raise `UnsupportedFilingError`. Segment revenue is unavailable:
-PLANNING/tickets.md Ticket 7. Vendor option history: none; snapshots accrue from first pull (upgrade path: FMP or Polygon).
+PLANNING/tickets.md Ticket 7. Option history: none; upgrade path FMP or Polygon (HIDDEN-ASSUMPTIONS #9).
 
 ## Project layout
 
