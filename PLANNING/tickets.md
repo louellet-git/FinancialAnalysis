@@ -36,7 +36,7 @@ Open lines name their authoritative source. "Vision" = PLANNING/reusable-dcf-vis
 
 ### Importer / pipeline
 
-- **T-IMP-1** (importer): drop phantom annual periods; align recast revenue with recast OCF across divestiture boundaries; persist prices to the JSON store; populate dividends/buybacks/interest income as first-class fields; stop the filed_date = period_end placeholder on rows without revenue (board T-20261025-filed-date-fabrication; close when T-IMP-1 lands) — analysis/IBM/REVIEW.md §Deferred-fix tickets (from F13).
+- **T-IMP-1** (importer; analysis/IBM/REVIEW.md §Deferred-fix tickets, from F13): drop phantom annual periods; align recast revenue with recast OCF across divestiture boundaries; persist prices to the JSON store; populate dividends/buybacks/interest income as first-class fields. Also stop the filed_date = period_end placeholder on rows without revenue (board T-20261025-filed-date-fabrication; close when T-IMP-1 lands).
 - **Ticket 7 — segment revenue extraction** from filing-level XBRL instance documents — full spec below in this file.
 - **requirements.txt kept current** with actual needs on every dependency change — THOUGHTS, paragraph 1.
 - **News-scan idea** (unscoped): scan ticker news for knock-on effects on statement items; shock the valuation — THOUGHTS, paragraph 2.

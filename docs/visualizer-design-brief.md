@@ -10,9 +10,8 @@ scope: Contract for a purely cosmetic restyle of the single-page report from scr
 
 ## What the page is
 
-One self-contained HTML file per ticker (e.g. `data/processed/IBM_dcf.html`), generated
-by Python, not served: static HTML interleaved with plotly.js charts; no app shell,
-routing or data fetching (constraint 1); opened from disk, emailed or printed (constraint 4).
+Per-ticker page, e.g. `data/processed/IBM_dcf.html`; its form is fixed by hard constraints 1-4 below.
+Not served: no app shell or routing; opened from disk or emailed.
 
 Labels: "aggregate" = classic engine, "driver" = driver engine, "mechanical vintages" = backtest; modules: docs/ARCHITECTURE.md.
 
@@ -40,7 +39,7 @@ Cards: `section.card`, 1 px hairline border; tables scroll in `div.tblwrap`
 caption (secondary ink) + body (a plotly div, an HTML table, a `p.note`, or a table followed by `p.note` blocks).
 
 Missing data: card body is `p.note` (constraint 5). Price-dependent items (Market cap and
-accent chips, price line and labels, 'vs price' column) are omitted when price is unavailable.
+accent chips, price line and labels, 'vs price' column) are omitted when price is unavailable; the Last price chip stays, value '—' (sub 'unavailable').
 
 ## Section inventory (every panel)
 

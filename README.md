@@ -21,7 +21,7 @@ Agents: start with **CLAUDE.md**.
 
 ## Pipeline commands
 
-Run from the repo root. `--help` on each `scripts/` entry point lists flags and defaults; the `analysis/IBM` runs take no flags.
+Run from the repo root. `--help` on each argparse-based `scripts/` entry point lists flags and defaults; the `analysis/IBM` runs take no flags.
 
 ```bash
 pip install -r requirements.txt   # runtime deps
@@ -65,8 +65,7 @@ and forward consensus are dated snapshots (yfinance serves current data only);
 
 ## xlsx structure (nine tabs)
 
-`scripts/analyze.py` writes all nine sheets on every run (skipped groups are
-header-only):
+`scripts/analyze.py` writes every sheet on every run (skipped groups are header-only):
 
 | Tab | Contents |
 |-----|----------|
@@ -81,7 +80,7 @@ header-only):
 | Options Summary | Per-expiry ATM IV, implied move (ATM straddle ÷ spot), 90/110 skew, put/call ratios + chain-wide `ALL` row |
 
 Financial tabs use long format: one row per `(period, metric)`. The JSON store persists
-statements only (docs/ARCHITECTURE.md); market data lives in the xlsx and the caches above.
+statements only (docs/ARCHITECTURE.md); market data lives in the xlsx and the caches above; store contents: docs/ARCHITECTURE.md.
 
 ## Data sources
 
@@ -103,6 +102,7 @@ context.json                 machine-readable project summary for agents
 README.md                    this file
 THOUGHTS                     raw idea scratchpad (see CLAUDE.md, normativity item 8)
 requirements.txt             runtime deps
+requirements-dev.txt         test deps (pytest)
 
 financial_analysis/          the package; see docs/ARCHITECTURE.md
 scripts/                     CLI entry points and tooling; see docs/ARCHITECTURE.md

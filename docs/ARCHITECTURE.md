@@ -66,10 +66,7 @@ stochastic objects.
 - **Joint sampling.** Stochastic drivers are drawn as correlated standard normals (full
   pairwise correlation matrix, Cholesky-factorized, validated positive-definite), then transformed to each driver's marginal as `mean + std·z`.
   Truncated drivers: HIDDEN-ASSUMPTIONS #14.
-- **Per-path WACC.** WACC is computed per path from CAPM drivers (`rf`, `beta`, `erp`,
-  `kd_spread`, `tax_rate`, `equity_weight`), and the after-tax cost of debt is *derived*
-  from the same path's risk-free draw: `(rf + spread)·(1 − tax)`. kd moves with rf on
-  every path (spread fixed, see analysis/IBM/DRIVERS.md kd_spread row).
+- **Per-path WACC.** `wacc_capm` computes WACC per path from the CAPM drivers (`rf`, `beta`, `erp`, `kd_spread`, `tax_rate`, `equity_weight`); the kd derivation is in analysis/IBM/DRIVERS.md, Items table (WACC row).
 - **Degenerate-draw guard (T-DCF-2, analysis/IBM/REVIEW.md).** Per path, `tg_eff = min(tg_draw, wacc_path - 0.02)`;
   pinned share in `tg_pinned_fraction` (0.0009 for IBM, seed 7).
   Results expose percentiles only (fat tails make moments misleading).

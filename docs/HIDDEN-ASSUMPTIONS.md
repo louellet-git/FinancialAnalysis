@@ -8,7 +8,7 @@ scope: Registry of non-obvious assumptions and traps in the pipeline and IBM mod
 ---
 # Trap registry
 
-Each entry has an evidence pointer (symbols, not line numbers). Claims about IBM.json
+Each live entry has an evidence pointer (symbols, not line numbers). Claims about IBM.json
 contents (entries 1, 2, 3, 4, 10, 21) need
 `python -m scripts.import_financials IBM` to check.
 
@@ -18,7 +18,7 @@ contents (entries 1, 2, 3, 4, 10, 21) need
 (recast) revenue with unrecast consolidated OCF across the Kyndryl divestiture boundary,
 so the FY2020 "28.2% margin" is spurious and **margin windows longer than 5 years
 are unusable** for IBM until the importer aligns recasts. The backtest surfaces (never
-fixes) this via `DATA_FLAGS`; every realized IBM vintage's data window touches a flagged year.
+fixes) this via `DATA_FLAGS`; every realized IBM vintage (backtest as-of run; docs/ARCHITECTURE.md §Backtest harness) has a data window touching a flagged year.
 Evidence: `analysis/IBM/README.md` §Data notes; `backtest.DATA_FLAGS`;
 `analysis/IBM/REVIEW.md` F13; `git log -- financial_analysis/backtest.py`.
 
@@ -118,7 +118,7 @@ judgment, not a fitted parameter. Evidence: `analysis/IBM/driver_model.py`
 
 **12. "Tails are decorative."** Each path holds one growth draw for all ten years (no
 mean reversion — ticket T-DCF-1, PLANNING/tickets.md; analysis/IBM/DRIVER-REVIEW.md rates it the largest known distortion; far-year dispersion widens), so the left tail is
-understated even after the v4 correlation matrix fattened it. Standing wording: the
+understated (correlation effects: #22). Standing wording: the
 tail caveat in `analysis/IBM/report/IBM-valuation-2026-07.md` §4 (verbatim there, per REVIEW F6).
 Do not quote P10/P90 as decision-grade. Evidence:
 `analysis/IBM/report/IBM-valuation-2026-07.md` (tail-caveat callout);
@@ -129,8 +129,7 @@ Do not quote P10/P90 as decision-grade. Evidence:
 `financial_analysis/scenarios.py` (`_ibm_v3`, `_SCENARIO_OVERRIDES["IBM"]`,
 `CAPITAL_OVERRIDES["IBM"]`) encodes the v3 aggregate framework (growth 2.15%,
 WACC 7.5%, margin 14.5%; see #24). The v4 headline is recorded in `analysis/IBM/report/IBM-valuation-2026-07.md` §4 and computed only by
-`analysis/IBM/driver_model.py` + `financial_analysis/driver_dcf.py`. The visualizer runs both, in separate labeled sections ("Aggregate DCF scenarios" vs "Driver-based
-model"). Net debt ($54.0B) agrees across both; shares agree (#10). If you read
+`analysis/IBM/driver_model.py` + `financial_analysis/driver_dcf.py`. The visualizer runs both in separate labeled sections (`SECTION_TITLES`, `scripts/visualize_dcf.py`). Net debt ($54.0B) agrees across both; shares agree (#10). If you read
 `scenarios.py` for "the IBM valuation," you get v3. Evidence: `financial_analysis/scenarios.py`, `analysis/IBM/driver_model.py`,
 `financial_analysis/driver_dcf.py`; `scripts/visualize_dcf.py` (`SECTION_TITLES`, `_driver_compare_figure`).
 

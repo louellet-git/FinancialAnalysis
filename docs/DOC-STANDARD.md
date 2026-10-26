@@ -52,9 +52,6 @@ Which types carry each is the R column below.
 - Approval (plan, policy, procedure, specification only): merge of the PR carrying the
   item's PASS row in `docs/doc-reviews.tsv`; see `docs/COLLABORATION.md` §Finish and merge.
 - References: inline paths or links.
-- Glossary: standard finance, accounting, statistics and software terms and
-  ticker symbols need no definition; define a repo-coined term at first use or link its
-  defining doc.
 
 ## Required content by type
 
@@ -74,6 +71,8 @@ at use nor in a linked source.
 | request | none: clause 7 gives a request no issuer, references, history or glossary | due date (board: none) | subject, originator, requested response, description with due date, rationale |
 | specification | issuer, references, approval, history | glossary | body, assurance requirements, constraints, one unambiguous identified statement per requirement |
 | record | issuer, references | none | subject or category, body; `id` is the record identifier |
+
+Glossary: tailored out for every type. Standard finance, accounting, statistics and software terms and ticker symbols need no definition; define a repo-coined term at first use or link its defining doc.
 
 ## Status
 

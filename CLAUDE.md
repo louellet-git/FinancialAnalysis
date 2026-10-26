@@ -35,8 +35,8 @@ yet ticketed: `PLANNING/tickets.md` §OPEN TICKETS.
 2. **`analysis/IBM/driver_model.py` governs over `analysis/IBM/DRIVERS.md`** (DRIVERS.md
    scope line).
 3. **Recorded dispositions bind.** `analysis/IBM/REVIEW.md` (F1–F19) and
-   `analysis/IBM/DRIVER-REVIEW.md` are settled rulings; reopening one takes item 4's
-   deprecation weight.
+   `analysis/IBM/DRIVER-REVIEW.md` are settled rulings; reopening one needs a review of the
+   same weight as an item 4 deprecation.
 4. **`PLANNING/RULES.md` rules are binding at their declared scope**
    (universal / archetype-bound / ticker-bound); deprecation requires a review fan-out
    of the same weight that created the rule (`PLANNING/reusable-dcf-vision.md` §L4).
@@ -81,5 +81,5 @@ token-ledger rules: session discipline only.
 
 ## Commands
 
-Verified CLI list: README.md §Pipeline commands; per-module detail:
-docs/ARCHITECTURE.md.
+Verified CLI list: README.md §Pipeline commands; gate scripts: scripts/board.py and
+scripts/doc_check.py (both have --help); per-module detail: docs/ARCHITECTURE.md.

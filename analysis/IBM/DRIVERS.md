@@ -10,7 +10,7 @@ scope: Assumption register of the IBM v4 driver model; driver_model.py governs o
 
 Companion to `driver_model.py` and `financial_analysis/driver_dcf.py` (engine). Review
 records: analysis/IBM/REVIEW.md (F-IDs), analysis/IBM/DRIVER-REVIEW.md. Tickets:
-PLANNING/tickets.md §Engine tickets; importer segment capture: docs/HIDDEN-ASSUMPTIONS.md #5.
+PLANNING/tickets.md §Engine tickets; segment bases hand-entered (companyfacts has no segment axis; docs/HIDDEN-ASSUMPTIONS.md #5).
 
 Notation: S/D = stochastic/deterministic driver; β = beta; kd = after-tax cost of debt (kd_spread row); f = `ma_recurrence`; ma = `ma_ratio`;
 truncnorm = normal draw clipped to [lo, hi] after correlation (driver_dcf.py docstring);
@@ -38,8 +38,8 @@ Equity/share: bridge in analysis/IBM/README.md.
 | g_infrastructure | S | truncnorm | −1.0% | 2.5% | hi +3% | decade-CAGR dispersion; hi at 1.6σ: ≈5.5% of draws clip at +3% (analytic, normal marginal: Φ(−1.6)) |
 | g_financing | D | — | 0.0% | — | — | disclosures in driver_model.py rationale |
 | core_margin | S | normal | 19.4% pre-SBC, pre-M&A (FY2025 endpoint, F19) | 2.0% | — | F19; endpoint basis and mix drift together |
-| margin_mix_drift | D | — | 0 → +1.2pp by y10 | — | linear | mechanical software-mix consequence |
-| sbc_ratio | D | — | 2.54% → 3.5% by y10 | — | linear | drift locus published (flat/3.5%/4.5%) |
+| margin_mix_drift | D | — | 0 | — | 0 → +1.2pp by y10, linear | mechanical software-mix consequence |
+| sbc_ratio | D | — | 2.54% | — | 2.54% → 3.5% by y10, linear | drift locus published (flat/3.5%/4.5%) |
 | ma_ratio | S | truncnorm | 7.1% | **2.4%** | lo 0 (3.0σ) | decade-average scale; source series AR(1) ρ≈0.8 (data persistence, not engine dynamics) |
 | ma_recurrence | D | — | 0.50 (`MA_RECURRENCE`, single source + assert) | — | — | paired with g_software |
 | rf | S | truncnorm | 4.6% (spot 10y, Jul-2026) | 0.5% | lo 1% (formal guard) | permanent-component std |
