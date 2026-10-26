@@ -34,6 +34,7 @@ pipeline or an audit gate; regenerate, don't hand-edit).
 | `analysis/IBM/DRIVER-REVIEW.md` | Round-1 driver/formula/matrix reviews (19 + 4 consolidations) → dispositions | binding (recorded dispositions; do not re-litigate) |
 | `analysis/IBM/REVIEW.md` | v1→v3 adversarial review: findings F1–F19, dispositions, deferred tickets T-DCF-1/2, T-IMP-1 | binding (recorded dispositions; do not re-litigate) |
 | `analysis/IBM/research-ledger.md` | Frozen source-tagged facts consumed by the model (RPO; expiry at Q2-2026 10-Q) | binding (evidence record, with expiry) |
+| `analysis/JNJ/FIRST-PASS.md` | JNJ first pass (unreviewed): potential verdict, engine-vs-hand-DCF check, six pipeline defects, template gaps | informative (first pass) |
 | `analysis/IBM/report/IBM-valuation-2026-07.md` | The v4.1 published report (markdown master of the .docx) | historical (frozen published artifact) |
 | `analysis/IBM/report/SOURCE-AUDIT.md` | Final audit gate record: claim→source table, engine re-run verification | generated/audited (frozen) |
 | `.claude/agents/FRAMEWORK.md` | Vendored review-framework manifest + pipeline description | binding (process) |
