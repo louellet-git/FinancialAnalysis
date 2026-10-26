@@ -55,12 +55,11 @@ python -m analysis.IBM.dcf_scenarios
 python -m pytest
 ```
 
-Remote data is disk-cached under `data/raw/TICKER/`; re-runs read the cache unless `--refresh`. Option chains
-and forward consensus are dated snapshots, re-fetched each calendar day (HIDDEN-ASSUMPTIONS #9).
+Remote data is disk-cached under `data/raw/TICKER/`; re-runs read the cache unless `--refresh`. Option and consensus snapshot rules: HIDDEN-ASSUMPTIONS #9.
 
 ## xlsx structure (nine tabs)
 
-`scripts/analyze.py` writes every sheet on every run (skipped groups are header-only):
+`scripts/analyze.py` writes every sheet on every run (HIDDEN-ASSUMPTIONS #17):
 
 | Tab | Contents |
 |-----|----------|
@@ -68,8 +67,8 @@ and forward consensus are dated snapshots, re-fetched each calendar day (HIDDEN-
 | Balance Sheet | ~24 mapped metrics + RPO disclosure rows (`statement=disclosure`) |
 | Cash Flow | OCF, capex, FCF, buybacks, dividends, debt flows + derived FCF/margin |
 | Raw | All unmapped us-gaap USD concepts (100–200 rows per period) |
-| Prices | Daily OHLCV from yfinance (full history) |
-| Estimates | Historical earnings surprises (yfinance; FMP when available) + FMP estimates when available |
+| Prices | Daily OHLCV, full history (source: Data sources) |
+| Estimates | Earnings surprises and FMP estimates (sources: Data sources) |
 | Estimates Fwd | Dated forward consensus snapshot: revenue/EPS estimates by period, analyst price targets |
 | Options | Full option chain, one row per contract |
 | Options Summary | Per-expiry ATM IV, implied move (ATM straddle ÷ spot), 90/110 skew, put/call ratios + chain-wide `ALL` row |
