@@ -26,15 +26,16 @@ SEC EDGAR (companyfacts JSON API)          yfinance
                      ▼                                                                           │
               store.py (data/processed/TICKER.json — statements ONLY) ───────────────────────────┤
                      │                                                                           │
-        ┌────────────┼───────────────────────────────┐                                           │
-        ▼            ▼                               ▼                                           │
-   dcf.py       driver_dcf.py                  backtest.py                                       │
- (classic MC)  (driver-based MC engine)     (point-in-time vintages)                             │
-        │            │                               │                                           │
-        │      analysis/IBM/driver_model.py          │                                           │
-        │      (per-ticker register)                 │                                           │
-        ▼            ▼                               │                                           ▼
-  scenarios.py ──► scripts/visualize_dcf.py ◄────────┘                          scripts/analyze.py
+            ┌────────┴────────────────────────────┐                                              │
+            ▼                                     ▼                                              │
+        dcf.py                            backtest.py         analysis/IBM/driver_model.py       │
+      (classic MC)                (point-in-time vintages)  (per-ticker register; no store read) │
+            │                                     │                 │                            │
+            │                                     │                 ▼                            │
+            │                                     │           driver_dcf.py                      │
+            │                                     │       (driver-based MC engine)               │
+            ▼                                     │                 │                            │
+      scenarios.py ──► scripts/visualize_dcf.py ◄───┴─────────────────┘         scripts/analyze.py
                      │                                                                           │
                      ▼                                                                           ▼
               TICKER_dcf.html                                      TICKER_financials.xlsx (9 tabs)
@@ -48,8 +49,8 @@ Two Monte Carlo DCF engines coexist; neither replaces the other.
 
 Samples the **top-level valuation items directly**: revenue growth, FCF margin, WACC,
 and terminal growth, each an independent normal draw per path (WACC floored at 1%, FCF
-margin clipped to [0, 1]; 10,000 sims, 10-year horizon by default). FCF margin is derived from the last 5 annual periods when not
-pinned. Gordon terminal value; its denominator floor (one reason the driver engine
+margin clipped to [0, 1]; 10,000 sims, 10-year horizon by default). FCF margin is derived from the last 5 annual rows when not
+pinned (phantom rows can shrink the window; HIDDEN-ASSUMPTIONS #2). Gordon terminal value; its denominator floor (one reason the driver engine
 exists) is HIDDEN-ASSUMPTIONS #15. Minimum-history guard: HIDDEN-ASSUMPTIONS #16.
 `scenarios.py` IBM entries are the v3 aggregate framework: HIDDEN-ASSUMPTIONS #13.
 
@@ -143,7 +144,7 @@ CLI flags for the first six scripts below (the pipeline): README.md §Pipeline c
 | `visualize_dcf.py` | Single-page HTML report (plotly.js inlined); six sections in `SECTION_TITLES`; panels and styling in docs/visualizer-design-brief.md. |
 | `board.py` | `python scripts/board.py check \| status \| branch NAME \| new --title --area --owner --branch --acceptance [--status]`. Scrum-board checker and ticket creator over `PLANNING/board/` (rules in its README). CI use: docs/COLLABORATION.md. |
 | `board_gate.py` | (PreToolUse hook, not a CLI) Board gate on edits, commits, pushes, PRs and GitHub MCP writes. Rules and limits: docs/COLLABORATION.md. |
-| `main_guard.py` | `git diff --no-renames --name-only B A \| python -m scripts.main_guard <1 if A merges a PR, else 0>`. Exit 2 = revert (rule: docs/COLLABORATION.md). |
+| `main_guard.py` | `git diff --no-renames --name-only B A \| python -m scripts.main_guard <1 if A merges a PR, else 0>`. Exit 2 = revert (rule: docs/COLLABORATION.md). `revert B` (undo pushes since B; main-guard.yml) and `pr-done BASE HEAD` (fails when a PR sets a ticket to done; tests.yml). |
 | `stale_branches.py` | `python -m scripts.stale_branches BRANCHES MERGED OPEN_PR_HEADS`. Selects the remote branches the daily cleanup deletes (criteria: docs/COLLABORATION.md). |
 | `gitcmd.py` | Library, no CLI: parses git invocations for the hook gates (`board_gate.py`, `doc_check.py`). |
 | `doc_check.py` | `python scripts/doc_check.py check \| list \| record <path> <PASS\|FAIL>`; also its hook (`--hook`), which gates git commit, merge, cherry-pick, revert, pull, am, rebase and push. Rules: docs/DOC-STANDARD.md. |
@@ -155,7 +156,7 @@ CI (`.github/workflows/`): `tests.yml`, `main-guard.yml`, `branch-cleanup.yml` (
 
 | Entry point | What it does |
 |---|---|
-| `python -m analysis.IBM.dcf_scenarios` | v3 aggregate framework console report: FCFF v3 margins, paired (growth, f; f = M&A recurrence share, HIDDEN-ASSUMPTIONS #11) scenarios, WACC grid, f-locus. Not a headline source (see next row); kept reproducible. |
+| `python -m analysis.IBM.dcf_scenarios` | v3 aggregate framework console report: FCFF v3 margins, paired (growth, f; f = M&A recurrence share, HIDDEN-ASSUMPTIONS #11) scenarios, WACC grid, f-locus. Not a headline source (see next row); live store-derived output drifts from the v3 record (HIDDEN-ASSUMPTIONS #24). |
 | `python -m analysis.IBM.dcf_drivers_run` | v4 driver-engine runner: headline P10/P50/P90 + attribution, E/V fixed-point iteration, f-locus (HIDDEN-ASSUMPTIONS #11), SBC-drift locus, beta locus, supply-shock correlation and `tax_rate`=0 (no debt tax shield) disclosure runs, implied-reinvestment check. Seed 7, 10k sims, 10y. Loci and disclosure runs: `analysis/IBM/dcf_drivers_run.py` docstring. |
 
 ## Tests

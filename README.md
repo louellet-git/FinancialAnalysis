@@ -52,7 +52,7 @@ python -m scripts.visualize_dcf IBM [--price 195.40] [--out report.html]
 # 7. IBM v4 driver-engine run: headline + loci + disclosure runs (seed 7)
 python -m analysis.IBM.dcf_drivers_run
 
-# 8. IBM v3 aggregate framework (historical, kept reproducible)
+# 8. IBM v3 aggregate framework (historical; output drifts from the v3 record, HIDDEN-ASSUMPTIONS #24)
 python -m analysis.IBM.dcf_scenarios
 
 # 9. Test suite — no network; pytest is in requirements-dev.txt
