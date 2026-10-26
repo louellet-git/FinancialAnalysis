@@ -555,7 +555,7 @@ def test_r4_own_branch_cannot_self_done_an_unmerged_ticket_but_can_after_the_mer
     own_ticket_edit(repo, "status: in-progress", "status: done")
     denied(bash(repo, "git push origin HEAD:main"), "feat", "ask")
     git(repo, "reset", "--hard", "main")
-    own_ticket_edit(repo, "branch: feat", "branch: ")  # abandon: release the ticket, unmerged
+    own_ticket_edit(repo, "status: in-progress\nowner: luc\nbranch: feat", "status: backlog\nowner: luc\nbranch: ")  # abandon
     assert bash(repo, "git push origin HEAD:main") is None
     git(repo, "reset", "--hard", "main")
     merged(repo, "feat")

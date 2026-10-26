@@ -35,8 +35,9 @@ def calls(command, dirs=()):
         g = next((i for i, w in enumerate(seg) if GIT.search(w) or w == "gh"), None)
         if g is None and (seg[0].rsplit("/", 1)[-1] in SHELLS or seg[0] == "eval"):
             out += calls(" ".join(seg[1:]), cds)
-        if seg[0] in CD and (a := [w for w in seg[1:] if not w.startswith("-")]):
-            cds.append(("cd", a[0]))
+        if seg[0] in CD and (a := [w for w in seg[1:] if w == "-" or not w.startswith("-")]):
+            cds.append(("pushd" if seg[0] == "pushd" else "cd", a[0]))  # `cd -` is the previous directory
+        cds += [("popd", "")] * (seg[0] == "popd")
         env = [(m[1], m[2]) for w in seg[:g] if (m := ENV.fullmatch(w))]  # binds to this command only...
         if g is None:
             cds += env * (seg[0] == "export" or len(env) == len(seg))  # ...unless it is `export X=` or a bare `X=`
@@ -59,11 +60,14 @@ def calls(command, dirs=()):
 
 def target(dirs, cwd):
     """(cwd, GIT_* env) a call with these dirs runs in, ~ and $VARS expanded; ValueError if cwd is no directory."""
-    env, old = {}, cwd
+    env, old, stack = {}, cwd, []
     for kind, v in dirs:  # $PWD and $OLDPWD are the session's, not the hook process's
         v = re.sub(r"\$\{?(PWD|OLDPWD)\}?", lambda m: str(cwd if m[1] == "PWD" else old), v)
-        p = Path(cwd, os.path.expandvars(os.path.expanduser(v)))
-        if kind in ("cd", "-C"):
+        p = Path(old if v == "-" else Path(cwd, os.path.expandvars(os.path.expanduser(v))))
+        if kind == "popd":
+            old, cwd = cwd, (stack.pop() if stack else cwd)
+        elif kind in ("cd", "-C", "pushd"):
+            stack += [cwd] * (kind == "pushd")
             old, cwd = cwd, p
         else:
             env["GIT_DIR" if "dir" in kind.lower() else "GIT_WORK_TREE"] = str(p)
@@ -98,7 +102,7 @@ def roots(command, cwd, dirs):
     """(git toplevels, unresolved targets) of the base dir (cwd, else CLAUDE_PROJECT_DIR) and every dir named."""
     base = cwd or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
     found, bad = set(), []
-    for t in [""] + [t.strip("\"'") for t in TARGET.findall(command)] + dirs:
+    for t in [""] + [t.strip("\"'") for t in TARGET.findall(command)] + [d for d in dirs if d not in ("", "-")]:
         d = Path(base, os.path.expandvars(os.path.expanduser(t)))
         try:
             found.add(git_out(d, "rev-parse", "--show-toplevel").decode().strip())

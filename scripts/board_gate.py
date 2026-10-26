@@ -68,10 +68,10 @@ def advise(base, branch):
 
 
 def finished(t, base, pushed, f, x):
-    """Is f's only change status -> done, on a ticket whose branch is gone from origin and was merged into origin/main?"""
+    """Is f's only change status -> done, its branch gone from origin and merged into origin/main?"""
     new, was = (Path(d, BOARD, f) for d in (pushed, base))
     gone = run(t, "ls-remote", "--heads", "origin", "refs/heads/" + x["branch"])
-    subjects = run(t, "log", "origin/main", "--merges", "--format=%s").stdout.splitlines()  # "Merge pull request #N from o/b"
+    subjects = run(t, "log", "origin/main", "--merges", "--format=%s").stdout.splitlines()  # "... #N from o/<branch>"
     return new.is_file() and new.read_text() == was.read_text().replace(f"status: {x['status']}\n", "status: done\n", 1) \
         and gone.returncode == 0 and not gone.stdout.strip() and any(s.endswith("/" + x["branch"]) for s in subjects)
 
@@ -84,11 +84,12 @@ def main_push(t, base, branch, src):
     with tempfile.TemporaryDirectory() as pushed:
         if not all(board.LANE.fullmatch(p) for p in changes) or not extract(t, src, pushed) or board.problems(pushed):
             return DIRECT
-        old = {x["_file"]: x for x in board.load(base)}
+        old, new = ({x["_file"]: x for x in board.load(d)} for d in (base, pushed))
         for f in (Path(p).name for p in changes):
-            if (x := old.get(f)) and x.get("branch") not in ("", branch) and not finished(t, base, pushed, f, x):
-                return (f"A board push to main may change only tickets of the current branch ({branch}), or mark done "
-                        f"one whose branch is deleted from origin; {f} belongs to {x['branch']}: ask its owner first.")
+            done = new.get(f, {}).get("status") == "done" != (old.get(f) or {}).get("status")  # any ticket becoming done
+            if (x := old.get(f)) and (done or x.get("branch") not in ("", branch)) and not finished(t, base, pushed, f, x):
+                return (f"A board push to main may change only tickets of the current branch ({branch}) and mark done only "
+                        f"one whose branch was merged and deleted from origin; {f} ({x['branch']}) is not: ask its owner.")
 
 
 def push_reason(t, base, branch, args, why):
@@ -143,8 +144,7 @@ def reason(p, cwd):
     tool, ti = p.get("tool_name", ""), p.get("tool_input") or {}
     if tool in EDIT_TOOLS:
         path = Path(cwd) / (ti.get("file_path") or ti.get("notebook_path") or "")
-        near = next(d for d in (path.parent, *path.parent.parents) if d.is_dir())  # a file in a dir not yet made
-        return verdict("edit", (near, {}), path=path)
+        return verdict("edit", (next(d for d in (path.parent, *path.parent.parents) if d.is_dir()), {}), path=path)
     if tool in ("Bash", "PowerShell"):
         for verb, args, dirs in gitcmd.calls(ti.get("command", "")):
             head = re.search(r"(?:--head[= ]|-H[= ]?)(?:[^ :]*:)?(\S+)", " ".join(args)) if verb == "pr" else None
@@ -158,8 +158,7 @@ def reason(p, cwd):
 
 def main():
     try:
-        p = json.load(sys.stdin)
-        why = reason(p, p.get("cwd") or os.getcwd())
+        why = reason(p := json.load(sys.stdin), p.get("cwd") or os.getcwd())
     except Exception as e:
         why = f"board gate error: {e}"
     if why:
