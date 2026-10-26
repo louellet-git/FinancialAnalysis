@@ -37,13 +37,14 @@ def calls(command, dirs=()):
             out += calls(" ".join(seg[1:]), cds)
         if seg[0] in CD and (a := [w for w in seg[1:] if not w.startswith("-")]):
             cds.append(("cd", a[0]))
-        cds += [(m[1], m[2]) for w in seg[:g] if (m := ENV.fullmatch(w))]
+        env = [(m[1], m[2]) for w in seg[:g] if (m := ENV.fullmatch(w))]  # binds to this command only...
         if g is None:
+            cds += env * (seg[0] == "export" or len(env) == len(seg))  # ...unless it is `export X=` or a bare `X=`
             continue
         if seg[g] == "gh":
-            out += [("pr", seg[g + 3:], list(cds))] * (seg[g + 1:g + 3] == ["pr", "create"])
+            out += [("pr", seg[g + 3:], cds + env)] * (seg[g + 1:g + 3] == ["pr", "create"])
             continue
-        it, own = iter(seg[g + 1:]), []
+        it, own = iter(seg[g + 1:]), env
         for w in it:
             if w in ("-C", "--git-dir", "--work-tree"):
                 own.append((w, next(it, "")))
@@ -58,11 +59,12 @@ def calls(command, dirs=()):
 
 def target(dirs, cwd):
     """(cwd, GIT_* env) a call with these dirs runs in, ~ and $VARS expanded; ValueError if cwd is no directory."""
-    env = {}
-    for kind, v in dirs:
+    env, old = {}, cwd
+    for kind, v in dirs:  # $PWD and $OLDPWD are the session's, not the hook process's
+        v = re.sub(r"\$\{?(PWD|OLDPWD)\}?", lambda m: str(cwd if m[1] == "PWD" else old), v)
         p = Path(cwd, os.path.expandvars(os.path.expanduser(v)))
         if kind in ("cd", "-C"):
-            cwd = p
+            old, cwd = cwd, p
         else:
             env["GIT_DIR" if "dir" in kind.lower() else "GIT_WORK_TREE"] = str(p)
     if not Path(cwd).is_dir():
@@ -76,10 +78,17 @@ def pathspecs(args):
     for t in it:
         if t == "--":
             paths += it
-        elif t == "--all" or re.fullmatch(r"-[a-zA-Z]*a[a-zA-Z]*", t):
+        elif t == "--all":
             return ["."]
-        elif t in COMMIT_VALUE_OPTS or re.fullmatch(r"-[a-zA-Z]*[mFcCt]", t):
+        elif t in COMMIT_VALUE_OPTS:
             next(it, None)
+        elif re.fullmatch(r"-[a-zA-Z]+", t):  # a short cluster: the first value letter takes the rest as its value
+            for i, c in enumerate(t[1:], 2):
+                if c == "a":
+                    return ["."]
+                if c in "mFcCt":
+                    next(it, None) if i == len(t) else None
+                    break
         elif not t.startswith("-"):
             paths.append(t)
     return paths or None

@@ -14,6 +14,7 @@ STATUSES = ["backlog", "in-progress", "review", "done"]
 ACTIVE = ("in-progress", "review")
 AREA = re.compile(r"(engine|importer|docs|planning|ticker:[A-Z]{1,5}(\.[A-Z])?)")
 ID = re.compile(r"T-\d{8}-[a-z0-9-]+")
+LANE = re.compile(r"PLANNING/board/(T-[^/]*\.md|README\.md)")  # the only files a board-only change may touch
 
 
 def load(root):
@@ -66,8 +67,10 @@ def _check(tickets):
 
 
 def problems(root):
-    """Every rule violation on the board, one string each."""
-    return _check(load(root))
+    """Every rule violation on the board, one string each (any file but a ticket or README is one)."""
+    files = (f.relative_to(root).as_posix() for f in (Path(root) / "PLANNING" / "board").rglob("*") if f.is_file())
+    return _check(load(root)) + [f"{f}: unexpected file (the board holds only T-*.md tickets and README.md)"
+                                 for f in sorted(files) if not LANE.fullmatch(f)]
 
 
 def ticket_for_branch(root, branch):

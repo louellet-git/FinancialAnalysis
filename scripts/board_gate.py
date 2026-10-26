@@ -68,11 +68,12 @@ def advise(base, branch):
 
 
 def finished(t, base, pushed, f, x):
-    """Is f's only change status -> done, on a ticket whose branch no longer exists on origin (merged and deleted)?"""
+    """Is f's only change status -> done, on a ticket whose branch is gone from origin and was merged into origin/main?"""
     new, was = (Path(d, BOARD, f) for d in (pushed, base))
     gone = run(t, "ls-remote", "--heads", "origin", "refs/heads/" + x["branch"])
+    subjects = run(t, "log", "origin/main", "--merges", "--format=%s").stdout.splitlines()  # "Merge pull request #N from o/b"
     return new.is_file() and new.read_text() == was.read_text().replace(f"status: {x['status']}\n", "status: done\n", 1) \
-        and gone.returncode == 0 and not gone.stdout.strip()
+        and gone.returncode == 0 and not gone.stdout.strip() and any(s.endswith("/" + x["branch"]) for s in subjects)
 
 
 def main_push(t, base, branch, src):
@@ -81,7 +82,7 @@ def main_push(t, base, branch, src):
         return STALE
     changes = git(t, "diff", "--no-renames", "--name-only", "origin/main", src).splitlines()
     with tempfile.TemporaryDirectory() as pushed:
-        if not all(p.startswith(BOARD) for p in changes) or not extract(t, src, pushed) or board.problems(pushed):
+        if not all(board.LANE.fullmatch(p) for p in changes) or not extract(t, src, pushed) or board.problems(pushed):
             return DIRECT
         old = {x["_file"]: x for x in board.load(base)}
         for f in (Path(p).name for p in changes):
@@ -122,7 +123,7 @@ def verdict(verb, t, args=(), path=None, head=None):
         branch = run(r, "branch", "--show-current").stdout.strip() or "main"  # detached HEAD counts as main
         if verb == "edit":
             rel = Path(path).resolve()
-            free = not rel.is_relative_to(top) or rel.relative_to(top).parts[:2] == ("PLANNING", "board") \
+            free = not rel.is_relative_to(top) or board.LANE.fullmatch(rel.relative_to(top).as_posix()) \
                 or rel.relative_to(top).parts[:1] == (".delegation",)
             return None if free else advise(base, branch)
         if verb in ("head", "write"):  # a PR's head needs a ticket; a GitHub MCP write also the push rule: head is current
@@ -132,7 +133,7 @@ def verdict(verb, t, args=(), path=None, head=None):
             specs = gitcmd.pathspecs(args)  # what the commit carries: its pathspecs, -a (everything), or the index
             diff = ("HEAD", "--", *[":/" if s == "." else s for s in specs]) if specs else ("--cached",)
             paths = git(t, "diff", "--no-renames", "--name-only", *diff).splitlines()
-            ok = all(p.startswith(BOARD) for p in paths) and not board.problems(top)
+            ok = all(board.LANE.fullmatch(p) for p in paths) and not board.problems(top)
             return None if ok else DIRECT + " " + FIX
         why = advise(base, branch)
         return push_reason(r, base, branch, args, why) if verb == "push" else why

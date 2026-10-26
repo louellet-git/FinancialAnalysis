@@ -1,4 +1,4 @@
-"""Server-side main guard: a push to main must be a merged PR or touch only PLANNING/board/.
+"""Server-side main guard: a push to main must be a merged PR or touch only board tickets and README.
 
 CLI (used by .github/workflows/main-guard.yml): git diff --no-renames --name-only B A |
 python -m scripts.main_guard <1 if A is the merge of a merged PR, else 0>; exit 2 = revert it;
@@ -9,20 +9,18 @@ import sys
 
 from scripts import board
 
-BOARD = "PLANNING/board/"
-
 
 def decide(paths, from_merged_pr):
-    """'ok' or 'revert' for the paths a push to main changed."""
-    return "ok" if from_merged_pr or all(p.startswith(BOARD) for p in paths) else "revert"
+    """'ok' or 'revert' for the paths a push to main changed (board-only: tickets and README, see board.LANE)."""
+    return "ok" if from_merged_pr or all(board.LANE.fullmatch(p) for p in paths) else "revert"
 
 
 def main(from_merged_pr, paths):
     if decide(paths, from_merged_pr) == "ok":
         print("ok")
         return 0
-    print("revert: direct push to main changed paths outside PLANNING/board/ (open a PR instead):")
-    print("\n".join(p for p in paths if not p.startswith(BOARD)))
+    print("revert: direct push to main changed paths outside the board lane (PLANNING/board/ tickets and README; open a PR instead):")
+    print("\n".join(p for p in paths if not board.LANE.fullmatch(p)))
     return 2
 
 
@@ -36,7 +34,8 @@ def newly_done(base_root, head_root):
 def revert(before, cwd=None):
     """Undo every push since `before` with one new commit whose tree is before's. Unlike `git revert before..HEAD`
     it needs no -m for merge commits and undoes changes made inside a merge; history is never rewritten."""
-    for cmd in (("read-tree", "-u", "--reset", before), ("commit", "-qm", f"Revert direct push to main since {before[:8]}")):
+    who = ("-c", "user.name=main-guard", "-c", "user.email=main-guard@users.noreply.github.com")
+    for cmd in (("read-tree", "-u", "--reset", before), (*who, "commit", "-qm", f"Revert direct push to main since {before[:8]}")):
         subprocess.run(["git", *cmd], cwd=cwd, check=True)
 
 

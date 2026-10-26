@@ -27,7 +27,8 @@ jobs:
       - id: decide
         run: |
           set -eo pipefail
-          gh api "repos/$REPO/commits/$AFTER/pulls" --jq '.[] | select(.merged_at != null) | .merge_commit_sha' > merges.txt
+          gh api "repos/$REPO/commits/$AFTER/pulls" --jq '.[] | select(.merged_at != null) | .merge_commit_sha' > merges.txt \
+            || { echo "::error::main-guard could not decide; NOT reverted"; exit 1; }
           merged=0; grep -qx "$AFTER" merges.txt && merged=1 || true
           git diff --no-renames --name-only "$BEFORE" "$AFTER" > paths.txt
           rc=0; python -m scripts.main_guard "$merged" < paths.txt || rc=$?

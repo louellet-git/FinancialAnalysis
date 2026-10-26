@@ -369,10 +369,21 @@ def test_b1_board_push_to_main_may_change_only_own_branch_tickets(repo):
     assert bash(repo, "git push origin HEAD:main") is None
 
 
-def test_b1_done_edit_of_another_branchs_ticket_allowed_only_once_its_branch_is_deleted(repo):
+def merged(repo, branch):
+    """Land `branch` on origin/main the way GitHub does, then delete it from origin; leaves local two at main."""
+    git(repo, "push", "origin", branch)
+    git(repo, "switch", branch)
+    git(repo, "commit", "--allow-empty", "-m", "work")
+    git(repo, "switch", "main")
+    git(repo, "merge", "--no-ff", "-m", f"Merge pull request #1 from o/{branch}", branch)
+    git(repo, "push", "origin", "main")
+    git(repo, "push", "origin", "--delete", branch)
+    git(repo, "branch", "-f", "two", "main")
+
+
+def test_b1_done_edit_of_another_branchs_ticket_allowed_only_once_its_branch_is_merged_and_deleted(repo):
     f = "PLANNING/board/T-20261025-feat.md"
-    git(repo, "push", "origin", "feat")
-    git(repo, "push", "origin", "--delete", "feat")
+    merged(repo, "feat")
     edits = {"done": lambda t: t.replace("in-progress", "done"),
              "more": lambda t: t.replace("in-progress", "done").replace("title: T", "title: U"),
              "other": lambda t: t.replace("title: T", "title: U")}
@@ -380,8 +391,19 @@ def test_b1_done_edit_of_another_branchs_ticket_allowed_only_once_its_branch_is_
         board_commit(repo, lambda r: (r / f).write_text(edits[name]((r / f).read_text())))
         assert (bash(repo, "git push origin HEAD:main") is None) is ok, name
         git(repo, "reset", "--hard", "main")
-    git(repo, "push", "origin", "feat")  # branch exists again
+    git(repo, "push", "origin", "main:feat")  # branch exists again
     board_commit(repo, lambda r: (r / f).write_text(edits["done"]((r / f).read_text())))
+    denied(bash(repo, "git push origin HEAD:main"), "feat", "ask")
+
+
+def test_f1_done_edit_denied_for_a_branch_never_pushed_or_deleted_without_a_merge(repo):
+    f = "PLANNING/board/T-20261025-feat.md"
+    board_commit(repo, lambda r: (r / f).write_text((r / f).read_text().replace("in-progress", "done")))
+    denied(bash(repo, "git push origin HEAD:main"), "feat", "ask")  # feat never reached origin
+    git(repo, "reset", "--hard", "main")
+    git(repo, "push", "origin", "feat")
+    git(repo, "push", "origin", "--delete", "feat")  # gone, but no merge commit names it
+    board_commit(repo, lambda r: (r / f).write_text((r / f).read_text().replace("in-progress", "done")))
     denied(bash(repo, "git push origin HEAD:main"), "feat", "ask")
 
 
@@ -442,3 +464,79 @@ def test_n1_hook_fetches_origin_main_before_reading_tickets(repo, tmp_path):
     git(peer, "push", "origin", "main")
     git(repo, "switch", "-c", "late")
     assert edit(repo) is None
+
+
+# ---- round 3, skeptic findings F1-F3 ----
+LANE_BAD = ["PLANNING/board/test_probe.py", "PLANNING/board/sub/T-20261025-x.md", "PLANNING/board/notes.txt"]
+
+
+@pytest.mark.parametrize("rel", LANE_BAD)
+def test_f2_only_ticket_files_and_readme_are_the_board_lane(repo, rel):
+    git(repo, "switch", "bare")
+    denied(edit(repo, rel), "bare")  # not a free edit
+    git(repo, "switch", "main")
+    (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+    (repo / rel).write_text("x\n")
+    git(repo, "add", "-A")
+    denied(bash(repo, "git commit -m probe"), "PLANNING/board/")
+    git(repo, "commit", "-m", "probe")
+    denied(bash(repo, "git push origin main"), "PLANNING/board/")
+
+
+def test_f2_readme_and_tickets_stay_board_lane(repo):
+    git(repo, "switch", "bare")
+    assert edit(repo, "PLANNING/board/README.md") is None
+    assert edit(repo, "PLANNING/board/T-20261025-new.md") is None
+
+
+def test_f2_board_check_rejects_any_other_file_under_the_board(tmp_path):
+    from scripts import board
+    put(tmp_path, "a")
+    (tmp_path / "PLANNING/board/README.md").write_text("r\n")
+    assert board.problems(tmp_path) == []
+    for rel in ("t.py", "sub/T-20261025-b.md", "notes.txt"):
+        f = tmp_path / "PLANNING/board" / rel
+        f.parent.mkdir(exist_ok=True)
+        f.write_text("x\n")
+        assert any(rel in m and "unexpected" in m for m in board.problems(tmp_path)), rel
+        f.unlink()
+
+
+@pytest.fixture
+def pair(repo, tmp_path):
+    """Session repo on unticketed `bare` with a code commit; clone `other` sits on ticketed feat."""
+    git(tmp_path, "clone", str(tmp_path / "origin.git"), "other")
+    git(tmp_path / "other", "switch", "-c", "feat", "origin/main")
+    git(repo, "switch", "bare")
+    commit(repo, "code.py")
+    return tmp_path / "other"
+
+
+def test_f3_env_prefix_applies_only_to_the_command_it_precedes(pair, repo):
+    o = pair
+    denied(bash(repo, f"GIT_DIR={o}/.git true; git push origin HEAD"), "bare")
+    denied(bash(repo, f"GIT_DIR={o}/.git git status; git push origin HEAD"), "bare")
+
+
+def test_f3_exported_git_dir_still_applies(repo, pair):
+    git(repo, "switch", "feat")
+    assert bash(repo, "git push origin HEAD") is None
+    git(pair, "switch", "-c", "bare2")
+    denied(bash(repo, f"export GIT_DIR={pair}/.git; git push origin HEAD"), "bare2")
+
+
+def test_f3_attached_message_value_does_not_swallow_the_pathspec(repo):
+    new_ticket(repo)
+    (repo / "code.py").write_text("x = 2\n")
+    for cmd in ("git commit -mInit code.py", "git commit -m Init code.py", "git commit -qmInit -- code.py"):
+        denied(bash(repo, cmd), "PLANNING/board/")
+
+
+def test_f3_dollar_pwd_is_the_payload_cwd_not_the_hooks_environment(repo, tmp_path):
+    launch, shell = tmp_path / "L", tmp_path / "C"
+    launch.mkdir()
+    shell.mkdir()
+    git(repo, "worktree", "add", str(launch / "wt"), "feat")
+    git(repo, "worktree", "add", str(shell / "wt"), "bare")
+    denied(bash(shell, "cd $PWD/wt && git push origin HEAD", {"PWD": str(launch)}), "bare")
+    denied(bash(shell, "cd ${PWD}/wt && git push origin HEAD", {"PWD": str(launch)}), "bare")

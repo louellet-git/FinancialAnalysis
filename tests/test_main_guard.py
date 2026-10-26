@@ -22,15 +22,17 @@ def test_empty_range_ok():
 
 
 def test_main_prints_offending_paths_and_exit_code(capsys):
-    assert main(False, ["PLANNING/board/a.md", "x.py"]) == 2
+    assert main(False, ["PLANNING/board/T-a.md", "x.py"]) == 2
     out = capsys.readouterr().out
-    assert "revert" in out and "x.py" in out and "a.md" not in out
+    assert "revert" in out and "x.py" in out and "T-a.md" not in out
     assert main(True, ["x.py"]) == 0
 
 
 # ---- round 3 (B5, B7) ----
+import os  # noqa: E402
 import subprocess  # noqa: E402
 import sys  # noqa: E402
+from pathlib import Path  # noqa: E402
 
 import pytest  # noqa: E402
 
@@ -96,3 +98,43 @@ def test_b7_revert_undoes_a_range_containing_a_merge_without_rewriting_history(p
     assert g(r, "rev-parse", "HEAD^{tree}") == g(r, "rev-parse", f"{before}^{{tree}}")
     assert g(r, "rev-parse", "HEAD^") == after  # a new commit on top; AFTER stays an ancestor
     assert g(r, "status", "--porcelain") == ""
+
+
+@pytest.mark.parametrize("path", ["PLANNING/board/test_probe.py", "PLANNING/board/sub/T-1.md", "PLANNING/board/notes.txt",
+                                  "PLANNING/board/README.md.py"])
+def test_f2_only_tickets_and_readme_are_board_only(path):
+    assert decide([path], False) == "revert"
+    assert decide(["PLANNING/board/T-1.md", "PLANNING/board/README.md"], False) == "ok"
+
+
+def test_f2_pytest_skips_planning():
+    import configparser
+    cp = configparser.ConfigParser()
+    cp.read(Path(main_guard.__file__).resolve().parent.parent / "pytest.ini")
+    assert {"PLANNING", "vendor", ".*"} <= set(cp["pytest"]["norecursedirs"].split())
+
+
+def test_f4_revert_commits_with_its_own_identity(pushed_range, tmp_path, monkeypatch):
+    r, before = pushed_range
+    for k in ("GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL", "EMAIL"):
+        monkeypatch.delenv(k, raising=False)
+    for k, v in {"HOME": str(tmp_path), "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1",
+                 "GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "user.useConfigOnly", "GIT_CONFIG_VALUE_0": "true"}.items():
+        monkeypatch.setenv(k, v)
+    main_guard.revert(before, cwd=r)
+    assert g(r, "log", "-1", "--format=%an <%ae>") == "main-guard <main-guard@users.noreply.github.com>"
+
+
+def test_f5_decide_step_fails_loudly_when_gh_api_fails(tmp_path):
+    import yaml
+    wf = yaml.safe_load((Path(main_guard.__file__).resolve().parent.parent / ".github/workflows/main-guard.yml").read_text())
+    script = next(s["run"] for s in wf["jobs"]["guard"]["steps"] if s.get("id") == "decide")
+    (tmp_path / "bin").mkdir()
+    gh = tmp_path / "bin" / "gh"
+    gh.write_text("#!/bin/sh\nexit 1\n")
+    gh.chmod(0o755)
+    env = {**os.environ, "PATH": f"{tmp_path / 'bin'}:{os.environ['PATH']}", "REPO": "o/r", "AFTER": "a", "BEFORE": "b",
+           "GITHUB_OUTPUT": str(tmp_path / "out")}
+    r = subprocess.run(["bash", "-e", "-c", script], cwd=tmp_path, env=env, capture_output=True, text=True)
+    assert r.returncode != 0 and "::error::main-guard could not decide; NOT reverted" in r.stdout
+    assert "revert=" not in (tmp_path / "out").read_text() if (tmp_path / "out").exists() else True
