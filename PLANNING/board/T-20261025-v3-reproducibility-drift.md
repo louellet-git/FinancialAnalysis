@@ -8,4 +8,4 @@ branch:
 created: 2026-10-25
 acceptance: analysis.IBM.dcf_scenarios prints the signed-off $37/$141/$232 again, or its output carries a reproduces-as-of note.
 ---
-HIDDEN-ASSUMPTIONS #14: dcf_scenarios derives margins live from the re-imported store and now prints $43/$149/$243. Pin the v3 inputs as constants or stamp the output.
+HIDDEN-ASSUMPTIONS #24: dcf_scenarios derives margins live from the re-imported store and now prints $43/$149/$243. Pin the v3 inputs as constants or stamp the output.
