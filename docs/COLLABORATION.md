@@ -137,8 +137,11 @@ protection or required checks, so CI-green before merge is a session rule. Stric
 - The "Always ask first" rule (§Board, handoff and decisions) is not enforceable.
 - Unseen by the hook: Bash file writes; git inside scripts, `source`, `eval "$(...)"`
   indirection, make, aliases or an IDE; `gh pr merge`; `gh api`; the web UI; backtick command
-  substitution; tag pushes via `--tags`, `--follow-tags` or `refs/tags/*`;
-  `--pathspec-from-file`, `-i` and `--amend` on a commit; GitHub MCP tools beyond those gated.
+  substitution; `--pathspec-from-file`, `-i` and `--amend` on a commit; GitHub MCP tools
+  beyond those gated.
+- Tag pushes get no tag rule: `--tags` and `--follow-tags` pass as a push of HEAD, and
+  `refs/tags/<name>` passes when the current branch has its ticket (scripts/board_gate.py
+  `push_reason`); the glob `refs/tags/*` is judged as a push to main.
 - A separate-value `-o value` or `--push-option value` is misread as a refspec and falsely
   denied; use `--push-option=value`.
 - Subshell scoping `( cd x && ... )` is not modelled: the `cd` is treated as persisting.
