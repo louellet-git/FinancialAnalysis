@@ -31,3 +31,5 @@ date	path	sha256	verdict	reviewer
 2026-10-26	docs/ARCHITECTURE.md	26ca34db3d0ef2c4a9a06bb660cb52f671bb838f5a65e8069b748ec3311d6f4c	PASS	doc-critic
 2026-10-26	docs/HIDDEN-ASSUMPTIONS.md	957325ee1e98f6e75a384cabbfefbbe645337d1d57e4d54da3f14977cde1fa8c	PASS	doc-critic
 2026-10-26	docs/visualizer-design-brief.md	8f44611ec4f4e6d270a3f2bf442fc3f5814fabfa48b2d49197588837bffcfcc2	PASS	doc-critic
+2026-10-26	docs/COLLABORATION.md	55d37e261423ce55c24951508775ac01138bfe79a9ec9aaaaa8460c79ba0a45c	PASS	doc-critic
+2026-10-26	PLANNING/board/README.md	26e0253a07e95949eeb7fb99ef1a959d440c0a472cd2935d8189e5c8df401054	PASS	doc-critic
