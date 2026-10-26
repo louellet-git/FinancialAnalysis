@@ -107,13 +107,6 @@ def test_f2_only_tickets_and_readme_are_board_only(path):
     assert decide(["PLANNING/board/T-1.md", "PLANNING/board/README.md"], False) == "ok"
 
 
-def test_f2_pytest_skips_planning():
-    import configparser
-    cp = configparser.ConfigParser()
-    cp.read(Path(main_guard.__file__).resolve().parent.parent / "pytest.ini")
-    assert {"PLANNING", "vendor", ".*"} <= set(cp["pytest"]["norecursedirs"].split())
-
-
 def test_f4_revert_commits_with_its_own_identity(pushed_range, tmp_path, monkeypatch):
     r, before = pushed_range
     for k in ("GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL", "EMAIL"):

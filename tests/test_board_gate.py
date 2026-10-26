@@ -540,3 +540,36 @@ def test_f3_dollar_pwd_is_the_payload_cwd_not_the_hooks_environment(repo, tmp_pa
     git(repo, "worktree", "add", str(shell / "wt"), "bare")
     denied(bash(shell, "cd $PWD/wt && git push origin HEAD", {"PWD": str(launch)}), "bare")
     denied(bash(shell, "cd ${PWD}/wt && git push origin HEAD", {"PWD": str(launch)}), "bare")
+
+
+# ---- round 4 ----
+def own_ticket_edit(repo, old, new):
+    """On feat (reset to main, board-only), rewrite its own ticket and commit."""
+    git(repo, "switch", "-C", "feat", "main")
+    f = repo / "PLANNING/board/T-20261025-feat.md"
+    f.write_text(f.read_text().replace(old, new))
+    git(repo, "commit", "-am", "ticket")
+
+
+def test_r4_own_branch_cannot_self_done_an_unmerged_ticket_but_can_after_the_merge_or_abandon(repo):
+    own_ticket_edit(repo, "status: in-progress", "status: done")
+    denied(bash(repo, "git push origin HEAD:main"), "feat", "ask")
+    git(repo, "reset", "--hard", "main")
+    own_ticket_edit(repo, "branch: feat", "branch: ")  # abandon: release the ticket, unmerged
+    assert bash(repo, "git push origin HEAD:main") is None
+    git(repo, "reset", "--hard", "main")
+    merged(repo, "feat")
+    own_ticket_edit(repo, "status: in-progress", "status: done")
+    assert bash(repo, "git push origin HEAD:main") is None
+
+
+def test_r4_pytest_ini_keeps_planning_out_of_collection(tmp_path):
+    root = Path(__file__).resolve().parent.parent
+    (tmp_path / "PLANNING/board").mkdir(parents=True)
+    (tmp_path / "PLANNING/board/test_x.py").write_text("def test_x():\n    pass\n")
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests/test_ok.py").write_text("def test_ok():\n    pass\n")
+    (tmp_path / "pytest.ini").write_text((root / "pytest.ini").read_text())
+    out = subprocess.run([sys.executable, "-m", "pytest", "--collect-only", "-q", "-p", "no:cacheprovider"],
+                         cwd=tmp_path, capture_output=True, text=True).stdout
+    assert "test_ok" in out and "test_x" not in out

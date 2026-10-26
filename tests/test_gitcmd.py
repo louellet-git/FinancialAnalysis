@@ -71,3 +71,15 @@ def test_target_expands_pwd_and_oldpwd_from_the_given_cwd(tmp_path, monkeypatch)
     (tmp_path / "a" / "b").mkdir(parents=True)
     assert gitcmd.target([("cd", "$PWD/a"), ("cd", "${PWD}/b")], tmp_path)[0] == tmp_path / "a" / "b"
     assert gitcmd.target([("cd", "a"), ("cd", "$OLDPWD/a/b")], tmp_path)[0] == tmp_path / "a" / "b"
+
+
+def test_cd_dash_and_popd(tmp_path):
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    at = lambda c: gitcmd.target(gitcmd.calls(c + "; git commit")[-1][2], tmp_path)[0]
+    assert at("cd a; cd -") == tmp_path
+    assert at("cd a; cd b; cd -") == tmp_path / "a"
+    assert at("pushd a; popd") == tmp_path
+    assert at("pushd a; pushd ../b; popd") == tmp_path / "a"
+    assert at("cd a; cd $OLDPWD") == tmp_path
+    assert at("popd") == tmp_path  # empty stack: stay
