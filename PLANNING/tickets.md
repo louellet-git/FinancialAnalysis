@@ -23,7 +23,7 @@ Open lines name their authoritative source. "Vision" = PLANNING/reusable-dcf-vis
 
 - **Rulebook extraction**: promote the 9-item backlog into RULES.md rows with validators + specimens — PLANNING/RULES.md backlog.
 - **Research Ledger formal schema** (✦5): expiry policies + schema-enforced provenance tiers (interim format in use) — analysis/IBM/research-ledger.md header; vision L1/P1.
-- **RPO expiry** (overdue): consumed RPO facts expired at the Q2-2026 10-Q (late July 2026); record the Q2-2026 10-Q RPO facts in a new ledger item that supersedes analysis/IBM/research-ledger.md (expiry: its Expiry line; report watch-list item 4).
+- **RPO expiry** (overdue; HIDDEN-ASSUMPTIONS #23): record the Q2-2026 10-Q RPO facts in a new ledger item that supersedes analysis/IBM/research-ledger.md (its Expiry line; report watch-list item 4).
 
 ### Engine tickets (deferred with dispositions — do not re-litigate, implement)
 
@@ -38,7 +38,7 @@ Open lines name their authoritative source. "Vision" = PLANNING/reusable-dcf-vis
 
 - **T-IMP-1** (importer): drop phantom annual periods; align recast revenue with recast OCF across divestiture boundaries; persist prices to the JSON store; populate dividends/buybacks/interest income as first-class fields; stop the filed_date = period_end placeholder on rows without revenue (board T-20261025-filed-date-fabrication; close when T-IMP-1 lands) — analysis/IBM/REVIEW.md §Deferred-fix tickets (from F13).
 - **Ticket 7 — segment revenue extraction** from filing-level XBRL instance documents — full spec below in this file.
-- **requirements.txt kept current** with actual needs on every dependency change — THOUGHTS, paragraph 1 (requirements.txt).
+- **requirements.txt kept current** with actual needs on every dependency change — THOUGHTS, paragraph 1.
 - **News-scan idea** (unscoped): scan ticker news for knock-on effects on statement items; shock the valuation — THOUGHTS, paragraph 2.
 
 ---
@@ -53,7 +53,7 @@ Open lines name their authoritative source. "Vision" = PLANNING/reusable-dcf-vis
   XBRL instance documents (R-files / `_htm.xml` under the filing accession) and in
   third-party APIs. Parse the instance document for the latest 10-K/10-Q, map
   segment member names to human-readable labels, and populate
-  `PeriodFinancials.segment_revenue` (`Optional[Dict[str, float]]`, default None; schema.py:156).
+  `PeriodFinancials.segment_revenue` (`Optional[Dict[str, float]]`, default None; financial_analysis/schema.py:156).
 - **Acceptance criteria:**
   - `segment_revenue` populated for IBM FY2023-25 (Software / Consulting /
     Infrastructure / Financing; Other if the filing reports it) and reconciles to total revenue ±1%

@@ -55,8 +55,8 @@ accent chips, price line and labels, 'vs price' column) are omitted when price i
 
 ### 2. Price & valuation (two wide chart cards)
 - **Price history** — plotly line (2 px, categorical slot 1), thinned only when the history has more than 2,600 points (weekly before the trailing
-  year and daily within it, otherwise every close daily). One direct end-label (last close). Linear/log
-  toggle. Height 380 px.
+  year and daily within it, otherwise every close daily). One direct end-label (last close).
+  Height 380 px.
 - **Price vs valuation** — daily close line (2 px, primary
   ink; two years of dailies, default window the trailing 6 months, ~126 points) over: a translucent band (base scenario P10–P90, base
   scenario hue at 10% opacity) and three 2 px horizontal scenario-P50
@@ -117,8 +117,7 @@ accent chips, price line and labels, 'vs price' column) are omitted when price i
   alpha, width 1.5; median path full ink, 2.5 px, labelled "Median path"; parallel
   coordinates (2,000 paths, `_PARCOORDS_TARGET`), coloured by $/sh on the sequential
   ramp, no colorbar; outlier-paths table (bottom/top 10 by
-  per-share value, each driver's draw with its z-score, |z| ≥ 1.5 bold; the print-safe
-  table form of the spaghetti hover data).
+  per-share value, each driver's draw with its z-score, |z| ≥ 1.5 bold).
 - **Engine meta line** — a full-width secondary-ink paragraph (sims, seed,
   horizon, net debt, shares, TV share; optionally the fraction of paths with
   pinned terminal growth).

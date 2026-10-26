@@ -14,17 +14,17 @@ option chains), and runs Monte Carlo DCF valuations through two engines — a cl
 scenario engine and a driver-based engine (mechanics: docs/ARCHITECTURE.md) — feeding an
 adversarial review pipeline and a single-page HTML company report. Accepted review
 findings compound into deterministic infrastructure (rules → validators → red-team
-specimens) instead of being re-paid every run. Flagship analysis: IBM (`analysis/IBM/`, v4.1
+specimens; `PLANNING/RULES.md`) instead of being re-paid every run. Flagship analysis: IBM (`analysis/IBM/`, v4.1
 report).
 
 Agents: start with **CLAUDE.md**.
 
 ## Pipeline commands
 
-Run from the repo root. `--help` on each script lists flags and defaults.
+Run from the repo root. `--help` on each `scripts/` entry point lists flags and defaults; the `analysis/IBM` runs take no flags.
 
 ```bash
-pip install -r requirements.txt   # numpy, openpyxl, plotly, yfinance, python-dotenv, requests
+pip install -r requirements.txt   # runtime deps
 
 # 1. Full pipeline: import + market data → data/processed/TICKER_financials.xlsx
 python -m scripts.analyze IBM
@@ -89,11 +89,11 @@ statements only (docs/ARCHITECTURE.md); market data lives in the xlsx and the ca
 |------|--------|------|
 | Financial statements | SEC EDGAR companyfacts XBRL JSON API | None (public; User-Agent set in `edgar.py`) |
 | Daily prices, earnings surprises, forward consensus, option chains (current snapshot) | yfinance | None |
-| Analyst estimates / option history backfill | FMP (v3 legacy endpoints unavailable on free plan) / Polygon | `FMP_API_KEY` in `.env` (gitignored) |
+| Analyst estimates | FMP (v3 legacy endpoints unavailable on free plan) | `FMP_API_KEY` in `.env` (gitignored) |
 
 Any US-GAAP EDGAR filer (verified: NVDA, PANW, WMT, TGT, DUOL, IBM, MSFT, AAPL). ETFs
 and IFRS filers raise `UnsupportedFilingError`. Segment revenue is unavailable:
-PLANNING/tickets.md Ticket 7.
+PLANNING/tickets.md Ticket 7. Option history: none (upgrade path: FMP or Polygon).
 
 ## Project layout
 
@@ -102,7 +102,7 @@ CLAUDE.md                    agent orientation: norms + normativity map (read fi
 context.json                 machine-readable project summary for agents
 README.md                    this file
 THOUGHTS                     raw idea scratchpad (see CLAUDE.md, normativity item 8)
-requirements.txt             runtime deps (no pytest)
+requirements.txt             runtime deps
 
 financial_analysis/          the package; see docs/ARCHITECTURE.md
 scripts/                     CLI entry points and tooling; see docs/ARCHITECTURE.md

@@ -79,9 +79,8 @@ at use nor in a linked source.
 
 - `frozen`: an audited or binding record (e.g. the frozen docs in
   CLAUDE.md normativity items 3 and 6). `superseded`: replaced by a newer
-  item, named in its scope line. Both get a header-and-Status critic review and need a PASS
-  row (Review); Compactness does not apply to them. The header governs over any status line
-  in the body.
+  item, named in its scope line. Both get a header-and-Status critic review; Compactness does
+  not apply to them. The header governs over any status line in the body.
 - `draft` and `current`: full critic review.
 - Records (type record): history is the body, so Compactness 3 does not apply; rows are
   append-only, never edited. A record's PASS row covers its header; appended rows are data
@@ -100,7 +99,7 @@ at use nor in a linked source.
 
 ## Review
 
-1. Run the `doc-critic` agent (`.claude/agents/doc-critic.md`) on the doc (frozen/superseded: header and Status only). A finding that
+1. Run the `doc-critic` agent (`.claude/agents/doc-critic.md`) on the doc (frozen/superseded: per Status). A finding that
    adds text names the reader action it enables; prefer cuts.
 2. On PASS: `python scripts/doc_check.py record <path> PASS`, then commit `docs/doc-reviews.tsv`
    with the doc.
@@ -117,7 +116,7 @@ not that the critic ran.
   or a breach of Compactness 7. Review only, not doc_check: scope sentence,
   frozen/superseded date, superseded successor, item title.
 - Hook (`--hook`), the early gate: runs on git commit, merge, cherry-pick, revert, pull, am,
-  rebase or push, in each repo the command names (else the payload cwd, then $CLAUDE_PROJECT_DIR; unresolvable denies; forms in
+  rebase or push, in each repo the command names (else the payload cwd, then $CLAUDE_PROJECT_DIR, then the process cwd; unresolvable denies; forms in
   `scripts/gitcmd.py`). `commit` checks the docs it carries (index vs HEAD; worktree for `-a`
   or a pathspec; branch if `git add` is chained). Other subcommands check the branch (worktree
   vs merge-base with `origin/main`, plus untracked). A failing doc denies.
@@ -129,4 +128,4 @@ not that the critic ran.
 - Tasks, tools and methods, quality measures, review and reporting: Review, Compactness,
   Enforcement. Responsibilities: Review, Approval.
 - Interfaces: CI and the hook. Other plans: `docs/COLLABORATION.md`. Risks: the unseen paths
-  in Enforcement. Change procedure: edit through a PR; see Review.
+  in Enforcement. Change procedure: edit through a PR; see Review, Approval.

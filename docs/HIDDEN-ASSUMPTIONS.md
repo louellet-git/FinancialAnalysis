@@ -61,8 +61,7 @@ Filing-level instance-document extraction is Ticket 7. Evidence:
 
 **6. The JSON store holds statements only — no prices, options, or estimates.**
 `store.save()` writes `ticker`, `cik`, `company_name` and `periods` only; market data lives
-in the xlsx and in `data/raw/TICKER/` (dated `options/` and `estimates/` snapshots;
-`prices.json` cache). The report's price/dividend/analyst-target figures were **hand-entered** from
+in the xlsx and in `data/raw/TICKER/` (`prices.json` cache; snapshot rules: #9). The report's price/dividend/analyst-target figures were **hand-entered** from
 cited sources, not pipeline outputs (disclosed). Evidence:
 `financial_analysis/store.py` (`save`); `analysis/IBM/README.md` §Data notes;
 `analysis/IBM/report/SOURCE-AUDIT.md` row 43.
@@ -94,7 +93,7 @@ Evidence: `importer.py` (`"filed_date": end,  # placeholder`) and
 `_populate_filed_dates` (revenue concepts only); IBM.json phantom rows show
 filed_date == period_end.
 
-## Model layer (IBM v4 / driver engine)
+## Model layer (both engines; v3 and v4)
 
 **10. Buybacks are genuinely absent from the model — not an omission bug.** IBM's
 share count is held FLAT (948,675,228 diluted) because SBC is charged as a full cash
@@ -128,8 +127,8 @@ Do not quote P10/P90 as decision-grade. Evidence:
 
 **13. The scenarios registry carries IBM v3 values; the engine is v4 — deliberate.**
 `financial_analysis/scenarios.py` (`_ibm_v3`, `_SCENARIO_OVERRIDES["IBM"]`,
-`CAPITAL_OVERRIDES["IBM"]`) encodes the v3 aggregate framework (g 2.15%,
-WACC 7.5%, margin 14.5%; the v3 record does not reproduce: #24). The v4 headline is recorded in `analysis/IBM/report/IBM-valuation-2026-07.md` §4 and computed only by
+`CAPITAL_OVERRIDES["IBM"]`) encodes the v3 aggregate framework (growth 2.15%,
+WACC 7.5%, margin 14.5%; see #24). The v4 headline is recorded in `analysis/IBM/report/IBM-valuation-2026-07.md` §4 and computed only by
 `analysis/IBM/driver_model.py` + `financial_analysis/driver_dcf.py`. The visualizer runs both, in separate labeled sections ("Aggregate DCF scenarios" vs "Driver-based
 model"). Net debt ($54.0B) agrees across both; shares agree (#10). If you read
 `scenarios.py` for "the IBM valuation," you get v3. Evidence: `financial_analysis/scenarios.py`, `analysis/IBM/driver_model.py`,
@@ -159,8 +158,7 @@ usable periods per vintage and records skips. Evidence:
 **20. Default scenario presets are generic mature-large-cap.** `DEFAULT_SCENARIOS`
 (bear 1%/base 4%/bull 6% growth) applies to ANY ticker without an override — running
 `visualize_dcf` on a hypergrowth name silently produces mature-large-cap scenario
-labels and assumptions. Net-debt derivation (`financial_analysis/scenarios.py` `capital_structure_for`)
-treats absent short-term borrowings as 0. Evidence:
+labels and assumptions. Evidence:
 `financial_analysis/scenarios.py` (`DEFAULT_SCENARIOS`, `capital_structure_for`).
 
 **22. The correlation matrix is reviewed *judgment*, and it moves tails only.** All 28
@@ -188,7 +186,7 @@ Evidence: `analysis/IBM/dcf_scenarios.py` `main` (`store.load("IBM")`) passing t
 `fcff_v3_margins`.
 
 **25. Default capital-structure derivation ≠ the reviewed IBM bridge.** For tickers
-without a `CAPITAL_OVERRIDES` entry, the derived net debt (`capital_structure_for`) has **no pension, no marketable securities, no stock-vs-flow review** (a balance-sheet item credited in the bridge while its income flow stays in the margin is double-counted; `analysis/IBM/REVIEW.md` F15). The IBM
+without a `CAPITAL_OVERRIDES` entry, the derived net debt (`capital_structure_for`) treats absent short-term borrowings as 0 and has **no pension, no marketable securities, no stock-vs-flow review** (a balance-sheet item credited in the bridge while its income flow stays in the margin is double-counted; `analysis/IBM/REVIEW.md` F15). The IBM
 override embeds the F15-reviewed bridge (debt + after-tax pension − cash&securities);
 the DUOL override includes HTM securities + LT investments on the cash side. A
 cross-ticker comparison (the ORCL/basket runs; basket amendment in PLANNING/reusable-dcf-vision.md) that mixes overridden and derived capital
@@ -204,8 +202,8 @@ header-only sheets, while the "Done: ... across N tabs" message counts the group
 whether or not they returned rows.
 Evidence: `scripts/analyze.py` (`_flatten` tab dict, `write_xlsx`).
 
-**18. `data/` outputs are gitignored and untracked.** Commit rule: CLAUDE.md §Orchestration
-norms. Evidence: `git ls-files data/`; `.gitignore`.
+**18. `data/` outputs are gitignored and untracked.** `.gitignore` covers `data/raw/`,
+`data/processed/` and `__pycache__/`; never commit that churn. Evidence: `git ls-files data/`; `.gitignore`.
 
 **19. RPO rows hide on the Balance Sheet tab.** `remaining_performance_obligation` is a
 disclosure fact but is written to the Balance Sheet tab with `statement="disclosure"`

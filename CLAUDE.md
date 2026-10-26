@@ -11,8 +11,7 @@ scope: Orientation and norms for working this repo; read first.
 Objective: an agent works this repo correctly without re-deriving its norms.
 
 Start with `docs/ARCHITECTURE.md` (code-verified module map) and
-`docs/HIDDEN-ASSUMPTIONS.md` (trap registry). Doc rules, and the command listing every doc
-and its header: `docs/DOC-STANDARD.md` §Header.
+`docs/HIDDEN-ASSUMPTIONS.md` (trap registry). Doc rules and the doc registry: `docs/DOC-STANDARD.md` §Header.
 
 ## Collaboration
 
@@ -66,16 +65,13 @@ token-ledger rules: session discipline only.
 - **Subagents do not commit.** The orchestrator (each person's manager session) reviews and
   commits their worktree output.
 - **Parallel work happens in git worktrees, one branch per worktree** (`git worktree
-  add --detach ../wt-<name> origin/main`; create the branch only after its ticket is pushed,
-  `docs/COLLABORATION.md` §Start). **Checking out a branch in the shared
-  main tree is forbidden.** Assume the main checkout has
+  add --detach ../wt-<name> origin/main`, not local `main`, which may lag; create the branch
+  only after its ticket is pushed, `docs/COLLABORATION.md` §Start). **Checking out a branch in
+  the shared main tree is forbidden.** Assume the main checkout has
   someone's uncommitted state at all times.
-- The local `main` ref in the main tree may lag `origin/main`; branch new work off
-  **`origin/main`**, not local `main`.
-- Never commit `data/` churn; `.gitignore` covers `data/raw/`, `data/processed/` and
-  `__pycache__/` (HIDDEN-ASSUMPTIONS #18).
+- Never commit `data/` churn (`.gitignore`; HIDDEN-ASSUMPTIONS #18).
 - **Smoke-test policy:** see the blockquote atop `PLANNING/tickets.md`.
-- **Token ledger:** update `PLANNING/token-ledger.md` per run (success metric #1; targets there).
+- **Token ledger:** update `PLANNING/token-ledger.md` per run (success metric #1, `PLANNING/reusable-dcf-vision.md` §Success metrics; targets in the ledger).
 - Session handoffs: `PLANNING/handoff/<first name>.md` (rules in its README).
 
 ## Review pipeline

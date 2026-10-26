@@ -132,7 +132,7 @@ so treat their bands as decorative until a driver build exists.
 
 ## `scripts/`
 
-CLI flags for the first six scripts below (the pipeline): README.md §Pipeline commands.
+Commands for the first six scripts below (the pipeline): README.md §Pipeline commands.
 
 | Script | What it does |
 |---|---|
@@ -157,7 +157,7 @@ CI (`.github/workflows/`): `tests.yml`, `main-guard.yml`, `branch-cleanup.yml` (
 | Entry point | What it does |
 |---|---|
 | `python -m analysis.IBM.dcf_scenarios` | v3 aggregate framework console report: FCFF v3 margins, paired (growth, f; f = M&A recurrence share, HIDDEN-ASSUMPTIONS #11) scenarios, WACC grid, f-locus. Not a headline source (see next row); live store-derived output drifts from the v3 record (HIDDEN-ASSUMPTIONS #24). |
-| `python -m analysis.IBM.dcf_drivers_run` | v4 driver-engine runner: headline P10/P50/P90 + attribution, E/V fixed-point iteration, f-locus (HIDDEN-ASSUMPTIONS #11), SBC-drift locus, beta locus, supply-shock correlation and `tax_rate`=0 (no debt tax shield) disclosure runs, implied-reinvestment check. Seed 7, 10k sims, 10y. Loci and disclosure runs: `analysis/IBM/dcf_drivers_run.py` docstring. |
+| `python -m analysis.IBM.dcf_drivers_run` | v4 driver-engine runner: headline P10/P50/P90 + attribution, E/V fixed-point iteration, f-locus (HIDDEN-ASSUMPTIONS #11), SBC-drift locus, beta locus, supply-shock correlation and `tax_rate`=0 (no debt tax shield) disclosure runs, implied-reinvestment check. Loci and disclosure runs: `analysis/IBM/dcf_drivers_run.py` docstring. |
 
 ## Tests
 
