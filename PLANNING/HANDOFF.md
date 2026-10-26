@@ -1,14 +1,29 @@
-# Session handoff — open work as of 2026-07-17 ~5:30pm EST
+# Session handoff — open work as of 2026-07-17 ~9:30pm EST (session closed clean)
 
 Live work-state for the next session/agent. Delete items as completed; delete the file
 when empty. Onboarding: read CLAUDE.md first, then docs/HIDDEN-ASSUMPTIONS.md.
 
-## Done (all merged to main: PRs #5–#11)
+## Done (all merged to main: PRs #5–#14)
 
 IBM v4/v4.1 + audited report (gate-to-gate) · driver engine + path explorer · vintage
 backtest · importer completeness (RPO/dividends/estimates) · everything-visualizer +
-blueprint restyle + range buttons + backtest section · DUOL first pass · docs overhaul
-(CLAUDE.md, ARCHITECTURE, HIDDEN-ASSUMPTIONS, README/context/tickets/INDEX).
+blueprint restyle + range buttons + backtest section (IBM 14/18 in band, 78% vs 80%
+nominal) · DUOL first pass (#14 — the #10 commit had merged into viz-final-pass, not
+main; cherry-picked back) · 0DTE skew exclusion (#14, `_SKEW_MIN_DTE`) · docs overhaul,
+reconciled from the two parallel sets (#11 + #12: verified spine, 31-trap registry).
+
+## Process rule (learned tonight, cost ~400k duplicate tokens)
+
+Two sessions ran the same handoff item in parallel (both doc overhauls) and raced in
+the shared main checkout. Before starting an item: check `gh pr list` and for active
+sibling sessions; CLAIM the item by editing this file (item → "in progress, session X,
+worktree Y") and push the claim; work only in `wt-*` worktrees.
+
+## Decision open for Luc
+
+- **DUOL depth**: first pass is consensus-anchored screening only (mechanical backtest
+  0/6 in band — bands decorative). Promote to a driver-model frontier run (needs
+  sign-off, vision ✦6) or leave as screening; order vs ORCL is Luc's call.
 
 ## Newly opened by the docs verification (assign before/with ORCL)
 
