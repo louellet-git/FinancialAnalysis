@@ -164,7 +164,7 @@ labels and assumptions. Evidence:
 `financial_analysis/scenarios.py` (`DEFAULT_SCENARIOS`, `capital_structure_for`).
 
 **22. The correlation matrix is reviewed *judgment*, and it moves tails only.** All 28
-entries (including the 3 deliberate zeros) are argued assumptions (rationales in
+pairs (25 entries in CORR plus 3 deliberate zeros, named in its comment) are argued assumptions (rationales in
 DRIVERS.md / driver_model.py), PSD-verified (see analysis/IBM/DRIVERS.md, Correlation matrix). The supply-shock
 correlation regime (rf·g_* = −0.15, set in `dcf_drivers_run.py`) barely moves P50 and widens
 tails (report §3.2). Do not treat correlation entries as estimated from data — none are.

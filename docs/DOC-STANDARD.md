@@ -72,7 +72,7 @@ at use nor in a linked source.
 | specification | issuer, references, approval, history | glossary | body, assurance requirements, constraints, one unambiguous identified statement per requirement |
 | record | issuer, references | glossary | subject or category, body; `id` is the record identifier |
 
-Glossary: tailored out for every type (request: none, per its R cell). Standard finance, accounting, statistics and software terms and ticker symbols need no definition; define a repo-coined term at first use or link its defining doc.
+Glossary: tailored out for every type except request, whose R cell gives none. Standard finance, accounting, statistics and software terms and ticker symbols need no definition; define a repo-coined term at first use or link its defining doc.
 
 ## Status
 

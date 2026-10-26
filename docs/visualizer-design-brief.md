@@ -117,7 +117,7 @@ Missing data: card body is `p.note` (constraint 5). Price-dependent items (Marke
   ramp, no colorbar; outlier-paths table (bottom/top 10 by
   per-share value, each driver's draw with its z-score, |z| ≥ 1.5 bold).
 - **Engine meta line** — a full-width secondary-ink paragraph (sims, seed,
-  horizon, net debt, shares, TV share; optionally the fraction of paths with
+  horizon, net debt, shares, TV share and the fraction of paths with
   pinned terminal growth).
 - Absent: card "Driver model".
 

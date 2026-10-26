@@ -60,9 +60,7 @@ Every top-level item (revenue, FCFF margin, WACC, terminal value) is a
 **deterministic, unit-tested formula** over *drivers*; the drivers are the only
 stochastic objects.
 
-- **Parameter-MC, one draw per path.** Each of the 10,000 paths draws one value per
-  stochastic driver (e.g. one software growth rate) and holds it constant across all 10
-  projection years (HIDDEN-ASSUMPTIONS #12).
+- **Parameter-MC, one draw per path.** Each of the 10,000 paths draws one value per stochastic driver (HIDDEN-ASSUMPTIONS #12).
 - **Joint sampling.** Stochastic drivers are drawn as correlated standard normals (full
   pairwise correlation matrix, Cholesky-factorized, validated positive-definite), then transformed to each driver's marginal as `mean + std·z`.
   Truncated drivers: HIDDEN-ASSUMPTIONS #14.
@@ -84,7 +82,7 @@ stochastic objects.
 
 Per-ticker parameterization lives in `analysis/<TICKER>/driver_model.py` (IBM is the
 only instance): drivers with written rationales, the correlation matrix, segment bases,
-net debt, shares, exposing `build()`. driver_model.py governs over DRIVERS.md (CLAUDE.md §Normativity map, item 2).
+net debt, shares, exposing `build()`. Governance: CLAUDE.md §Normativity map, item 2.
 
 ## Backtest harness
 

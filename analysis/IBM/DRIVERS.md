@@ -33,9 +33,9 @@ Notation:
 
 | Item | Formula (words) | Notes |
 |---|---|---|
-| Revenue | Σ segments: t=1 base × (1+pin_seg); t≥2 t=1 level × (1+g_seg)^(t−1); pins (warning-implied year-1 levels; see Source ledger) | growth constant per path (T-DCF-1 ticket); **FX unmodeled** (report §3.2) |
+| Revenue | Σ segments: t=1 base × (1+pin_seg); t≥2 t=1 level × (1+g_seg)^(t−1); pins (warning-implied year-1 levels; see Segments below) | growth constant per path (T-DCF-1 ticket); growth nominal all-in, **FX unmodeled** (report §3.1) |
 | FCFF margin | core + mix_drift(t) − sbc(t) − f × ma | mix_drift and sbc are deterministic per-year schedules |
-| WACC | E/V × (rf + β×ERP) + (1−E/V) × (rf + spread) × (1−τ) | kd = (rf + spread) × (1−τ) per path, so kd moves with rf on every path (spread fixed, kd_spread row); **flat term structure disclosed** — one WACC for years 1-10 + terminal |
+| WACC | E/V × (rf + β×ERP) + (1−E/V) × (rf + spread) × (1−τ) | kd floats with rf on every path (spread fixed; kd_spread row); **flat term structure disclosed** — one WACC for years 1-10 + terminal |
 | Terminal value | Gordon at the joint guard (docs/ARCHITECTURE.md, Driver-based engine), discounted 10y | — |
 
 Equity/share: bridge in analysis/IBM/README.md.
@@ -61,16 +61,13 @@ Equity/share: bridge in analysis/IBM/README.md.
 | equity_weight | D | — | 0.72 | — | — | price-value fixed point |
 | terminal_growth | S | normal | 2.25% | 0.75% | joint guard | T-DCF-3 (derived tg) ticketed |
 
-Segments: bases = FY2025 8-K actuals, EXCEPT Infrastructure = FY24/25 average $14,869M
-(cycle-peak haircut). Year-1 pins: Software +5%, Consulting 0%, Financing 0% on FY2025
-bases; Infrastructure **−1.69% on the haircut base** — level-targeted to the
-warning-implied $14,618M so the cycle correction is not double-counted.
+Segments: bases and year-1 pins per driver_model.py (`SEGMENT_HISTORY`, `INFRA_BASE`, `INFRA_Y1_TARGET`); rationale: report §3.1.
 
 ## Correlation matrix
 
 Full matrix: `CORR` in analysis/IBM/driver_model.py (PSD min eigenvalue 0.419); every entry,
 zeros included, is an assumption. Regime disclosure: rf·g_* > 0 assumes demand-driven rates; the
-supply-shock case (rf·g_* = −0.15) is published by `dcf_drivers_run.py`; effect in
+supply-shock case (rf·g_* correlation −0.15) is published by `dcf_drivers_run.py`; effect in
 docs/HIDDEN-ASSUMPTIONS.md #22.
 
 | Pair | ρ | Rationale |
@@ -106,8 +103,7 @@ At means: **7.06%** (MC std 0.56%). v3-to-v4 WACC bridge and per-share effect:
 
 ## Output
 
-`python -m analysis.IBM.dcf_drivers_run` (v4 final, seed 7, 10k sims, 10y, conditional on f=0.50);
-headline, attribution, loci and implied-reinvestment check in report §4.
+`python -m analysis.IBM.dcf_drivers_run` (settings: the script; results: report §4), conditional on f=0.50.
 
 ## Source ledger
 

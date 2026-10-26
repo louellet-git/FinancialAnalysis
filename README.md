@@ -12,10 +12,8 @@ A **valuation factory**: Python pipeline that pulls public-company financials fr
 EDGAR, enriches them with market data (prices, earnings surprises, forward consensus,
 option chains), and runs Monte Carlo DCF valuations through two engines — a classic
 scenario engine and a driver-based engine (mechanics: docs/ARCHITECTURE.md) — feeding an
-adversarial review pipeline and a single-page HTML company report. Rules: PLANNING/RULES.md; open work: PLANNING/tickets.md. Flagship analysis: IBM (`analysis/IBM/`, v4.1
-report).
-
-Agents: start with **CLAUDE.md**.
+adversarial review pipeline and a single-page HTML company report. Rules: PLANNING/RULES.md; open work: the board, PLANNING/board/ (`python scripts/board.py status`); unticketed backlog: PLANNING/tickets.md. Flagship analysis: IBM (`analysis/IBM/`, v4.1
+report `analysis/IBM/report/IBM-valuation-2026-07.md`).
 
 ## Pipeline commands
 
@@ -58,8 +56,7 @@ python -m pytest
 ```
 
 Remote data is disk-cached under `data/raw/TICKER/`; re-runs are instant. Option chains
-and forward consensus are dated snapshots (yfinance serves current data only);
-`--refresh` overwrites.
+and forward consensus are dated snapshots (HIDDEN-ASSUMPTIONS #9).
 
 ## xlsx structure (nine tabs)
 
@@ -72,7 +69,7 @@ and forward consensus are dated snapshots (yfinance serves current data only);
 | Cash Flow | OCF, capex, FCF, buybacks, dividends, debt flows + derived FCF/margin |
 | Raw | All unmapped us-gaap USD concepts (100–200 rows per period) |
 | Prices | Daily OHLCV from yfinance (full history) |
-| Estimates | Historical earnings surprises (yfinance) + FMP estimates when available |
+| Estimates | Historical earnings surprises (yfinance; FMP when available) + FMP estimates when available |
 | Estimates Fwd | Dated forward consensus snapshot: revenue/EPS estimates by period, analyst price targets |
 | Options | Full option chain, one row per contract |
 | Options Summary | Per-expiry ATM IV, implied move (ATM straddle ÷ spot), 90/110 skew, put/call ratios + chain-wide `ALL` row |
@@ -90,7 +87,7 @@ statements only (docs/ARCHITECTURE.md); market data lives in the xlsx and the ca
 
 Any US-GAAP EDGAR filer (verified: NVDA, PANW, WMT, TGT, DUOL, IBM, MSFT, AAPL). ETFs
 and IFRS filers raise `UnsupportedFilingError`. Segment revenue is unavailable:
-PLANNING/tickets.md Ticket 7. Option history: none (upgrade path: FMP or Polygon).
+PLANNING/tickets.md Ticket 7. Vendor option history: none; snapshots accrue from first pull (upgrade path: FMP or Polygon).
 
 ## Project layout
 
@@ -111,7 +108,7 @@ analysis/IBM/                driver_model.py (v4 register),
                              README.md (v3, superseded; net-debt bridge)
 docs/                        COLLABORATION.md (two-person workflow), DOC-STANDARD.md,
                              ARCHITECTURE.md, HIDDEN-ASSUMPTIONS.md,
-                             visualizer design brief + accepted design spec,
+                             visualizer design brief (docs/visualizer-design-brief.md) + accepted design spec (docs/design-specs/2026-07-16-ratings-desk-blueprint.md),
                              superpowers/ (historical plans/specs)
 PLANNING/                    reusable-dcf-vision.md (standing initiative), RULES.md,
                              tickets.md, tickets-closed.md, token-ledger.md, board/ (tickets),
