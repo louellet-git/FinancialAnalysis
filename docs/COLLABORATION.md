@@ -38,14 +38,15 @@ where `/delegate` armed `.delegation/`; a worktree without it skips the delegati
 1. `git fetch origin && git switch --detach origin/main`.
 2. Create or edit the ticket (as Start step 2; `review` is set on the branch by Finish step 2
    instead).
-3. `/skeptic-review` it: one skeptic (owner: "Panel per ticket"; "for critics use haiku"; pass model haiku),
+3. `/skeptic-review` it: one skeptic (owner: "Panel per ticket"; "for critics use haiku"),
    lens `correctness`. The all-PLEASED `.delegation/review-artifact.json` covers one
    commit at the current HEAD; re-run it after any edit.
 4. `git add PLANNING/board/<id>.md && git commit -m "board: <id>" && git push origin HEAD:main`.
 
 ## Finish and merge
 
-1. Your session's `/review-panel` reaches all-PLEASED.
+1. Your session's `/review-panel` reaches all-PLEASED; each governed doc the PR changes has its
+   PASS row committed in `docs/doc-reviews.tsv` (`docs/DOC-STANDARD.md` §Review).
 2. Set your ticket to `review` in the branch's last commit; open a normal PR:
    `create_pull_request` head `<branch>`, base `main`, title `<area>: <goal>`, body the
    filled template | `gh pr create --title "<area>: <goal>" --body-file <a filled copy of
@@ -69,8 +70,8 @@ A head change after review returns to steps 1 and 3. Locally use the `gh` form (
 
 - **Push to main rejected** (not a fast-forward) or area now taken: redo §Ticket commits from
   step 1 on the fresh `origin/main`, `python scripts/board.py check`, pick another area if taken.
-- **Hook denial** (board or doc gate): its message names the fix; `board gate error:` is a hook fault: report it, do
-  not work around it. **Board check failure:** fix the file the check names.
+- **Hook denial** (board or doc gate): its message names the fix. `board gate error:` is a hook fault: report it, do not
+  work around it. `cannot resolve a git repo` means a bad path: fix the path. **Board check failure:** fix the file the check names.
 - **Conflict with main:** on the branch `git fetch origin && git merge --no-commit
   origin/main`, resolve, `python -m pytest -q`, run `/review-panel` on the integrated tree,
   then one `git commit` (the resolution is new code). `merge=union` works only in local git;
@@ -79,12 +80,13 @@ A head change after review returns to steps 1 and 3. Locally use the `gh` form (
   (§Start).
 - **Dead or resumed session:** `git fetch origin`, `python scripts/board.py status`, `git
   switch <the ticket's branch>`. Push the work branch at each milestone.
-- **Abandoned claim** (PR closed unmerged): the hook denies releasing another branch's ticket
+- **Abandoned claim** on your own ticket (PR closed unmerged; another person's: ask its owner
+  first, §Board, handoff and decisions): the hook denies releasing another branch's ticket
   from detached `origin/main`. Delete the remote branch if the work is dropped (Finish step 6),
   then in the branch's worktree `git switch -C <branch> origin/main`, set the ticket
   `backlog` with `branch:` blank, commit, `git push origin HEAD:main` (a worktree has no
-  `.delegation/`, so no skeptic review; for one, run §Ticket commits step 3 in an armed
-  checkout).
+  `.delegation/`, so no skeptic review; for the skeptic review, use an armed checkout:
+  §Ticket commits).
 - **Main-guard reverted a push, or its job says "NOT reverted" or "could not decide":** open a
   PR; fix main by hand in the last two cases.
 
@@ -118,7 +120,7 @@ CI (`.github/workflows/`):
   is ok and runs `board.py check` (a failure fails the run, no revert). Any other push is undone by one tree-restore commit authored `main-guard` (no force
   push); the run then fails, as it does if the revert fails or `gh api` fails ("could not
   decide; NOT reverted").
-- `branch-cleanup.yml`: deletes the head branch when its PR merges (no ticket check); daily,
+- `branch-cleanup.yml`: deletes a same-repo PR head branch when its PR merges (no ticket check); daily,
   deletes branches merged into main, never main, an open PR head or a not-done ticket's branch.
 
 Limits. Free plan (owner: "Keep repo on github as is. Free version."): no branch
@@ -127,17 +129,18 @@ protection or required checks, so CI-green before merge is a session rule. Stric
 
 - A merged branch left on origin blocks the `done` push: delete it by hand (Finish step 6),
   since the sweep spares it until the ticket is done; slash-named ref deletion is unverified.
-- The done check matches any merge subject ending `/<branch>`, and a board-only direct push can
-  mint such a merge commit (main-guard does not revert board-only pushes). A ticket created
-  already `done` (new file) is not covered. Squash and rebase merges have no merge commit, so
+- The done check (push-to-main row) can be satisfied by a board-only direct push that mints a
+  merge commit (main-guard does not revert board-only pushes). A ticket created already `done`
+  (new file) is not covered. Squash and rebase merges have no merge commit, so
   they block the `done` edit.
 - The other-branch ticket rule is hook-only; main-guard checks paths only.
 - The "Always ask first" rule (§Board, handoff and decisions) is not enforceable.
 - Unseen by the hook: Bash file writes; git inside scripts, `source`, `eval "$(...)"`
   indirection, make, aliases or an IDE; `gh pr merge`; `gh api`; the web UI; backtick command
-  substitution; `--push-option=value` (and `-o value`, misread as a refspec, so denied); tag
-  pushes via `--tags`, `--follow-tags` or `refs/tags/*`; `--pathspec-from-file`, `-i` and `--amend` on a commit; GitHub MCP tools beyond those
-  gated.
+  substitution; tag pushes via `--tags`, `--follow-tags` or `refs/tags/*`;
+  `--pathspec-from-file`, `-i` and `--amend` on a commit; GitHub MCP tools beyond those gated.
+- A separate-value `-o value` or `--push-option value` is misread as a refspec and falsely
+  denied; use `--push-option=value`.
 - Subshell scoping `( cd x && ... )` is not modelled: the `cd` is treated as persisting.
 - Pushes to other remotes get the same verdicts, judged against origin's board; the other
   remote's own state is not checked.

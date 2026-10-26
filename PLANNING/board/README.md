@@ -44,6 +44,6 @@ acceptance: One checkable sentence.
 Constraint: transitions and ownership of tickets are in `docs/COLLABORATION.md`.
 
 Assurance: `python scripts/board.py check` enforces TK1–TK5 (TK2: shape, not date), TK7, TK8
-and TK10 (TK6 and TK9 by review); on a violation it prints the failing ticket and rule: fix the ticket file,
-re-run.
+and TK10 (TK6 and TK9 by review). Any other file under `PLANNING/board/` also fails. On a
+violation it prints the failing ticket and rule: fix the ticket file, re-run.
 `python scripts/board.py branch <name>` prints the active ticket id for a branch (exit 1 if none).
