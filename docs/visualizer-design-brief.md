@@ -11,9 +11,8 @@ scope: Contract for a purely cosmetic restyle of the single-page report from scr
 ## What the page is
 
 One self-contained HTML file per ticker (e.g. `data/processed/IBM_dcf.html`), generated
-by Python, not served: static HTML (header, stat chips, tables, notes, footer)
-interleaved with interactive plotly.js charts. No app shell, routing or data fetching
-(constraint 1); opened from disk, emailed or printed (constraint 4).
+by Python, not served: static HTML interleaved with plotly.js charts; no app shell,
+routing or data fetching (constraint 1); opened from disk, emailed or printed (constraint 4).
 
 Labels: "aggregate" = classic engine, "driver" = driver engine, "mechanical vintages" = backtest; modules: docs/ARCHITECTURE.md.
 
@@ -38,10 +37,9 @@ Each `section.rsec` holds an `h2.section-h` (flex row; hairline `::after` rule t
 and a `div.grid`: 2 columns (`repeat(2, minmax(0,1fr))`); breakpoint per constraint 7.
 Cards: `section.card`, 1 px hairline border; tables scroll in `div.tblwrap`
 (`overflow-x: auto`); `.card.wide` spans both columns. Every card is `h3` title + `p.sub`
-caption (muted) + body (a plotly div, an HTML table, or a `p.note`).
+caption (secondary ink) + body (a plotly div, an HTML table, or a `p.note`).
 
-When a section's data is missing the card body is a `p.note` — a quiet
-muted block with a labeled "not available" message.
+Missing data: card body is `p.note` (constraint 5).
 
 ## Section inventory (every panel)
 
@@ -58,7 +56,7 @@ muted block with a labeled "not available" message.
 - **Price history** — plotly line (2 px, categorical slot 1), up to ~3,300
   points spanning decades (weekly before the trailing year, daily within it). One direct end-label (last close). Linear/log
   toggle (see Current interactions). Height 380 px.
-- **Price vs valuation — 6-month view** — daily close line (2 px, primary
+- **Price vs valuation** — daily close line (2 px, primary
   ink; two years of dailies, default window the trailing 6 months, ~126 points) over: a translucent band (base scenario P10–P90, base
   scenario hue at 10% opacity) and three 2 px horizontal scenario-P50
   lines (bear / base / bull scenario hues), each direct-labeled at the
@@ -74,7 +72,7 @@ muted block with a labeled "not available" message.
   margin point only. Height 420 px.
 - **Annual fundamentals** — HTML table, 9 columns (FY, Revenue, Net income,
   OCF, Capex, SBC, Acquisitions, FCF, FCF margin) × ≤10 rows. `$x.xB`
-  formatting, em-dash for missing values.
+  (SBC `$x.xxB`), em-dash for missing values.
 
 ### 4. Aggregate DCF scenarios (4 half-width chart cards + 1 wide table card)
 - **FCF projection fan** — 3 scenario median lines (2 px; bear / base /
@@ -93,13 +91,13 @@ muted block with a labeled "not available" message.
 - **Scenario summary** — wide HTML table: 3 rows × 8–9 columns; first column
   carries a color dot (`span.dot`) keying the scenario hue.
 
-### 5. Driver-based model (conditional on a per-ticker driver register, docs/ARCHITECTURE.md, Driver-based engine; when present: 6 wide + 2 half cards + meta line)
+### 5. Driver-based model (conditional on `analysis/<TICKER>/driver_model.py` exposing `build()`; docs/ARCHITECTURE.md §2. Driver-based engine; when present: 6 wide + 2 half cards + meta line)
 - **Segment revenue history** — stacked columns per fiscal year (~3–8 years,
   2–8 segments), categorical slot colors in fixed order, 2 px surface gap
   between stack segments (white marker outline). Legend present.
 - **Driver assumptions** — wide HTML table (one row per driver, 16 for IBM, × 7 cols: Driver, Type,
-  Dist, Mean, Std, Bounds, Rationale). Type column holds pill badges
-  (`span.badge.stoch` accent-tinted / `span.badge.det` raised-fill) — the only pill
+  Dist, Mean, Std, Bounds, Rationale). Type column holds badges
+  (`span.badge.stoch` accent-tinted / `span.badge.det` raised-fill), the only badge
   component on the page. Rationale column wraps (`td.wrap`, min 260 px).
 - **Driver correlation matrix** — plotly heatmap, N×N for N stochastic
   drivers (4–8), diverging scale warm → neutral midpoint → cool over [−1, 1],
@@ -117,7 +115,7 @@ muted block with a labeled "not available" message.
   coordinates (2,000 paths, `_PARCOORDS_TARGET`); outlier-paths table (bottom/top 10 by
   per-share value, each driver's draw with its z-score, |z| ≥ 1.5 bold; the print-safe
   table form of the spaghetti hover data).
-- **Engine meta line** — a full-width muted paragraph (sims, seed,
+- **Engine meta line** — a full-width secondary-ink paragraph (sims, seed,
   horizon, net debt, shares, TV share; optionally the fraction of paths with
   pinned terminal growth).
 - Absent: card "Driver model".
@@ -143,7 +141,7 @@ muted block with a labeled "not available" message.
 - Absent (no vintage with 3 clean annual periods): card "Vintage backtest"; note lists skipped dates.
 
 ### 7. Options market (conditional; chip row + 4 half cards + 1 wide table)
-- **Chain stat-chip row** — 6 chips (Snapshot date, Spot, P/C volume, P/C
+- **Chain stat-chip row** — 6 chips (Snapshot, Spot, P/C volume, P/C
   open interest, Total volume, Total open interest), same chip component as
   the header.
 - **ATM implied-volatility term structure** — line+markers (categorical slot 1, 2 px, 8 px
@@ -173,14 +171,15 @@ seeds), and a generated-by line.
 
 ## Current interactions
 
-- **Hover tooltips on every chart** (plotly): unified x-hover on the price
-  history, 6-month view, fan chart, and fundamentals subplots (one readout
+- **Hover tooltips on every chart** (plotly): unified x-hover on the
+  fundamentals subplots and the fan chart (one readout
   listing all series at the hovered x); per-mark hover on bars, histogram
   bins, waterfall steps, tornado bars, dumbbell markers, and heatmap cells.
   Tooltip templates are custom (e.g. "FY20XX: $X.XB", "24 Jul 26 · $K: N
   contracts") with the series name in the tooltip's side tag.
-- **Scale toggle**: the price-history card has a two-button Linear/Log
-  updatemenu (top-right inside the plot area). This is the only control on the page.
+- **Controls**: the Linear/Log updatemenu (price-history card, top-right, above the plot
+  area) and the range buttons (both price cards, top-left). These are the only controls on
+  the page.
 - **Zoom/pan**: plotly's default drag-zoom and double-click-reset remain
   active on all charts. The plotly modebar is disabled
   (`displayModeBar: false`) — no floating toolbar appears.

@@ -9,14 +9,14 @@ scope: Registry of non-obvious assumptions and traps in the pipeline and IBM mod
 # Trap registry
 
 Each entry has an evidence pointer (symbols, not line numbers). Add new traps with a
-pointer. Claims about IBM.json contents (entries 2, 4, 21) need
+pointer. Claims about IBM.json contents (entries 2, 3, 4, 6, 10, 21) need
 `python -m scripts.import_financials IBM` to check.
 
 ## Data layer
 
 **1. Recast-financials landmine (IBM FY2019–20).** The store mixes continuing-ops
 (recast) revenue with unrecast consolidated OCF across the Kyndryl divestiture boundary,
-so the FY2020 "28.2% FCF margin" is spurious and **margin windows longer than 5 years
+so the FY2020 "28.2% margin" is spurious and **margin windows longer than 5 years
 are unusable** for IBM until the importer aligns recasts. The backtest surfaces (never
 fixes) this via `DATA_FLAGS`; every realized IBM vintage's data window touches a flagged year.
 Evidence: `analysis/IBM/README.md` §Data notes; `backtest.DATA_FLAGS`;
@@ -24,8 +24,10 @@ Evidence: `analysis/IBM/README.md` §Data notes; `backtest.DATA_FLAGS`;
 
 **2. Phantom "10-K" rows.** The importer keys periods off *any* mapped concept's period
 end, so stray XBRL facts create annual rows with 1–2 fields and no revenue/OCF (IBM:
-2012-06-30, 2018-01-01, 2019-01-01; placeholder `filed_date`, see #21). They carry no FCF and never enter the DCF
-engines, but any code iterating `company.periods` naively will hit them.
+2012-06-30, 2018-01-01, 2019-01-01; placeholder `filed_date`, see #21). They carry no FCF and are skipped by the `fcf_margin is not None` filter, but
+`derive_fcf_margin` slices the last five annual rows before that filter (dcf.py:49-52), so a
+phantom row inside that window shrinks it. Any code iterating `company.periods` naively
+will hit them.
 `backtest._clean_annuals` filters them by requiring revenue AND OCF. Evidence:
 `financial_analysis/importer.py` (`all_periods[key]` row creation);
 `backtest._clean_annuals`; `tests/test_backtest.py`;
@@ -58,10 +60,9 @@ Filing-level instance-document extraction is Ticket 7. Evidence:
 `financial_analysis/schema.py` (`segment_revenue`).
 
 **6. The JSON store holds statements only — no prices, options, or estimates.**
-`store.save()` serializes `periods` exclusively; market data attached by
-`scripts/analyze.py` lives only in the xlsx and in dated snapshots under
-`data/raw/TICKER/` (options/, estimates/, prices.json). IBM's JSON `prices` array is
-empty; the report's price/dividend/analyst-target figures were **hand-entered** from
+`store.save()` writes `ticker`, `cik`, `company_name` and `periods` only; market data lives
+in the xlsx and in `data/raw/TICKER/` (dated `options/` and `estimates/` snapshots;
+`prices.json` cache). The report's price/dividend/analyst-target figures were **hand-entered** from
 cited sources, not pipeline outputs (disclosed). Evidence:
 `financial_analysis/store.py` (`save`); `analysis/IBM/README.md` §Data notes;
 `analysis/IBM/report/SOURCE-AUDIT.md` row 43.
@@ -86,8 +87,8 @@ docstrings).
 
 **21. `filed_date` can be outright fabricated (placeholder = period_end).** The importer
 initializes `filed_date` to the period end and only overwrites it where a *revenue*
-concept fact matched that (end, form). Phantom rows and sparse pre-2018 rows keep the
-placeholder — e.g. IBM's 2012-06-30 row claims it was "filed" 2012-06-30. Never trust
+concept fact matched that (end, form). Phantom rows (#2) and sparse pre-2018 rows keep the
+placeholder, so their `filed_date` equals `period_end`. Never trust
 `filed_date` on a row without revenue.
 Evidence: `importer.py` (`"filed_date": end,  # placeholder`) and
 `_populate_filed_dates` (revenue concepts only); IBM.json phantom rows show
@@ -102,7 +103,7 @@ null `repurchases_common_stock` for FY2020+ mirrors reality (IBM's buybacks stop
 the mapping itself works, see #3) and the source audit
 verified the nulls. Capital-return arithmetic in the analysis treats dividends + M&A as
 the (debt-funded) return channel. Evidence: `analysis/IBM/driver_model.py` (`SHARES ... held flat (SBC charged in margin)`);
-`analysis/IBM/REVIEW.md` F5, F13; `analysis/IBM/report/IBM-valuation-2026-07.md` §3.4;
+`analysis/IBM/REVIEW.md` F5, F13, F14; `analysis/IBM/report/IBM-valuation-2026-07.md` §3.1;
 `analysis/IBM/report/SOURCE-AUDIT.md` row 43.
 
 **11. f-conditionality: every headline number is conditional on f = 0.50.** The M&A
@@ -117,8 +118,8 @@ judgment, not a fitted parameter. Evidence: `analysis/IBM/driver_model.py`
 
 **12. "Tails are decorative."** Each path holds one growth draw for all ten years (no
 mean reversion — ticket T-DCF-1, PLANNING/tickets.md, the largest known distortion; far-year dispersion widens), so the left tail is
-understated even after the v4 correlation matrix fattened it. Standing language: "P50s
-are robust; P10s are optimistic. No margin-of-safety claim is made from these tails."
+understated even after the v4 correlation matrix fattened it. Standing wording: the
+tail caveat in `analysis/IBM/report/IBM-valuation-2026-07.md` §4 (verbatim there, per REVIEW F6).
 Do not quote P10/P90 as decision-grade. Evidence:
 `analysis/IBM/report/IBM-valuation-2026-07.md` (tail-caveat callout);
 `analysis/IBM/REVIEW.md` (T-DCF-1: "Until then, P10/P90 are decorative");
@@ -126,8 +127,8 @@ Do not quote P10/P90 as decision-grade. Evidence:
 
 **13. The scenarios registry carries IBM v3 values; the engine is v4 — deliberate.**
 `financial_analysis/scenarios.py` (`_ibm_v3`, `_SCENARIO_OVERRIDES["IBM"]`,
-`CAPITAL_OVERRIDES["IBM"]`) encodes the v3 aggregate framework (base P50 $141 family:
-g 2.15%, WACC 7.5%, margin 14.5%). The v4 headline is recorded in analysis/IBM/report/IBM-valuation-2026-07.md §4 and computed only by
+`CAPITAL_OVERRIDES["IBM"]`) encodes the v3 aggregate framework (g 2.15%,
+WACC 7.5%, margin 14.5%; the v3 record does not reproduce: #24). The v4 headline is recorded in analysis/IBM/report/IBM-valuation-2026-07.md §4 and computed only by
 `analysis/IBM/driver_model.py` + `financial_analysis/driver_dcf.py`. The visualizer runs both, in separate labeled sections ("Aggregate DCF scenarios" vs "Driver-based
 model"). Net debt ($54.0B) agrees across both; shares agree (#10). If you read
 `scenarios.py` for "the IBM valuation," you get v3. Evidence: files cited;
@@ -139,7 +140,8 @@ bounds and realized correlations distort. Second-order for mild truncations; che
 bound sits within ~2σ of its mean (bound masses: analysis/IBM/DRIVERS.md driver table).
 Evidence: `financial_analysis/driver_dcf.py` (module docstring).
 
-**15. The two engines guard degenerate terminal values differently.** Classic engine:
+**15. The two engines guard degenerate terminal values differently.** Classic engine
+(docs/ARCHITECTURE.md §1):
 `np.clip(wacc − tg, 0.001, None)` — near-degenerate paths CAN dominate its tails (F12).
 Driver engine: joint guard, pinned fraction reported (docs/ARCHITECTURE.md, Driver-based
 engine). Do not assume classic-engine tail output has the driver engine's protections.
@@ -151,6 +153,13 @@ periods have positive FCF (blocks post-IPO/loss-makers); the backtest requires �
 usable periods per vintage and records skips. Evidence:
 `financial_analysis/dcf.py` (`_MIN_POSITIVE_FCF_PERIODS`);
 `financial_analysis/backtest.py` (`_MIN_USABLE_PERIODS`).
+
+**20. Default scenario presets are generic mature-large-cap.** `DEFAULT_SCENARIOS`
+(bear 1%/base 4%/bull 6% growth) applies to ANY ticker without an override — running
+`visualize_dcf` on a hypergrowth name silently produces mature-large-cap scenario
+labels and assumptions. Net-debt derivation (docs/ARCHITECTURE.md, `scenarios.py` row)
+treats absent short-term borrowings as 0. Evidence:
+`financial_analysis/scenarios.py` (`DEFAULT_SCENARIOS`, `capital_structure_for`).
 
 **22. The correlation matrix is reviewed *judgment*, and it moves tails only.** All 28
 entries (including the 3 deliberate zeros) are argued assumptions (rationales in
@@ -203,13 +212,6 @@ disclosure fact but is written to the Balance Sheet tab with `statement="disclos
 is not extracted. Evidence: `scripts/analyze.py` (`_TAB_FOR`);
 `financial_analysis/xbrl_tags.py` (`DISCLOSURE_TAGS`).
 
-**20. Default scenario presets are generic mature-large-cap.** `DEFAULT_SCENARIOS`
-(bear 1%/base 4%/bull 6% growth) applies to ANY ticker without an override — running
-`visualize_dcf` on a hypergrowth name silently produces mature-large-cap scenario
-labels and assumptions. Net-debt derivation (docs/ARCHITECTURE.md, `scenarios.py` row)
-treats absent short-term borrowings as 0. Evidence:
-`financial_analysis/scenarios.py` (`DEFAULT_SCENARIOS`, `capital_structure_for`).
-
 **28. Background tasks can be killed mid-run.** Persist resume state in
 `PLANNING/handoff/` as you go; delete items as completed. Interrupted fan-outs resume,
 never restart (vision ✦6b).
@@ -227,9 +229,9 @@ POSIX scripts.
 Evidence: `git config core.autocrlf`; `$PSVersionTable.PSVersion`.
 
 **31. Tests are no-network by construction — keep them that way.** The whole suite runs
-on synthetic fixtures (mocked HTTP, synthetic yfinance/consensus/company objects), fixed
-seeds everywhere randomness exists: 7 in engine and report code (`SCENARIO_SEED`,
-dcf_drivers_run `SEED`, backtest default `seed`, visualize `DRIVER_SEED`); tests fix their own
-(42, 7, 8). A test that needs the network or a floating seed is a defect.
+on synthetic fixtures (mocked HTTP, synthetic yfinance/consensus/company objects), seeds
+are fixed wherever runs are compared or published (`SCENARIO_SEED`, dcf_drivers_run `SEED`,
+visualize `DRIVER_SEED`, backtest `seed=7`); tests fix their own (42, 7, 8). Engines default
+to floating seeds (`DCFAssumptions.seed`, `DriverDCF.run`), so pass a seed to reproduce. A test that needs the network or a floating seed is a defect.
 Run `pytest -q` for the current count rather than trusting any doc.
 Evidence: `pytest -q`; grep "no network" in tests/.

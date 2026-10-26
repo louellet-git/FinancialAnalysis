@@ -34,7 +34,7 @@ SEC EDGAR (companyfacts JSON API)          yfinance
   scenarios.py   scripts/visualize_dcf.py ──► TICKER_dcf.html     scripts/analyze.py ──► TICKER_financials.xlsx (9 tabs)
 ```
 
-(`analyze.py` also reads the statements from `store.py`.)
+(`analyze.py` also reads the statements from `store.py`; `visualize_dcf.py` also reads `scenarios.py` and `backtest.py`.)
 
 ## The two DCF engines
 
@@ -67,15 +67,15 @@ stochastic objects.
   from the same path's risk-free draw: `(rf + spread)·(1 − tax)`. Deriving kd from rf
   keeps credit spreads non-negative by construction.
 - **Degenerate-draw guard (T-DCF-2, analysis/IBM/REVIEW.md).** Per path, `tg_eff = min(tg_draw, wacc_path - 0.02)`;
-  pinned share in `tg_pinned_fraction` (0.0009 for IBM, seed 7). Classic-engine contrast:
-  HIDDEN-ASSUMPTIONS #15. Results expose percentiles only (fat tails make moments misleading).
+  pinned share in `tg_pinned_fraction` (0.0009 for IBM, seed 7).
+  Results expose percentiles only (fat tails make moments misleading).
 - **Attribution.** `run()` re-runs the full valuation per stochastic driver with its
   mean shifted ±1σ under the **same seed** (identical z-draws, correlations intact) and
   reports the P50 per-share delta — the tornado chart and per-driver review inputs.
 - **Deterministic drivers** become constant arrays, or per-year `schedule`s (e.g. the
   SBC ramp 2.54%→3.5%); `mean` must equal `schedule[0]`. Ambiguity (stochastic with
-  std 0, deterministic with bounds, non-PSD matrices, duplicate names) is rejected at
-  construction, not repaired.
+  std 0, deterministic with bounds, duplicate names) is rejected at construction; non-PSD
+  matrices fail at first `sample()`. Nothing is repaired.
 - **Required drivers.** `ROLE_DRIVERS` names 12 mandatory drivers (core_margin,
   margin_mix_drift, sbc_ratio, ma_ratio, ma_recurrence, rf, beta, erp, kd_spread,
   tax_rate, equity_weight, terminal_growth) plus one growth driver per revenue segment.
@@ -110,7 +110,7 @@ so treat their bands as decorative until a driver build exists.
 | Module | What it does |
 |---|---|
 | `__init__.py` | Re-exports `EdgarClient`. |
-| `backtest.py` | Vintage backtest of revenue/FCF projections; see Backtest harness. Skipped vintages are recorded with reasons; minimum history: HIDDEN-ASSUMPTIONS #16. |
+| `backtest.py` | Vintage backtest of revenue/FCF projections; see Backtest harness. Skipped vintages are recorded with reasons. |
 | `cache.py` | Disk cache for SEC companyfacts JSON at `data/raw/TICKER/company_facts.json`; re-fetches on `refresh` or corrupt cache. |
 | `dcf.py` | Classic engine (above): `DCFAssumptions`, `DCFResult`, `StochasticDCF`, `derive_fcf_margin`. Annual (10-K/10-K/A) periods only. |
 | `driver_dcf.py` | Driver-based engine (above): `Driver`, `Item`, `DriverModel`, `SegmentSpec`, `DriverDCF`, `DriverDCFResult` (incl. `driver_draws` per-path values for the path explorer), vetted item formulas `revenue_paths`, `fcff_margin`, `wacc_capm`, `terminal_value`, registered in `ITEMS`. |
@@ -120,9 +120,9 @@ so treat their bands as decorative until a driver build exists.
 | `importer.py` | companyfacts → `PeriodFinancials`: maps concepts via `xbrl_tags` (first-wins merge across fallback concepts per period_end, sign flips), collects unmapped us-gaap USD concepts into `raw_extras`, best-effort `filed_date` from revenue-concept `filed` fields, raises `UnsupportedFilingError` for non-us-gaap filers. `segment_revenue` is None (HIDDEN-ASSUMPTIONS #5). |
 | `market_data.py` | yfinance daily OHLCV (`load_prices`, cached at `data/raw/TICKER/prices.json`) and earnings surprises (`load_earnings_surprises`). |
 | `options.py` | yfinance option-chain snapshots (dated, `data/raw/TICKER/options/YYYY-MM-DD.json`; history: HIDDEN-ASSUMPTIONS #9) + derived per-expiry metrics: ATM IV, straddle-mid implied move, 90/110 skew, put/call volume & OI ratios (`fetch_option_chain`, `compute_chain_metrics`, `list_snapshots`, `load_snapshot`). |
-| `scenarios.py` | Bear/base/bull presets (`DEFAULT_SCENARIOS` generic mature-large-cap; `_SCENARIO_OVERRIDES` for IBM (v3 framework) and DUOL), `CAPITAL_OVERRIDES` (IBM, DUOL; IBM: HIDDEN-ASSUMPTIONS #13), `capital_structure_for` (derives net debt from latest 10-K: long_term_debt + short-term borrowings from raw_extras − cash; shares_outstanding falling back to diluted). |
+| `scenarios.py` | Bear/base/bull presets (`DEFAULT_SCENARIOS` generic mature-large-cap; `_SCENARIO_OVERRIDES` for IBM and DUOL), `CAPITAL_OVERRIDES` (IBM, DUOL), `capital_structure_for` (derives net debt from latest 10-K: long_term_debt + short-term borrowings from raw_extras − cash; shares_outstanding falling back to diluted). |
 | `schema.py` | Dataclasses: `PeriodFinancials` (~60 statement fields + `remaining_performance_obligation`, reserved `segment_revenue`, `raw_extras`; derived `free_cash_flow` (sign trap: HIDDEN-ASSUMPTIONS #7) and `fcf_margin`), `CompanyFinancials`, `PricePoint`, `EarningsEstimate`, `EarningsSurprise`, `OptionQuote`, `OptionChainSnapshot`, `ConsensusEstimates`. |
-| `store.py` | JSON persistence `data/processed/TICKER.json`, periods only (see Data flow); in-memory session cache; `get_series`/`compare` query helpers with metric-name validation. |
+| `store.py` | JSON persistence `data/processed/TICKER.json`; in-memory session cache; `get_series`/`compare` query helpers with metric-name validation. |
 | `xbrl_api.py` | companyfacts fetch + series extraction: filters by form type/unit, deduplicates by end date (HIDDEN-ASSUMPTIONS #4), returns last `n` entries. |
 | `xbrl_tags.py` | The concept registry: `TagSpec` (fallback concept lists, unit, sign_flip) for income statement / balance sheet / cash flow / disclosure (RPO) fields, plus `STATEMENT_MAP` and `UNIT_MAP`. Inline comments document precedence rationales (interest_income, dividends_paid). |
 
@@ -140,8 +140,8 @@ CLI flags for the first six scripts below (the pipeline): README.md §Pipeline c
 | `visualize_dcf.py` | Single-page HTML report (plotly.js inlined); six sections in `SECTION_TITLES`; panels and styling in docs/visualizer-design-brief.md. |
 | `board.py` | `python scripts/board.py check \| status \| branch NAME \| new --title --area --owner --branch --acceptance [--status]`. Scrum-board checker and ticket creator over `PLANNING/board/` (rules in its README). CI use: docs/COLLABORATION.md. |
 | `board_gate.py` | (PreToolUse hook, not a CLI) Board gate on edits, commits, pushes and PRs. Rules and limits: docs/COLLABORATION.md. |
-| `main_guard.py` | `git diff --no-renames --name-only B A \| python -m scripts.main_guard <1 if A merges a PR, else 0>`. Exit 2 = revert (`.github/workflows/main-guard.yml`; rule: docs/COLLABORATION.md). |
-| `stale_branches.py` | `python -m scripts.stale_branches BRANCHES MERGED OPEN_PR_HEADS`. Selects the remote branches the daily cleanup deletes (`.github/workflows/branch-cleanup.yml`; criteria: docs/COLLABORATION.md). |
+| `main_guard.py` | `git diff --no-renames --name-only B A \| python -m scripts.main_guard <1 if A merges a PR, else 0>`. Exit 2 = revert (rule: docs/COLLABORATION.md). |
+| `stale_branches.py` | `python -m scripts.stale_branches BRANCHES MERGED OPEN_PR_HEADS`. Selects the remote branches the daily cleanup deletes (criteria: docs/COLLABORATION.md). |
 | `doc_check.py` | `python scripts/doc_check.py check \| list \| record <path> <PASS\|FAIL>`; also the commit hook. Rules: docs/DOC-STANDARD.md. |
 | `cloud-setup.sh` | `bash scripts/cloud-setup.sh`. Idempotent environment setup: installs requirements.txt and requirements-dev.txt (pytest). |
 
@@ -152,9 +152,9 @@ CI (`.github/workflows/`): `tests.yml`, `main-guard.yml`, `branch-cleanup.yml` (
 | Entry point | What it does |
 |---|---|
 | `python -m analysis.IBM.dcf_scenarios` | v3 aggregate framework console report: FCFF v3 margins, paired (growth, f) scenarios, WACC grid, f-locus. Not a headline source (see next row); kept reproducible. |
-| `python -m analysis.IBM.dcf_drivers_run` | v4 driver-engine runner: headline P10/P50/P90 + attribution, E/V fixed-point iteration, f-locus (HIDDEN-ASSUMPTIONS #11), SBC-drift locus, beta locus, supply-shock correlation and τ=0 (no debt tax shield) disclosure runs, implied-reinvestment check. Seed 7, 10k sims, 10y. |
+| `python -m analysis.IBM.dcf_drivers_run` | v4 driver-engine runner: headline P10/P50/P90 + attribution, E/V fixed-point iteration, f-locus (HIDDEN-ASSUMPTIONS #11), SBC-drift locus, beta locus, supply-shock correlation and `tax_rate`=0 (no debt tax shield) disclosure runs, implied-reinvestment check. Seed 7, 10k sims, 10y. Loci and disclosure runs: `analysis/IBM/dcf_drivers_run.py` docstring. |
 
 ## Tests
 
-`python -m pytest` from the repo root runs the full suite; tests under `tests/` mirror the
-package and scripts. No network (HIDDEN-ASSUMPTIONS #31).
+`python -m pytest` from the repo root runs the full suite; `tests/` covers most modules and
+scripts; no test file for `edgar.py`, `run_dcf.py` or `import_*.py`. No network (HIDDEN-ASSUMPTIONS #31).

@@ -23,8 +23,8 @@ Every `*.md` file, tracked or untracked and not ignored, except:
 - `.claude/agents/**`, `.claude/commands/**`, `.claude/skills/**` and `.github/**`: tool
   configuration read by models or GitHub.
 - `PLANNING/board/T-*.md`: request items, fields checked by `scripts/board.py`. Mapping:
-  created=date, area=scope, title=subject, owner=originator, acceptance=detailed
-  description, body=rationale.
+  created=date, area=scope, title=subject, owner=originator, acceptance=requested response
+  and description, body=rationale; no due date (board items have none).
 
 One item per file. The ledger `docs/doc-reviews.tsv` is a clause 9 record, not governed.
 
@@ -36,19 +36,21 @@ Front matter between `---` lines, `key: value`, exactly these keys:
 |---|---|
 | id | `DOC-<SLUG>`: A-Z, 0-9, hyphens; unique |
 | type | description, plan, policy, procedure, report, request, specification, record |
-| item | `10.<n> <2019 title>`, n in 2..74; or `9 record` |
+| item | `10.<n> <2019 title>`, n in 2..74; or `9 record` (type record only) |
 | status | draft, current, frozen, superseded |
 | date | YYYY-MM-DD, date of issue; frozen/superseded: date of the item's last commit |
 | scope | one sentence: purpose and scope. Audience is always the two owners and their agents |
 
 The registry of items is the headers: `python scripts/doc_check.py list`.
 
-## Elements met for every item
+## Elements met by reference
+
+Which types carry each is the R column below.
 
 - Issuing organization: this repo.
 - Change history: `git log -- <path>` plus the PR.
-- Approval: merge of the PR carrying the item's PASS row in `docs/doc-reviews.tsv`; see
-  `docs/COLLABORATION.md` §Finish and merge.
+- Approval (plan, policy, procedure, specification only): merge of the PR carrying the
+  item's PASS row in `docs/doc-reviews.tsv`; see `docs/COLLABORATION.md` §Finish and merge.
 - References: inline paths or links.
 - Glossary: standard finance, accounting, statistics and software terms and
   ticker symbols need no definition; define a repo-coined term at first use or link its
@@ -69,19 +71,21 @@ at use nor in a linked source.
 | policy | issuer, references, approval, history | glossary | objectives, enforcers, effective date if not `date` |
 | procedure | issuer, references, approval, history | glossary | related plans and procedures, inputs and outputs, ordered steps per participant, error resolution |
 | report | issuer, references, history | glossary | participants, summary, context, methods, conclusions and recommendations |
-| request | none | none | subject, originator, requested response, description with due date, rationale |
+| request | none: clause 7 gives a request no issuer, references, history or glossary | none | subject, originator, requested response, description with due date, rationale |
 | specification | issuer, references, approval, history | glossary | body, assurance requirements, constraints, one unambiguous identified statement per requirement |
 | record | issuer, references | none | subject or category, body; `id` is the record identifier |
 
 ## Status
 
-- `frozen`: an audited or binding record (e.g. `analysis/IBM/report/*`,
-  `analysis/IBM/REVIEW.md`, `analysis/IBM/DRIVER-REVIEW.md`). `superseded`: replaced by a newer
-  item, named in its scope line. Both get the header check only, are never compacted, and are
-  outside the duplicate-line rule. The header governs over any status line in the body.
+- `frozen`: an audited or binding record (e.g. the frozen docs in
+  CLAUDE.md normativity items 3 and 6). `superseded`: replaced by a newer
+  item, named in its scope line. Both get a header-only critic review and need a PASS
+  row (Review); Compactness does not apply to them. The header governs over any status line
+  in the body.
 - `draft` and `current`: full critic review.
 - Records (type record): history is the body, so Compactness 3 does not apply; rows are
-  append-only, never edited.
+  append-only, never edited. A record's PASS row covers its header; appended rows are data
+  and do not void it.
 
 ## Compactness (the critic's checklist)
 
@@ -96,23 +100,24 @@ at use nor in a linked source.
 
 ## Review
 
-1. Run the `doc-critic` agent (`.claude/agents/doc-critic.md`) on the doc. A finding that adds text names the reader action it
-   enables; prefer cuts.
+1. Run the `doc-critic` agent (`.claude/agents/doc-critic.md`) on the doc. A finding that
+   adds text names the reader action it enables; prefer cuts.
 2. On PASS: `python scripts/doc_check.py record <path> PASS`, then commit `docs/doc-reviews.tsv`
    with the doc.
 3. On FAIL: fix, re-run.
 
 Every governed doc, whatever its status, needs a PASS row for its current content (CRLF read
-as LF); any change voids it. The session writes the row, so CI proves a PASS was recorded,
+as LF); any change voids it (records: Status). The session writes the row, so CI proves a PASS was recorded,
 not that the critic ran.
 
 ## Enforcement
 
 - `python scripts/doc_check.py check`: whole repo; the hard gate, in CI on pull requests and
   pushes to main (after the fact). Fails on a bad header, a duplicate id, a missing PASS row,
-  or a breach of Compactness 7.
+  or a breach of Compactness 7. Review only, not doc_check: scope sentence,
+  frozen/superseded date, superseded successor, item title.
 - Hook (`--hook`), the early gate: runs on git commit, merge, cherry-pick, revert, pull, am,
-  rebase or push, in each repo the command names (else cwd; unresolvable denies; forms in
+  rebase or push, in each repo the command names (else the payload cwd, then $CLAUDE_PROJECT_DIR; unresolvable denies; forms in
   `scripts/doc_check.py`). `commit` checks the docs it carries (index vs HEAD; worktree for `-a`
   or a pathspec; branch if `git add` is chained). Other subcommands check the branch (worktree
   vs merge-base with `origin/main`, plus untracked). A failing doc denies.
@@ -124,4 +129,4 @@ not that the critic ran.
 - Tasks, tools and methods, quality measures, review and reporting: Review, Compactness,
   Enforcement. Responsibilities: Review, Approval.
 - Interfaces: CI and the hook. Other plans: `docs/COLLABORATION.md`. Risks: the unseen paths
-  in Enforcement. Change procedure: edit through a PR; Review voids old rows.
+  in Enforcement. Change procedure: edit through a PR; see Review.
