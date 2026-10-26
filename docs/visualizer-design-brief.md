@@ -13,7 +13,7 @@ scope: Contract for a purely cosmetic restyle of the single-page report from scr
 Per-ticker page, e.g. `data/processed/IBM_dcf.html`; its form is fixed by hard constraints 1-7 below.
 Not served: no app shell or routing; opened from disk or emailed.
 
-Labels: "aggregate" = classic engine, "driver" = driver engine, "mechanical vintages" = backtest; modules: docs/ARCHITECTURE.md.
+Labels: "aggregate" = classic engine, "driver" = driver engine, "mechanical vintages" = backtest. Module map: docs/ARCHITECTURE.md.
 
 Reference render: `python -m scripts.visualize_dcf IBM` (needs the repo's IBM data).
 Page length is ≈4,900 px at 1440 px wide.
@@ -38,8 +38,7 @@ Cards: `section.card`, 1 px hairline border; tables scroll in `div.tblwrap`
 (`overflow-x: auto`); `.card.wide` spans both columns. Every card is `h3` title + `p.sub`
 caption (secondary ink) + body (a plotly div, an HTML table, a `p.note`, or a table followed by `p.note` blocks).
 
-Missing data: card body is `p.note` (constraint 5). Price-dependent items (Market cap and
-accent chips, price line and labels, 'vs price' column) are omitted when price is unavailable; the Last price chip stays, value '—' (sub 'unavailable').
+Missing data: card body is `p.note` (constraint 5). Price-dependent items (Market cap chip, the accent chip, price line and labels, 'vs price' column) are omitted when price is unavailable; the Last price chip stays, value '—' (sub 'unavailable').
 
 ## Section inventory (every panel)
 
@@ -220,7 +219,7 @@ docs/design-specs/2026-07-16-ratings-desk-blueprint.md; a restyle changes those 
 6. **Color discipline.** Categorical hue order stays fixed; scenario hues
    follow the scenario (bear/base/bull) everywhere they appear; diverging
    midpoint stays neutral; sequential ramp stays single-hue. If the palette
-   is re-branded, validate it (adjacent-pair CVD ΔE ≥ 12, 3:1 surface contrast) as in `docs/design-specs/2026-07-16-ratings-desk-blueprint.md`, "CVD / contrast confirmation", before shipping.
+   is re-branded, validate it (adjacent-pair CVD ΔE ≥ 12, 3:1 surface contrast) as in `docs/design-specs/2026-07-16-ratings-desk-blueprint.md` §1 "Chart palette", paragraph "CVD / contrast confirmation", before shipping.
 7. **Responsive floor.** Two-column grid ≥1100 px, single column below;
    tables scroll horizontally inside their cards; the page body must never
    scroll horizontally.

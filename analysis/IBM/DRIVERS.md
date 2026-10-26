@@ -29,13 +29,11 @@ Notation:
 | t | projection year 1-10 |
 | locus | published sweep of one judgment (the f-locus moves g_software's mean with f; `analysis/IBM/dcf_drivers_run.py` docstring, item 3) |
 
-Bounds are in the Bounds/Schedule column.
-
 ## Items (deterministic formulas)
 
 | Item | Formula (words) | Notes |
 |---|---|---|
-| Revenue | Σ segments: t=1 base × (1+pin_seg); t≥2 t=1 level × (1+g_seg)^(t−1); pins = warning-implied year-1 levels (Jul 14 2026 warning; see Source ledger) | growth constant per path (T-DCF-1 ticket); **FX: growth is nominal all-in, FX unmodeled** |
+| Revenue | Σ segments: t=1 base × (1+pin_seg); t≥2 t=1 level × (1+g_seg)^(t−1); pins (warning-implied year-1 levels; see Source ledger) | growth constant per path (T-DCF-1 ticket); **FX unmodeled** (report §3.2) |
 | FCFF margin | core + mix_drift(t) − sbc(t) − f × ma | mix_drift and sbc are deterministic per-year schedules |
 | WACC | E/V × (rf + β×ERP) + (1−E/V) × (rf + spread) × (1−τ) | kd = (rf + spread) × (1−τ) per path, so kd moves with rf on every path (spread fixed, kd_spread row); **flat term structure disclosed** — one WACC for years 1-10 + terminal |
 | Terminal value | Gordon at the joint guard (docs/ARCHITECTURE.md, Driver-based engine), discounted 10y | — |
@@ -47,7 +45,7 @@ Equity/share: bridge in analysis/IBM/README.md.
 | Driver | S/D | Dist | Mean | Std | Bounds/Schedule | Review |
 |---|---|---|---|---|---|---|
 | g_software | S | truncnorm | **5.0% = 4.0% organic + f×2.0% acquired (`SOFTWARE_ORGANIC_G + f × SOFTWARE_ACQUIRED_G`)** | 2.5% | hi 11% | F16 organic/acquired split; credit derived from f |
-| g_consulting | S | normal | 1.75% | 2.5% | — | skew proxy; mixture: PLANNING/tickets.md §Engine tickets (Mixture marginal for g_consulting) |
+| g_consulting | S | normal | 1.75% | 2.5% | — | skew proxy; mixture: Engine tickets, Mixture marginal for g_consulting |
 | g_infrastructure | S | truncnorm | −1.0% | 2.5% | hi +3% | decade-CAGR dispersion; hi at 1.6σ: ≈5.5% of draws clip at +3% (analytic, normal marginal: Φ(−1.6)) |
 | g_financing | D | — | 0.0% | — | — | disclosures in driver_model.py rationale |
 | core_margin | S | normal | 19.4% pre-SBC, pre-M&A (FY2025 endpoint, F19) | 2.0% | — | F19; endpoint basis and mix drift together |
@@ -109,8 +107,7 @@ At means: **7.06%** (MC std 0.56%). v3-to-v4 WACC bridge and per-share effect:
 ## Output
 
 `python -m analysis.IBM.dcf_drivers_run` (v4 final, seed 7, 10k sims, 10y, conditional on f=0.50);
-headline, attribution, loci and implied-reinvestment check in report §4
-(analysis/IBM/report/IBM-valuation-2026-07.md).
+headline, attribution, loci and implied-reinvestment check in report §4.
 
 ## Source ledger
 

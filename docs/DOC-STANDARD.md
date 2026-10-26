@@ -45,7 +45,7 @@ The registry of items is the headers: `python scripts/doc_check.py list`.
 
 ## Elements met by reference
 
-Which types carry each is the R column below.
+The R column below lists the elements each type meets by reference.
 
 - Issuing organization: this repo.
 - Change history: `git log -- <path>` plus the PR.
@@ -72,7 +72,7 @@ at use nor in a linked source.
 | specification | issuer, references, approval, history | glossary | body, assurance requirements, constraints, one unambiguous identified statement per requirement |
 | record | issuer, references | glossary | subject or category, body; `id` is the record identifier |
 
-Glossary: tailored out for every type. Standard finance, accounting, statistics and software terms and ticker symbols need no definition; define a repo-coined term at first use or link its defining doc.
+Glossary: tailored out for every type (request: none, per its R cell). Standard finance, accounting, statistics and software terms and ticker symbols need no definition; define a repo-coined term at first use or link its defining doc.
 
 ## Status
 
@@ -110,8 +110,8 @@ not that the critic ran.
 
 ## Enforcement
 
-- `python scripts/doc_check.py check`: whole repo; the hard gate, in CI on pull requests and
-  pushes to main (after the fact). Fails on a bad header, a duplicate id, a missing PASS row,
+- `python scripts/doc_check.py check`: whole repo; the hard gate, run in CI (docs/COLLABORATION.md
+  §Enforcement and limits), after the fact. Fails on a bad header, a duplicate id, a missing PASS row,
   or a breach of Compactness 7. Review only, not doc_check: scope sentence,
   frozen/superseded date, superseded successor, item title.
 - Hook (`--hook`), the early gate: runs on git commit, merge, cherry-pick, revert, pull, am,

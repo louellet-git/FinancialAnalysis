@@ -95,6 +95,8 @@ filed_date == period_end.
 
 ## Model layer (both engines; v3 and v4)
 
+v3 = aggregate framework (analysis/IBM/README.md, v3 record); v4 = driver engine (`analysis/IBM/driver_model.py`).
+
 **10. Buybacks are genuinely absent from the model — not an omission bug.** IBM's
 share count is held FLAT (948,675,228 diluted) because SBC is charged as a full cash
 cost — also growing the count would double-charge dilution (REVIEW F5). The store's

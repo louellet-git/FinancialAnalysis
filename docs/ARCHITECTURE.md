@@ -74,7 +74,7 @@ stochastic objects.
   mean shifted ±1σ under the **same seed** (identical z-draws, correlations intact) and
   reports the P50 per-share delta — the tornado chart and per-driver review inputs.
 - **Deterministic drivers** become constant arrays, or per-year `schedule`s (e.g. the
-  SBC ramp 2.54%→3.5%); `mean` must equal `schedule[0]`. Ambiguity (stochastic with
+  SBC ramp; see analysis/IBM/DRIVERS.md sbc_ratio); `mean` must equal `schedule[0]`. Ambiguity (stochastic with
   std 0, deterministic with bounds, duplicate names) is rejected at construction; non-PSD
   matrices fail at first `sample()`. Nothing is repaired.
 - **Required drivers.** `ROLE_DRIVERS` names 12 mandatory drivers (core_margin,
@@ -84,7 +84,7 @@ stochastic objects.
 
 Per-ticker parameterization lives in `analysis/<TICKER>/driver_model.py` (IBM is the
 only instance): drivers with written rationales, the correlation matrix, segment bases,
-net debt, shares, exposing `build()`. Precedence: CLAUDE.md §Normativity map, item 2.
+net debt, shares, exposing `build()`. driver_model.py governs over DRIVERS.md (CLAUDE.md §Normativity map, item 2).
 
 ## Backtest harness
 
@@ -133,7 +133,7 @@ Commands for the first six scripts below (the pipeline): README.md §Pipeline co
 
 | Script | What it does |
 |---|---|
-| `analyze.py` | Full pipeline: import → attach prices/surprises/consensus/options → `data/processed/TICKER_financials.xlsx`. Writes the nine-sheet workbook (Income Statement, Balance Sheet, Cash Flow, Raw, Prices, Estimates, Estimates Fwd, Options, Options Summary; HIDDEN-ASSUMPTIONS #17). RPO rows: HIDDEN-ASSUMPTIONS #19. |
+| `analyze.py` | Full pipeline: import → attach prices/surprises/consensus/options → `data/processed/TICKER_financials.xlsx`. Writes the nine-sheet workbook (tabs: README.md §xlsx structure; HIDDEN-ASSUMPTIONS #17). RPO rows: HIDDEN-ASSUMPTIONS #19. |
 | `import_financials.py` | Import + save JSON only, no xlsx. |
 | `import_edgar.py` | Bulk full-index filing download (archival fallback path — companyfacts is the primary parse path). |
 | `run_dcf.py` | Classic-engine MC DCF on stored data; no network. |
@@ -154,7 +154,7 @@ CI (`.github/workflows/`): `tests.yml`, `main-guard.yml`, `branch-cleanup.yml` (
 | Entry point | What it does |
 |---|---|
 | `python -m analysis.IBM.dcf_scenarios` | v3 aggregate framework console report: FCFF v3 margins, paired (growth, f; f = M&A recurrence share, HIDDEN-ASSUMPTIONS #11) scenarios, WACC grid, f-locus. Not a headline source (see next row); live store-derived output drifts from the v3 record (HIDDEN-ASSUMPTIONS #24). |
-| `python -m analysis.IBM.dcf_drivers_run` | v4 driver-engine runner: headline P10/P50/P90 + attribution, E/V fixed-point iteration, f-locus (HIDDEN-ASSUMPTIONS #11), SBC-drift locus, beta locus, supply-shock correlation and `tax_rate`=0 (no debt tax shield) disclosure runs, implied-reinvestment check. Loci and disclosure runs: `analysis/IBM/dcf_drivers_run.py` docstring. |
+| `python -m analysis.IBM.dcf_drivers_run` | v4 driver-engine runner: headline P10/P50/P90 + attribution, E/V fixed-point iteration, f-locus (HIDDEN-ASSUMPTIONS #11), SBC-drift locus, beta locus, supply-shock correlation and `tax_rate`=0 (no debt tax shield) disclosure runs, implied-reinvestment check. Sections: `analysis/IBM/dcf_drivers_run.py` docstring. |
 
 ## Tests
 
