@@ -83,7 +83,7 @@ statements only (docs/ARCHITECTURE.md); market data lives in the xlsx and the ca
 |------|--------|------|
 | Financial statements | SEC EDGAR companyfacts XBRL JSON API | None (public; User-Agent set in `edgar.py`) |
 | Daily prices, earnings surprises, forward consensus, option chains (current snapshot) | yfinance | None |
-| Analyst estimates | FMP (v3 legacy endpoints unavailable on free plan) | `FMP_API_KEY` in `.env` (gitignored) |
+| Analyst estimates; earnings surprises (override yfinance when returned) | FMP (v3 legacy endpoints unavailable on free plan) | `FMP_API_KEY` in `.env` (gitignored) |
 
 Any US-GAAP EDGAR filer (verified: NVDA, PANW, WMT, TGT, DUOL, IBM, MSFT, AAPL). ETFs
 and IFRS filers raise `UnsupportedFilingError`. Segment revenue is unavailable:
