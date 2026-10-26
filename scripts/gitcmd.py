@@ -1,0 +1,103 @@
+"""Shell-line parser shared by the git hooks (doc_check, board_gate): which git commands a line runs, and where."""
+import itertools
+import os
+import re
+import shlex
+import subprocess
+from pathlib import Path
+
+SHELLS = {"bash", "sh", "zsh", "pwsh", "powershell"}
+GIT = re.compile(r"(^|[\\/])git(\.exe)?$")
+CD = {"cd", "pushd", "Set-Location"}
+ENV = re.compile(r"(GIT_DIR|GIT_WORK_TREE)=(.*)", re.S)
+COMMIT_VALUE_OPTS = {"--message", "--file", "--author", "--date", "--template", "--cleanup", "--fixup", "--squash",
+                     "--reuse-message", "--reedit-message", "--trailer", "--pathspec-from-file"}
+TARGET = re.compile(r"""(?:\b(?:cd|pushd|Set-Location)\s+(?:-\w+\s+)?|\bGIT_(?:DIR|WORK_TREE)=)"""
+                    r"""("[^"]*"|'[^']*'|[^\s;&|]+)""")
+
+
+def git_out(root, *args, check=True):
+    return subprocess.run(["git", "-C", str(root), *args], capture_output=True, check=check).stdout
+
+
+def calls(command, dirs=()):
+    """[(subcommand, args, dirs)] for every `git` in the command (and `gh pr create`, as "pr"): the subcommand is
+    the first non-option token after git's global options. dirs, in order, are [(kind, value)] the call runs under:
+    earlier cd/pushd ("cd") and GIT_DIR/GIT_WORK_TREE assignments, then its own -C, --git-dir, --work-tree."""
+    command = command.replace("\\\n", " ").replace("\n", ";")
+    lex = shlex.shlex(command, posix=True, punctuation_chars=True)
+    lex.commenters = ""
+    try:
+        toks = list(lex)
+    except ValueError:
+        toks = command.split()
+    out, cds = [], list(dirs)
+    for sep, grp in itertools.groupby(toks, lambda t: bool(t) and set(t) <= set(";&|()<>")):
+        seg = list(grp)
+        if sep:
+            continue
+        g = next((i for i, w in enumerate(seg) if GIT.search(w) or w == "gh"), None)
+        if g is None and (seg[0].rsplit("/", 1)[-1] in SHELLS or seg[0] == "eval"):
+            out += calls(" ".join(seg[1:]), cds)
+        if seg[0] in CD and (a := [w for w in seg[1:] if not w.startswith("-")]):
+            cds.append(("cd", a[0]))
+        cds += [(m[1], m[2]) for w in seg[:g] if (m := ENV.fullmatch(w))]
+        if g is None:
+            continue
+        if seg[g] == "gh":
+            out += [("pr", seg[g + 3:], list(cds))] * (seg[g + 1:g + 3] == ["pr", "create"])
+            continue
+        it, own = iter(seg[g + 1:]), []
+        for w in it:
+            if w in ("-C", "--git-dir", "--work-tree"):
+                own.append((w, next(it, "")))
+            elif w in ("-c", "--namespace", "--config-env"):
+                next(it, None)
+            elif w.startswith(("--git-dir=", "--work-tree=")):
+                own.append(tuple(w.split("=", 1)))
+            elif not w.startswith("-"):
+                out.append((w, list(it), cds + own))
+    return out
+
+
+def target(dirs, cwd):
+    """(cwd, GIT_* env) a call with these dirs runs in; ~ and $VARS expanded. ValueError if its cwd is no directory."""
+    env = {}
+    for kind, v in dirs:
+        p = Path(cwd, os.path.expandvars(os.path.expanduser(v)))
+        if kind in ("cd", "-C"):
+            cwd = p
+        else:
+            env["GIT_DIR" if "dir" in kind.lower() else "GIT_WORK_TREE"] = str(p)
+    if not Path(cwd).is_dir():
+        raise ValueError(f"cannot resolve a git repo for {cwd}")
+    return Path(cwd), env
+
+
+def pathspecs(args):
+    """None for a plain `git commit`; else its pathspecs (["."] for -a/--all). Over-approximates short flags."""
+    paths, it = [], iter(args)
+    for t in it:
+        if t == "--":
+            paths += it
+        elif t == "--all" or re.fullmatch(r"-[a-zA-Z]*a[a-zA-Z]*", t):
+            return ["."]
+        elif t in COMMIT_VALUE_OPTS or re.fullmatch(r"-[a-zA-Z]*[mFcCt]", t):
+            next(it, None)
+        elif not t.startswith("-"):
+            paths.append(t)
+    return paths or None
+
+
+def roots(command, cwd, dirs):
+    """(git toplevels, unresolved targets) for the base dir (payload cwd, else CLAUDE_PROJECT_DIR) and every
+    directory the command names."""
+    base = cwd or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+    found, bad = set(), []
+    for t in [""] + [t.strip("\"'") for t in TARGET.findall(command)] + dirs:
+        d = Path(base, os.path.expandvars(os.path.expanduser(t)))
+        try:
+            found.add(git_out(d, "rev-parse", "--show-toplevel").decode().strip())
+        except (subprocess.CalledProcessError, OSError):
+            bad.append(t or str(base))
+    return found, bad

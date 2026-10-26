@@ -4,15 +4,14 @@
 """
 import argparse
 import hashlib
-import itertools
 import json
-import os
 import re
-import shlex
-import subprocess
 import sys
 from datetime import date, datetime
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gitcmd  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 KEYS = ["id", "type", "item", "status", "date", "scope"]
@@ -21,18 +20,9 @@ STATUSES = ["draft", "current", "frozen", "superseded"]
 EXEMPT = re.compile(r"(\.claude/(agents|commands|skills)|\.github)/.*|PLANNING/board/T-[^/]*\.md")
 SEPARATOR = re.compile(r"[|:\s-]+")
 GATED = {"commit", "merge", "cherry-pick", "revert", "pull", "am", "rebase", "push"}
-SHELLS = {"bash", "sh", "zsh", "pwsh", "powershell"}
-GIT = re.compile(r"(^|[\\/])git(\.exe)?$")
-COMMIT_VALUE_OPTS = {"--message", "--file", "--author", "--date", "--template", "--cleanup", "--fixup", "--squash",
-                     "--reuse-message", "--reedit-message", "--trailer", "--pathspec-from-file"}
-TARGET = re.compile(r"""(?:\b(?:cd|pushd|Set-Location)\s+(?:-\w+\s+)?|\bGIT_(?:DIR|WORK_TREE)=)"""
-                    r"""("[^"]*"|'[^']*'|[^\s;&|]+)""")
 REVIEWS = "docs/doc-reviews.tsv"
+_git = gitcmd.git_out
 FIX = "Fix: run the doc-critic agent on each doc, then python scripts/doc_check.py record <path> PASS and git add " + REVIEWS
-
-
-def _git(root, *args, check=True):
-    return subprocess.run(["git", "-C", str(root), *args], capture_output=True, check=check).stdout
 
 
 def _sha(raw):
@@ -119,79 +109,19 @@ def problems(root, scope=None):
     return out
 
 
-def _calls(command):
-    """[(subcommand, args, dirs)] for every `git` in the command: the subcommand is the first non-option token
-    after git's global options; dirs are the -C, --git-dir and --work-tree values among them."""
-    command = command.replace("\\\n", " ").replace("\n", ";")
-    lex = shlex.shlex(command, posix=True, punctuation_chars=True)
-    lex.commenters = ""
-    try:
-        toks = list(lex)
-    except ValueError:
-        toks = command.split()
-    calls = []
-    for sep, grp in itertools.groupby(toks, lambda t: bool(t) and set(t) <= set(";&|()<>")):
-        seg = list(grp)
-        if sep:
-            continue
-        if seg[0].rsplit("/", 1)[-1] in SHELLS:
-            calls += _calls(" ".join(seg[1:]))
-        g = next((i for i, w in enumerate(seg) if GIT.search(w)), None)
-        it, dirs = iter(seg[g + 1:] if g is not None else []), []
-        for w in it:
-            if w in ("-C", "--git-dir", "--work-tree"):
-                dirs.append(next(it, ""))
-            elif w in ("-c", "--namespace", "--config-env"):
-                next(it, None)
-            elif w.startswith(("--git-dir=", "--work-tree=")):
-                dirs.append(w.partition("=")[2])
-            elif not w.startswith("-"):
-                calls.append((w, list(it), dirs))
-    return calls
-
-
-def _pathspecs(args):
-    """None for a plain `git commit`; else its pathspecs (["."] for -a/--all). Over-approximates short flags."""
-    paths, it = [], iter(args)
-    for t in it:
-        if t == "--":
-            paths += it
-        elif t == "--all" or re.fullmatch(r"-[a-zA-Z]*a[a-zA-Z]*", t):
-            return ["."]
-        elif t in COMMIT_VALUE_OPTS or re.fullmatch(r"-[a-zA-Z]*[mFcCt]", t):
-            next(it, None)
-        elif not t.startswith("-"):
-            paths.append(t)
-    return paths or None
-
-
-def _roots(command, cwd, dirs):
-    """(git toplevels, unresolved targets) for the base dir (payload cwd, else CLAUDE_PROJECT_DIR) and every
-    directory the command names."""
-    base = cwd or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
-    roots, bad = set(), []
-    for t in [""] + [t.strip("\"'") for t in TARGET.findall(command)] + dirs:
-        d = Path(base, os.path.expandvars(os.path.expanduser(t)))
-        try:
-            roots.add(_git(d, "rev-parse", "--show-toplevel").decode().strip())
-        except (subprocess.CalledProcessError, OSError):
-            bad.append(t or str(base))
-    return roots, bad
-
-
 def hook():
     """PreToolUse: deny a history-changing git command while a doc it carries has problems."""
     try:
         payload = json.load(sys.stdin)
         command = payload.get("tool_input", {}).get("command") or ""
-        calls = _calls(command)
+        calls = gitcmd.calls(command)
         gated = [c for c in calls if c[0] in GATED]
         if not gated:
             return 0
-        specs = [_pathspecs(a) for v, a, _ in gated if v == "commit"]
+        specs = [gitcmd.pathspecs(a) for v, a, _ in gated if v == "commit"]
         commit = {v for v, _, _ in gated} == {"commit"} and not any(v in ("add", "stage") for v, _, _ in calls)
         paths = None if all(x is None for x in specs) else [p for x in specs for p in x or []]
-        roots, bad = _roots(command, payload.get("cwd"), [d for _, _, ds in calls for d in ds])
+        roots, bad = gitcmd.roots(command, payload.get("cwd"), [v for _, _, ds in calls for _, v in ds])
         found = [m for r in sorted(roots) if Path(r, "docs/DOC-STANDARD.md").exists()
                  for m in problems(r, scope=changed(r, commit, paths))]
         if not (found or bad):
