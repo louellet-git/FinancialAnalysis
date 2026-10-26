@@ -23,3 +23,4 @@ date	path	sha256	verdict	reviewer
 2026-10-26	PLANNING/tickets-closed.md	04fb57a7e6d9bb2774034de6b8fe43598f9c4fa77cabea3570b51aa1a6c5f9fb	PASS	doc-critic/haiku (rehash: record header-only)
 2026-10-26	PLANNING/token-ledger.md	56a41d73cc32f66b1eb0f191eb90d4774fa9860d6414d7fb1cce5e71577b8b95	PASS	doc-critic/haiku (rehash: record header-only)
 2026-10-26	analysis/IBM/research-ledger.md	6326f137fff8f21bb7daac5285d70f7d4af273fb6a36c4d0172b99e78224bc62	PASS	doc-critic/haiku (rehash: record header-only)
+2026-10-26	PLANNING/tickets.md	1a773482c4ce4e3115ee3ffea7bcc154c285f6d31fb973ed90e3284f9fbe7d94	PASS	doc-critic/haiku
