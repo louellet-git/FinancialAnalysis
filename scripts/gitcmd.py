@@ -21,21 +21,17 @@ def git_out(root, *args, check=True):
 
 
 def calls(command, dirs=()):
-    """[(subcommand, args, dirs)] for every `git` in the command (and `gh pr create`, as "pr"): the subcommand is
-    the first non-option token after git's global options. dirs, in order, are [(kind, value)] the call runs under:
-    earlier cd/pushd ("cd") and GIT_DIR/GIT_WORK_TREE assignments, then its own -C, --git-dir, --work-tree."""
+    """[(subcommand, args, dirs)] per `git` (and `gh pr create` as "pr"); dirs = [(kind, value)] in order: earlier
+    "cd"s and GIT_DIR/GIT_WORK_TREE assignments, then its own -C, --git-dir, --work-tree."""
     command = command.replace("\\\n", " ").replace("\n", ";")
     lex = shlex.shlex(command, posix=True, punctuation_chars=True)
-    lex.commenters = ""
+    lex.commenters, lex.whitespace_split = "", True
     try:
         toks = list(lex)
     except ValueError:
         toks = command.split()
     out, cds = [], list(dirs)
-    for sep, grp in itertools.groupby(toks, lambda t: bool(t) and set(t) <= set(";&|()<>")):
-        seg = list(grp)
-        if sep:
-            continue
+    for seg in (list(g) for punct, g in itertools.groupby(toks, lambda t: bool(t) and set(t) <= set(";&|()<>")) if not punct):
         g = next((i for i, w in enumerate(seg) if GIT.search(w) or w == "gh"), None)
         if g is None and (seg[0].rsplit("/", 1)[-1] in SHELLS or seg[0] == "eval"):
             out += calls(" ".join(seg[1:]), cds)
@@ -61,7 +57,7 @@ def calls(command, dirs=()):
 
 
 def target(dirs, cwd):
-    """(cwd, GIT_* env) a call with these dirs runs in; ~ and $VARS expanded. ValueError if its cwd is no directory."""
+    """(cwd, GIT_* env) a call with these dirs runs in, ~ and $VARS expanded; ValueError if cwd is no directory."""
     env = {}
     for kind, v in dirs:
         p = Path(cwd, os.path.expandvars(os.path.expanduser(v)))
@@ -90,8 +86,7 @@ def pathspecs(args):
 
 
 def roots(command, cwd, dirs):
-    """(git toplevels, unresolved targets) for the base dir (payload cwd, else CLAUDE_PROJECT_DIR) and every
-    directory the command names."""
+    """(git toplevels, unresolved targets) of the base dir (cwd, else CLAUDE_PROJECT_DIR) and every dir named."""
     base = cwd or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
     found, bad = set(), []
     for t in [""] + [t.strip("\"'") for t in TARGET.findall(command)] + dirs:

@@ -1,5 +1,6 @@
 """board_gate PreToolUse hook: run as a subprocess against tmp git repos."""
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -24,16 +25,16 @@ def commit(repo, name, text="changed\n"):
     git(repo, "commit", "-m", "c")
 
 
-def hook(repo, tool, **tool_input):
+def hook(repo, tool, env=None, **tool_input):
     """The hook's decision dict, or None when it prints nothing (allow)."""
-    r = subprocess.run([sys.executable, str(GATE)], capture_output=True, text=True,
+    r = subprocess.run([sys.executable, str(GATE)], capture_output=True, text=True, env={**os.environ, **(env or {})},
                        input=json.dumps({"tool_name": tool, "tool_input": tool_input, "cwd": str(repo)}))
     assert (r.returncode, r.stderr) == (0, "")
     return json.loads(r.stdout)["hookSpecificOutput"] if r.stdout else None
 
 
-def bash(repo, command):
-    return hook(repo, "Bash", command=command)
+def bash(repo, command, env=None):
+    return hook(repo, "Bash", env, command=command)
 
 
 def edit(repo, rel="financial_analysis/dcf.py"):
@@ -48,11 +49,12 @@ def denied(out, *fragments):
 
 @pytest.fixture
 def repo(tmp_path):
-    """Clone of a bare origin: main (origin/main = HEAD) has code.py and a board; branch feat has an in-progress ticket, bare has none."""
+    """Clone of a bare origin: main (origin/main = HEAD) has code.py and a board; branches feat and two have an in-progress ticket, bare has none."""
     git(tmp_path, "init", "--bare", "-b", "main", "origin.git")
     git(tmp_path, "init", "-b", "main", "repo")
     r = tmp_path / "repo"
     put(r, "feat", status="in-progress", branch="feat")
+    put(r, "two", status="in-progress", branch="two", area="planning")
     (r / "code.py").write_text("x = 1\n")
     git(r, "add", "-A")
     git(r, "commit", "-m", "init")
@@ -60,6 +62,7 @@ def repo(tmp_path):
     git(r, "push", "origin", "main")
     git(r, "branch", "feat")
     git(r, "branch", "bare")
+    git(r, "branch", "two")
     return r
 
 
@@ -295,11 +298,14 @@ def test_powershell_commands_are_gated(repo):
 
 
 @pytest.mark.parametrize("tool", ["create_or_update_file", "push_files", "delete_file", "create_branch"])
-def test_github_write_tools_need_a_ticketed_branch_never_main(repo, tool):
+def test_github_write_tools_need_the_current_ticketed_branch_never_main(repo, tool):
     tool = "mcp__github__" + tool
     denied(hook(repo, tool, branch="main"), "never on main")
     denied(hook(repo, tool, branch="bare"), "bare")
+    denied(hook(repo, tool, branch="feat"), "feat", "current")  # B1: ticketed, but the session is on main
+    git(repo, "switch", "feat")
     assert hook(repo, tool, branch="feat") is None
+    denied(hook(repo, tool, branch="two"), "two", "current")
 
 
 def test_ticket_only_in_working_tree_does_not_authorize(repo):
@@ -326,3 +332,96 @@ def test_denial_says_when_a_branch_has_two_tickets(repo):
     git(repo, "push", "origin", "main")
     git(repo, "switch", "feat")
     denied(edit(repo), "2 active tickets")
+
+
+# ---- round 3 (B1-B4, N1) ----
+@pytest.mark.parametrize("cmd", ["git push origin two", "git push --force origin two", "git push origin +two",
+                                 "git push origin --delete two", "git push origin :two", "git push -d origin two",
+                                 "git push origin feat:two", "git push origin HEAD:refs/heads/two"])
+def test_b1_push_to_a_branch_other_than_the_current_one_denied(repo, cmd):
+    git(repo, "switch", "feat")
+    denied(bash(repo, cmd), "two", "feat")
+
+
+def test_b1_push_to_the_current_branch_incl_force_allowed(repo):
+    git(repo, "switch", "feat")
+    for cmd in ("git push origin feat", "git push --force origin feat", "git push origin +feat:refs/heads/feat",
+                "git push origin HEAD"):
+        assert bash(repo, cmd) is None, cmd
+
+
+def board_commit(repo, tweak):
+    """On branch two, one board-only commit that applies tweak(repo)."""
+    git(repo, "switch", "two")
+    tweak(repo)
+    git(repo, "add", "-A")
+    git(repo, "commit", "-m", "board")
+
+
+def test_b1_board_push_to_main_may_change_only_own_branch_tickets(repo):
+    f = "PLANNING/board/T-20261025-feat.md"
+    board_commit(repo, lambda r: (r / f).write_text((r / f).read_text().replace("in-progress", "done")))
+    denied(bash(repo, "git push origin HEAD:main"), "feat", "two", "ask")
+    git(repo, "reset", "--hard", "main")
+    g = "PLANNING/board/T-20261025-two.md"
+    board_commit(repo, lambda r: (r / g).write_text((r / g).read_text().replace("in-progress", "review")))
+    assert bash(repo, "git push origin HEAD:main") is None
+
+
+def test_b1_board_push_to_main_may_add_tickets_and_claim_backlog_ones(repo):
+    put(repo, "idea")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-m", "idea")
+    git(repo, "push", "origin", "main")
+    git(repo, "branch", "-f", "two", "main")
+    board_commit(repo, lambda r: (put(r, "new", area="engine"), put(r, "idea", status="in-progress", branch="idea", area="engine")))
+    assert bash(repo, "git push origin HEAD:main") is None
+
+
+@pytest.mark.parametrize("tweak", [lambda r: (r / "code.py").write_text("x = 2\n")])
+def test_b2_commit_with_pathspec_on_main_reaches_unstaged_code(repo, tweak):
+    new_ticket(repo)
+    tweak(repo)
+    assert bash(repo, "git commit -m ticket") is None
+    for cmd in ("git commit -m x code.py", "git commit -m x -- code.py", "git commit -m x PLANNING/board code.py"):
+        denied(bash(repo, cmd), "PLANNING/board/")
+    assert bash(repo, "git commit -m x PLANNING/board") is None
+    git(repo, "switch", "--detach")
+    denied(bash(repo, "git commit -m x code.py"), "PLANNING/board/")
+
+
+def test_b3_cd_to_home_relative_and_variable_targets_are_resolved_not_skipped(repo, tmp_path):
+    home = tmp_path / "home"
+    home.mkdir()
+    git(repo, "worktree", "add", str(home / "friend"), "bare")
+    git(repo, "switch", "feat")
+    for target in ("~/friend", "$HOME/friend", '"$HOME/friend"'):
+        denied(bash(repo, f"cd {target} && git commit -m x", {"HOME": str(home)}), "bare")
+    for target in ("~/missing", "$HOME/missing", "$NOPE_UNSET_VAR/x"):
+        denied(bash(repo, f"cd {target} && git commit -m x", {"HOME": str(home)}), "cannot resolve")
+    denied(bash(repo, "git -C ~/missing push origin feat", {"HOME": str(home)}), "cannot resolve")
+
+
+def test_b4_main_push_is_validated_on_the_pushed_tree_not_the_working_tree(repo):
+    put(repo, "broken", status="wip")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-m", "broken")
+    (repo / "PLANNING/board/T-20261025-broken.md").unlink()  # working tree is clean again; the commit is not
+    denied(bash(repo, "git push origin main"), "board.py check")
+    git(repo, "reset", "--hard", "origin/main")
+    put(repo, "ok")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-m", "ok")
+    put(repo, "broken", status="wip")  # a broken file only in the working tree
+    assert bash(repo, "git push origin main") is None
+
+
+def test_n1_hook_fetches_origin_main_before_reading_tickets(repo, tmp_path):
+    git(tmp_path, "clone", str(tmp_path / "origin.git"), "peer")
+    peer = tmp_path / "peer"
+    put(peer, "late", status="in-progress", branch="late", area="engine")
+    git(peer, "add", "-A")
+    git(peer, "commit", "-m", "claim")
+    git(peer, "push", "origin", "main")
+    git(repo, "switch", "-c", "late")
+    assert edit(repo) is None

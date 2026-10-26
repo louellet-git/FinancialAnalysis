@@ -42,3 +42,7 @@ def test_pathspecs():
     assert gitcmd.pathspecs(["-m", "x"]) is None
     assert gitcmd.pathspecs(["-m", "x", "a.py", "--", "b.py"]) == ["a.py", "b.py"]
     assert gitcmd.pathspecs(["-am", "x"]) == ["."]
+
+
+def test_an_empty_argument_does_not_split_the_call():
+    assert gitcmd.calls('git commit -m "" code.py') == [("commit", ["-m", "", "code.py"], [])]

@@ -15,7 +15,8 @@ jobs:
       - run: python -m pytest -q
       - run: python scripts/board.py check
       - run: python scripts/doc_check.py check
-      # The head branch's ticket must already be on the BASE board (a claim counts once pushed to main).
+      # The head branch's ticket must already be on the BASE board (a claim counts once pushed to main), and the
+      # PR may not set any ticket to done (done is set on main, right after the merge).
       - if: github.event_name == 'pull_request'
         env:
           HEAD_REF: ${{ github.head_ref }}
@@ -24,3 +25,4 @@ jobs:
           git fetch --depth=1 origin "$BASE_REF"
           git worktree add "$RUNNER_TEMP/base" FETCH_HEAD
           python scripts/board.py --root "$RUNNER_TEMP/base" branch "$HEAD_REF"
+          python -m scripts.main_guard pr-done "$RUNNER_TEMP/base" .
