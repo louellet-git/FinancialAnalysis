@@ -573,3 +573,10 @@ def test_r4_pytest_ini_keeps_planning_out_of_collection(tmp_path):
     out = subprocess.run([sys.executable, "-m", "pytest", "--collect-only", "-q", "-p", "no:cacheprovider"],
                          cwd=tmp_path, capture_output=True, text=True).stdout
     assert "test_ok" in out and "test_x" not in out
+
+
+@pytest.mark.parametrize("cmd", ["cd {o} && cd - && git push origin HEAD:main", "pushd {o} >/dev/null; popd >/dev/null; git push origin HEAD:main"])
+def test_r4_cd_dash_and_popd_return_to_the_session_repo(repo, other, cmd):
+    git(repo, "switch", "main")
+    commit(repo, "code.py")
+    denied(bash(repo, cmd.format(o=other)), "PLANNING/board/")
