@@ -10,7 +10,7 @@ scope: Contract for a purely cosmetic restyle of the single-page report from scr
 
 ## What the page is
 
-Per-ticker page, e.g. `data/processed/IBM_dcf.html`; its form is fixed by hard constraints 1-4 below.
+Per-ticker page, e.g. `data/processed/IBM_dcf.html`; its form is fixed by hard constraints 1-7 below.
 Not served: no app shell or routing; opened from disk or emailed.
 
 Labels: "aggregate" = classic engine, "driver" = driver engine, "mechanical vintages" = backtest; modules: docs/ARCHITECTURE.md.
@@ -46,8 +46,8 @@ accent chips, price line and labels, 'vs price' column) are omitted when price i
 ### 1. Header band (static HTML)
 - `h1` "TICKER — Company report", then two meta lines: company name; as-of date, net
   debt, share count, price source; both in muted ink.
-- **Stat-chip row** (`div.chips`, flex, 12 px gap): 6 chips (4 without price). Each `div.chip`
-  is muted label / semibold ink value / optional muted sub-label. Chips: Last
+- **Stat-chip row** (`div.chips`, flex, 12 px gap): 6 chips. Each `div.chip` uses the hooks in
+  hard constraint 3: muted label, semibold ink value, optional muted sub-label. Chips: Last
   price, Market cap, Bear P50, Base P50, Bull P50, and "Base P50 vs price" — the
   one *accent* chip (`.chip.accent`, the only solid-filled chip); its value renders white
   via CSS, and direction is carried by the sign alone.

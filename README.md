@@ -13,8 +13,8 @@ EDGAR, enriches them with market data (prices, earnings surprises, forward conse
 option chains), and runs Monte Carlo DCF valuations through two engines — a classic
 scenario engine and a driver-based engine (mechanics: docs/ARCHITECTURE.md) — feeding an
 adversarial review pipeline and a single-page HTML company report. Accepted review
-findings compound into deterministic infrastructure (rules → validators → red-team
-specimens; `PLANNING/RULES.md`) instead of being re-paid every run. Flagship analysis: IBM (`analysis/IBM/`, v4.1
+findings are being compounded into rules (PLANNING/RULES.md); validators and red-team
+specimens are P1 work (PLANNING/tickets.md). Flagship analysis: IBM (`analysis/IBM/`, v4.1
 report).
 
 Agents: start with **CLAUDE.md**.
@@ -80,7 +80,7 @@ and forward consensus are dated snapshots (yfinance serves current data only);
 | Options Summary | Per-expiry ATM IV, implied move (ATM straddle ÷ spot), 90/110 skew, put/call ratios + chain-wide `ALL` row |
 
 Financial tabs use long format: one row per `(period, metric)`. The JSON store persists
-statements only (docs/ARCHITECTURE.md); market data lives in the xlsx and the caches above; store contents: docs/ARCHITECTURE.md.
+statements only (docs/ARCHITECTURE.md); market data lives in the xlsx and the caches above.
 
 ## Data sources
 
@@ -107,7 +107,7 @@ requirements-dev.txt         test deps (pytest)
 financial_analysis/          the package; see docs/ARCHITECTURE.md
 scripts/                     CLI entry points and tooling; see docs/ARCHITECTURE.md
 tests/                       test suite (no network; see docs/ARCHITECTURE.md §Tests)
-analysis/IBM/                flagship analysis: driver_model.py (v4 register),
+analysis/IBM/                driver_model.py (v4 register),
                              dcf_drivers_run.py, dcf_scenarios.py (v3), DRIVERS.md,
                              REVIEW.md, DRIVER-REVIEW.md, research-ledger.md, report/
 docs/                        COLLABORATION.md (two-person workflow), DOC-STANDARD.md,

@@ -30,8 +30,8 @@ yet ticketed: `PLANNING/tickets.md` §OPEN TICKETS.
 ## Normativity map — which source governs when docs disagree
 
 1. **Engine code governs over doc prose and stale doc numbers.**
-   `financial_analysis/driver_dcf.py` and `dcf.py` define what the engines actually do;
-   any number in a README/report that disagrees with a fresh engine run is stale.
+   `financial_analysis/driver_dcf.py` and `financial_analysis/dcf.py` define what the
+   engines actually do; any number in a README/report that disagrees with a fresh engine run is stale.
 2. **`analysis/IBM/driver_model.py` governs over `analysis/IBM/DRIVERS.md`** (DRIVERS.md
    scope line).
 3. **Recorded dispositions bind.** `analysis/IBM/REVIEW.md` (F1–F19) and
@@ -82,4 +82,5 @@ token-ledger rules: session discipline only.
 ## Commands
 
 Verified CLI list: README.md §Pipeline commands; gate scripts: scripts/board.py and
-scripts/doc_check.py (both have --help); per-module detail: docs/ARCHITECTURE.md.
+scripts/doc_check.py, scripts/board_gate.py (hook), scripts/main_guard.py (CI); per-module
+detail: docs/ARCHITECTURE.md.

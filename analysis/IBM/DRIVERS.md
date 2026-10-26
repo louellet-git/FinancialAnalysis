@@ -10,13 +10,26 @@ scope: Assumption register of the IBM v4 driver model; driver_model.py governs o
 
 Companion to `driver_model.py` and `financial_analysis/driver_dcf.py` (engine). Review
 records: analysis/IBM/REVIEW.md (F-IDs), analysis/IBM/DRIVER-REVIEW.md. Tickets:
-PLANNING/tickets.md §Engine tickets; segment bases hand-entered (companyfacts has no segment axis; docs/HIDDEN-ASSUMPTIONS.md #5).
+PLANNING/tickets.md §Engine tickets; segment bases: docs/HIDDEN-ASSUMPTIONS.md #5.
 
-Notation: S/D = stochastic/deterministic driver; β = beta; kd = after-tax cost of debt (kd_spread row); f = `ma_recurrence`; ma = `ma_ratio`;
-truncnorm = normal draw clipped to [lo, hi] after correlation (driver_dcf.py docstring);
-bounds in the Bounds/Schedule column; tg = terminal_growth; τ = tax_rate; E/V = equity_weight;
-ERP = erp; t = projection year 1-10; locus = published sweep of one judgment (the f-locus
-moves g_software's mean with f; `analysis/IBM/dcf_drivers_run.py` docstring, item 3).
+Notation:
+
+| Symbol | Meaning |
+|---|---|
+| S/D | stochastic/deterministic driver |
+| β | beta |
+| kd | after-tax cost of debt (kd_spread row) |
+| f | `ma_recurrence` |
+| ma | `ma_ratio` |
+| truncnorm | normal draw clipped to [lo, hi] after correlation (driver_dcf.py docstring) |
+| tg | terminal_growth |
+| τ | tax_rate |
+| E/V | equity_weight |
+| ERP | erp |
+| t | projection year 1-10 |
+| locus | published sweep of one judgment (the f-locus moves g_software's mean with f; `analysis/IBM/dcf_drivers_run.py` docstring, item 3) |
+
+Bounds are in the Bounds/Schedule column.
 
 ## Items (deterministic formulas)
 
@@ -33,7 +46,7 @@ Equity/share: bridge in analysis/IBM/README.md.
 
 | Driver | S/D | Dist | Mean | Std | Bounds/Schedule | Review |
 |---|---|---|---|---|---|---|
-| g_software | S | truncnorm | **5.0% = 4.0% organic + f×2.0% acquired (`SOFTWARE_ORGANIC_G + f × SOFTWARE_ACQUIRED_G`, f = `MA_RECURRENCE`)** | 2.5% | hi 11% | F16 organic/acquired split; credit derived from f |
+| g_software | S | truncnorm | **5.0% = 4.0% organic + f×2.0% acquired (`SOFTWARE_ORGANIC_G + f × SOFTWARE_ACQUIRED_G`)** | 2.5% | hi 11% | F16 organic/acquired split; credit derived from f |
 | g_consulting | S | normal | 1.75% | 2.5% | — | skew proxy; mixture: PLANNING/tickets.md §Engine tickets (Mixture marginal for g_consulting) |
 | g_infrastructure | S | truncnorm | −1.0% | 2.5% | hi +3% | decade-CAGR dispersion; hi at 1.6σ: ≈5.5% of draws clip at +3% (analytic, normal marginal: Φ(−1.6)) |
 | g_financing | D | — | 0.0% | — | — | disclosures in driver_model.py rationale |
@@ -96,7 +109,7 @@ At means: **7.06%** (MC std 0.56%). v3-to-v4 WACC bridge and per-share effect:
 ## Output
 
 `python -m analysis.IBM.dcf_drivers_run` (v4 final, seed 7, 10k sims, 10y, conditional on f=0.50);
-headline, attribution, loci and terminal check in report §4
+headline, attribution, loci and implied-reinvestment check in report §4
 (analysis/IBM/report/IBM-valuation-2026-07.md).
 
 ## Source ledger

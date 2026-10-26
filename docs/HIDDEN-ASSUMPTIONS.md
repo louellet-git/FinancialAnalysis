@@ -61,7 +61,7 @@ Filing-level instance-document extraction is Ticket 7. Evidence:
 
 **6. The JSON store holds statements only — no prices, options, or estimates.**
 `store.save()` writes `ticker`, `cik`, `company_name` and `periods` only; market data lives
-in the xlsx and in `data/raw/TICKER/` (`prices.json` cache; snapshot rules: #9). The report's price/dividend/analyst-target figures were **hand-entered** from
+in the xlsx and in `data/raw/TICKER/` (`prices.json` cache; not a dated snapshot, so #9 does not apply). The report's price/dividend/analyst-target figures were **hand-entered** from
 cited sources, not pipeline outputs (disclosed). Evidence:
 `financial_analysis/store.py` (`save`); `analysis/IBM/README.md` §Data notes;
 `analysis/IBM/report/SOURCE-AUDIT.md` row 43.
@@ -77,7 +77,7 @@ neither payments concept exists for a period (first-wins merging). Fine for stea
 payers; wrong for irregular ones. Evidence: `financial_analysis/xbrl_tags.py` (`dividends_paid`
 precedence comment).
 
-**9. yfinance surfaces are current-only; history accumulates from first pull.** Option
+**9. Option chains and consensus estimates are current-only; history accumulates from first pull.** Option
 chains and forward consensus estimates have no free historical endpoint — each pull is
 persisted as a dated snapshot (one per calendar day; same-day re-run reads disk,
 `--refresh` overwrites); empty snapshots are saved so absence is dated evidence.
@@ -129,7 +129,8 @@ Do not quote P10/P90 as decision-grade. Evidence:
 `financial_analysis/scenarios.py` (`_ibm_v3`, `_SCENARIO_OVERRIDES["IBM"]`,
 `CAPITAL_OVERRIDES["IBM"]`) encodes the v3 aggregate framework (growth 2.15%,
 WACC 7.5%, margin 14.5%; see #24). The v4 headline is recorded in `analysis/IBM/report/IBM-valuation-2026-07.md` §4 and computed only by
-`analysis/IBM/driver_model.py` + `financial_analysis/driver_dcf.py`. The visualizer runs both in separate labeled sections (`SECTION_TITLES`, `scripts/visualize_dcf.py`). Net debt ($54.0B) agrees across both; shares agree (#10). If you read
+`python -m analysis.IBM.dcf_drivers_run` (over `analysis/IBM/driver_model.py` +
+`financial_analysis/driver_dcf.py`). The visualizer runs both in separate labeled sections (`SECTION_TITLES`, `scripts/visualize_dcf.py`). Net debt ($54.0B) agrees across both; shares agree (#10). If you read
 `scenarios.py` for "the IBM valuation," you get v3. Evidence: `financial_analysis/scenarios.py`, `analysis/IBM/driver_model.py`,
 `financial_analysis/driver_dcf.py`; `scripts/visualize_dcf.py` (`SECTION_TITLES`, `_driver_compare_figure`).
 
@@ -138,7 +139,7 @@ WACC 7.5%, margin 14.5%; see #24). The v4 headline is recorded in `analysis/IBM/
 bounds and realized correlations distort. Second-order for mild truncations. Apply the
 ~2σ bound check in `financial_analysis/driver_dcf.py` (module docstring). Bounds are in the
 `analysis/IBM/DRIVERS.md` driver table (g_infrastructure: ≈5.5% of draws clip at +3%); the
-ma_ratio clip mass is in `analysis/IBM/DRIVER-REVIEW.md` (recorded before its std revision).
+ma_ratio clip mass is in `analysis/IBM/DRIVER-REVIEW.md` (pre-revision figure; current std 2.4%).
 
 **15. The two engines guard degenerate terminal values differently.** Classic engine
 (docs/ARCHITECTURE.md §1):
@@ -219,14 +220,13 @@ Evidence: `PLANNING/handoff/`; reusable-dcf-vision.md ✦6b.
 
 **29. Done work may sit on another branch.** Check `git log --all --oneline -- <path>`
 before concluding something is missing. Branch rules: CLAUDE.md §Orchestration norms.
-Evidence: `git log --all --oneline -- <path>`.
 
 **30. PowerShell 5.1 quirks apply; LF/CRLF warnings are normal.** Check
 `git config core.autocrlf`. The primary shell (the owner's local Windows setup) is Windows PowerShell 5.1:
 no `&&`/`||` chaining, no ternary, UTF-16 default file encoding (`-Encoding utf8` when writing files other tools read), quirky
 native-arg quoting (`--%` stop-parsing token when needed). Git Bash is available for
 POSIX scripts.
-Evidence: `git config core.autocrlf`; `$PSVersionTable.PSVersion`.
+Evidence: `$PSVersionTable.PSVersion`.
 
 **31. Tests are no-network by construction — keep them that way.** The whole suite runs
 on synthetic fixtures (mocked HTTP, synthetic yfinance/consensus/company objects), seeds
@@ -234,4 +234,4 @@ are fixed wherever runs are compared or published (`SCENARIO_SEED`, dcf_drivers_
 visualize `DRIVER_SEED`, backtest `seed=7`); tests fix their own (42, 7, 8). Engines default
 to floating seeds (`DCFAssumptions.seed`, `DriverDCF.run`), so pass a seed to reproduce. A test that needs the network or a floating seed is a defect.
 Run `pytest -q` for the current count rather than trusting any doc.
-Evidence: `pytest -q`; grep "no network" in tests/.
+Evidence: grep "no network" in tests/.

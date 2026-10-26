@@ -50,9 +50,9 @@ Two Monte Carlo DCF engines coexist; neither replaces the other.
 Samples the **top-level valuation items directly**: revenue growth, FCF margin, WACC,
 and terminal growth, each an independent normal draw per path (WACC floored at 1%, FCF
 margin clipped to [0, 1]; 10,000 sims, 10-year horizon by default). FCF margin is derived from the last 5 annual rows when not
-pinned (phantom rows can shrink the window; HIDDEN-ASSUMPTIONS #2). Gordon terminal value; its denominator floor (one reason the driver engine
+pinned (HIDDEN-ASSUMPTIONS #2). Gordon terminal value; its denominator floor (one reason the driver engine
 exists) is HIDDEN-ASSUMPTIONS #15. Minimum-history guard: HIDDEN-ASSUMPTIONS #16.
-`scenarios.py` IBM entries are the v3 aggregate framework: HIDDEN-ASSUMPTIONS #13.
+`scenarios.py` IBM entries: HIDDEN-ASSUMPTIONS #13.
 
 ### 2. Driver-based engine — `financial_analysis/driver_dcf.py` (`DriverDCF`)
 
@@ -62,7 +62,7 @@ stochastic objects.
 
 - **Parameter-MC, one draw per path.** Each of the 10,000 paths draws one value per
   stochastic driver (e.g. one software growth rate) and holds it constant across all 10
-  projection years. No year-to-year dynamics (HIDDEN-ASSUMPTIONS #12).
+  projection years (HIDDEN-ASSUMPTIONS #12).
 - **Joint sampling.** Stochastic drivers are drawn as correlated standard normals (full
   pairwise correlation matrix, Cholesky-factorized, validated positive-definite), then transformed to each driver's marginal as `mean + std·z`.
   Truncated drivers: HIDDEN-ASSUMPTIONS #14.
@@ -91,14 +91,14 @@ net debt, shares, exposing `build()`. Precedence: CLAUDE.md §Normativity map, i
 `run_backtest(company, horizon=3, n=10_000, seed=7)` in `financial_analysis/backtest.py`
 — walk-forward vintages, one per clean fiscal-year-end + 90 days:
 
-- **Point-in-time estimates**: a vintage sees only periods with `filed_date <= as_of`; vintages are conservative (HIDDEN-ASSUMPTIONS #4).
+- **Point-in-time estimates**: a vintage sees only periods with `filed_date <= as_of` (HIDDEN-ASSUMPTIONS #4).
 - **Mechanical parameters, no judgment**: trailing revenue CAGR + YoY std, FCF-margin
   mean/std over ≤5 clean annuals (stds floored at 0.01); mirrors `StochasticDCF`'s
   sampling structure (one growth + one margin draw per path).
 - **Asymmetric actuals, disclosed**: actuals join from the store *as currently reported*
   (restatements included) — how forecasts are judged in practice.
-- **DATA_FLAGS, not fixes**: IBM FY2019/FY2020 windows carry the recast flag (HIDDEN-ASSUMPTIONS #1).
-- Phantom rows are filtered by `_clean_annuals` (HIDDEN-ASSUMPTIONS #2).
+- **DATA_FLAGS, not fixes** (HIDDEN-ASSUMPTIONS #1).
+- Phantom rows: `_clean_annuals` (HIDDEN-ASSUMPTIONS #2).
 - Scope: revenue/FCF projections only — no WACC, no terminal value, no price.
 
 The HTML report renders it as the "Backtest — mechanical vintages" section (layout:
@@ -121,7 +121,7 @@ so treat their bands as decorative until a driver build exists.
 | `importer.py` | companyfacts → `PeriodFinancials`: maps concepts via `xbrl_tags` (first-wins merge across fallback concepts per period_end, sign flips), collects unmapped us-gaap USD concepts into `raw_extras`, best-effort `filed_date` from revenue-concept `filed` fields, raises `UnsupportedFilingError` for non-us-gaap filers. `segment_revenue` is None (HIDDEN-ASSUMPTIONS #5). |
 | `market_data.py` | yfinance daily OHLCV (`load_prices`, cached at `data/raw/TICKER/prices.json`) and earnings surprises (`load_earnings_surprises`). |
 | `options.py` | yfinance option-chain snapshots (dated, `data/raw/TICKER/options/YYYY-MM-DD.json`; history: HIDDEN-ASSUMPTIONS #9) + derived per-expiry metrics: ATM IV, straddle-mid implied move, 90/110 skew, put/call volume & OI ratios (`fetch_option_chain`, `compute_chain_metrics`, `list_snapshots`, `load_snapshot`). |
-| `scenarios.py` | Bear/base/bull presets (`DEFAULT_SCENARIOS` generic mature-large-cap; `_SCENARIO_OVERRIDES` for IBM and DUOL), `CAPITAL_OVERRIDES` (IBM, DUOL), `capital_structure_for` (derives net debt from latest 10-K: long_term_debt + short-term debt (first of ShortTermBorrowings, LongTermDebtAndCapitalLeaseObligationsCurrent in raw_extras; else 0) − cash; shares_outstanding falling back to diluted). |
+| `scenarios.py` | Bear/base/bull presets (`DEFAULT_SCENARIOS` generic mature-large-cap; `_SCENARIO_OVERRIDES` for IBM and DUOL), `CAPITAL_OVERRIDES` (IBM, DUOL), `capital_structure_for` (net debt and shares from the latest 10-K; see its docstring). |
 | `schema.py` | Dataclasses: `PeriodFinancials` (~60 statement fields + `remaining_performance_obligation`, reserved `segment_revenue`, `raw_extras`; derived `free_cash_flow` (sign trap: HIDDEN-ASSUMPTIONS #7) and `fcf_margin`), `CompanyFinancials`, `PricePoint`, `EarningsEstimate`, `EarningsSurprise`, `OptionQuote`, `OptionChainSnapshot`, `ConsensusEstimates`. |
 | `store.py` | JSON persistence `data/processed/TICKER.json`; in-memory session cache; `get_series`/`compare` query helpers with metric-name validation. |
 | `xbrl_api.py` | companyfacts fetch + series extraction: filters by form type/unit, deduplicates by end date (HIDDEN-ASSUMPTIONS #4), returns last `n` entries. |

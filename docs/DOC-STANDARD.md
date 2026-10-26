@@ -70,7 +70,7 @@ at use nor in a linked source.
 | report | issuer, references, history | glossary | participants, summary, context, methods, conclusions and recommendations |
 | request | none: clause 7 gives a request no issuer, references, history or glossary | due date (board: none) | subject, originator, requested response, description with due date, rationale |
 | specification | issuer, references, approval, history | glossary | body, assurance requirements, constraints, one unambiguous identified statement per requirement |
-| record | issuer, references | none | subject or category, body; `id` is the record identifier |
+| record | issuer, references | glossary | subject or category, body; `id` is the record identifier |
 
 Glossary: tailored out for every type. Standard finance, accounting, statistics and software terms and ticker symbols need no definition; define a repo-coined term at first use or link its defining doc.
 
