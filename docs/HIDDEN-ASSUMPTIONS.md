@@ -1361,6 +1361,101 @@ before it and 3 after it, so the companies with a short history, and the compani
 `template`). A cell with few companies has a large standard error (`phi_se`): a person must read it.
 *Evidence:* `rust/src/dcf/calibrate.rs` (`priors_for`, `MIN_OBS`, `MIN_UNITS`).
 
+## The automatic model (added 2026-11-19, branch `claude/dcf-auto`)
+
+Ticket `T-20261119-dcf-auto-model`. Code: `rust/src/dcf/auto.rs` (the builder), `auto_cli.rs` (`fa dcf auto`, `fa dcf screen`),
+`auto_pit.rs` (`fa dcf pit`). An automatic model is a screen. It is not a reviewed valuation (`CLAUDE.md`, "Review of a valuation
+report"). Do not use it alone for a trade.
+
+**185. Each number of an automatic model is a rule, not a judgment of a person.** The rules are in the module text of `auto.rs`
+and in `docs/ARCHITECTURE.md`. `fa dcf auto TICKER --explain` prints each number with its source and rule. The hand models of IBM and
+JNJ have judgments that no rule gives: segments, a pension bridge, a charge for acquisitions, guidance. The automatic model gives the
+hand number for none of them. A large difference to a hand model is not an error of the automatic model by itself. The largest one is the cost of acquisitions: the
+hand models have a charge for them (IBM 3.55% of revenue, JNJ about 5.8%), and the automatic model has none (the free cash flow of the mapping has no acquisitions, rule R2 of `PLANNING/RULES.md`), but the
+growth history keeps the bought growth of the years below the jump limit of 60%. Run of 2026-11-19, value for each share, P10 / P50 / P90: IBM automatic 21.53 / 140.67 / 389.94, IBM version 4 83.84 / 151.84 / 258.03,
+IBM path comparison file 79.17 / 154.03 / 277.20; JNJ automatic 56.44 / 151.35 / 342.42, JNJ first pass 69.99 / 112.64 / 175.38. The bands are 2 to 3 times wider than the hand bands because the shocks are those of the
+table (and of the company history), not the judgments of a review.
+*Evidence:* `fa dcf auto IBM --explain`, `fa dcf auto JNJ --explain`.
+
+**186. The growth history keeps a jump that has no cash for businesses behind it.** The calibration table was estimated with every
+jump above 60% (revenue of the year before $1B or more) removed. If the model history removed them too, NVIDIA (growth of 126%, 114% and
+65% in three years) would have an empty history and a start growth of 2%. The model history removes only a jump with cash paid for
+businesses of at least 10% of the revenue change, and a jump that reverses (`growth_organic` of `panel.rs`). The table `phi` was not
+estimated on such jumps. For a company like NVIDIA the table does not describe the persistence of the growth (#182). The rule `history_organic`
+turns this off; the test with the jumps removed has 69% to 74% coverage for the companies with growth above 50% against 84% with the rule.
+*Evidence:* `fa dcf pit --rules history_organic=0`.
+
+**187. The company mean is a shrunk mean, with the weight of the calibration (`calib_bands`).** The weight of the history is
+`tau^2 / (tau^2 + sigma^2 mvf(phi, n))` with `tau`, `sigma` and `phi` of the table cell of the size bucket. The variance after the shrink
+becomes the standard deviation of the drawn long-run growth, and the year-1 value has the correlation with it that the AR(1) gives. The
+history has the last 4 growth values (5 margin values); a longer history is not used. A cell with `tau = 0` gives the cell mean.
+*Evidence:* `ar1_fit` and its test (hand calculation).
+
+**188. The shock size of a company is not the table value.** (1) The table value is the average of all companies in the cell. A company with a
+stable margin has a smaller shock, a cyclical company a larger one: with the table value the free cash flow bands had 97% coverage for
+the companies with a margin range below 5 points and 75% for those above 10 points (target 80%). The shock size is now
+`sqrt((4 sigma_table^2 + sum of residual^2) / (4 + number of residuals))` (weight of the table: 4 years; `own_sigma_nu`). (2) A company in a
+high-growth state has a larger spread of the next growth than the average company: the fade table has P10 to P90 of the growth one year after
+a growth above 50% of -19% to +89% (all sizes). The shock of the growth is at least `kappa` times the level of the growth, with `kappa`
+the median over the thresholds of the spread over the start growth in the fade table (`level_spread_ratio`: 0.5 now). Before the two rules the
+revenue coverage for companies with growth above 50% was 48%, 44% and 51% (T+1 to T+3); after them 84%, 82% and 84%. The rules widen the
+bands for all companies: the overall coverage is 86%, 84% and 87% against the target of 80%.
+*Evidence:* `fa dcf pit --rules own_sigma_nu=0,level_kappa=0` (before) and without `--rules` (after).
+
+**189. The slow fade to the long-run cap is a linear ramp, not the exponential fade of the fade table.** The engine has no second
+process, so the fade is a drift that is added to the growth: linear from 0 in year 1 to `(cap - company mean) * 9 / (N - 1)` in year 10, with `N`
+chosen so that the value in year 10 equals that of an exponential fade with the half-life of the fade table (about 3.7 years: the median over the
+thresholds of the fade from year 3 to year 10, `slow_half_life`). The cap is the 10-year zero yield of the GSW curve (5.13% on 2026-11-13); the rate is
+a proxy for the long-run nominal growth of the economy. The fade applies only if the company mean is above the cap. The fade table was
+made with the companies that survive: the real fade is faster (#181). The ramp changes the revenue coverage by less than 1 point at T+3 in the
+test; it matters for the value, which the test does not measure.
+*Evidence:* `fa dcf pit --rules fade_to_cap=0`.
+
+**190. The margin of the model is the free cash flow before SBC and before interest.** `(operating cash flow - capex_total + (1 - t) interest paid) / revenue`.
+Operating cash flow already adds back the SBC: a formula with "plus SBC" would count it twice. The SBC is a cost of the model (the ratio is a separate process), as in the IBM
+and ANT models. The table margin series is the cash flow after interest. So the history is shrunk in the space of the table and the company mean of the after-tax interest
+ratio (last 3 years) is added to the start and to the target. The interest is `interest_paid`, else `interest_expense`; a company with neither has a ratio of 0.
+*Evidence:* `rust/src/company.rs` (`free_cash_flow`), `YearData::fcf_margin`.
+
+**191. The phi of a margin cell with a large standard error is replaced.** The cells of the margin for the size buckets 30-100B and >100B have 127 and 38
+companies and a standard error of `phi` of 0.139 and 0.134 (the cell of all sizes: 0.027). The model takes the `phi` of the cell of all sizes when the standard error is above
+0.08 (`margin_pool_se`); the mean, `tau` and `sigma` of the size cell stay. The effect on the coverage in the test is below 1 point.
+*Evidence:* `fa dcf pit --rules margin_pool_se=0`.
+
+**192. The SBC ratio is a constant.** It is the mean of the last 3 years, with no shock. The table has no SBC series. A company with no `sbc_total` in the 3 years has a ratio of 0 and a warning.
+
+**193. The net debt bridge is simple.** `total_debt` less `cash_and_short_term_investments`, from the latest balance sheet (a 10-Q if it is newer than the 10-K). It
+leaves out pensions, operating leases, minority interests, litigation reserves and investments. The output has a memo line that shows the
+size of the three items that are in the mapping (per share). The variable `total_debt` has two estimates for many companies (check `total_debt_estimates`); the model takes the value of
+the mapping and prints the warning. For IBM the debt includes the debt of the financing business.
+*Evidence:* `fa dcf auto IBM --explain` (the line `net debt` and the memo line).
+
+**194. The balance sheet and the flows can have different dates.** Revenue, margin and SBC come from the last fiscal year. Net debt and the share count come from
+the latest 10-Q if it is newer. The trailing four quarters are not used (the quarters of the mapping are single quarters; the fourth quarter is not in the 10-Q files). For a fast
+grower the revenue base is 3 to 12 months old. The point-in-time test uses fiscal years only.
+
+**195. The share count is the weighted average of the diluted shares of the latest period,** not the count at the end of the period. A company with large buybacks or an issue of
+shares in the period has a different count. The price per share of the output follows this count.
+
+**196. Beta and the equity weight need prices that the cache mostly does not have.** The cache has price files for two tickers (IBM and JNJ) and the SPY file for the index. Other tickers have
+beta 1.0 and an equity weight of 1.0 (the cost of equity for the cash flow of the whole company): for a company with much debt the value is too low. The output has a warning. The regression
+beta uses 5 years of weekly returns of the stock (adjusted close) against SPY (the close of the trading cache) and the weight 2/3 (the rest is 1.0). The standard error of such a beta is about 0.1.
+
+**197. Only the template `standard` has a model.** A bank, an insurer, a REIT, a fund, a foreign filer, a company with no revenue and a new registrant get the text "no model for this template". A free-cash-flow DCF is the wrong
+tool for them. The next step is a model for each template (excess return for a bank, FFO for a REIT). A mapping status of FAIL, or a necessary variable with no value
+(operating cash flow, capex, cash, diluted shares), also gives no value. The status WARN runs and prints the warnings that touch a model input.
+
+**198. The price-implied values are one-number searches.** The long-run growth (the level that the growth fades to), the target margin and the half-life of the fade each move one number of the model and
+keep the others (bisection on the P50 with the same random numbers). The half-life is found from the whole number of years of the ramp (a step of the P50), so it has a resolution of one ramp year.
+The implied values depend on the other numbers of the model: they are not a statement about the company.
+
+**199. The point-in-time test has five limits.** (1) The table was estimated on all years: the result "in sample" is not out of sample. With the table from the years up to 2015 (base years 2015 and later) the revenue
+coverage is 85%, 83% and 87% (T+1 to T+3), and the median real revenue is 0.9%, 3.5% and 6.2% above the P50: the growth after 2015 was above the growth before 2016. (2) The mapping takes the latest filing of each year, so a
+restatement enters the data of the base year. (3) The companies exist now (survivorship, #181). (4) The model of the test has no price, a fixed rate and no failure; revenue and cash flow do not depend on them. (5) The value (the P50) is not tested: a test against
+later stock returns needs prices, and the cache has two price files. A model with a systematic error that the test shows and that has no rule yet: companies with a decline in the base year (the real revenue is 8% to 11% above the P50 at T+2 and T+3, the real value is above the P90 in 15% to 19% of the cases);
+and the free cash flow at T+3 (the real value is 1.6% of revenue above the P50, 60% of the real values above the P50).
+*Evidence:* `fa dcf pit` and `fa dcf pit --cut 2015`; the result files in `analysis/priors/`.
+
 ## Price layer (added 2026-11-19, branch `claude/price-history`)
 
 **200. The Nasdaq site API and the Yahoo chart endpoint are not published APIs.** Their use is not covered by a contract. The

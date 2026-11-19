@@ -96,7 +96,7 @@ Do not use a first pass alone for a trade.
 
 ```bash
 cargo test --manifest-path rust/mapcheck/Cargo.toml   # 89 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked   # 412 Rust tests (394 + 17 + 1), no network
+cargo test --manifest-path rust/Cargo.toml --locked   # 437 Rust tests (419 + 17 + 1), no network
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
 rust/mapcheck/target/release/mapcheck values IBM          # each input value with its source
 rust/mapcheck/target/release/mapcheck IBM --detail        # mapping checks
@@ -106,6 +106,9 @@ rust/target/release/fa import IBM             # SEC data -> data/processed/IBM.j
 rust/target/release/fa analyze IBM            # import + market data -> xlsx (nine tabs)
 rust/target/release/fa verdict IBM --price 228.53   # value range against a price (add --rf-date today --rating A-)
 rust/target/release/fa dcf drivers IBM        # version 4 headline numbers; options for each analysis (fa dcf --help)
+rust/target/release/fa dcf auto IBM --cache data/raw --explain   # automatic path model of a ticker (a screen, not a reviewed valuation)
+rust/target/release/fa dcf screen --tickers-file rust/mapcheck/universe/sp500.txt --cache data/raw   # one row for each ticker
+rust/target/release/fa dcf pit --cache data/raw   # point-in-time test of the automatic model
 rust/target/release/fa dcf scenarios IBM      # classic engine, bear/base/bull (version 3 inputs)
 rust/target/release/fa backtest IBM           # point-in-time vintage backtest of revenue and FCF
 rust/target/release/fa report IBM             # one-page HTML report: data/processed/IBM_dcf.html (plotly.js from the CDN)

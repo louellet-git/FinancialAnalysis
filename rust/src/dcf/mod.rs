@@ -9,6 +9,9 @@
 use std::fmt;
 
 pub mod analysis;
+pub mod auto;
+pub mod auto_cli;
+pub mod auto_pit;
 pub mod backtest;
 pub mod calib_bands;
 pub mod calib_report;

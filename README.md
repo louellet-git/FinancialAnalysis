@@ -21,7 +21,7 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program that makes the standard variables (necessary)
 cargo build --release --manifest-path rust/Cargo.toml            # the `fa` program
 cargo test --manifest-path rust/mapcheck/Cargo.toml    # 89 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked    # 412 Rust tests (394 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research)
+cargo test --manifest-path rust/Cargo.toml --locked    # 437 Rust tests (419 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research)
 ```
 
 No Python test remains. The only Python code that remains is the legacy SEC client with its
@@ -95,6 +95,9 @@ fa dcf scenarios IBM [--data-dir D] [--json]      # bear, base, bull; value per 
 fa dcf models                                     # tickers that have a driver model file
 fa backtest IBM [--horizon 3] [--simulations 10000] [--seed 7] [--data-dir D]   # vintage backtest, no network
 fa dcf calibrate [--cache DIR] [--out FILE] [--no-bands]   # AR(1) parameters of growth and margins from the company cache, band coverage, no network
+fa dcf auto IBM [--cache DIR] [--price P] [--explain] [--write FILE]   # automatic path model of a ticker from the cache and the parameter table: a screen, not a reviewed valuation; no network
+fa dcf screen --tickers-file rust/mapcheck/universe/sp500.txt [--cache DIR] [--out FILE] [--jobs N] [--prices FILE]   # one row for each ticker (value range, refusals), parallel over tickers
+fa dcf pit [--cache DIR] [--cut YEAR] [--rules K=V,..] [--out FILE]   # point-in-time test of the automatic model: real revenue and free cash flow against the bands
 fa prices get IBM MSFT [--tickers-file rust/mapcheck/universe/sp500.txt] [--source tiingo|yahoo|nasdaq] [--full]   # price history into data/raw (network)
 fa prices show IBM [--from D] [--to D]            # rows of the cache
 fa prices last IBM JNJ                            # last close, date, source; warns when older than 5 weekdays
