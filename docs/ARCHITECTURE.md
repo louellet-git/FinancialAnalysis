@@ -475,6 +475,53 @@ in parallel. Parallel paths do not change a result.
 
 **Commands.** `fa dcf drivers|classic|scenarios|models`, `fa backtest`, `fa verdict`, `fa rates`, `fa bonds`. See the README.
 
+### `rust/src/dcf/` — calibration of the growth and margin processes (2026-11-19, branch `claude/dcf-calibration`)
+
+Ticket `T-20261119-dcf-process-calibration`. The command `fa dcf calibrate` estimates, from the company cache, the
+parameters that a path engine needs: the speed of the return to a long-run value, the long-run value, and the size of the
+shocks, for revenue growth and for two margins. It also measures how often a later real revenue is inside a P10 to P90 band.
+It uses no network. The output has no random part except a fixed-seed bootstrap and fixed-seed draws.
+
+| File (`rust/src/dcf/`) | Function |
+|---|---|
+| `panel.rs` | The annual panel of the cache (`build_panel`): one row for each company and fiscal year, from the mapping of `mapcheck`. The rules of a clean growth series (`clean_series`, tested on plain values): one row for each fiscal year, revenue above zero, consecutive years only (350 to 380 days), a jump flag, an acquisition flag, a reversal flag. Each rule has a counter (`RuleCounts`). Size buckets. |
+| `calibrate.rs` | The AR(1) estimators (`fit_ar1`): pooled, within (company mean), within with the Nickell correction, Anderson-Hsiao. Standard errors that are robust to correlation inside a company. The shock correlation with a bootstrap over companies. The table (`ProcessTable`, TOML) and `priors_for(revenue, template, sector)`. |
+| `calib_report.rs` | The command, the text output, the growth fade of fast growers by starting level, the list of very large fast growers. |
+| `calib_bands.rs` | The calibration of the revenue bands: four methods, in sample and out of sample. |
+| `calibrate_tests.rs` | Tests on synthetic panels with known parameters. |
+
+**Model.** `y_t = mean + phi (y_{t-1} - mean) + sigma e_t` for revenue growth, operating margin and free cash flow margin.
+`phi` is the value of the within estimate with the Nickell correction. The other three estimates stay in the table. The
+growth that is used has no jump (more than 60% for a company with $1B or more of revenue) and is between -80% and +300%.
+
+**Table.** `analysis/priors/process_priors_2026-11-19.toml` has one cell for each size bucket and template (the sizes are
+`<1B`, `1-10B`, `10-30B`, `30-100B`, `>100B`, `all`), with `phi`, its standard error, the half-life, the mean, the
+standard deviation of the shock, the number of observations and companies, and the other estimates. `priors_for` takes the
+cell of the size and the template if it has 150 observations and 25 companies. If not, it takes the cell of the size, then
+the cell of the template, then all. The cache has no SIC code, so no cell has a sector.
+
+**Results of the run of 2026-11-19** (996 companies, 14,305 company-years, 13,228 growth observations; the panel takes 7 seconds
+and the whole command about 15 seconds on 4 threads):
+
+- Growth, all sizes: `phi` = 0.27 (pooled), 0.02 (within), 0.11 (within with the Nickell correction), 0.16 (Anderson-Hsiao). The mean is
+  9%, the shock is 18%, and the standard deviation of the company means is 14%. Growth is close to a company mean plus
+  noise. The half-life of the deviation from the company mean is under one year.
+- Operating margin: `phi` = 0.72 (pooled), 0.48 (within with the correction); the half-life is about one year.
+  The standard deviation of the company means is 16%.
+- The shock correlation of growth with operating margin is +0.25 (standard error 0.03). The correlation with the free cash
+  flow margin is about 0.
+- Band coverage (P10 to P90, target 80%): the rule of `backtest.rs` gives 60% at one year and 68% at three years (too narrow). The AR(1) with the pooled
+  values gives 81% to 83% in sample and 80% to 82% out of sample (parameters from the years up to 2015). The fast growers
+  and the very large companies are not well described: see `docs/HIDDEN-ASSUMPTIONS.md` #176, #177 and #182.
+
+**Survivorship.** The cache has the companies that exist now. The companies that failed or were bought are not in it. The
+growth mean is too high, the shock size and the lower tail are too low, and the persistence of margins is too high. The
+fade of fast growers is too slow. The command prints this text with each run. The size of the bias is not measured.
+
+**Limits.** No SIC code, so no sector. No GDP series in the repo cache: the growth less the mean growth of the fiscal year
+replaces it. A company with fewer than three growth values has no weight in the within estimates. The traps are #170 to #184
+of `docs/HIDDEN-ASSUMPTIONS.md`.
+
 ## Company data, market data and the xlsx file (`rust/src/company.rs`, `market/`, `analyze.rs`, 2026-11-19)
 
 These parts are Rust code only. The Python files `scripts/analyze.py`, `scripts/import_financials.py`,

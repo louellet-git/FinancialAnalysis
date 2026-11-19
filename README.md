@@ -91,6 +91,7 @@ fa dcf classic IBM --margin-mean 0.145 --margin-std 0.02 --net-debt 54e9 --share
 fa dcf scenarios IBM [--data-dir D] [--json]      # bear, base, bull; value per share after net debt
 fa dcf models                                     # tickers that have a driver model file
 fa backtest IBM [--horizon 3] [--simulations 10000] [--seed 7] [--data-dir D]   # vintage backtest, no network
+fa dcf calibrate [--cache DIR] [--out FILE] [--no-bands]   # AR(1) parameters of growth and margins from the company cache, band coverage, no network
 fa verdict IBM --price 228.53 [--simulations 10000] [--seed 7] [--rf-date today] [--rf-base-date 2026-07-16] [--rating A-]
 fa rates [snapshot|yield|curve|history|nyfed|inflation|fred|check] [--date D]   # JSON
 fa bonds [snapshot|spread|yield|over10y|moodys|hqm|check] [--rating A-] [--date D]   # JSON
