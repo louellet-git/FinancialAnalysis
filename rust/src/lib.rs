@@ -16,6 +16,8 @@
 //! # Ok::<(), financial_analysis::FaError>(())
 //! ```
 
+pub mod forwards;
+
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

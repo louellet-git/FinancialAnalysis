@@ -26,6 +26,8 @@ USAGE:
   fa bonds moodys --grade Aaa|Baa [--date D]      Moody's seasoned corporate yield
   fa bonds hqm [--date D]                         Treasury HQM corporate spot curve (monthly)
   fa bonds check [--days N]                       Moody's - 10Y vs FRED (exit 1 on mismatch)
+  fa forwards [--date D]                          GSW zero-coupon yields and forward rates (Federal Reserve Board)
+  fa forwards check [--days N]                    GSW par yields against Treasury (exit 1 on mismatch)
   fa verdict TICKER --price P [--rf-date D|today] [--rf-base-date D] [--rating A-]
              [--simulations N] [--seed S]
   fa run MODULE [ARGS...]                         any entry point, e.g. fa run scripts.analyze IBM
@@ -102,6 +104,26 @@ fn rates(fa: &Fa, rest: &[String]) -> financial_analysis::Result<ExitCode> {
     Ok(ExitCode::SUCCESS)
 }
 
+fn forwards_cmd(fa: &Fa, rest: &[String]) -> ExitCode {
+    let flag = |name: &str| rest.iter().position(|a| a == name).and_then(|i| rest.get(i + 1)).cloned();
+    let result = if rest.first().map(String::as_str) == Some("check") {
+        let days = flag("--days").map_or(Ok(30), |d| d.parse::<u32>().map_err(|_| format!("bad --days '{d}'")));
+        days.and_then(|d| financial_analysis::forwards::check(&fa.repo, d)).map(|r| {
+            print_json(&r);
+            exit_on_mismatch(&r)
+        })
+    } else {
+        financial_analysis::forwards::forwards(&fa.repo, flag("--date").as_deref()).map(|f| {
+            print_json(&f);
+            ExitCode::SUCCESS
+        })
+    };
+    result.unwrap_or_else(|e| {
+        eprintln!("fa: {e}");
+        ExitCode::from(2)
+    })
+}
+
 fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
     match args.first().map(String::as_str) {
         None | Some("help" | "-h" | "--help") => {
@@ -110,6 +132,7 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
         }
         Some("rates") => rates(fa, &args[1..]),
         Some("bonds") => bonds(fa, &args[1..]),
+        Some("forwards") => Ok(forwards_cmd(fa, &args[1..])),
         Some("verdict") => {
             print_json(&fa.call::<Verdict>("scripts.verdict", &args[1..])?);
             Ok(ExitCode::SUCCESS)
