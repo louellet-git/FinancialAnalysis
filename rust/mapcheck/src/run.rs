@@ -132,6 +132,20 @@ pub fn check_cached(registry: &Registry, cache: &Path, ticker: &str, facts: &Com
 fn check_facts_with(registry: &Registry, ticker: &str, facts: &CompanyFacts, n_periods: usize, as_of: i64, keep_values: bool, fill: Option<Fill>) -> TickerReport {
     let start = Instant::now();
     if !facts.has_us_gaap() {
+        if registration_only(facts) {
+            // A new US registrant: the registration statement (form S-1) has no XBRL values.
+            let mut report = error_report(ticker, String::new(), start.elapsed().as_secs_f64());
+            report.name = facts.entity_name.clone().unwrap_or_default();
+            report.status = Status::Template;
+            report.template = "new".to_string();
+            report.error = None;
+            report.findings.push(Finding {
+                severity: Severity::Info,
+                code: "no_xbrl_values".to_string(),
+                detail: "the registration statement (form S-1) has no XBRL values; the first 10-Q or 10-K gives the values".to_string(),
+            });
+            return report;
+        }
         let namespaces: Vec<&String> = facts.facts.keys().collect();
         return error_report(ticker, format!("not a us-gaap filer (namespaces: {namespaces:?})"), start.elapsed().as_secs_f64());
     }
@@ -233,6 +247,13 @@ fn no_revenue(registry: &Registry, company: &Company) -> bool {
         && !latest.raw_extras.iter().any(|(tag, value)| revenue_tag(tag) && *value > 0.0)
 }
 
+/// True for a new US registrant that has no financial facts: the company facts have only
+/// the fee data (`ffd`) or the cover data (`dei`), and a fact comes from a form S-1. A
+/// foreign registrant uses form F-1; an IFRS filer has the `ifrs-full` namespace.
+fn registration_only(facts: &CompanyFacts) -> bool {
+    !facts.facts.is_empty() && facts.facts.keys().all(|n| n == "ffd" || n == "dei") && has_form(facts, &["S-1", "S-1/A"])
+}
+
 /// True if the filer has a fact from one of these forms.
 fn has_form(facts: &CompanyFacts, forms: &[&str]) -> bool {
     facts.facts.values().any(|namespace| {
@@ -325,4 +346,57 @@ pub fn values_json(registry: &Registry, report: &TickerReport) -> Vec<Value> {
         }));
     }
     lines
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn facts(json: &str) -> CompanyFacts {
+        serde_json::from_str(json).unwrap()
+    }
+
+    fn fee_facts(namespace: &str, form: &str) -> CompanyFacts {
+        facts(&format!(
+            r#"{{"cik":7,"entityName":"NEWCO","facts":{{"{namespace}":{{"TtlFeeAmt":{{"units":{{"USD":[{{"end":"2026-10-20","val":1,"form":"{form}","filed":"2026-10-26"}}]}}}}}}}}}}"#
+        ))
+    }
+
+    #[test]
+    fn a_registrant_with_only_form_s1_fee_facts_is_new_and_not_judged() {
+        let registry = Registry::embedded().unwrap();
+        for form in ["S-1", "S-1/A"] {
+            let report = check_facts(&registry, "NEW", &fee_facts("ffd", form), 12, 0, true);
+            assert_eq!((report.status, report.template.as_str(), report.error.as_deref()), (Status::Template, "new", None));
+            assert_eq!(report.name, "NEWCO");
+            assert_eq!((report.annual_rows, report.core_filled), (0, 0));
+            assert!(report.company.is_none());
+            assert_eq!(report.findings.len(), 1);
+            assert_eq!((report.findings[0].severity, report.findings[0].code.as_str()), (Severity::Info, "no_xbrl_values"));
+            assert!(report.findings[0].detail.contains("no XBRL values"));
+            assert_eq!(report_json(&report)["status"], "N/A");
+        }
+    }
+
+    #[test]
+    fn other_filers_with_no_us_gaap_facts_stay_an_error() {
+        let registry = Registry::embedded().unwrap();
+        // A foreign registrant (form F-1), a registrant with no registration form, an IFRS
+        // filer with a form S-1 fee fact, and a file with no facts.
+        let ifrs = r#"{"facts":{"ffd":{"TtlFeeAmt":{"units":{"USD":[{"end":"2026-10-20","val":1,"form":"S-1"}]}}},"ifrs-full":{"Assets":{"units":{"USD":[{"end":"2025-12-31","val":1,"form":"20-F"}]}}}}}"#;
+        for other in [fee_facts("ffd", "F-1"), fee_facts("ffd", "S-8"), fee_facts("dei", "20-F"), facts(ifrs), facts(r#"{"facts":{}}"#)] {
+            let report = check_facts(&registry, "X", &other, 12, 0, false);
+            assert_eq!(report.status, Status::Error);
+            assert!(report.error.unwrap().starts_with("not a us-gaap filer"));
+        }
+    }
+
+    #[test]
+    fn a_us_gaap_filer_does_not_take_the_new_registrant_path() {
+        let registry = Registry::embedded().unwrap();
+        let us_gaap = r#"{"facts":{"ffd":{"TtlFeeAmt":{"units":{"USD":[{"end":"2026-10-20","val":1,"form":"S-1"}]}}},"us-gaap":{"Assets":{"units":{"USD":[{"end":"2026-09-30","val":5,"form":"S-1"}]}}}}}"#;
+        let report = check_facts(&registry, "X", &facts(us_gaap), 12, 0, false);
+        assert_eq!((report.status, report.template.as_str()), (Status::Template, "new"));
+        assert!(report.findings.iter().all(|f| f.code != "no_xbrl_values"));
+    }
 }

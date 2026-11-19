@@ -29,6 +29,8 @@ rust/mapcheck/target/release/mapcheck fetch --tickers-file rust/mapcheck/univers
 rust/mapcheck/target/release/mapcheck fetch --top 2000 --write-list rust/mapcheck/universe/top2000.txt
 # The 10-K files, only for the companies that have a critical input with no value
 rust/mapcheck/target/release/mapcheck fetch --filings --gaps --tickers-file rust/mapcheck/universe/sp500.txt
+# The latest prospectus of a new registrant (424B4; if none, S-1/A; if none, S-1). The company facts must be in the cache.
+rust/mapcheck/target/release/mapcheck fetch --prospectus ANT
 
 # Map and check (no network)
 rust/mapcheck/target/release/mapcheck --tickers-file rust/mapcheck/universe/sp500.txt
@@ -75,7 +77,7 @@ contact. A command that reads only the cache does not need the variable.
 | `PASS` | No finding that a person must examine. |
 | `WARN` | A person must examine one or more findings before the data is used in a model. |
 | `FAIL` | The mapping is incorrect, or the DCF cannot use the data. |
-| `N/A` | Not judged: a foreign filer (form 20-F or 40-F), a filer that does not report in USD, a new company with no 10-K, or a company with no revenue in the latest three fiscal years. |
+| `N/A` | Not judged: a foreign filer (form 20-F or 40-F), a filer that does not report in USD, a new company with no 10-K (also a new registrant with a form S-1 that has no XBRL values: finding `no_xbrl_values`), or a company with no revenue in the latest three fiscal years. |
 | `ERROR` | The file cannot be read, or the filer does not use us-gaap (IFRS). |
 
 The status is for the latest fiscal year. A `FAIL` in an earlier fiscal year gives the
