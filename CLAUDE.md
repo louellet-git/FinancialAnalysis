@@ -81,7 +81,7 @@ Do not use a first pass alone for a trade.
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest                              # 360 tests, no network
+python -m pytest                              # 390 tests, no network
 python -m scripts.analyze IBM                 # import + market data -> xlsx
 python -m scripts.verdict IBM --price 228.53  # value range against a price
 python -m scripts.trade_backtest              # option bots, leaderboard

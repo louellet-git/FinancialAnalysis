@@ -2,7 +2,7 @@
 id: T-20261118-credit-spreads
 title: Get corporate bond yields and credit spreads for the cost of debt
 area: engine
-status: in-progress
+status: review
 owner: merlan1996
 branch: bonds-source
 created: 2026-11-18
