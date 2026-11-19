@@ -123,3 +123,17 @@ def test_period_ends_keeps_the_latest_n():
     facts = _facts([_fact(f"{y}-01-01", f"{y}-12-31", 1.0, "10-K") for y in range(2015, 2025)])
     ends = period_ends(facts, ["us-gaap/Revenues"], ANNUAL_FORMS, n=3)
     assert ends == ["2022-12-31", "2023-12-31", "2024-12-31"]
+
+
+def test_end_dates_that_are_near_each_other_are_one_period():
+    # Two filings give the fiscal year 2016 two end dates, one day apart.
+    facts = {"facts": {"us-gaap": {
+        "Revenues": {"units": {"USD": [
+            _fact("2015-11-02", "2016-10-30", 100.0, "10-K"),
+            _fact("2015-11-01", "2016-10-31", 100.0, "10-K"),
+            _fact("2016-10-31", "2017-10-29", 110.0, "10-K"),
+        ]}},
+        "NetIncomeLoss": {"units": {"USD": [_fact("2015-11-02", "2016-10-30", 9.0, "10-K")]}},
+    }}}
+    ends = period_ends(facts, ["us-gaap/Revenues", "us-gaap/NetIncomeLoss"], ANNUAL_FORMS)
+    assert ends == ["2016-10-30", "2017-10-29"]   # the date with more anchor facts stays

@@ -81,7 +81,7 @@ class PeriodFinancials:
     currency: str = "USD"
 
     # The fields below are the standard variables. Their tags, formulas and scope
-    # are in financial_analysis/xbrl_tags.py (same names, same sequence).
+    # are in financial_analysis/standard_variables.toml (same names, same sequence).
 
     # --- Income Statement ---
     revenue: Optional[float] = None
@@ -113,6 +113,7 @@ class PeriodFinancials:
     net_income: Optional[float] = None
     net_income_incl_nci: Optional[float] = None
     net_income_noncontrolling: Optional[float] = None
+    net_income_to_common: Optional[float] = None
     discontinued_operations_income: Optional[float] = None
     depreciation: Optional[float] = None
     da_total: Optional[float] = None
@@ -131,6 +132,9 @@ class PeriodFinancials:
     accounts_receivable_net: Optional[float] = None
     inventory: Optional[float] = None
     prepaid_and_other_current_assets: Optional[float] = None
+    prepaid_expenses: Optional[float] = None
+    contract_assets_current: Optional[float] = None
+    other_receivables_current: Optional[float] = None
     total_current_assets: Optional[float] = None
     ppe_gross: Optional[float] = None
     accumulated_depreciation: Optional[float] = None
@@ -150,6 +154,9 @@ class PeriodFinancials:
     income_taxes_payable: Optional[float] = None
     deferred_revenue_current: Optional[float] = None
     other_current_liabilities: Optional[float] = None
+    other_accrued_liabilities: Optional[float] = None
+    dividends_payable: Optional[float] = None
+    interest_payable: Optional[float] = None
     total_current_liabilities: Optional[float] = None
     short_term_borrowings: Optional[float] = None
     long_term_debt_current: Optional[float] = None
@@ -158,11 +165,15 @@ class PeriodFinancials:
     long_term_debt_total: Optional[float] = None
     total_debt: Optional[float] = None
     finance_lease_liabilities: Optional[float] = None
+    finance_lease_liabilities_current: Optional[float] = None
+    finance_lease_liabilities_noncurrent: Optional[float] = None
     operating_lease_liabilities_current: Optional[float] = None
     operating_lease_liabilities_noncurrent: Optional[float] = None
     operating_lease_liabilities: Optional[float] = None
     deferred_revenue_noncurrent: Optional[float] = None
     pension_liabilities_noncurrent: Optional[float] = None
+    income_taxes_payable_noncurrent: Optional[float] = None
+    asset_retirement_obligations_noncurrent: Optional[float] = None
     deferred_tax_liabilities: Optional[float] = None
     other_noncurrent_liabilities: Optional[float] = None
     total_liabilities: Optional[float] = None
@@ -187,15 +198,26 @@ class PeriodFinancials:
     purchases_investments: Optional[float] = None
     proceeds_investments: Optional[float] = None
     acquisitions_net_of_cash: Optional[float] = None
+    proceeds_divestitures: Optional[float] = None
+    proceeds_sale_ppe: Optional[float] = None
+    other_investing: Optional[float] = None
     net_cash_from_investing: Optional[float] = None
     repurchases_common_stock: Optional[float] = None
     taxes_paid_net_share_settlement: Optional[float] = None
     dividends_paid: Optional[float] = None
     proceeds_issuance_debt: Optional[float] = None
     repayment_of_debt: Optional[float] = None
+    proceeds_short_term_debt: Optional[float] = None
+    repayment_short_term_debt: Optional[float] = None
+    net_short_term_borrowings: Optional[float] = None
+    proceeds_stock_issuance: Optional[float] = None
+    other_financing: Optional[float] = None
     net_cash_from_financing: Optional[float] = None
     interest_paid: Optional[float] = None
     income_taxes_paid: Optional[float] = None
+    fx_effect_on_cash: Optional[float] = None
+    net_change_in_cash: Optional[float] = None
+    net_change_in_cash_before_fx: Optional[float] = None
 
     # --- Disclosures (point-in-time facts from the notes) ---
     # Total remaining performance obligation (RPO). The current/noncurrent

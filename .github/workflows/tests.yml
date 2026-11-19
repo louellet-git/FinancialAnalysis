@@ -12,4 +12,8 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install -r requirements.txt -r requirements-dev.txt
+      # The Rust mapping test framework. Build it first: the pytest parity test
+      # (tests/test_mapcheck_parity.py) compares it with the Python importer.
+      - run: cargo test --manifest-path rust/mapcheck/Cargo.toml
+      - run: cargo build --release --manifest-path rust/mapcheck/Cargo.toml
       - run: python -m pytest -q

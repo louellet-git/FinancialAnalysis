@@ -144,10 +144,11 @@ decorative until a driver build exists.
 | `market_data.py` | 136 | yfinance daily OHLCV (`load_prices`, cached at `data/raw/TICKER/prices.json`) and earnings surprises (`load_earnings_surprises`). |
 | `options.py` | 375 | yfinance option-chain snapshots (dated, one per day, `data/raw/TICKER/options/YYYY-MM-DD.json`) + derived per-expiry metrics: ATM IV, straddle-mid implied move, 90/110 skew, put/call volume & OI ratios (`fetch_option_chain`, `compute_chain_metrics`, `list_snapshots`, `load_snapshot`). |
 | `scenarios.py` | 125 | Bear/base/bull presets (`DEFAULT_SCENARIOS` generic mature-large-cap; `_SCENARIO_OVERRIDES["IBM"]` = v3 framework), `CAPITAL_OVERRIDES` (IBM: net debt $54.0B, 948,675,228 diluted shares), `capital_structure_for` (derives net debt from the latest 10-K: standard variable `total_debt` − cash; shares_outstanding falling back to diluted). |
-| `schema.py` | 187 | Dataclasses: `PeriodFinancials` (109 standard variables with the same names as the registry, `sources` = the tag or formula behind each value, reserved `segment_revenue`, `raw_extras`; derived `free_cash_flow = OCF − abs(capex)` and `fcf_margin`), `CompanyFinancials`, `PricePoint`, `EarningsEstimate`, `EarningsSurprise`, `OptionQuote`, `OptionChainSnapshot`, `ConsensusEstimates`. |
+| `schema.py` | 187 | Dataclasses: `PeriodFinancials` (131 standard variables with the same names as the registry, `sources` = the tag or formula behind each value, reserved `segment_revenue`, `raw_extras`; derived `free_cash_flow = OCF − abs(capex)` and `fcf_margin`), `CompanyFinancials`, `PricePoint`, `EarningsEstimate`, `EarningsSurprise`, `OptionQuote`, `OptionChainSnapshot`, `ConsensusEstimates`. |
 | `store.py` | 105 | JSON persistence `data/processed/TICKER.json` (**periods only** — no market data), in-memory session cache, `get_series`/`compare` query helpers with metric-name validation. |
 | `xbrl_api.py` | 74 | companyfacts fetch + series extraction: filters by form type/unit, deduplicates by end date keeping the **latest-filed** entry, returns last `n` entries. |
-| `xbrl_tags.py` | 537 | The registry of standard variables: for each variable a `TagSpec` (alias tags in a fixed sequence, fallback formulas, unit, sign, period type, core flag). Also `CORE_FIELDS` (the 14 core DCF inputs), `ANCHOR_CONCEPTS` (tags that show that a period exists), `EXCLUDED_CONCEPTS` (material tags with no variable on purpose, with reasons), `STATEMENT_MAP` and `UNIT_MAP`. |
+| `standard_variables.toml` | 1,376 | The registry of standard variables (data): for each variable its alias tags in a fixed sequence, fallback formulas, unit, sign, core flag and memo flag; the rollups; the containment rules; the excluded tags with reasons. Python and Rust read this one file. |
+| `xbrl_tags.py` | 130 | Loads the registry file and gives the Python names: `ALL_TAGS` and the four statement dicts (`TagSpec`), `CORE_FIELDS`, `ANCHOR_CONCEPTS`, `EXCLUDED_CONCEPTS`, `ROLLUPS`, `WITHIN`, `STATEMENT_MAP`, `UNIT_MAP`. |
 | `verdict.py` | 31 | Investor verdict, read-only over driver-engine paths: chance the price is too high (share of paths valued below the price) and a five-band verdict (25%/75% outer cutoffs, Morningstar-style; 40%/60% middle cutoffs are judgment). Plan: PLANNING/proposals/2026-10-15-investor-verdict-layer.md. |
 
 ## `scripts/` (verified 2026-07-17)
@@ -162,6 +163,8 @@ decorative until a driver build exists.
 | `visualize_dcf.py` | `python -m scripts.visualize_dcf TICKER [--price X] [--out PATH]` | Single-page self-contained HTML report (plotly.js inlined, ~5.9k lines of output): header chips, price & valuation, fundamentals, the four aggregate-DCF panels (fan / distribution / waterfall / tornado), the driver-model section (segment history, driver table, correlation heatmap, driver-vs-aggregate compare, attribution tornado, **MC path explorer**: stratified 301-path spaghetti, 2,000-path parallel coordinates, bottom/top-10 outlier table with \|z\|≥1.5 drivers bolded), options section (IV term structure, implied move, skew, OI heatmap). Driver section renders only if `analysis/<TICKER>/driver_model.py` exposes `build()`; every section degrades to a labeled "not available" note. Styling follows docs/design-specs/2026-07-16-ratings-desk-blueprint.md. The sixth section "Backtest — mechanical vintages" (vintage table + hedgehog charts from `financial_analysis/backtest.py`, honesty labels, merged PR #9) makes SECTION_TITLES six entries. The skew panel excludes expiries under 2 days from the snapshot (`_SKEW_MIN_DTE`, PR #14) — near-expiry wing IVs are solver noise. |
 | `verdict.py` | `python -m scripts.verdict TICKER --price X [--simulations 10000] [--seed 7]` | Console verdict for a ticker with `analysis/<TICKER>/driver_model.py`: P10/P25/P50/P75/P90, chance the price is too high, verdict band. No network, writes nothing. |
 | `mapping_audit.py` | `python -m scripts.mapping_audit [TICKER ...] [--panel] [--field NAME] [--refresh]` | Audit of the standard-variable mapping: each value with its source, identity failures, material tags with no variable. `--panel` gives the summary for 32 tickers. Writes no files in `data/processed/`. |
+| `fetch_facts.py` | `python -m scripts.fetch_facts [TICKER ...] [--tickers-file FILE] [--top N] [--write-list FILE] [--delay S] [--refresh]` | Gets SEC company facts for many tickers into `data/raw/<TICKER>/company_facts.json.gz` (0.15 s between requests). `--top N` takes the first N companies of the SEC ticker list. |
+| `mapping_parity.py` | `python -m scripts.mapping_parity [TICKER ...] [--tickers-file FILE] [--sample N]` | Compares the Rust mapper with the Python importer: periods, filing dates, each variable, each source, and the tags with no variable. Exit code 1 on a difference. |
 | `trade_backtest.py` | `python -m scripts.trade_backtest [BOT ...] [--fetch] [--max-risk DOLLARS] [-v]` | Backtest of the SPY/QQQ option bots in `trading/`; prints a leaderboard. Option prices are model prices. |
 | `trade_paper.py` | `python -m scripts.trade_paper [BOT ...] [--no-refresh] [--no-live] [--equity X] [--max-risk DOLLARS]` | One forward paper-trade step for each bot, with live-chain prices when available. It sends no broker orders. |
 
@@ -192,13 +195,33 @@ engines and the analysis code read only these names.
    source, the identities that do not agree, and the material tags with no variable.
    `--panel` prints the summary for 32 tickers.
 
-Result on the panel (2026-11-19, 28 companies with the standard template, latest fiscal
-year): 12 of the 14 core inputs have a value for 96% or more; `interest_expense` 93%
-(4 of these from the `interest_paid` fallback); `total_debt` 96%, and for 5 companies
-the estimates of total debt disagree by more than 2%.
+Result (2026-11-19, 343 companies with the standard template from the 500 largest SEC
+registrants, latest fiscal year): 11 of the 14 core inputs have a value for 97% or more;
+`interest_expense` 96%, `capex` 95%, `sbc_total` 94%, `total_debt` 90% (most of the
+companies with no value have no debt tags).
 
 Limits: no segment data and no company-specific tags (Ticket 7); banks, insurers and
 REITs have a different statement structure and the audit only marks them.
+
+## `rust/mapcheck/` (2026-11-19)
+
+The test framework for the mapping, in Rust. It reads the registry file
+(`financial_analysis/standard_variables.toml`, put into the program at build time) and
+the cached SEC files. It has no network code.
+
+| Module | Function |
+|---|---|
+| `registry.rs` | Loads the registry file and checks its rules (one tag in one variable; no formula that mixes memo and line variables; no memo variable in a rollup). |
+| `facts.rs` | The companyfacts data and the selection of facts by period length (the same logic as `financial_analysis/facts.py`). |
+| `mapper.rs` | The standard variables of one period: alias tags, formulas, sources, tags with no variable (the same logic as `financial_analysis/importer.py`). |
+| `checks.rs` | The checks: core inputs, signs, identities, rollups (overlap, nested details, lines with no variable), total-debt estimates, period sequence. |
+| `run.rs` | One ticker, and all tickers in parallel (rayon); the JSON report and the values for the parity test. |
+| `summary.rs` | The text summary, the ticker list and the detail for one ticker. |
+| `main.rs` | The command line (`mapcheck --help`). |
+
+Python and Rust are two independent programs for one registry. `scripts.mapping_parity`
+and `tests/test_mapcheck_parity.py` compare them. Results and the list of checks:
+`rust/mapcheck/README.md`.
 
 ## `trading/` (added 2026-11-19 from branch `claude/trading-bot-spy-qqq-xl1o2o`)
 
@@ -223,6 +246,6 @@ model result.
 
 ## Tests
 
-`python -m pytest` from the repo root: 372 tests, all pass on 2026-11-19 (3 s).
-23 test modules are in `tests/`. The suite makes no network calls; HTTP is mocked and
+`python -m pytest` from the repo root: 380 tests, all pass on 2026-11-19 (3 s).
+22 test modules are in `tests/`. The suite makes no network calls; HTTP is mocked and
 files use `tmp_path`. Install `pytest` with `pip install -r requirements-dev.txt`.

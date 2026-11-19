@@ -133,7 +133,12 @@ def resolve_period(
             sel = select(entries_for(facts, concept, spec.unit), end, forms, spec.period)
             if sel is None:
                 continue
-            values[name] = -abs(sel.value) if spec.sign_flip else sel.value
+            if spec.sign_flip:
+                values[name] = -abs(sel.value)
+            elif spec.negate:
+                values[name] = -sel.value
+            else:
+                values[name] = sel.value
             sources[name] = f"{concept} ({sel.note})" if sel.note else concept
             if sel.filed:
                 filed_dates[name] = sel.filed

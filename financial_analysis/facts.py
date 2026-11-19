@@ -25,6 +25,7 @@ QUARTERLY_FORMS = ("10-Q", "10-Q/A")
 
 _ANNUAL_DAYS = (350, 380)
 _QUARTER_DAYS = (80, 100)
+_SAME_PERIOD_DAYS = 14
 
 YTD_NOTE = "year-to-date difference"
 
@@ -77,13 +78,33 @@ def period_ends(
     ``n`` keeps the latest n periods.
     """
     bounds = _ANNUAL_DAYS if forms == ANNUAL_FORMS else _QUARTER_DAYS
-    ends = set()
+    counts: Dict[str, int] = {}
     for concept in anchors:
         for e in entries_for(facts, concept):
             if e.get("form") in forms and _in(_days(e), bounds):
-                ends.add(e["end"])
-    ordered = sorted(ends)
+                counts[e["end"]] = counts.get(e["end"], 0) + 1
+    ordered = _merge_near_ends(counts)
     return ordered[-n:] if n else ordered
+
+
+def _merge_near_ends(counts: Dict[str, int]) -> List[str]:
+    """End dates, oldest first; dates that are near each other become one period.
+
+    Two filings of one company can give the same period an end date that differs by
+    some days (for example 2016-10-30 and 2016-10-31). End dates in a sequence with
+    14 days or less between neighbors are one period: the date with the most
+    anchor facts stays (if equal, the later date).
+    """
+    kept: List[str] = []
+    group: List[str] = []
+    for end in sorted(counts):
+        if group and (date.fromisoformat(end) - date.fromisoformat(group[-1])).days > _SAME_PERIOD_DAYS:
+            kept.append(max(group, key=lambda e: (counts[e], e)))
+            group = []
+        group.append(end)
+    if group:
+        kept.append(max(group, key=lambda e: (counts[e], e)))
+    return kept
 
 
 def select_instant(

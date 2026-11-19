@@ -82,7 +82,9 @@ the same, but filers do not all obey the tag definitions. Known cases: the
 `...AndCapitalLeaseObligations` debt tags include finance leases for some filers (HD)
 and not for others (IBM); `CostOfGoodsAndServicesSold` for CVX is only purchased crude
 and products, thus the `gross_profit` formula result for CVX is not a real gross profit;
-`Revenues` for CVX includes other income. Read the `sources` of a value before you use
+`Revenues` for CVX includes other income; the tag
+`StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest` of Agilent (A)
+has a value that is not total equity. Read the `sources` of a value before you use
 it in a model. A value whose source starts with `=` came from a formula.
 
 **33. A new registrant has no history under its ticker.** The ticker XOM now points to
@@ -93,6 +95,28 @@ under the old CIK. `import_company("XOM")` gives no annual rows. No tool joins t
 uses its own tag for a line (CAT and NEE for interest expense, NEE for capital
 expenditure) has no value for that variable, or a fallback (`interest_expense` uses
 `= interest_paid`). Filing-level XBRL is necessary (PLANNING/tickets.md, Ticket 7).
+
+**35. Many balance-sheet variables are a detail inside a different variable.** The
+source does not say which lines are parts of which line. On 312 US companies
+(2026-11-19), 166 have one or more variables that are inside a different line of the
+same filer: `other_accrued_liabilities` (76 companies), `accrued_compensation` (62),
+`operating_lease_liabilities_current` (54), `income_taxes_payable` (51). If you add
+such a variable to the line that contains it, you count the amount two times. Do not
+build a sum of balance-sheet variables for a ticker before you read
+`mapcheck TICKER --detail` (findings `nested` and `overlap`). Known overlap of separate
+lines: TGT (short-term investments are inside cash), CVX (`debt_current` is before a
+reclassification to long-term debt).
+*Evidence:* `rust/mapcheck/README.md`; `rust/mapcheck/src/checks.rs`.
+
+**36. `total_debt` has no value for a company with no debt tags.** The mapping does not
+change a missing tag to zero. On 343 companies, 10% have no `total_debt`; most have no
+debt (PLTR, ISRG, ANET), but some have debt under tags that are not in the registry.
+`capital_structure_for` then raises an error and a `CAPITAL_OVERRIDES` entry is
+necessary.
+
+**37. Foreign filers and IFRS filers are out of scope.** A foreign filer with annual
+reports on form 20-F or 40-F has no 10-K (51 of the 500 largest registrants), and an
+IFRS filer has no us-gaap facts (59 of 500). `mapcheck` gives them `N/A` and `ERROR`.
 
 ## Model layer (IBM v4 / driver engine)
 

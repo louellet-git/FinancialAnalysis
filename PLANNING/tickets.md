@@ -45,6 +45,14 @@ The validators, the red-team corpus and the coverage validator are on the board
 - **Fourth-quarter rows.** The quarterly rows are Q1 to Q3. Calculate Q4 as the fiscal
   year less the 9-month value.
 - **Statement templates for banks, insurers and REITs.** The audit only marks them.
+- **Foreign filers.** A filer with annual reports on form 20-F or 40-F has no annual
+  rows (51 of the 500 largest registrants). Accept these forms as annual forms.
+- **Contact in the SEC User-Agent.** The SEC client module has a fixed contact in its
+  User-Agent text, in a public repo. Read the contact from an environment variable.
+- **Sign of expense tags.** Some filers report an expense as a negative number (DIS
+  interest expense). Add a registry option that stores the absolute value.
+- **Rust port of the importer.** `rust/mapcheck` already maps the standard variables
+  and agrees with Python. The Python importer can call it, or be replaced by it.
 
 ## Templates (source: `analysis/JNJ/FIRST-PASS.md`)
 
