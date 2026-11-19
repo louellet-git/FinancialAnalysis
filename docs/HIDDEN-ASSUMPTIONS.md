@@ -416,6 +416,35 @@ date, `cpi_inflation` can use a value that was not yet public on that date. Do n
 it in a point-in-time backtest without a release-date check.
 *Evidence:* BLS series CUUR0000SA0, 2025 M10 value `-`; `tests/test_rates.py`.
 
+**57. The GSW curve is a fitted model, not a market quote.** The Federal Reserve Board
+fits a Svensson curve to Treasury prices each business day. The zero-coupon yields and the
+forward rates are values of this curve. The Board says the file is a staff research
+product that can change or be revised without notice. Do not use a GSW value as a price
+that a person can trade. The file has a delay: on 2026-11-19 the last row was 2026-11-13.
+`fa forwards` gives the last row on or before the date that you ask for, and its `note`
+says so.
+*Evidence:* `rust/src/forwards.rs` (`forwards_on`); the first line of
+`https://www.federalreserve.gov/data/yield-curve-tables/feds200628.csv`.
+
+**58. GSW rates have different compounding conventions.** The zero-coupon yield (SVENY)
+and the instantaneous forward rate (SVENF) are continuously compounded. The par yield
+(SVENPY) and the one-year forward rate (SVEN1F) are coupon-equivalent. The one-year
+forward rate is not `exp((s+1) z(s+1) - s z(s)) - 1` of the published zero-coupon yields:
+the two differ by 3 bp to 7 bp. Use the convention of each series. Do not mix them. Only
+three one-year forward rates exist (start at 1, 4 and 9 years). The par yield of the GSW
+curve differs from the Treasury par yield by 0.18 pp at most (last year, 1Y); the check
+`fa forwards check` uses 0.25 pp.
+*Evidence:* `rust/src/forwards.rs` (`PAR_TOLERANCE`); the header of the GSW file.
+
+**59. FRED refuses some clients in this environment, and no free futures source is in the
+repo.** FRED closes the connection for a client with an unknown `User-Agent` text (a
+`curl` request with a custom text failed; with `curl/8.5.0` it worked). The Treasury
+site works with any text, so `fa forwards check` reads the Treasury file and not FRED. No
+free source of interest-rate futures or index futures prices exists whose terms permit
+automated use (the CME terms forbid data mining with scripts, software, spiders and robots).
+Thus `fa` has no futures command. Ticket `T-20261119-futures-forwards-data` has the options.
+*Evidence:* `rust/src/forwards.rs` (`check`); ticket text.
+
 ## Corporate bonds (added 2026-11-18)
 
 **45. For IBM, `--rating` replaces a reviewed calibration with a proxy.** The IBM
