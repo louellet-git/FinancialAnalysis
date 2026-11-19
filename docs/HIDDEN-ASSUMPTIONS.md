@@ -416,6 +416,35 @@ date, `cpi_inflation` can use a value that was not yet public on that date. Do n
 it in a point-in-time backtest without a release-date check.
 *Evidence:* BLS series CUUR0000SA0, 2025 M10 value `-`; `tests/test_rates.py`.
 
+**57. The GSW curve is a fitted model, not a market quote.** The Federal Reserve Board
+fits a Svensson curve to Treasury prices each business day. The zero-coupon yields and the
+forward rates are values of this curve. The Board says the file is a staff research
+product that can change or be revised without notice. Do not use a GSW value as a price
+that a person can trade. The file has a delay: on 2026-11-19 the last row was 2026-11-13.
+`fa forwards` gives the last row on or before the date that you ask for, and its `note`
+says so.
+*Evidence:* `rust/src/forwards.rs` (`forwards_on`); the first line of
+`https://www.federalreserve.gov/data/yield-curve-tables/feds200628.csv`.
+
+**58. GSW rates have different compounding conventions.** The zero-coupon yield (SVENY)
+and the instantaneous forward rate (SVENF) are continuously compounded. The par yield
+(SVENPY) and the one-year forward rate (SVEN1F) are coupon-equivalent. The one-year
+forward rate is not `exp((s+1) z(s+1) - s z(s)) - 1` of the published zero-coupon yields:
+the two differ by 3 bp to 7 bp. Use the convention of each series. Do not mix them. Only
+three one-year forward rates exist (start at 1, 4 and 9 years). The par yield of the GSW
+curve differs from the Treasury par yield by 0.18 pp at most (last year, 1Y); the check
+`fa forwards check` uses 0.25 pp.
+*Evidence:* `rust/src/forwards.rs` (`PAR_TOLERANCE`); the header of the GSW file.
+
+**59. FRED refuses some clients in this environment, and no free futures source is in the
+repo.** FRED closes the connection for a client with an unknown `User-Agent` text (a
+`curl` request with a custom text failed; with `curl/8.5.0` it worked). The Treasury
+site works with any text, so `fa forwards check` reads the Treasury file and not FRED. No
+free source of interest-rate futures or index futures prices exists whose terms permit
+automated use (the CME terms forbid data mining with scripts, software, spiders and robots).
+Thus `fa` has no futures command. Ticket `T-20261119-futures-forwards-data` has the options.
+*Evidence:* `rust/src/forwards.rs` (`check`); ticket text.
+
 ## Corporate bonds (added 2026-11-18)
 
 **45. For IBM, `--rating` replaces a reviewed calibration with a proxy.** The IBM
@@ -445,7 +474,7 @@ not automatic.
 
 ## Bond reconciliation (added 2026-11-19, branch `claude/bond-recon`)
 
-**48. The price source is not a market quote feed.** The prices are the end-of-day prices
+**60. The price source is not a market quote feed.** The prices are the end-of-day prices
 of the Federal Investments Program (TreasuryDirect FedInvest). The page says that they
 apply to "market-based Treasury special securities". The CUSIPs are the CUSIPs of the
 public bills, notes and bonds. The time of day, and whether the price is bid, ask or mid,
@@ -454,23 +483,23 @@ York time. Thus a difference can come from the price type or the time. The BUY a
 columns are in the CSV file, but the BUY column is often 0.
 *Evidence:* `fa recon bonds` output; <https://www.treasurydirect.gov/GA-FI/FedInvest/selectSecurityPriceDate>.
 
-**49. The latest day has no end-of-day price.** On 2026-11-18 the file had 0 in the END OF DAY column for each row. The
+**61. The latest day has no end-of-day price.** On 2026-11-18 the file had 0 in the END OF DAY column for each row. The
 column is filled later. The command steps back to the last day that has prices.
 *Evidence:* the file of 2026-11-18, downloaded on 2026-11-19.
 
-**50. The Treasury curve is made from on-the-run securities only.** The inputs are the
+**62. The Treasury curve is made from on-the-run securities only.** The inputs are the
 most recently auctioned bills, notes and bonds. An older (off-the-run) security can trade
 above or below the curve. This is a cause of differences that is not a data error. Our
 curve is also not the exact curve of the Treasury (the program is not published).
 *Evidence:* <https://home.treasury.gov/policy-issues/financing-the-government/interest-rate-statistics/treasury-yield-curve-methodology>.
 
-**51. Notes and bonds are priced in 64ths.** A price step of 1/64 is 0.0156 per 100. For an
+**63. Notes and bonds are priced in 64ths.** A price step of 1/64 is 0.0156 per 100. For an
 instrument with 13 days to maturity, this step is 47 bp of yield. The summary by maturity
 shows large yield differences for short instruments because of this. Read the price
 difference and the column `resolution_bp` first.
 *Evidence:* the column `step bp` of the output; `recon.rs`.
 
-**52. The first run shows bills above the curve.** On 2026-10-30, 2026-11-10 and
+**64. The first run shows bills above the curve.** On 2026-10-30, 2026-11-10 and
 2026-11-17 the mean bill yield difference was about -6 bp (observed yield below theoretical
 yield). The sign is the same on each date. We do not know the cause. Possible causes (open
 questions): the price type (bid for the curve against another price type in the file);
@@ -479,7 +508,7 @@ the settlement day (T+1 here); real bill demand. Do not use the curve to price a
 without this check.
 *Evidence:* `fa recon bonds --date 2026-11-17` (47 bills).
 
-**53. No corporate bond prices.** We know no free official source of prices of single
+**65. No corporate bond prices.** We know no free official source of prices of single
 corporate bonds. FINRA TRACE has terms of use (the owner request says so); we did not read
 them in this work and we did not use TRACE. The Treasury and Fiscal Service files have no
 corporate bond prices. Thus the corporate comparison is at
@@ -491,12 +520,12 @@ the mean of the three OAS is an arbitrary choice. We assume that the HQM spot ra
 semi-annual (the Treasury slides say so; we did not read the full paper).
 *Evidence:* `fa recon bonds` output, section CORPORATE CURVE.
 
-**54. STRIPS have no free official price source in the repo.** The FedInvest file has no STRIPS. The
+**66. STRIPS have no free official price source in the repo.** The FedInvest file has no STRIPS. The
 only zero-coupon instruments in the set are bills (up to 52 weeks). The Federal Reserve
 zero-coupon curve of Gurkaynak, Sack and Wright is a useful second reference for long
 zero rates. The branch `claude/futures-forwards-data` loads it. This branch does not.
 
-**55. Download of the price file.** The download needs a session (cookie, a CSRF token and a POST).
+**67. Download of the price file.** The download needs a session (cookie, a CSRF token and a POST).
 In the container of 2026-11-19, `curl` got the file, and the Rust client `mapcheck::http::Client` got
 "HTTP 400 InvalidUri" from `www.treasurydirect.gov` for the same request bytes. We did not find the
 cause. The Rust download code is thus not tested against the real site. Download the

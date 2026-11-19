@@ -21,6 +21,8 @@ constant per run).
 | Capex rule R2 | 2026-11-19 | `capex_total` (equipment and capitalized software) in free cash flow; rule R2; overlap check; effect measured on 324 companies | ~0 (inline) | orchestrator only, no subagents; not a valuation run |
 | Mapping in Rust only | 2026-11-19 | Python mapping, audit, fetch, filing and cross-check code deleted; `mapcheck` commands fetch, import, values, filing, crosscheck; the Python importer runs the Rust program | ~0 (inline) | orchestrator only, no subagents; not a valuation run |
 | S&P 500 and next 500 mapping | 2026-11-19 | `mapcheck` on 1,003 tickers: S&P 500 0 FAIL, next 500 7 FAIL with known causes; critical inputs from the 10-K; company types; revenue rule; 82 Rust tests | ~0 (inline) | orchestrator only, no subagents; not a valuation run |
+| Forward rates (GSW) | 2026-11-19 | `fa forwards` and `fa forwards check` in Rust; futures prices not built (no free source with terms that permit it) | ~155k (1 Sonnet subagent) | orchestrator examined and committed; not a valuation run |
+| Bond comparison (`fa recon bonds`) | 2026-11-19 | Treasury bills, notes and bonds: value from our par curve against FedInvest end-of-day prices; HQM curve comparison; 18 new Rust tests | ~249k (1 Sonnet subagent) | orchestrator examined and committed; not merged to main; not a valuation run |
 
 Targets: frontier ticker ≤500k · repeat run ≤50k · ORCL (ticker #2) is the first measured
 frontier run under the cheapened pipeline.

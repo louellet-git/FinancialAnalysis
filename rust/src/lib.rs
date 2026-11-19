@@ -19,6 +19,7 @@
 pub mod curve;
 pub mod prices;
 pub mod recon;
+pub mod forwards;
 
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};

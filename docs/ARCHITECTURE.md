@@ -220,7 +220,7 @@ and gives typed results. It does not move a part to Rust.
 The command `fa recon bonds [--date D] [--out FILE]` (crate `rust/`) finds the
 difference between the value that our rates give and the market value of simple
 bonds. It lists differences. It does not explain them. Open questions are in
-`docs/HIDDEN-ASSUMPTIONS.md` (#48 to #55).
+`docs/HIDDEN-ASSUMPTIONS.md` (#60 to #67).
 
 Steps for one date:
 
@@ -250,9 +250,25 @@ Conventions (each one is in the header of `curve.rs`):
 - **Difference.** Observed minus theoretical. A positive price difference means that the market price is above the price from our curve.
 - **Filter.** The set has market-based bills, notes and bonds that have a price, have 7 days or more to maturity and have no call date. TIPS and floating-rate notes are not in the set.
 - **Resolution.** The source gives notes and bonds in 64ths of a point. The column `resolution_bp` is the yield change of one such step. A yield difference that is smaller than this column has no information. This is large for instruments with a short life.
-- **Corporate curve.** No free official source of prices of single corporate bonds is known (see #53). Thus the comparison is at curve level: the HQM spot rate (semi-annual) against our Treasury zero rate (semi-annual) plus the mean ICE OAS of AAA, AA and A. It shows how our spread data relate to the Treasury HQM curve. It does not show a bond price difference.
+- **Corporate curve.** No free official source of prices of single corporate bonds is known (see #65). Thus the comparison is at curve level: the HQM spot rate (semi-annual) against our Treasury zero rate (semi-annual) plus the mean ICE OAS of AAA, AA and A. It shows how our spread data relate to the Treasury HQM curve. It does not show a bond price difference.
 
 The tests (`cargo test --manifest-path rust/Cargo.toml --locked`) use small samples and hand calculations: a par bond prices to 100 on a coupon date, a bill, a bond between coupon dates, the reprice of each par node, a flat curve. They do not use the network.
+### `rust/src/forwards.rs` (2026-11-19)
+
+This module is Rust only. It does not call Python. It uses `mapcheck::http::Client`.
+
+1. `fa forwards [--date D]` gives the zero-coupon yields, the instantaneous forward
+   rates, the one-year forward rates and the par yields of the Federal Reserve Board
+   dataset of Gürkaynak, Sack and Wright (GSW). Each rate is a decimal. The output has
+   the source, the URL, the date of the row and a note.
+2. The module reads the published values. It does not compute a curve. The curve
+   mathematics is in another part of the repo.
+3. The file goes to the cache `data/raw/rates/gsw_feds200628.csv`. A cached file is
+   fresh for 12 hours. A new file goes to the cache only after it parses. If the
+   download fails and a cache exists, the program uses the old file and prints a warning.
+4. `fa forwards check [--days N]` compares the GSW par yields with the Treasury par
+   yields (exit 1 on mismatch). It does not use FRED (hidden assumption 59).
+5. No futures command exists. See hidden assumption 59 and the ticket.
 
 ## `trading/` (added 2026-11-19 from branch `claude/trading-bot-spy-qqq-xl1o2o`)
 
