@@ -2,7 +2,7 @@
 id: T-20261119-local-viewer
 title: Local HTML viewer: stock look-up, Monte Carlo DCF, rates, bonds
 area: engine
-status: in-progress
+status: review
 owner: louellet-git
 branch: claude/admiring-allen-f5aaeq
 created: 2026-11-19

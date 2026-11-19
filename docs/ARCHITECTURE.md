@@ -230,7 +230,106 @@ This module is Rust only. It does not call Python. It uses `mapcheck::http::Clie
    download fails and a cache exists, the program uses the old file and prints a warning.
 4. `fa forwards check [--days N]` compares the GSW par yields with the Treasury par
    yields (exit 1 on mismatch). It does not use FRED (hidden assumption 59).
-5. No futures command exists. See hidden assumption 59 and the ticket.
+
+### `rust/src/futures/` (2026-11-19)
+
+This module is Rust only. It does not call Python. It uses `mapcheck::http::Client`, with
+one shared client and 0.5 s between two requests. The User-Agent text is
+`FinancialAnalysis fa (personal research)`.
+
+| File | Function |
+|---|---|
+| `mod.rs` | Output types, the cache (`load`), and the commands `quote`, `history`, `curve` |
+| `facts.rs` | Table of contract facts for each root; reads symbols (`ES`, `ESZ26`) |
+| `yahoo.rs` | Yahoo chart endpoint: CME and CBOT contracts (ES, NQ, ZT, ZF, ZN, TN, ZB, UB, SR3, SR1, ZQ) |
+| `cboe.rs` | Cboe VIX futures: settlement file of a date and history file of a contract |
+| `cftc.rs` | CFTC Commitments of Traders, Traders in Financial Futures |
+| `mpt.rs` | Atlanta Fed Market Probability Tracker; a small zip and xlsx reader |
+| `check.rs` | Cross-checks (exit 1 on mismatch) |
+| `cli.rs` | Arguments of `fa futures ...` |
+
+1. Each value has a date, a source, a URL and a price type. Rates are decimals. Prices
+   stay in the units of the exchange. For SR3, SR1 and ZQ the program adds
+   `implied_rate = (100 - price) / 100`.
+2. The cache is `data/raw/futures/`. A new file goes to the cache only after it parses. A
+   file that holds the day that the caller needs is used at any age; other files are fresh
+   for 1 hour (Yahoo), 6 hours (Cboe, NY Fed) or 12 hours (CFTC, Atlanta Fed). If a
+   download fails and an old file parses, the program uses the old file and prints a warning.
+3. Source choice for each kind of data: VIX futures from Cboe (settlement price, a file of
+   the exchange); CME and CBOT futures from Yahoo (daily close that Yahoo gives, and the last
+   trade); positions from the CFTC; the policy path from the Atlanta Fed. The CME website
+   is not used: it refuses automated access (hidden assumption 76).
+4. Know the limits before you use a value: hidden assumptions 70 to 78.
+
+### `rust/src/ratemodels/` — stochastic short-rate models (2026-11-19)
+
+Rust only. The module has models, a calibration to a rate history, and a parallel
+simulation. It feeds the Monte Carlo DCF (ticket `T-20261119-stochastic-dcf-drivers`).
+The library is the main interface. The commands `fa models ...` are thin wrappers.
+Rates are decimals per year. Time is in years. All parameters are annualized.
+
+**Files.** `models.rs` (trait `RateModel` and the models), `sim.rs` (`simulate_paths`,
+`simulate_map`), `rng.rs` (xoshiro256++, Box-Muller), `data.rs` (`Series`, `Freq`,
+`sample`, `Span`), `calib.rs` (`calibrate`), `rolling.rs` (`rolling`, `frequencies`,
+`compare`), `curve.rs` (GSW Svensson curve), `math.rs` (Nelder-Mead, Hessian, OLS),
+`cli.rs`, `tests.rs`. `forwards.rs` has the accessor `Dataset::history(column)`.
+
+**Models.** Each model gives the step, and the closed forms that exist (mean and variance
+of r(t), stationary mean and variance, zero-coupon bond price P(0,t)). The bond price is
+`E[exp(-integral of r)]` in the model itself. There is no market price of risk.
+
+| Model | Equation | Scheme | Closed forms |
+|---|---|---|---|
+| `Vasicek` | dr = k (th - r) dt + s dW | exact Gaussian step | mean, variance, stationary, P(0,t) |
+| `Cir` | dr = k (th - r) dt + s sqrt(r) dW | Andersen QE, psi_c = 1.5; r >= 0; each step has the exact mean and variance | mean, variance, stationary, P(0,t); `feller_ratio` = 2 k th / s^2 |
+| `Ckls` | dr = k (th - r) dt + s r^g dW | g = 0: exact step; g > 0: Milstein with full truncation (weak order 1) | mean for each g; variance, stationary, P(0,t) for g = 0 and g = 1/2 |
+| `HullWhite` | dr = (th(t) - a r) dt + s dW | r = x + alpha(t); x is exact OU | mean, variance, P(0,t); reprices the curve |
+| `HoLee` | dr = th(t) dt + s dW | Hull-White with a = 0 | same |
+
+Hull-White: `alpha(t) = f(0,t) + s^2 B(t)^2 / 2`, `B(t) = (1 - exp(-a t))/a`. The forward
+curve `f(0,t)` and the discount factors come from `ZeroCurve`: the Svensson formula with
+the six parameters of one GSW day. The curve matches the published zero yields (SVENY01..30)
+to 5e-7.
+
+**Simulation.** Paths run in parallel with rayon. Path p uses the stream
+`Rng::for_path(seed, p)`, so the result is the same with any number of threads. Each task
+has one buffer for a path. There is no allocation in the time loop. `simulate_map` reduces
+each path at once (small memory). `trapezoid` gives the integral of r, so `exp(-integral)`
+is the discount factor (error of order dt^2).
+
+**Data and sampling.** `sample(series, start, end, freq)` takes the observations of an
+interval and, for weekly and monthly data, the last observation of each period. The step
+`dt` is the mean calendar spacing in years. The default series is the GSW 1-year zero yield
+(continuously compounded), a proxy of the short rate. A Treasury 3-month history is not built.
+
+**Calibration methods** (`calibrate(kind, method, sample, gamma)`).
+
+| Method | What it estimates, and from what |
+|---|---|
+| `ml` | Vasicek: the exact conditional Gaussian likelihood (closed form: the AR(1) regression). CIR: the exact noncentral chi-square density (Poisson mixture of gamma densities), optimized with Nelder-Mead. CKLS: a quasi-likelihood (exact mean, variance s^2 r^(2g) (1 - exp(-2 k dt))/(2 k)), s profiled out. Ho-Lee: Gaussian random walk. Standard errors: numeric Hessian. |
+| `ols` | Least squares of r(i+1) on r(i). Exact map: `k = -ln(b)/dt`, `th = a/(1 - b)`. Robust (HC0) standard errors, delta method. CIR: s from the mean of e^2 / v(r), with the exact conditional variance v. |
+| `gmm` | CKLS (1992) moment conditions, exactly identified. The mean conditions are least squares. Gamma comes from a one-dimensional root search. Standard errors by the sandwich formula. |
+| `realvol` | Drift from least squares. The volatility matches a realized-volatility estimator: `close` (all changes), `rolling:N` (last N changes), `ewma:L` (weight L^age). |
+
+Realized volatility of a rate: the standard deviation of the changes over one sampling
+step, in rate units per square root of a year (0.0100 = 100 bp per sqrt(year)). The model
+sigma is set from the residuals of the fitted mean, divided by the conditional variance
+of the model with sigma = 1. For Vasicek, sigma is in rate units. For CIR and CKLS, the
+volatility of the rate at level r is `sigma r^gamma`.
+
+Each fit has the parameters with standard errors, the log-likelihood (with its kind), the
+AIC, the t-statistic of mean reversion and a flag. A fit with t below 2.86 (Dickey-Fuller
+5%) is flagged "not different from zero". A sample with a constant series, fewer than 30
+observations, rates at or below 0 for CIR and CKLS, or an AR(1) coefficient of 1 or more
+gives an error with the reason.
+
+**Studies.** `rolling(window, step)`: one calibration for each window, in parallel; output
+is a table (JSON, or CSV with `--out`); a window that fails has the error in its row.
+`frequencies`: the same interval at daily, weekly and monthly sampling.
+`compare`: Vasicek, CIR, CKLS and Ho-Lee on one interval, with AIC.
+
+**Commands.** See `fa help` and the README. The tests are in `tests.rs`; they run with
+`cargo test --manifest-path rust/Cargo.toml --locked`.
 
 ## `trading/` (added 2026-11-19 from branch `claude/trading-bot-spy-qqq-xl1o2o`)
 

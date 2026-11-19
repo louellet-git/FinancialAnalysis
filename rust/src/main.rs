@@ -30,6 +30,15 @@ USAGE:
   fa bonds check [--days N]                       Moody's - 10Y vs FRED (exit 1 on mismatch)
   fa forwards [--date D]                          GSW zero-coupon yields and forward rates (Federal Reserve Board)
   fa forwards check [--days N]                    GSW par yields against Treasury (exit 1 on mismatch)
+  fa futures roots                                contract facts of each root
+  fa futures quote SYMBOL [--date D]              last daily value; SYMBOL is a root (ES) or a contract (ESZ26)
+  fa futures history SYMBOL --start D [--end D]   daily values of a contract or of the Yahoo series of a root
+  fa futures curve ROOT [--date D]                all listed contracts of one root; rate futures give the implied rate
+  fa futures positions ROOT [--weeks N]           CFTC Commitments of Traders (financial futures)
+  fa futures policy-path [--date D]               policy-rate path from SOFR options (Atlanta Fed)
+  fa futures check [--date D]                     cross-checks of two sources (exit 1 on mismatch)
+  fa models calibrate|rolling|frequencies|compare|simulate ...
+                                                  stochastic rate models (Rust); see below
   fa verdict TICKER --price P [--rf-date D|today] [--rf-base-date D] [--rating A-]
              [--simulations N] [--seed S]
   fa run MODULE [ARGS...]                         any entry point, e.g. fa run scripts.analyze IBM
@@ -131,12 +140,17 @@ fn forwards_cmd(fa: &Fa, rest: &[String]) -> ExitCode {
 fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
     match args.first().map(String::as_str) {
         None | Some("help" | "-h" | "--help") => {
-            println!("{USAGE}");
+            println!("{USAGE}\n\nMODELS (fa models ...):\n{}", financial_analysis::ratemodels::cli::USAGE);
             Ok(ExitCode::SUCCESS)
         }
         Some("rates") => rates(fa, &args[1..]),
         Some("bonds") => bonds(fa, &args[1..]),
+        Some("models") => financial_analysis::ratemodels::cli::run(&fa.repo, &args[1..]).map(|_| ExitCode::SUCCESS).or_else(|e| {
+            eprintln!("fa: {e}");
+            Ok(ExitCode::from(2))
+        }),
         Some("forwards") => Ok(forwards_cmd(fa, &args[1..])),
+        Some("futures") => Ok(financial_analysis::futures::cli::run(&fa.repo, &args[1..])),
         Some("verdict") => {
             print_json(&fa.call::<Verdict>("scripts.verdict", &args[1..])?);
             Ok(ExitCode::SUCCESS)
