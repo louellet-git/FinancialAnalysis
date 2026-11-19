@@ -200,6 +200,9 @@ pub fn values_listing(registry: &Registry, r: &TickerReport) -> String {
     }
     let Some(period) = r.company.as_ref().and_then(|c| c.annual.last()) else {
         let _ = writeln!(out, "  no annual period");
+        for f in r.findings.iter().filter(|f| f.code == "no_xbrl_values") {
+            let _ = writeln!(out, "  {:4} {:36} {}", f.severity.label(), f.code, f.detail);
+        }
         return out;
     };
     let mut statement = "";

@@ -517,6 +517,6 @@ ticket `option-backtest-rust`).
 ## Tests
 
 `python -m pytest` from the repo root: 349 tests, all pass on 2026-11-19 (4 s).
-19 test modules are in `tests/`. `cargo test --manifest-path rust/mapcheck/Cargo.toml`: 82 Rust
+19 test modules are in `tests/`. `cargo test --manifest-path rust/mapcheck/Cargo.toml`: 86 Rust
 tests. The suites make no network calls; HTTP is mocked and
 files use `tmp_path`. Install `pytest` with `pip install -r requirements-dev.txt`.

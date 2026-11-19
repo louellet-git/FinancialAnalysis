@@ -206,6 +206,17 @@ them.** The status of these company types says that revenue, net income, total a
 equity and the share count are there. It does not say that a free-cash-flow DCF gives
 a correct value. A company with no revenue in the latest three fiscal years is `N/A`.
 
+**68. An IPO registration statement (S-1, 424B4) can have no XBRL.** Then the standard
+mapping gives no variables; the values come from the prospectus text by hand until the
+first 10-Q or 10-K. The company facts of such a registrant have only the fee data
+(namespace `ffd`). `mapcheck` gives the status `N/A` with the template `new` and the
+finding `no_xbrl_values`. `mapcheck import` stops, thus the Python importer raises
+`UnsupportedFilingError`. `mapcheck fetch --prospectus TICKER` puts the latest prospectus
+in the cache (424B4; if none, S-1/A; if none, S-1). Example: ANT (Anthropic, PBC), IPO
+of 2026-11-18. A foreign registrant with only fee data (form F-1) stays `ERROR`.
+*Evidence:* `rust/mapcheck/src/run.rs` (`registration_only`); `rust/mapcheck/src/sec.rs`
+(`fetch_prospectus`).
+
 ## Model layer (IBM v4 / driver engine)
 
 **10. Buybacks are genuinely absent from the model — not an omission bug.** IBM's
