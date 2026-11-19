@@ -17,6 +17,7 @@
 //! ```
 
 pub mod forwards;
+pub mod futures;
 
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};

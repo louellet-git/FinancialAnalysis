@@ -436,14 +436,104 @@ curve differs from the Treasury par yield by 0.18 pp at most (last year, 1Y); th
 `fa forwards check` uses 0.25 pp.
 *Evidence:* `rust/src/forwards.rs` (`PAR_TOLERANCE`); the header of the GSW file.
 
-**59. FRED refuses some clients in this environment, and no free futures source is in the
-repo.** FRED closes the connection for a client with an unknown `User-Agent` text (a
-`curl` request with a custom text failed; with `curl/8.5.0` it worked). The Treasury
-site works with any text, so `fa forwards check` reads the Treasury file and not FRED. No
-free source of interest-rate futures or index futures prices exists whose terms permit
-automated use (the CME terms forbid data mining with scripts, software, spiders and robots).
-Thus `fa` has no futures command. Ticket `T-20261119-futures-forwards-data` has the options.
-*Evidence:* `rust/src/forwards.rs` (`check`); ticket text.
+**59. FRED refuses some clients in this environment.** FRED closes the connection for a
+client with an unknown `User-Agent` text (a `curl` request with a custom text failed;
+with `curl/8.5.0` it worked). The Treasury site works with any text, so
+`fa forwards check` reads the Treasury file and not FRED. The futures commands are in
+traps 70 to 78.
+*Evidence:* `rust/src/forwards.rs` (`check`).
+
+**70. A Yahoo `=F` series is a chain of front contracts, not adjusted, and Yahoo chooses the
+contract.** `ES=F` before 2026-09-18 differs from `ESZ26` on the same dates by 55 to 68
+points (the September contract was the front contract then). From 2026-09-21 the two are
+equal. The value of 2026-09-18 (7657.35) is the final settlement of the expiring contract;
+it is not a multiple of the 0.25 tick. `ZQ=F` on 2026-11-19 was the January 2027 contract,
+not the front month. Do not join old and new values of a `=F` series without a test. For a
+curve, use explicit contract symbols (`fa futures curve`).
+*Evidence:* `rust/src/futures/yahoo.rs`; `fa futures history ES` and `fa futures history ESZ26`.
+
+**71. A Yahoo daily bar is a close that Yahoo gives. It is not a confirmed settlement.** The
+date of a bar is the CME trade date. The time stamp is midnight New York, or 09:30 on a
+day with a short session. `meta.gmtoffset` is the offset of today, so a bar of the other
+half of the year is one hour away from midnight; the program accepts both. The last bar of
+a running session is the last trade; the program gives it as `live` and not as a daily
+value. Prices come as 32-bit floats (95.7025 comes as 95.70249938964844); the program
+keeps the shortest text of the same 32-bit float. The volume of the newest daily bar was
+a copy of the day before for ES, ZN and ZQ on 2026-11-18. The program cannot compare the
+close with the exchange settlement, because no exchange file is available (trap 76).
+*Evidence:* `rust/src/futures/yahoo.rs` (`parse_chart`, tests).
+
+**72. Yahoo has almost no daily history for SOFR futures, and none for an expired contract.**
+For `SR3Z26`, 1646 of 1720 daily rows have no close; the last close before the running
+session is 2020-05-08. `SR1X26` has one row. Only the last trade is usable for SR3 and
+SR1. `fa futures curve SR3` without `--date` uses the last trades; with `--date` it fails
+on purpose. `ESU26` (expired 2026-09-18) gives HTTP 404, so the curve of a past date has
+only the contracts that still trade. A quote with no daily bar in the 7 days before the date
+gives no daily value and a note.
+*Evidence:* `rust/src/futures/yahoo.rs` (`series`, `MAX_STALE_DAYS`); `fa futures quote SR3Z26`.
+
+**73. The Cboe settlement file has no date inside, and it can show the wrong day.** For a
+date that is not past, Cboe gives the file of the last trade date (`dt=2026-11-20` gave
+the file of 2026-11-18, byte for byte). The program asks only for a date before today (UTC).
+A weekend date gives a header with no row. The file of 2025-06-10 had no row and the file
+of 2026-10-01 had rows; the age limit is not known. A weekly contract can show the price of
+the monthly contract (2026-11-18: `VX47/X6`, `VX48/Z6`, `VX49/Z6` and `VX/Z6` all 21.9372;
+2026-11-13: `VX/X6` and `VX47/X6` both 19.1079). Do not read a weekly price as a separate
+market price.
+*Evidence:* `rust/src/futures/cboe.rs` (`settlement`); the cached files in `data/raw/futures/`.
+
+**74. The Cboe history file of a contract is named with the expiry date, and the date rule has
+holiday exceptions.** The standard expiry is the Wednesday 30 days before the third Friday
+of the next month. `VX/K7` expires on 2027-05-18, not 2027-05-19: the third Friday of June
+2027 is a holiday. The file store answers HTTP 403, not 404, for a file that does not
+exist. The program takes the expiry from the settlement file when it has it, and tries the
+two days before the standard date when it has not. A file is posted the morning after the
+trade date (the row of 2026-11-18 was not there at 04:00 UTC on 2026-11-19). In the history
+file, 0 in open, high or low means no trade. The final settlement of an expired contract is
+the special opening quotation (SOQ). The program writes a contract with a 2-digit year
+(`VXZ26`), as the exchange does in the settlement file (`VX/Z6`).
+*Evidence:* `rust/src/futures/cboe.rs` (`standard_expiry`, `history`, tests).
+
+**75. CFTC positions are old, and they are classes of traders.** The data are the positions of
+Tuesday. The CFTC says: "The COT Report is generally published each Friday at 3:30 pm
+Eastern Time (US)". On 2026-11-19 the newest week was 2026-11-10; the week of 2026-11-17
+comes on 2026-11-20. The report is "Traders in Financial Futures", futures only, all
+contract months together. A group (dealer, asset manager, leveraged funds, other
+reportable) is a class of traders, not one firm. The E-mini S&P 500 has two codes: 13874A
+(E-mini, used here) and 13874+ ("S&P 500 Consolidated"). Net = long - short; spread
+positions are not in the net.
+*Evidence:* `rust/src/futures/cftc.rs`; `fa futures positions ES`.
+
+**76. Only two independent checks exist, and the CME prices have none.** The CME website
+refuses automated access (HTTP 403: "This IP address is blocked due to suspected web scraping
+activity"). Stooq answers with a page that needs JavaScript ("This site requires JavaScript
+to verify your browser"); the program does not run it. `stooq.pl` and `ftp.cmegroup.com`
+closed the connection; Nasdaq Data Link and Investing.com answered HTTP 403; Barchart gave an
+empty answer. So ES, NQ, the Treasury futures and the SOFR prices have no second source. The
+two checks are: the VIX settlement file against the Cboe history files, and the implied rate
+of the 30-day fed funds contract of the current month against the average EFFR of the
+month (tolerance 5 bp). The second check can fail when the FOMC changes the target range
+inside the month. A pass of a check does not prove a price of another contract.
+*Evidence:* `rust/src/futures/check.rs`; `fa futures check`.
+
+**77. The contract facts are typed from the exchange specifications.** The tick, the contract
+size and the price meaning in `rust/src/futures/facts.rs` were not tested against the
+exchange page (the CME page is blocked, trap 76). Only the quarterly months (H, M, U, Z)
+of SR3 are listed; the serial months exist and the program does not list them. The Yahoo
+short name has 30 characters at most: `Three-Month SOFR Futures,Dec-20` is December 2026.
+*Evidence:* `rust/src/futures/facts.rs`.
+
+**78. The Atlanta Fed policy path is a model estimate.** The Market Probability Tracker
+estimates a distribution of the average SOFR for each 3-month reference window from the
+prices of CME options on 3-month SOFR futures. The file starts on 2023-03-29. Its last row
+is one to two days old (2026-11-17 on 2026-11-19). The file says: "Use of this data is permitted for
+personal and educational purposes only." The Bank gives rates in basis points and
+probabilities in percent; the program gives decimals. `prob_below_range` and
+`prob_above_range` are relative to the FOMC target range of the observation date, so they
+change when the range changes. Example: on 2026-11-17 the mean for the window that starts
+2026-12-16 was 4.2853%; the last trade of `SR3Z26` on 2026-11-19 gave 4.2975%. The two are
+two days apart.
+*Evidence:* `rust/src/futures/mpt.rs`; `fa futures policy-path`.
 
 ## Corporate bonds (added 2026-11-18)
 

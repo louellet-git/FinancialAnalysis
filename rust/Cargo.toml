@@ -17,3 +17,4 @@ path = "src/main.rs"
 mapcheck = { path = "mapcheck" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+flate2 = "1"
