@@ -436,14 +436,158 @@ curve differs from the Treasury par yield by 0.18 pp at most (last year, 1Y); th
 `fa forwards check` uses 0.25 pp.
 *Evidence:* `rust/src/forwards.rs` (`PAR_TOLERANCE`); the header of the GSW file.
 
-**59. FRED refuses some clients in this environment, and no free futures source is in the
-repo.** FRED closes the connection for a client with an unknown `User-Agent` text (a
-`curl` request with a custom text failed; with `curl/8.5.0` it worked). The Treasury
-site works with any text, so `fa forwards check` reads the Treasury file and not FRED. No
-free source of interest-rate futures or index futures prices exists whose terms permit
-automated use (the CME terms forbid data mining with scripts, software, spiders and robots).
-Thus `fa` has no futures command. Ticket `T-20261119-futures-forwards-data` has the options.
-*Evidence:* `rust/src/forwards.rs` (`check`); ticket text.
+**59. FRED refuses some clients in this environment.** FRED closes the connection for a
+client with an unknown `User-Agent` text (a `curl` request with a custom text failed;
+with `curl/8.5.0` it worked). The Treasury site works with any text, so
+`fa forwards check` reads the Treasury file and not FRED. The futures commands are in
+traps 70 to 78.
+*Evidence:* `rust/src/forwards.rs` (`check`).
+
+**70. A Yahoo `=F` series is a chain of front contracts, not adjusted, and Yahoo chooses the
+contract.** `ES=F` before 2026-09-18 differs from `ESZ26` on the same dates by 55 to 68
+points (the September contract was the front contract then). From 2026-09-21 the two are
+equal. The value of 2026-09-18 (7657.35) is the final settlement of the expiring contract;
+it is not a multiple of the 0.25 tick. `ZQ=F` on 2026-11-19 was the January 2027 contract,
+not the front month. Do not join old and new values of a `=F` series without a test. For a
+curve, use explicit contract symbols (`fa futures curve`).
+*Evidence:* `rust/src/futures/yahoo.rs`; `fa futures history ES` and `fa futures history ESZ26`.
+
+**71. A Yahoo daily bar is a close that Yahoo gives. It is not a confirmed settlement.** The
+date of a bar is the CME trade date. The time stamp is midnight New York, or 09:30 on a
+day with a short session. `meta.gmtoffset` is the offset of today, so a bar of the other
+half of the year is one hour away from midnight; the program accepts both. The last bar of
+a running session is the last trade; the program gives it as `live` and not as a daily
+value. Prices come as 32-bit floats (95.7025 comes as 95.70249938964844); the program
+keeps the shortest text of the same 32-bit float. The volume of the newest daily bar was
+a copy of the day before for ES, ZN and ZQ on 2026-11-18. The program cannot compare the
+close with the exchange settlement, because no exchange file is available (trap 76).
+*Evidence:* `rust/src/futures/yahoo.rs` (`parse_chart`, tests).
+
+**72. Yahoo has almost no daily history for SOFR futures, and none for an expired contract.**
+For `SR3Z26`, 1646 of 1720 daily rows have no close; the last close before the running
+session is 2020-05-08. `SR1X26` has one row. Only the last trade is usable for SR3 and
+SR1. `fa futures curve SR3` without `--date` uses the last trades; with `--date` it fails
+on purpose. `ESU26` (expired 2026-09-18) gives HTTP 404, so the curve of a past date has
+only the contracts that still trade. A quote with no daily bar in the 7 days before the date
+gives no daily value and a note.
+*Evidence:* `rust/src/futures/yahoo.rs` (`series`, `MAX_STALE_DAYS`); `fa futures quote SR3Z26`.
+
+**73. The Cboe settlement file has no date inside, and it can show the wrong day.** For a
+date that is not past, Cboe gives the file of the last trade date (`dt=2026-11-20` gave
+the file of 2026-11-18, byte for byte). The program asks only for a date before today (UTC).
+A weekend date gives a header with no row. The file of 2025-06-10 had no row and the file
+of 2026-10-01 had rows; the age limit is not known. A weekly contract can show the price of
+the monthly contract (2026-11-18: `VX47/X6`, `VX48/Z6`, `VX49/Z6` and `VX/Z6` all 21.9372;
+2026-11-13: `VX/X6` and `VX47/X6` both 19.1079). Do not read a weekly price as a separate
+market price.
+*Evidence:* `rust/src/futures/cboe.rs` (`settlement`); the cached files in `data/raw/futures/`.
+
+**74. The Cboe history file of a contract is named with the expiry date, and the date rule has
+holiday exceptions.** The standard expiry is the Wednesday 30 days before the third Friday
+of the next month. `VX/K7` expires on 2027-05-18, not 2027-05-19: the third Friday of June
+2027 is a holiday. The file store answers HTTP 403, not 404, for a file that does not
+exist. The program takes the expiry from the settlement file when it has it, and tries the
+two days before the standard date when it has not. A file is posted the morning after the
+trade date (the row of 2026-11-18 was not there at 04:00 UTC on 2026-11-19). In the history
+file, 0 in open, high or low means no trade. The final settlement of an expired contract is
+the special opening quotation (SOQ). The program writes a contract with a 2-digit year
+(`VXZ26`), as the exchange does in the settlement file (`VX/Z6`).
+*Evidence:* `rust/src/futures/cboe.rs` (`standard_expiry`, `history`, tests).
+
+**75. CFTC positions are old, and they are classes of traders.** The data are the positions of
+Tuesday. The CFTC says: "The COT Report is generally published each Friday at 3:30 pm
+Eastern Time (US)". On 2026-11-19 the newest week was 2026-11-10; the week of 2026-11-17
+comes on 2026-11-20. The report is "Traders in Financial Futures", futures only, all
+contract months together. A group (dealer, asset manager, leveraged funds, other
+reportable) is a class of traders, not one firm. The E-mini S&P 500 has two codes: 13874A
+(E-mini, used here) and 13874+ ("S&P 500 Consolidated"). Net = long - short; spread
+positions are not in the net.
+*Evidence:* `rust/src/futures/cftc.rs`; `fa futures positions ES`.
+
+**76. Only two independent checks exist, and the CME prices have none.** The CME website
+refuses automated access (HTTP 403: "This IP address is blocked due to suspected web scraping
+activity"). Stooq answers with a page that needs JavaScript ("This site requires JavaScript
+to verify your browser"); the program does not run it. `stooq.pl` and `ftp.cmegroup.com`
+closed the connection; Nasdaq Data Link and Investing.com answered HTTP 403; Barchart gave an
+empty answer. So ES, NQ, the Treasury futures and the SOFR prices have no second source. The
+two checks are: the VIX settlement file against the Cboe history files, and the implied rate
+of the 30-day fed funds contract of the current month against the average EFFR of the
+month (tolerance 5 bp). The second check can fail when the FOMC changes the target range
+inside the month. A pass of a check does not prove a price of another contract.
+*Evidence:* `rust/src/futures/check.rs`; `fa futures check`.
+
+**77. The contract facts are typed from the exchange specifications.** The tick, the contract
+size and the price meaning in `rust/src/futures/facts.rs` were not tested against the
+exchange page (the CME page is blocked, trap 76). Only the quarterly months (H, M, U, Z)
+of SR3 are listed; the serial months exist and the program does not list them. The Yahoo
+short name has 30 characters at most: `Three-Month SOFR Futures,Dec-20` is December 2026.
+*Evidence:* `rust/src/futures/facts.rs`.
+
+**78. The Atlanta Fed policy path is a model estimate.** The Market Probability Tracker
+estimates a distribution of the average SOFR for each 3-month reference window from the
+prices of CME options on 3-month SOFR futures. The file starts on 2023-03-29. Its last row
+is one to two days old (2026-11-17 on 2026-11-19). The file says: "Use of this data is permitted for
+personal and educational purposes only." The Bank gives rates in basis points and
+probabilities in percent; the program gives decimals. `prob_below_range` and
+`prob_above_range` are relative to the FOMC target range of the observation date, so they
+change when the range changes. Example: on 2026-11-17 the mean for the window that starts
+2026-12-16 was 4.2853%; the last trade of `SR3Z26` on 2026-11-19 gave 4.2975%. The two are
+two days apart.
+*Evidence:* `rust/src/futures/mpt.rs`; `fa futures policy-path`.
+
+**80. The rate series are proxies of the short rate.** The default series is the GSW
+1-year zero yield. It is a fitted yield of a 1-year bond, not an overnight rate. It has a
+term premium and it moves less than the overnight rate. A model fitted to it is a model of
+this series. The instantaneous forward rate at 0 (`f(0,0)`, 4.13% on 2026-11-13) is
+different from the 1-year yield (4.63%). A Treasury 3-month history is not built.
+*Evidence:* `rust/src/ratemodels/cli.rs` (`load_series`); `fa forwards --date 2026-11-13`.
+
+**81. Mean reversion of a rate is weakly identified.** On the full GSW 1Y history
+(1961 to 2026, daily), Vasicek ML gives kappa = 0.046 with standard error 0.037
+(t = 1.26): not different from zero. In rolling 5-year windows (weekly data, step 3
+months), 64 of 242 windows have an AR(1) coefficient of 1 or more, and the fit gives an
+error. Only 12 of the 178 other windows have t above 2.86. Least-squares kappa is also
+biased up in a short sample. Do not use theta as a forecast. Read the standard error and
+the flag in each fit.
+*Evidence:* `fa models calibrate --model vasicek --method ml`; `fa models rolling`.
+
+**82. The parameters depend on the sampling frequency.** Vasicek sigma on the full history
+is 0.0096 (daily), 0.0120 (weekly) and 0.0149 (monthly), and kappa is 0.046, 0.071 and
+0.109. This is not a code error. The exact map removes the effect of the step for data
+that come from the model (tests at two steps). Real changes of rates are autocorrelated,
+and the volatility changes with time. So the model is not right at all frequencies.
+`dt` is the mean calendar spacing (about 1/249 year for daily data).
+*Evidence:* `fa models frequencies --model vasicek --method ml`.
+
+**83. CIR and CKLS need positive rates, and ML can hit a bound.** CIR and CKLS give an
+error if one rate is 0 or lower. For the last 10 years (1Y yield near 0 in 2020 and 2021,
+about 4.6% now), CIR ML and CKLS quasi-ML push kappa to the lower bound 1e-4 and the code
+gives an error. The Feller ratio of the full-history CIR fit is 1.3: near the limit.
+The CIR sampling scheme is QE (not the exact chi-square): it is correct near 0 but it is
+an approximation of the law of each step (mean and variance are exact).
+*Evidence:* `rust/src/ratemodels/calib.rs`; `fa models calibrate --model cir --method ml --start 2016-11-13`.
+
+**84. CKLS gamma is not stable between methods.** On the full history, GMM gives
+gamma = 1.00 (standard error 0.07), and quasi-ML gives 0.43. The two methods use different
+information (the GMM variance equation uses `E[(e^2 - s r^(2g)) r] = 0`). The quasi-likelihood
+has the exact mean and an Euler-type variance, so its AIC is close to the exact ones but
+not strictly equal. The CKLS simulation scheme (Milstein, full truncation) is biased near 0;
+for gamma = 1/2 use `Cir`.
+*Evidence:* `fa models calibrate --model ckls --method gmm` and `--method ml`.
+
+**85. Hull-White and Ho-Lee mix two measures.** `theta(t)` comes from the zero curve of one
+date. It is in the pricing measure, and the model reprices that curve. `a` and `sigma` come
+from the history, in the real-world measure. A path of this model is not a forecast. The
+curve is the Svensson curve of the day, so maturities above 30 years are an extrapolation.
+Ho-Lee has no mean reversion: the rate can be negative and the variance grows with time.
+*Evidence:* `rust/src/ratemodels/models.rs` (`HullWhite`); the output field `zero_curve`.
+
+**86. The Monte Carlo bond price has two small errors.** The discount integral uses the
+trapezoid rule (error of order dt^2). A simulation with few steps for each year has a
+bias in the price. The test tolerance is 4 standard errors plus 5e-5. The same seed
+gives the same numbers with any number of threads, but not the same numbers if you change
+`steps-per-year` or the number of paths.
+*Evidence:* `rust/src/ratemodels/sim.rs` (`trapezoid`); `fa models simulate`.
 
 ## Corporate bonds (added 2026-11-18)
 

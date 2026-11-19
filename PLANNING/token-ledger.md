@@ -23,6 +23,10 @@ constant per run).
 | S&P 500 and next 500 mapping | 2026-11-19 | `mapcheck` on 1,003 tickers: S&P 500 0 FAIL, next 500 7 FAIL with known causes; critical inputs from the 10-K; company types; revenue rule; 82 Rust tests | ~0 (inline) | orchestrator only, no subagents; not a valuation run |
 | Forward rates (GSW) | 2026-11-19 | `fa forwards` and `fa forwards check` in Rust; futures prices not built (no free source with terms that permit it) | ~155k (1 Sonnet subagent) | orchestrator examined and committed; not a valuation run |
 | Bond comparison (`fa recon bonds`) | 2026-11-19 | Treasury bills, notes and bonds: value from our par curve against FedInvest end-of-day prices; HQM curve comparison; 18 new Rust tests | ~249k (1 Sonnet subagent) | orchestrator examined and committed; not merged to main; not a valuation run |
+| Local viewer (`fa serve`) | 2026-11-19 | Local HTML page: stock look-up, Monte Carlo DCF, rates, bonds, option bots; 11 new Rust tests | ~228k (1 Opus subagent) | orchestrator examined and committed; not a valuation run |
+| Company report in the viewer | 2026-11-19 | `fa serve` view that makes and shows the report of `scripts.visualize_dcf`; 6 new Rust tests | ~157k (1 Sonnet subagent) | orchestrator examined and committed; not a valuation run |
+| Stochastic rate models (`fa models`) | 2026-11-19 | Vasicek, CIR, CKLS, Ho-Lee, Hull-White; calibration by maximum likelihood, least squares, GMM and realized volatility; rolling and frequency tables; parallel simulation; 32 new Rust tests | ~261k (1 Sonnet subagent) | orchestrator examined and committed; not a valuation run |
+| Futures data (`fa futures`) | 2026-11-19 | Quotes, history and curves (Yahoo chart endpoint, Cboe VX files), CFTC positions, Atlanta Fed policy path, cross-checks; 22 new Rust tests | ~277k (1 Sonnet subagent) | orchestrator examined and committed; not a valuation run |
 
 Targets: frontier ticker ≤500k · repeat run ≤50k · ORCL (ticker #2) is the first measured
 frontier run under the cheapened pipeline.
