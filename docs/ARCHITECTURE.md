@@ -664,8 +664,8 @@ These parts are Rust code only. The Python files `scripts/analyze.py`, `scripts/
 | `market/mod.rs` | Rounding as Python `round(x, 6)`, JSON with `NaN` (written by Python), key order of a JSON object, the HTTP client with 2 seconds between requests. |
 | `market/prices.rs` | The older Yahoo loader (adjusted, as `yfinance`); cache `data/raw/<T>/prices.json`; HTTP 429 keeps the cache. `fa analyze` and `fa report` use it. New code uses the price layer below. |
 | `market/options.rs` | Cboe delayed quotes to a snapshot `data/raw/<T>/options/<date>.json`; snapshot files; `compute_chain_metrics`. |
-| `market/fmp.rs` | FMP estimates and surprises; key from `FMP_API_KEY`; caches `estimates.json`, `surprises.json`. |
-| `market/consensus.rs` | The consensus snapshot files and `yf_earnings.json` of the Python code (read only: no source). |
+| `market/fmp.rs` | FMP estimates and surprises (the source of revenue estimates); key from `FMP_API_KEY`; caches `estimates.json`, `surprises.json`. |
+| `market/consensus.rs` | The consensus snapshot files (Nasdaq source: see the section on estimates below) and `yf_earnings.json` of the Python code (read only). |
 | `analyze.rs` | `flatten` (the rows of the nine sheets), `write_xlsx` (crate `rust_xlsxwriter`), the command. |
 
 `rust_xlsxwriter` is the Rust port of the library `XlsxWriter`; it writes xlsx files only and has no network code.
@@ -695,6 +695,31 @@ and dividends (Tiingo, Yahoo) or for splits only (Nasdaq). A different source re
 incremental update gets the days from 10 calendar days before the last row, replaces the cached rows of these days, and gets the full
 history again if the overlap differs by more than 0.02% (a split or a dividend changed the adjusted history).
 The mapping of the sources is in `docs/HIDDEN-ASSUMPTIONS.md`, #200 to #214. `mapcheck/src/http.rs` has `get_with_headers`.
+
+## Estimates and earnings dates (`market/nasdaq_est.rs`, `estimates_*.rs`, `earnings_dates.rs`, 2026-11-19, branch `claude/estimates-earnings`)
+
+Source: the Nasdaq site API (vendor Zacks; no key; not a published API, see `docs/HIDDEN-ASSUMPTIONS.md` #215 to #229). SEC filing list for the check of the past dates.
+No revenue estimates in this source; FMP gives them with a key.
+
+| Module (`rust/src/market/`) | Function |
+|---|---|
+| `nasdaq_est.rs` | The URLs, the parsers of each endpoint (functions of the reply bytes), the text number forms, the symbol rule (`BRK-B` to `BRK.B`), the request layer `Client` (counts requests, waits 60 s at a block, stops the source at the second block), and the functions that put the replies into a `ConsensusEstimates` snapshot. |
+| `consensus.rs` | The snapshot type (the Yahoo layout, plus `source`, `endpoints`, `period_ends`, `ratings`, `consensus_change`), `forward_pe`, `eps_growth`, `eps_next_four_quarters`, `merge_revenue` (FMP revenue by month). |
+| `estimates_cache.rs` | `update_ticker` (one request for each endpoint that today's files do not have), the files `estimates/<date>.json` and `earnings_surprises.json`, `surprises_for_sheet`. |
+| `earnings_dates.rs` | `earnings_dates.json` (past and next dates), the calendar cache `_calendar/earnings-<date>.json` and its rule, the scan, `estimate_next`, `resolve_next`, and the comparison with the SEC file (`compare_dates`). |
+| `estimates_cli.rs` | `fa estimates get|show`, `fa earnings calendar|dates`. |
+| `rust/mapcheck/src/sec.rs` | `earnings_filings` (form 8-K with item 2.02 of `filings.recent`), `fetch_earnings_filings`; the command `mapcheck fetch --submissions TICKER...` writes `<T>/sec_8k_earnings.json`. |
+
+Commands: `fa estimates get TICKER... [--tickers-file F] [--endpoints LIST] [--momentum] [--refresh]`, `fa estimates show TICKER [--price P]`,
+`fa earnings calendar [TICKER...] [--tickers-file F] [--from D] [--days N]`, `fa earnings dates TICKER... [--tolerance N]`.
+
+Rules. One request each 2 seconds (the shared client). Default 3 requests for each ticker (forecast, surprise, targets); `--momentum` adds a fourth. One calendar request for each weekday of the scan.
+HTTP 429, HTTP 403 or a reply that is not JSON: wait 60 seconds one time, then stop the source for the run; the cache stays. A failed source never deletes cache data. The files of today are not asked again.
+A snapshot of the Python code for the same date is never replaced. The source order for `fa analyze`: Nasdaq files for EPS, targets, surprises and dates; FMP for revenue estimates when a key exists.
+`fa analyze` and `fa report` make no request to this source; they read the cache.
+
+Read-only functions for other modules: `consensus::forward_pe(price, eps)` and `ConsensusEstimates::eps_growth()`. The DCF model files and `dcf/auto.rs` are not changed;
+`fa estimates show` does not print the growth start of `fa dcf auto` (no cheap function to call).
 
 ## The company report (`rust/src/report/`, `fa report`, 2026-11-19)
 

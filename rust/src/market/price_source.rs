@@ -61,7 +61,7 @@ impl std::fmt::Display for FetchError {
     }
 }
 
-fn classify(error: String) -> FetchError {
+pub(crate) fn classify(error: String) -> FetchError {
     if error.starts_with("HTTP 429 ") {
         FetchError::RateLimited(error)
     } else {

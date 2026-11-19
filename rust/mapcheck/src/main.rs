@@ -53,6 +53,8 @@ fetch (network: SEC EDGAR; set the environment variable SEC_USER_AGENT)
     --gaps               with --filings: only the tickers that have a critical
                          input with no value
     --prospectus         get the latest prospectus of each ticker (424B4, or S-1/A, or S-1)
+    --submissions        get the earnings filings of each ticker (form 8-K with item 2.02) from the
+                         SEC filing list, into <ticker>/sec_8k_earnings.json (1 request for each ticker)
 
 import (gets the company facts if they are not in the cache)
     --store DIR          output directory (default: data/processed)
@@ -148,9 +150,23 @@ fn cmd_check(raw: &[String]) -> Result<bool, String> {
 fn cmd_fetch(raw: &[String]) -> Result<bool, String> {
     let mut with_value = COMMON_VALUES.to_vec();
     with_value.extend(["--top", "--write-list", "--delay"]);
-    let args = Args::parse(raw, &with_value, &["--refresh", "--filings", "--gaps", "--prospectus"])?;
+    let args = Args::parse(raw, &with_value, &["--refresh", "--filings", "--gaps", "--prospectus", "--submissions"])?;
     let cache = cache_of(&args);
     let delay: f64 = args.number("--delay", 0.15)?;
+    if args.flag("--submissions") {
+        // The forms 8-K with item 2.02 of each ticker (the past earnings dates), 1 request for each ticker.
+        let mut ok = true;
+        for ticker in &args.tickers()? {
+            match sec::fetch_earnings_filings(&cache, ticker, delay) {
+                Ok((filings, path)) => println!("{ticker}: {} filings 8-K with item 2.02, newest {} | {}", filings.len(), filings.first().map_or("-", |f| f.filed.as_str()), path.display()),
+                Err(e) => {
+                    println!("{e}");
+                    ok = false;
+                }
+            }
+        }
+        return Ok(ok);
+    }
     if args.flag("--prospectus") {
         // The primary document of the latest prospectus (the company facts must be in the cache).
         let mut ok = true;

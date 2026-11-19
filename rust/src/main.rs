@@ -47,6 +47,12 @@ USAGE:
   fa prices get TICKER... [--tickers-file F] [--source S] [--full]   daily price history into data/raw (fa prices --help)
   fa prices show TICKER [--from D] [--to D] | last TICKER... | check TICKER... [--sources A,B]
                                                   rows of the cache, last close, or a cross-check of two sources
+  fa estimates get TICKER... [--tickers-file F] [--endpoints LIST] [--momentum] [--refresh]
+                                                  analyst consensus EPS, price targets, surprises into data/raw (Nasdaq site, no key)
+  fa estimates show TICKER [--price P]            consensus by period, revisions, forward P/E, target against the last close
+  fa earnings calendar [TICKER...] [--tickers-file F] [--from D] [--days N]
+                                                  Nasdaq earnings calendar scan, then the next report date of each ticker
+  fa earnings dates TICKER... [--tolerance N]     past report dates against the SEC filing list (8-K item 2.02), next date
   fa recon bonds [--date D] [--out FILE]          bond values from our rates vs market prices (see: fa recon help)
   fa recon bills [--date D]                       tests of each cause of the bill difference of recon bonds
   fa recon rich-cheap [--date D] [--out FILE]     fitted NSS curve, difference of each security, rich and cheap candidates
@@ -244,6 +250,14 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
         Some("backtest") => Ok(ExitCode::from(financial_analysis::dcf::cli::backtest(&fa.repo, &args[1..]))),
         Some("dcf") => Ok(ExitCode::from(financial_analysis::dcf::cli::run(&fa.repo, &args[1..]))),
         Some("prices") => match financial_analysis::market::price_cli::run(&fa.repo, &args[1..]) {
+            Ok(code) => Ok(ExitCode::from(code as u8)),
+            Err(e) => Ok(usage_error(&e)),
+        },
+        Some("estimates") => match financial_analysis::market::estimates_cli::run_estimates(&fa.repo, &args[1..]) {
+            Ok(code) => Ok(ExitCode::from(code as u8)),
+            Err(e) => Ok(usage_error(&e)),
+        },
+        Some("earnings") => match financial_analysis::market::estimates_cli::run_earnings(&fa.repo, &args[1..]) {
             Ok(code) => Ok(ExitCode::from(code as u8)),
             Err(e) => Ok(usage_error(&e)),
         },

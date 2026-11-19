@@ -9,14 +9,18 @@
 //! | Daily prices | Tiingo (key), Yahoo chart endpoint, Nasdaq site API | `price_source`, `price_cache` (`fa prices`); `prices` is the older Yahoo loader |
 //! | Option chain | Cboe delayed quotes | `options` |
 //! | Estimates, earnings surprises | Financial Modeling Prep (key in `FMP_API_KEY`) | `fmp` |
-//! | Forward consensus snapshot | no source (cache only) | `consensus` |
+//! | Forward consensus snapshot, price targets, surprises, earnings dates | Nasdaq site API (no key) | `nasdaq_est`, `estimates_cache`, `earnings_dates` (`fa estimates`, `fa earnings`) |
 //!
 //! The cache files keep the formats of the Python code, so each reader of them still works:
 //! `data/raw/<T>/prices.json`, `options/<date>.json`, `estimates/<date>.json`, `yf_earnings.json`,
 //! `estimates.json`, `surprises.json`.
 
 pub mod consensus;
+pub mod earnings_dates;
+pub mod estimates_cache;
+pub mod estimates_cli;
 pub mod fmp;
+pub mod nasdaq_est;
 pub mod options;
 pub mod price_cache;
 pub mod price_check;

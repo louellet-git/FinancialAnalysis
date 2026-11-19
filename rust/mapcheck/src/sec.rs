@@ -311,9 +311,111 @@ pub fn fetch_prospectus(cache: &Path, ticker: &str, delay: f64, refresh: bool) -
     Ok((filing, path))
 }
 
+/// The form 8-K of one company that has item 2.02 (results of operations and financial condition).
+/// A company files such a form on the day that it reports its earnings.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EarningsFiling {
+    pub filed: String,
+    /// The `reportDate` of the filing (the date of the event); empty when the SEC has none.
+    pub report_date: String,
+    pub accession: String,
+    pub items: String,
+}
+
+/// The item that an earnings release has.
+pub const EARNINGS_ITEM: &str = "2.02";
+
+/// The forms 8-K with item 2.02 in the SEC submissions data (`filings.recent`), newest first.
+/// `items` is a text with the items separated by commas (`2.02,9.01`).
+pub fn earnings_filings(json: &[u8]) -> Result<Vec<EarningsFiling>, String> {
+    let value: Value = serde_json::from_slice(json).map_err(|e| format!("submissions: {e}"))?;
+    let recent = value.pointer("/filings/recent").ok_or("submissions: no filings.recent")?;
+    let column = |name: &str| recent.get(name).and_then(Value::as_array).ok_or_else(|| format!("submissions: no filings.recent.{name}"));
+    let (forms, items, filed, accessions) = (column("form")?, column("items")?, column("filingDate")?, column("accessionNumber")?);
+    // `reportDate` is optional: a company with no such column gets empty report dates.
+    let report = recent.get("reportDate").and_then(Value::as_array);
+    let mut out = Vec::new();
+    for (i, form) in forms.iter().enumerate() {
+        if form.as_str() != Some("8-K") {
+            continue;
+        }
+        let text = |list: &[Value]| list.get(i).and_then(Value::as_str).unwrap_or("").to_string();
+        let item_text = text(items);
+        if !item_text.split(',').any(|item| item.trim() == EARNINGS_ITEM) {
+            continue;
+        }
+        out.push(EarningsFiling {
+            filed: text(filed),
+            report_date: report.map(|r| text(r)).unwrap_or_default(),
+            accession: text(accessions),
+            items: item_text,
+        });
+    }
+    out.sort_by(|a, b| b.filed.cmp(&a.filed));
+    Ok(out)
+}
+
+/// The file of the earnings filings of a ticker: `<cache>/<TICKER>/sec_8k_earnings.json`.
+pub fn earnings_filings_path(cache: &Path, ticker: &str) -> PathBuf {
+    cache.join(ticker).join("sec_8k_earnings.json")
+}
+
+/// Get the SEC submissions data of a ticker and save the forms 8-K with item 2.02 in the cache
+/// (the form that `fa earnings dates` reads). The CIK comes from the company facts in the cache, else
+/// from the SEC ticker list. Network: data.sec.gov, 1 request (and the ticker list, when it is not in the cache).
+pub fn fetch_earnings_filings(cache: &Path, ticker: &str, delay: f64) -> Result<(Vec<EarningsFiling>, PathBuf), String> {
+    let mut client = Client::sec(delay)?;
+    let cik = match facts_path(cache, ticker) {
+        Some(path) => match read_facts(&path)?.cik {
+            Value::Number(n) => n.to_string(),
+            Value::String(s) => s.trim_start_matches('0').to_string(),
+            _ => return Err(format!("{ticker}: the company facts have no CIK")),
+        },
+        None => ticker_list(&mut client, cache, false)?
+            .into_iter()
+            .find(|(t, _)| t == ticker)
+            .map(|(_, c)| c)
+            .ok_or_else(|| format!("{ticker} is not in the SEC ticker list"))?,
+    };
+    let body = client.get(&submissions_url(&cik)).map_err(|e| format!("{ticker}: {e}"))?;
+    let filings = earnings_filings(&body).map_err(|e| format!("{ticker}: {e}"))?;
+    let rows: Vec<Value> = filings
+        .iter()
+        .map(|f| serde_json::json!({"filed": f.filed, "report_date": f.report_date, "accession": f.accession, "items": f.items}))
+        .collect();
+    let text = serde_json::to_string_pretty(&serde_json::json!({"ticker": ticker, "cik": cik, "source": "sec submissions, form 8-K with item 2.02", "filings": rows})).map_err(|e| e.to_string())?;
+    let path = earnings_filings_path(cache, ticker);
+    fs::create_dir_all(path.parent().unwrap_or(cache)).map_err(|e| e.to_string())?;
+    let tmp = path.with_extension("tmp");
+    fs::write(&tmp, text).map_err(|e| format!("{}: {e}", tmp.display()))?;
+    fs::rename(&tmp, &path).map_err(|e| format!("{}: {e}", path.display()))?;
+    Ok((filings, path))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_a_form_8k_with_item_202_is_an_earnings_filing() {
+        let json = serde_json::json!({"filings": {"recent": {
+            "form":            ["8-K", "10-Q", "8-K", "8-K/A", "8-K", "8-K"],
+            "items":           ["2.02,9.01", "", "5.02", "2.02", "12.02", "7.01,2.02"],
+            "filingDate":      ["2026-10-28", "2026-10-29", "2026-09-01", "2026-07-30", "2026-07-29", "2026-04-29"],
+            "reportDate":      ["2026-10-28", "2026-09-30", "2026-09-01", "", "", "2026-04-29"],
+            "accessionNumber": ["a1", "a2", "a3", "a4", "a5", "a6"]}}});
+        let got = earnings_filings(&serde_json::to_vec(&json).unwrap()).unwrap();
+        let dates: Vec<&str> = got.iter().map(|f| f.filed.as_str()).collect();
+        // Form 8-K/A, item 12.02 (an old number of the item) and other items are not in the list.
+        assert_eq!(dates, ["2026-10-28", "2026-04-29"]);
+        assert_eq!(got[1].items, "7.01,2.02");
+        assert_eq!(got[0].report_date, "2026-10-28");
+        // A reply with no `items` column is an error; a reply with no `reportDate` column still works.
+        let no_items = serde_json::json!({"filings": {"recent": {"form": ["8-K"], "filingDate": ["2026-01-01"], "accessionNumber": ["x"]}}});
+        assert!(earnings_filings(&serde_json::to_vec(&no_items).unwrap()).is_err());
+        let no_report = serde_json::json!({"filings": {"recent": {"form": ["8-K"], "items": ["2.02"], "filingDate": ["2026-01-01"], "accessionNumber": ["x"]}}});
+        assert_eq!(earnings_filings(&serde_json::to_vec(&no_report).unwrap()).unwrap()[0].report_date, "");
+    }
 
     #[test]
     fn ticker_list_keeps_the_sec_sequence_and_top_skips_second_share_classes() {
