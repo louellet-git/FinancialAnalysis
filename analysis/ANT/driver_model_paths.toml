@@ -1,0 +1,135 @@
+# ANT driver model for the PATH engine (engine = "paths", rust/src/dcf/paths.rs).
+# Same bridge as driver_model.toml (shares, net cash, year-1 revenue pin, FCFF margin of option A).
+# Status: SECOND-FORM FIRST PASS, 2026-11-19. Not reviewed. Do not use alone for a trade.
+# Run: fa dcf drivers ANT --model driver_model_paths.toml --price 83
+# Parameters that wait for the calibrated values are marked "PLACEHOLDER": replace them with
+# the values of analysis/priors/process_priors_2026-11-19.toml (fa dcf calibrate) when the
+# orchestrator joins the two works.
+
+engine = "paths"
+ticker = "ANT"
+notes = "ANT (Anthropic, PBC) path-engine model. FIRST PASS, 2026-11-19. Not reviewed.\n\nA Claude model helped to make this file, and Anthropic makes Claude: read each judgment with that fact in mind. Where a judgment is open, the text gives the base rate and a sensitivity.\n\nThe bridge (shares, net cash, year-1 pin) is the bridge of driver_model.toml. Each driver here is a process (a number for each year of a path) or a number that is fixed, with the reason. Numbers from data: the fast part of growth and margin (analysis/priors/process_priors_2026-11-19.toml, 996 companies, revenue above $1B), the rate volatility and mean reversion (fa models calibrate, GSW 1-year zero yield, monthly, 2000 to 2026-11). ANT is outside the data of the calibration (37 company-years with growth above 100% at revenue above $10B): the slow part of growth (start, long-run value, half-life) is a judgment."
+net_debt = -230677000000.0
+shares = 18137587873.0
+projection_years = 10
+
+[segment_history."Total"]
+2023 = 41000000.0
+2024 = 386000000.0
+2025 = 4585000000.0
+
+[[segments]]
+name = "Total"
+base_revenue = 35282000000.0
+process = "growth"
+year1_growth = 1.9760217674734992
+
+# ---------------------------------------------------------------------------------------------
+# Processes
+# ---------------------------------------------------------------------------------------------
+
+[process.growth]
+role = "growth"
+# Slow part: the growth of the company, from a start value (growth of year 1 of the process) to a long-run value,
+# with a half-life. Fast part: AR(1) shocks around it (persistence 0.15, size 13% with a floor, larger when the
+# growth is high). JUDGMENT for the slow part, DATA for the fast part.
+start = { mean = 0.60, std = 0.15, lo = 0.15, hi = 1.2 }
+target = { mean = 0.07, std = 0.025, lo = 0.0, hi = 0.20 }
+half_life = { mean = 2.0, std = 0.6, lo = 0.5, hi = 6.0 }
+sigma = 0.13
+sigma_level = 0.25
+persistence = 0.15
+lo = -0.30
+hi = 1.50
+rationale = "Revenue growth from year 2 of the path (year 1 is the pin of the segment, +198%). SLOW PART, JUDGMENT. Start 60% (std 15%) is the value of the slow part in year 1; the growth of year 2 at the means is 0.07 + (0.60 - 0.07) * 0.707 = 44.5%. If the run rate adds 4.8B each month as in the pin text of driver_model.toml, year-2 revenue is 165B (+57%); the prospectus says that the growth rate will decline (L1666), thus about 45%. Long-run value 7% (std 2.5%, cut at 0% and 20%): base rate of the market notes 3.4: from a 100B start the median 10-year growth is 6.7% and the maximum is 21.0%; the cut at 20% is that maximum. With these numbers the mean year-10 revenue is about 550B, near the 542B of the old constant 20% model (judgment: between the base rate and the public forecasts, nearer to the base rate). Half-life 2 years (std 0.6): PLACEHOLDER, a judgment; no company in the calibration has the same start (replace with a calibrated value only if a calibrated cell exists for growth above 100%). Sensitivity: --sensitivity process.growth.half_life=1,2,3,4. FAST PART, DATA (analysis/priors/process_priors_2026-11-19.toml, revenue above $1B): phi 0.14 to 0.19 (0.15 used), shock size 13%; the size is at least 13% and 25% of the level of the slow part, because after growth above 50% the next year has P10 -19% to P90 +89% around the mean (the AR(1) gives +2% to +51%). The 25% is a judgment (PLACEHOLDER)."
+
+[process.margin]
+role = "margin"
+# FCFF margin before SBC (option A: after capex, as in the first pass).
+start = -0.07
+target = { mean = 0.22, std = 0.06, lo = 0.05, hi = 0.40 }
+half_life = { mean = 2.5, std = 0.8, lo = 0.8, hi = 6.0 }
+sigma = 0.11
+persistence = 0.44
+lo = -0.60
+hi = 0.60
+rationale = "FCFF margin after tax and capex, before SBC. Start -7% (year 1, 9M2026 cash flow and committed spend: see driver_model.toml). Mature value 22% (std 6%): copy of the first pass (peers 12% to 16% after SBC now, 20% to 34% before; Damodaran 19.0% in year 10). Half-life 2.5 years (std 0.8), PLACEHOLDER, JUDGMENT: with 2.5 the margin of year 8 is 17.8%, the value of the linear ramp of the first pass; the path is faster than the ramp in years 3 to 6 and slower after year 8 (year 10: 19.6%). Sensitivity: --sensitivity process.margin.half_life=1.5,2.5,4,6. Fast part, DATA (free-cash-flow margin in the calibration table, all sizes): phi 0.44, shock size 11%. The shock is large: do not read the P10 and P90 as a safety margin. The shock has no correlation with the growth shock (measured +0.02 for the free-cash-flow margin, +0.25 for the operating margin)."
+
+[process.sbc]
+role = "sbc"
+start = 0.25
+target = { mean = 0.06, std = 0.02, lo = 0.02, hi = 0.12 }
+shape = "ramp"
+ramp_years = 8
+rationale = "SBC ratio, cost of NEW grants only (IBM F5: SBC is a cash cost; the existing awards are in the share count). A schedule, not a shock process: it is set by the board and moves slowly. Linear from 25% in year 1 to the mature value in year 8 (copy of the first pass). The mature value is a draw (peers: MSFT 3.7%, GOOGL 6.2%, META 10.2%; mean 6%, std 2%): the old model had it fixed. This is a change; it widens the distribution a little. No yearly shock: JUDGMENT, no data in the repo for the volatility of this ratio."
+
+# ---------------------------------------------------------------------------------------------
+# Discount rate, rates, terminal value
+# ---------------------------------------------------------------------------------------------
+
+[discount]
+beta = 1.4
+erp = { mean = 0.0441, std = 0.0075, lo = 0.02 }
+kd_spread = 0.02
+equity_weight = 1.0
+
+[tax]
+rate = 0.21
+
+[rates]
+# Hull-White on the GSW zero curve of 2026-11-13. The risk-free rate of the CAPM in year t is the
+# 10-year zero yield that the model gives at the start of year t for the state of the path.
+model = "hullwhite"
+tenor = 10.0
+mode = "long_flat"
+a = 0.14
+sigma = 0.0075
+curve = { date = "2026-11-13", beta0 = 2.44987582349815e-14, beta1 = 4.12572501585, beta2 = 4.92617241312704, beta3 = 16.6249118257037, tau1 = 1.83445465299628, tau2 = 15.7018761009905 }
+
+[terminal]
+growth = { mean = 0.0225, std = 0.0075 }
+cap_by_process = "growth"
+rf_margin = 0.0
+
+[reinvestment]
+mode = "margin"
+
+# ---------------------------------------------------------------------------------------------
+# Correlations
+# ---------------------------------------------------------------------------------------------
+
+[[corr]]
+a = "process.growth.target"
+b = "process.margin.target"
+rho = 0.4
+note = "first-pass convention (g_total with core_margin)"
+
+[[corr]]
+a = "process.growth.start"
+b = "process.growth.target"
+rho = 0.3
+note = "JUDGMENT: a company that grows faster now has more room later"
+
+[[corr]]
+a = "discount.erp"
+b = "process.growth.target"
+rho = -0.15
+note = "first-pass convention: weak demand goes with high risk premiums"
+
+[[corr]]
+a = "terminal.growth"
+b = "process.growth.target"
+rho = 0.25
+note = "first-pass convention"
+
+[[shock_corr]]
+a = "growth"
+b = "margin"
+rho = 0.02
+note = "DATA: growth with the free-cash-flow margin 0.02 (se 0.02); with the operating margin 0.25"
+
+[[shock_corr]]
+a = "rate"
+b = "growth"
+rho = 0.15
+note = "JUDGMENT, the IBM convention (rf with the growth drivers)"

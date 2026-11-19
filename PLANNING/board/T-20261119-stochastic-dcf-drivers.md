@@ -35,3 +35,11 @@ engine, simulated moments against the formulas, discount factors against the cur
 
 The process parameters come from data where possible: ticket
 `T-20261119-dcf-process-calibration`.
+
+State, 2026-11-19 (not yet committed or merged): the path engine is built (`rust/src/dcf/paths.rs`,
+`process.rs`, `pathrate.rs`, `paths_cli.rs`), with 27 tests in `paths_tests.rs` for the seven test groups
+of the design. The command is `fa dcf drivers TICKER --model driver_model_paths.toml`. The application
+files are `analysis/ANT/driver_model_paths.toml` (first pass, not reviewed) and
+`analysis/IBM/driver_model_paths.toml` (comparison, not a record). Open: the calibrated values for the
+PLACEHOLDER numbers (ticket `T-20261119-dcf-process-calibration`), a review of the ANT path model, and
+a second-pass text of ANT. Traps: `docs/HIDDEN-ASSUMPTIONS.md` #155 to #169.

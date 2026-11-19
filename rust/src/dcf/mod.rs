@@ -15,11 +15,17 @@ pub mod cli;
 pub mod driver;
 pub mod model;
 pub mod nprandom;
+pub mod pathrate;
+pub mod paths;
+pub mod paths_cli;
+pub mod process;
 pub mod scenarios;
 pub mod stats;
 pub mod verdict;
 mod ziggurat_tables;
 
+#[cfg(test)]
+mod paths_tests;
 #[cfg(test)]
 mod runner_tests;
 #[cfg(test)]

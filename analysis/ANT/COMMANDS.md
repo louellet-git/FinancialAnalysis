@@ -95,3 +95,33 @@ the rest in equal parts, and 31% of revenue for all other cash costs. It gives t
 of revenue (73% at mean growth, 86% at P10 growth), the margins before SBC of years 1 to
 4 (model against committed spend) and the effect of $-1.85 a share, which is not in the
 base. The base rate (AMZN, 27.4% a year) is a hand calculation: $35.282B x 1.274^10.
+
+## Path engine (second form of the first pass, 2026-11-19)
+
+The model is `analysis/ANT/driver_model_paths.toml` (`engine = "paths"`). It is not reviewed. The
+numbers of `FIRST-PASS.md` come from the old model above, not from this one. Each driver is a process
+for each year of a path: the slow part of growth (start, long-run value, half-life), the fast part
+(AR(1) shocks), the margin, the SBC schedule, the Hull-White rate path, the equity premium. The
+numbers that wait for the calibrated values are marked PLACEHOLDER in the rationale texts. A name
+after `--pset` is the TOML path of the number.
+
+```bash
+fa dcf drivers ANT --model driver_model_paths.toml --price 83 --price 105    # headline, attribution, mean path, revenue P10/P50/P90
+fa dcf drivers ANT --model driver_model_paths.toml --no-shocks               # drawn numbers random, no yearly shock
+fa dcf drivers ANT --model driver_model_paths.toml --freeze growth           # a group fixed at its means
+fa dcf drivers ANT --model driver_model_paths.toml --sensitivity process.growth.half_life=1,2,3,4,6 \
+  --sensitivity process.margin.half_life=1.5,2.5,4,6 --sensitivity process.growth.sigma=0.05,0.13,0.2
+fa dcf drivers ANT --model driver_model_paths.toml --shift-bounds --implied-price 83 --implied-param process.growth.target --range 0,0.6
+fa dcf drivers ANT --model driver_model_paths.toml --shift-bounds --implied-price 83 --implied-param process.growth.half_life --range 2,200
+fa dcf drivers ANT --model driver_model_paths.toml --shift-bounds --implied-price 83 --implied-param process.margin.target --range 0.05,1.0
+fa dcf drivers ANT --model driver_model_paths.toml --shift-bounds --pset discount.beta=1.1 --pset process.margin.target=0.25 \
+  --implied-price 83 --implied-param process.growth.target --range 0,0.8
+```
+
+Results (seed 7, 10,000 paths): P10 $3.60, P25 $13.13, P50 $25.01, P75 $42.88, P90 $69.03; 93.5% of the
+paths are below $83.00 (old model: $12.82 / $19.30 / $30.97 / $49.54 / $74.96, 92.2%). Value at the
+means $28.53 (old model $31.70). The long-run growth that gives P50 $83.00 is 35.7% (old model 37.4%
+for constant growth), the half-life of the slow part 8.8 years, the mature margin before SBC 61.9%. With
+beta 1.10 and a margin of 25%, the long-run growth is 26.4%. Sensitivity of the P50 to the half-life of
+growth (1, 2, 3, 4, 6 years): $18.87, $25.01, $33.98, $43.65, $59.66. Half-life of the margin (1.5, 2.5,
+4, 6 years): $29.43, $25.01, $18.28, $12.37. The half-lives are judgments: read the table, not one value.
