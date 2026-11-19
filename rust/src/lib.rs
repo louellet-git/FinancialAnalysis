@@ -17,6 +17,8 @@
 //! ```
 
 pub mod forwards;
+pub mod futures;
+pub mod ratemodels;
 pub mod trading;
 
 use serde::de::DeserializeOwned;
