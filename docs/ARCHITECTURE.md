@@ -475,6 +475,63 @@ in parallel. Parallel paths do not change a result.
 
 **Commands.** `fa dcf drivers|classic|scenarios|models`, `fa backtest`, `fa verdict`, `fa rates`, `fa bonds`. See the README.
 
+### `rust/src/dcf/paths.rs` — the path engine (2026-11-19)
+
+Ticket `T-20261119-stochastic-dcf-drivers`. A model file with `engine = "paths"` runs here. The old
+engine (`driver.rs`) and its three model files do not change. The old engine draws each driver one
+time for each path. The path engine draws the parameters one time for each path and then moves the
+processes year by year with shocks. Traps: `docs/HIDDEN-ASSUMPTIONS.md` #155 to #169.
+
+**Files.** `process.rs` (the model file: `PathsSpec`, `ParamSpec`, `ProcessSpec`, `--pset`),
+`paths.rs` (`PathEngine`: compile, validate, `simulate`, `deterministic`, `attribution`,
+`variance_shares`), `pathrate.rs` (`RateFactor`: Hull-White on a GSW curve, Vasicek, CIR),
+`paths_cli.rs` (the output of `fa dcf drivers --model`), `paths_tests.rs` (tests, speed table).
+
+**Model file.** `[[segments]]` (base revenue, pin of year 1, name of the growth process);
+`[process.<name>]` with a role (`growth`, `margin`, `sbc`, `charge`, `s2c`); `[reinvestment]`, `[tax]`,
+`[discount]`, `[rates]`, `[terminal]`, `[failure]`; `[[corr]]` (drawn parameters) and
+`[[shock_corr]]` (yearly shocks). A number is fixed (`0.05`) or drawn (`{ mean, std, lo, hi }`). The
+name of a number is its TOML path (`process.growth.target`).
+
+**Process.** The value of year `t` is `center(t) + u(t) + drift(t)`, cut at `lo` and `hi`.
+Center, shape `ou`: `target + (start - target) phi^(t-1)`, `phi = exp(-ln 2 dt / half_life)`.
+Center, shape `ramp`: linear from `start` to `target` in `ramp_years`. Shock: `u(1) = 0`,
+`u(t) = rho u(t-1) + max(sigma, sigma_level |center|) e(t)`. With `rho` not set it is `phi` (then
+`x(t) = target + phi (x(t-1) - target) + sigma e(t)`, the Ornstein-Uhlenbeck step) and 0 for `ramp`.
+`half_life = inf` and `sigma = 0` give a constant: the limit that gives the old engine.
+
+**Cash flow.** Growth of each segment gives revenue. Option A (`reinvestment.mode = "margin"`):
+`FCFF = revenue (margin - SBC - charge)`. Option B (`"sales_to_capital"`): the margin is the
+operating margin; `FCFF = EBIT - tax - max(revenue change, 0) / s2c`; the tax is paid on positive
+EBIT after the loss pool (`tax.opening_loss`, `tax.loss_limit_share`).
+
+**Discount rate.** `k = w (rf + beta erp) + (1 - w) (rf + spread) (1 - tax)` as in the old engine.
+`rf` of year `t` comes from the rate factor at the start of year `t`; the discount factor is the
+product of `1 / (1 + k)`. `rates.model`: `fixed` (a number or a draw, as the old engine),
+`hullwhite` (drift from the six GSW numbers in `[rates.curve]`), `vasicek`, `cir`. `rates.mode`:
+`long` (zero yield of `tenor` years from the closed form of the model), `long_flat` (the same, with the
+expected value fixed at the level of year 1) or `short` (short rate plus `spread`). The rate shock
+has a correlation with the other shocks (`[[shock_corr]]`, name `rate`).
+
+**Terminal value.** Gordon with the cost of capital of the end of the horizon. Terminal growth: the
+caps `cap_by_process`, `rf_margin`, and the guard `k - 2%` (T-DCF-2). Option B: `tg / ROIC` of NOPAT is
+reinvested (`terminal.roic`, a number, a draw or `"wacc"`). **Failure.** `[failure]`: yearly hazard,
+recovery value, `sampled` or `expected`. Off when the table is absent.
+
+**Random numbers.** One stream for each path (`ratemodels::rng`): the same result with any number of
+threads. The normals of the parameters are correlated by a Cholesky factor of `[[corr]]`; the yearly
+shocks by a Cholesky factor of `[[shock_corr]]`. A matrix that is not positive definite is refused.
+
+**Commands.** `fa dcf drivers TICKER --model driver_model_paths.toml [--price P] [--pset NAME=V]
+[--sensitivity NAME=V1,V2] [--implied-price P --implied-param NAME] [--no-shocks] [--freeze GROUP]
+[--time] [--json]`. The output: headline, value at the means, attribution (P50 change at minus and plus
+one std of each drawn number), variance by group, the mean path by year with the revenue P10, P50 and
+P90, sensitivities, implied values. Speed (release build, ten years, Hull-White, three shock channels):
+10,000 paths 12 ms on 1 thread and 3 ms on 4 threads; 100,000 paths 123 ms and 33 ms.
+
+**Files of ticker models.** `analysis/ANT/driver_model_paths.toml` (first pass, not reviewed),
+`analysis/IBM/driver_model_paths.toml` (a comparison file; the record stays `driver_model.toml`).
+
 ### `rust/src/dcf/` — calibration of the growth and margin processes (2026-11-19, branch `claude/dcf-calibration`)
 
 Ticket `T-20261119-dcf-process-calibration`. The command `fa dcf calibrate` estimates, from the company cache, the
@@ -629,7 +686,7 @@ ticket `option-backtest-rust`).
 
 ## Tests
 
-`cargo test --manifest-path rust/Cargo.toml --locked`: 343 Rust tests (325 + 17 + 1) (the `fa` crate).
+`cargo test --manifest-path rust/Cargo.toml --locked`: 387 Rust tests (369 + 17 + 1) (the `fa` crate).
 `cargo test --manifest-path rust/mapcheck/Cargo.toml`: 89 Rust tests. The suites make no network calls and start no
 Python program; HTTP is replaced by a function that the test gives, and files are in a temp folder.
 No Python test remains (the last 211 Python tests were deleted on 2026-11-19 after each case had a Rust test).

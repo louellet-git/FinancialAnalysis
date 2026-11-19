@@ -21,7 +21,7 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program that makes the standard variables (necessary)
 cargo build --release --manifest-path rust/Cargo.toml            # the `fa` program
 cargo test --manifest-path rust/mapcheck/Cargo.toml    # 89 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked    # 343 Rust tests (325 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research)
+cargo test --manifest-path rust/Cargo.toml --locked    # 387 Rust tests (369 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research)
 ```
 
 No Python test remains. The only Python code that remains is the legacy SEC client with its
@@ -84,6 +84,8 @@ the same as the numbers that the Python engines gave. The driver models are the 
 fa dcf drivers IBM [--seed 7] [--sims 10000] [--price 228.53] [--json]        # headline, hand DCF check, attribution
 fa dcf drivers ANT --price 83 --price 105 --sensitivity beta=1.1,1.7          # P50 for each value of one driver mean
 fa dcf drivers ANT --implied-price 83 --implied-driver g_total --range 0,0.8  # the mean that gives the price
+fa dcf drivers ANT --model driver_model_paths.toml --price 83                  # path engine: processes for each year (see docs/ARCHITECTURE.md)
+fa dcf drivers ANT --model driver_model_paths.toml --pset process.growth.half_life=3 --implied-price 83 --implied-param process.growth.target --shift-bounds
 fa dcf drivers IBM --set beta=1.0 [--shift-bounds] --flat sbc_ratio=0.0254 --ramp sbc_ratio=0.0254:0.045:10 \
     --corr rf,g_software=-0.15 --net-debt 5e10 --shares 9.5e8 --years 10 --year1-revenue NAME=X   # overrides
 fa dcf classic JNJ [--sims 10000] [--years 10] [--growth 0.15] [--wacc 0.10] [--terminal-growth 0.03] [--seed 7] [--data-dir D]

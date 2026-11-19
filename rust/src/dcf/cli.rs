@@ -17,11 +17,21 @@ fa dcf - Monte Carlo DCF (Rust engines; the random numbers are the same as numpy
 USAGE:
   fa dcf models                                   models that have analysis/<TICKER>/driver_model.toml
   fa dcf drivers TICKER [OPTIONS]                 driver model: value per share, attribution
+  fa dcf drivers TICKER --model FILE [OPTIONS]    FILE with engine = paths: path engine (processes for each year; see below)
   fa dcf classic TICKER [OPTIONS]                 classic model on data/processed/<TICKER>.json
   fa dcf scenarios TICKER [--data-dir D] [--json] bear/base/bull of the classic model, value per share
   fa dcf calibrate [--cache DIR] [--out FILE]   AR(1) parameters of growth and margins from the company cache (fa dcf calibrate --help)
   fa backtest TICKER [--horizon Y (3)] [--simulations N (10000)] [--seed S (7)] [--data-dir D]
                                                   point-in-time vintage backtest of revenue and FCF projections
+
+PATH ENGINE OPTIONS (FILE is a name in analysis/<TICKER>/ or a path; a file without engine = paths gives the old engine):
+  --seed S (7)  --sims N (10000)  --json  --price P (repeat)  --time  --no-attribution
+  --no-shocks          the yearly shocks are zero (the drawn numbers stay random)
+  --freeze GROUP       a group (growth, margin, sbc, charge, s2c, discount, rates, terminal, failure) at its means; repeat
+  --pset NAME=V        new number; NAME is the TOML path, for example process.growth.target (a table: its mean)
+                       --shift-bounds  lo and hi move with the mean
+  --sensitivity NAME=V1,V2,..   P50 for each value of one number
+  --implied-price P --implied-param NAME [--range LO,HI]   the value of the number for which the P50 is P
 
 DRIVERS OPTIONS:
   --seed S (7)   --sims N (10000)   --json
@@ -180,11 +190,23 @@ pub(crate) fn money(v: f64) -> String {
 /// `fa dcf drivers`
 fn drivers(repo: &Path, rest: &[String]) -> R<()> {
     let a = Args { rest };
+    let model_text = match a.one("--model") {
+        Some(file) => {
+            let ticker = rest.first().filter(|t| !t.starts_with("--")).ok_or_else(|| DcfError("drivers needs a ticker".into()))?;
+            let path = if file.contains('/') || Path::new(file).is_file() { PathBuf::from(file) } else { repo.join("analysis").join(ticker.to_uppercase()).join(file) };
+            let text = std::fs::read_to_string(&path).map_err(|e| DcfError(format!("{}: {e}", path.display())))?;
+            if super::process::is_paths_model(&text) {
+                return super::paths_cli::run(&text, rest);
+            }
+            Some(text)
+        }
+        None => None,
+    };
     a.check(
         &["--json", "--shift-bounds", "--keep-year1-margin", "--fade", "--reinvestment-check", "--path"],
         &[
             "--ev-fixed-point", "--commitments", "--seed", "--sims", "--price", "--set", "--flat", "--ramp", "--corr", "--net-debt", "--shares", "--years",
-            "--year1-revenue", "--sensitivity", "--implied-price", "--implied-driver", "--range",
+            "--year1-revenue", "--sensitivity", "--implied-price", "--implied-driver", "--range", "--model",
         ],
     )?;
     let ticker = rest.first().filter(|t| !t.starts_with("--")).ok_or_else(|| DcfError("drivers needs a ticker".into()))?;
@@ -196,7 +218,16 @@ fn drivers(repo: &Path, rest: &[String]) -> R<()> {
             return e(format!("--price must be a positive number, got {p}"));
         }
     }
-    let base = load_model(repo, ticker)?;
+    let base = match &model_text {
+        Some(text) => {
+            let mut spec = ModelSpec::from_toml(text)?;
+            if spec.ticker.is_empty() {
+                spec.ticker = ticker.to_uppercase();
+            }
+            spec
+        }
+        None => load_model(repo, ticker)?,
+    };
     let o = overrides_from(&a)?;
     let spec = base.with_overrides(&o)?;
     let eng = spec.engine()?;

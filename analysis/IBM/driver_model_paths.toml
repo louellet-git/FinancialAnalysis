@@ -1,0 +1,233 @@
+# IBM driver model in the form of the PATH engine (engine = "paths"). COMPARISON FILE.
+# THIS IS NOT A REVIEWED RECORD. The record is driver_model.toml (version 4: $83.84 / $151.84 / $258.03)
+# and the report in analysis/IBM/report. This file shows what the path engine changes for the same
+# company with the least change of the inputs. Run: fa dcf drivers IBM --model driver_model_paths.toml
+#
+# What is kept: segments, pins of year 1, means of all drivers, SBC schedule, margin drift, M&A charge,
+# CAPM inputs, capital structure, share count, net debt.
+# What is new: (1) yearly AR(1) shocks around the segment growth and the margin (persistence 0.15 and 0.44 from
+# analysis/priors/process_priors_2026-11-19.toml; the sizes are judgments, see the rationale texts); the std of
+# the drawn long-run numbers is made smaller so that the dispersion of the 10-year average stays near the old value
+# (the old std was the dispersion of a 10-year constant); (2) the risk-free rate is a Hull-White path on the GSW
+# curve of 2026-07-16 (the date of the rf of version 4) in place of one draw for each path; its expected level is
+# fixed at the 10-year zero yield of that date (mode long_flat); (3) no draw of rf.
+
+engine = "paths"
+ticker = "IBM"
+notes = "IBM path-engine COMPARISON file. Not a reviewed record. The record is driver_model.toml (version 4) and analysis/IBM/report.\n\nLeast change from version 4: yearly AR(1) shocks for segment growth and margin; Hull-White rate path in place of one draw of rf; the std of the drawn long-run numbers is reduced so that the 10-year dispersion stays near the old value. All other inputs are the version 4 inputs."
+net_debt = 54000000000.0
+shares = 948675228.0
+projection_years = 10
+
+[[segments]]
+name = "Software"
+base_revenue = 29962000000.0
+process = "g_software"
+year1_growth = 0.05
+
+[[segments]]
+name = "Consulting"
+base_revenue = 21055000000.0
+process = "g_consulting"
+year1_growth = 0.0
+
+[[segments]]
+name = "Infrastructure"
+base_revenue = 14869000000.0
+process = "g_infrastructure"
+year1_growth = -0.016898244670119134
+
+[[segments]]
+name = "Financing"
+base_revenue = 737000000.0
+process = "g_financing"
+year1_growth = 0.0
+
+[process.g_software]
+role = "growth"
+start = "target"
+target = { mean = 0.05, std = 0.021, hi = 0.11 }
+half_life = inf
+sigma = 0.04
+persistence = 0.15
+rationale = "Version 4 mean 5.0% and hi 11%. Std of the long-run number 2.1% (old 2.5%) and yearly shock 4%: the shock adds about 4% / 3 = 1.3% to the dispersion of the 10-year average, so the total is near 2.5%. The size of the shock is a JUDGMENT (the calibration table gives 13% for all companies above $1B, a size that includes mergers; the Software segment of IBM was 5% to 11% in four years). Persistence 0.15: DATA (calibration table, revenue above $1B). No slow fade: version 4 has none."
+
+[process.g_consulting]
+role = "growth"
+start = "target"
+target = { mean = 0.0175, std = 0.021 }
+half_life = inf
+sigma = 0.04
+persistence = 0.15
+rationale = "Version 4 mean 1.75%. Same reasoning as Software. History +7.1/+5/-1/+2%."
+
+[process.g_infrastructure]
+role = "growth"
+start = "target"
+target = { mean = -0.01, std = 0.01, hi = 0.03 }
+half_life = inf
+sigma = 0.08
+persistence = 0.15
+rationale = "Version 4 mean -1%, hi 3%. The version 4 text says that the annual sigma of the mainframe cycle is about 8.4%: used here as the yearly shock (sawtooth +7.8/-5/-4/+12). The cycle has negative persistence in the data of the segment; 0.15 is the calibration value, a JUDGMENT for this segment. Std of the long-run number 1% (old 2.5%) because the shock now carries the 10-year dispersion (8% / 3 = 2.7%)."
+
+[process.g_financing]
+role = "growth"
+start = "target"
+target = 0.0
+half_life = inf
+rationale = "Fixed at 0, as in version 4 (1.1% of revenue)."
+
+[process.margin]
+role = "margin"
+start = "target"
+target = { mean = 0.194, std = 0.017 }
+half_life = inf
+sigma = 0.02
+persistence = 0.44
+drift = { start = 0.0, end = 0.012, ramp_years = 10 }
+rationale = "Version 4: core margin 19.4% (std 2%) plus the mix drift 0 to +1.2 points by year 10 (the drift is the same). Persistence 0.44: DATA (free-cash-flow margin, calibration table). Yearly shock 2%: JUDGMENT; the table gives 11% for all companies, a spread that is too wide for the margin of IBM (19.4% in FY2025 after three years of decline). Sensitivity: --pset process.margin.sigma=0.05. Std of the long-run number 1.7% (old 2%)."
+
+[process.sbc]
+role = "sbc"
+start = 0.0254
+target = 0.035
+shape = "ramp"
+ramp_years = 10
+rationale = "Version 4 schedule: linear 2.54% to 3.5% in year 10. No shock, as in version 4."
+
+[process.charge]
+role = "charge"
+start = "target"
+target = { mean = 0.0355, std = 0.012, lo = 0.0 }
+half_life = inf
+rationale = "Version 4: recurrence 0.5 times the M&A ratio (mean 7.1%, std 2.4%, lo 0), so mean 3.55%, std 1.2%, lo 0. The pair is one number here."
+
+[discount]
+beta = 0.85
+erp = { mean = 0.045, std = 0.0075, lo = 0.02 }
+kd_spread = -0.001
+equity_weight = 0.72
+
+[tax]
+rate = 0.21
+
+[rates]
+model = "hullwhite"
+tenor = 10.0
+mode = "long_flat"
+a = 0.14
+sigma = 0.0075
+curve = { date = "2026-07-16", beta0 = 0.00154765062854314, beta1 = 4.01032478164107, beta2 = -483.791443299614, beta3 = 495.173221349574, tau1 = 12.8438296397425, tau2 = 13.0219175549406 }
+
+[terminal]
+growth = { mean = 0.0225, std = 0.0075 }
+
+[reinvestment]
+mode = "margin"
+
+[[corr]]
+a = "process.g_software.target"
+b = "process.g_consulting.target"
+rho = 0.4
+[[corr]]
+a = "process.g_software.target"
+b = "process.g_infrastructure.target"
+rho = 0.35
+[[corr]]
+a = "process.g_consulting.target"
+b = "process.g_infrastructure.target"
+rho = 0.2
+[[corr]]
+a = "process.g_software.target"
+b = "process.margin.target"
+rho = 0.3
+[[corr]]
+a = "process.g_consulting.target"
+b = "process.margin.target"
+rho = 0.1
+[[corr]]
+a = "process.g_infrastructure.target"
+b = "process.margin.target"
+rho = 0.15
+[[corr]]
+a = "process.g_software.target"
+b = "process.charge.target"
+rho = 0.3
+[[corr]]
+a = "process.g_consulting.target"
+b = "process.charge.target"
+rho = 0.1
+[[corr]]
+a = "discount.erp"
+b = "process.g_software.target"
+rho = -0.25
+[[corr]]
+a = "discount.erp"
+b = "process.g_consulting.target"
+rho = -0.25
+[[corr]]
+a = "discount.erp"
+b = "process.g_infrastructure.target"
+rho = -0.15
+[[corr]]
+a = "discount.erp"
+b = "process.margin.target"
+rho = -0.15
+[[corr]]
+a = "discount.erp"
+b = "process.charge.target"
+rho = -0.1
+[[corr]]
+a = "terminal.growth"
+b = "process.g_software.target"
+rho = 0.4
+[[corr]]
+a = "terminal.growth"
+b = "process.g_consulting.target"
+rho = 0.3
+[[corr]]
+a = "terminal.growth"
+b = "process.g_infrastructure.target"
+rho = 0.2
+[[corr]]
+a = "terminal.growth"
+b = "process.margin.target"
+rho = 0.15
+[[corr]]
+a = "terminal.growth"
+b = "discount.erp"
+rho = -0.2
+[[corr]]
+a = "terminal.growth"
+b = "process.charge.target"
+rho = 0.15
+
+[[shock_corr]]
+a = "g_software"
+b = "g_consulting"
+rho = 0.4
+[[shock_corr]]
+a = "g_software"
+b = "g_infrastructure"
+rho = 0.35
+[[shock_corr]]
+a = "g_consulting"
+b = "g_infrastructure"
+rho = 0.2
+[[shock_corr]]
+a = "g_software"
+b = "margin"
+rho = 0.1
+note = "DATA: growth with the free-cash-flow margin 0.02, with the operating margin 0.25; 0.1 is between, a JUDGMENT"
+[[shock_corr]]
+a = "rate"
+b = "g_software"
+rho = 0.15
+[[shock_corr]]
+a = "rate"
+b = "g_consulting"
+rho = 0.15
+[[shock_corr]]
+a = "rate"
+b = "g_infrastructure"
+rho = 0.1

@@ -1160,6 +1160,114 @@ formulas, sampling, driver run properties), `series_are_sorted_and_have_the_deri
 `rust/src/report/tests.rs`. Two Python functions have no Rust form: `store.compare` (a loop over `get_series`, no
 caller) and the in-memory cache of `store.load` (Rust reads the file each time).
 
+## Path engine (added 2026-11-19, branch `claude/stochastic-dcf`)
+
+**155. The path engine is a second engine. The old engine does not change.** A model file with
+`engine = "paths"` runs in `rust/src/dcf/paths.rs`. A file without this key runs in `driver.rs`, as
+before. The reviewed IBM numbers ($83.84 / $151.84 / $258.03), JNJ P50 $112.64 and ANT P50 $30.97 come
+from the old engine only. The command is `fa dcf drivers TICKER --model FILE`. The three old model
+files are not changed. A path model of a ticker is a new file, and it is not a reviewed record.
+*Evidence:* `rust/src/dcf/paths_tests.rs` (`limit_copy_of_the_old_model_with_the_same_draws_gives_the_old_percentiles`).
+
+**156. A path model has two kinds of randomness. Do not count one dispersion two times.** A drawn
+parameter (`{ mean, std }`) is one number for each path: the uncertainty about a parameter. A yearly
+shock (`sigma`) is new each year. The std of a driver in the old model is the dispersion of a
+10-year constant. When a model gets yearly shocks, the std of the drawn long-run number must become
+smaller. A yearly shock of size `s` with low persistence adds about `s / 3` to the dispersion of the
+10-year average. The IBM comparison file shows the rule.
+*Evidence:* `analysis/IBM/driver_model_paths.toml` (rationale texts).
+
+**157. Growth has a slow part and a fast part.** The slow part is the center of the process: it goes
+from `start` to `target` with `half_life`. The fast part is the shock: AR(1) with `persistence` and
+size `sigma`. With `persistence` not set, the shock has the persistence of the center (the one-part
+form). The calibration of 996 companies (`analysis/priors/process_priors_2026-11-19.toml`) gives a
+persistence of 0.14 to 0.19 and a size of 13% above $1B revenue. The half-life of the slow part is
+not in the data for a company like ANT: it is a judgment. `sigma_level` makes the shock size at least
+`sigma_level` times the level of the center.
+*Evidence:* `rust/src/dcf/process.rs` (`ProcessSpec`), `paths_tests.rs` (`moments_of_growth_and_margin_follow_the_ar1_formulas`).
+
+**158. `start` is the value of year 1 of the process, not the pin.** The pin of a segment
+(`year1_growth`) sets the revenue of year 1 only. The first step of the process is year 2. For ANT
+the pin is +198% and `start` is 60%: the growth of year 2 at the means is 0.07 + (0.60 - 0.07) x
+0.707 = 44.5%. A reader who takes `start` for the growth of year 2 reads a wrong number.
+*Evidence:* `analysis/ANT/driver_model_paths.toml`.
+
+**159. The risk-free rate of the CAPM is a yield, not the short rate. The mode decides the drift.**
+With `mode = "long"` the rate of year `t` is the 10-year zero yield that the model gives at the start of
+year `t`. On an upward curve its expected value rises with `t` (ANT: 5.1% in year 1, about 6.1% in
+year 10), so the DCF discounts later years at higher rates. The product of the yearly factors is
+then not the curve discount factor. With `mode = "long_flat"` the expected yield stays at the level of
+year 1 and only the deviations of the model remain: this is the convention of the old engine (one
+flat rf). The ANT and IBM files use `long_flat`. For ANT, `long` gives P50 $23.23 against $25.01.
+*Evidence:* `pathrate.rs`, `paths_tests.rs` (`long_flat_mode_keeps_the_expected_risk_free_rate_at_the_level_of_time_zero`).
+
+**160. Rates follow the pricing measure of the model. There is no term-premium drift.** Hull-White
+reprices the curve of the date. The ERP is added to this rate. The parameters `a = 0.14` and
+`sigma = 0.0075` come from `fa models calibrate --model vasicek --method ml` on the GSW 1-year zero
+yield, monthly, 2000 to 2026-11. The mean reversion is not significant (t = 1.78 against 2.86): `a`
+is weakly known. The 1-year zero yield is a proxy of the short rate.
+*Evidence:* `fa models calibrate` on 2026-11-19.
+
+**161. Terminal growth has three caps, in this order.** (1) The `target` of the process in
+`terminal.cap_by_process` (growth after the horizon does not pass the long-run growth of the revenue).
+(2) The risk-free rate of the path at the end plus `rf_margin`. (3) The guard of the old engine:
+terminal cost of capital minus 2% (T-DCF-2). The output shows how often each cap binds. After the
+horizon the growth falls from the last yearly value to the terminal growth in one step. The
+terminal value uses the cost of capital of the end of the horizon on each path.
+*Evidence:* `paths.rs` (`eval`), `paths_tests.rs` (`terminal_growth_caps_are_counted`).
+
+**162. Option B (sales-to-capital) has four simplifications.** The reinvestment is
+`max(revenue change, 0) / s2c`: a revenue fall releases no capital. The loss pool is used in the
+years of the horizon only; a rest at the end gives no value. In the terminal value the tax is
+the full rate. If the last EBIT is negative the terminal value is negative (as in the old engine).
+Option A (the margin is the FCFF margin) is the option of both application files.
+*Evidence:* `paths_tests.rs` (`fixed_answer_option_b_with_loss_carry_forward_literal`).
+
+**163. The failure hazard is off by default.** With `[failure]` each path fails with the yearly
+hazard. The company is sold at `recovery_revenue_multiple` times the revenue of the year before, and
+the cash flow of the failure year is lost. Net cash stays in the equity value (the bridge does not
+change). `mode = "expected"` uses survival weights and has no noise. Neither ANT file uses it. A
+failure of ANT with 230 billion of cash is a judgment that no part of the repo supports.
+*Evidence:* `paths_tests.rs` (`failure_expected_mode_equals_the_closed_form`).
+
+**164. The path engine has its own random numbers.** Path `p` uses the stream
+`Rng::for_path(seed, p)` of `ratemodels/rng.rs`. The result is the same with 1, 3 or 4 threads. It
+is not the numpy stream: a path model does not give the same numbers as the old engine for the same
+seed. A test can give the correlated normals of the old engine (`simulate(.., Some(z), ..)`); then
+the values of all 10,000 IBM paths agree with the old engine to 3e-15 (ANT: 6e-14). Sensitivities,
+attribution and implied values use the same seed, so they use the same normals.
+*Evidence:* `paths_tests.rs` (`a_run_gives_the_same_numbers_with_one_and_four_threads_and_for_each_seed`).
+
+**165. Draws are cut, not truncated.** A drawn parameter is `mean + std z`, then cut at `lo` and `hi`
+(as in the old engine). The value of a process in a year is cut at its `lo` and `hi`; the cut does not
+feed back into the process. Edges get probability mass. `--pset NAME=V` changes the mean only; add
+`--shift-bounds` to move `lo` and `hi` with it (needed for implied values, as in #125). A drawn
+half-life needs `lo > 0`.
+
+**166. Attribution and variance shares have a stated meaning.** Attribution moves the mean of one
+drawn number by one std, with the same normals; the bounds do not move. The variance table has two
+columns for each group: the variance when only this group is random, and the share that goes when
+this group is fixed. The columns do not add to 100% (interaction).
+
+**167. The calibrated margin shock is large.** The table gives a shock of 11% (persistence 0.44) for
+the free-cash-flow margin of all companies. It is the size that the ANT file uses. It widens the P10 to
+P90 range of ANT (P10 $3.60 against $12.82). For IBM the file uses 2%, a judgment, because the
+pooled value is too wide for a company with a margin of 19% that moves slowly. The pooled value is a
+mean over many company types, and ANT is outside the data (37 company-years with growth above 100% at
+revenue above $10B).
+
+**168. The curve is in the model file.** The six GSW numbers of one date are in `[rates.curve]`, so a
+run does not need `data/`. A new date needs a new file. The Board can revise the file. The curve of
+2026-07-16 (IBM) has large `beta2` and `beta3` (a fit with near-collinear terms): the yields are
+right, the parameters are not readable. The horizon plus the tenor must be 30 years or less.
+
+**169. Test tolerances.** Fixed answers: 1e-12 relative (1e-6 for the Hull-White curve case with
+volatility 1e-9, where the curve yield is the reference). Same draws as the old engine: 1e-10 per
+path. Moments: 4 standard errors (variance: 4 x var x sqrt(2/n)). Discount factors: 3 standard
+errors of the mean plus 2e-5 for the monthly trapezoid (the 400,000-path run has |z| below 1). Failure
+share and mean: 3 standard errors.
+*Evidence:* `rust/src/dcf/paths_tests.rs`.
+
 ## Calibration of the growth and margin processes (added 2026-11-19, branch `claude/dcf-calibration`)
 
 **170. The panel has no sector.** The company facts and the cache files have no SIC code. A group is a size bucket and a
