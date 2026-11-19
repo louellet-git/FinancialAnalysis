@@ -2,9 +2,9 @@
 id: T-20261119-futures-forwards-data
 title: Get futures prices (the forward rates are done)
 area: engine
-status: backlog
+status: in-progress
 owner: louellet-git
-branch:
+branch: claude/futures-prices
 created: 2026-11-19
 acceptance: One `fa` command prints the futures prices for a date, each with its source and its date. The code is Rust and it calls no Python code.
 ---
@@ -29,3 +29,5 @@ Not done: futures prices. No free source was found whose terms permit automated 
 Owner decision needed: pay for a licensed source (for example Databento, key in an
 environment variable), or accept no futures data. The acceptance line for the futures
 command is not met.
+
+Owner decision, 2026-11-19: use each free source that gives data of good quality. The work continues on the branch `claude/futures-prices`.
