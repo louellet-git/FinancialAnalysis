@@ -1,19 +1,43 @@
 name: tests
+# Cost rules (2026-11-19): one job, a cache for the compiled dependencies, no run for a
+# change that has only documents, and no second run after a merge. A run on `main`
+# happens only when a lock file or this file changes; that run fills the cache that
+# the pull requests read.
 on:
   pull_request:
+    paths:
+      - 'rust/**'
+      - 'analysis/**'
+      - 'financial_analysis/**'
+      - '.github/workflows/**'
   push:
     branches: [main]
+    paths:
+      - 'rust/Cargo.lock'
+      - 'rust/mapcheck/Cargo.lock'
+      - '.github/workflows/tests.yml'
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  # The program that makes the standard variables (rust/mapcheck). The Python importer
-  # (financial_analysis/importer.py) runs its release build. No Python test remains.
-  mapcheck:
+  rust:
     runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-ci
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_TEST_DEBUG: 0
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target-ci
+          key: cargo-${{ runner.os }}-${{ hashFiles('rust/Cargo.lock', 'rust/mapcheck/Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-
+      # The program that makes the standard variables (rust/mapcheck).
       - run: cargo test --manifest-path rust/mapcheck/Cargo.toml
-      - run: cargo build --release --manifest-path rust/mapcheck/Cargo.toml
-  cargo:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+      # The `fa` crate.
       - run: cargo test --manifest-path rust/Cargo.toml --locked
