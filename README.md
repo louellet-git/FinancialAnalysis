@@ -221,6 +221,8 @@ cd rust
 cargo run --bin fa -- rates yield --tenor 10Y
 cargo run --bin fa -- verdict IBM --price 231.09 --rf-date today --rating A-
 cargo run --bin fa -- bonds over10y --rating A-
+cargo run --bin fa -- forwards --date 2026-11-13   # GSW zero-coupon yields and forward rates (Rust only)
+cargo run --bin fa -- forwards check               # GSW against Treasury par yields, exit 1 on mismatch
 cargo run --bin fa -- run scripts.analyze IBM     # any Python entry point
 cargo run --release --bin fa -- serve             # local viewer in the browser
 cargo run --example dcf_rates -- IBM 231.09 A-    # library example
@@ -362,6 +364,7 @@ The financial tabs have one row for each `(period, metric)`. The JSON store
 | Treasury par yield curves, nominal and real (TIPS) | U.S. Treasury | None |
 | SOFR, EFFR, FOMC target range | Federal Reserve Bank of New York | None |
 | CPI-U, headline and core | Bureau of Labor Statistics, API v1 | None |
+| Zero-coupon yields and forward rates (fitted curve, GSW) | Federal Reserve Board, `feds200628.csv` | None |
 | Cross-check of the rates and CPI | FRED (St. Louis Fed) | None |
 | Corporate bond spreads and yields for each rating | ICE BofA indexes, through FRED (last 3 years only) | None |
 | Moody's seasoned Aaa and Baa yields | Moody's, through FRED | None |
