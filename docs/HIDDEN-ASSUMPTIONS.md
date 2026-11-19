@@ -328,6 +328,33 @@ date, `cpi_inflation` can use a value that was not yet public on that date. Do n
 it in a point-in-time backtest without a release-date check.
 *Evidence:* BLS series CUUR0000SA0, 2025 M10 value `-`; `tests/test_rates.py`.
 
+## Corporate bonds (added 2026-11-18)
+
+**36. For IBM, `--rating` replaces a reviewed calibration with a proxy.** The IBM
+`kd_spread` (-0.10%) comes from the fair value of the IBM debt ladder (DRIVER-REVIEW,
+adjudicated conflict #2). The A index spread over the 10Y was +0.67% on 2026-11-17. With
+`--rating A-` the IBM P50 goes from $133.90 to $127.71. The index is a general proxy for
+the rating. It is not a correction of the review. To change the IBM value, do a review of
+the same weight. For a ticker without a calibrated spread (for example JNJ), the index
+gives a sourced value.
+*Evidence:* `python -m scripts.verdict IBM --price 231.09 --rf-date 2026-11-18 --rating A-`.
+
+**37. The ICE data on FRED has only 3 years, and ICE does not allow redistribution.**
+The series start on 2023-11-20. A date before that gives an error, not an old value. Do
+not commit the cache (`data/raw/bonds/`) or put ICE values in a public file. For a
+longer history, use Moody's Aaa and Baa (from 1983 and 1986). Those are long bonds (20
+years or more), thus their spread over the 10Y is larger than the spread of an index.
+*Evidence:* FRED BAMLC0A3CA first observation 2023-11-20.
+
+**38. The rating index has no notches and its own duration.** `A-`, `A` and `A+` all use
+the `A` index. The index duration is approximately 6 to 7 years, not 10 years. Thus the
+OAS and the yield minus the 10Y are different numbers. The engine uses the yield minus
+the 10Y, because the engine defines `kd = rf_10Y + kd_spread`. The HQM curve is monthly
+and comes through FRED. A check on 2026-11-18 found that FRED and the Treasury .xls file
+agree (306 values, no difference). The repo has no `.xls` reader, thus this check is
+not automatic.
+*Evidence:* `financial_analysis/bonds.py` module docstring.
+
 ## Could not verify
 
 - (none of the named traps failed verification — all located in current code/docs; the

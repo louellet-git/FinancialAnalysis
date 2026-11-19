@@ -11,9 +11,15 @@ yield on that date (financial_analysis/rates.py), and the output shows the
 inflation split of that rate and a terminal-growth check. Only rf changes:
 the growth drivers are nominal and stay at the model values.
 
+With --rating (needs --rf-date) the kd_spread driver mean is set to the ICE BofA
+index effective yield for that rating minus the UST 10Y on the same date
+(financial_analysis/bonds.py), so the mean pre-tax cost of debt is the market
+yield for the rating.
+
 Usage:
     python -m scripts.verdict IBM --price 212.40
     python -m scripts.verdict IBM --price 212.40 --rf-date today --rf-base-date 2026-07-16
+    python -m scripts.verdict JNJ --price 200 --rf-date today --rating AAA
     python -m scripts.verdict IBM --price 212.40 --rf-date today --json
 """
 import argparse
@@ -67,6 +73,34 @@ def rates_context(model, rf_date: str, base_date: str | None = None):
     return rates.with_risk_free(model, obs), ctx
 
 
+def credit_context(model, rating: str, rf_date: str, rf: float):
+    """(model with the market kd_spread for ``rating``, dict of credit facts)."""
+    from financial_analysis import bonds, rates
+
+    on = rates.parse_date_arg(rf_date)
+    spread = bonds.spread_over_10y(rating, on)
+    index_yield = bonds.corporate_yield(rating, spread.date)
+    oas = bonds.credit_spread(rating, spread.date)
+    model_spread = model.driver("kd_spread").mean
+    tax = model.driver("tax_rate").mean
+    kd = round(rf + spread.value, 6)
+    ctx = {
+        "rating": rating,
+        "index": bonds.rating_bucket(rating),
+        "kd_spread": spread.to_dict(),
+        "model_kd_spread": model_spread,
+        "kd_spread_change_vs_model": round(spread.value - model_spread, 6),
+        "index_yield": index_yield.value,
+        "oas": oas.value,
+        "moodys_aaa": bonds.moodys_yield("Aaa", spread.date).value,
+        "moodys_baa": bonds.moodys_yield("Baa", spread.date).value,
+        "kd_pretax": kd,
+        "kd_after_tax": round(kd * (1 - tax), 6),
+        "tax_rate": tax,
+    }
+    return bonds.with_kd_spread(model, spread), ctx
+
+
 def _pp(x: float) -> str:
     return f"{x * 100:+.2f} pp"
 
@@ -90,6 +124,17 @@ def print_rates(ctx: dict) -> None:
     print("  Only rf changed. The growth drivers are nominal and keep the model values.")
 
 
+def print_credit(c: dict) -> None:
+    s = c["kd_spread"]
+    print(f"  kd_spread = {c['index']} index yield {c['index_yield']:.2%} - UST 10Y = {s['value']:+.2%} "
+          f"on {s['date']} ({s['source']}); model was {c['model_kd_spread']:+.2%} "
+          f"({_pp(c['kd_spread_change_vs_model'])})")
+    if s["note"]:
+        print(f"     note: {s['note']}")
+    print(f"     {c['index']} OAS {c['oas']:.2%}; Moody's Aaa {c['moodys_aaa']:.2%}, Baa {c['moodys_baa']:.2%}")
+    print(f"     pre-tax kd mean {c['kd_pretax']:.2%}; after tax ({c['tax_rate']:.0%}) {c['kd_after_tax']:.2%}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Investor verdict over the driver engine.")
     parser.add_argument("ticker", help="Ticker with analysis/<TICKER>/driver_model.py")
@@ -99,12 +144,16 @@ def main() -> None:
     parser.add_argument("--rf-date", help="YYYY-MM-DD or 'today': use the Treasury 10Y on that date as rf")
     parser.add_argument("--rf-base-date", help="YYYY-MM-DD: split the 10Y change since this date "
                                                "into real rate and inflation (needs --rf-date)")
+    parser.add_argument("--rating", help="credit rating, S&P (A-) or Moody's (A3): use the market "
+                                         "kd_spread for it (needs --rf-date)")
     parser.add_argument("--json", action="store_true", help="machine output")
     args = parser.parse_args()
     if not (math.isfinite(args.price) and args.price > 0):
         parser.error(f"--price must be a positive number, got {args.price}")
     if args.rf_base_date and not args.rf_date:
         parser.error("--rf-base-date needs --rf-date")
+    if args.rating and not args.rf_date:
+        parser.error("--rating needs --rf-date")
 
     ticker = args.ticker.upper()
     try:
@@ -113,9 +162,11 @@ def main() -> None:
         print(f"No driver model for {ticker}: expected analysis/{ticker}/driver_model.py", file=sys.stderr)
         sys.exit(1)
     bundle = build()
-    model, ctx = bundle["model"], None
+    model, ctx, credit = bundle["model"], None, None
     if args.rf_date:
         model, ctx = rates_context(model, args.rf_date, args.rf_base_date)
+    if args.rating:
+        model, credit = credit_context(model, args.rating, args.rf_date, ctx["rf"]["value"])
     paths = DriverDCF(model, bundle["segments"], net_debt=bundle["net_debt"],
                       shares=bundle["shares"]).run(args.simulations, args.seed).per_share_paths
 
@@ -126,12 +177,14 @@ def main() -> None:
         print(json.dumps({
             "ticker": ticker, "simulations": args.simulations, "seed": args.seed, "price": args.price,
             "p10": p10, "p25": p25, "p50": p50, "p75": p75, "p90": p90,
-            "chance_price_too_high": too_high, "verdict": band, "rates": ctx,
+            "chance_price_too_high": too_high, "verdict": band, "rates": ctx, "credit": credit,
         }))
         return
     print(f"\n{ticker} verdict - {args.simulations:,} sims, seed {args.seed}, price ${args.price:,.2f}")
     if ctx:
         print_rates(ctx)
+    if credit:
+        print_credit(credit)
     print(f"  P10 ${p10:,.2f} | P25 ${p25:,.2f} | P50 ${p50:,.2f} | P75 ${p75:,.2f} | P90 ${p90:,.2f}")
     print(f"  Chance the price is too high: {too_high:.1%} -> {band}")
 

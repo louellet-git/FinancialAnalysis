@@ -19,7 +19,7 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest                       # 409 tests, no network
+python -m pytest                       # 439 tests, no network
 cargo test --manifest-path rust/mapcheck/Cargo.toml   # 41 Rust tests
 ```
 
@@ -71,7 +71,8 @@ python -m scripts.import_edgar IBM 2026-07-01 [--output-dir data/raw] [--lookbac
 python -m scripts.run_dcf PANW [--simulations 10000] [--years 10] [--growth 0.15] [--wacc 0.10] [--terminal-growth 0.03] [--seed 7]
 python -m scripts.backtest IBM [--horizon 3] [--simulations 10000] [--seed 7]
 python -m scripts.visualize_dcf IBM [--price 195.40] [--out report.html]
-python -m scripts.verdict IBM --price 228.53 [--simulations 10000] [--seed 7] [--rf-date today] [--rf-base-date 2026-07-16] [--json]
+python -m scripts.verdict IBM --price 228.53 [--simulations 10000] [--seed 7] [--rf-date today] [--rf-base-date 2026-07-16] [--rating A-] [--json]
+python -m financial_analysis.bonds [snapshot|spread|yield|over10y|moodys|hqm|check] [--rating A-] [--json]
 python -m financial_analysis.rates [snapshot|yield|curve|history|nyfed|inflation|fred|check] [--json]
 python -m scripts.mapping_audit IBM JNJ    # each input value with its source
 python -m scripts.mapping_audit --panel    # mapping summary for 32 tickers
@@ -169,6 +170,31 @@ The output shows these items:
 Only `rf` changes. The growth drivers are nominal and keep the model values. If the
 inflation part of a rate change is large, examine the growth drivers too.
 
+### Corporate bonds and the cost of debt
+
+The engine uses `kd = rf + kd_spread`. `financial_analysis/bonds.py` gives market
+values for `kd_spread`.
+
+```bash
+python -m financial_analysis.bonds                       # all ratings, Moody's, HQM curve, check
+python -m financial_analysis.bonds over10y --rating A-   # the market kd_spread for a rating
+```
+
+`over10y` is the yield of the ICE BofA index for the rating minus the Treasury 10-year
+yield on the same date. This is the definition of `kd_spread` in the engine. The rating
+can be S&P (`A-`) or Moody's (`A3`). The index has no notches, thus `A-` uses the `A`
+index.
+
+To use the market spread in a verdict, add `--rating` to a run with `--rf-date`:
+
+```bash
+python -m scripts.verdict JNJ --price 200 --rf-date today --rating AAA
+```
+
+The output shows the market spread, the model spread and the pre-tax and after-tax cost
+of debt. The driver models do not change. Read `docs/HIDDEN-ASSUMPTIONS.md` #36 before
+you use `--rating` for IBM.
+
 ### Rust interface
 
 The `rust/` crate calls the Python code and gives typed results. Python stays the only
@@ -177,9 +203,10 @@ implementation.
 ```bash
 cd rust
 cargo run --bin fa -- rates yield --tenor 10Y
-cargo run --bin fa -- verdict IBM --price 231.09 --rf-date today
+cargo run --bin fa -- verdict IBM --price 231.09 --rf-date today --rating A-
+cargo run --bin fa -- bonds over10y --rating A-
 cargo run --bin fa -- run scripts.analyze IBM     # any Python entry point
-cargo run --example dcf_rates -- IBM 231.09       # library example
+cargo run --example dcf_rates -- IBM 231.09 A-    # library example
 ```
 
 Set `FA_PYTHON` to select the Python interpreter and `FA_REPO` to select the repository.
@@ -261,6 +288,9 @@ The financial tabs have one row for each `(period, metric)`. The JSON store
 | SOFR, EFFR, FOMC target range | Federal Reserve Bank of New York | None |
 | CPI-U, headline and core | Bureau of Labor Statistics, API v1 | None |
 | Cross-check of the rates and CPI | FRED (St. Louis Fed) | None |
+| Corporate bond spreads and yields for each rating | ICE BofA indexes, through FRED (last 3 years only) | None |
+| Moody's seasoned Aaa and Baa yields | Moody's, through FRED | None |
+| HQM corporate bond yield curve | U.S. Treasury, through FRED | None |
 
 The pipeline supports US-GAAP filers on EDGAR. ETFs and IFRS filers cause an
 `UnsupportedFilingError`. Segment revenue is not available from companyfacts
@@ -283,7 +313,7 @@ analysis/JNJ/             JNJ first pass (not reviewed)
 trading/                  option strategy backtester, paper trader, 22 bots, research notes
 scripts/                  command-line entry points
 rust/                     Rust interface: library and `fa` command (calls the Python code)
-tests/                    409 tests
+tests/                    439 tests
 
 docs/                     ARCHITECTURE.md, HIDDEN-ASSUMPTIONS.md, INDEX.md, design documents
 PLANNING/board/           open work, one file for each ticket
