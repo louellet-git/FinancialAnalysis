@@ -21,3 +21,17 @@ Steps:
 
 Conflict of interest: the agents that do this work are Claude models. Anthropic makes
 Claude. The report must show this fact on its first page.
+
+## State (2026-11-19)
+
+Owner decision, 2026-11-19: a first pass is sufficient (value range, key drivers, and
+what the market price implies). The four review steps are not done.
+
+- Step 1: done. The prospectus has no XBRL (`docs/HIDDEN-ASSUMPTIONS.md` #68). The
+  facts are in `analysis/ANT/research-ledger.md`.
+- Step 2: done. `python -m analysis.ANT.first_pass_run`; result in
+  `analysis/ANT/FIRST-PASS.md`.
+- Step 3: not done. Do not use the first pass alone for a trade.
+
+Open: the two model files are Python, because the engine is Python until its move to
+Rust (`T-20261119-python-to-rust`). Move them with the engine.
