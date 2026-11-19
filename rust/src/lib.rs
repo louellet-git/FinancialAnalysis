@@ -1,8 +1,7 @@
 //! Rust interface to FinancialAnalysis: rates, bonds, inflation, the DCF verdict.
 //!
 //! The rates, the bonds and the verdict are Rust (`rates`, `bonds`, `verdict_rates`, `dcf`).
-//! `Fa` keeps the old method names and calls them; it can also run a Python entry point that
-//! is still Python (`fa run`).
+//! `Fa` keeps the old method names and calls them. No part of this crate starts Python.
 //!
 //! All rates are decimals (0.0507 == 5.07%). All dates are ISO strings (YYYY-MM-DD).
 //!
@@ -39,13 +38,13 @@ pub mod trading;
 pub mod analyze;
 pub mod company;
 pub mod market;
+pub mod report;
 
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt;
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus};
 
 /// Treasury tenors in curve order (a `BTreeMap` sorts them as text).
 pub const TENORS: [&str; 14] = [
@@ -53,7 +52,7 @@ pub const TENORS: [&str; 14] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Types (mirror the Python JSON)
+// Types (the JSON fields are the same as in the earlier Python commands)
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -247,10 +246,6 @@ pub struct VerdictOptions {
 
 #[derive(Debug)]
 pub enum FaError {
-    /// Python could not start (wrong FA_PYTHON?).
-    Spawn { python: PathBuf, source: std::io::Error },
-    /// The Python command failed. `kind` is the Python exception type when known.
-    Python { code: Option<i32>, kind: Option<String>, message: String },
     /// A Rust data command failed (a source did not answer, a value is missing, a bad input).
     Data(String),
     /// The output was not the JSON shape this crate expects.
@@ -260,14 +255,6 @@ pub enum FaError {
 impl fmt::Display for FaError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FaError::Spawn { python, source } => write!(f, "cannot start {}: {source}", python.display()),
-            FaError::Python { code, kind, message } => {
-                write!(f, "python failed (exit {code:?})")?;
-                if let Some(k) = kind {
-                    write!(f, " {k}")?;
-                }
-                write!(f, ": {message}")
-            }
             FaError::Data(message) => write!(f, "{message}"),
             FaError::Json { source, output } => {
                 let head: String = output.chars().take(200).collect();
@@ -280,30 +267,13 @@ impl fmt::Display for FaError {
 impl std::error::Error for FaError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            FaError::Spawn { source, .. } => Some(source),
             FaError::Json { source, .. } => Some(source),
-            FaError::Python { .. } | FaError::Data(_) => None,
+            FaError::Data(_) => None,
         }
     }
 }
 
 pub type Result<T> = std::result::Result<T, FaError>;
-
-/// Turn a failed run's stderr into an error. The Python CLIs print
-/// `{"error": ..., "type": ...}` on stderr in `--json` mode.
-pub fn python_error(code: Option<i32>, stderr: &str) -> FaError {
-    #[derive(Deserialize)]
-    struct PyErr {
-        error: String,
-        #[serde(rename = "type")]
-        kind: Option<String>,
-    }
-    let last = stderr.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("");
-    match serde_json::from_str::<PyErr>(last) {
-        Ok(e) => FaError::Python { code, kind: e.kind, message: e.error },
-        Err(_) => FaError::Python { code, kind: None, message: stderr.trim().to_string() },
-    }
-}
 
 /// Parse JSON output into a type, keeping the raw text for the error message.
 pub fn parse_output<T: DeserializeOwned>(output: &str) -> Result<T> {
@@ -314,59 +284,23 @@ pub fn parse_output<T: DeserializeOwned>(output: &str) -> Result<T> {
 // Client
 // ---------------------------------------------------------------------------
 
-/// Runs the Python pipeline. `repo` is the repository root, `python` the interpreter.
+/// The entry point of the typed Rust calls. `repo` is the repository root.
 #[derive(Debug, Clone)]
 pub struct Fa {
-    pub python: PathBuf,
     pub repo: PathBuf,
 }
 
 impl Fa {
-    pub fn new(python: impl Into<PathBuf>, repo: impl Into<PathBuf>) -> Self {
-        Fa { python: python.into(), repo: repo.into() }
+    pub fn new(repo: impl Into<PathBuf>) -> Self {
+        Fa { repo: repo.into() }
     }
 
-    /// `FA_REPO` (default: the repository that holds this crate) and `FA_PYTHON`
-    /// (default: see [`default_python`]).
+    /// `FA_REPO` (default: the repository that holds this crate).
     pub fn from_env() -> Self {
         let repo = std::env::var_os("FA_REPO")
             .map(PathBuf::from)
             .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join(".."));
-        let python = std::env::var_os("FA_PYTHON")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| default_python(&repo, cfg!(windows), |p| p.exists()));
-        Fa { python, repo }
-    }
-
-    fn command(&self, module: &str, args: &[String]) -> Command {
-        let mut cmd = Command::new(&self.python);
-        cmd.current_dir(&self.repo).arg("-m").arg(module).args(args);
-        cmd
-    }
-
-    /// Run any repository entry point (for example `scripts.analyze IBM`) with its
-    /// output passed through to this process. This makes every Python command callable.
-    pub fn run(&self, module: &str, args: &[String]) -> Result<ExitStatus> {
-        self.command(module, args)
-            .status()
-            .map_err(|source| FaError::Spawn { python: self.python.clone(), source })
-    }
-
-    /// Run an entry point and keep its output: the text of stdout when the command
-    /// succeeds. When it fails, the error has the text of stderr (or of stdout when
-    /// stderr is empty: some commands print their error there).
-    pub fn run_captured(&self, module: &str, args: &[String]) -> Result<String> {
-        let out = self
-            .command(module, args)
-            .output()
-            .map_err(|source| FaError::Spawn { python: self.python.clone(), source })?;
-        let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
-        if out.status.success() {
-            return Ok(stdout);
-        }
-        let stderr = String::from_utf8_lossy(&out.stderr);
-        let text = if stderr.trim().is_empty() { stdout } else { stderr.into_owned() };
-        Err(python_error(out.status.code(), &text))
+        Fa { repo }
     }
 
     /// The network, the cache `data/raw` of this repository, today from the clock.
@@ -489,18 +423,6 @@ fn data<T>(f: impl FnOnce() -> std::result::Result<T, String>) -> Result<T> {
     f().map_err(FaError::Data)
 }
 
-/// The interpreter to use when `FA_PYTHON` is not set. Linux and macOS:
-/// `<repo>/.venv/bin/python` if it exists, else `python3`. Windows:
-/// `<repo>\.venv\Scripts\python.exe` if it exists, else `python`.
-pub fn default_python(repo: &Path, windows: bool, exists: impl Fn(&Path) -> bool) -> PathBuf {
-    let (venv, fallback) = if windows {
-        (repo.join(".venv").join("Scripts").join("python.exe"), "python")
-    } else {
-        (repo.join(".venv").join("bin").join("python"), "python3")
-    };
-    if exists(&venv) { venv } else { PathBuf::from(fallback) }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -587,23 +509,6 @@ mod tests {
     }
 
     #[test]
-    fn python_json_error_is_typed() {
-        let e = python_error(Some(2), "some warning\n{\"error\": \"no SOFR\", \"type\": \"LookupError\"}\n");
-        match e {
-            FaError::Python { code, kind, message } => {
-                assert_eq!((code, kind.as_deref(), message.as_str()), (Some(2), Some("LookupError"), "no SOFR"));
-            }
-            other => panic!("unexpected {other:?}"),
-        }
-    }
-
-    #[test]
-    fn python_plain_error_keeps_text() {
-        let e = python_error(Some(1), "Traceback ...\nValueError: boom\n");
-        assert!(e.to_string().contains("ValueError: boom"));
-    }
-
-    #[test]
     fn bad_json_reports_output() {
         let e = parse_output::<RateObservation>("not json").unwrap_err();
         assert!(e.to_string().contains("not json"));
@@ -647,14 +552,5 @@ mod tests {
         let v: Verdict = parse_output(&format!("{{{base}, \"credit\": {credit}}}")).unwrap();
         let c = v.credit.unwrap();
         assert_eq!((c.index.as_str(), c.kd_spread.value), ("A", 0.0067));
-    }
-
-    #[test]
-    fn default_python_for_each_platform() {
-        let repo = Path::new("repo");
-        assert_eq!(default_python(repo, false, |_| false), PathBuf::from("python3"));
-        assert_eq!(default_python(repo, true, |_| false), PathBuf::from("python"));
-        assert_eq!(default_python(repo, false, |_| true), repo.join(".venv").join("bin").join("python"));
-        assert_eq!(default_python(repo, true, |_| true), repo.join(".venv").join("Scripts").join("python.exe"));
     }
 }

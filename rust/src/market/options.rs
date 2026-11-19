@@ -434,6 +434,7 @@ mod tests {
         assert_eq!(load_snapshot(&dir, "TEST", None).unwrap(), s, "the latest");
         assert_eq!(list_snapshots(&dir, "NONE"), Vec::<String>::new());
         assert!(load_snapshot(&dir, "NONE", None).unwrap_err().contains("No option-chain snapshots"));
+        assert!(load_snapshot(&dir, "TEST", Some("1999-01-01")).unwrap_err().contains("on 1999-01-01"), "a date that has no file");
         // Same day: the file is read, and there is no request.
         let never = |_: &str| -> Result<Vec<u8>, String> { panic!("no request expected") };
         let (got, source) = fetch_option_chain(&dir, "test", false, "2026-11-19", &never).unwrap();

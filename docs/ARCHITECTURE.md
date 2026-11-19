@@ -21,40 +21,42 @@ SEC EDGAR (companyfacts JSON API)      Yahoo chart     Cboe delayed quotes     F
                                 v
                   rust/src/analyze.rs  (fa analyze)  --> data/processed/TICKER_financials.xlsx (9 tabs)
 
-   data/processed/TICKER.json also goes to: fa dcf classic (Rust), and to the Python code that remains:
-   store.py / schema.py --> dcf.py, driver_dcf.py, backtest.py, scenarios.py, scripts/visualize_dcf.py
-   (Python engines and the HTML report, not yet in Rust).
+   data/processed/TICKER.json also goes to: fa dcf classic, fa dcf scenarios, fa backtest and fa report
+   (all Rust: rust/src/dcf/, rust/src/report/). data/raw/TICKER/ (prices, option snapshots,
+   earnings dates) goes to fa report too. analysis/TICKER/driver_model.toml goes to fa dcf drivers,
+   fa verdict and fa report.
 ```
 
 The market data is attached to the in-memory company by `fa analyze` and written to the xlsx
 file. It is **not** in the JSON store: the store has the periods only. The cache files
 under `data/raw/TICKER/` (`options/`, `estimates/`, `prices.json`, `yf_earnings.json`) are the
-durable market-data record. Their format is the format of the earlier Python code, so the
-Python report reads them.
+durable market-data record. Their format is the format of the earlier Python code. `fa report`
+reads them.
 
 ## The two DCF engines
 
-(The Rust form is in the section `rust/src/dcf/`. The text below describes the Python
-engines, which define the calculation until they are deleted.)
+(The engines are Rust code: see the section `rust/src/dcf/`. The Python engines were deleted on
+2026-11-19. The text below describes the calculation; the class names are the names of the
+old Python classes.)
 
 The repo has two distinct Monte Carlo DCF engines. They coexist deliberately; neither
 replaces the other.
 
-### 1. Classic scenario engine — `financial_analysis/dcf.py` (`StochasticDCF`)
+### 1. Classic scenario engine — `rust/src/dcf/classic.rs` (`run_classic`, was `StochasticDCF`)
 
 Samples the **top-level valuation items directly**: revenue growth, FCF margin, WACC,
 and terminal growth, each an independent normal draw per path (10,000 sims, 10-year
 horizon by default). FCF margin is derived from the last 5 annual periods when not
 pinned. Gordon terminal value with a 0.001 floor on the `wacc − tg` denominator (which
 lets near-degenerate paths dominate the tails — one reason the driver engine exists).
-Minimum-history guard: raises `ValueError` unless ≥ 4 annual periods have positive FCF.
-`financial_analysis/scenarios.py` supplies bear/base/bull assumption presets and a
-per-ticker net-debt/shares registry for it. Note: the IBM entries in `scenarios.py` are
+Minimum-history guard: an error unless ≥ 4 annual periods have positive FCF.
+`rust/src/dcf/scenarios.rs` supplies bear/base/bull assumption presets and a
+per-ticker net-debt/shares registry for it. Note: the IBM entries in `scenarios.rs` are
 the **v3** aggregate framework (base P50 $141 family), kept as the aggregate-scenario
 presets; the current v4 numbers live only in the driver engine's register (see
 docs/HIDDEN-ASSUMPTIONS.md).
 
-### 2. Driver-based engine — `financial_analysis/driver_dcf.py` (`DriverDCF`)
+### 2. Driver-based engine — `rust/src/dcf/driver.rs` (`DriverDcf`, was `DriverDCF`)
 
 Never samples a top-level item. Every top-level item (revenue, FCFF margin, WACC,
 terminal value) is a **deterministic, unit-tested formula** over underlying *drivers*,
@@ -95,15 +97,13 @@ and the drivers are the only stochastic objects. In plain language:
 
 Per-ticker parameterization lives in `analysis/<TICKER>/driver_model.toml` (IBM, JNJ, ANT):
 drivers with written rationales, the correlation matrix, segment bases, net debt, shares.
-The rationale strings are normative over DRIVERS.md prose (see CLAUDE.md). The older copy
-`driver_model.py` (exposing `build()`) stays only because `scripts/visualize_dcf.py` reads
-it; a change needs the same change in both files.
+The rationale strings are normative over DRIVERS.md prose (see CLAUDE.md). The older Python copies
+`driver_model.py` are deleted (2026-11-19).
 
 ## The backtest harness
 
 `run_backtest(company, horizon, n, seed)` in `rust/src/dcf/backtest.rs` (`fa backtest TICKER`;
-the older Python copy `financial_analysis/backtest.py` stays only for `scripts/visualize_dcf.py`)
-— walk-forward vintages, one per clean fiscal-year-end + 90 days:
+the report uses the same function) — walk-forward vintages, one per clean fiscal-year-end + 90 days:
 
 - **Point-in-time estimates**: a vintage sees only periods with `filed_date <= as_of`.
   Because the importer's `filed_date` is the filing date of the (often later) 10-K whose
@@ -116,43 +116,33 @@ the older Python copy `financial_analysis/backtest.py` stays only for `scripts/v
   (restatements included) — how forecasts are judged in practice.
 - **DATA_FLAGS, not fixes**: vintages whose parameter window touches IBM FY2019/FY2020
   carry the recast-mismatch flag; inputs are marked, never silently repaired.
-- `_clean_annuals` requires both revenue and OCF.
+- `clean_annuals` requires both revenue and OCF.
 - Scope: revenue/FCF projections only — no WACC, no terminal value, no price.
 
-The HTML report renders it as section 6 ("Backtest — mechanical vintages"): coverage +
+The HTML report (`fa report`) renders it as section 5 ("Backtest — mechanical vintages"): coverage +
 per-horizon bias chips, revenue/FCF hedgehog charts, vintage scorecard. Calibration to
 date: IBM 14/18 realized outcomes in the P10–P90 band (78% vs 80% nominal); DUOL 0/6 —
 mechanical extrapolation fails on growth-phase tickers, so treat their bands as
 decorative until a driver build exists.
 
-## `financial_analysis/` modules (verified 2026-07-17)
+## `financial_analysis/` (the Python files that remain, 2026-11-19)
+
+The engines, the scenarios, the backtest, the store, the schema, the market-data readers and the report
+are deleted: they are Rust code now (`rust/src/dcf/`, `rust/src/company.rs`, `rust/src/market/`,
+`rust/src/report/`). Three Python files in this folder (two in `scripts/`) and the registry remain.
 
 | Module | Lines | What it does |
 |---|---|---|
 | `__init__.py` | 3 | Re-exports `EdgarClient`. |
-| `backtest.py` | 407 | Point-in-time vintage backtest of *operating* projections (revenue, FCF — no WACC, no TV, no price). One vintage per clean fiscal-year-end + 90-day filing lag; `vintage_periods` filters on `filed_date <= as_of` (true point-in-time); mechanical parameters (trailing CAGR, margin mean/std over ≤ 5 clean annuals, std floored 0.01, ≥ 3 periods required); projects +1..+horizon with StochasticDCF-style one-draw-per-path sampling; scores vs actuals as currently reported (asymmetry disclosed); `DATA_FLAGS` surfaces (never fixes) known input defects, e.g. IBM's FY2019–20 recast mismatch; skipped vintages are recorded with reasons. |
-| `dcf.py` | 157 | Classic engine (above): `DCFAssumptions`, `DCFResult`, `StochasticDCF`, `derive_fcf_margin`. Annual (10-K/10-K/A) periods only. |
-| `driver_dcf.py` | 713 | Driver-based engine (above): `Driver`, `Item`, `DriverModel`, `SegmentSpec`, `DriverDCF`, `DriverDCFResult` (incl. `driver_draws` per-path values for the path explorer), vetted item formulas `revenue_paths`, `fcff_margin`, `wacc_capm`, `terminal_value`, registered in `ITEMS`. |
 | `edgar.py` | 272 | SEC HTTP client (User-Agent, 0.15s rate limit), CIK lookup from company_tickers.json, full-index filing downloads (`EdgarClient.download_for_ticker`), `EdgarClientError`. |
 | `importer.py` | 50 | Only `_run`: it starts the Rust program `mapcheck` and gives it the SEC contact (environment variable `SEC_USER_AGENT`, else the legacy SEC client). The import is Rust: `rust/mapcheck/src/import.rs`, `fa import`, `fa analyze`. Stays until the legacy SEC client is deleted. |
-| `market_data.py` | 33 | Legacy reader of `data/raw/TICKER/prices.json` for `scripts/visualize_dcf.py`. No download. Rust: `rust/src/market/prices.rs`. |
-| `options.py` | 266 | Legacy reader of the option-chain snapshots and their metrics (ATM IV, implied move, 90/110 skew, put/call ratios) for `scripts/visualize_dcf.py`. No download. Rust: `rust/src/market/options.rs`. |
-| `scenarios.py` | 125 | Bear/base/bull presets (`DEFAULT_SCENARIOS` generic mature-large-cap; `_SCENARIO_OVERRIDES["IBM"]` = v3 framework), `CAPITAL_OVERRIDES` (IBM: net debt $54.0B, 948,675,228 diluted shares), `capital_structure_for` (derives net debt from the latest 10-K: standard variable `total_debt` − cash; shares_outstanding falling back to diluted). |
-| `schema.py` | 245 | Legacy dataclasses: `PeriodFinancials` (the standard variables with the names of the registry), `CompanyFinancials`, `PricePoint`, `OptionQuote`, `OptionChainSnapshot`. Used by the Python engines, the backtest and the HTML report. Rust: `rust/src/company.rs` (the registry is the only list of names; `tests/test_schema.py` checks that the dataclass has each registry variable). |
-| `store.py` | 105 | JSON persistence `data/processed/TICKER.json` (**periods only** — no market data), in-memory session cache, `get_series`/`compare` query helpers with metric-name validation. |
 | `standard_variables.toml` | 1,385 | The registry of standard variables (data): for each variable its alias tags in a fixed sequence, fallback formulas, unit, sign, core flag and memo flag; the rollups; the containment rules; the excluded tags with reasons. The Rust program `rust/mapcheck` uses it to make the variables. |
 
-## `scripts/` (verified 2026-07-17)
+## `scripts/` (the Python file that remains, 2026-11-19)
 
 | Script | CLI (verified against argparse) | What it does |
 |---|---|---|
 | `import_edgar.py` | `python -m scripts.import_edgar TICKER VALUATION_DATE [--output-dir data/raw] [--lookback-months 18] [--lookahead-months 6]` | Bulk full-index filing download (archival fallback path — companyfacts is the primary parse path). |
-| `visualize_dcf.py` | `python -m scripts.visualize_dcf TICKER [--price X] [--out PATH]` | Single-page self-contained HTML report (plotly.js inlined, ~5.9k lines of output): header chips, price & valuation, fundamentals, the four aggregate-DCF panels (fan / distribution / waterfall / tornado), the driver-model section (segment history, driver table, correlation heatmap, driver-vs-aggregate compare, attribution tornado, **MC path explorer**: stratified 301-path spaghetti, 2,000-path parallel coordinates, bottom/top-10 outlier table with \|z\|≥1.5 drivers bolded), options section (IV term structure, implied move, skew, OI heatmap). Driver section renders only if `analysis/<TICKER>/driver_model.py` exposes `build()`; every section degrades to a labeled "not available" note. Styling follows docs/design-specs/2026-07-16-ratings-desk-blueprint.md. The sixth section "Backtest — mechanical vintages" (vintage table + hedgehog charts from `financial_analysis/backtest.py`, honesty labels, merged PR #9) makes SECTION_TITLES six entries. The skew panel excludes expiries under 2 days from the snapshot (`_SKEW_MIN_DTE`, PR #14) — near-expiry wing IVs are solver noise. |
-
-## Root-level analysis entry points
-
-| Entry point | What it does |
-|---|---|
 
 ## Standard variables and `rust/mapcheck/` (2026-11-19)
 
@@ -187,7 +177,7 @@ mapping logic; it runs `mapcheck import` and reads the store file
 | `checks.rs` | The checks: core inputs, signs, identities, rollups (overlap, nested details, lines with no variable), total-debt estimates, share count, capex and software, period sequence. |
 | `run.rs`, `summary.rs` | One ticker, and all tickers in parallel (rayon); the JSON report; the text summary, the ticker list, the detail and the values listing. |
 | `http.rs`, `sec.rs` | HTTP with a delay between requests; the SEC ticker list, company facts and filing files, and the cache folders. The contact text for the SEC comes from the environment variable `SEC_USER_AGENT`. |
-| `store.rs` | Writes `data/processed/<TICKER>.json` for the Python valuation code. |
+| `store.rs` | Writes `data/processed/<TICKER>.json` for the valuation code (`fa`). |
 | `filing.rs` | Filing-level XBRL, first part: reads `MetaLinks.json` and the instance document of the latest 10-K, builds the three statements as trees from the calculation data of the filer, and gives capex, depreciation and amortization, and total debt from the filing lines. It keeps the three fiscal years of the 10-K and the facts with one segment member. |
 | `supplement.rs` | Gives a value from the 10-K for a critical input (revenue, capex, share count) that the company facts do not have: company-tag capex lines, a standard tag with segment members, share classes. The source text of the value starts with `filing`. |
 | `crosscheck.rs` | Compares the standard variable with the value from the filing lines for capex, depreciation and amortization, and total debt. No outside data source. |
@@ -195,8 +185,8 @@ mapping logic; it runs `mapcheck import` and reads the store file
 
 Results, the list of checks and the limits: `rust/mapcheck/README.md`.
 
-The crate `rust/` (the `fa` command) is a different program: it calls the Python code
-and gives typed results. It does not move a part to Rust.
+The crate `rust/` (the `fa` command) is a different program. The valuation, the report, the
+rates, the bonds and the option trading are Rust code in it. It starts no Python code.
 
 ## `fa recon bonds`: bond values from our rates against market prices (2026-11-19, branch `claude/bond-recon`)
 
@@ -453,10 +443,9 @@ is a table (JSON, or CSV with `--out`); a window that fails has the error in its
 
 ### `rust/src/dcf/` — the DCF engines in Rust (2026-11-19)
 
-Rust form of the two Python engines, the scenarios and the verdict (ticket
-`T-20261119-dcf-engine-rust`, stages 1 and 2). The Python files stay until each Python
-user is moved (stage 4). The random numbers are the numpy stream, so each published
-number stays the same (`docs/HIDDEN-ASSUMPTIONS.md` #120 to #126).
+Rust form of the two Python engines, the scenarios, the verdict and the backtest (ticket
+`T-20261119-dcf-engine-rust`). The Python engine files are deleted. The random numbers are the
+numpy stream, so each published number stays the same (`docs/HIDDEN-ASSUMPTIONS.md` #120 to #126).
 
 **Files.** `nprandom.rs` (`SeedSequence`, `PCG64`, ziggurat normal; tables in
 `ziggurat_tables.rs`), `stats.rs` (percentile, Cholesky, mean, std), `classic.rs`
@@ -489,7 +478,7 @@ in parallel. Parallel paths do not change a result.
 ## Company data, market data and the xlsx file (`rust/src/company.rs`, `market/`, `analyze.rs`, 2026-11-19)
 
 These parts are Rust code only. The Python files `scripts/analyze.py`, `scripts/import_financials.py`,
-`estimates.py`, `fmp.py`, `xbrl_tags.py` and the download code of `market_data.py` and `options.py` are deleted.
+`estimates.py`, `fmp.py`, `xbrl_tags.py`, `schema.py`, `store.py`, `market_data.py` and `options.py` are deleted.
 
 | Command | Function |
 |---|---|
@@ -498,7 +487,7 @@ These parts are Rust code only. The Python files `scripts/analyze.py`, `scripts/
 
 | Module (`rust/src/`) | Function |
 |---|---|
-| `company.rs` | Typed company: periods with one value for each registry variable, the source texts and the unmapped tags. `Company::from_store` reads the content of the store file in memory, `Company::load` reads the file. Free cash flow and its margin. |
+| `company.rs` | Typed company: periods with one value for each registry variable, the source texts and the unmapped tags. `Company::from_store` reads the content of the store file in memory, `Company::load` reads the file. Free cash flow and its margin. `series` gives the values of one metric, oldest first (a variable, `free_cash_flow` or `fcf_margin`). |
 | `market/mod.rs` | Rounding as Python `round(x, 6)`, JSON with `NaN` (written by Python), key order of a JSON object, the HTTP client with 2 seconds between requests. |
 | `market/prices.rs` | Yahoo chart endpoint to daily prices (adjusted, as `yfinance`); cache `data/raw/<T>/prices.json`; HTTP 429 keeps the cache. |
 | `market/options.rs` | Cboe delayed quotes to a snapshot `data/raw/<T>/options/<date>.json`; snapshot files; `compute_chain_metrics`. |
@@ -509,6 +498,39 @@ These parts are Rust code only. The Python files `scripts/analyze.py`, `scripts/
 `rust_xlsxwriter` is the Rust port of the library `XlsxWriter`; it writes xlsx files only and has no network code.
 Fixtures from the Python functions are in `rust/tests/fixtures/market/` and `rust/tests/fixtures/analyze/`.
 The traps are #140 to #146 of `docs/HIDDEN-ASSUMPTIONS.md`.
+
+## The company report (`rust/src/report/`, `fa report`, 2026-11-19)
+
+`fa report TICKER [--price P] [--out FILE]` writes one HTML page. It is the Rust form of
+`scripts/visualize_dcf.py` (deleted). The page has the same sections, in the same order, and the same
+texts, tables and numbers as the Python page. Each plotly figure has the same data arrays and the
+same layout keys.
+
+| Module (`rust/src/report/`) | Function |
+|---|---|
+| `mod.rs` | The command, the inputs (company file, price history, option snapshot, earnings dates, driver model), the sections (header, price and valuation, fundamentals, aggregate DCF, driver model, backtest, options market, footer), the tables, the chips, the page. `make_report` is the function that the viewer calls. |
+| `figs.rs` | The 19 figure builders. Each gives the `data` and the `layout` of one plotly figure as JSON (`serde_json`). The stratified path sample uses `Pcg64::choice_set` (numpy `Generator.choice` without replacement, Floyd's algorithm). |
+| `fmt.rs` | The number formats of Python (`{:,.1f}`, `{:+.0%}`, `{:,.4g}`, `{:g}`, `round`, `html.escape`), so a table cell has the same text. |
+| `style.css` | The style sheet of the Python page (the "Ratings-desk blueprint" tokens). |
+| `tests.rs` | The parity tests with the fixtures of `rust/tests/fixtures/report/`. |
+
+**Charts and network.** The page does not carry the plotly.js library. It loads version 4.1.1 (the
+version that the Python library plotly 7.1.0 inlined) from `https://cdn.plot.ly/plotly-4.1.1.min.js`.
+The page needs the network when a person opens it. Without the network, a chart shows a note. The Python page was
+self-contained (about 3.5 MB of library in each file) and worked offline. An option that inlines a
+local copy is an open point (board ticket `report-rust`). The page does not carry the plotly Python
+template either; the figures set `autotypenumbers: "strict"`, `automargin`, `ticks` and the title
+standoff themselves (the template values that change the picture). The bars have no template outline.
+
+**Parity.** The fixtures were recorded from the Python script before the Rust code was written, for IBM,
+JNJ, KO (no price history, no driver model) and KO with a short price history and an empty option
+chain. The tests compare the body of the page (each text, cell and chip, with a marker for each
+figure) and each figure (each number within 1e-9 relative; an array of more than 200 numbers by its
+digest and 40 sampled values). The words that name a Python command or file are other words in the Rust
+page (list: `TEXT_CHANGES` in `tests.rs`). `docs/HIDDEN-ASSUMPTIONS.md` #147 to #151 list the traps.
+
+**Viewer.** `/api/report/make`, `/api/report/info` and `/report/file` call `make_report`. The JSON fields
+are the same as before.
 
 ## Options trading (`rust/src/trading/`, `fa trade ...`)
 
@@ -560,7 +582,7 @@ ticket `option-backtest-rust`).
 
 ## Tests
 
-`python -m pytest` from the repo root: 211 tests on 2026-11-19 (4 s).
-`cargo test --manifest-path rust/Cargo.toml --locked`: 317 Rust tests (299 + 17 + 1) (the `fa` crate).
-`cargo test --manifest-path rust/mapcheck/Cargo.toml`: 89 Rust tests. The suites make no network calls; HTTP is mocked and
-files use `tmp_path`. Install `pytest` with `pip install -r requirements-dev.txt`.
+`cargo test --manifest-path rust/Cargo.toml --locked`: 343 Rust tests (325 + 17 + 1) (the `fa` crate).
+`cargo test --manifest-path rust/mapcheck/Cargo.toml`: 89 Rust tests. The suites make no network calls and start no
+Python program; HTTP is replaced by a function that the test gives, and files are in a temp folder.
+No Python test remains (the last 211 Python tests were deleted on 2026-11-19 after each case had a Rust test).

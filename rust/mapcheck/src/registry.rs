@@ -1,6 +1,6 @@
 //! The registry of standard variables (financial_analysis/standard_variables.toml).
 //!
-//! Python reads the same file (financial_analysis/xbrl_tags.py). `Registry::load`
+//! Only Rust reads this file. `Registry::load`
 //! also checks the rules of the file, thus an edit that can cause a double count
 //! does not load.
 

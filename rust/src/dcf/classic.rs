@@ -23,6 +23,13 @@ pub struct Period {
     pub filed_date: String,
     #[serde(default)]
     pub revenue: Option<f64>,
+    /// Shown in the fundamentals table of the report.
+    #[serde(default)]
+    pub net_income: Option<f64>,
+    #[serde(default)]
+    pub sbc_total: Option<f64>,
+    #[serde(default)]
+    pub acquisitions_net_of_cash: Option<f64>,
     #[serde(default)]
     pub operating_cash_flow: Option<f64>,
     #[serde(default)]
@@ -77,6 +84,20 @@ pub struct Company {
 }
 
 impl Company {
+    /// Read `<dir>/<TICKER>.json` (the store file of `fa import`).
+    pub fn load(dir: &std::path::Path, ticker: &str) -> Result<Company, DcfError> {
+        let path = dir.join(format!("{}.json", ticker.to_uppercase()));
+        if !path.is_file() {
+            return err(format!("No saved data for {} at {}. Run: fa import {}", ticker.to_uppercase(), path.display(), ticker.to_uppercase()));
+        }
+        let text = std::fs::read_to_string(&path).map_err(|x| DcfError(format!("{}: {x}", path.display())))?;
+        let mut c: Company = serde_json::from_str(&text).map_err(|x| DcfError(format!("{}: {x}", path.display())))?;
+        if c.ticker.is_empty() {
+            c.ticker = ticker.to_uppercase();
+        }
+        Ok(c)
+    }
+
     pub fn annuals(&self) -> Vec<&Period> {
         self.periods.iter().filter(|p| p.is_annual()).collect()
     }

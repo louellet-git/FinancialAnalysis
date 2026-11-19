@@ -1,6 +1,6 @@
 //! The store file `data/processed/<TICKER>.json`.
 //!
-//! The Python valuation code (engines, backtest, report) reads this file. Rust is
+//! The valuation code (`fa`: engines, backtest, report) reads this file. Rust is
 //! the only program that makes the standard variables; it writes them here.
 
 use crate::mapper::Company;

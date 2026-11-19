@@ -125,10 +125,19 @@ impl Company {
         self.periods.iter().filter(|p| p.form == "10-Q")
     }
 
-    /// The values of one variable, oldest period first (`store.get_series` of the Python code).
+    /// The values of one metric, oldest period first (`store.get_series` of the Python code). A metric is a
+    /// variable of the registry, or one of the derived values `free_cash_flow` and `fcf_margin`.
     pub fn series(&self, registry: &Registry, name: &str) -> Result<Vec<(String, Option<f64>)>, String> {
-        let i = registry.try_var(name).ok_or_else(|| format!("'{name}' is not a standard variable"))?;
-        Ok(self.periods.iter().map(|p| (p.period_end.clone(), p.values[i])).collect())
+        let value = |p: &Period| -> Result<Option<f64>, String> {
+            match name {
+                "free_cash_flow" => Ok(p.free_cash_flow(registry)),
+                "fcf_margin" => Ok(p.fcf_margin(registry)),
+                _ => registry.try_var(name).map(|i| p.values[i]).ok_or_else(|| format!("'{name}' is not a valid metric")),
+            }
+        };
+        let mut out = self.periods.iter().map(|p| Ok((p.period_end.clone(), value(p)?))).collect::<Result<Vec<_>, String>>()?;
+        out.sort_by(|a, b| a.0.cmp(&b.0));
+        Ok(out)
     }
 }
 
@@ -220,7 +229,72 @@ mod tests {
         assert_eq!(p.get(&registry, "total_debt"), None);
         assert_eq!(c.annual().count(), 1);
         assert_eq!(c.series(&registry, "revenue").unwrap(), vec![("2024-12-31".to_string(), Some(100.0))]);
-        assert!(c.series(&registry, "not_a_variable").is_err());
+        assert!(c.series(&registry, "not_a_variable").unwrap_err().contains("not a valid metric"));
+    }
+
+    /// The tests of `store.get_series`: oldest first, and the derived metrics.
+    #[test]
+    fn series_are_sorted_and_have_the_derived_metrics() {
+        let registry = registry();
+        let mk = |end: &str, rev: f64, ocf: f64, capex: f64| {
+            let mut p = Period {
+                ticker: "TEST".into(),
+                period_end: end.into(),
+                form: "10-K".into(),
+                filed_date: "2024-02-14".into(),
+                currency: "USD".into(),
+                values: vec![None; registry.variables.len()],
+                sources: BTreeMap::new(),
+                raw_extras: BTreeMap::new(),
+            };
+            p.values[registry.var("revenue")] = Some(rev);
+            p.values[registry.var("operating_cash_flow")] = Some(ocf);
+            p.values[registry.var("capex")] = Some(capex);
+            p
+        };
+        // the newer period first: the series are sorted
+        let c = Company {
+            ticker: "TEST".into(),
+            cik: "1".into(),
+            company_name: "Test Corp".into(),
+            periods: vec![mk("2023-12-31", 1.2e9, 250e6, 60e6), mk("2022-12-31", 1.0e9, 200e6, 50e6)],
+        };
+        let dates: Vec<String> = c.series(&registry, "revenue").unwrap().into_iter().map(|x| x.0).collect();
+        assert_eq!(dates, ["2022-12-31", "2023-12-31"]);
+        let fcf = c.series(&registry, "free_cash_flow").unwrap();
+        assert_eq!((fcf[0].1, fcf[1].1), (Some(150e6), Some(190e6)));
+        let margin = c.series(&registry, "fcf_margin").unwrap();
+        assert!((margin[0].1.unwrap() - 0.15).abs() < 1e-9);
+    }
+
+    /// The tests of `store.save` and `store.load`: the folder is made, the JSON is indented, the dates are ISO
+    /// texts, and a file loads again with every value, in any case of the ticker.
+    #[test]
+    fn a_written_store_file_is_pretty_json_and_loads_again_in_any_case() {
+        let registry = registry();
+        let tag = |name: &str, value: f64| {
+            format!(r#""{name}": {{"units": {{"USD": [{{"start": "2024-01-01", "end": "2024-12-31", "val": {value}, "form": "10-K", "filed": "2025-02-01"}}]}}}}"#)
+        };
+        let json = format!(
+            r#"{{"cik": 1, "entityName": "ACME", "facts": {{"us-gaap": {{{}, {}, {}}}}}}}"#,
+            tag("Revenues", 100.0),
+            tag("CashAndCashEquivalentsAtCarryingValue", 7.0),
+            tag("SomeCompanyDetail", 999.0)
+        );
+        let facts: mapcheck::facts::CompanyFacts = serde_json::from_str(&json).unwrap();
+        let mapped = mapcheck::mapper::map_company(&registry, &facts, 12);
+        let dir = std::env::temp_dir().join(format!("fa-store-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let path = mapcheck::store::write_store(&dir.join("not/yet/there"), &registry, "TEST", "0001", &mapped).unwrap();
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(text.starts_with("{\n  \"cik\": \"0001\","), "{}", &text[..40]);
+        assert!(text.contains("\"period_end\": \"2024-12-31\"") && text.contains("\"filed_date\": \"2025-02-01\""));
+        let c = Company::load(&registry, &dir.join("not/yet/there"), "test").unwrap();
+        assert_eq!((c.ticker.as_str(), c.cik.as_str()), ("TEST", "0001"));
+        assert_eq!(c.periods[0].get(&registry, "revenue"), Some(100.0));
+        assert_eq!(c.periods[0].get(&registry, "cash_and_equivalents"), Some(7.0));
+        assert_eq!(c.periods[0].raw_extras["us-gaap/SomeCompanyDetail"], 999.0);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// The store file of the fixtures is a real period of IBM. Each registry variable is read, and each value

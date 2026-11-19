@@ -864,7 +864,7 @@ fn classic_and_scenarios_commands_read_the_company_file() {
 
 #[test]
 fn fa_verdict_runs_in_rust_for_a_model_file() {
-    let fa = crate::Fa::new("python-that-does-not-exist", repo());
+    let fa = crate::Fa::new(repo());
     let v = fa.verdict("ibm", 228.53, &crate::VerdictOptions::default()).unwrap();
     let want = &fixture("verdict.json")["cases"].as_array().unwrap().iter().find(|c| c["ticker"] == "IBM" && c["price"] == 228.53).unwrap().clone();
     assert_eq!((v.ticker.as_str(), v.simulations, v.seed, v.price), ("IBM", 10_000, 7, 228.53));
@@ -1151,5 +1151,274 @@ mod backtest_behavior {
         let o = v.outcomes.iter().find(|o| o.target_fiscal_year == 2024 && o.metric == "revenue").unwrap();
         assert_eq!(o.in_band, Some(false));
         assert!(o.error_pct.unwrap() > 0.0);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Ports of the property tests of the deleted Python tests (`test_dcf.py`, `test_scenarios.py`,
+// `test_driver_dcf.py`) that no recorded fixture covers by name
+// ---------------------------------------------------------------------------
+
+mod python_tests {
+    use super::super::classic::{run_classic, Company, DcfAssumptions, Period};
+    use super::super::driver::{effective_terminal_growth, fcff_margin, terminal_value, wacc_capm, CorrEntry, Draw, Driver, DriverDcf, DriverModel, SegmentSpec};
+    use super::super::scenarios::{capital_override, capital_structure_for, latest_annual};
+    use super::super::stats::{mean, std_pop};
+
+    fn annual(year: i32, revenue: f64, ocf: f64, capex: f64, shares: Option<f64>) -> Period {
+        Period {
+            form: "10-K".into(),
+            period_end: format!("{year}-07-31"),
+            filed_date: format!("{year}-09-12"),
+            revenue: Some(revenue),
+            operating_cash_flow: Some(ocf),
+            capex: Some(capex),
+            shares_outstanding: shares,
+            ..Period::default()
+        }
+    }
+
+    fn make_company(n_periods: usize, shares: Option<f64>) -> Company {
+        let periods = (0..n_periods)
+            .map(|i| annual(2019 + i as i32, 5.0e9 * 1.2f64.powi(i as i32), 1.5e9 * 1.2f64.powi(i as i32), -2.0e8, shares))
+            .collect();
+        Company { ticker: "PANW".into(), company_name: "Palo Alto Networks Inc".into(), periods }
+    }
+
+    fn assumptions(n: usize) -> DcfAssumptions {
+        DcfAssumptions { n_simulations: n, ..DcfAssumptions::default() }
+    }
+
+    #[test]
+    fn classic_engine_properties() {
+        let c = make_company(5, None);
+        let r = run_classic(&c, &DcfAssumptions { seed: Some(1), ..assumptions(1000) }).unwrap();
+        assert!(r.p10_value < r.median_value && r.median_value < r.p90_value, "percentile ordering");
+        assert!(r.p10_value > 0.0 && r.median_value > 0.0, "all values positive");
+        // the shapes: one value per path, and one per year and path
+        let (n, years) = (500, 10);
+        let r = run_classic(&c, &DcfAssumptions { projection_years: years, seed: Some(1), ..assumptions(n) }).unwrap();
+        assert_eq!((r.simulations.len(), r.fcfs.len(), r.pv_fcfs.len(), r.pv_terminal.len()), (n, years * n, years * n, n));
+        // the per-year parts add up to the value of each path, and a present value is below the cash flow
+        for j in 0..n {
+            let total: f64 = (0..years).map(|t| r.pv_fcfs[t * n + j]).sum::<f64>() + r.pv_terminal[j];
+            assert!((total - r.simulations[j]).abs() <= 1e-9 * r.simulations[j].abs(), "path {j}");
+        }
+        assert!(r.pv_fcfs.iter().zip(&r.fcfs).all(|(pv, f)| pv <= f));
+        // a seed makes a run the same again
+        let a = DcfAssumptions { seed: Some(42), ..assumptions(1000) };
+        assert_eq!(run_classic(&c, &a).unwrap().simulations, run_classic(&c, &a).unwrap().simulations);
+        // an explicit margin is used; the history gives another margin
+        let pinned = DcfAssumptions { fcf_margin_mean: Some(0.30), fcf_margin_std: Some(0.02), seed: Some(1), ..assumptions(1000) };
+        let (own, derived) = (run_classic(&c, &pinned).unwrap(), run_classic(&c, &DcfAssumptions { seed: Some(1), ..assumptions(1000) }).unwrap());
+        assert!(own.median_value > 0.0 && own.median_value != derived.median_value);
+        // a value per share only with a share count
+        let with = run_classic(&make_company(5, Some(650e6)), &assumptions(1000)).unwrap();
+        assert!((with.median_per_share.unwrap() - with.median_value / 650e6).abs() < 1e-9);
+        assert_eq!(run_classic(&c, &assumptions(1000)).unwrap().median_per_share, None);
+    }
+
+    #[test]
+    fn classic_engine_needs_four_annual_periods_with_positive_fcf_and_ignores_quarters() {
+        let a = DcfAssumptions { seed: Some(1), ..assumptions(100) };
+        let e = run_classic(&make_company(3, None), &a).unwrap_err();
+        assert!(e.0.contains("positive FCF"), "{e}");
+        let negative = Company {
+            ticker: "X".into(),
+            company_name: "X".into(),
+            periods: (0..5).map(|i| annual(2021 + i, 1e9 * 1.3f64.powi(i), -2e8, -3e8, None)).collect(),
+        };
+        assert!(run_classic(&negative, &a).unwrap_err().0.contains("positive FCF"));
+        // a quarterly row changes nothing
+        let mut with_q = make_company(5, None);
+        let mut q = annual(2024, 2.0e9, 5.0e8, -5.0e7, None);
+        q.form = "10-Q".into();
+        q.period_end = "2024-04-30".into();
+        with_q.periods.push(q);
+        let b = DcfAssumptions { seed: Some(1), ..assumptions(500) };
+        assert_eq!(run_classic(&with_q, &b).unwrap().simulations, run_classic(&make_company(5, None), &b).unwrap().simulations);
+        let only_q = Company {
+            ticker: "X".into(),
+            company_name: "X".into(),
+            periods: (0..4)
+                .map(|m| {
+                    let mut p = annual(2024, 1e9, 3e8, -5e7, None);
+                    p.form = "10-Q".into();
+                    p.period_end = format!("2024-{:02}-28", 2 + 3 * m);
+                    p
+                })
+                .collect(),
+        };
+        assert!(run_classic(&only_q, &a).unwrap_err().0.contains("positive FCF"));
+    }
+
+    fn balance(long_term_debt: Option<f64>, cash: Option<f64>, shares: Option<f64>, diluted: Option<f64>) -> Company {
+        let mut periods: Vec<Period> = (0..4).map(|i| Period { form: "10-K".into(), period_end: format!("{}-12-31", 2021 + i), ..Period::default() }).collect();
+        periods.push(Period {
+            form: "10-K".into(),
+            period_end: "2025-12-31".into(),
+            long_term_debt,
+            cash_and_equivalents: cash,
+            shares_outstanding: shares,
+            shares_diluted: diluted,
+            ..Period::default()
+        });
+        Company { ticker: "ACME".into(), company_name: "Acme Corp".into(), periods }
+    }
+
+    #[test]
+    fn net_debt_and_shares_follow_the_rules_of_the_python_tests() {
+        let base = || balance(Some(10e9), Some(2e9), Some(1e9), None);
+        let near = |a: f64, b: f64| (a - b).abs() < 1.0;
+        // the standard total debt wins over the parts
+        let mut c = base();
+        c.periods[4].total_debt = Some(11e9);
+        let cap = capital_structure_for(&c).unwrap();
+        assert!(near(cap.net_debt, 9e9) && cap.shares == 1e9);
+        // total debt absent: long-term debt plus current debt (missing current debt is zero)
+        let mut c = base();
+        c.periods[4].debt_current = Some(0.5e9);
+        assert!(near(capital_structure_for(&c).unwrap().net_debt, 8.5e9));
+        assert!(near(capital_structure_for(&base()).unwrap().net_debt, 8e9));
+        // the latest annual period wins
+        let mut c = base();
+        c.periods[0].long_term_debt = Some(99e9);
+        c.periods[0].cash_and_equivalents = Some(0.0);
+        assert_eq!(latest_annual(&c).unwrap().period_end, "2025-12-31");
+        assert!(near(capital_structure_for(&c).unwrap().net_debt, 8e9));
+        // missing inputs
+        assert!(capital_structure_for(&balance(None, Some(2e9), Some(1e9), None)).unwrap_err().0.contains("net debt"));
+        assert!(capital_structure_for(&balance(Some(10e9), None, Some(1e9), None)).unwrap_err().0.contains("net debt"));
+        assert_eq!(capital_structure_for(&balance(Some(10e9), Some(2e9), None, Some(1.05e9))).unwrap().shares, 1.05e9);
+        assert!(capital_structure_for(&balance(Some(10e9), Some(2e9), None, None)).unwrap_err().0.contains("shares"));
+        assert!(capital_structure_for(&Company { ticker: "ACME".into(), ..Company::default() }).unwrap_err().0.contains("annual"));
+        // the IBM override does not need a period
+        let ibm = capital_structure_for(&Company { ticker: "IBM".into(), ..Company::default() }).unwrap();
+        assert_eq!(Some(ibm), capital_override("IBM"));
+        assert_eq!((ibm.net_debt, ibm.shares), (54.0e9, 948_675_228.0));
+    }
+
+    fn driver(name: &str, stochastic: bool, mean: f64, std: f64) -> Driver {
+        let mut d = Driver::new(name, stochastic, mean);
+        d.std = std;
+        d
+    }
+
+    fn standard_engine(years: usize) -> DriverDcf {
+        let mut core = driver("core_margin", true, 0.20, 0.02);
+        core.dist = "truncnorm".into();
+        core.lo = Some(0.0);
+        core.hi = Some(0.35);
+        let drivers = vec![
+            driver("g_software", true, 0.08, 0.02),
+            driver("g_infra", true, 0.02, 0.01),
+            core,
+            driver("margin_mix_drift", false, 0.0, 0.0),
+            driver("sbc_ratio", false, 0.03, 0.0),
+            driver("ma_ratio", false, 0.02, 0.0),
+            driver("ma_recurrence", false, 1.0, 0.0),
+            driver("rf", true, 0.042, 0.004),
+            driver("beta", false, 0.9, 0.0),
+            driver("erp", false, 0.05, 0.0),
+            driver("kd_spread", false, 0.0025, 0.0),
+            driver("tax_rate", false, 0.21, 0.0),
+            driver("equity_weight", false, 0.85, 0.0),
+            driver("terminal_growth", true, 0.025, 0.005),
+        ];
+        let corr = vec![
+            CorrEntry { a: "g_software".into(), b: "g_infra".into(), rho: 0.3, note: String::new() },
+            CorrEntry { a: "g_software".into(), b: "core_margin".into(), rho: 0.2, note: String::new() },
+        ];
+        let segments = vec![
+            SegmentSpec { name: "software".into(), base_revenue: 30e9, growth_driver: "g_software".into(), year1_growth: None },
+            SegmentSpec { name: "infra".into(), base_revenue: 20e9, growth_driver: "g_infra".into(), year1_growth: None },
+        ];
+        DriverDcf::new(DriverModel::new(drivers, corr).unwrap(), segments, 50e9, 1e9, years).unwrap()
+    }
+
+    #[test]
+    fn the_vetted_formulas_give_the_hand_values_of_the_python_tests() {
+        let close = |a: f64, b: f64| assert!((a - b).abs() < 1e-12, "{a} {b}");
+        // FCFF margin: 0.30 + 0 - 0.05 - 1.0 * 0.02 = 0.23 and 0.30 + 0.01 - 0.05 - 0.5 * 0.02 = 0.25
+        close(fcff_margin(0.30, 0.0, 0.05, 0.02, 1.0), 0.23);
+        close(fcff_margin(0.30, 0.01, 0.05, 0.02, 0.5), 0.25);
+        // WACC: kd after tax = 0.04 * 0.75 = 0.03; 0.8 * (0.04 + 1.2 * 0.05) + 0.2 * 0.03 = 0.086
+        close(wacc_capm(0.04, 1.2, 0.05, 0.0, 0.25, 0.8), 0.086);
+        // the cost of debt follows the risk-free draw exactly
+        for i in 0..50 {
+            let rf = 0.01 + 0.07 * i as f64 / 49.0;
+            assert_eq!(wacc_capm(rf, 0.9, 0.05, -0.001, 0.21, 0.7), 0.7 * (rf + 0.9 * 0.05) + (1.0 - 0.7) * ((rf - 0.001) * (1.0 - 0.21)));
+        }
+        // terminal value, the guard not binding: 100 * 1.02 / 0.06 = 1700, discounted 5 years
+        close(terminal_value(100.0, 0.02, 0.08, 5), 1700.0 / 1.08f64.powi(5));
+        // the guard binding: tg is cut to 0.08 - 0.02 = 0.06; 100 * 1.06 / 0.02 = 5300
+        close(terminal_value(100.0, 0.07, 0.08, 5), 5300.0 / 1.08f64.powi(5));
+        // the guard is never violated, and it binds for some draws
+        let model = DriverModel::new(vec![driver("terminal_growth", true, 0.06, 0.02), driver("rf", true, 0.042, 0.005)], vec![]).unwrap();
+        let draws = model.sample(50_000, 42, &[]).unwrap();
+        let (Draw::PerPath(tg), Draw::PerPath(rf)) = (&draws["terminal_growth"], &draws["rf"]) else { panic!("per-path draws") };
+        let mut bound = 0;
+        for (g, r) in tg.iter().zip(rf) {
+            let wacc = wacc_capm(*r, 0.9, 0.05, 0.0025, 0.21, 0.85);
+            let eff = effective_terminal_growth(*g, wacc);
+            assert!(wacc - eff >= 0.02 - 1e-12 && eff <= *g);
+            bound += (eff < *g) as usize;
+        }
+        assert!(bound > 0, "the cap binds on some paths (otherwise this test proves nothing)");
+    }
+
+    #[test]
+    fn sampling_realizes_the_correlation_the_bounds_and_the_marginals() {
+        let mk = |rho: f64| {
+            DriverModel::new(
+                vec![driver("a", true, 0.0, 1.0), driver("b", true, 0.0, 1.0)],
+                vec![CorrEntry { a: "a".into(), b: "b".into(), rho, note: String::new() }],
+            )
+            .unwrap()
+        };
+        let draws = mk(0.6).sample(50_000, 42, &[]).unwrap();
+        let (Draw::PerPath(a), Draw::PerPath(b)) = (&draws["a"], &draws["b"]) else { panic!("per-path draws") };
+        let (ma, mb) = (mean(a), mean(b));
+        let cov = a.iter().zip(b).map(|(x, y)| (x - ma) * (y - mb)).sum::<f64>() / a.len() as f64;
+        assert!((cov / (std_pop(a) * std_pop(b)) - 0.6).abs() < 0.05, "the specified correlation");
+        assert!(ma.abs() < 0.02 && (std_pop(a) - 1.0).abs() < 0.02, "the marginal mean and std");
+        // a truncated normal stays inside its bounds
+        let mut m = driver("m", true, 0.05, 0.5);
+        m.dist = "truncnorm".into();
+        m.lo = Some(0.0);
+        m.hi = Some(0.1);
+        let draws = DriverModel::new(vec![m], vec![]).unwrap().sample(10_000, 42, &[]).unwrap();
+        let Draw::PerPath(v) = &draws["m"] else { panic!("per-path draws") };
+        assert!(v.iter().all(|x| (0.0..=0.1).contains(x)));
+        // a deterministic driver is one constant
+        let std_draws = standard_engine(10).model.sample(1000, 42, &[]).unwrap();
+        assert!(matches!(std_draws["beta"], Draw::Scalar(b) if b == 0.9));
+    }
+
+    #[test]
+    fn a_driver_run_has_ordered_percentiles_reproducible_paths_and_arrays_that_add_up() {
+        let eng = standard_engine(7);
+        let r = eng.run(500, Some(42)).unwrap();
+        assert!(r.per_share_p10 < r.per_share_p50 && r.per_share_p50 < r.per_share_p90);
+        let (n, years) = (500, 7);
+        let v = &r.valuation;
+        assert_eq!((r.per_share_paths.len(), v.fcff.len(), v.pv_fcff.len(), v.pv_terminal.len()), (n, years * n, years * n, n));
+        for j in 0..n {
+            let ev: f64 = (0..years).map(|t| v.pv_fcff[t * n + j]).sum::<f64>() + v.pv_terminal[j];
+            assert!((((ev - 50e9) / 1e9) - r.per_share_paths[j]).abs() < 1e-9 * r.per_share_paths[j].abs().max(1.0), "path {j}");
+        }
+        assert!(r.tv_ev_share_at_means > 0.0 && r.tv_ev_share_at_means < 1.0);
+        assert!((0.0..=1.0).contains(&r.tg_pinned_fraction));
+        // the stochastic drivers are the keys of the draws, in the order of the model
+        assert_eq!(r.driver_draws.iter().map(|(k, _)| k.as_str()).collect::<Vec<_>>(), ["g_software", "g_infra", "core_margin", "rf", "terminal_growth"]);
+        assert_eq!(r.attribution.iter().map(|a| a.driver.as_str()).collect::<Vec<_>>(), ["g_software", "g_infra", "core_margin", "rf", "terminal_growth"]);
+        // a higher growth or margin gives a higher value, a higher risk-free rate a lower one
+        let by = |name: &str| r.attribution.iter().find(|a| a.driver == name).unwrap();
+        assert!(by("g_software").p50_plus_1sd > 0.0 && by("g_software").p50_minus_1sd < 0.0);
+        assert!(by("rf").p50_plus_1sd < 0.0 && by("rf").p50_minus_1sd > 0.0);
+        // a seed makes a run the same again
+        let again = eng.run(500, Some(42)).unwrap();
+        assert_eq!((r.per_share_p50, &r.per_share_paths, &r.attribution), (again.per_share_p50, &again.per_share_paths, &again.attribution));
+        assert_ne!(eng.run(500, Some(43)).unwrap().per_share_paths, r.per_share_paths);
     }
 }

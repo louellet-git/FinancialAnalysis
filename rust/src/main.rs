@@ -1,6 +1,5 @@
 //! `fa`: command-line access to FinancialAnalysis. Rates, bonds, forwards, futures, models,
-//! DCF, backtest, verdict, recon and trade are Rust. Typed commands print pretty JSON; `fa run`
-//! passes a Python entry point through (the parts that are still Python).
+//! DCF, backtest, verdict, report, recon and trade are Rust. Typed commands print pretty JSON.
 
 use financial_analysis::{CheckResult, Fa};
 use serde::Serialize;
@@ -54,15 +53,14 @@ USAGE:
   fa import TICKER... [--refresh] [--periods N]   SEC data to the standard variables: data/processed/<TICKER>.json
   fa analyze TICKER [--refresh] [--out FILE] [--no-market] [--no-options] [--no-estimates]
                                                   import, market data, and the nine-sheet xlsx file (fa analyze --help)
-  fa run MODULE [ARGS...]                         any entry point of the Python code, e.g. fa run scripts.visualize_dcf IBM
+  fa report TICKER [--price P] [--out FILE]       single-page HTML company report: price, fundamentals, DCF, driver model,
+                                                  backtest, options (fa report --help)
   fa serve [--port N] [--no-open]                 local viewer in the browser (http://127.0.0.1:8765/)
 
 D is YYYY-MM-DD or 'today'. Rates are decimals (0.0507 = 5.07%).
 
 ENVIRONMENT:
-  FA_REPO    repository root (default: the repository that holds this crate)
-  FA_PYTHON  Python interpreter for `fa run` (default: <repo>/.venv/bin/python, else python3;
-             Windows: <repo>\\.venv\\Scripts\\python.exe, else python)";
+  FA_REPO    repository root (default: the repository that holds this crate)";
 
 /// Default subcommand "snapshot" when none (or only a flag) is given.
 fn with_default_sub(rest: &[String]) -> (Vec<String>, String) {
@@ -255,6 +253,10 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
             Ok(code) => Ok(ExitCode::from(code as u8)),
             Err(e) => Ok(usage_error(&e)),
         },
+        Some("report") => match financial_analysis::report::command(&fa.repo, &args[1..]) {
+            Ok(code) => Ok(ExitCode::from(code as u8)),
+            Err(e) => Ok(usage_error(&e)),
+        },
         Some("serve") => {
             if args[1..].iter().any(|a| a == "-h" || a == "--help") {
                 println!("{}", serve::USAGE);
@@ -262,13 +264,6 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
             }
             Ok(serve::serve(fa.clone(), &args[1..]))
         }
-        Some("run") => match args.get(1) {
-            None => Ok(usage_error("run needs a module, e.g. scripts.analyze")),
-            Some(module) => {
-                let status = fa.run(module, &args[2..])?;
-                Ok(ExitCode::from(status.code().unwrap_or(1).clamp(0, 255) as u8))
-            }
-        },
         Some(other) => Ok(usage_error(&format!("unknown command '{other}'"))),
     }
 }

@@ -165,13 +165,14 @@ button.again:disabled { opacity: .6; cursor: progress; }
   <div class="card">
     <h2>Company report</h2>
     <p class="help">One report for a ticker: price and valuation, fundamentals, Monte Carlo DCF panels, the driver model and the options market.
-      The program makes the file with python -m scripts.visualize_dcf. The first report takes some seconds.
+      The program makes the file with fa report. The first report takes some seconds.
       The program saves the file in data/reports. It makes the file again only when you ask.
-      The driver model section exists only for a ticker with analysis/&lt;TICKER&gt;/driver_model.py.
+      The charts need the network: the page loads the plotly.js library from cdn.plot.ly when you open it.
+      The driver model section exists only for a ticker with analysis/&lt;TICKER&gt;/driver_model.toml.
       The ticker needs saved company data (fa import TICKER).</p>
     <form id="rep-form">
       <label>Ticker <input type="text" id="rep-ticker" list="ticker-list" value="IBM" autocomplete="off" required></label>
-      <label>Price (USD, optional) <input type="number" id="rep-price" placeholder="from the network" step="0.01" min="0.01"></label>
+      <label>Price (USD, optional) <input type="number" id="rep-price" placeholder="last close" step="0.01" min="0.01"></label>
       <button class="go" type="submit">Show the report</button>
       <button class="again" type="button" id="rep-again">Make it again</button>
     </form>
@@ -423,12 +424,12 @@ $("mc-form").addEventListener("submit", (ev) => {
 function renderReport(d) {
   const when = d.made_at ? new Date(d.made_at * 1000).toLocaleString() : "-";
   const mb = d.size ? (d.size / 1e6).toFixed(1) + " MB" : "";
-  const price = d.price == null ? "price from the network" : "price " + usd(d.price);
+  const price = d.price == null ? "price: last close" : "price " + usd(d.price);
   let h = `<div class="report-bar"><span><strong>${esc(d.ticker)}</strong>, ${esc(price)}</span>` +
     `<span>${d.made_now ? "Made now" : "Made"}: ${esc(when)}${mb ? " (" + esc(mb) + ")" : ""}</span>` +
     `<span>Driver model section: ${d.driver_model ? "yes" : "no"}</span>` +
     `<a href="${esc(d.url)}" target="_blank" rel="noopener">Open in a new tab</a></div>`;
-  if (d.price_missing) h += `<div class="warn">The report has no market price. The program could not get the price from the network. ` +
+  if (d.price_missing) h += `<div class="warn">The report has no market price. The program found no price history for the ticker. ` +
     `Type a price and push "Make it again", or make sure that the computer has a network connection.</div>`;
   h += `<iframe class="report" title="Company report ${esc(d.ticker)}" sandbox="allow-scripts allow-popups allow-downloads" src="${esc(d.url)}&v=${d.made_at || 0}"></iframe>`;
   $("rep-out").innerHTML = h;
