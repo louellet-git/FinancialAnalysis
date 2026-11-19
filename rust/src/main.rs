@@ -30,6 +30,7 @@ USAGE:
   fa forwards check [--days N]                    GSW par yields against Treasury (exit 1 on mismatch)
   fa verdict TICKER --price P [--rf-date D|today] [--rf-base-date D] [--rating A-]
              [--simulations N] [--seed S]
+  fa trade backtest [--bot ID]... [--max-risk N] [--out FILE] [-v]   backtest the option bots (fa trade backtest --help)
   fa run MODULE [ARGS...]                         any entry point, e.g. fa run scripts.analyze IBM
 
 D is YYYY-MM-DD or 'today'. Rates are decimals (0.0507 = 5.07%).
@@ -137,6 +138,13 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
             print_json(&fa.call::<Verdict>("scripts.verdict", &args[1..])?);
             Ok(ExitCode::SUCCESS)
         }
+        Some("trade") => match args.get(1).map(String::as_str) {
+            Some("backtest") => match financial_analysis::trading::cli::backtest(&fa.repo, &args[2..]) {
+                Ok(code) => Ok(ExitCode::from(code as u8)),
+                Err(e) => Ok(usage_error(&e)),
+            },
+            _ => Ok(usage_error("trade needs a command: backtest")),
+        },
         Some("run") => match args.get(1) {
             None => Ok(usage_error("run needs a module, e.g. scripts.analyze")),
             Some(module) => {

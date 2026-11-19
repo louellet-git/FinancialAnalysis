@@ -22,6 +22,7 @@ pip install -r requirements.txt -r requirements-dev.txt
 python -m pytest                       # 361 tests, no network
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
 cargo test --manifest-path rust/mapcheck/Cargo.toml    # 82 Rust tests
+cargo test --manifest-path rust/Cargo.toml --locked    # 63 Rust tests (`fa` crate, option backtester)
 ```
 
 Run all commands from the repo root.
@@ -214,7 +215,8 @@ you use `--rating` for IBM.
 ### Rust interface
 
 The `rust/` crate calls the Python code and gives typed results. Python stays the only
-implementation.
+implementation of these parts. The option backtester (`fa trade backtest`) and `fa forwards`
+are Rust code and call no Python code.
 
 ```bash
 cd rust
@@ -253,12 +255,16 @@ More detail: `docs/ARCHITECTURE.md`.
 ## Options trading research
 
 ```bash
-python -m scripts.trade_backtest --fetch              # download market data
-python -m scripts.trade_backtest                      # all bots, leaderboard
-python -m scripts.trade_backtest s14b_spy_trend_calls -v
-python -m scripts.trade_backtest --max-risk 250       # larger risk for each trade
+python -m scripts.trade_backtest --fetch              # download market data (Python)
+cargo build --release --manifest-path rust/Cargo.toml # one time
+rust/target/release/fa trade backtest                 # all bots, leaderboard (Rust, 1 second)
+rust/target/release/fa trade backtest --bot s14b_spy_trend_calls -v
+rust/target/release/fa trade backtest --max-risk 250  # larger risk for each trade
 python -m scripts.trade_paper                         # one paper-trade step for each bot
 ```
+
+`fa trade backtest --help` shows all options (`--out FILE` writes the leaderboard as CSV,
+`--trades-dir DIR` writes the trades of each bot).
 
 The package `trading/` contains 22 bots. Each bot has a research note in
 `trading/research/`. The results are in `trading/research/LEADERBOARD.md`.
@@ -331,7 +337,7 @@ analysis/IBM/             IBM model (version 4), reviews, published report
 analysis/JNJ/             JNJ first pass (not reviewed)
 trading/                  option strategy backtester, paper trader, 22 bots, research notes
 scripts/                  command-line entry points
-rust/                     Rust interface: library and `fa` command (calls the Python code)
+rust/                     Rust: `fa` command (calls the Python code, and has the option backtester)
 tests/                    361 Python tests (legacy code)
 
 docs/                     ARCHITECTURE.md, HIDDEN-ASSUMPTIONS.md, INDEX.md, design documents

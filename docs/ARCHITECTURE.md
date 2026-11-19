@@ -253,6 +253,30 @@ A research package for SPY/QQQ option strategies. It is independent of
 Limit: no free source of historical option quotes exists, thus each backtest result is a
 model result.
 
+### Rust backtester (`rust/src/trading/`, command `fa trade backtest`)
+
+The backtester is Rust code. It gives the same trades and the same numbers as the Python
+engine (the numbers differ by less than 1e-9). It reads the CSV cache of `data.py` and
+calls no Python code. One run of all 22 bots takes about 1 second. The Python run takes
+about 90 seconds.
+
+| Module | Function |
+|---|---|
+| `data.rs` | Reads the CSV files one time. Aligns the bars of all symbols, the vol indexes (VIX, VXN, VIX1D) and the rate on one bar index. A timestamp is an integer. |
+| `pricing.rs` | The model pricer: Black-Scholes, skew, spread and the variance clock. Each float operation has the order of the Python code. `erf` comes from the `libm` crate. |
+| `structures.rs` | Vertical, iron condor and butterfly. A structure that is not defined-risk is an error. |
+| `engine.rs` | The bar loop, the account (`Ctx`), the risk rules, the pattern-day-trader rule, the exit rules and the settlement at expiry. A bot sees data up to the current bar only. |
+| `metrics.rs` | Statistics, and the split into in-sample and out-of-sample data. |
+| `strategy.rs` | `Strategy` (the trait of a bot) and `ExitRules`. |
+| `bots/` | One file for each bot (s01 to s21, s14b is in the s14 file) and the template `baseline`. `bots/mod.rs` is the registry. |
+| `cli.rs` | The command. It loads each market one time and runs the bots in parallel (rayon). |
+
+Use `--trades-dir DIR` to write the trades and the equity curve of each bot as CSV files.
+
+The Python engine, the Python bots and `scripts/trade_backtest.py` are not deleted yet.
+Paper trading (`paper.py`) needs them, and it needs the live option chain of yfinance.
+See the ticket `option-backtest-rust`.
+
 ## Tests
 
 `python -m pytest` from the repo root: 361 tests, all pass on 2026-11-19 (4 s).

@@ -102,7 +102,8 @@ cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust prog
 rust/mapcheck/target/release/mapcheck values IBM          # each input value with its source
 rust/mapcheck/target/release/mapcheck IBM --detail        # mapping checks
 rust/mapcheck/target/release/mapcheck filing IBM --focus  # capex, depreciation and debt lines of the 10-K
-python -m scripts.trade_backtest              # option bots, leaderboard
+cargo build --release --manifest-path rust/Cargo.toml             # the fa command
+rust/target/release/fa trade backtest         # option bots, leaderboard
 ```
 
 All commands: `README.md`.
