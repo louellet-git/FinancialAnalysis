@@ -11,6 +11,7 @@ __pycache__/
 # Data — raw cache and processed outputs are local only
 data/raw/
 data/processed/
+data/reports/
 
 # IDE
 .vscode/

@@ -100,6 +100,13 @@ svg .grid { stroke: var(--border); stroke-width: 1; }
 pre.text { white-space: pre-wrap; word-break: break-word; font-size: 12px; background: var(--bg);
   padding: 12px; border-radius: 6px; max-height: 70vh; overflow: auto; }
 .note { color: var(--muted); font-size: 12px; }
+.warn { background: var(--warn-bg); color: var(--warn); border-radius: 6px; padding: 10px 12px; margin-top: 12px; font-size: 13px; }
+.report-bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 12px 0 8px; font-size: 13px; color: var(--text-2); }
+.report-bar a { color: var(--accent); }
+iframe.report { width: 100%; height: 80vh; min-height: 480px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+button.again { font: inherit; padding: 7px 16px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); cursor: pointer; }
+button.again:disabled { opacity: .6; cursor: progress; }
 </style>
 </head>
 <body>
@@ -110,6 +117,7 @@ pre.text { white-space: pre-wrap; word-break: break-word; font-size: 12px; backg
 <nav role="tablist">
   <button role="tab" data-view="stock" aria-selected="true">Stock</button>
   <button role="tab" data-view="mc">Monte Carlo DCF</button>
+  <button role="tab" data-view="report">Company report</button>
   <button role="tab" data-view="rates">Rates</button>
   <button role="tab" data-view="bonds">Bonds</button>
   <button role="tab" data-view="bots">Option bots</button>
@@ -151,6 +159,25 @@ pre.text { white-space: pre-wrap; word-break: break-word; font-size: 12px; backg
     <div class="status" id="mc-status"></div>
   </div>
   <div id="mc-out"></div>
+</section>
+
+<section class="view" id="view-report">
+  <div class="card">
+    <h2>Company report</h2>
+    <p class="help">One report for a ticker: price and valuation, fundamentals, Monte Carlo DCF panels, the driver model and the options market.
+      The program makes the file with python -m scripts.visualize_dcf. The first report takes some seconds.
+      The program saves the file in data/reports. It makes the file again only when you ask.
+      The driver model section exists only for a ticker with analysis/&lt;TICKER&gt;/driver_model.py.
+      The ticker needs saved company data (python -m scripts.import_financials TICKER).</p>
+    <form id="rep-form">
+      <label>Ticker <input type="text" id="rep-ticker" list="ticker-list" value="IBM" autocomplete="off" required></label>
+      <label>Price (USD, optional) <input type="number" id="rep-price" placeholder="from the network" step="0.01" min="0.01"></label>
+      <button class="go" type="submit">Show the report</button>
+      <button class="again" type="button" id="rep-again">Make it again</button>
+    </form>
+    <div class="status" id="rep-status"></div>
+    <div id="rep-out"></div>
+  </div>
 </section>
 
 <section class="view" id="view-rates">
@@ -391,6 +418,32 @@ $("mc-form").addEventListener("submit", (ev) => {
   $("mc-out").innerHTML = "";
   run("mc-status", ev.submitter, "/api/verdict?" + p, renderVerdict);
 });
+
+// ---------------------------------------------------------------- Company report
+function renderReport(d) {
+  const when = d.made_at ? new Date(d.made_at * 1000).toLocaleString() : "-";
+  const mb = d.size ? (d.size / 1e6).toFixed(1) + " MB" : "";
+  const price = d.price == null ? "price from the network" : "price " + usd(d.price);
+  let h = `<div class="report-bar"><span><strong>${esc(d.ticker)}</strong>, ${esc(price)}</span>` +
+    `<span>${d.made_now ? "Made now" : "Made"}: ${esc(when)}${mb ? " (" + esc(mb) + ")" : ""}</span>` +
+    `<span>Driver model section: ${d.driver_model ? "yes" : "no"}</span>` +
+    `<a href="${esc(d.url)}" target="_blank" rel="noopener">Open in a new tab</a></div>`;
+  if (d.price_missing) h += `<div class="warn">The report has no market price. The program could not get the price from the network. ` +
+    `Type a price and push "Make it again", or make sure that the computer has a network connection.</div>`;
+  h += `<iframe class="report" title="Company report ${esc(d.ticker)}" sandbox="allow-scripts allow-popups allow-downloads" src="${esc(d.url)}&v=${d.made_at || 0}"></iframe>`;
+  $("rep-out").innerHTML = h;
+}
+function makeReport(force, button) {
+  const p = new URLSearchParams({ticker: $("rep-ticker").value.trim()});
+  if ($("rep-price").value.trim()) p.set("price", $("rep-price").value.trim());
+  if (force) p.set("force", "1");
+  $("rep-out").innerHTML = "";
+  const buttons = [$("rep-form").querySelector("button.go"), $("rep-again")];
+  buttons.forEach((b) => { b.disabled = true; });
+  return run("rep-status", null, "/api/report/make?" + p, renderReport).finally(() => buttons.forEach((b) => { b.disabled = false; }));
+}
+$("rep-form").addEventListener("submit", (ev) => { ev.preventDefault(); makeReport(false); });
+$("rep-again").addEventListener("click", () => makeReport(true));
 
 // ---------------------------------------------------------------- Rates
 const obsRow = (label, o) => `<tr><td>${esc(label)}</td><td class="num">${pct(o.value)}</td><td>${esc(o.date)}</td><td class="src">${esc(o.source)}${o.note ? " - " + esc(o.note) : ""}</td></tr>`;

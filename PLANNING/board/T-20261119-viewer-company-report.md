@@ -2,7 +2,7 @@
 id: T-20261119-viewer-company-report
 title: Join the company report page with the local viewer
 area: engine
-status: in-progress
+status: review
 owner: louellet-git
 branch: claude/viewer-company-report
 created: 2026-11-19
@@ -13,3 +13,5 @@ Owner request, 2026-11-19: the repo has two HTML outputs, the local viewer (`fa 
 Step 1 (this ticket): the viewer gets a view "Company report" that makes the report of a ticker with the existing command and shows it in the page. No new Python code.
 
 Step 2 (after the DCF engines are Rust, ticket `T-20261119-stochastic-dcf-drivers` and step 7 of `T-20261119-python-to-rust`): the report sections become Rust code and views of the page, and `scripts/visualize_dcf.py` is deleted.
+
+State, 2026-11-19: step 1 is done in branch `claude/viewer-company-report`. The view "Company report" calls `python -m scripts.visualize_dcf` through `Fa::run_captured`, saves the file in `data/reports/`, and shows it in an `iframe`. Step 2 waits for the Rust DCF engines and is not started.

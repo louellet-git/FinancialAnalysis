@@ -343,6 +343,23 @@ impl Fa {
             .map_err(|source| FaError::Spawn { python: self.python.clone(), source })
     }
 
+    /// Run an entry point and keep its output: the text of stdout when the command
+    /// succeeds. When it fails, the error has the text of stderr (or of stdout when
+    /// stderr is empty: some commands print their error there).
+    pub fn run_captured(&self, module: &str, args: &[String]) -> Result<String> {
+        let out = self
+            .command(module, args)
+            .output()
+            .map_err(|source| FaError::Spawn { python: self.python.clone(), source })?;
+        let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
+        if out.status.success() {
+            return Ok(stdout);
+        }
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        let text = if stderr.trim().is_empty() { stdout } else { stderr.into_owned() };
+        Err(python_error(out.status.code(), &text))
+    }
+
     fn rates<T: DeserializeOwned>(&self, args: Vec<String>) -> Result<T> {
         self.call("financial_analysis.rates", &args)
     }
