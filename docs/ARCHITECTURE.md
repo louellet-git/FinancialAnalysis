@@ -213,6 +213,143 @@ Results, the list of checks and the limits: `rust/mapcheck/README.md`.
 The crate `rust/` (the `fa` command) is a different program: it calls the Python code
 and gives typed results. It does not move a part to Rust.
 
+## `fa recon bonds`: bond values from our rates against market prices (2026-11-19, branch `claude/bond-recon`)
+
+The command `fa recon bonds [--date D] [--out FILE]` (crate `rust/`) finds the
+difference between the value that our rates give and the market value of simple
+bonds. It lists differences. It does not explain them. Open questions are in
+`docs/HIDDEN-ASSUMPTIONS.md` (#60 to #67).
+
+Steps for one date:
+
+1. Get the Treasury par curve of the date (`Fa::curve`, Python code).
+2. Bootstrap the par yields to zero rates (`rust/src/curve.rs`).
+3. Get the end-of-day prices of Treasury bills, notes and bonds (`rust/src/prices.rs`).
+4. Price each instrument on the curve (`rust/src/recon.rs`).
+5. Print the summary and write one CSV row for each instrument. A second file
+   `<name>_curve.csv` has the curve nodes.
+6. Compare the HQM corporate spot curve with our zero curve plus the ICE spread.
+
+| Module (`rust/src/`) | Function |
+|---|---|
+| `curve.rs` | The only code for curve mathematics: dates, business days, par to zero, monotone convex interpolation, discount factors, prices and yields of bills and coupon bonds. |
+| `prices.rs` | The FedInvest end-of-day prices: a session with the web form of TreasuryDirect, the CSV parser, the cache `data/raw/prices/`. |
+| `recon.rs` | The filter, the pricing of each instrument, the summary, the files, the corporate curve rows. |
+
+Conventions (each one is in the header of `curve.rs`):
+
+- **Par yields.** Semi-annual bond-equivalent yields. A par yield is the coupon rate of a bond that prices to 100 on the curve date.
+- **Nodes.** The tenors up to 6 months are bills with simple interest: 28, 42, 56, 91, 119 and 182 days (the 4, 6, 8, 13, 17 and 26 week bills that the Treasury uses as inputs). The tenors of 1 year and more are par coupon bonds with coupons at 6, 12, 18, ... calendar months from the curve date.
+- **Time.** Actual days divided by 365. A zero rate is continuously compounded.
+- **Interpolation.** Monotone convex on the forward rates (Hagan and West, 2006). The Treasury says that it uses this method since 2021-12-06. The Treasury does not publish its program. Our curve is a re-creation. After 30 years the forward rate is flat. The coupon nodes are solved by sweeps until each par bond prices to 100 (error below 1e-13).
+- **Settlement.** T+1 business day. Saturday, Sunday and the Federal Reserve holidays are not business days.
+- **Price.** The FedInvest END OF DAY column: a clean price per 100. A bill has no accrued interest. A note or a bond has accrued interest of actual/actual (days between the two coupon dates). The coupon dates come from the maturity date, backward in steps of 6 months. A maturity at the end of a month gives coupon dates at the end of the month.
+- **Yield.** For a note or a bond: semi-annual, with a fractional first period; simple interest when one coupon is left. For a bill: bond-equivalent yield, actual/365, quadratic formula above 182 days.
+- **Difference.** Observed minus theoretical. A positive price difference means that the market price is above the price from our curve.
+- **Filter.** The set has market-based bills, notes and bonds that have a price, have 7 days or more to maturity and have no call date. TIPS and floating-rate notes are not in the set.
+- **Resolution.** The source gives notes and bonds in 64ths of a point. The column `resolution_bp` is the yield change of one such step. A yield difference that is smaller than this column has no information. This is large for instruments with a short life.
+- **Corporate curve.** No free official source of prices of single corporate bonds is known (see #65). Thus the comparison is at curve level: the HQM spot rate (semi-annual) against our Treasury zero rate (semi-annual) plus the mean ICE OAS of AAA, AA and A. It shows how our spread data relate to the Treasury HQM curve. It does not show a bond price difference.
+
+The tests (`cargo test --manifest-path rust/Cargo.toml --locked`) use small samples and hand calculations: a par bond prices to 100 on a coupon date, a bill, a bond between coupon dates, the reprice of each par node, a flat curve. They do not use the network.
+## Bond research: bill tests, fitted curve, rich and cheap, history (2026-11-19, branch `claude/bond-arb`)
+
+Three commands continue `fa recon bonds` (crate `rust/`). They give candidates for study.
+They do not give arbitrage and they send no order. Traps: `docs/HIDDEN-ASSUMPTIONS.md` #69, #100 to #106 and #107 to #115.
+
+| Command | Question | Module (`rust/src/`) |
+|---|---|---|
+| `fa recon bills [--date D]` | Which change makes the bill difference of `recon bonds` go to 0? | `billdiag.rs` |
+| `fa recon rich-cheap [--date D] [--out F]` | Which securities are far from a curve that is fitted to the securities? | `fit.rs`, `richcheap.rs` |
+| `fa recon history [--from D] [--to D] [--out F]` | Does a difference last? | `history.rs` |
+| `fa recon explain [--date D] [--out F]` | Which known features explain a difference? What stays? | `refdata.rs`, `explain.rs` |
+
+**Bill tests.** The command changes one thing at a time: the basis of the bill nodes, the
+settlement day, the price field, the curve input. It prints the mean bill difference (bp)
+for each change. The Treasury publishes "Daily Treasury Bill Rates" (coupon equivalent of
+the on-the-run bills). The command compares them with the bill nodes of the par curve.
+`curve.rs` has `bootstrap_with` and `BillBasis` for the test; `bootstrap` is unchanged.
+
+**Fitted curve (`fit.rs`).** Nelson-Siegel-Svensson curve (6 parameters), fitted to the clean
+prices of the notes and bonds of one date. Weight of a security: 1 / (dirty price x modified
+duration), so each security is one yield observation. Levenberg-Marquardt with a numeric
+Jacobian; the start is a grid of tau1 and tau2 with least-squares betas. Three passes leave out
+the securities that are more than 4 robust sigma from the curve (MAD). The fit set is: notes and
+bonds with a life of 3 months or more, no call date, a price, a coupon. Left out: bills, TIPS,
+FRN, callable securities, securities under 3 months, and the outliers. We chose NSS because
+the Federal Reserve Board (GSW) uses the same family: its curve is an independent check. A
+spline would follow the local errors that we want to see.
+
+**Residual (`richcheap.rs`).** `res_bp` = observed yield - fitted yield. Positive = cheap.
+`z` = the residual against the median of the 20 securities nearest in maturity, in robust
+sigma (MAD, floor 0.3 bp). The cost is the larger of: the bid-ask of the file (BUY - SELL, in
+yield), else the median of the file in the same maturity bucket; and one price step of the
+source (1/64). A candidate has |res_bp| larger than the cost and larger than the fit RMSE of the
+day, |z| of 2 or more, and a life of 3 months or more. Groups (first rule that fits):
+bill; under 3 months; recent issue (life within 0.35 year below 2, 3, 5, 7, 10, 20 or 30 years and
+a coupon within 0.5 point of the yield); old 30-year bond (a bond that matures before 2040);
+high or low coupon (1.25 points or more from the median coupon of the 20 neighbours); near a
+coupon date (next coupon in 10 days or less); other. The output says, for each group, what the
+data cannot show.
+
+**History (`history.rs`).** Fits each cached date (parallel with rayon) and keeps the residual of
+each note and bond of 6 months or more. It measures: pooled autocorrelation at 1, 5 and 10
+business days (raw, and within = mean of the security removed); the half-life from the lag
+coefficient; the residual k days after a large value (the 10 percent most cheap and most rich of a
+date). It compares our curve with the GSW curve on each date that has a GSW row.
+
+**Data.** The price files are `data/raw/prices/fedinvest_<date>.csv`. `fa recon bonds --date D` downloads
+a missing file (the HTTP client was corrected on 2026-11-19, hidden assumption 69). The bill-rate file is
+`data/raw/rates/treasury_bill_rates_<year>.csv` (downloaded once). The outputs go to `data/recon/`
+(not committed).
+
+**Tests.** Fixed answers: the bill price from a discount rate and the coupon equivalent (against the
+Treasury table); the NSS curve by hand; recovery of known NSS parameters from synthetic prices
+(to 0.01 bp); one planted bad price is left out; the weight turns a price error into a yield
+error; planted rich and cheap securities are found with the right sign; autocorrelation,
+half-life and reversal of a series with a known decay; a date gap is not a lag.
+
+**Explain the residuals (`refdata.rs`, `explain.rs`).** `fa recon explain` joins free public data to the
+residual of each note and bond (327 securities of 6 months or more on 2026-11-18), runs a cross-section
+regression, and prints the residual before and after it. It makes the fit for each cached date (rayon) to get
+the mean residual, so it needs the 50 price files. Run time: about 10 s with a warm cache.
+
+| Source | Endpoint | Cache (`data/raw/`) | Gives |
+|---|---|---|---|
+| NY Fed secured rates | `markets.newyorkfed.org/api/rates/secured/{sofr,bgcr,tgcr}/search.json?startDate&endDate` | `nyfed/secured_<type>_<from>_<to>.json` | General collateral rates by date |
+| NY Fed SOMA, Treasury | `.../api/soma/asofdates/list.json`, `.../api/soma/tsy/get/asof/<date>.json` | `nyfed/soma_*.json` | Par held and `percentOutstanding` by CUSIP, weekly |
+| Fiscal Data, MSPD table 5 | `api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/debt/mspd/mspd_table_5` | `fiscaldata/mspd_table_5_<month end>.json` | Amount outstanding and amount stripped by CUSIP (thousands of dollars) |
+| Fiscal Data, auctions | `.../v1/accounting/od/auctions_query` (notes and bonds, 8 fields) | `fiscaldata/auctions_notes_bonds_<date>.json` | First issue date, original term, reopenings |
+
+The client name is `FinancialAnalysis fa (personal research)`. The wait between two requests is 2 seconds.
+The Fiscal Data page says that the data is free, without restriction, and needs no key. The NY Fed
+documentation page does not show text without JavaScript; the endpoints were tested by their answers (#108).
+
+Features of one security: coupon minus the par rate of the same maturity on the fitted curve (percentage
+points); age since the first issue (years); on-the-run (the CUSIP of the latest auction of its original term);
+SOMA share (%); stripped share (%); log of the amount outstanding ($bn); original 30-year bond with 5 to 15
+years left; original 30-year bond with less than 5 years left; original 20-year bond; deliverable into a front
+Treasury future. The original term comes from the auction record and is rounded to the standard term
+(a "29-Year 9-Month" bond is a 30-year bond). The regression is ordinary least squares with an intercept.
+The output gives the classical t and a robust (HC1) t. Regression 1 uses the residual of the date. Regression
+1b adds the years to maturity. Regression 2 uses the mean residual of all cached dates. Regression 3 leaves
+out the two original 30-year groups. Then the command prints: the candidates before and after regression 1;
+the 12 largest residuals after it; the nine old 30-year bonds (2036 to 2039) with SOMA share, stripped share,
+amount, residual, carry, and a comparison with the note of the nearest maturity; every security with a SOMA
+share of 60 % or more; and a test that fits the curve again without the old 30-year bonds.
+
+Futures baskets (front delivery month = the first quarterly month after the date; remaining term from the
+first day of that month, rounded down): ZT 2-year: notes with an original term of 5 years 3 months or less,
+at least 1 year 9 months left from the first day and at most 2 years from the last day. ZF 5-year: the same
+original limit, at least 4 years 2 months left. ZN 10-year: notes, at least 6 years 6 months and less than
+8 years left (3-month rounding). TN Ultra 10-year: original 10-year notes, 9 years 5 months to 10 years left.
+ZB bond: bonds, at least 15 and less than 25 years left (3-month rounding). UB Ultra bond: bonds, at least
+25 years left. The sources are in #113.
+
+**Tests.** The parsers (secured rates, SOMA, MSPD table 5, auctions) use small fixture text. The tests also
+check the original-term rounding, the on-the-run rule, the month arithmetic, the front month, each basket
+rule, the par rate of a flat curve, and the regression on a planted line (exact coefficients, dropped zero
+column, singular matrix, classical standard error against the formula).
+
 ### `rust/src/forwards.rs` (2026-11-19)
 
 This module is Rust only. It does not call Python. It uses `mapcheck::http::Client`.

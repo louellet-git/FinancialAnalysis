@@ -16,7 +16,16 @@
 //! # Ok::<(), financial_analysis::FaError>(())
 //! ```
 
+pub mod curve;
+pub mod prices;
+pub mod recon;
+pub mod fit;
+pub mod richcheap;
+pub mod history;
+pub mod explain;
+pub mod billdiag;
 pub mod forwards;
+pub mod refdata;
 pub mod futures;
 pub mod ratemodels;
 pub mod trading;

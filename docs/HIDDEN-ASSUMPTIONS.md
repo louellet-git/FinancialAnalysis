@@ -627,6 +627,219 @@ agree (306 values, no difference). The repo has no `.xls` reader, thus this chec
 not automatic.
 *Evidence:* `financial_analysis/bonds.py` module docstring.
 
+## Bond reconciliation (added 2026-11-19, branch `claude/bond-recon`)
+
+**60. The price source is not a market quote feed.** The prices are the end-of-day prices
+of the Federal Investments Program (TreasuryDirect FedInvest). The page says that they
+apply to "market-based Treasury special securities". The CUSIPs are the CUSIPs of the
+public bills, notes and bonds. The time of day, and whether the price is bid, ask or mid,
+are not stated on the page. Our curve is built from bid-side prices at about 3:30 PM New
+York time. Thus a difference can come from the price type or the time. The BUY and SELL
+columns are in the CSV file, but the BUY column is often 0.
+*Evidence:* `fa recon bonds` output; <https://www.treasurydirect.gov/GA-FI/FedInvest/selectSecurityPriceDate>.
+
+**61. The latest day has no end-of-day price.** On 2026-11-18 the file had 0 in the END OF DAY column for each row. The
+column is filled later. The command steps back to the last day that has prices.
+*Evidence:* the file of 2026-11-18, downloaded on 2026-11-19.
+
+**62. The Treasury curve is made from on-the-run securities only.** The inputs are the
+most recently auctioned bills, notes and bonds. An older (off-the-run) security can trade
+above or below the curve. This is a cause of differences that is not a data error. Our
+curve is also not the exact curve of the Treasury (the program is not published).
+*Evidence:* <https://home.treasury.gov/policy-issues/financing-the-government/interest-rate-statistics/treasury-yield-curve-methodology>.
+
+**63. Notes and bonds are priced in 64ths.** A price step of 1/64 is 0.0156 per 100. For an
+instrument with 13 days to maturity, this step is 47 bp of yield. The summary by maturity
+shows large yield differences for short instruments because of this. Read the price
+difference and the column `resolution_bp` first.
+*Evidence:* the column `step bp` of the output; `recon.rs`.
+
+**64. The first run shows bills above the curve.** On 2026-10-30, 2026-11-10 and
+2026-11-17 the mean bill yield difference was about -6 bp (observed yield below theoretical
+yield). The sign is the same on each date. We do not know the cause. Possible causes (open
+questions): the price type (bid for the curve against another price type in the file);
+the time of day; the way the Treasury converts a bill discount rate; our 365-day basis;
+the settlement day (T+1 here); real bill demand. Do not use the curve to price a bill
+without this check. Update 2026-11-19: see #100 and #101 for the tests and the cause.
+*Evidence:* `fa recon bonds --date 2026-11-17` (47 bills).
+
+**65. No corporate bond prices.** We know no free official source of prices of single
+corporate bonds. FINRA TRACE has terms of use (the owner request says so); we did not read
+them in this work and we did not use TRACE. The Treasury and Fiscal Service files have no
+corporate bond prices. Thus the corporate comparison is at
+curve level only. The HQM curve is a monthly average (the date is the first day of the
+month; on 2026-11-17 the latest value was for 2026-10-01). Our Treasury zero curve is for
+one day. The ICE OAS is one number for the whole index (duration of about 6 to 7 years),
+and not a number for each maturity. The HQM blend of AAA, AA and A has unknown weights, so
+the mean of the three OAS is an arbitrary choice. We assume that the HQM spot rates are
+semi-annual (the Treasury slides say so; we did not read the full paper).
+*Evidence:* `fa recon bonds` output, section CORPORATE CURVE.
+
+**66. STRIPS have no free official price source in the repo.** The FedInvest file has no STRIPS. The
+only zero-coupon instruments in the set are bills (up to 52 weeks). The Federal Reserve
+zero-coupon curve of Gurkaynak, Sack and Wright is a useful second reference for long
+zero rates. The branch `claude/futures-forwards-data` loads it. This branch does not.
+
+**67. Download of the price file.** The download needs a session (cookie, a CSRF token and a POST).
+In the container of 2026-11-19, `curl` got the file, and the Rust client `mapcheck::http::Client` got
+"HTTP 400 InvalidUri" from `www.treasurydirect.gov` for the same request bytes. We did not find the
+cause. The Rust download code is thus not tested against the real site. Download the
+file with `curl` into `data/raw/prices/fedinvest_<date>.csv`; the command uses this cache file.
+The Fiscal Service terms say "Government works generally cannot be copyrighted" and ask for
+credit; they also say that content may be used for non-commercial personal use. They do not forbid an
+automated request. Ask the owner to confirm before a heavy use. Update 2026-11-19: the cause of the Rust defect is in #69.
+*Evidence:* <https://www.treasurydirect.gov/legal-information/terms/>.
+
+## Bond research (added 2026-11-19, branch `claude/bond-arb`)
+
+**69. Cause of the price-download defect (replaces the open question in #67).** The Rust client
+`mapcheck::http::Client` uses `ureq` 2.12.1. With an HTTP proxy, `ureq` puts the full URL in the request
+line, also for HTTPS inside the CONNECT tunnel: `GET https://www.treasurydirect.gov/GA-FI/... HTTP/1.1`.
+TreasuryDirect (Windows-Azure, HTTP.sys) refuses this form with "400 InvalidUri". `curl` sends
+`GET /GA-FI/... HTTP/1.1` and works. We saw the bytes with a local TLS server. Other sites (Yahoo, the
+Treasury, the Federal Reserve) accept the full URL. The code of `ureq` 2.12.1 uses the full URL for each HTTP proxy,
+whatever the scheme of the target; the settings of `http.rs` were right. Fixed on 2026-11-19: `mapcheck` uses `ureq` 3.5
+(features `rustls`, `platform-verifier`, `gzip`). Version 3 sends the short form inside the tunnel. A new date
+(2026-09-04) came from `fa recon bonds --date 2026-09-04` (464 lines). The other users of the client were
+tested again: GSW file, Cboe file, Yahoo chart (one `429` on the first call, a normal answer on the second;
+`curl` got `200` in between), Treasury par curve. The SEC path was not tested.
+*Evidence:* the request seen by a local TLS server; `ureq-2.12.1/src/unit.rs` (function `send_prelude`).
+
+**100. The bill difference is not a convention error. It is the bill nodes of the par curve.** On
+2026-10-30, 2026-11-10 and 2026-11-17, the Treasury par curve has bill nodes 1M, 1.5M, 2M and 3M that are
+8 to 11 bp above the coupon-equivalent rates of the Treasury's own "Daily Treasury Bill Rates" of the
+same day. The nodes 4M and 6M agree (0 to -4 bp). The FedInvest bill prices agree with the bill-rate
+table. If the bill nodes come from that table, the mean bill difference falls from -5.6, -7.1 and -6.8 bp to -1.0,
+-2.3 and -1.9 bp (`fa recon bills`). We do not know why the two Treasury series differ. Bills of 6 to 12
+months stay 3 to 6 bp below the curve (6 bills; the 6M to 1Y interpolation, and the 1Y par node is 3 bp
+above the 52-week bill). Do not call the 1M to 3M bill difference a market effect: the same source says
+that bills are where our bills are.
+*Evidence:* `fa recon bills --date 2026-11-17`; the bill-rate file of the Treasury.
+
+**101. Bill conventions that were tested and are right.** (1) Settlement is T+1 business day: for
+2375 of 2375 bills in 50 files, the END OF DAY price is a bank discount rate that is a multiple of
+0.01 % at T+1 settlement. With T+0 this is true for 3.8 %, with T+2 for 3.1 %. (2) The yield is
+the bond-equivalent yield, actual/365: a discount rate of 3.92 % for 28 days is 3.99 %, the number
+in the Treasury table. A test of this is in `billdiag.rs`. (3) Other bases make the difference worse
+(actual/360: 5.6 bp more; bank discount: 10 bp more) or are wrong (semi-annual gives 2 bp less and is
+not the Treasury convention). A change to T+2 gives about 0 bp by chance: it contradicts (1).
+(4) The price field changes the mean by less than 1 bp.
+
+**102. SELL is the bid side, BUY is above it.** In the FedInvest file the SELL column is equal to END OF DAY for
+most notes and bonds, and BUY is 1/64 to 1/32 above it. So END OF DAY is a bid-side price and BUY - SELL is the
+bid-ask of the file. The BUY column is 0 for 25 notes and 1 bond of 463 rows on 2026-11-17. For bills, BUY and SELL are
+discount rates of the price date (T+0) that differ by less than 1 bp, and END OF DAY is the T+1 value. We do not know if
+BUY and SELL are quotes that a person can trade. The spread is the step of the 64ths in many rows, so it may be
+a minimum and not a measured spread.
+*Evidence:* the files of 2026-10-30, 2026-11-10, 2026-11-17.
+
+**103. The fitted curve has a model error and some group effects look like outliers.** The 6-parameter curve
+has a fit error (RMSE) of 1.5 to 2.5 bp a day (about 1 bp at 3 to 7 years, 2 to 3 bp at 3 to 6 months and
+10 to 20 years). A residual below this has no information; the candidate rule uses it. The Treasury has no
+note between 10 and about 13 years, so the sector between 2036 and 2039 holds only the old 30-year
+bonds. They are 5 to 14 bp rich as a group, so the fit leaves most of them out as outliers and the curve
+interpolates around them. The z-score against the 20 nearest securities cannot find a group effect,
+because the neighbours are in the group. Read the group table and `fa recon history` before you read one security.
+Our curve agrees with the GSW zero curve within 1 bp on average from 1 to 20 years (47 dates); at 25 and 30 years the
+mean is -2 and -8 bp and one date is 33 bp away (the end of the curve has few securities).
+
+**104. GSW has a delay.** On 2026-11-19 the last GSW row was 2026-11-13. The comparison with GSW uses
+the GSW date and our fit of the same day, and prints the GSW date.
+
+**105. A residual that stays is not a convergence.** Over 50 business days (2026-09-08 to 2026-11-18, 16289
+security-days), the raw autocorrelation of the residual is 0.95 (lag 1) and 0.92 (lag 10): a security keeps
+its place. After the mean of each security is removed, it is 0.37 (lag 1), 0.15 (lag 5), 0.01 (lag 10): the
+deviation from its own mean has a half-life of under 2 days. The 10 percent most cheap and most rich of a date keep 84 to 96 % of their
+residual after 10 days; after the mean is removed, 4 to 7 %. So the large residuals are mostly permanent
+(group, coupon, issue-type effects), and the temporary part is small and can be noise of the price source (price steps).
+There is no evidence in these 50 days that a rich or cheap security goes back to the curve. A trade on the
+permanent part needs a financing view that the data does not have.
+
+**106. The cost is one leg and a lower bound.** The cost of a candidate is its bid-ask (file, else the median
+of the file in the same maturity bucket; at least one 1/64 step). It is not a trade cost: a pair needs a
+hedge leg and an exit, and the repo rate, the short-sale cost, the balance-sheet cost, the tax and the size of a trade
+are not in the data. Of 400 securities on 2026-11-18, 14 pass (3 cheap, 11 rich); they are
+mostly old 30-year bonds and low-coupon notes. Call them candidates.
+
+**107. The HTTP client is shared; the change to `ureq` 3 touches each Rust data command.** `mapcheck/src/http.rs`
+is the only file that uses `ureq`. The error rule is the same as before: an answer with a code of 400 or more
+is an error with the code, and a 3xx answer is not an error (the form session needs it). The session client follows no redirect. The normal client follows up to 5 redirects, as before.
+Version 3 decodes gzip itself. The SEC commands (`mapcheck`) use the same
+client and were not run in this work. Run one SEC request before you trust that path.
+
+**108. The New York Fed documentation page cannot be read without JavaScript.** The endpoints for the
+secured rates and for the SOMA holdings were tested by their answers (HTTP 200, the field names in
+`refdata.rs`). They were not checked against the text of the documentation. A NY Fed FAQ (seen only in a search result, not read in full)
+says that the Desk holds at most 70 % of the amount outstanding of one issue: the SOMA share of 70.0 % for many
+bonds is that limit, not a measurement of the free float of the market. The SOMA file is weekly (as of
+2026-11-10 for the price date 2026-11-18); a CUSIP that is not in the file has a share of 0. The rates are general
+collateral rates: SOFR, BGCR and TGCR. A special repo rate for one CUSIP is not free data. On 2026-11-18, TGCR was
+3.88 % and SOFR 3.90 %.
+
+**109. In MSPD table 5 the field `cusip` is the CUSIP of the principal strip.** The CUSIP of the note or bond
+is in `security_class2_desc`. Amounts are in thousands of dollars. The table is for a month end (the last one
+was 2026-10-31), so a security issued after it has no row: 6 of the 327 securities (new notes and one new bond). The stripped share is the amount in stripped form divided by the amount
+outstanding.
+
+**110. The original term is from the auction record, rounded to the standard term.** The first auction of a
+May bond has the term "29-Year 9-Month" (a 30-year bond with a short first period). A test on the exact text
+"30-Year" misses 2 of the 9 bonds (912810PU6, 912810PX0) and makes one of them the on-the-run bond. The code
+rounds a term to 2, 3, 5, 7, 10, 20 or 30 years if it is within 3 months below or 4 months above. The first
+issue date is the earliest issue date of the CUSIP. The on-the-run security of a term is the CUSIP of its latest auction that
+settled on or before the date, so a reopening is on-the-run. Auction records start in 1979; an older security
+has no record (none in the 327).
+
+**111. The regression is an association, not a cause.** The features are not independent. The SOMA share is
+60 to 70 % for most of the old 30-year bonds, so it does not separate them from each other. With the two
+original 30-year groups in the model, the SOMA coefficient is 0.0 bp for each 1 % (t = -0.2) and R2 is 0.55. Without them, the SOMA
+coefficient is -0.11 bp for each 1 % (t = -4.7) and R2 is 0.18. Bonds with a SOMA share of 60 to 70 % are not
+rich at every maturity: the bonds of 2027 to 2028 are 10 to 15 bp cheap, the bonds of 2043 to 2046 are 1 to 2 bp
+cheap, and the bonds of 2036 to 2039 are 6 to 19 bp rich. So the SOMA share alone does not explain the
+richness. The t values of the regression on the mean residual are too large (the 50 dates are not independent).
+The dummy "original 30-year, 5 to 15 years left" takes -9.7 bp: that is the group effect, and the regression does
+not say why it exists.
+
+**112. The nine old 30-year bonds (2036 to 2039) are rich by 6 to 19 bp, and the curve does not make that.**
+Against the note that has the same maturity (912810FT0 against 91282CPZ8, 2036-02-15) the bond has a yield 17.5 bp
+lower; the curve gives 0.2 bp for the coupon difference of 0.375 points. The price difference is 1.25 points more
+than the curve gives. The curve fitted without all original 30-year bonds and without all bonds with a SOMA
+share of 60 % or more gives the same sign and a size that is 1.4 to 1.6 bp larger for each of the nine. But the notes end in 2036-11 and no note or
+non-SOMA security is in the 2036 to 2042 range, so for the bonds of 2037 to 2039 the curve is an interpolation
+across a gap. Only the bond of 2036-02 has a note of the same maturity. The richness falls with maturity
+(-18.6 bp for 2036, -6.4 bp for 2039-11, -5 bp for 2040, 0 bp for 2042) as if a sector effect fades. None of the
+nine is deliverable into a Treasury future on 2026-12-01 (the bonds have less than 15 years left; ZN and TN take notes only).
+The carry of a long position that is financed at the general collateral rate is +100 to +132 bp a year, so
+financing does not explain the richness. The data cannot show a special repo rate or a shortage of bonds to borrow. A person must ask a
+dealer for the special repo rate and the availability for these nine CUSIPs before the word "arbitrage" is used. A short position in a
+rich bond pays that rate, and a long position in the note in its place is not a hedge of the same duration.
+
+**113. The CME rules were not read in the original page.** `www.cmegroup.com` refused the requests of this work
+(HTTP 503 from the fetch tool, 403 with `curl`), and the work did not go around the refusal. The rules in
+`explain.rs` come from the text that web search returned about CME documents (the pages were not read by this work), on 2026-11-19: the delivery
+guide <https://www.cmegroup.com/trading/interest-rates/files/us-treasury-futures-delivery-process.pdf> (8th edition,
+May 2023) for ZT, ZF, ZN and the 3-month rounding; the Special Executive Report SER 9520 of 2025-02-21
+<https://www.cmegroup.com/content/dam/cmegroup/notices/ser/2025/02/ser-9520.pdf> and the delivery guide for ZN
+(6 years 6 months to less than 8 years); the contract page
+<https://www.cmegroup.com/markets/interest-rates/us-treasury/ultra-10-year-us-treasury-note.contractSpecs.html>
+for TN (original 10-year notes, 9 years 5 months to 10 years); the rulebook chapter 18
+<https://www.cmegroup.com/rulebook/CBOT/II/18.pdf> (rule 18101.A) for ZB (15 years to less than 25 years); and
+<https://www.cmegroup.com/trading/interest-rates/ultra-tbond-futures.html> for UB (25 years or more). A CME
+education page still says "not more than 10 years" for ZN; we took the newer 8-year limit. The
+10-year limit would not change the result for the nine bonds (they are bonds). Read the current rulebook
+before you use a flag for a trade.
+
+**114. The flag "deliverable" is for the front month only and for the rules above.** The front month on
+2026-11-18 is December 2026 (first delivery day 2026-12-01). The flag does not say which security is the cheapest
+to deliver. The conversion factors and the futures prices are not in the data. Of the 327 securities: ZT 10,
+ZF 8, ZN 10, TN 2, ZB 59, UB 19 are deliverable (108 flags; a note can be in more than one basket).
+
+**115. Coverage and units of the joins on 2026-11-18.** The regression has 321 securities (6 of 327 have no row in
+MSPD table 5 or no auction record), and 317 have a mean residual over 40 or more dates. The residual in the
+regression is in bp of yield. The coupon gap is in percentage points. The curve for the par rate uses the first
+coupon period as a full period (an error of a few tenths of a bp). The securities that the fit left out as outliers (13)
+are in the regression. The two bonds of 2027 (6.375 % and 6.125 %) have a cost of 26 to 28 bp: they do not matter for
+the conclusion, and they move the intercept little.
+
 **90. Yahoo answers HTTP 429 to the bar downloads from a shared network address.** From the
 cloud container, about half of the requests of `fa trade fetch` got HTTP 429 (2026-11-19), also
 with 2 seconds between two requests. The program waits 30 seconds and asks one more time. If

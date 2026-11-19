@@ -22,7 +22,7 @@ pip install -r requirements.txt -r requirements-dev.txt
 python -m pytest                       # 349 tests, no network
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
 cargo test --manifest-path rust/mapcheck/Cargo.toml    # 86 Rust tests
-cargo test --manifest-path rust/Cargo.toml --locked    # 137 Rust tests (`fa` crate: rates, models, futures, option trading)
+cargo test --manifest-path rust/Cargo.toml --locked    # 185 Rust tests (`fa` crate: rates, models, futures, option trading, bond research)
 ```
 
 Run all commands from the repo root.
@@ -240,6 +240,11 @@ cargo run --release --bin fa -- models frequencies --model vasicek --method ml  
 cargo run --release --bin fa -- models compare --start 1990-01-01                # vasicek, cir, ckls, holee: log-likelihood, AIC
 cargo run --release --bin fa -- models simulate --model cir --kappa 0.5 --theta 0.05 --sigma 0.1 --years 10 --paths 100000 --seed 1
 cargo run --bin fa -- run scripts.analyze IBM     # any Python entry point
+cargo run --release --bin fa -- recon bonds --date 2026-11-17   # bond values from our rates vs market prices
+cargo run --release --bin fa -- recon bills --date 2026-11-17   # test each cause of the bill difference
+cargo run --release --bin fa -- recon rich-cheap --date 2026-11-17   # fitted curve, rich and cheap candidates after cost
+cargo run --release --bin fa -- recon history                   # the difference over the cached dates: persistence, half-life
+cargo run --release --bin fa -- recon explain --date 2026-11-18   # regression of the difference on SOMA share, stripping, age, size, futures; the old 30-year bonds
 cargo run --release --bin fa -- serve             # local viewer in the browser
 cargo run --example dcf_rates -- IBM 231.09 A-    # library example
 ```

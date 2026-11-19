@@ -41,6 +41,10 @@ USAGE:
                                                   stochastic rate models (Rust); see below
   fa verdict TICKER --price P [--rf-date D|today] [--rf-base-date D] [--rating A-]
              [--simulations N] [--seed S]
+  fa recon bonds [--date D] [--out FILE]          bond values from our rates vs market prices (see: fa recon help)
+  fa recon bills [--date D]                       tests of each cause of the bill difference of recon bonds
+  fa recon rich-cheap [--date D] [--out FILE]     fitted NSS curve, difference of each security, rich and cheap candidates
+  fa recon history [--from D] [--to D] [--out F]  the same difference over the cached dates: how long it lasts
   fa trade fetch [--symbol S]... [--interval I]...  download the bars of the option bots (Yahoo) into the CSV cache
   fa trade backtest [--bot ID]... [--max-risk N] [--out FILE] [-v]   backtest the option bots (fa trade backtest --help)
   fa trade paper [BOT]... [--no-refresh] [--no-live]   forward paper trading, live Cboe option chain (fa trade paper --help)
@@ -148,6 +152,7 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
         }
         Some("rates") => rates(fa, &args[1..]),
         Some("bonds") => bonds(fa, &args[1..]),
+        Some("recon") => Ok(financial_analysis::recon::run(fa, &args[1..])),
         Some("models") => financial_analysis::ratemodels::cli::run(&fa.repo, &args[1..]).map(|_| ExitCode::SUCCESS).or_else(|e| {
             eprintln!("fa: {e}");
             Ok(ExitCode::from(2))
