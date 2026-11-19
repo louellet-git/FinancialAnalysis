@@ -2,7 +2,7 @@
 id: T-20261119-ant-ipo-valuation
 title: Value Anthropic (ANT) at its IPO
 area: ticker:ANT
-status: in-progress
+status: review
 owner: louellet-git
 branch: claude/admiring-allen-f5aaeq
 created: 2026-11-19

@@ -41,6 +41,9 @@ USAGE:
                                                   stochastic rate models (Rust); see below
   fa verdict TICKER --price P [--rf-date D|today] [--rf-base-date D] [--rating A-]
              [--simulations N] [--seed S]
+  fa trade fetch [--symbol S]... [--interval I]...  download the bars of the option bots (Yahoo) into the CSV cache
+  fa trade backtest [--bot ID]... [--max-risk N] [--out FILE] [-v]   backtest the option bots (fa trade backtest --help)
+  fa trade paper [BOT]... [--no-refresh] [--no-live]   forward paper trading, live Cboe option chain (fa trade paper --help)
   fa run MODULE [ARGS...]                         any entry point, e.g. fa run scripts.analyze IBM
   fa serve [--port N] [--no-open]                 local viewer in the browser (http://127.0.0.1:8765/)
 
@@ -155,6 +158,21 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
             print_json(&fa.call::<Verdict>("scripts.verdict", &args[1..])?);
             Ok(ExitCode::SUCCESS)
         }
+        Some("trade") => match args.get(1).map(String::as_str) {
+            Some("backtest") => match financial_analysis::trading::cli::backtest(&fa.repo, &args[2..]) {
+                Ok(code) => Ok(ExitCode::from(code as u8)),
+                Err(e) => Ok(usage_error(&e)),
+            },
+            Some("fetch") => match financial_analysis::trading::fetch::command(financial_analysis::trading::data::Store::from_env(&fa.repo).dir(), &args[2..]) {
+                Ok(code) => Ok(ExitCode::from(code as u8)),
+                Err(e) => Ok(usage_error(&e)),
+            },
+            Some("paper") => match financial_analysis::trading::paper::command(&fa.repo, &args[2..]) {
+                Ok(code) => Ok(ExitCode::from(code as u8)),
+                Err(e) => Ok(usage_error(&e)),
+            },
+            _ => Ok(usage_error("trade needs a command: backtest, fetch or paper")),
+        },
         Some("serve") => {
             if args[1..].iter().any(|a| a == "-h" || a == "--help") {
                 println!("{}", serve::USAGE);
