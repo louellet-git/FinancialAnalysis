@@ -246,7 +246,8 @@ Set `FA_PYTHON` to select the Python interpreter and `FA_REPO` to select the rep
 ## Local viewer
 
 `fa serve` starts a local web server and opens a page in the default browser. The page
-shows the stock data, the Monte Carlo DCF, the rates and the bonds in one place.
+shows the stock data, the Monte Carlo DCF, the company report, the rates, the bonds and the
+option bots in one place.
 
 You must have Rust (`cargo`), Python 3 and the Python packages. Install them one time.
 Then build the two Rust programs.
@@ -274,6 +275,15 @@ rust/target/release/fa serve
 The program prints the address (`http://127.0.0.1:8765/`). If the port is in use, the
 program tries the next port. Options: `--port N` sets the port. `--no-open` does not
 open the browser. Push Ctrl+C to stop the server.
+
+The view "Company report" shows the report of `python -m scripts.visualize_dcf` inside the
+page (one file for a ticker, with the plotly library, about 6 MB). Select a ticker, type a
+price if you want, and push "Show the report". The program makes the report with the Python
+command and saves it in `data/reports/` (not in git). It makes the report again only when no
+file exists for the ticker and the price, or when you push "Make it again". The page shows
+the time of the file and a link to open it in a new tab. Without a price, the Python command
+reads the price from the network. If it cannot, the report has no price marker and the page
+shows a warning. The ticker needs saved company data (`data/processed/<TICKER>.json`).
 
 The program finds Python in this sequence: `FA_PYTHON`, then `.venv` in the repo
 (`.venv\Scripts\python.exe` on Windows, `.venv/bin/python` on macOS and Linux), then

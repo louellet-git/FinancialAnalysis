@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
 const PAGE: &str = include_str!("viewer.html");
@@ -50,12 +51,14 @@ pub struct Reply {
     pub status: u16,
     pub content_type: &'static str,
     pub body: String,
+    /// A file that the server sends in place of `body` (it reads the file in parts).
+    pub file: Option<PathBuf>,
 }
 
 impl Reply {
     fn json<T: Serialize>(value: &T) -> Reply {
         match serde_json::to_string(value) {
-            Ok(body) => Reply { status: 200, content_type: "application/json; charset=utf-8", body },
+            Ok(body) => Reply { status: 200, content_type: "application/json; charset=utf-8", body, file: None },
             Err(e) => Reply::error(500, &format!("cannot write JSON: {e}"), ""),
         }
     }
@@ -65,6 +68,7 @@ impl Reply {
             status,
             content_type: "application/json; charset=utf-8",
             body: json!({"error": message, "hint": hint}).to_string(),
+            file: None,
         }
     }
 
@@ -80,6 +84,7 @@ impl Reply {
             status,
             content_type: "application/json; charset=utf-8",
             body: json!({"error": format!("Python failed: {last}"), "hint": hint, "detail": text}).to_string(),
+            file: None,
         }
     }
 }
@@ -164,7 +169,10 @@ pub fn route(ctx: &Ctx, method: &str, url: &str) -> Reply {
     }
     let (path, q) = split_url(url);
     let answer: Answer = match path.as_str() {
-        "/" | "/index.html" => Ok(Reply { status: 200, content_type: "text/html; charset=utf-8", body: PAGE.to_string() }),
+        "/" | "/index.html" => Ok(Reply { status: 200, content_type: "text/html; charset=utf-8", body: PAGE.to_string(), file: None }),
+        "/api/report/info" => report_info(ctx, &q),
+        "/api/report/make" => report_make(ctx, &q),
+        "/report/file" => report_file(ctx, &q),
         "/api/tickers" => tickers(&ctx.cache),
         "/api/stock" => stock(ctx, &q),
         "/api/models" => Ok(Reply::json(&models(&ctx.fa.repo))),
@@ -328,6 +336,171 @@ fn verdict(ctx: &Ctx, q: &HashMap<String, String>) -> Answer {
     ctx.fa.verdict(&ticker, price, &opts).map(|v| Reply::json(&v)).map_err(fa_error)
 }
 
+// ---------------------------------------------------------------------------
+// Company report (scripts.visualize_dcf)
+// ---------------------------------------------------------------------------
+
+/// The cache folder of the company reports, under `data/` (not in git).
+const REPORT_DIR: &str = "data/reports";
+/// The text that the Python script writes in the report when it has no price.
+const NO_PRICE_TEXT: &str = "current price unavailable";
+static REPORT_RUNS: AtomicU32 = AtomicU32::new(0);
+
+/// The file name of a report: `IBM_228.53.html` (price from the user) or
+/// `IBM_auto.html` (the script gets the price). Only a checked ticker and a number
+/// that the program formats itself are in the name, so no text of the user is in it.
+pub fn report_name(ticker: &str, price: Option<f64>) -> String {
+    match price {
+        Some(p) => format!("{ticker}_{p:.2}.html"),
+        None => format!("{ticker}_auto.html"),
+    }
+}
+
+/// The rule for a name in the cache folder: letters, digits, '.', '-' and '_' only,
+/// no '..', and it ends with `.html`.
+pub fn report_name_ok(name: &str) -> bool {
+    name.ends_with(".html")
+        && !name.contains("..")
+        && !name.starts_with('.')
+        && name.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'))
+}
+
+/// Check the report query. The price is rounded to the cent, so the name and the
+/// command use the same number. No Python is started here.
+pub fn report_request(repo: &Path, q: &HashMap<String, String>) -> Result<(String, Option<f64>, PathBuf), Reply> {
+    let ticker = valid_ticker(q.get("ticker"))?;
+    let price = match q.get("price").map(|s| s.trim()).filter(|s| !s.is_empty()) {
+        None => None,
+        Some(s) => {
+            let p: f64 = s.parse().map_err(|_| Reply::error(400, &format!("The price '{s}' is not a number."), ""))?;
+            if !(p.is_finite() && p >= 0.005 && p <= 10_000_000.0) {
+                return Err(Reply::error(400, "Type a market price that is more than 0, or leave the price empty.", ""));
+            }
+            Some(format!("{p:.2}").parse::<f64>().unwrap_or(p))
+        }
+    };
+    let name = report_name(&ticker, price);
+    if !report_name_ok(&name) {
+        return Err(Reply::error(400, "The file name of the report is not valid.", ""));
+    }
+    let path = repo.join(REPORT_DIR).join(name);
+    Ok((ticker, price, path))
+}
+
+/// The state of a report file for the page.
+pub fn report_state(repo: &Path, ticker: &str, price: Option<f64>, path: &Path, made_now: bool) -> Value {
+    let meta = fs::metadata(path).ok().filter(|m| m.is_file());
+    let made_at = meta
+        .as_ref()
+        .and_then(|m| m.modified().ok())
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs());
+    // Without a price from the user, the script reads the price from the network.
+    let price_missing = meta.is_some()
+        && price.is_none()
+        && fs::read(path).map(|b| b.windows(NO_PRICE_TEXT.len()).any(|w| w == NO_PRICE_TEXT.as_bytes())).unwrap_or(false);
+    let mut url = format!("/report/file?ticker={ticker}");
+    if let Some(p) = price {
+        url.push_str(&format!("&price={p:.2}"));
+    }
+    json!({
+        "ticker": ticker,
+        "price": price,
+        "exists": meta.is_some(),
+        "made_at": made_at,
+        "size": meta.as_ref().map(|m| m.len()),
+        "made_now": made_now,
+        "driver_model": models(repo).iter().any(|m| m == ticker),
+        "price_missing": price_missing,
+        "url": url,
+    })
+}
+
+fn report_info(ctx: &Ctx, q: &HashMap<String, String>) -> Answer {
+    let (ticker, price, path) = report_request(&ctx.fa.repo, q)?;
+    Ok(Reply::json(&report_state(&ctx.fa.repo, &ticker, price, &path, false)))
+}
+
+/// The report file, for the iframe and for a new tab. The file is sent in parts.
+fn report_file(ctx: &Ctx, q: &HashMap<String, String>) -> Answer {
+    let (ticker, _, path) = report_request(&ctx.fa.repo, q)?;
+    if !path.is_file() {
+        return Err(Reply::error(
+            404,
+            &format!("There is no report file for {ticker} with this price."),
+            "Push 'Show the report' in the Company report view to make it.",
+        ));
+    }
+    Ok(Reply { status: 200, content_type: "text/html; charset=utf-8", body: String::new(), file: Some(path) })
+}
+
+/// A failed report command, with a hint for the report.
+fn report_error(e: FaError) -> Reply {
+    let text = e.to_string();
+    let lower = text.to_lowercase();
+    if lower.contains("no module named 'plotly") || lower.contains("no module named \"plotly") {
+        return Reply::error_with_detail(
+            502,
+            &text,
+            "The Python library plotly is not installed. Run: pip install -r requirements.txt",
+        );
+    }
+    if lower.contains("no saved data") {
+        return Reply::error_with_detail(502, &text, "Import the company data first: python -m scripts.import_financials TICKER");
+    }
+    fa_error(e)
+}
+
+/// Make the report when no file exists or when the user asks (`force=1`), then
+/// give the state of the file. The command writes to a temporary file first, so a
+/// failed run does not destroy an earlier report.
+fn report_make(ctx: &Ctx, q: &HashMap<String, String>) -> Answer {
+    let (ticker, price, path) = report_request(&ctx.fa.repo, q)?;
+    let processed = ctx.fa.repo.join("data").join("processed").join(format!("{ticker}.json"));
+    if !processed.is_file() {
+        return Err(Reply::error(
+            404,
+            &format!("There is no saved company data for {ticker}."),
+            &format!("Run: python -m scripts.import_financials {ticker}"),
+        ));
+    }
+    let force = q.get("force").map(|v| v == "1" || v == "true").unwrap_or(false);
+    let made_now = force || !path.is_file();
+    if made_now {
+        let dir = ctx.fa.repo.join(REPORT_DIR);
+        fs::create_dir_all(&dir)
+            .map_err(|e| Reply::error(500, &format!("Cannot make the folder {}: {e}", dir.display()), ""))?;
+        let tmp = dir.join(format!(".{}.{}.{}.tmp", ticker, std::process::id(), REPORT_RUNS.fetch_add(1, Ordering::Relaxed)));
+        let mut args = vec![ticker.clone()];
+        if let Some(p) = price {
+            args.push("--price".into());
+            args.push(format!("{p:.2}"));
+        }
+        args.push("--out".into());
+        args.push(tmp.to_string_lossy().into_owned());
+        match ctx.fa.run_captured("scripts.visualize_dcf", &args) {
+            Ok(_) if tmp.is_file() => {
+                if let Err(e) = fs::rename(&tmp, &path) {
+                    let _ = fs::remove_file(&tmp);
+                    return Err(Reply::error(500, &format!("Cannot save the report {}: {e}", path.display()), ""));
+                }
+            }
+            Ok(_) => {
+                return Err(Reply::error(
+                    502,
+                    "The report command did not write a file.",
+                    "Run python -m scripts.visualize_dcf in a terminal to see the reason.",
+                ))
+            }
+            Err(e) => {
+                let _ = fs::remove_file(&tmp);
+                return Err(report_error(e));
+            }
+        }
+    }
+    Ok(Reply::json(&report_state(&ctx.fa.repo, &ticker, price, &path, made_now)))
+}
+
 fn leaderboard(repo: &Path) -> Answer {
     let path = repo.join("trading").join("research").join("LEADERBOARD.md");
     fs::read_to_string(&path)
@@ -403,8 +576,28 @@ fn respond(ctx: &Ctx, port: u16, request: tiny_http::Request) {
     } else {
         Reply::error(403, "The Host header is not this computer.", "")
     };
+    let headers = [("Content-Type", reply.content_type), ("Cache-Control", "no-store"), ("X-Content-Type-Options", "nosniff")];
+    if let Some(path) = &reply.file {
+        // A large file: the server reads it in parts and does not keep it in memory.
+        match fs::File::open(path) {
+            Ok(file) => {
+                let mut response = tiny_http::Response::from_file(file).with_status_code(reply.status);
+                for (k, v) in headers {
+                    if let Ok(h) = tiny_http::Header::from_bytes(k.as_bytes(), v.as_bytes()) {
+                        response.add_header(h);
+                    }
+                }
+                let _ = request.respond(response);
+            }
+            Err(e) => {
+                let r = Reply::error(500, &format!("Cannot read {}: {e}", path.display()), "");
+                let _ = request.respond(tiny_http::Response::from_string(r.body).with_status_code(r.status));
+            }
+        }
+        return;
+    }
     let mut response = tiny_http::Response::from_string(reply.body).with_status_code(reply.status);
-    for (k, v) in [("Content-Type", reply.content_type), ("Cache-Control", "no-store"), ("X-Content-Type-Options", "nosniff")] {
+    for (k, v) in headers {
         if let Ok(h) = tiny_http::Header::from_bytes(k.as_bytes(), v.as_bytes()) {
             response.add_header(h);
         }
@@ -632,6 +825,118 @@ mod tests {
         assert_eq!(j["error"], "Python failed: requests.exceptions.ReadTimeout: read timed out");
         assert!(j["detail"].as_str().unwrap().starts_with("python failed"));
         assert!(j["hint"].as_str().unwrap().contains("network"));
+    }
+
+    #[test]
+    fn report_file_names_follow_the_rule() {
+        assert_eq!(report_name("IBM", Some(228.5)), "IBM_228.50.html");
+        assert_eq!(report_name("BRK-B", None), "BRK-B_auto.html");
+        assert!(report_name_ok("IBM_228.50.html"));
+        assert!(report_name_ok("BRK-B_auto.html"));
+        for bad in ["../x.html", "a/b.html", "a\\b.html", "..html", ".hidden.html", "x.txt", "a b.html", "a..b.html", ""] {
+            assert!(!report_name_ok(bad), "{bad}");
+        }
+    }
+
+    #[test]
+    fn report_query_is_checked_before_python() {
+        let root = fixture("reportq");
+        let q = |url: &str| split_url(url).1;
+        let (t, p, path) = report_request(&root, &q("/?ticker=test&price=228.534")).unwrap();
+        assert_eq!((t.as_str(), p), ("TEST", Some(228.53)));
+        assert!(path.ends_with("data/reports/TEST_228.53.html"));
+        let (_, p, path) = report_request(&root, &q("/?ticker=TEST&price=")).unwrap();
+        assert_eq!(p, None);
+        assert!(path.ends_with("TEST_auto.html"));
+        let err = |url: &str| report_request(&root, &q(url)).unwrap_err().status;
+        assert_eq!(err("/?ticker=../x"), 400);
+        assert_eq!(err("/?ticker=a%2Fb"), 400);
+        assert_eq!(err("/?ticker=-h"), 400);
+        assert_eq!(err("/?ticker=TEST&price=abc"), 400);
+        assert_eq!(err("/?ticker=TEST&price=0"), 400);
+        assert_eq!(err("/?ticker=TEST&price=-1"), 400);
+        assert_eq!(err("/?ticker=TEST&price=NaN"), 400);
+        assert_eq!(err("/"), 400);
+    }
+
+    #[test]
+    fn report_file_is_served_from_the_cache_folder_only() {
+        let root = fixture("reportfile");
+        let c = ctx(&root);
+        let missing = route(&c, "GET", "/report/file?ticker=TEST&price=10");
+        assert_eq!(missing.status, 404);
+        assert!(body(&missing)["hint"].as_str().unwrap().contains("Show the report"));
+        assert_eq!(route(&c, "GET", "/report/file?ticker=../../etc/passwd").status, 400);
+        // A file name from the user is not used.
+        assert_eq!(route(&c, "GET", "/report/file?ticker=TEST&file=x.html").status, 404);
+        let dir = root.join("data/reports");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("TEST_10.00.html"), "<html>report</html>").unwrap();
+        let ok = route(&c, "GET", "/report/file?ticker=test&price=10");
+        assert_eq!((ok.status, ok.content_type), (200, "text/html; charset=utf-8"));
+        assert_eq!(ok.file.as_deref(), Some(dir.join("TEST_10.00.html").as_path()));
+        assert!(ok.body.is_empty());
+        // A file of another price is a different file.
+        assert_eq!(route(&c, "GET", "/report/file?ticker=TEST&price=11").status, 404);
+    }
+
+    #[test]
+    fn report_info_shows_the_file_state() {
+        let root = fixture("reportinfo");
+        let c = ctx(&root);
+        let none = body(&route(&c, "GET", "/api/report/info?ticker=TEST&price=10"));
+        assert_eq!((none["exists"].clone(), none["driver_model"].clone()), (json!(false), json!(true)));
+        assert!(none["made_at"].is_null());
+        let dir = root.join("data/reports");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("TEST_auto.html"), "<p>price: current price unavailable (offline?)</p>").unwrap();
+        fs::write(dir.join("TEST_10.00.html"), "<p>current price unavailable</p>").unwrap();
+        let auto = body(&route(&c, "GET", "/api/report/info?ticker=TEST"));
+        assert_eq!((auto["exists"].clone(), auto["price_missing"].clone()), (json!(true), json!(true)));
+        assert!(auto["made_at"].as_u64().unwrap() > 1_600_000_000);
+        assert_eq!(auto["url"], "/report/file?ticker=TEST");
+        // With a price from the user, the missing-price text does not matter.
+        let priced = body(&route(&c, "GET", "/api/report/info?ticker=TEST&price=10"));
+        assert_eq!(priced["price_missing"], json!(false));
+        assert_eq!(priced["url"], "/report/file?ticker=TEST&price=10.00");
+        let nomodel = body(&route(&c, "GET", "/api/report/info?ticker=NOMODEL"));
+        assert_eq!(nomodel["driver_model"], json!(false));
+        assert_eq!(route(&c, "GET", "/api/report/info?ticker=%2e%2e").status, 400);
+    }
+
+    #[test]
+    fn report_make_checks_before_python_and_reuses_the_file() {
+        let root = fixture("reportmake");
+        let c = ctx(&root);
+        assert_eq!(route(&c, "GET", "/api/report/make?ticker=../x").status, 400);
+        // No saved company data: a clear error, and Python does not start.
+        let r = route(&c, "GET", "/api/report/make?ticker=TEST&price=10");
+        assert_eq!(r.status, 404);
+        assert!(body(&r)["hint"].as_str().unwrap().contains("import_financials"));
+        // Data exists, but Python does not: the error has the Python hint, and no file stays.
+        fs::create_dir_all(root.join("data/processed")).unwrap();
+        fs::write(root.join("data/processed/TEST.json"), "{}").unwrap();
+        let r = route(&c, "GET", "/api/report/make?ticker=TEST&price=10");
+        assert_eq!(r.status, 502);
+        assert!(body(&r)["hint"].as_str().unwrap().contains("Install Python"));
+        assert_eq!(fs::read_dir(root.join("data/reports")).unwrap().count(), 0);
+        // A file exists and the user does not ask again: Python does not start.
+        fs::write(root.join("data/reports/TEST_10.00.html"), "<p>old</p>").unwrap();
+        let r = route(&c, "GET", "/api/report/make?ticker=TEST&price=10");
+        assert_eq!(r.status, 200, "{}", r.body);
+        let j = body(&r);
+        assert_eq!((j["exists"].clone(), j["made_now"].clone()), (json!(true), json!(false)));
+        // With force the command runs again (here it fails, and the old file stays).
+        assert_eq!(route(&c, "GET", "/api/report/make?ticker=TEST&price=10&force=1").status, 502);
+        assert!(root.join("data/reports/TEST_10.00.html").is_file());
+    }
+
+    #[test]
+    fn report_errors_have_hints() {
+        let plotly = FaError::Python { code: Some(1), kind: None, message: "ModuleNotFoundError: No module named 'plotly'".into() };
+        assert!(body(&report_error(plotly))["hint"].as_str().unwrap().contains("pip install -r requirements.txt"));
+        let nodata = FaError::Python { code: Some(1), kind: None, message: "No saved data for ZZZ. Run: python -m scripts.import_financials ZZZ".into() };
+        assert!(body(&report_error(nodata))["hint"].as_str().unwrap().contains("import_financials"));
     }
 
     #[test]
