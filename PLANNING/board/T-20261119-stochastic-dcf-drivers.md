@@ -2,7 +2,7 @@
 id: T-20261119-stochastic-dcf-drivers
 title: Make each element of the DCF cash flows a stochastic process where it is relevant, and test the DCF
 area: engine
-status: in-progress
+status: review
 owner: louellet-git
 branch: claude/stochastic-dcf
 created: 2026-11-19

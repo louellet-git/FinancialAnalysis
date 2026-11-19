@@ -20,6 +20,7 @@ USAGE:
   fa dcf drivers TICKER --model FILE [OPTIONS]    FILE with engine = paths: path engine (processes for each year; see below)
   fa dcf classic TICKER [OPTIONS]                 classic model on data/processed/<TICKER>.json
   fa dcf scenarios TICKER [--data-dir D] [--json] bear/base/bull of the classic model, value per share
+  fa dcf calibrate [--cache DIR] [--out FILE]   AR(1) parameters of growth and margins from the company cache (fa dcf calibrate --help)
   fa backtest TICKER [--horizon Y (3)] [--simulations N (10000)] [--seed S (7)] [--data-dir D]
                                                   point-in-time vintage backtest of revenue and FCF projections
 
@@ -625,6 +626,7 @@ pub fn run(repo: &Path, args: &[String]) -> u8 {
         Some("drivers") => drivers(repo, &args[1..]),
         Some("classic") => classic(repo, &args[1..]),
         Some("scenarios") => scenarios(repo, &args[1..]),
+        Some("calibrate") => super::calib_report::command(repo, &args[1..]).map(|_| ()),
         Some(other) => {
             eprintln!("fa: unknown dcf command '{other}'\n\n{USAGE}");
             return 64;

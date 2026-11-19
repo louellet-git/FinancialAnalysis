@@ -1268,6 +1268,99 @@ errors of the mean plus 2e-5 for the monthly trapezoid (the 400,000-path run has
 share and mean: 3 standard errors.
 *Evidence:* `rust/src/dcf/paths_tests.rs`.
 
+## Calibration of the growth and margin processes (added 2026-11-19, branch `claude/dcf-calibration`)
+
+**170. The panel has no sector.** The company facts and the cache files have no SIC code. A group is a size bucket and a
+template (`standard`, `bank`, `insurer`, `reit`, `fund`). The `standard` template mixes all industries: an oil company, a
+software company and a retailer have one set of parameters. The argument `sector` of `priors_for` is not used.
+*Evidence:* `rust/src/dcf/calibrate.rs` (`priors_for`), `rust/src/dcf/calib_report.rs` (`render_panel`).
+
+**171. A restated year has the value of the latest filing, and two years can come from two filings.** The mapping takes, for each
+period, the fact of the latest filing. The revenue of year t and the revenue of year t-1 can come from two different filings. A
+recast (a sold business moved to discontinued operations) then shows as growth. The panel does not count recast years. The jump
+rule catches the large ones only.
+*Evidence:* `rust/src/dcf/panel.rs` (rule 1), `rust/mapcheck/src/facts.rs`.
+
+**172. A 53-week year stays in the panel.** A fiscal year of 371 days has about 1.9% more revenue than a year of 364 days. The
+panel counts these years (`long_years`) and does not change the revenue. The effect is small against a shock of 12% to 18%.
+*Evidence:* `rust/src/dcf/panel.rs` (rule 3).
+
+**173. The jump rule removes real growth and keeps some mergers.** A growth above 60% for a company with $1B or more of revenue
+is a jump, and a jump is not in the AR(1) sample. NVIDIA (126% in the year to January 2024) is a jump. A merger paid in shares
+(Cigna and Express Scripts, 2019) is a jump with no cash for businesses, so it is not `acq_likely` and stays in the fast-grower
+tables. The rule `glitch` (two jumps that undo each other) removes a wrong value of one year (an example is PG in 2015) but not
+a wrong value that stays.
+*Evidence:* `rust/src/dcf/panel.rs` (rules 4 and 5), the output of `fa dcf calibrate` (list of very large fast growers).
+
+**174. The size bucket is the revenue of the year before, and this selects.** A company is in a high bucket partly because the
+year before was a peak (a commodity price spike, a one-time sale). The growth after the peak is low. So the growth mean of the
+large buckets is low (3% for `30-100B`, 9% for all) and the growth mean of the small buckets is high. The result is a mean
+reversion of the level that is not in the process.
+*Evidence:* the table, cells `30-100B` and `<1B` (`mean`).
+
+**175. The within estimate of `phi` is biased on a short panel, and the correction is approximate.** With about 12 years for each
+company, the within estimate is too low by about 0.1 to 0.2 (Nickell bias). The correction solves the first order formula with the
+number of observations of each company. It assumes shocks that are independent, a constant company mean and a start in the steady
+state. The Anderson-Hsiao value is a check. The two agree to about 0.1 for growth (0.11 and 0.16) and differ more for margins in
+the largest bucket (standard errors of 0.13 to 0.3). Use the standard errors.
+*Evidence:* `rust/src/dcf/calibrate.rs` (`nickell_bias`, `fit_ar1`), the tests with known values.
+
+**176. `phi` of growth is the speed of the return to the company mean, not the fade of a growth rate.** The within model has one
+constant mean for each company. For growth, `phi` = 0.11 to 0.26 (half-life 0.3 to 0.5 years): a growth that is above the company
+mean falls back in one year. The company mean itself changes slowly, and a new company has no known mean. The pooled `phi`
+(0.27) mixes the two effects. The data show, for companies with growth above 50%, that the median growth falls to 13% to 30%
+(by size) in one year and to 3% to 16% in three years, and that after five to ten years it is usually above the mean of the bucket. One AR(1) with one
+mean does not give all of this. A process with a fast part (`phi` about 0.2) and a slow company mean is a better form.
+*Evidence:* the fade tables of `fa dcf calibrate` (column `imp.phi`).
+
+**177. The size of the shock depends on the level.** The table has one `sigma` for each bucket. After a year with growth above 50%,
+the growth of the next year has a P10 to P90 range of -18% to +89%. An AR(1) with `sigma` = 18% gives +2% to +51%. The bands of
+fast growers are too narrow.
+*Evidence:* the fade tables of `fa dcf calibrate` (columns P10, P90, AR1 P10, AR1 P90).
+
+**178. The growth less the year mean is not growth less GDP.** The repo cache has no GDP series. The column `growth_excess` subtracts
+the mean growth of all companies of the same fiscal year. This mean has the company itself in it and depends on the companies
+in the cache. The fiscal year is the calendar year of the middle of the fiscal year.
+*Evidence:* `rust/src/dcf/calibrate.rs` (`year_means`).
+
+**179. Margins outside -100% to +100% are not used, and the margin of a bank or an insurer is a different thing.** 309 of 11,151
+operating margins and 353 of 13,405 free cash flow margins are outside. The free cash flow margin of a bank (27%) is not
+comparable with the margin of an industrial company. The persistence of margins includes slow changes of the company mean, so the
+half-life is too long for a pure shock.
+*Evidence:* `rust/src/dcf/calibrate.rs` (`limited_margin`), the table.
+
+**180. The shock correlation is between the shocks of the same year.** It uses the residuals of two within models. It does not
+measure a lag between growth and margin. The standard error comes from a bootstrap over companies (200 resamples, fixed seed).
+The correlation of growth with the free cash flow margin is about 0 and the correlation with the operating margin is +0.25. The
+operating margin has fixed costs: a growth shock moves the margin.
+*Evidence:* `rust/src/dcf/calibrate.rs` (`shock_correlation`).
+
+**181. Survivorship bias.** The cache has companies that exist now (the S&P 500 and the next 500 of the SEC ticker list). Failed and
+acquired companies are missing, and the index adds a company after its rise. Direction: the growth mean is too high, the shock
+size and the lower tail are too low, the persistence of margins is too high, and the fade of fast growers is too slow (a company
+that fell hard left the sample). The bias is not measured.
+*Evidence:* the text `SURVIVORSHIP` in the output of `fa dcf calibrate`.
+
+**182. A company like ANT (revenue about $35B, growth above 100%) is outside the data.** Of 141 company-years with a growth
+above 50% and a revenue of $10B or more (standard template), many are a commodity price move, a merger, a change of the
+business (an asset manager, for example), or a data error (the list in the output shows them; the sector is not known, so the share is
+not counted). The cases of lasting organic growth are very few: NVIDIA (61%, 126%, 114% and 65% in the years to
+January 2022, 2024, 2025 and 2026), Apple (fiscal 2010 and 2011), Tesla (2017, 2018, 2021 and 2022). For these companies the one-year `phi` is far above the pooled value (NVIDIA: about
+0.9). An AR(1) with the table values predicts 20% to 28% growth after a year of 100%. The table does not support a value for ANT.
+*Evidence:* the section `VERY LARGE FAST GROWERS` of the output.
+
+**183. The band test has three limits.** (1) The legacy band is calculated exactly (growth is a normal draw, revenue is a monotone
+function), not by simulation. (2) The AR(1) bands use the same 2,000 normal draws for all companies. (3) The test in sample uses
+parameters that include the target years; the test out of sample uses the years up to 2015 for the parameters and the base years
+from 2015. The actual value is the value as now reported, so a recast is in it. A base year needs 5 consecutive fiscal years
+before it and 3 after it, so the companies with a short history, and the companies that left, are not in the test.
+*Evidence:* `rust/src/dcf/calib_bands.rs`.
+
+**184. `priors_for` falls back to a wider cell.** A cell needs 150 growth observations and 25 companies. A cell of a bank in the size
+`>100B` has none, so the call returns the cell of the size for all templates. The result says which cell it is (`size`,
+`template`). A cell with few companies has a large standard error (`phi_se`): a person must read it.
+*Evidence:* `rust/src/dcf/calibrate.rs` (`priors_for`, `MIN_OBS`, `MIN_UNITS`).
+
 ## Could not verify
 
 - (none of the named traps failed verification — all located in current code/docs; the

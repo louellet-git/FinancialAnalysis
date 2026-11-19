@@ -10,6 +10,9 @@ use std::fmt;
 
 pub mod analysis;
 pub mod backtest;
+pub mod calib_bands;
+pub mod calib_report;
+pub mod calibrate;
 pub mod classic;
 pub mod cli;
 pub mod driver;
@@ -19,6 +22,7 @@ pub mod pathrate;
 pub mod paths;
 pub mod paths_cli;
 pub mod process;
+pub mod panel;
 pub mod scenarios;
 pub mod stats;
 pub mod verdict;
@@ -26,6 +30,7 @@ mod ziggurat_tables;
 
 #[cfg(test)]
 mod paths_tests;
+mod calibrate_tests;
 #[cfg(test)]
 mod runner_tests;
 #[cfg(test)]
