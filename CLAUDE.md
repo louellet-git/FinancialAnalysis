@@ -1,113 +1,90 @@
-# CLAUDE.md — agent orientation
+# CLAUDE.md — orientation for agents
 
-Read this first. Then: `docs/INDEX.md` (every doc, with normativity),
-`docs/ARCHITECTURE.md` (code-verified module map), `docs/HIDDEN-ASSUMPTIONS.md` (the
-trap registry), `PLANNING/HANDOFF.md` (live open-work state, if present).
+Read this file first. Then read `README.md` (commands), `docs/ARCHITECTURE.md` (module
+map) and `docs/HIDDEN-ASSUMPTIONS.md` (known traps).
 
-## What this repo is
+## Purpose
 
-A **valuation factory**: a reusable, self-improving DCF pipeline (SEC EDGAR XBRL import
-→ typed statement store → two Monte Carlo DCF engines → adversarial review → published
-report), whose accepted review findings compound into deterministic infrastructure
-(rules → validators → red-team specimens) instead of being re-paid every run. The
-standing design is `PLANNING/reusable-dcf-vision.md` (approved 2026-07-16, seven
-amendments + basket amendment 2026-07-17).
+Two persons use this repo (GitHub logins `louellet-git` and `merlan1996`) to make
+investment decisions and to trade options. The repo has two parts:
 
-Flagship analysis: **IBM v4.1** (`analysis/IBM/`, report
-`analysis/IBM/report/IBM-valuation-2026-07.md`): P10 $83.84 / P50 $151.84 / P90 $258.03,
-conditional on f = 0.50, price at writing $212.40. IBM reports Q2 on **July 22, 2026**
-— the report's four-item watch list and the first bet-ledger entries grade then.
+1. **Valuation** (`financial_analysis/`, `analysis/<TICKER>/`). The pipeline imports
+   SEC EDGAR data, runs two Monte Carlo DCF engines, and compares the value range with
+   the market price.
+2. **Options trading research** (`trading/`). A backtester and a paper trader for
+   SPY/QQQ option strategies. All backtest option prices are model prices.
 
-Two engines, both live (details in docs/ARCHITECTURE.md):
-- `financial_analysis/dcf.py` — classic scenario MC (samples growth/margin/WACC/tg
-  directly; presets in `scenarios.py`).
-- `financial_analysis/driver_dcf.py` — driver-based MC (parameter-MC, one draw per
-  path, per-path WACC with kd derived from rf, joint tg < WACC − 2% guard; per-ticker
-  register in `analysis/<TICKER>/driver_model.py`).
+The repo gives analysis. It does not send orders to a broker.
 
-**Current phase** (as of 2026-07-17 evening): IBM v4.1 shipped and audited; vintage
-backtest harness and MC path explorer landed; the visualizer's backtest section + price
-range buttons merged (PR #9), 0DTE skew exclusion merged (PR #14); DUOL first pass done
-(consensus-anchored presets + capital override, PR #14 — labeled NOT a vetted driver
-build); P1 of the vision (rulebook extraction, validators, red-team corpus, coverage
-validator) is the active frontier, with the ORCL run queued as ticker #2. Open work:
-`PLANNING/tickets.md` §OPEN TICKETS and `PLANNING/HANDOFF.md`.
+## Where the status is
 
-## Normativity map — which source governs when docs disagree
+- Work now and next: the board, `PLANNING/board/` (rules in its `README.md`).
+- Work without a ticket: `PLANNING/tickets.md`.
+- No other file contains status. Do not add status text to this file or to `README.md`.
 
-1. **Engine code governs over doc prose and stale doc numbers.**
-   `financial_analysis/driver_dcf.py` and `dcf.py` define what the engines actually do;
-   any number in a README/report that disagrees with a fresh engine run is stale.
-2. **`driver_model.py` inline rationales govern over DRIVERS.md prose.** DRIVERS.md
-   says so itself ("the executable, NORMATIVE definition — its rationale strings
-   govern"). DRIVERS.md is the reviewer-facing companion table.
-3. **Recorded dispositions bind.** `analysis/IBM/REVIEW.md` (F1–F19) and
-   `analysis/IBM/DRIVER-REVIEW.md` (19 + 4 reviews) are settled rulings — do not
-   re-litigate them in later work; reopening one requires a review of the same weight
-   (same principle as RULES.md deprecation).
-4. **`PLANNING/RULES.md` rules are binding at their declared scope**
-   (universal / archetype-bound / ticker-bound); deprecation requires a review fan-out
-   of the same weight that created the rule.
-5. **`scenarios.py` IBM entries are the v3 aggregate framework, kept deliberately** —
-   they are NOT stale v4 values (see docs/HIDDEN-ASSUMPTIONS.md #13). v4 headline
-   numbers come only from `python -m analysis.IBM.dcf_drivers_run`.
-6. **Reports are frozen artifacts.** `analysis/IBM/report/*` was audited
-   (SOURCE-AUDIT.md) against the engine on its date; do not edit published reports to
-   "fix" them — supersede with a new version.
-7. `README.md`, `context.json`, `docs/` are informative orientation; `PLANNING/HANDOFF.md`
-   is live state (delete items as completed); `THOUGHTS` is a raw idea scratchpad.
+## Which source is correct when two sources disagree
 
-## Orchestration norms (learned the hard way)
+1. **Engine code is correct.** `financial_analysis/driver_dcf.py` and
+   `financial_analysis/dcf.py` define the calculation. A number in a document that
+   disagrees with a new engine run is old.
+2. **`analysis/<TICKER>/driver_model.py` is correct** before `DRIVERS.md` text.
+3. **Recorded decisions stay.** `analysis/IBM/REVIEW.md` (F1 to F19) and
+   `analysis/IBM/DRIVER-REVIEW.md` are closed decisions. To open one again, do a review
+   of the same weight.
+4. **`PLANNING/RULES.md` rules are mandatory** in their scope. To remove a rule, do a
+   review of the same weight as the review that made the rule.
+5. **The IBM entries in `financial_analysis/scenarios.py` are version 3 on purpose**
+   (`docs/HIDDEN-ASSUMPTIONS.md` #13). The version 4 headline numbers come only from
+   `python -m analysis.IBM.dcf_drivers_run`.
+6. **Published reports are frozen.** Do not change `analysis/IBM/report/*`. Write a new
+   version.
+7. `README.md` and `docs/` are for orientation only. `THOUGHTS` is a list of raw ideas.
 
-- **Subagents do not commit.** Subagents leave work uncommitted in their worktree; the
-  orchestrator reviews, collects, and commits. Every commit in this repo's history went
-  through the orchestrator.
-- **Parallel work happens in git worktrees, one branch per worktree** (`git worktree
-  add ../wt-<name> -b <branch> origin/main`). **Checking out a branch in the shared
-  main tree is forbidden** — on 2026-07-17 an agent avoided clobbering another agent's
-  uncommitted `p1-importer` work sitting in the main checkout only because it created
-  its own worktree instead of switching branches in place. Assume the main checkout has
-  someone's uncommitted state at all times.
-- The local `main` ref in the main tree may lag `origin/main`; branch new work off
-  **`origin/main`**, not local `main`.
-- Never commit `data/` churn: `data/processed/NVDA_financials.xlsx` and
-  `PANW_financials.xlsx` are tracked-but-gitignored leftovers that dirty on every
-  pipeline run (HANDOFF known-state; candidate `git rm --cached`).
-- **Smoke-test policy:** a ticket is not done until real output is printed and
-  confirmed consumable by the next stage (`PLANNING/tickets.md` header; `context.json`).
-- **Token ledger:** update `PLANNING/token-ledger.md` per run (success metric #1;
-  targets: frontier ticker ≤ 500k, repeat run ≤ 50k subagent tokens).
-- Session handoffs live in `PLANNING/HANDOFF.md` — delete items as completed, delete
-  the file when empty.
+## Work rules
 
-## Review pipeline (roles as evidenced in .claude/agents/ and PLANNING docs)
+- **Language.** Write each new document, and each document that you change, in
+  ASD-STE100 Simplified Technical English. This is the only document standard. Frozen
+  documents and review records keep their original text.
+- **Ticket first.** Before you start, set a board ticket to `in-progress` with your
+  login and branch, and push that change.
+- **One branch for one ticket.** Start it from `origin/main`. Merge through a pull
+  request only.
+- **Parallel agents use git worktrees** (`git worktree add ../wt-<name> -b <branch>
+  origin/main`). Do not change the branch of a checkout that other agents use.
+- **Subagents do not commit.** The orchestrator examines the work and makes the commit.
+- **Smoke test.** A ticket is complete only after the real command runs and the next
+  step can use the output.
+- **No bloat.** Add one small part, show that it gives value, then add the next part.
+- **Do not commit** `data/`, `__pycache__/`, `.env`, or private review-framework files
+  (`.claude/agents/`, `vendor/`). This repo is public.
+- **Token ledger.** Add a row to `PLANNING/token-ledger.md` for each run.
 
-Vendored doc-review framework (`.claude/agents/FRAMEWORK.md`, from
-doc-review-framework@d9d9075). Every client-grade report runs:
+## Review of a valuation report
 
-1. **valuation-analyst** drafts the report;
-2. **valuation-skeptic** adversarial substance review, loop until sign-off (this loop
-   produced the IBM v1→v3 retraction, REVIEW.md, and the 19+4 driver reviews);
-3. **memo-reviewer** grades content/format against `memo-review-rubric.md` (scores,
-   never edits), analyst fixes, loop until PASS — a PostToolUse hook
-   (`scripts/memo-review-reminder.sh`) enforces this on any freshly produced .docx;
-4. **report-auditor** — final gate: claim→source traceability, re-derives every number
-   with the engine, softens over-claims (output: `analysis/IBM/report/SOURCE-AUDIT.md`).
+A report that a person uses for a decision goes through four steps:
 
-The vision doc (L5) extends this to three tiers — frontier fan-outs for new
-templates/mappings, a **charter review on every run** (ACCEPT required before
-publication), exception reviews on validator/staleness triggers — with **Luc as the
-accountability terminus** (✦6a): frontier runs and accepted-with-reservations runs need
-his explicit sign-off; routine repeat runs publish on charter ACCEPT alone.
+1. An analyst writes the report.
+2. A skeptic attacks the substance and reproduces each number with the engine. Repeat
+   until the skeptic accepts.
+3. A reviewer grades the content and the format. Repeat until it passes.
+4. An auditor traces each claim to a source and calculates each number again.
 
-## Quick commands
+The agent definitions for these roles are in a private framework. Each person installs
+them locally; they are not in this repo. If they are not installed, do the four steps
+manually. Luc approves each report for a new ticker (`PLANNING/reusable-dcf-vision.md`,
+L5).
+
+A first pass (for example `analysis/JNJ/FIRST-PASS.md`) did not go through these steps.
+Do not use a first pass alone for a trade.
+
+## Commands
 
 ```bash
-python -m pytest                          # 302 tests, no network (~12s)
-python -m scripts.analyze IBM             # full import → 9-tab xlsx
-python -m scripts.visualize_dcf IBM       # single-page HTML report
-python -m scripts.backtest IBM            # point-in-time vintage backtest
-python -m analysis.IBM.dcf_drivers_run    # v4 headline numbers (seed 7)
+pip install -r requirements.txt -r requirements-dev.txt
+python -m pytest                              # 331 tests, no network
+python -m scripts.analyze IBM                 # import + market data -> xlsx
+python -m scripts.verdict IBM --price 228.53  # value range against a price
+python -m scripts.trade_backtest              # option bots, leaderboard
 ```
 
-Full verified CLI list: README.md; per-module detail: docs/ARCHITECTURE.md.
+All commands: `README.md`.
