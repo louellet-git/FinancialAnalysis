@@ -19,7 +19,8 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest                       # 360 tests, no network
+python -m pytest                       # 409 tests, no network
+cargo test --manifest-path rust/mapcheck/Cargo.toml   # 41 Rust tests
 ```
 
 Run all commands from the repo root.
@@ -72,6 +73,8 @@ python -m scripts.backtest IBM [--horizon 3] [--simulations 10000] [--seed 7]
 python -m scripts.visualize_dcf IBM [--price 195.40] [--out report.html]
 python -m scripts.verdict IBM --price 228.53 [--simulations 10000] [--seed 7] [--rf-date today] [--rf-base-date 2026-07-16] [--json]
 python -m financial_analysis.rates [snapshot|yield|curve|history|nyfed|inflation|fred|check] [--json]
+python -m scripts.mapping_audit IBM JNJ    # each input value with its source
+python -m scripts.mapping_audit --panel    # mapping summary for 32 tickers
 python -m analysis.IBM.dcf_drivers_run     # IBM version 4 headline numbers (seed 7)
 python -m analysis.IBM.dcf_scenarios       # IBM version 3 (historical)
 python -m analysis.JNJ.first_pass_run      # JNJ first pass
@@ -83,6 +86,59 @@ debt. Do not compare this number with a share price.
 Remote data has a disk cache in `data/raw/TICKER/`. Option chains and consensus
 estimates are saved as dated snapshots, because yfinance gives only current data. A run
 on the same day reads the disk; `--refresh` gets new data.
+
+## Standard input variables
+
+Companies use different XBRL tag names for the same line. For example, interest expense
+is `InterestExpense` for IBM, `InterestExpenseNonoperating` for Microsoft and
+`InterestExpenseDebt` for Chevron. The registry `financial_analysis/xbrl_tags.py` gives
+each line one standard variable name (131 variables). The models read only these names.
+The registry data is in `financial_analysis/standard_variables.toml`; Python and Rust
+read this one file.
+
+- Each variable has a list of tags with the same meaning. The first tag that has a
+  value is used.
+- If no tag has a value, a formula over other variables is used (for example
+  `total_debt = debt_current + long_term_debt`).
+- Each value has a recorded source: the tag, or the formula. The xlsx file shows it in
+  the `source` column. `python -m scripts.mapping_audit TICKER` prints it.
+- An annual row is always a full fiscal year. A quarterly row is always one quarter.
+- Tags with no standard variable stay in the `Raw` tab.
+
+Before you use a variable in a model, run the audit for the ticker and read the source
+of the value. The audit also shows where the data does not agree. Total debt is the
+most frequent problem: on the 32-ticker panel the two estimates of total debt disagree
+for 5 companies, because companies tag debt in ways that overlap.
+
+Limits: the SEC data source has no segment data and no company-specific tags. Banks,
+insurers and REITs have a different statement structure; the audit marks them.
+
+### Test of the mapping on many tickers (Rust)
+
+`rust/mapcheck` is a Rust program that maps and checks many companies in parallel:
+472 companies in 2.8 seconds. It answers four questions for each company: can the DCF
+use the inputs, was a value lost, was a value counted two times, and do the statements
+agree. A second command compares the Rust result with the Python result.
+
+```bash
+cargo build --release --manifest-path rust/mapcheck/Cargo.toml
+python -m scripts.fetch_facts --tickers-file rust/mapcheck/universe/batch50.txt   # get the data
+rust/mapcheck/target/release/mapcheck --tickers-file rust/mapcheck/universe/top500.txt
+rust/mapcheck/target/release/mapcheck IBM --detail
+python -m scripts.mapping_parity --sample 120                                     # Rust against Python
+```
+
+Result on 2026-11-19, 472 of the 500 largest SEC registrants: 312 are US companies
+with a standard statement structure. Of these, 48 pass, 240 have a warning that a
+person must examine, and 24 fail (15 of these have no standard tag for capital
+expenditure). Read `rust/mapcheck/README.md` for the checks and the results.
+
+Two results that you must know before you add variables in a model:
+
+- For 166 of the 312 companies, a variable is a detail inside a different line (for
+  example income taxes payable inside accrued liabilities). If you add the two, you
+  count the amount two times. `mapcheck TICKER --detail` shows these as `nested`.
+- For 47 of the 312 companies, the estimates of total debt disagree.
 
 ## Interest rates and inflation
 
@@ -181,10 +237,10 @@ option-chain metrics for a ticker (implied move, skew, put/call ratios, in the x
 
 | Tab | Contents |
 |-----|----------|
-| Income Statement | Approximately 25 metrics for each period |
-| Balance Sheet | Approximately 24 metrics, and RPO rows (`statement=disclosure`) |
+| Income Statement | The income-statement standard variables for each period, with the source of each value |
+| Balance Sheet | The balance-sheet standard variables, and RPO rows (`statement=disclosure`) |
 | Cash Flow | Operating cash flow, capex, free cash flow, buybacks, dividends, debt flows |
-| Raw | All us-gaap USD concepts that have no mapping |
+| Raw | All us-gaap USD tags that have no standard variable |
 | Prices | Daily prices from yfinance (full history) |
 | Estimates | Past earnings surprises (yfinance), and FMP estimates if available |
 | Estimates Fwd | Dated snapshot of consensus revenue/EPS estimates and analyst price targets |
@@ -217,6 +273,7 @@ CLAUDE.md                 rules for agents (read first)
 README.md                 this file
 requirements.txt          runtime packages
 requirements-dev.txt      pytest
+rust/mapcheck/            Rust test framework for the mapping (cargo)
 .env.example              names of the optional API keys
 .github/workflows/        CI: runs pytest and the Rust tests on each pull request
 
@@ -226,7 +283,7 @@ analysis/JNJ/             JNJ first pass (not reviewed)
 trading/                  option strategy backtester, paper trader, 22 bots, research notes
 scripts/                  command-line entry points
 rust/                     Rust interface: library and `fa` command (calls the Python code)
-tests/                    360 tests
+tests/                    409 tests
 
 docs/                     ARCHITECTURE.md, HIDDEN-ASSUMPTIONS.md, INDEX.md, design documents
 PLANNING/board/           open work, one file for each ticket

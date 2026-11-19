@@ -74,22 +74,22 @@ def test_ibm_capital_override():
     assert cap.shares == 948_675_228
 
 
-def test_net_debt_derived_with_short_term_borrowings():
-    company = _make_company(raw_extras={"us-gaap/ShortTermBorrowings": 1e9})
+def test_net_debt_uses_the_standard_total_debt():
+    company = _make_company()
+    company.periods[-1].total_debt = 11e9  # the importer value wins over the parts
     cap = capital_structure_for(company)
-    assert cap.net_debt == pytest.approx(10e9 + 1e9 - 2e9)
+    assert cap.net_debt == pytest.approx(11e9 - 2e9)
     assert cap.shares == 1e9
 
 
-def test_net_debt_falls_back_to_current_lt_debt_key():
-    company = _make_company(
-        raw_extras={"us-gaap/LongTermDebtAndCapitalLeaseObligationsCurrent": 0.5e9}
-    )
+def test_net_debt_adds_current_debt_when_total_debt_is_absent():
+    company = _make_company()
+    company.periods[-1].debt_current = 0.5e9
     cap = capital_structure_for(company)
     assert cap.net_debt == pytest.approx(10e9 + 0.5e9 - 2e9)
 
 
-def test_net_debt_without_short_term_key_treats_it_as_zero():
+def test_net_debt_without_current_debt_treats_it_as_zero():
     cap = capital_structure_for(_make_company())
     assert cap.net_debt == pytest.approx(10e9 - 2e9)
 

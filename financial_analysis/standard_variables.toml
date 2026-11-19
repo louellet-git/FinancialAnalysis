@@ -1,0 +1,1376 @@
+# Registry of standard variables: the one mapping from XBRL tags to model inputs.
+# Python (financial_analysis/xbrl_tags.py) and Rust (rust/mapcheck) read this file.
+# The sequence of the [[variable]] entries is the sequence of the schema fields.
+#
+# [[variable]]
+#   name       standard variable name (a field of PeriodFinancials)
+#   statement  income_statement | balance_sheet | cash_flow | disclosure
+#              (income_statement and cash_flow values are flows over the period;
+#              balance_sheet and disclosure values are balances on the end date)
+#   tags       XBRL tags with the SAME scope as the variable, in a fixed sequence.
+#              For each period the first tag that has a fact gives the value. A tag
+#              with a different scope (a part, or a larger total) gets its own
+#              variable. One tag is in one variable only.
+#   formulas   used only when no tag has a fact. Variables with + and -. A term that
+#              ends with ? is optional (a missing value counts as zero, but one term
+#              must have a value). Formulas are tried in sequence. In a sum, two
+#              terms with the same value count one time (one item with two tags).
+#   unit       USD (default) | USD/shares | shares
+#   sign_flip  true: the value is stored as a negative number (a cash outflow)
+#   negate     true: the sign of the tag value is changed (for a tag that is positive
+#              for a payment, but can be a payment or a receipt)
+#   core       true: a core DCF input
+#   memo       true: an "of which" number (a note detail, a part of one line, or a
+#              per-share number). The amount is already inside a line variable of
+#              its statement. Never add a memo variable to line variables: this
+#              counts the amount two times. A formula must not mix memo and line
+#              variables (a one-term fallback is permitted), and a rollup has no
+#              memo variable.
+#   note       scope and precedence
+#
+# [[rollup]]   a total and the line variables that are its parts. The test framework
+#              compares the sum of the parts with the total: parts larger than the
+#              total show an overlap (a double count if you add them); a large
+#              remainder shows lines with no variable. "combined" maps a one-line
+#              variable to the parts it replaces when the filer shows one line.
+#              Read the comment at the ROLLUPS section.
+#
+# [[within]]   a variable that must not be larger than a total.
+#
+# [[excluded]] material tags that have no variable on purpose, with the reason.
+
+version = 1
+
+# A period (fiscal year or quarter) exists only if one of these tags has a fact of
+# the correct length for it.
+anchors = [
+    "us-gaap/Revenues",
+    "us-gaap/RevenueFromContractWithCustomerExcludingAssessedTax",
+    "us-gaap/RevenueFromContractWithCustomerIncludingAssessedTax",
+    "us-gaap/SalesRevenueNet",
+    "us-gaap/NetIncomeLoss",
+    "us-gaap/ProfitLoss",
+    "us-gaap/NetCashProvidedByUsedInOperatingActivities",
+    "us-gaap/IncomeTaxExpenseBenefit",
+    "us-gaap/RegulatedAndUnregulatedOperatingRevenue",
+    "us-gaap/RevenuesNetOfInterestExpense",
+]
+
+# ============================================================================
+# INCOME STATEMENT
+# ============================================================================
+
+[[variable]]
+name = "revenue"
+statement = "income_statement"
+core = true
+note = "Top line of the income statement. Revenues is the total; the contract-revenue tags are used when the filer has no Revenues tag for the period."
+tags = [
+    "us-gaap/Revenues",
+    "us-gaap/RevenueFromContractWithCustomerExcludingAssessedTax",
+    "us-gaap/RevenueFromContractWithCustomerIncludingAssessedTax",
+    "us-gaap/SalesRevenueNet",
+    "us-gaap/RegulatedAndUnregulatedOperatingRevenue",
+    "us-gaap/RevenuesNetOfInterestExpense",
+]
+
+[[variable]]
+name = "cogs_total"
+statement = "income_statement"
+tags = [
+    "us-gaap/CostOfRevenue",
+    "us-gaap/CostOfGoodsAndServicesSold",
+    "us-gaap/CostOfGoodsSold",
+]
+
+[[variable]]
+name = "gross_profit"
+statement = "income_statement"
+tags = [
+    "us-gaap/GrossProfit",
+]
+formulas = ["revenue - cogs_total"]
+
+[[variable]]
+name = "rd_expense"
+statement = "income_statement"
+tags = [
+    "us-gaap/ResearchAndDevelopmentExpense",
+    "us-gaap/ResearchAndDevelopmentExpenseExcludingAcquiredInProcessCost",
+    "us-gaap/ResearchAndDevelopmentExpenseSoftwareExcludingAcquiredInProcessCost",
+]
+
+[[variable]]
+name = "sm_expense"
+statement = "income_statement"
+tags = [
+    "us-gaap/SellingAndMarketingExpense",
+    "us-gaap/SellingExpense",
+]
+
+[[variable]]
+name = "ga_expense"
+statement = "income_statement"
+tags = [
+    "us-gaap/GeneralAndAdministrativeExpense",
+]
+
+[[variable]]
+name = "sga_expense"
+statement = "income_statement"
+tags = [
+    "us-gaap/SellingGeneralAndAdministrativeExpense",
+]
+formulas = ["sm_expense + ga_expense"]
+
+[[variable]]
+name = "advertising_expense"
+statement = "income_statement"
+memo = true
+note = "A part of selling expense that many filers give in the notes."
+tags = [
+    "us-gaap/AdvertisingExpense",
+    "us-gaap/MarketingAndAdvertisingExpense",
+]
+
+[[variable]]
+name = "opex_amortization"
+statement = "income_statement"
+memo = true
+tags = [
+    "us-gaap/AmortizationOfIntangibleAssets",
+]
+
+[[variable]]
+name = "opex_restructuring"
+statement = "income_statement"
+tags = [
+    "us-gaap/RestructuringCharges",
+    "us-gaap/RestructuringCostsAndAssetImpairmentCharges",
+]
+
+[[variable]]
+name = "goodwill_impairment"
+statement = "income_statement"
+memo = true
+tags = [
+    "us-gaap/GoodwillImpairmentLoss",
+]
+
+[[variable]]
+name = "asset_impairment"
+statement = "income_statement"
+memo = true
+tags = [
+    "us-gaap/AssetImpairmentCharges",
+]
+
+[[variable]]
+name = "operating_expenses_total"
+statement = "income_statement"
+note = "Operating expenses below gross profit (cost of revenue is not included)."
+tags = [
+    "us-gaap/OperatingExpenses",
+]
+
+[[variable]]
+name = "costs_and_expenses_total"
+statement = "income_statement"
+note = "All costs and expenses. For some filers this includes interest and other non-operating items, thus no formula uses it."
+tags = [
+    "us-gaap/CostsAndExpenses",
+]
+
+[[variable]]
+name = "operating_income"
+statement = "income_statement"
+tags = [
+    "us-gaap/OperatingIncomeLoss",
+]
+formulas = ["gross_profit - operating_expenses_total"]
+
+[[variable]]
+name = "interest_income"
+statement = "income_statement"
+note = "Precedence: InterestIncomeNonoperating (the most specific \"interest earned, non-operating\" concept) > InvestmentIncomeInterest (interest on investments; common for cash-rich tech filers) > InvestmentIncomeInterestAndDividend > InterestIncomeOther (catch-all \"other interest income\"; IBM reports ONLY this one). Specific-before-generic so a filer tagging both never gets the catch-all."
+tags = [
+    "us-gaap/InterestIncomeNonoperating",
+    "us-gaap/InvestmentIncomeInterest",
+    "us-gaap/InvestmentIncomeInterestAndDividend",
+    "us-gaap/InterestIncomeOther",
+]
+
+[[variable]]
+name = "interest_expense"
+statement = "income_statement"
+core = true
+note = "Interest cost on debt. InterestExpenseOperating (banks, REITs) is not in the list: for a bank it is a cost of the business, not a financing cost. Fallback: cash interest paid, for a filer that has no standard interest-expense tag (it uses a company-specific tag). This is an approximate value; the source shows \"= interest_paid\"."
+tags = [
+    "us-gaap/InterestExpense",
+    "us-gaap/InterestExpenseNonoperating",
+    "us-gaap/InterestExpenseDebt",
+    "us-gaap/InterestAndDebtExpense",
+]
+formulas = ["interest_paid"]
+
+[[variable]]
+name = "interest_net_nonoperating"
+statement = "income_statement"
+note = "Interest income less interest expense. Some filers give only this net number."
+tags = [
+    "us-gaap/InterestIncomeExpenseNonoperatingNet",
+    "us-gaap/InterestIncomeExpenseNet",
+]
+formulas = ["interest_income - interest_expense"]
+
+[[variable]]
+name = "gains_losses_on_investments"
+statement = "income_statement"
+tags = [
+    "us-gaap/GainLossOnInvestments",
+]
+
+[[variable]]
+name = "other_nonop_income"
+statement = "income_statement"
+tags = [
+    "us-gaap/OtherNonoperatingIncomeExpense",
+]
+
+[[variable]]
+name = "nonoperating_income_total"
+statement = "income_statement"
+tags = [
+    "us-gaap/NonoperatingIncomeExpense",
+]
+
+[[variable]]
+name = "equity_method_income"
+statement = "income_statement"
+tags = [
+    "us-gaap/IncomeLossFromEquityMethodInvestments",
+]
+
+[[variable]]
+name = "income_before_tax"
+statement = "income_statement"
+core = true
+tags = [
+    "us-gaap/IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest",
+    "us-gaap/IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments",
+]
+formulas = ["income_before_tax_domestic + income_before_tax_foreign"]
+
+[[variable]]
+name = "income_before_tax_domestic"
+statement = "income_statement"
+memo = true
+note = "Split of pre-tax income from the tax note."
+tags = [
+    "us-gaap/IncomeLossFromContinuingOperationsBeforeIncomeTaxesDomestic",
+]
+
+[[variable]]
+name = "income_before_tax_foreign"
+statement = "income_statement"
+memo = true
+tags = [
+    "us-gaap/IncomeLossFromContinuingOperationsBeforeIncomeTaxesForeign",
+]
+
+[[variable]]
+name = "income_tax_expense"
+statement = "income_statement"
+core = true
+tags = [
+    "us-gaap/IncomeTaxExpenseBenefit",
+]
+
+[[variable]]
+name = "net_income"
+statement = "income_statement"
+core = true
+note = "Net income that belongs to the shareholders of the parent company."
+tags = [
+    "us-gaap/NetIncomeLoss",
+]
+formulas = ["net_income_incl_nci - net_income_noncontrolling", "net_income_incl_nci", "net_income_to_common"]
+
+[[variable]]
+name = "net_income_incl_nci"
+statement = "income_statement"
+tags = [
+    "us-gaap/ProfitLoss",
+]
+
+[[variable]]
+name = "net_income_noncontrolling"
+statement = "income_statement"
+tags = [
+    "us-gaap/NetIncomeLossAttributableToNoncontrollingInterest",
+]
+
+[[variable]]
+name = "net_income_to_common"
+statement = "income_statement"
+note = "Net income less preferred dividends. A fallback for net_income when the filer has no other net-income tag."
+tags = [
+    "us-gaap/NetIncomeLossAvailableToCommonStockholdersBasic",
+    "us-gaap/NetIncomeLossAvailableToCommonStockholdersDiluted",
+]
+
+[[variable]]
+name = "discontinued_operations_income"
+statement = "income_statement"
+tags = [
+    "us-gaap/IncomeLossFromDiscontinuedOperationsNetOfTax",
+    "us-gaap/IncomeLossFromDiscontinuedOperationsNetOfTaxAttributableToReportingEntity",
+]
+
+[[variable]]
+name = "depreciation"
+statement = "income_statement"
+memo = true
+tags = [
+    "us-gaap/Depreciation",
+]
+
+[[variable]]
+name = "da_total"
+statement = "income_statement"
+core = true
+memo = true
+tags = [
+    "us-gaap/DepreciationDepletionAndAmortization",
+    "us-gaap/DepreciationAndAmortization",
+    "us-gaap/DepreciationAmortizationAndAccretionNet",
+]
+formulas = ["depreciation + opex_amortization?"]
+
+[[variable]]
+name = "sbc_total"
+statement = "income_statement"
+core = true
+memo = true
+tags = [
+    "us-gaap/ShareBasedCompensation",
+    "us-gaap/AllocatedShareBasedCompensationExpense",
+]
+
+[[variable]]
+name = "eps_basic"
+statement = "income_statement"
+unit = "USD/shares"
+memo = true
+tags = [
+    "us-gaap/EarningsPerShareBasic",
+]
+
+[[variable]]
+name = "eps_diluted"
+statement = "income_statement"
+unit = "USD/shares"
+memo = true
+tags = [
+    "us-gaap/EarningsPerShareDiluted",
+]
+
+[[variable]]
+name = "shares_basic"
+statement = "income_statement"
+unit = "shares"
+memo = true
+tags = [
+    "us-gaap/WeightedAverageNumberOfSharesOutstandingBasic",
+    "us-gaap/WeightedAverageLimitedPartnershipUnitsOutstanding",
+]
+
+[[variable]]
+name = "shares_diluted"
+statement = "income_statement"
+unit = "shares"
+core = true
+memo = true
+tags = [
+    "us-gaap/WeightedAverageNumberOfDilutedSharesOutstanding",
+    "us-gaap/WeightedAverageLimitedPartnershipUnitsOutstandingDiluted",
+]
+
+# ============================================================================
+# BALANCE SHEET
+# ============================================================================
+
+[[variable]]
+name = "cash_and_equivalents"
+statement = "balance_sheet"
+core = true
+note = "The second tag includes restricted cash; it is used only when the filer has no cash-and-equivalents tag."
+tags = [
+    "us-gaap/CashAndCashEquivalentsAtCarryingValue",
+    "us-gaap/CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+    "us-gaap/CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsIncludingDisposalGroupAndDiscontinuedOperations",
+    "us-gaap/Cash",
+]
+
+[[variable]]
+name = "short_term_investments"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/ShortTermInvestments",
+    "us-gaap/MarketableSecuritiesCurrent",
+    "us-gaap/AvailableForSaleSecuritiesDebtSecuritiesCurrent",
+    "us-gaap/AvailableForSaleSecuritiesCurrent",
+]
+formulas = ["cash_and_short_term_investments - cash_and_equivalents"]
+
+[[variable]]
+name = "cash_and_short_term_investments"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/CashCashEquivalentsAndShortTermInvestments",
+]
+formulas = ["cash_and_equivalents + short_term_investments"]
+
+[[variable]]
+name = "long_term_investments"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/LongTermInvestments",
+    "us-gaap/MarketableSecuritiesNoncurrent",
+    "us-gaap/AvailableForSaleSecuritiesDebtSecuritiesNoncurrent",
+    "us-gaap/OtherLongTermInvestments",
+]
+
+[[variable]]
+name = "equity_method_investments"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/EquityMethodInvestments",
+]
+
+[[variable]]
+name = "accounts_receivable_net"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/AccountsReceivableNetCurrent",
+    "us-gaap/ReceivablesNetCurrent",
+    "us-gaap/AccountsNotesAndLoansReceivableNetCurrent",
+    "us-gaap/AccountsAndOtherReceivablesNetCurrent",
+]
+
+[[variable]]
+name = "inventory"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/InventoryNet",
+]
+
+[[variable]]
+name = "prepaid_and_other_current_assets"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/PrepaidExpenseAndOtherAssetsCurrent",
+    "us-gaap/OtherAssetsCurrent",
+]
+
+[[variable]]
+name = "prepaid_expenses"
+statement = "balance_sheet"
+note = "Prepaid expenses only. For most filers this is inside prepaid_and_other_current_assets."
+tags = [
+    "us-gaap/PrepaidExpenseCurrent",
+    "us-gaap/OtherPrepaidExpenseCurrent",
+]
+
+[[variable]]
+name = "contract_assets_current"
+statement = "balance_sheet"
+note = "Revenue recognized but not billed (unbilled receivables)."
+tags = [
+    "us-gaap/ContractWithCustomerAssetNetCurrent",
+]
+
+[[variable]]
+name = "other_receivables_current"
+statement = "balance_sheet"
+note = "Receivables that are not trade receivables."
+tags = [
+    "us-gaap/OtherReceivablesNetCurrent",
+    "us-gaap/NotesAndLoansReceivableNetCurrent",
+]
+
+[[variable]]
+name = "total_current_assets"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/AssetsCurrent",
+]
+
+[[variable]]
+name = "ppe_gross"
+statement = "balance_sheet"
+memo = true
+tags = [
+    "us-gaap/PropertyPlantAndEquipmentGross",
+    "us-gaap/PropertyPlantAndEquipmentAndFinanceLeaseRightOfUseAssetBeforeAccumulatedDepreciationAndAmortization",
+]
+
+[[variable]]
+name = "accumulated_depreciation"
+statement = "balance_sheet"
+memo = true
+tags = [
+    "us-gaap/AccumulatedDepreciationDepletionAndAmortizationPropertyPlantAndEquipment",
+    "us-gaap/PropertyPlantAndEquipmentAndFinanceLeaseRightOfUseAssetAccumulatedDepreciationAndAmortization",
+]
+
+[[variable]]
+name = "ppe_net"
+statement = "balance_sheet"
+note = "The second tag includes finance-lease assets (the filer shows one line)."
+tags = [
+    "us-gaap/PropertyPlantAndEquipmentNet",
+    "us-gaap/PropertyPlantAndEquipmentAndFinanceLeaseRightOfUseAssetAfterAccumulatedDepreciationAndAmortization",
+]
+formulas = ["ppe_gross - accumulated_depreciation"]
+
+[[variable]]
+name = "goodwill"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/Goodwill",
+]
+
+[[variable]]
+name = "finite_lived_intangibles_net"
+statement = "balance_sheet"
+memo = true
+tags = [
+    "us-gaap/FiniteLivedIntangibleAssetsNet",
+]
+
+[[variable]]
+name = "indefinite_lived_intangibles"
+statement = "balance_sheet"
+memo = true
+tags = [
+    "us-gaap/IndefiniteLivedIntangibleAssetsExcludingGoodwill",
+]
+
+[[variable]]
+name = "intangibles_net"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/IntangibleAssetsNetExcludingGoodwill",
+]
+formulas = ["finite_lived_intangibles_net + indefinite_lived_intangibles?"]
+
+[[variable]]
+name = "operating_lease_rou_assets"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/OperatingLeaseRightOfUseAsset",
+]
+
+[[variable]]
+name = "deferred_tax_assets"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/DeferredIncomeTaxAssetsNet",
+]
+
+[[variable]]
+name = "other_noncurrent_assets"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/OtherAssetsNoncurrent",
+]
+
+[[variable]]
+name = "total_assets"
+statement = "balance_sheet"
+core = true
+tags = [
+    "us-gaap/Assets",
+]
+
+[[variable]]
+name = "accounts_payable"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/AccountsPayableCurrent",
+    "us-gaap/AccountsPayableTradeCurrent",
+]
+
+[[variable]]
+name = "accounts_payable_and_accrued"
+statement = "balance_sheet"
+note = "Some filers show payables and accrued liabilities as one line."
+tags = [
+    "us-gaap/AccountsPayableAndAccruedLiabilitiesCurrent",
+]
+formulas = ["accounts_payable + accrued_liabilities"]
+
+[[variable]]
+name = "accrued_compensation"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/EmployeeRelatedLiabilitiesCurrent",
+]
+
+[[variable]]
+name = "accrued_liabilities"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/AccruedLiabilitiesCurrent",
+]
+
+[[variable]]
+name = "income_taxes_payable"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/AccruedIncomeTaxesCurrent",
+    "us-gaap/TaxesPayableCurrent",
+]
+
+[[variable]]
+name = "deferred_revenue_current"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/DeferredRevenueCurrent",
+    "us-gaap/ContractWithCustomerLiabilityCurrent",
+]
+
+[[variable]]
+name = "other_current_liabilities"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/OtherLiabilitiesCurrent",
+]
+
+[[variable]]
+name = "other_accrued_liabilities"
+statement = "balance_sheet"
+note = "The 'other' line of the accrued-liabilities note. For most filers this is inside accrued_liabilities or other_current_liabilities."
+tags = [
+    "us-gaap/OtherAccruedLiabilitiesCurrent",
+    "us-gaap/OtherSundryLiabilitiesCurrent",
+]
+
+[[variable]]
+name = "dividends_payable"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/DividendsPayableCurrent",
+]
+
+[[variable]]
+name = "interest_payable"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/InterestPayableCurrent",
+]
+
+[[variable]]
+name = "total_current_liabilities"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/LiabilitiesCurrent",
+]
+
+[[variable]]
+name = "short_term_borrowings"
+statement = "balance_sheet"
+note = "Borrowings with an original term of one year or less."
+tags = [
+    "us-gaap/ShortTermBorrowings",
+    "us-gaap/CommercialPaper",
+]
+
+[[variable]]
+name = "long_term_debt_current"
+statement = "balance_sheet"
+note = "The part of long-term debt that is due in one year."
+tags = [
+    "us-gaap/LongTermDebtCurrent",
+    "us-gaap/LongTermDebtAndCapitalLeaseObligationsCurrent",
+    "us-gaap/ConvertibleDebtCurrent",
+    "us-gaap/ConvertibleNotesPayableCurrent",
+]
+formulas = ["long_term_debt_total - long_term_debt"]
+
+[[variable]]
+name = "debt_current"
+statement = "balance_sheet"
+note = "All debt in current liabilities."
+tags = [
+    "us-gaap/DebtCurrent",
+]
+formulas = ["short_term_borrowings? + long_term_debt_current?"]
+
+[[variable]]
+name = "long_term_debt"
+statement = "balance_sheet"
+note = "Long-term debt in non-current liabilities (the part due in one year is not included). For some filers the \"AndCapitalLeaseObligations\" tags include finance leases; the audit identity for long-term debt shows the difference. The convertible-debt tags are for filers whose only debt is convertible."
+tags = [
+    "us-gaap/LongTermDebtNoncurrent",
+    "us-gaap/LongTermDebtAndCapitalLeaseObligations",
+    "us-gaap/LongTermNotesPayable",
+    "us-gaap/ConvertibleDebtNoncurrent",
+    "us-gaap/ConvertibleLongTermNotesPayable",
+]
+formulas = ["long_term_debt_total - long_term_debt_current"]
+
+[[variable]]
+name = "long_term_debt_total"
+statement = "balance_sheet"
+note = "Long-term debt, current part included."
+tags = [
+    "us-gaap/LongTermDebt",
+    "us-gaap/LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities",
+]
+formulas = ["long_term_debt + long_term_debt_current"]
+
+[[variable]]
+name = "total_debt"
+statement = "balance_sheet"
+core = true
+note = "All interest-bearing debt. Operating leases are not included. Filers tag debt in different ways and the tags can overlap, thus this value is a first estimate. The audit compares the two formulas; when they disagree, examine the debt note of the filing and put a reviewed value in scenarios.CAPITAL_OVERRIDES."
+tags = [
+    "us-gaap/DebtLongtermAndShorttermCombinedAmount",
+    "us-gaap/DebtAndCapitalLeaseObligations",
+]
+formulas = ["debt_current? + long_term_debt", "short_term_borrowings? + long_term_debt_total"]
+
+[[variable]]
+name = "finance_lease_liabilities"
+statement = "balance_sheet"
+memo = true
+tags = [
+    "us-gaap/FinanceLeaseLiability",
+]
+formulas = ["finance_lease_liabilities_current? + finance_lease_liabilities_noncurrent"]
+
+[[variable]]
+name = "finance_lease_liabilities_current"
+statement = "balance_sheet"
+memo = true
+tags = [
+    "us-gaap/FinanceLeaseLiabilityCurrent",
+]
+
+[[variable]]
+name = "finance_lease_liabilities_noncurrent"
+statement = "balance_sheet"
+memo = true
+tags = [
+    "us-gaap/FinanceLeaseLiabilityNoncurrent",
+]
+
+[[variable]]
+name = "operating_lease_liabilities_current"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/OperatingLeaseLiabilityCurrent",
+]
+
+[[variable]]
+name = "operating_lease_liabilities_noncurrent"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/OperatingLeaseLiabilityNoncurrent",
+]
+
+[[variable]]
+name = "operating_lease_liabilities"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/OperatingLeaseLiability",
+]
+formulas = ["operating_lease_liabilities_current? + operating_lease_liabilities_noncurrent"]
+
+[[variable]]
+name = "deferred_revenue_noncurrent"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/DeferredRevenueNoncurrent",
+    "us-gaap/ContractWithCustomerLiabilityNoncurrent",
+]
+
+[[variable]]
+name = "pension_liabilities_noncurrent"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/PensionAndOtherPostretirementDefinedBenefitPlansLiabilitiesNoncurrent",
+    "us-gaap/PensionAndOtherPostretirementAndPostemploymentBenefitPlansLiabilitiesNoncurrent",
+    "us-gaap/DefinedBenefitPensionPlanLiabilitiesNoncurrent",
+]
+
+[[variable]]
+name = "income_taxes_payable_noncurrent"
+statement = "balance_sheet"
+note = "Long-term income taxes payable, uncertain tax positions included."
+tags = [
+    "us-gaap/AccruedIncomeTaxesNoncurrent",
+    "us-gaap/LiabilityForUncertainTaxPositionsNoncurrent",
+]
+
+[[variable]]
+name = "asset_retirement_obligations_noncurrent"
+statement = "balance_sheet"
+note = "Energy, mining and utility companies."
+tags = [
+    "us-gaap/AssetRetirementObligationsNoncurrent",
+]
+
+[[variable]]
+name = "deferred_tax_liabilities"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/DeferredIncomeTaxLiabilitiesNet",
+]
+
+[[variable]]
+name = "other_noncurrent_liabilities"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/OtherLiabilitiesNoncurrent",
+]
+
+[[variable]]
+name = "total_liabilities"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/Liabilities",
+]
+formulas = ["total_liabilities_and_equity - total_equity_incl_nci - temporary_equity?"]
+
+[[variable]]
+name = "temporary_equity"
+statement = "balance_sheet"
+note = "Equity outside permanent equity (for example redeemable noncontrolling interest)."
+tags = [
+    "us-gaap/RedeemableNoncontrollingInterestEquityCarryingAmount",
+    "us-gaap/TemporaryEquityCarryingAmountIncludingPortionAttributableToNoncontrollingInterests",
+    "us-gaap/TemporaryEquityCarryingAmountAttributableToParent",
+]
+
+[[variable]]
+name = "retained_earnings"
+statement = "balance_sheet"
+memo = true
+tags = [
+    "us-gaap/RetainedEarningsAccumulatedDeficit",
+]
+
+[[variable]]
+name = "equity"
+statement = "balance_sheet"
+core = true
+note = "Equity that belongs to the shareholders of the parent company."
+tags = [
+    "us-gaap/StockholdersEquity",
+    "us-gaap/PartnersCapital",
+]
+formulas = ["total_equity_incl_nci - noncontrolling_interest?"]
+
+[[variable]]
+name = "noncontrolling_interest"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/MinorityInterest",
+    "us-gaap/PartnersCapitalAttributableToNoncontrollingInterest",
+]
+
+[[variable]]
+name = "total_equity_incl_nci"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest",
+    "us-gaap/PartnersCapitalIncludingPortionAttributableToNoncontrollingInterest",
+]
+formulas = ["equity + noncontrolling_interest?"]
+
+[[variable]]
+name = "total_liabilities_and_equity"
+statement = "balance_sheet"
+tags = [
+    "us-gaap/LiabilitiesAndStockholdersEquity",
+]
+
+[[variable]]
+name = "shares_outstanding"
+statement = "balance_sheet"
+unit = "shares"
+memo = true
+tags = [
+    "us-gaap/CommonStockSharesOutstanding",
+]
+
+# ============================================================================
+# CASH FLOW
+# ============================================================================
+
+[[variable]]
+name = "operating_cash_flow"
+statement = "cash_flow"
+core = true
+tags = [
+    "us-gaap/NetCashProvidedByUsedInOperatingActivities",
+    "us-gaap/NetCashProvidedByUsedInOperatingActivitiesContinuingOperations",
+]
+
+[[variable]]
+name = "change_receivables"
+statement = "cash_flow"
+memo = true
+note = "Changes in working capital, as the filer reports them: a positive number is an increase of the balance (for an asset, this uses cash)."
+tags = [
+    "us-gaap/IncreaseDecreaseInAccountsReceivable",
+]
+
+[[variable]]
+name = "change_inventories"
+statement = "cash_flow"
+memo = true
+tags = [
+    "us-gaap/IncreaseDecreaseInInventories",
+]
+
+[[variable]]
+name = "change_payables"
+statement = "cash_flow"
+memo = true
+tags = [
+    "us-gaap/IncreaseDecreaseInAccountsPayable",
+    "us-gaap/IncreaseDecreaseInAccountsPayableAndAccruedLiabilities",
+]
+
+[[variable]]
+name = "change_deferred_revenue"
+statement = "cash_flow"
+memo = true
+tags = [
+    "us-gaap/IncreaseDecreaseInContractWithCustomerLiability",
+    "us-gaap/IncreaseDecreaseInDeferredRevenue",
+]
+
+[[variable]]
+name = "deferred_income_tax"
+statement = "cash_flow"
+memo = true
+tags = [
+    "us-gaap/DeferredIncomeTaxExpenseBenefit",
+]
+
+[[variable]]
+name = "capex"
+statement = "cash_flow"
+sign_flip = true
+core = true
+tags = [
+    "us-gaap/PaymentsToAcquireProductiveAssets",
+    "us-gaap/PaymentsToAcquirePropertyPlantAndEquipment",
+    "us-gaap/PaymentsToAcquireOtherPropertyPlantAndEquipment",
+    "us-gaap/PaymentsToAcquireOilAndGasPropertyAndEquipment",
+    "us-gaap/PaymentsToAcquireOtherProductiveAssets",
+    "us-gaap/PaymentsForCapitalImprovements",
+    "us-gaap/PaymentsForProceedsFromProductiveAssets",
+]
+
+[[variable]]
+name = "capitalized_software"
+statement = "cash_flow"
+sign_flip = true
+tags = [
+    "us-gaap/PaymentsToDevelopSoftware",
+    "us-gaap/PaymentsForSoftware",
+]
+
+[[variable]]
+name = "purchases_of_intangibles"
+statement = "cash_flow"
+sign_flip = true
+tags = [
+    "us-gaap/PaymentsToAcquireIntangibleAssets",
+]
+
+[[variable]]
+name = "purchases_investments"
+statement = "cash_flow"
+sign_flip = true
+tags = [
+    "us-gaap/PaymentsToAcquireAvailableForSaleSecuritiesDebt",
+    "us-gaap/PaymentsToAcquireInvestments",
+    "us-gaap/PaymentsToAcquireMarketableSecurities",
+    "us-gaap/PaymentsToAcquireShortTermInvestments",
+]
+
+[[variable]]
+name = "proceeds_investments"
+statement = "cash_flow"
+tags = [
+    "us-gaap/ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities",
+    "us-gaap/ProceedsFromSaleMaturityAndCollectionsOfInvestments",
+    "us-gaap/ProceedsFromSaleAndMaturityOfMarketableSecurities",
+]
+
+[[variable]]
+name = "acquisitions_net_of_cash"
+statement = "cash_flow"
+sign_flip = true
+tags = [
+    "us-gaap/PaymentsToAcquireBusinessesNetOfCashAcquired",
+]
+
+[[variable]]
+name = "proceeds_divestitures"
+statement = "cash_flow"
+tags = [
+    "us-gaap/ProceedsFromDivestitureOfBusinesses",
+    "us-gaap/ProceedsFromDivestitureOfBusinessesNetOfCashDivested",
+]
+
+[[variable]]
+name = "proceeds_sale_ppe"
+statement = "cash_flow"
+tags = [
+    "us-gaap/ProceedsFromSaleOfPropertyPlantAndEquipment",
+    "us-gaap/ProceedsFromSaleOfProductiveAssets",
+]
+
+[[variable]]
+name = "other_investing"
+statement = "cash_flow"
+negate = true
+note = "Other investing cash flows, net. The tag is positive for a payment; the value is stored as a cash flow (negative = cash out)."
+tags = [
+    "us-gaap/PaymentsForProceedsFromOtherInvestingActivities",
+]
+
+[[variable]]
+name = "net_cash_from_investing"
+statement = "cash_flow"
+tags = [
+    "us-gaap/NetCashProvidedByUsedInInvestingActivities",
+]
+
+[[variable]]
+name = "repurchases_common_stock"
+statement = "cash_flow"
+sign_flip = true
+tags = [
+    "us-gaap/PaymentsForRepurchaseOfCommonStock",
+    "us-gaap/PaymentsForRepurchaseOfEquity",
+]
+
+[[variable]]
+name = "taxes_paid_net_share_settlement"
+statement = "cash_flow"
+sign_flip = true
+tags = [
+    "us-gaap/PaymentsRelatedToTaxWithholdingForShareBasedCompensation",
+]
+
+[[variable]]
+name = "dividends_paid"
+statement = "cash_flow"
+sign_flip = true
+note = "Precedence: PaymentsOfDividends (total cash dividends paid, all classes) > PaymentsOfDividendsCommonStock (common-only cash paid; IBM reports ONLY this one) > DividendsCommonStockCash (dividends DECLARED, an equity charge, not a cash-flow line — last-resort proxy; for steady payers declared ~= paid). First-wins merging means the declared proxy is used only for periods where neither payments concept exists."
+tags = [
+    "us-gaap/PaymentsOfDividends",
+    "us-gaap/PaymentsOfDividendsCommonStock",
+    "us-gaap/DividendsCommonStockCash",
+    "us-gaap/PaymentsOfOrdinaryDividends",
+]
+
+[[variable]]
+name = "proceeds_issuance_debt"
+statement = "cash_flow"
+tags = [
+    "us-gaap/ProceedsFromIssuanceOfLongTermDebt",
+    "us-gaap/ProceedsFromIssuanceOfDebt",
+    "us-gaap/ProceedsFromIssuanceOfLongTermDebtAndCapitalSecuritiesNet",
+    "us-gaap/ProceedsFromIssuanceOfSeniorLongTermDebt",
+]
+
+[[variable]]
+name = "repayment_of_debt"
+statement = "cash_flow"
+sign_flip = true
+tags = [
+    "us-gaap/RepaymentsOfLongTermDebt",
+    "us-gaap/RepaymentsOfDebt",
+    "us-gaap/RepaymentsOfLongTermDebtAndCapitalSecurities",
+    "us-gaap/RepaymentsOfDebtAndCapitalLeaseObligations",
+]
+
+[[variable]]
+name = "proceeds_short_term_debt"
+statement = "cash_flow"
+tags = [
+    "us-gaap/ProceedsFromShortTermDebt",
+    "us-gaap/ProceedsFromIssuanceOfCommercialPaper",
+]
+
+[[variable]]
+name = "repayment_short_term_debt"
+statement = "cash_flow"
+sign_flip = true
+tags = [
+    "us-gaap/RepaymentsOfShortTermDebt",
+    "us-gaap/RepaymentsOfCommercialPaper",
+]
+
+[[variable]]
+name = "net_short_term_borrowings"
+statement = "cash_flow"
+note = "Short-term borrowings, net of repayments (positive = cash in). Some filers give only this net number."
+tags = [
+    "us-gaap/ProceedsFromRepaymentsOfShortTermDebt",
+    "us-gaap/ProceedsFromRepaymentsOfShortTermDebtMaturingInThreeMonthsOrLess",
+    "us-gaap/ProceedsFromRepaymentsOfCommercialPaper",
+]
+
+[[variable]]
+name = "proceeds_stock_issuance"
+statement = "cash_flow"
+tags = [
+    "us-gaap/ProceedsFromIssuanceOfCommonStock",
+    "us-gaap/ProceedsFromIssuanceOrSaleOfEquity",
+    "us-gaap/ProceedsFromStockPlans",
+    "us-gaap/ProceedsFromIssuanceOfSharesUnderIncentiveAndShareBasedCompensationPlansIncludingStockOptions",
+    "us-gaap/ProceedsFromStockOptionsExercised",
+]
+
+[[variable]]
+name = "other_financing"
+statement = "cash_flow"
+note = "Other financing cash flows, net (positive = cash in)."
+tags = [
+    "us-gaap/ProceedsFromPaymentsForOtherFinancingActivities",
+]
+
+[[variable]]
+name = "net_cash_from_financing"
+statement = "cash_flow"
+tags = [
+    "us-gaap/NetCashProvidedByUsedInFinancingActivities",
+]
+
+[[variable]]
+name = "interest_paid"
+statement = "cash_flow"
+memo = true
+note = "Cash paid in the period (supplemental cash-flow data). These are not the expense numbers of the income statement."
+tags = [
+    "us-gaap/InterestPaidNet",
+    "us-gaap/InterestPaid",
+]
+
+[[variable]]
+name = "income_taxes_paid"
+statement = "cash_flow"
+memo = true
+tags = [
+    "us-gaap/IncomeTaxesPaidNet",
+    "us-gaap/IncomeTaxesPaid",
+]
+
+[[variable]]
+name = "fx_effect_on_cash"
+statement = "cash_flow"
+note = "Effect of exchange rates on cash, in the cash-flow statement."
+tags = [
+    "us-gaap/EffectOfExchangeRateOnCashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+    "us-gaap/EffectOfExchangeRateOnCashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsIncludingDisposalGroupAndDiscontinuedOperations",
+    "us-gaap/EffectOfExchangeRateOnCashAndCashEquivalents",
+]
+
+[[variable]]
+name = "net_change_in_cash"
+statement = "cash_flow"
+note = "Change of cash in the period, exchange-rate effect included."
+tags = [
+    "us-gaap/CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect",
+    "us-gaap/CashAndCashEquivalentsPeriodIncreaseDecrease",
+    "us-gaap/CashPeriodIncreaseDecrease",
+]
+formulas = ["net_change_in_cash_before_fx + fx_effect_on_cash?"]
+
+[[variable]]
+name = "net_change_in_cash_before_fx"
+statement = "cash_flow"
+note = "Change of cash in the period before the exchange-rate effect."
+tags = [
+    "us-gaap/CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseExcludingExchangeRateEffect",
+    "us-gaap/CashAndCashEquivalentsPeriodIncreaseDecreaseExcludingExchangeRateEffect",
+]
+
+# ============================================================================
+# DISCLOSURE
+# ============================================================================
+
+[[variable]]
+name = "remaining_performance_obligation"
+statement = "disclosure"
+memo = true
+tags = [
+    "us-gaap/RevenueRemainingPerformanceObligation",
+]
+
+# ============================================================================
+# ROLLUPS
+# ============================================================================
+# The SEC companyfacts source does not say which lines are parts of which line.
+# A tag can be a line on the statement for one filer and a detail inside a different
+# line for a second filer (for example income taxes payable inside accrued
+# liabilities). Thus each rollup has two lists:
+#   parts    lines that are usually separate lines on the statement
+#   details  lines that are frequently a detail inside one of the parts
+# The test adds the parts. Then it adds each detail only if the sum stays in the
+# total. A detail that does not fit is "nested" for that filer: do not add it to the
+# other lines of that filer.
+
+[[rollup]]
+name = "current_assets"
+total = "total_current_assets"
+parts = ["cash_and_equivalents", "short_term_investments", "accounts_receivable_net", "inventory"]
+details = ["prepaid_and_other_current_assets", "prepaid_expenses", "contract_assets_current", "other_receivables_current"]
+combined = { cash_and_short_term_investments = ["cash_and_equivalents", "short_term_investments"] }
+
+[[rollup]]
+name = "assets"
+total = "total_assets"
+parts = ["total_current_assets", "ppe_net", "goodwill", "long_term_investments", "other_noncurrent_assets"]
+details = ["intangibles_net", "operating_lease_rou_assets", "deferred_tax_assets", "equity_method_investments"]
+
+[[rollup]]
+name = "current_liabilities"
+total = "total_current_liabilities"
+parts = ["accounts_payable", "accrued_liabilities", "debt_current"]
+details = ["deferred_revenue_current", "other_current_liabilities", "other_accrued_liabilities", "accrued_compensation", "income_taxes_payable", "operating_lease_liabilities_current", "dividends_payable", "interest_payable"]
+combined = { accounts_payable_and_accrued = ["accounts_payable", "accrued_liabilities"] }
+
+[[rollup]]
+name = "liabilities"
+total = "total_liabilities"
+parts = ["total_current_liabilities", "long_term_debt"]
+details = ["other_noncurrent_liabilities", "deferred_revenue_noncurrent", "operating_lease_liabilities_noncurrent", "pension_liabilities_noncurrent", "deferred_tax_liabilities", "income_taxes_payable_noncurrent", "asset_retirement_obligations_noncurrent"]
+
+[[rollup]]
+name = "liabilities_and_equity"
+total = "total_liabilities_and_equity"
+parts = ["total_liabilities", "temporary_equity", "total_equity_incl_nci"]
+exact = true
+
+[[rollup]]
+name = "investing_cash_flow"
+total = "net_cash_from_investing"
+parts = ["capex", "capitalized_software", "purchases_of_intangibles", "purchases_investments", "proceeds_investments", "acquisitions_net_of_cash", "proceeds_divestitures", "proceeds_sale_ppe", "other_investing"]
+signed = true
+
+[[rollup]]
+name = "financing_cash_flow"
+total = "net_cash_from_financing"
+parts = ["repurchases_common_stock", "taxes_paid_net_share_settlement", "dividends_paid", "proceeds_issuance_debt", "repayment_of_debt", "proceeds_short_term_debt", "repayment_short_term_debt", "net_short_term_borrowings", "proceeds_stock_issuance", "other_financing"]
+signed = true
+
+[[rollup]]
+name = "change_in_cash"
+total = "net_change_in_cash"
+parts = ["operating_cash_flow", "net_cash_from_investing", "net_cash_from_financing", "fx_effect_on_cash"]
+signed = true
+exact = true
+
+# A variable that must not be larger than a total. The parts and details of the
+# rollups above are checked against their total automatically; this list adds
+# variables that are not in a rollup.
+
+[[within]]
+part = "total_debt"
+total = "total_liabilities"
+
+[[within]]
+part = "cash_and_short_term_investments"
+total = "total_current_assets"
+
+[[within]]
+part = "accounts_payable_and_accrued"
+total = "total_current_liabilities"
+
+[[within]]
+part = "operating_lease_liabilities"
+total = "total_liabilities"
+
+[[within]]
+part = "finance_lease_liabilities"
+total = "total_liabilities"
+
+# ============================================================================
+# EXCLUDED TAGS
+# ============================================================================
+
+[[excluded]]
+pattern = '^ComprehensiveIncome|^OtherComprehensiveIncome|^AccumulatedOtherComprehensiveIncome'
+reason = "other comprehensive income is not a DCF input"
+
+[[excluded]]
+pattern = '^IncomeTaxReconciliation|^UnrecognizedTaxBenefits|^DeferredTaxAssets|^DeferredTaxLiabilities|^DeferredIncomeTaxLiabilities$|^(Current|Deferred)(Federal|Foreign|StateAndLocal)?(Income)?TaxExpenseBenefit$|^IncomeTaxPaid|^EffectiveIncomeTaxRate|^DeferredFederal|^CurrentFederal|^CurrentForeign|^DeferredForeign'
+reason = "tax note detail; tax expense, tax paid and the net deferred tax lines have variables"
+
+[[excluded]]
+pattern = '^LongTermDebtMaturities|^LesseeOperatingLeaseLiabilityPaymentsDue|^FinanceLeaseLiabilityPaymentsDue|^ContractualObligation|^OperatingLeasesFutureMinimumPayments|^LesseeOperatingLeaseLiabilityUndiscounted|^FinanceLeaseLiabilityUndiscounted|^UnrecordedUnconditionalPurchaseObligation|^PurchaseObligation'
+reason = "maturity schedule in the notes; the balance has a variable"
+
+[[excluded]]
+pattern = 'FairValue|^AssetsFairValueDisclosure|^DerivativeNotional|^Derivative|^AvailableForSale|^DebtSecuritiesAvailableForSale|^EquitySecuritiesFvNi|^HeldToMaturity|^DebtInstrument(CarryingAmount|FaceAmount)'
+reason = "fair-value or instrument note; the balance-sheet line has a variable"
+
+[[excluded]]
+pattern = '^CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents'
+reason = "cash-flow statement cash total; cash_and_equivalents has a variable"
+
+[[excluded]]
+pattern = '^StockIssuedDuringPeriod|^StockRepurchased|^AdjustmentsToAdditionalPaidInCapital|^AdditionalPaidInCapital|^CommonStock|^TreasuryStock|^Dividends|^StockholdersEquityOther|^PreferredStock|^MinorityInterestDecrease'
+reason = "equity statement detail; total equity has a variable"
+
+[[excluded]]
+pattern = '^NetIncomeLossAttributableToParentDiluted|^IncomeLossFromContinuingOperations(IncludingPortionAttributableToNoncontrollingInterest)?$|^NetIncomeLossIncludingPortionAttributableToNonredeemableNoncontrollingInterest$|^UndistributedEarnings|^IncomeLossFromContinuingOperationsPerBasicShare'
+reason = "net income for another group of holders; net_income has a variable"
+
+[[excluded]]
+pattern = '^FiniteLivedIntangibleAssets(Gross|AccumulatedAmortization)|^IntangibleAssetsGrossExcludingGoodwill|^FiniteLivedIntangibleAssetsAmortizationExpense|^Goodwill(AcquiredDuringPeriod|Gross|Impaired|Translation|Other|Foreign|PeriodIncrease|WrittenOff|Purchase)'
+reason = "intangible asset note detail; the net balances have variables"
+
+[[excluded]]
+pattern = '^AllocatedShareBasedCompensationExpenseNetOfTax|^EmployeeServiceShareBasedCompensation|^ShareBasedCompensationArrangement'
+reason = "share-based compensation note; sbc_total has a variable"
+
+[[excluded]]
+pattern = '^DefinedBenefitPlan|^DefinedContributionPlan|^PensionAndOtherPostretirementBenefit'
+reason = "pension note detail"
+
+[[excluded]]
+pattern = '^NoncurrentAssets$|^AssetsNoncurrent$|^LiabilitiesNoncurrent$|^Liabilities(AndStockholdersEquity)?Abstract'
+reason = "subtotal that few filers give"
+
+[[excluded]]
+pattern = '^SupplierFinanceProgram|^ContractWithCustomerLiability(RevenueRecognized)?$|^RevenueRemainingPerformanceObligation|^ContractWithCustomerAsset|^SegmentExpenditure|^SegmentReporting|^Noncash|^CapitalExpendituresIncurredButNotYetPaid|^RightOfUseAssetObtained|^OperatingLeaseCost|^OperatingLeasePayments|^LeaseCost|^OperatingLeaseExpense'
+reason = "note disclosure, not a statement line"
+
+[[excluded]]
+pattern = '^BusinessCombination|^BusinessAcquisition|^DisposalGroup|^AssetsOfDisposalGroup|^LiabilitiesOfDisposalGroup|^AssetsHeldForSale'
+reason = "acquisition or disposal note"
+
+[[excluded]]
+pattern = '^Cash$|^CashEquivalentsAtCarryingValue$|^RestrictedCash'
+reason = "part of cash; cash_and_equivalents has a variable"
+
+[[excluded]]
+pattern = '^InventoryFinishedGoods|^InventoryWorkInProcess|^InventoryRawMaterials|^InventoryGross|^InventoryLIFOReserve|^InventoryValuationReserves'
+reason = "inventory note detail; inventory has a variable"
+
+[[excluded]]
+pattern = '^PropertyPlantAndEquipmentAdditions|^ConstructionInProgressGross|^Land$|^BuildingsAndImprovementsGross|^MachineryAndEquipmentGross|^FurnitureAndFixturesGross|^LeaseholdImprovementsGross|^CapitalizedComputerSoftware'
+reason = "property note detail; ppe_gross and ppe_net have variables"
