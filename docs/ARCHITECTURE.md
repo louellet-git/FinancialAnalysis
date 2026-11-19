@@ -230,7 +230,36 @@ This module is Rust only. It does not call Python. It uses `mapcheck::http::Clie
    download fails and a cache exists, the program uses the old file and prints a warning.
 4. `fa forwards check [--days N]` compares the GSW par yields with the Treasury par
    yields (exit 1 on mismatch). It does not use FRED (hidden assumption 59).
-5. No futures command exists. See hidden assumption 59 and the ticket.
+
+### `rust/src/futures/` (2026-11-19)
+
+This module is Rust only. It does not call Python. It uses `mapcheck::http::Client`, with
+one shared client and 0.5 s between two requests. The User-Agent text is
+`FinancialAnalysis fa (personal research)`.
+
+| File | Function |
+|---|---|
+| `mod.rs` | Output types, the cache (`load`), and the commands `quote`, `history`, `curve` |
+| `facts.rs` | Table of contract facts for each root; reads symbols (`ES`, `ESZ26`) |
+| `yahoo.rs` | Yahoo chart endpoint: CME and CBOT contracts (ES, NQ, ZT, ZF, ZN, TN, ZB, UB, SR3, SR1, ZQ) |
+| `cboe.rs` | Cboe VIX futures: settlement file of a date and history file of a contract |
+| `cftc.rs` | CFTC Commitments of Traders, Traders in Financial Futures |
+| `mpt.rs` | Atlanta Fed Market Probability Tracker; a small zip and xlsx reader |
+| `check.rs` | Cross-checks (exit 1 on mismatch) |
+| `cli.rs` | Arguments of `fa futures ...` |
+
+1. Each value has a date, a source, a URL and a price type. Rates are decimals. Prices
+   stay in the units of the exchange. For SR3, SR1 and ZQ the program adds
+   `implied_rate = (100 - price) / 100`.
+2. The cache is `data/raw/futures/`. A new file goes to the cache only after it parses. A
+   file that holds the day that the caller needs is used at any age; other files are fresh
+   for 1 hour (Yahoo), 6 hours (Cboe, NY Fed) or 12 hours (CFTC, Atlanta Fed). If a
+   download fails and an old file parses, the program uses the old file and prints a warning.
+3. Source choice for each kind of data: VIX futures from Cboe (settlement price, a file of
+   the exchange); CME and CBOT futures from Yahoo (daily close that Yahoo gives, and the last
+   trade); positions from the CFTC; the policy path from the Atlanta Fed. The CME website
+   is not used: it refuses automated access (hidden assumption 76).
+4. Know the limits before you use a value: hidden assumptions 70 to 78.
 
 ### `rust/src/ratemodels/` — stochastic short-rate models (2026-11-19)
 

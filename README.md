@@ -223,6 +223,14 @@ cargo run --bin fa -- verdict IBM --price 231.09 --rf-date today --rating A-
 cargo run --bin fa -- bonds over10y --rating A-
 cargo run --bin fa -- forwards --date 2026-11-13   # GSW zero-coupon yields and forward rates (Rust only)
 cargo run --bin fa -- forwards check               # GSW against Treasury par yields, exit 1 on mismatch
+cargo run --bin fa -- futures roots                 # contract facts of each root
+cargo run --bin fa -- futures quote ESZ26            # last daily value and last trade (Yahoo); VXZ26 uses Cboe
+cargo run --bin fa -- futures history ZQX26 --start 2026-11-01   # daily values of one contract
+cargo run --bin fa -- futures curve SR3              # all listed contracts; implied rate = 100 - price
+cargo run --bin fa -- futures curve VX --date 2026-11-17         # Cboe settlement of one date
+cargo run --bin fa -- futures positions ES --weeks 4 # CFTC Commitments of Traders (Rust only)
+cargo run --bin fa -- futures policy-path            # Atlanta Fed policy-rate path from SOFR options
+cargo run --bin fa -- futures check                  # two cross-checks, exit 1 on mismatch
 cargo run --release --bin fa -- models calibrate --model cir --method ml --start 2000-01-01 --freq weekly   # fit one model to GSW 1Y zero yield
 cargo run --release --bin fa -- models rolling --model vasicek --method ml --window 5y --step 3m --out roll.csv  # parameters in windows
 cargo run --release --bin fa -- models frequencies --model vasicek --method ml   # daily, weekly, monthly

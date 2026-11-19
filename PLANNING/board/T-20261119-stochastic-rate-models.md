@@ -2,7 +2,7 @@
 id: T-20261119-stochastic-rate-models
 title: Build stochastic interest-rate models with calibration to realized rates and realized volatility
 area: engine
-status: in-progress
+status: review
 owner: louellet-git
 branch: claude/stochastic-rate-models
 created: 2026-11-19

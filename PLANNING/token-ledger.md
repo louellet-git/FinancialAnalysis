@@ -22,6 +22,8 @@ constant per run).
 | Mapping in Rust only | 2026-11-19 | Python mapping, audit, fetch, filing and cross-check code deleted; `mapcheck` commands fetch, import, values, filing, crosscheck; the Python importer runs the Rust program | ~0 (inline) | orchestrator only, no subagents; not a valuation run |
 | S&P 500 and next 500 mapping | 2026-11-19 | `mapcheck` on 1,003 tickers: S&P 500 0 FAIL, next 500 7 FAIL with known causes; critical inputs from the 10-K; company types; revenue rule; 82 Rust tests | ~0 (inline) | orchestrator only, no subagents; not a valuation run |
 | Forward rates (GSW) | 2026-11-19 | `fa forwards` and `fa forwards check` in Rust; futures prices not built (no free source with terms that permit it) | ~155k (1 Sonnet subagent) | orchestrator examined and committed; not a valuation run |
+| Stochastic rate models (`fa models`) | 2026-11-19 | Vasicek, CIR, CKLS, Ho-Lee, Hull-White; calibration by maximum likelihood, least squares, GMM and realized volatility; rolling and frequency tables; parallel simulation; 32 new Rust tests | ~261k (1 Sonnet subagent) | orchestrator examined and committed; not a valuation run |
+| Futures data (`fa futures`) | 2026-11-19 | Quotes, history and curves (Yahoo chart endpoint, Cboe VX files), CFTC positions, Atlanta Fed policy path, cross-checks; 22 new Rust tests | ~277k (1 Sonnet subagent) | orchestrator examined and committed; not a valuation run |
 
 Targets: frontier ticker ≤500k · repeat run ≤50k · ORCL (ticker #2) is the first measured
 frontier run under the cheapened pipeline.
