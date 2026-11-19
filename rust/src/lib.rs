@@ -22,8 +22,10 @@ pub mod recon;
 pub mod fit;
 pub mod richcheap;
 pub mod history;
+pub mod explain;
 pub mod billdiag;
 pub mod forwards;
+pub mod refdata;
 pub mod futures;
 pub mod ratemodels;
 

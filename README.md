@@ -241,6 +241,7 @@ cargo run --release --bin fa -- recon bonds --date 2026-11-17   # bond values fr
 cargo run --release --bin fa -- recon bills --date 2026-11-17   # test each cause of the bill difference
 cargo run --release --bin fa -- recon rich-cheap --date 2026-11-17   # fitted curve, rich and cheap candidates after cost
 cargo run --release --bin fa -- recon history                   # the difference over the cached dates: persistence, half-life
+cargo run --release --bin fa -- recon explain --date 2026-11-18   # regression of the difference on SOMA share, stripping, age, size, futures; the old 30-year bonds
 cargo run --release --bin fa -- serve             # local viewer in the browser
 cargo run --example dcf_rates -- IBM 231.09 A-    # library example
 ```

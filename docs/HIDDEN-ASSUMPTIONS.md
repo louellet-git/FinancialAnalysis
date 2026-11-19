@@ -686,10 +686,12 @@ automated request. Ask the owner to confirm before a heavy use. Update 2026-11-1
 line, also for HTTPS inside the CONNECT tunnel: `GET https://www.treasurydirect.gov/GA-FI/... HTTP/1.1`.
 TreasuryDirect (Windows-Azure, HTTP.sys) refuses this form with "400 InvalidUri". `curl` sends
 `GET /GA-FI/... HTTP/1.1` and works. We saw the bytes with a local TLS server. Other sites (Yahoo, the
-Treasury, the Federal Reserve) accept the full URL. Fix choices: a newer `ureq` (3.x), or a small relay that makes the
-CONNECT tunnel and lets `ureq` send the short form. The defect is open. The cache `data/raw/prices/` is
-filled with `curl` (a script in the scratch folder of the run: 4 requests for each date, 2.2 s between
-requests, the client name `FinancialAnalysis fa (personal research)`).
+Treasury, the Federal Reserve) accept the full URL. The code of `ureq` 2.12.1 uses the full URL for each HTTP proxy,
+whatever the scheme of the target; the settings of `http.rs` were right. Fixed on 2026-11-19: `mapcheck` uses `ureq` 3.5
+(features `rustls`, `platform-verifier`, `gzip`). Version 3 sends the short form inside the tunnel. A new date
+(2026-09-04) came from `fa recon bonds --date 2026-09-04` (464 lines). The other users of the client were
+tested again: GSW file, Cboe file, Yahoo chart (one `429` on the first call, a normal answer on the second;
+`curl` got `200` in between), Treasury par curve. The SEC path was not tested.
 *Evidence:* the request seen by a local TLS server; `ureq-2.12.1/src/unit.rs` (function `send_prelude`).
 
 **100. The bill difference is not a convention error. It is the bill nodes of the par curve.** On
@@ -747,6 +749,85 @@ of the file in the same maturity bucket; at least one 1/64 step). It is not a tr
 hedge leg and an exit, and the repo rate, the short-sale cost, the balance-sheet cost, the tax and the size of a trade
 are not in the data. Of 400 securities on 2026-11-18, 14 pass (3 cheap, 11 rich); they are
 mostly old 30-year bonds and low-coupon notes. Call them candidates.
+
+**107. The HTTP client is shared; the change to `ureq` 3 touches each Rust data command.** `mapcheck/src/http.rs`
+is the only file that uses `ureq`. The error rule is the same as before: an answer with a code of 400 or more
+is an error with the code, and a 3xx answer is not an error (the form session needs it). The session client follows no redirect. The normal client follows up to 5 redirects, as before.
+Version 3 decodes gzip itself. The SEC commands (`mapcheck`) use the same
+client and were not run in this work. Run one SEC request before you trust that path.
+
+**108. The New York Fed documentation page cannot be read without JavaScript.** The endpoints for the
+secured rates and for the SOMA holdings were tested by their answers (HTTP 200, the field names in
+`refdata.rs`). They were not checked against the text of the documentation. A NY Fed FAQ (seen only in a search result, not read in full)
+says that the Desk holds at most 70 % of the amount outstanding of one issue: the SOMA share of 70.0 % for many
+bonds is that limit, not a measurement of the free float of the market. The SOMA file is weekly (as of
+2026-11-10 for the price date 2026-11-18); a CUSIP that is not in the file has a share of 0. The rates are general
+collateral rates: SOFR, BGCR and TGCR. A special repo rate for one CUSIP is not free data. On 2026-11-18, TGCR was
+3.88 % and SOFR 3.90 %.
+
+**109. In MSPD table 5 the field `cusip` is the CUSIP of the principal strip.** The CUSIP of the note or bond
+is in `security_class2_desc`. Amounts are in thousands of dollars. The table is for a month end (the last one
+was 2026-10-31), so a security issued after it has no row: 6 of the 327 securities (new notes and one new bond). The stripped share is the amount in stripped form divided by the amount
+outstanding.
+
+**110. The original term is from the auction record, rounded to the standard term.** The first auction of a
+May bond has the term "29-Year 9-Month" (a 30-year bond with a short first period). A test on the exact text
+"30-Year" misses 2 of the 9 bonds (912810PU6, 912810PX0) and makes one of them the on-the-run bond. The code
+rounds a term to 2, 3, 5, 7, 10, 20 or 30 years if it is within 3 months below or 4 months above. The first
+issue date is the earliest issue date of the CUSIP. The on-the-run security of a term is the CUSIP of its latest auction that
+settled on or before the date, so a reopening is on-the-run. Auction records start in 1979; an older security
+has no record (none in the 327).
+
+**111. The regression is an association, not a cause.** The features are not independent. The SOMA share is
+60 to 70 % for most of the old 30-year bonds, so it does not separate them from each other. With the two
+original 30-year groups in the model, the SOMA coefficient is 0.0 bp for each 1 % (t = -0.2) and R2 is 0.55. Without them, the SOMA
+coefficient is -0.11 bp for each 1 % (t = -4.7) and R2 is 0.18. Bonds with a SOMA share of 60 to 70 % are not
+rich at every maturity: the bonds of 2027 to 2028 are 10 to 15 bp cheap, the bonds of 2043 to 2046 are 1 to 2 bp
+cheap, and the bonds of 2036 to 2039 are 6 to 19 bp rich. So the SOMA share alone does not explain the
+richness. The t values of the regression on the mean residual are too large (the 50 dates are not independent).
+The dummy "original 30-year, 5 to 15 years left" takes -9.7 bp: that is the group effect, and the regression does
+not say why it exists.
+
+**112. The nine old 30-year bonds (2036 to 2039) are rich by 6 to 19 bp, and the curve does not make that.**
+Against the note that has the same maturity (912810FT0 against 91282CPZ8, 2036-02-15) the bond has a yield 17.5 bp
+lower; the curve gives 0.2 bp for the coupon difference of 0.375 points. The price difference is 1.25 points more
+than the curve gives. The curve fitted without all original 30-year bonds and without all bonds with a SOMA
+share of 60 % or more gives the same sign and a size that is 1.4 to 1.6 bp larger for each of the nine. But the notes end in 2036-11 and no note or
+non-SOMA security is in the 2036 to 2042 range, so for the bonds of 2037 to 2039 the curve is an interpolation
+across a gap. Only the bond of 2036-02 has a note of the same maturity. The richness falls with maturity
+(-18.6 bp for 2036, -6.4 bp for 2039-11, -5 bp for 2040, 0 bp for 2042) as if a sector effect fades. None of the
+nine is deliverable into a Treasury future on 2026-12-01 (the bonds have less than 15 years left; ZN and TN take notes only).
+The carry of a long position that is financed at the general collateral rate is +100 to +132 bp a year, so
+financing does not explain the richness. The data cannot show a special repo rate or a shortage of bonds to borrow. A person must ask a
+dealer for the special repo rate and the availability for these nine CUSIPs before the word "arbitrage" is used. A short position in a
+rich bond pays that rate, and a long position in the note in its place is not a hedge of the same duration.
+
+**113. The CME rules were not read in the original page.** `www.cmegroup.com` refused the requests of this work
+(HTTP 503 from the fetch tool, 403 with `curl`), and the work did not go around the refusal. The rules in
+`explain.rs` come from the text that web search returned about CME documents (the pages were not read by this work), on 2026-11-19: the delivery
+guide <https://www.cmegroup.com/trading/interest-rates/files/us-treasury-futures-delivery-process.pdf> (8th edition,
+May 2023) for ZT, ZF, ZN and the 3-month rounding; the Special Executive Report SER 9520 of 2025-02-21
+<https://www.cmegroup.com/content/dam/cmegroup/notices/ser/2025/02/ser-9520.pdf> and the delivery guide for ZN
+(6 years 6 months to less than 8 years); the contract page
+<https://www.cmegroup.com/markets/interest-rates/us-treasury/ultra-10-year-us-treasury-note.contractSpecs.html>
+for TN (original 10-year notes, 9 years 5 months to 10 years); the rulebook chapter 18
+<https://www.cmegroup.com/rulebook/CBOT/II/18.pdf> (rule 18101.A) for ZB (15 years to less than 25 years); and
+<https://www.cmegroup.com/trading/interest-rates/ultra-tbond-futures.html> for UB (25 years or more). A CME
+education page still says "not more than 10 years" for ZN; we took the newer 8-year limit. The
+10-year limit would not change the result for the nine bonds (they are bonds). Read the current rulebook
+before you use a flag for a trade.
+
+**114. The flag "deliverable" is for the front month only and for the rules above.** The front month on
+2026-11-18 is December 2026 (first delivery day 2026-12-01). The flag does not say which security is the cheapest
+to deliver. The conversion factors and the futures prices are not in the data. Of the 327 securities: ZT 10,
+ZF 8, ZN 10, TN 2, ZB 59, UB 19 are deliverable (108 flags; a note can be in more than one basket).
+
+**115. Coverage and units of the joins on 2026-11-18.** The regression has 321 securities (6 of 327 have no row in
+MSPD table 5 or no auction record), and 317 have a mean residual over 40 or more dates. The residual in the
+regression is in bp of yield. The coupon gap is in percentage points. The curve for the par rate uses the first
+coupon period as a full period (an error of a few tenths of a bp). The securities that the fit left out as outliers (13)
+are in the regression. The two bonds of 2027 (6.375 % and 6.125 %) have a cost of 26 to 28 bp: they do not matter for
+the conclusion, and they move the intercept little.
 
 ## Could not verify
 

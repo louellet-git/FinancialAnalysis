@@ -43,8 +43,18 @@ Built (crate `rust/`; modules `fit.rs`, `richcheap.rs`, `history.rs`, `billdiag.
 3. `fa recon history`: 50 business days (2026-09-08 to 2026-11-18). The residual of a security is
    persistent; its deviation from its own mean has a half-life of 1 to 2 days (#105).
 
+4. HTTP client: `mapcheck` now uses `ureq` 3. The Rust download of the price file works (#69).
+5. `fa recon explain`: free data (NY Fed SOFR, BGCR, TGCR and SOMA holdings; Fiscal Data MSPD table 5 and
+   auction records) joined to the residual by CUSIP, a regression, the futures baskets, and a table of the nine
+   old 30-year bonds (#107 to #115). Result: the nine bonds are 6 to 19 bp rich; SOMA share, stripping, age, size
+   and futures delivery do not explain them; the curve does not make the effect (#111, #112).
+
 Open:
-- The Rust download of the price file. The cause is known (#69); the fix is not made. The cache is filled with `curl`.
+- Run one SEC request with the new HTTP client (the SEC path was not tested).
+- The CME contract pages refused the requests; the basket rules come from search text (#113). Read the
+  rulebook.
+- A dealer must give the special repo rate and the borrow availability of the nine bonds (#112). Nothing is
+  called arbitrage.
 - Cause of the difference between the Treasury par curve bill nodes and the Treasury bill-rate table (#100).
-- The cost has no repo rate, no short-sale cost and no balance-sheet cost (#106). Nothing is called arbitrage.
+- The cost has no repo rate, no short-sale cost and no balance-sheet cost (#106).
 - Owner to confirm the use of the FedInvest data for 50 dates (#67).

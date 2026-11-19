@@ -28,6 +28,7 @@ constant per run).
 | Stochastic rate models (`fa models`) | 2026-11-19 | Vasicek, CIR, CKLS, Ho-Lee, Hull-White; calibration by maximum likelihood, least squares, GMM and realized volatility; rolling and frequency tables; parallel simulation; 32 new Rust tests | ~261k (1 Sonnet subagent) | orchestrator examined and committed; not a valuation run |
 | Futures data (`fa futures`) | 2026-11-19 | Quotes, history and curves (Yahoo chart endpoint, Cboe VX files), CFTC positions, Atlanta Fed policy path, cross-checks; 22 new Rust tests | ~277k (1 Sonnet subagent) | orchestrator examined and committed; not a valuation run |
 | Bond rich and cheap research (`fa recon rich-cheap`, `history`, `bills`) | 2026-11-19 | Cause of the bill difference, curve fit to market prices (Nelson-Siegel-Svensson), 50 dates of residuals, candidates after the bid-ask cost; 20 new Rust tests | ~310k (1 Sonnet subagent) | orchestrator ran the three commands again; not a valuation run |
+| Bond research, second part (`fa recon explain`) | 2026-11-19 | Rust download corrected (newer HTTP library), New York Fed and Fiscal Data loaders, regression of the differences, the nine old 30-year bonds; 10 new Rust tests | ~266k (1 Sonnet subagent) | orchestrator ran the tests, the command and one SEC download with the new client; not a valuation run |
 
 Targets: frontier ticker ≤500k · repeat run ≤50k · ORCL (ticker #2) is the first measured
 frontier run under the cheapened pipeline.

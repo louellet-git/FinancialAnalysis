@@ -256,13 +256,14 @@ The tests (`cargo test --manifest-path rust/Cargo.toml --locked`) use small samp
 ## Bond research: bill tests, fitted curve, rich and cheap, history (2026-11-19, branch `claude/bond-arb`)
 
 Three commands continue `fa recon bonds` (crate `rust/`). They give candidates for study.
-They do not give arbitrage and they send no order. Traps: `docs/HIDDEN-ASSUMPTIONS.md` #69 and #100 to #106.
+They do not give arbitrage and they send no order. Traps: `docs/HIDDEN-ASSUMPTIONS.md` #69, #100 to #106 and #107 to #115.
 
 | Command | Question | Module (`rust/src/`) |
 |---|---|---|
 | `fa recon bills [--date D]` | Which change makes the bill difference of `recon bonds` go to 0? | `billdiag.rs` |
 | `fa recon rich-cheap [--date D] [--out F]` | Which securities are far from a curve that is fitted to the securities? | `fit.rs`, `richcheap.rs` |
 | `fa recon history [--from D] [--to D] [--out F]` | Does a difference last? | `history.rs` |
+| `fa recon explain [--date D] [--out F]` | Which known features explain a difference? What stays? | `refdata.rs`, `explain.rs` |
 
 **Bill tests.** The command changes one thing at a time: the basis of the bill nodes, the
 settlement day, the price field, the curve input. It prints the mean bill difference (bp)
@@ -298,8 +299,8 @@ business days (raw, and within = mean of the security removed); the half-life fr
 coefficient; the residual k days after a large value (the 10 percent most cheap and most rich of a
 date). It compares our curve with the GSW curve on each date that has a GSW row.
 
-**Data.** The price files are `data/raw/prices/fedinvest_<date>.csv`. The Rust download fails in some
-networks (hidden assumption 69). Fill the cache with `curl`. The bill-rate file is
+**Data.** The price files are `data/raw/prices/fedinvest_<date>.csv`. `fa recon bonds --date D` downloads
+a missing file (the HTTP client was corrected on 2026-11-19, hidden assumption 69). The bill-rate file is
 `data/raw/rates/treasury_bill_rates_<year>.csv` (downloaded once). The outputs go to `data/recon/`
 (not committed).
 
@@ -308,6 +309,48 @@ Treasury table); the NSS curve by hand; recovery of known NSS parameters from sy
 (to 0.01 bp); one planted bad price is left out; the weight turns a price error into a yield
 error; planted rich and cheap securities are found with the right sign; autocorrelation,
 half-life and reversal of a series with a known decay; a date gap is not a lag.
+
+**Explain the residuals (`refdata.rs`, `explain.rs`).** `fa recon explain` joins free public data to the
+residual of each note and bond (327 securities of 6 months or more on 2026-11-18), runs a cross-section
+regression, and prints the residual before and after it. It makes the fit for each cached date (rayon) to get
+the mean residual, so it needs the 50 price files. Run time: about 10 s with a warm cache.
+
+| Source | Endpoint | Cache (`data/raw/`) | Gives |
+|---|---|---|---|
+| NY Fed secured rates | `markets.newyorkfed.org/api/rates/secured/{sofr,bgcr,tgcr}/search.json?startDate&endDate` | `nyfed/secured_<type>_<from>_<to>.json` | General collateral rates by date |
+| NY Fed SOMA, Treasury | `.../api/soma/asofdates/list.json`, `.../api/soma/tsy/get/asof/<date>.json` | `nyfed/soma_*.json` | Par held and `percentOutstanding` by CUSIP, weekly |
+| Fiscal Data, MSPD table 5 | `api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/debt/mspd/mspd_table_5` | `fiscaldata/mspd_table_5_<month end>.json` | Amount outstanding and amount stripped by CUSIP (thousands of dollars) |
+| Fiscal Data, auctions | `.../v1/accounting/od/auctions_query` (notes and bonds, 8 fields) | `fiscaldata/auctions_notes_bonds_<date>.json` | First issue date, original term, reopenings |
+
+The client name is `FinancialAnalysis fa (personal research)`. The wait between two requests is 2 seconds.
+The Fiscal Data page says that the data is free, without restriction, and needs no key. The NY Fed
+documentation page does not show text without JavaScript; the endpoints were tested by their answers (#108).
+
+Features of one security: coupon minus the par rate of the same maturity on the fitted curve (percentage
+points); age since the first issue (years); on-the-run (the CUSIP of the latest auction of its original term);
+SOMA share (%); stripped share (%); log of the amount outstanding ($bn); original 30-year bond with 5 to 15
+years left; original 30-year bond with less than 5 years left; original 20-year bond; deliverable into a front
+Treasury future. The original term comes from the auction record and is rounded to the standard term
+(a "29-Year 9-Month" bond is a 30-year bond). The regression is ordinary least squares with an intercept.
+The output gives the classical t and a robust (HC1) t. Regression 1 uses the residual of the date. Regression
+1b adds the years to maturity. Regression 2 uses the mean residual of all cached dates. Regression 3 leaves
+out the two original 30-year groups. Then the command prints: the candidates before and after regression 1;
+the 12 largest residuals after it; the nine old 30-year bonds (2036 to 2039) with SOMA share, stripped share,
+amount, residual, carry, and a comparison with the note of the nearest maturity; every security with a SOMA
+share of 60 % or more; and a test that fits the curve again without the old 30-year bonds.
+
+Futures baskets (front delivery month = the first quarterly month after the date; remaining term from the
+first day of that month, rounded down): ZT 2-year: notes with an original term of 5 years 3 months or less,
+at least 1 year 9 months left from the first day and at most 2 years from the last day. ZF 5-year: the same
+original limit, at least 4 years 2 months left. ZN 10-year: notes, at least 6 years 6 months and less than
+8 years left (3-month rounding). TN Ultra 10-year: original 10-year notes, 9 years 5 months to 10 years left.
+ZB bond: bonds, at least 15 and less than 25 years left (3-month rounding). UB Ultra bond: bonds, at least
+25 years left. The sources are in #113.
+
+**Tests.** The parsers (secured rates, SOMA, MSPD table 5, auctions) use small fixture text. The tests also
+check the original-term rounding, the on-the-run rule, the month arithmetic, the front month, each basket
+rule, the par rate of a flat curve, and the regression on a planted line (exact coefficients, dropped zero
+column, singular matrix, classical standard error against the formula).
 
 ### `rust/src/forwards.rs` (2026-11-19)
 

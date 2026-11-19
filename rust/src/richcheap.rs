@@ -177,6 +177,15 @@ pub fn analyse(date: &str, settle: Day, quotes: &[Quote]) -> Result<Analysis, St
     Ok(Analysis { date: date.to_string(), settle, nss, excluded: ex, n_fit, rows, rmse_all })
 }
 
+/// Observed minus fitted yield (bp) of a quote on a given curve: for a security that was not
+/// in the fit. `None` if the quote has no usable price.
+pub fn residual_bp(nss: &Nss, settle: Day, q: &Quote) -> Option<f64> {
+    let bond = Bond { coupon: q.coupon, maturity: q.maturity };
+    let (inst, y, _) = fit::make_inst(&bond, settle, q.end_of_day)?;
+    let y_model = bond.yield_from_clean(inst.model_clean(nss), settle)?;
+    Some((y - y_model) * 1e4)
+}
+
 fn tick_bp(bond: &Bond, settle: Day, price: f64) -> f64 {
     // The source gives notes and bonds in 64ths: the yield change of one step.
     match (bond.yield_from_clean(price - 1.0 / 128.0, settle), bond.yield_from_clean(price + 1.0 / 128.0, settle)) {
@@ -556,7 +565,7 @@ pub fn cached_quotes(cache: &std::path::Path, date: &str) -> Result<Vec<Quote>, 
     let path = cache.join("prices").join(format!("fedinvest_{date}.csv"));
     let text = std::fs::read_to_string(&path).map_err(|_| {
         format!(
-            "no price file {} (the Rust download of this file fails in some networks, see hidden assumption 69; fill the cache with curl)",
+            "no price file {} (get it with: fa recon bonds --date <date>; see hidden assumption 69)",
             path.display()
         )
     })?;

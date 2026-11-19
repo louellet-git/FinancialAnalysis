@@ -349,7 +349,11 @@ fa recon rich-cheap [--date YYYY-MM-DD] [--out FILE]
 
 fa recon history [--from D] [--to D] [--out FILE]
   The difference from the fitted curve over the cached dates; persistence and half-life.
-  See: fa recon history --help";
+  See: fa recon history --help
+
+fa recon explain [--date YYYY-MM-DD] [--out FILE]
+  Regression of the difference on coupon, age, SOMA share, stripped share, size, original
+  term and futures delivery; the old 30-year bonds. See: fa recon explain --help";
 
 fn parse_args(args: &[String]) -> Result<(Option<String>, Option<PathBuf>), String> {
     let (mut date, mut out) = (None, None);
@@ -402,6 +406,7 @@ pub fn run(fa: &Fa, args: &[String]) -> ExitCode {
         match args[0].as_str() {
             "rich-cheap" => println!("{}", crate::richcheap::HELP),
             "history" => println!("{}", crate::history::HELP),
+            "explain" => println!("{}", crate::explain::HELP),
             _ => println!("{HELP}"),
         }
         return ExitCode::SUCCESS;
@@ -410,6 +415,7 @@ pub fn run(fa: &Fa, args: &[String]) -> ExitCode {
         "bonds" => run_bonds(fa, &args[1..]),
         "rich-cheap" => crate::richcheap::run_rich_cheap(fa, &args[1..]),
         "history" => crate::history::run_history(fa, &args[1..]),
+        "explain" => crate::explain::run_explain(fa, &args[1..]),
         "bills" => crate::billdiag::run_bills(fa, &args[1..]),
         _ => {
             eprintln!("fa: unknown recon command '{}'\n\n{HELP}", args[0]);
