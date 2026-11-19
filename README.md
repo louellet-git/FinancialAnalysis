@@ -19,10 +19,10 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest                       # 349 tests, no network
+python -m pytest                       # 282 tests, no network
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
-cargo test --manifest-path rust/mapcheck/Cargo.toml    # 86 Rust tests
-cargo test --manifest-path rust/Cargo.toml --locked    # 185 Rust tests (`fa` crate: rates, models, futures, option trading, bond research)
+cargo test --manifest-path rust/mapcheck/Cargo.toml    # 89 Rust tests
+cargo test --manifest-path rust/Cargo.toml --locked    # 280 Rust tests (`fa` crate: company data, market data, xlsx file, rates, models, futures, option trading, bond research)
 ```
 
 Run all commands from the repo root.
@@ -31,7 +31,7 @@ Run all commands from the repo root.
 
 ```bash
 # 1. Get the data. Output: data/processed/IBM_financials.xlsx (nine tabs)
-python -m scripts.analyze IBM
+cargo run --release --bin fa -- analyze IBM
 
 # 2. Get the value range and the verdict against a price (the price is an input)
 python -m scripts.verdict IBM --price 228.53
@@ -67,8 +67,8 @@ Limits that you must know before you use a verdict:
 ## All valuation commands
 
 ```bash
-python -m scripts.analyze IBM [--refresh] [--no-market] [--no-options] [--no-estimates] [--out custom.xlsx]
-python -m scripts.import_financials IBM [--refresh]      # JSON store only, no xlsx
+fa analyze IBM [--refresh] [--no-market] [--no-options] [--no-estimates] [--out custom.xlsx]
+fa import IBM [--refresh] [--periods 12]                 # JSON store only, no xlsx
 python -m scripts.import_edgar IBM 2026-07-01 [--output-dir data/raw] [--lookback-months 18] [--lookahead-months 6]
 python -m scripts.run_dcf PANW [--simulations 10000] [--years 10] [--growth 0.15] [--wacc 0.10] [--terminal-growth 0.03] [--seed 7]
 python -m scripts.backtest IBM [--horizon 3] [--simulations 10000] [--seed 7]
@@ -100,9 +100,12 @@ fa verdict IBM --price 228.53                     # Rust engine; --rf-date or --
 `scripts.run_dcf` prints an enterprise value for each share. It does not subtract net
 debt. Do not compare this number with a share price.
 
-Remote data has a disk cache in `data/raw/TICKER/`. Option chains and consensus
-estimates are saved as dated snapshots, because yfinance gives only current data. A run
-on the same day reads the disk; `--refresh` gets new data.
+Remote data has a disk cache in `data/raw/TICKER/`. Option chains are saved as dated
+snapshots, because the source gives only current data. A run on the same day reads the
+disk; `fa analyze --refresh` gets new data. Prices come from the Yahoo chart endpoint. Yahoo
+often answers HTTP 429 (too many requests) to a cloud container: then the program says so and
+keeps the cache file. The forward consensus snapshot and the earnings dates have no source in
+Rust: the program reads the cache files that exist (see `docs/HIDDEN-ASSUMPTIONS.md`, #140 to #145).
 
 ## Standard input variables
 
@@ -113,8 +116,8 @@ gives each line one standard variable name (132 variables). The models read only
 names.
 
 The Rust program `rust/mapcheck` makes the standard variables. It is the only
-implementation: no Python code does this work. `scripts.analyze` and the other Python
-commands get their data from it.
+implementation: no Python code does this work. `fa import`, `fa analyze` and the Python
+commands that remain get their data from it.
 
 - Each variable has a list of tags with the same meaning. The first tag that has a
   value is used.
@@ -257,7 +260,9 @@ cargo run --release --bin fa -- models rolling --model vasicek --method ml --win
 cargo run --release --bin fa -- models frequencies --model vasicek --method ml   # daily, weekly, monthly
 cargo run --release --bin fa -- models compare --start 1990-01-01                # vasicek, cir, ckls, holee: log-likelihood, AIC
 cargo run --release --bin fa -- models simulate --model cir --kappa 0.5 --theta 0.05 --sigma 0.1 --years 10 --paths 100000 --seed 1
-cargo run --bin fa -- run scripts.analyze IBM     # any Python entry point
+cargo run --bin fa -- analyze IBM                  # import, market data, nine-tab xlsx file
+cargo run --bin fa -- import IBM                   # SEC data -> data/processed/IBM.json
+cargo run --bin fa -- run scripts.visualize_dcf IBM   # any Python entry point
 cargo run --release --bin fa -- recon bonds --date 2026-11-17   # bond values from our rates vs market prices
 cargo run --release --bin fa -- recon bills --date 2026-11-17   # test each cause of the bill difference
 cargo run --release --bin fa -- recon rich-cheap --date 2026-11-17   # fitted curve, rich and cheap candidates after cost
@@ -408,8 +413,8 @@ option-chain metrics for a ticker (implied move, skew, put/call ratios, in the x
 | Balance Sheet | The balance-sheet standard variables, and RPO rows (`statement=disclosure`) |
 | Cash Flow | Operating cash flow, capex, free cash flow, buybacks, dividends, debt flows |
 | Raw | All us-gaap USD tags that have no standard variable |
-| Prices | Daily prices from yfinance (full history) |
-| Estimates | Past earnings surprises (yfinance), and FMP estimates if available |
+| Prices | Daily prices from the Yahoo chart endpoint (full history, adjusted for splits and dividends) |
+| Estimates | Past earnings surprises (FMP, or the cache file of an earlier run), and FMP estimates if the key exists |
 | Estimates Fwd | Dated snapshot of consensus revenue/EPS estimates and analyst price targets |
 | Options | The full option chain, one row for each contract |
 | Options Summary | For each expiry: at-the-money IV, implied move, 90/110 skew, put/call ratios |
@@ -422,8 +427,10 @@ The financial tabs have one row for each `(period, metric)`. The JSON store
 | Data | Source | Key |
 |------|--------|-----|
 | Financial statements | SEC EDGAR companyfacts XBRL API | None |
-| Prices, earnings surprises, consensus, option chains | yfinance | None |
-| Analyst estimates (optional) | FMP | `FMP_API_KEY` in `.env` |
+| Daily prices | Yahoo chart endpoint | None |
+| Option chains | Cboe delayed quotes (about 15 minutes late) | None |
+| Analyst estimates and earnings surprises | Financial Modeling Prep | `FMP_API_KEY` in `.env` or the environment |
+| Forward consensus snapshot, earnings dates | No source in Rust: cache files of the earlier Python code | None |
 | Treasury par yield curves, nominal and real (TIPS) | U.S. Treasury | None |
 | SOFR, EFFR, FOMC target range | Federal Reserve Bank of New York | None |
 | CPI-U, headline and core | Bureau of Labor Statistics, API v1 | None |
@@ -454,7 +461,7 @@ analysis/JNJ/             JNJ first pass (not reviewed)
 trading/                  research notes of the 22 option bots, LEADERBOARD.md (the code is in rust/src/trading/)
 scripts/                  command-line entry points
 rust/                     Rust: `fa` command (calls the Python code; has the option trading: fetch, backtest, paper)
-tests/                    349 Python tests (legacy code)
+tests/                    282 Python tests (legacy code)
 
 docs/                     ARCHITECTURE.md, HIDDEN-ASSUMPTIONS.md, INDEX.md, design documents
 PLANNING/board/           open work, one file for each ticket

@@ -13,7 +13,7 @@ jobs:
           python-version: "3.13"
       - run: pip install -r requirements.txt -r requirements-dev.txt
       # The Rust program makes the standard variables. Build it before pytest: the
-      # Python importer runs it (tests/test_importer.py).
+      # Python code that remains runs it (financial_analysis/importer.py).
       - run: cargo test --manifest-path rust/mapcheck/Cargo.toml
       - run: cargo build --release --manifest-path rust/mapcheck/Cargo.toml
       - run: python -m pytest -q

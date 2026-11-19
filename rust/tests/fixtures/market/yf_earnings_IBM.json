@@ -1,0 +1,177 @@
+[
+  {
+    "date": "2027-01-27",
+    "actual_eps": NaN,
+    "estimated_eps": 4.63,
+    "surprise": NaN,
+    "surprise_pct": NaN
+  },
+  {
+    "date": "2026-10-21",
+    "actual_eps": 2.95,
+    "estimated_eps": 2.87,
+    "surprise": 0.08,
+    "surprise_pct": 0.027875
+  },
+  {
+    "date": "2026-07-22",
+    "actual_eps": 2.93,
+    "estimated_eps": 2.93,
+    "surprise": 0.0,
+    "surprise_pct": 0.0
+  },
+  {
+    "date": "2026-04-22",
+    "actual_eps": 1.91,
+    "estimated_eps": 1.81,
+    "surprise": 0.1,
+    "surprise_pct": 0.055249
+  },
+  {
+    "date": "2026-01-28",
+    "actual_eps": 4.52,
+    "estimated_eps": 4.29,
+    "surprise": 0.23,
+    "surprise_pct": 0.053613
+  },
+  {
+    "date": "2025-10-22",
+    "actual_eps": 2.65,
+    "estimated_eps": 2.45,
+    "surprise": 0.2,
+    "surprise_pct": 0.081633
+  },
+  {
+    "date": "2025-07-23",
+    "actual_eps": 2.8,
+    "estimated_eps": 2.65,
+    "surprise": 0.15,
+    "surprise_pct": 0.056604
+  },
+  {
+    "date": "2025-04-23",
+    "actual_eps": 1.6,
+    "estimated_eps": 1.43,
+    "surprise": 0.17,
+    "surprise_pct": 0.118881
+  },
+  {
+    "date": "2025-01-29",
+    "actual_eps": 3.92,
+    "estimated_eps": 3.78,
+    "surprise": 0.14,
+    "surprise_pct": 0.037037
+  },
+  {
+    "date": "2024-10-23",
+    "actual_eps": 2.3,
+    "estimated_eps": 2.23,
+    "surprise": 0.07,
+    "surprise_pct": 0.03139
+  },
+  {
+    "date": "2024-07-24",
+    "actual_eps": 2.43,
+    "estimated_eps": 2.17,
+    "surprise": 0.26,
+    "surprise_pct": 0.119816
+  },
+  {
+    "date": "2024-04-24",
+    "actual_eps": 1.68,
+    "estimated_eps": 1.6,
+    "surprise": 0.08,
+    "surprise_pct": 0.05
+  },
+  {
+    "date": "2024-01-24",
+    "actual_eps": 3.87,
+    "estimated_eps": 3.8,
+    "surprise": 0.07,
+    "surprise_pct": 0.018421
+  },
+  {
+    "date": "2023-10-25",
+    "actual_eps": 2.2,
+    "estimated_eps": 2.13,
+    "surprise": 0.07,
+    "surprise_pct": 0.032864
+  },
+  {
+    "date": "2023-07-19",
+    "actual_eps": 2.18,
+    "estimated_eps": 2.0,
+    "surprise": 0.18,
+    "surprise_pct": 0.09
+  },
+  {
+    "date": "2023-04-19",
+    "actual_eps": 1.36,
+    "estimated_eps": 1.24,
+    "surprise": 0.12,
+    "surprise_pct": 0.096774
+  },
+  {
+    "date": "2023-01-25",
+    "actual_eps": 3.6,
+    "estimated_eps": 3.61,
+    "surprise": -0.01,
+    "surprise_pct": -0.00277
+  },
+  {
+    "date": "2022-10-19",
+    "actual_eps": 1.81,
+    "estimated_eps": 1.8,
+    "surprise": 0.01,
+    "surprise_pct": 0.005556
+  },
+  {
+    "date": "2022-07-18",
+    "actual_eps": 2.31,
+    "estimated_eps": 2.29,
+    "surprise": 0.02,
+    "surprise_pct": 0.008734
+  },
+  {
+    "date": "2022-04-19",
+    "actual_eps": 1.4,
+    "estimated_eps": 1.42,
+    "surprise": -0.02,
+    "surprise_pct": -0.014085
+  },
+  {
+    "date": "2022-01-24",
+    "actual_eps": 3.35,
+    "estimated_eps": 3.29,
+    "surprise": 0.06,
+    "surprise_pct": 0.018237
+  },
+  {
+    "date": "2021-10-20",
+    "actual_eps": 2.52,
+    "estimated_eps": 2.51,
+    "surprise": 0.01,
+    "surprise_pct": 0.003984
+  },
+  {
+    "date": "2021-07-19",
+    "actual_eps": 2.33,
+    "estimated_eps": 2.29,
+    "surprise": 0.04,
+    "surprise_pct": 0.017467
+  },
+  {
+    "date": "2021-04-19",
+    "actual_eps": 1.77,
+    "estimated_eps": 1.65,
+    "surprise": 0.12,
+    "surprise_pct": 0.072727
+  },
+  {
+    "date": "2021-01-21",
+    "actual_eps": 2.07,
+    "estimated_eps": 1.88,
+    "surprise": 0.19,
+    "surprise_pct": 0.101064
+  }
+]

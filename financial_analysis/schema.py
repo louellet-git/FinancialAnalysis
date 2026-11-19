@@ -1,3 +1,9 @@
+"""Legacy Python data classes of the company data (the Rust form is ``rust/src/company.rs``).
+
+Rust is the only program that makes the standard variables (``rust/mapcheck``). These classes stay
+only because the Python engines, the backtest and ``scripts/visualize_dcf.py`` are not yet in Rust. The
+store file ``data/processed/<TICKER>.json`` is read through ``store.py``.
+"""
 from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
@@ -12,24 +18,6 @@ class PricePoint:
     low: float
     close: float
     volume: int
-
-
-@dataclass
-class EarningsEstimate:
-    period_end: date
-    period_type: str  # "annual" or "quarterly"
-    estimated_eps: Optional[float] = None
-    estimated_revenue: Optional[float] = None
-    number_of_analysts: Optional[int] = None
-
-
-@dataclass
-class EarningsSurprise:
-    date: date
-    actual_eps: float
-    estimated_eps: float
-    surprise: float
-    surprise_pct: float
 
 
 @dataclass
@@ -53,23 +41,6 @@ class OptionChainSnapshot:
     snapshot_date: date
     spot_price: Optional[float] = None
     quotes: List[OptionQuote] = field(default_factory=list)
-
-
-@dataclass
-class ConsensusEstimates:
-    """Dated snapshot of yfinance forward consensus (see estimates.py).
-
-    revenue_estimate / earnings_estimate: {period: {column: value}} where period
-    is yfinance's forward-period key ("0q", "+1q", "0y", "+1y") and columns are
-    kept as reported (avg, low, high, numberOfAnalysts, growth, ...).
-    analyst_price_targets: {current, low, high, mean, median} — whatever subset
-    yfinance returns. Empty dicts mean the data was unavailable for the ticker.
-    """
-    ticker: str
-    snapshot_date: date
-    revenue_estimate: Dict[str, Dict[str, Optional[float]]] = field(default_factory=dict)
-    earnings_estimate: Dict[str, Dict[str, Optional[float]]] = field(default_factory=dict)
-    analyst_price_targets: Dict[str, Optional[float]] = field(default_factory=dict)
 
 
 @dataclass
@@ -271,7 +242,4 @@ class CompanyFinancials:
     company_name: str
     periods: List[PeriodFinancials] = field(default_factory=list)
     prices: List[PricePoint] = field(default_factory=list)
-    estimates: List[EarningsEstimate] = field(default_factory=list)
-    surprises: List[EarningsSurprise] = field(default_factory=list)
     option_chain: Optional[OptionChainSnapshot] = None
-    consensus: Optional[ConsensusEstimates] = None

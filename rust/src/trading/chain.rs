@@ -69,7 +69,7 @@ pub struct Chain {
 
 /// `SPY261120C00728000`: root, expiry YYMMDD, C or P, strike in thousandths. `None` for any other
 /// root (for example `B1SPY...`, the adjusted options) or a bad text.
-fn parse_option(text: &str, root: &str) -> Option<(Date, bool, i64)> {
+pub(crate) fn parse_option(text: &str, root: &str) -> Option<(Date, bool, i64)> {
     let rest = text.strip_prefix(root)?;
     let b = rest.as_bytes();
     if b.len() != 15 || !b.iter().enumerate().all(|(i, c)| if i == 6 { *c == b'C' || *c == b'P' } else { c.is_ascii_digit() }) {

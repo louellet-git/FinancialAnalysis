@@ -7,36 +7,30 @@ the code disagree, the code governs.
 ## Data flow
 
 ```
-SEC EDGAR (companyfacts JSON API)          yfinance
-        │                                     │
-   rust/mapcheck (Rust: fetch, map,      market_data.py (prices, surprises)
-   check, store file)                    estimates.py   (forward consensus snapshots)
-        ▼                                options.py     (option-chain snapshots)
-   importer.py (runs mapcheck, reads the store file)
-                     │                        │
-                     ▼                        │
-              schema.py (PeriodFinancials)    │
-                     │                        │
-                     ▼                        ▼
-              store.py (data/processed/TICKER.json — statements ONLY)
-                     │
-        ┌────────────┼───────────────────────────────┐
-        ▼            ▼                               ▼
-   dcf.py       driver_dcf.py                  backtest.py
- (classic MC)  (driver-based MC engine)     (point-in-time vintages)
-        │            │
-        │      analysis/IBM/driver_model.py (per-ticker register)
-        ▼            ▼
-  scenarios.py   scripts/visualize_dcf.py ──► data/processed/TICKER_dcf.html
-        │
-  scripts/analyze.py ──► data/processed/TICKER_financials.xlsx (9 tabs)
+SEC EDGAR (companyfacts JSON API)      Yahoo chart     Cboe delayed quotes     FMP (key)
+        |                                  |                  |                   |
+   rust/mapcheck (Rust: fetch, map,   rust/src/market/   rust/src/market/    rust/src/market/
+   check, store file; import.rs)      prices.rs          options.rs          fmp.rs, consensus.rs
+        |                                  |                  |                   |
+        +--> data/processed/TICKER.json    +------------------+-------------------+
+        |    (statements only)                                |
+        v                                                     v
+   rust/src/company.rs (typed company)          data/raw/TICKER/ (cache files)
+        |                                                     |
+        +-----------------------+-----------------------------+
+                                v
+                  rust/src/analyze.rs  (fa analyze)  --> data/processed/TICKER_financials.xlsx (9 tabs)
+
+   data/processed/TICKER.json also goes to: fa dcf classic (Rust), and to the Python code that remains:
+   store.py / schema.py --> dcf.py, driver_dcf.py, backtest.py, scenarios.py, scripts/visualize_dcf.py
+   (Python engines and the HTML report, not yet in Rust).
 ```
 
-Market data (prices, estimates, options) is attached to the in-memory
-`CompanyFinancials` by `scripts/analyze.py` and written to the xlsx, but it is **never
-persisted to the JSON store** — `store.save()` serializes `periods` only
-(`financial_analysis/store.py`). Dated per-day snapshots under `data/raw/TICKER/`
-(options/, estimates/, prices.json) are the durable market-data record.
+The market data is attached to the in-memory company by `fa analyze` and written to the xlsx
+file. It is **not** in the JSON store: the store has the periods only. The cache files
+under `data/raw/TICKER/` (`options/`, `estimates/`, `prices.json`, `yf_earnings.json`) are the
+durable market-data record. Their format is the format of the earlier Python code, so the
+Python report reads them.
 
 ## The two DCF engines
 
@@ -138,26 +132,21 @@ decorative until a driver build exists.
 | `dcf.py` | 157 | Classic engine (above): `DCFAssumptions`, `DCFResult`, `StochasticDCF`, `derive_fcf_margin`. Annual (10-K/10-K/A) periods only. |
 | `driver_dcf.py` | 713 | Driver-based engine (above): `Driver`, `Item`, `DriverModel`, `SegmentSpec`, `DriverDCF`, `DriverDCFResult` (incl. `driver_draws` per-path values for the path explorer), vetted item formulas `revenue_paths`, `fcff_margin`, `wacc_capm`, `terminal_value`, registered in `ITEMS`. |
 | `edgar.py` | 272 | SEC HTTP client (User-Agent, 0.15s rate limit), CIK lookup from company_tickers.json, full-index filing downloads (`EdgarClient.download_for_ticker`), `EdgarClientError`. |
-| `estimates.py` | 193 | yfinance **forward** consensus (revenue/EPS estimates, price targets) → `ConsensusEstimates`; persisted as dated snapshots `data/raw/TICKER/estimates/YYYY-MM-DD.json` (yfinance has no history — history accumulates from first pull; empty snapshots saved so absence is dated evidence). `fetch_estimates`, `list_snapshots`, `load_snapshot`. |
-| `fmp.py` | 120 | Optional FMP API client (`FMP_API_KEY` in `.env`): analyst estimates/surprises, IFRS statements stub (`NotImplementedError`). Free-plan v3 endpoints unavailable since Aug 2025 — pipeline degrades to yfinance. |
-| `importer.py` | 100 | No mapping logic. Runs the Rust program `mapcheck import` (it gets the SEC data if it is not in the cache) and reads the store file. Raises `UnsupportedFilingError` for non-us-gaap filers and `MapcheckError` if the Rust program is not built. |
-| `market_data.py` | 136 | yfinance daily OHLCV (`load_prices`, cached at `data/raw/TICKER/prices.json`) and earnings surprises (`load_earnings_surprises`). |
-| `options.py` | 375 | yfinance option-chain snapshots (dated, one per day, `data/raw/TICKER/options/YYYY-MM-DD.json`) + derived per-expiry metrics: ATM IV, straddle-mid implied move, 90/110 skew, put/call volume & OI ratios (`fetch_option_chain`, `compute_chain_metrics`, `list_snapshots`, `load_snapshot`). |
+| `importer.py` | 50 | Only `_run`: it starts the Rust program `mapcheck` and gives it the SEC contact (environment variable `SEC_USER_AGENT`, else the legacy SEC client). The import is Rust: `rust/mapcheck/src/import.rs`, `fa import`, `fa analyze`. Stays until the legacy SEC client is deleted. |
+| `market_data.py` | 33 | Legacy reader of `data/raw/TICKER/prices.json` for `scripts/visualize_dcf.py`. No download. Rust: `rust/src/market/prices.rs`. |
+| `options.py` | 266 | Legacy reader of the option-chain snapshots and their metrics (ATM IV, implied move, 90/110 skew, put/call ratios) for `scripts/visualize_dcf.py`. No download. Rust: `rust/src/market/options.rs`. |
 | `rates.py` | 677 | US rates and inflation from the publishers, with no API key. U.S. Treasury par yield curves: nominal 1M to 30Y from 1990, real (TIPS) 5Y to 30Y from 2003. New York Fed SOFR, EFFR, OBFR, TGCR, BGCR and the FOMC target range. BLS CPI-U, headline and core. Breakeven inflation and 5y5y forward inflation use the FRED formulas. `cross_check` and `cross_check_inflation` compare each value with FRED. `with_risk_free` sets the `rf` driver mean of a `DriverModel`. Values are decimals. Cache: `data/raw/rates/`. CLI with `--json`: `python -m financial_analysis.rates`. |
 | `bonds.py` | 300 | US corporate bond data, with no API key, through the FRED CSV: ICE BofA option-adjusted spread and effective yield for each rating (AAA to CCC; FRED keeps only 3 years), Moody's seasoned Aaa and Baa yields (daily from 1983 and 1986), and the U.S. Treasury HQM corporate spot curve (monthly from 1984). `rating_bucket` maps S&P and Moody's ratings to an index. `spread_over_10y` = index yield minus UST 10Y, the engine's `kd_spread`. `with_kd_spread` sets that driver mean. A value more than 7 days old (70 days for HQM) raises an error. `cross_check_bonds` compares Moody's minus UST 10Y with FRED AAA10Y and BAA10Y. Cache: `data/raw/bonds/`. CLI with `--json`: `python -m financial_analysis.bonds`. |
 | `scenarios.py` | 125 | Bear/base/bull presets (`DEFAULT_SCENARIOS` generic mature-large-cap; `_SCENARIO_OVERRIDES["IBM"]` = v3 framework), `CAPITAL_OVERRIDES` (IBM: net debt $54.0B, 948,675,228 diluted shares), `capital_structure_for` (derives net debt from the latest 10-K: standard variable `total_debt` − cash; shares_outstanding falling back to diluted). |
-| `schema.py` | 187 | Dataclasses: `PeriodFinancials` (132 standard variables with the same names as the registry, `sources` = the tag or formula behind each value, reserved `segment_revenue`, `raw_extras`; derived `free_cash_flow = OCF − abs(capex_total)` (rule R2: equipment and capitalized software) and `fcf_margin`), `CompanyFinancials`, `PricePoint`, `EarningsEstimate`, `EarningsSurprise`, `OptionQuote`, `OptionChainSnapshot`, `ConsensusEstimates`. |
+| `schema.py` | 245 | Legacy dataclasses: `PeriodFinancials` (the standard variables with the names of the registry), `CompanyFinancials`, `PricePoint`, `OptionQuote`, `OptionChainSnapshot`. Used by the Python engines, the backtest and the HTML report. Rust: `rust/src/company.rs` (the registry is the only list of names; `tests/test_schema.py` checks that the dataclass has each registry variable). |
 | `store.py` | 105 | JSON persistence `data/processed/TICKER.json` (**periods only** — no market data), in-memory session cache, `get_series`/`compare` query helpers with metric-name validation. |
 | `standard_variables.toml` | 1,385 | The registry of standard variables (data): for each variable its alias tags in a fixed sequence, fallback formulas, unit, sign, core flag and memo flag; the rollups; the containment rules; the excluded tags with reasons. The Rust program `rust/mapcheck` uses it to make the variables. |
-| `xbrl_tags.py` | 135 | Loads the registry file for the Python code that stays (schema fields, xlsx writer): `ALL_TAGS`, the four statement dicts, `CORE_FIELDS`, `ROLLUPS`, `WITHIN`, `STATEMENT_MAP`, `UNIT_MAP`. It does no mapping. |
 | `verdict.py` | 31 | Investor verdict, read-only over driver-engine paths: chance the price is too high (share of paths valued below the price) and a five-band verdict (25%/75% outer cutoffs, Morningstar-style; 40%/60% middle cutoffs are judgment). Plan: PLANNING/proposals/2026-10-15-investor-verdict-layer.md. |
 
 ## `scripts/` (verified 2026-07-17)
 
 | Script | CLI (verified against argparse) | What it does |
 |---|---|---|
-| `analyze.py` | `python -m scripts.analyze TICKER [--refresh] [--out PATH] [--no-market] [--no-options] [--no-estimates]` | Full pipeline: import → attach prices/surprises/consensus/options → write `data/processed/TICKER_financials.xlsx`. The workbook **always contains all nine sheets** (Income Statement, Balance Sheet, Cash Flow, Raw, Prices, Estimates, Estimates Fwd, Options, Options Summary); skipped groups leave header-only sheets, and the console "N tabs" count refers to populated groups. RPO rows share the Balance Sheet tab with `statement=disclosure`. |
-| `import_financials.py` | `python -m scripts.import_financials TICKER [--refresh]` | Import + save JSON only, no xlsx. |
 | `import_edgar.py` | `python -m scripts.import_edgar TICKER VALUATION_DATE [--output-dir data/raw] [--lookback-months 18] [--lookahead-months 6]` | Bulk full-index filing download (archival fallback path — companyfacts is the primary parse path). |
 | `run_dcf.py` | `python -m scripts.run_dcf TICKER [--simulations 10000] [--years 10] [--growth 0.15] [--wacc 0.10] [--terminal-growth 0.03] [--seed N]` | Classic-engine MC DCF on stored data; no network. |
 | `backtest.py` | `python -m scripts.backtest TICKER [--horizon 3] [--simulations 10000] [--seed 7]` | Vintage backtest console report: per-vintage P10/P50/P90 vs actuals, band coverage vs nominal 80%, signed bias by horizon, data flags, skipped vintages. No network. |
@@ -496,6 +485,30 @@ in parallel. Parallel paths do not change a result.
 
 **Commands.** `fa dcf drivers|classic|scenarios|models`, `fa verdict`. See the README.
 
+## Company data, market data and the xlsx file (`rust/src/company.rs`, `market/`, `analyze.rs`, 2026-11-19)
+
+These parts are Rust code only. The Python files `scripts/analyze.py`, `scripts/import_financials.py`,
+`estimates.py`, `fmp.py`, `xbrl_tags.py` and the download code of `market_data.py` and `options.py` are deleted.
+
+| Command | Function |
+|---|---|
+| `fa import TICKER...` | Imports the SEC data (cache first) and writes `data/processed/<TICKER>.json`. Calls `mapcheck::import::import_ticker`, the same function as `mapcheck import`. |
+| `fa analyze TICKER [--refresh] [--out F] [--no-market] [--no-options] [--no-estimates]` | Imports, gets the market data, writes the nine-sheet xlsx file. |
+
+| Module (`rust/src/`) | Function |
+|---|---|
+| `company.rs` | Typed company: periods with one value for each registry variable, the source texts and the unmapped tags. `Company::from_store` reads the content of the store file in memory, `Company::load` reads the file. Free cash flow and its margin. |
+| `market/mod.rs` | Rounding as Python `round(x, 6)`, JSON with `NaN` (written by Python), key order of a JSON object, the HTTP client with 2 seconds between requests. |
+| `market/prices.rs` | Yahoo chart endpoint to daily prices (adjusted, as `yfinance`); cache `data/raw/<T>/prices.json`; HTTP 429 keeps the cache. |
+| `market/options.rs` | Cboe delayed quotes to a snapshot `data/raw/<T>/options/<date>.json`; snapshot files; `compute_chain_metrics`. |
+| `market/fmp.rs` | FMP estimates and surprises; key from `FMP_API_KEY`; caches `estimates.json`, `surprises.json`. |
+| `market/consensus.rs` | The consensus snapshot files and `yf_earnings.json` of the Python code (read only: no source). |
+| `analyze.rs` | `flatten` (the rows of the nine sheets), `write_xlsx` (crate `rust_xlsxwriter`), the command. |
+
+`rust_xlsxwriter` is the Rust port of the library `XlsxWriter`; it writes xlsx files only and has no network code.
+Fixtures from the Python functions are in `rust/tests/fixtures/market/` and `rust/tests/fixtures/analyze/`.
+The traps are #140 to #146 of `docs/HIDDEN-ASSUMPTIONS.md`.
+
 ## Options trading (`rust/src/trading/`, `fa trade ...`)
 
 A research tool for SPY/QQQ option strategies. It is Rust code only. It does not use
@@ -546,7 +559,7 @@ ticket `option-backtest-rust`).
 
 ## Tests
 
-`python -m pytest` from the repo root: 349 tests, all pass on 2026-11-19 (4 s).
-19 test modules are in `tests/`. `cargo test --manifest-path rust/mapcheck/Cargo.toml`: 86 Rust
-tests. The suites make no network calls; HTTP is mocked and
+`python -m pytest` from the repo root: 282 tests, all pass on 2026-11-19 (4 s).
+14 test modules are in `tests/`. `cargo test --manifest-path rust/mapcheck/Cargo.toml`: 89 Rust
+tests. `cargo test --manifest-path rust/Cargo.toml --locked`: 262 + 17 + 1 Rust tests. The suites make no network calls; HTTP is mocked and
 files use `tmp_path`. Install `pytest` with `pip install -r requirements-dev.txt`.

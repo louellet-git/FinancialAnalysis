@@ -179,3 +179,15 @@ def test_period_financials_raw_extras_stores_concepts():
         raw_extras={"us-gaap/PaymentsToAcquireEquitySecuritiesFvNi": 17_500_000_000},
     )
     assert p.raw_extras["us-gaap/PaymentsToAcquireEquitySecuritiesFvNi"] == 17_500_000_000
+
+
+def test_schema_has_every_variable_of_the_registry():
+    """`store.load` reads the fields of this class only: a variable of the registry that is not here would be lost."""
+    import tomllib
+    from dataclasses import fields
+    from pathlib import Path
+    registry = Path(__file__).resolve().parents[1] / "financial_analysis" / "standard_variables.toml"
+    with registry.open("rb") as handle:
+        names = [entry["name"] for entry in tomllib.load(handle)["variable"]]
+    assert len(names) >= 110
+    assert set(names) <= {f.name for f in fields(PeriodFinancials)}

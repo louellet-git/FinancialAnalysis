@@ -30,6 +30,9 @@ pub mod refdata;
 pub mod futures;
 pub mod ratemodels;
 pub mod trading;
+pub mod analyze;
+pub mod company;
+pub mod market;
 
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
