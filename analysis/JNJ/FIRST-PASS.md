@@ -4,8 +4,10 @@
 Luc's review on PR #16: run a stock we had not covered and see where the pipeline and
 the IBM template break. Not investment advice.
 
-Reproduce: `python -m scripts.analyze JNJ`, then `python -m analysis.JNJ.first_pass_run`.
-Register with inline rationales: `analysis/JNJ/driver_model.py`.
+Reproduce: `fa dcf drivers JNJ --price 255.56`. The command for each number is in
+`COMMANDS.md`.
+Register with inline rationales: `analysis/JNJ/driver_model.toml` (and `driver_model.py`,
+the older copy).
 
 Why JNJ: a mature non-tech large cap that tests what IBM could not. It has a spin-off
 recast (Kenvue, 2023), heavy pipeline M&A (11.6% of revenue vs IBM's 7.1%), a litigation

@@ -1,8 +1,7 @@
-//! Rust interface to the FinancialAnalysis Python pipeline.
+//! Rust interface to FinancialAnalysis: rates, bonds, inflation, the DCF verdict.
 //!
-//! Python is the one implementation. This crate runs the Python entry points with
-//! `--json` and turns their output into typed Rust values, so Rust code can call
-//! everything without a second copy of the logic.
+//! The rates, the bonds and the verdict are Rust (`rates`, `bonds`, `verdict_rates`, `dcf`).
+//! `Fa` keeps the old method names and calls them. No part of this crate starts Python.
 //!
 //! All rates are decimals (0.0507 == 5.07%). All dates are ISO strings (YYYY-MM-DD).
 //!
@@ -16,6 +15,8 @@
 //! # Ok::<(), financial_analysis::FaError>(())
 //! ```
 
+pub mod dcf;
+pub mod bonds;
 pub mod curve;
 pub mod prices;
 pub mod recon;
@@ -25,17 +26,25 @@ pub mod history;
 pub mod explain;
 pub mod billdiag;
 pub mod forwards;
+pub mod rates;
 pub mod refdata;
+pub mod verdict_rates;
+
+#[cfg(test)]
+mod rates_tests;
 pub mod futures;
 pub mod ratemodels;
 pub mod trading;
+pub mod analyze;
+pub mod company;
+pub mod market;
+pub mod report;
 
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt;
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus};
 
 /// Treasury tenors in curve order (a `BTreeMap` sorts them as text).
 pub const TENORS: [&str; 14] = [
@@ -43,7 +52,7 @@ pub const TENORS: [&str; 14] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Types (mirror the Python JSON)
+// Types (the JSON fields are the same as in the earlier Python commands)
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -237,10 +246,8 @@ pub struct VerdictOptions {
 
 #[derive(Debug)]
 pub enum FaError {
-    /// Python could not start (wrong FA_PYTHON?).
-    Spawn { python: PathBuf, source: std::io::Error },
-    /// The Python command failed. `kind` is the Python exception type when known.
-    Python { code: Option<i32>, kind: Option<String>, message: String },
+    /// A Rust data command failed (a source did not answer, a value is missing, a bad input).
+    Data(String),
     /// The output was not the JSON shape this crate expects.
     Json { source: serde_json::Error, output: String },
 }
@@ -248,14 +255,7 @@ pub enum FaError {
 impl fmt::Display for FaError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FaError::Spawn { python, source } => write!(f, "cannot start {}: {source}", python.display()),
-            FaError::Python { code, kind, message } => {
-                write!(f, "python failed (exit {code:?})")?;
-                if let Some(k) = kind {
-                    write!(f, " {k}")?;
-                }
-                write!(f, ": {message}")
-            }
+            FaError::Data(message) => write!(f, "{message}"),
             FaError::Json { source, output } => {
                 let head: String = output.chars().take(200).collect();
                 write!(f, "unexpected JSON ({source}): {head}")
@@ -267,30 +267,13 @@ impl fmt::Display for FaError {
 impl std::error::Error for FaError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            FaError::Spawn { source, .. } => Some(source),
             FaError::Json { source, .. } => Some(source),
-            FaError::Python { .. } => None,
+            FaError::Data(_) => None,
         }
     }
 }
 
 pub type Result<T> = std::result::Result<T, FaError>;
-
-/// Turn a failed run's stderr into an error. The Python CLIs print
-/// `{"error": ..., "type": ...}` on stderr in `--json` mode.
-pub fn python_error(code: Option<i32>, stderr: &str) -> FaError {
-    #[derive(Deserialize)]
-    struct PyErr {
-        error: String,
-        #[serde(rename = "type")]
-        kind: Option<String>,
-    }
-    let last = stderr.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("");
-    match serde_json::from_str::<PyErr>(last) {
-        Ok(e) => FaError::Python { code, kind: e.kind, message: e.error },
-        Err(_) => FaError::Python { code, kind: None, message: stderr.trim().to_string() },
-    }
-}
 
 /// Parse JSON output into a type, keeping the raw text for the error message.
 pub fn parse_output<T: DeserializeOwned>(output: &str) -> Result<T> {
@@ -301,238 +284,143 @@ pub fn parse_output<T: DeserializeOwned>(output: &str) -> Result<T> {
 // Client
 // ---------------------------------------------------------------------------
 
-/// Runs the Python pipeline. `repo` is the repository root, `python` the interpreter.
+/// The entry point of the typed Rust calls. `repo` is the repository root.
 #[derive(Debug, Clone)]
 pub struct Fa {
-    pub python: PathBuf,
     pub repo: PathBuf,
 }
 
 impl Fa {
-    pub fn new(python: impl Into<PathBuf>, repo: impl Into<PathBuf>) -> Self {
-        Fa { python: python.into(), repo: repo.into() }
+    pub fn new(repo: impl Into<PathBuf>) -> Self {
+        Fa { repo: repo.into() }
     }
 
-    /// `FA_REPO` (default: the repository that holds this crate) and `FA_PYTHON`
-    /// (default: see [`default_python`]).
+    /// `FA_REPO` (default: the repository that holds this crate).
     pub fn from_env() -> Self {
         let repo = std::env::var_os("FA_REPO")
             .map(PathBuf::from)
             .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join(".."));
-        let python = std::env::var_os("FA_PYTHON")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| default_python(&repo, cfg!(windows), |p| p.exists()));
-        Fa { python, repo }
+        Fa { repo }
     }
 
-    fn command(&self, module: &str, args: &[String]) -> Command {
-        let mut cmd = Command::new(&self.python);
-        cmd.current_dir(&self.repo).arg("-m").arg(module).args(args);
-        cmd
-    }
-
-    /// `python -m <module> <args> --json`, parsed into `T`.
-    pub fn call<T: DeserializeOwned>(&self, module: &str, args: &[String]) -> Result<T> {
-        let mut args = args.to_vec();
-        args.push("--json".into());
-        let out = self
-            .command(module, &args)
-            .output()
-            .map_err(|source| FaError::Spawn { python: self.python.clone(), source })?;
-        if !out.status.success() {
-            return Err(python_error(out.status.code(), &String::from_utf8_lossy(&out.stderr)));
-        }
-        parse_output(&String::from_utf8_lossy(&out.stdout))
-    }
-
-    /// Run any repository entry point (for example `scripts.analyze IBM`) with its
-    /// output passed through to this process. This makes every Python command callable.
-    pub fn run(&self, module: &str, args: &[String]) -> Result<ExitStatus> {
-        self.command(module, args)
-            .status()
-            .map_err(|source| FaError::Spawn { python: self.python.clone(), source })
-    }
-
-    /// Run an entry point and keep its output: the text of stdout when the command
-    /// succeeds. When it fails, the error has the text of stderr (or of stdout when
-    /// stderr is empty: some commands print their error there).
-    pub fn run_captured(&self, module: &str, args: &[String]) -> Result<String> {
-        let out = self
-            .command(module, args)
-            .output()
-            .map_err(|source| FaError::Spawn { python: self.python.clone(), source })?;
-        let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
-        if out.status.success() {
-            return Ok(stdout);
-        }
-        let stderr = String::from_utf8_lossy(&out.stderr);
-        let text = if stderr.trim().is_empty() { stdout } else { stderr.into_owned() };
-        Err(python_error(out.status.code(), &text))
-    }
-
-    fn rates<T: DeserializeOwned>(&self, args: Vec<String>) -> Result<T> {
-        self.call("financial_analysis.rates", &args)
+    /// The network, the cache `data/raw` of this repository, today from the clock.
+    fn source(&self) -> rates::Rates {
+        rates::Rates::live(&self.repo)
     }
 
     /// Treasury par yield on or before `date` ("YYYY-MM-DD", "today", or None for latest).
     pub fn treasury_yield(&self, tenor: &str, date: Option<&str>, real: bool) -> Result<RateObservation> {
-        let mut a = vec!["yield".into(), "--tenor".into(), tenor.into()];
-        push_date(&mut a, date);
-        if real {
-            a.push("--real".into());
-        }
-        self.rates(a)
+        data(|| self.source().treasury_yield(tenor, rates::parse_on(date)?, real))
     }
 
     pub fn curve(&self, date: Option<&str>, real: bool) -> Result<Curve> {
-        let mut a = vec!["curve".into()];
-        push_date(&mut a, date);
-        if real {
-            a.push("--real".into());
-        }
-        self.rates(a)
+        data(|| self.source().curve(rates::parse_on(date)?, real))
     }
 
     /// Daily Treasury series for one tenor: {date: rate}.
     pub fn history(&self, tenor: &str, start: &str, end: Option<&str>, real: bool) -> Result<BTreeMap<String, f64>> {
-        let mut a = vec!["history".into(), "--tenor".into(), tenor.into(), "--start".into(), start.into()];
-        if let Some(e) = end {
-            a.extend(["--end".into(), e.into()]);
-        }
-        if real {
-            a.push("--real".into());
-        }
-        self.rates(a)
+        data(|| {
+            let (start, end) = (rates::parse_on(Some(start))?, rates::parse_on(end)?);
+            let h = self.source().treasury_history(tenor, start, end, real)?;
+            Ok(h.into_iter().map(|(d, v)| (mapcheck::dates::format(d), v)).collect())
+        })
     }
 
     /// NY Fed reference rate: SOFR, EFFR, OBFR, TGCR or BGCR.
     pub fn nyfed(&self, rate: &str, date: Option<&str>) -> Result<RateObservation> {
-        let mut a = vec!["nyfed".into(), "--rate".into(), rate.into()];
-        push_date(&mut a, date);
-        self.rates(a)
+        data(|| self.source().nyfed_rate(rate, rates::parse_on(date)?))
     }
 
     pub fn inflation(&self, date: Option<&str>) -> Result<Inflation> {
-        let mut a = vec!["inflation".into()];
-        push_date(&mut a, date);
-        self.rates(a)
+        data(|| self.source().inflation_snapshot(rates::parse_on(date)?))
     }
 
     pub fn snapshot(&self, date: Option<&str>) -> Result<Snapshot> {
-        let mut a = vec!["snapshot".into()];
-        push_date(&mut a, date);
-        self.rates(a)
+        data(|| self.source().snapshot(rates::parse_on(date)?))
     }
 
     /// Any FRED series. `raw` keeps index levels (for example CPIAUCNS); otherwise percent -> decimal.
     pub fn fred(&self, series: &str, start: Option<&str>, raw: bool) -> Result<BTreeMap<String, f64>> {
-        let mut a = vec!["fred".into(), "--series".into(), series.into()];
-        if let Some(s) = start {
-            a.extend(["--start".into(), s.into()]);
-        }
-        if raw {
-            a.push("--raw".into());
-        }
-        self.rates(a)
+        data(|| {
+            let h = self.source().fred_series(series, rates::parse_on(start)?, !raw)?;
+            Ok(h.into_iter().map(|(d, v)| (mapcheck::dates::format(d), v)).collect())
+        })
     }
 
     /// Cross-check every source against FRED over the last `days`.
     pub fn check(&self, days: u32) -> Result<Vec<CheckResult>> {
-        self.rates(vec!["check".into(), "--days".into(), days.to_string()])
+        data(|| self.source().check(days as i64))
     }
 
-    /// Driver-engine verdict for a ticker with `analysis/<TICKER>/driver_model.py`.
+    /// Driver-engine verdict for a ticker with `analysis/<TICKER>/driver_model.toml`. With
+    /// `rf_date` the Treasury 10Y is the `rf`; with `rating` the market spread of the rating is the
+    /// `kd_spread` (it needs `rf_date`). All in Rust; the rates come from the network.
     pub fn verdict(&self, ticker: &str, price: f64, opts: &VerdictOptions) -> Result<Verdict> {
-        self.call("scripts.verdict", &verdict_args(ticker, price, opts))
-    }
-
-    fn bonds<T: DeserializeOwned>(&self, args: Vec<String>) -> Result<T> {
-        self.call("financial_analysis.bonds", &args)
-    }
-
-    fn rating_cmd<T: DeserializeOwned>(&self, cmd: &str, rating: &str, date: Option<&str>) -> Result<T> {
-        let mut a = vec![cmd.into(), "--rating".into(), rating.into()];
-        push_date(&mut a, date);
-        self.bonds(a)
+        let (simulations, seed) = (opts.simulations.unwrap_or(10_000), opts.seed.unwrap_or(7));
+        let spec = dcf::model::ModelSpec::load(&self.repo, ticker)
+            .map_err(|e| FaError::Data(e.0))?
+            .ok_or_else(|| {
+                let t = ticker.to_uppercase();
+                FaError::Data(format!(
+                    "No driver model for {t}: expected analysis/{t}/driver_model.toml. Models: {}.",
+                    dcf::model::available_models(&self.repo).join(", ")
+                ))
+            })?;
+        if opts.rf_date.is_none() && (opts.rf_base_date.is_some() || opts.rating.is_some()) {
+            return Err(FaError::Data("--rf-base-date and --rating need --rf-date".into()));
+        }
+        let (mut spec, mut rates_ctx, mut credit_ctx) = (spec, None, None);
+        if let Some(rf_date) = &opts.rf_date {
+            let mut src = self.source();
+            let (s, ctx) = data(|| verdict_rates::rates_context(&spec, &mut src, rf_date, opts.rf_base_date.as_deref()))?;
+            spec = s;
+            if let Some(rating) = &opts.rating {
+                let (s, c) = data(|| verdict_rates::credit_context(&spec, &mut src, rating, rf_date, ctx.rf.value))?;
+                spec = s;
+                credit_ctx = Some(c);
+            }
+            rates_ctx = Some(ctx);
+        }
+        dcf::cli::verdict_for_spec(&spec, ticker, price, simulations, seed, rates_ctx, credit_ctx).map_err(|e| FaError::Data(e.0))
     }
 
     /// ICE BofA option-adjusted spread for a rating ("A-", "Baa2", ...).
     pub fn credit_spread(&self, rating: &str, date: Option<&str>) -> Result<RateObservation> {
-        self.rating_cmd("spread", rating, date)
+        data(|| self.source().credit_spread(rating, rates::parse_on(date)?))
     }
 
     /// ICE BofA effective yield for a rating.
     pub fn corporate_yield(&self, rating: &str, date: Option<&str>) -> Result<RateObservation> {
-        self.rating_cmd("yield", rating, date)
+        data(|| self.source().corporate_yield(rating, rates::parse_on(date)?))
     }
 
     /// Index yield minus UST 10Y on the same date: the engine's `kd_spread`.
     pub fn spread_over_10y(&self, rating: &str, date: Option<&str>) -> Result<RateObservation> {
-        self.rating_cmd("over10y", rating, date)
+        data(|| self.source().spread_over_10y(rating, rates::parse_on(date)?))
     }
 
     /// Moody's seasoned corporate yield: grade "Aaa" or "Baa".
     pub fn moodys(&self, grade: &str, date: Option<&str>) -> Result<RateObservation> {
-        let mut a = vec!["moodys".into(), "--grade".into(), grade.into()];
-        push_date(&mut a, date);
-        self.bonds(a)
+        data(|| self.source().moodys_yield(grade, rates::parse_on(date)?))
     }
 
     pub fn hqm_curve(&self, date: Option<&str>) -> Result<HqmCurve> {
-        let mut a = vec!["hqm".into()];
-        push_date(&mut a, date);
-        self.bonds(a)
+        data(|| self.source().hqm_curve(rates::parse_on(date)?))
     }
 
     pub fn credit_snapshot(&self, date: Option<&str>) -> Result<CreditSnapshot> {
-        let mut a = vec!["snapshot".into()];
-        push_date(&mut a, date);
-        self.bonds(a)
+        data(|| self.source().credit_snapshot(rates::parse_on(date)?))
     }
 
     /// Moody's minus UST 10Y vs FRED AAA10Y / BAA10Y over the last `days`.
     pub fn check_bonds(&self, days: u32) -> Result<Vec<CheckResult>> {
-        self.bonds(vec!["check".into(), "--days".into(), days.to_string()])
+        data(|| self.source().cross_check_bonds(days as i64))
     }
 }
 
-/// The interpreter to use when `FA_PYTHON` is not set. Linux and macOS:
-/// `<repo>/.venv/bin/python` if it exists, else `python3`. Windows:
-/// `<repo>\.venv\Scripts\python.exe` if it exists, else `python`.
-pub fn default_python(repo: &Path, windows: bool, exists: impl Fn(&Path) -> bool) -> PathBuf {
-    let (venv, fallback) = if windows {
-        (repo.join(".venv").join("Scripts").join("python.exe"), "python")
-    } else {
-        (repo.join(".venv").join("bin").join("python"), "python3")
-    };
-    if exists(&venv) { venv } else { PathBuf::from(fallback) }
-}
-
-fn push_date(a: &mut Vec<String>, date: Option<&str>) {
-    if let Some(d) = date {
-        a.extend(["--date".into(), d.into()]);
-    }
-}
-
-/// Arguments for `scripts.verdict` (without `--json`).
-pub fn verdict_args(ticker: &str, price: f64, opts: &VerdictOptions) -> Vec<String> {
-    let mut a = vec![ticker.to_string(), "--price".into(), price.to_string()];
-    if let Some(n) = opts.simulations {
-        a.extend(["--simulations".into(), n.to_string()]);
-    }
-    if let Some(s) = opts.seed {
-        a.extend(["--seed".into(), s.to_string()]);
-    }
-    if let Some(d) = &opts.rf_date {
-        a.extend(["--rf-date".into(), d.clone()]);
-    }
-    if let Some(d) = &opts.rf_base_date {
-        a.extend(["--rf-base-date".into(), d.clone()]);
-    }
-    if let Some(r) = &opts.rating {
-        a.extend(["--rating".into(), r.clone()]);
-    }
-    a
+/// A Rust data call that gives a `String` error, as a `FaError`.
+fn data<T>(f: impl FnOnce() -> std::result::Result<T, String>) -> Result<T> {
+    f().map_err(FaError::Data)
 }
 
 #[cfg(test)]
@@ -621,23 +509,6 @@ mod tests {
     }
 
     #[test]
-    fn python_json_error_is_typed() {
-        let e = python_error(Some(2), "some warning\n{\"error\": \"no SOFR\", \"type\": \"LookupError\"}\n");
-        match e {
-            FaError::Python { code, kind, message } => {
-                assert_eq!((code, kind.as_deref(), message.as_str()), (Some(2), Some("LookupError"), "no SOFR"));
-            }
-            other => panic!("unexpected {other:?}"),
-        }
-    }
-
-    #[test]
-    fn python_plain_error_keeps_text() {
-        let e = python_error(Some(1), "Traceback ...\nValueError: boom\n");
-        assert!(e.to_string().contains("ValueError: boom"));
-    }
-
-    #[test]
     fn bad_json_reports_output() {
         let e = parse_output::<RateObservation>("not json").unwrap_err();
         assert!(e.to_string().contains("not json"));
@@ -681,32 +552,5 @@ mod tests {
         let v: Verdict = parse_output(&format!("{{{base}, \"credit\": {credit}}}")).unwrap();
         let c = v.credit.unwrap();
         assert_eq!((c.index.as_str(), c.kd_spread.value), ("A", 0.0067));
-    }
-
-    #[test]
-    fn default_python_for_each_platform() {
-        let repo = Path::new("repo");
-        assert_eq!(default_python(repo, false, |_| false), PathBuf::from("python3"));
-        assert_eq!(default_python(repo, true, |_| false), PathBuf::from("python"));
-        assert_eq!(default_python(repo, false, |_| true), repo.join(".venv").join("bin").join("python"));
-        assert_eq!(default_python(repo, true, |_| true), repo.join(".venv").join("Scripts").join("python.exe"));
-    }
-
-    #[test]
-    fn verdict_args_include_options() {
-        let a = verdict_args(
-            "IBM",
-            231.09,
-            &VerdictOptions {
-                seed: Some(7),
-                rf_date: Some("today".into()),
-                rating: Some("A-".into()),
-                ..Default::default()
-            },
-        );
-        assert_eq!(
-            a,
-            vec!["IBM", "--price", "231.09", "--seed", "7", "--rf-date", "today", "--rating", "A-"]
-        );
     }
 }

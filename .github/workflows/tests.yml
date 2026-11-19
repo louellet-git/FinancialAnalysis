@@ -4,19 +4,14 @@ on:
   push:
     branches: [main]
 jobs:
-  pytest:
+  # The program that makes the standard variables (rust/mapcheck). The Python importer
+  # (financial_analysis/importer.py) runs its release build. No Python test remains.
+  mapcheck:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-      - run: pip install -r requirements.txt -r requirements-dev.txt
-      # The Rust program makes the standard variables. Build it before pytest: the
-      # Python importer runs it (tests/test_importer.py).
       - run: cargo test --manifest-path rust/mapcheck/Cargo.toml
       - run: cargo build --release --manifest-path rust/mapcheck/Cargo.toml
-      - run: python -m pytest -q
   cargo:
     runs-on: ubuntu-latest
     steps:

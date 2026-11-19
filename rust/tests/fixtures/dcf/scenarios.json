@@ -1,0 +1,174 @@
+{
+ "seed": 7,
+ "default": [
+  {
+   "key": "bear",
+   "label": "Bear  (growth stalls)",
+   "assumptions": {
+    "n_simulations": 10000,
+    "projection_years": 10,
+    "growth_rate_mean": 0.01,
+    "growth_rate_std": 0.02,
+    "terminal_growth_mean": 0.015,
+    "terminal_growth_std": 0.005,
+    "wacc_mean": 0.095,
+    "wacc_std": 0.01,
+    "fcf_margin_mean": null,
+    "fcf_margin_std": null,
+    "seed": 7
+   }
+  },
+  {
+   "key": "base",
+   "label": "Base  (mature grower, historical trend)",
+   "assumptions": {
+    "n_simulations": 10000,
+    "projection_years": 10,
+    "growth_rate_mean": 0.04,
+    "growth_rate_std": 0.02,
+    "terminal_growth_mean": 0.025,
+    "terminal_growth_std": 0.005,
+    "wacc_mean": 0.085,
+    "wacc_std": 0.01,
+    "fcf_margin_mean": null,
+    "fcf_margin_std": null,
+    "seed": 7
+   }
+  },
+  {
+   "key": "bull",
+   "label": "Bull  (growth re-accelerates)",
+   "assumptions": {
+    "n_simulations": 10000,
+    "projection_years": 10,
+    "growth_rate_mean": 0.06,
+    "growth_rate_std": 0.02,
+    "terminal_growth_mean": 0.03,
+    "terminal_growth_std": 0.005,
+    "wacc_mean": 0.08,
+    "wacc_std": 0.01,
+    "fcf_margin_mean": null,
+    "fcf_margin_std": null,
+    "seed": 7
+   }
+  }
+ ],
+ "overrides": {
+  "DUOL": [
+   {
+    "key": "bear",
+    "label": "Bear  (AI commoditizes app learning)",
+    "assumptions": {
+     "n_simulations": 10000,
+     "projection_years": 10,
+     "growth_rate_mean": 0.04,
+     "growth_rate_std": 0.05,
+     "terminal_growth_mean": 0.02,
+     "terminal_growth_std": 0.005,
+     "wacc_mean": 0.115,
+     "wacc_std": 0.0125,
+     "fcf_margin_mean": 0.24,
+     "fcf_margin_std": 0.04,
+     "seed": 7
+    }
+   },
+   {
+    "key": "base",
+    "label": "Base  (consensus deceleration glide)",
+    "assumptions": {
+     "n_simulations": 10000,
+     "projection_years": 10,
+     "growth_rate_mean": 0.14,
+     "growth_rate_std": 0.05,
+     "terminal_growth_mean": 0.03,
+     "terminal_growth_std": 0.005,
+     "wacc_mean": 0.105,
+     "wacc_std": 0.0125,
+     "fcf_margin_mean": 0.3,
+     "fcf_margin_std": 0.04,
+     "seed": 7
+    }
+   },
+   {
+    "key": "bull",
+    "label": "Bull  (AI-native re-acceleration)",
+    "assumptions": {
+     "n_simulations": 10000,
+     "projection_years": 10,
+     "growth_rate_mean": 0.22,
+     "growth_rate_std": 0.06,
+     "terminal_growth_mean": 0.035,
+     "terminal_growth_std": 0.005,
+     "wacc_mean": 0.1,
+     "wacc_std": 0.0125,
+     "fcf_margin_mean": 0.36,
+     "fcf_margin_std": 0.04,
+     "seed": 7
+    }
+   }
+  ],
+  "IBM": [
+   {
+    "key": "bear",
+    "label": "Bear  (disruption: g 1%, 100% M&A charged)",
+    "assumptions": {
+     "n_simulations": 10000,
+     "projection_years": 10,
+     "growth_rate_mean": 0.01,
+     "growth_rate_std": 0.02,
+     "terminal_growth_mean": 0.015,
+     "terminal_growth_std": 0.005,
+     "wacc_mean": 0.0825,
+     "wacc_std": 0.0075,
+     "fcf_margin_mean": 0.092,
+     "fcf_margin_std": 0.02,
+     "seed": 7
+    }
+   },
+   {
+    "key": "base",
+    "label": "Base  (organic + half-paid acquired growth)",
+    "assumptions": {
+     "n_simulations": 10000,
+     "projection_years": 10,
+     "growth_rate_mean": 0.0215,
+     "growth_rate_std": 0.02,
+     "terminal_growth_mean": 0.0225,
+     "terminal_growth_std": 0.005,
+     "wacc_mean": 0.075,
+     "wacc_std": 0.0075,
+     "fcf_margin_mean": 0.145,
+     "fcf_margin_std": 0.02,
+     "seed": 7
+    }
+   },
+   {
+    "key": "bull",
+    "label": "Bull  (guidance-anchored recovery)",
+    "assumptions": {
+     "n_simulations": 10000,
+     "projection_years": 10,
+     "growth_rate_mean": 0.045,
+     "growth_rate_std": 0.02,
+     "terminal_growth_mean": 0.025,
+     "terminal_growth_std": 0.005,
+     "wacc_mean": 0.0725,
+     "wacc_std": 0.0075,
+     "fcf_margin_mean": 0.161,
+     "fcf_margin_std": 0.02,
+     "seed": 7
+    }
+   }
+  ]
+ },
+ "capital": {
+  "IBM": {
+   "net_debt": 54000000000.0,
+   "shares": 948675228
+  },
+  "DUOL": {
+   "net_debt": -1174600000.0,
+   "shares": 48308000
+  }
+ }
+}

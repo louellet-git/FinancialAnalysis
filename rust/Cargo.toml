@@ -2,7 +2,7 @@
 name = "financial-analysis"
 version = "0.1.0"
 edition = "2021"
-description = "Rust interface to the FinancialAnalysis Python pipeline: rates, inflation, verdict, and any entry point."
+description = "FinancialAnalysis in Rust: SEC mapping, DCF engines, rates, bonds, verdict, backtest, report, options trading research."
 publish = false
 
 [lib]
@@ -20,7 +20,9 @@ rayon = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }
 flate2 = "1"
+toml = "0.8"
 tiny_http = "0.12"
+rust_xlsxwriter = "0.103.0"
 
 # The model tests simulate millions of steps and fit likelihoods: run them optimized.
 [profile.test]

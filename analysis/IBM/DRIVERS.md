@@ -51,7 +51,7 @@ entries: **ma_ratio·rf = −0.15** (debt-financed M&A slows when rates spike �
 defensible zero, fixed) and **terminal_growth·ma_ratio = +0.15** (bought growth priced
 in the terminal — F16 in perpetuity). PSD verified: min eigenvalue 0.419. Regime
 disclosure: rf·g_* > 0 assumes demand-driven rates; the supply-shock sensitivity
-(rf·g_* = −0.15) is published by `dcf_drivers_run.py` — P50 nearly unchanged, tails widen.
+(rf·g_* = −0.15) is published by `fa dcf drivers IBM --corr rf,g_software=-0.15 ...` — P50 nearly unchanged, tails widen.
 
 ## WACC level — honest attribution (consolidation reopen, closed)
 
@@ -72,7 +72,7 @@ Attribution leaders (±1σ, correlations intact, post-consolidation run): core_m
 terminal_growth −19/+26 · rf +23/−19 · erp +22/−18 · g_software −18/+21 · ma_ratio ±18.7
 (rose with the consolidation-mandated std 2.4%).
 
-Published loci (`python -m analysis.IBM.dcf_drivers_run`, engine governs — these are the
+Published loci (`fa dcf drivers IBM` with the options in `README.md`, engine governs — these are the
 current run's values): ma_recurrence f=0→1 (paired, derived from
 `SOFTWARE_ORGANIC_G + f × SOFTWARE_ACQUIRED_G`): P50 $197.79→$101 ·
 SBC drift flat/3.5%/4.5%: $164.11/$151.84/$139.20 · β 0.68/0.85/1.00:

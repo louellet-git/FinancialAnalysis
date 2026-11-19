@@ -100,6 +100,14 @@ impl Client {
         self.finish(result, url)
     }
 
+    /// POST a JSON text (`application/json`).
+    pub fn post_json(&mut self, url: &str, body: &str) -> Result<Vec<u8>, HttpError> {
+        self.wait();
+        let request = self.prepare(self.agent.post(url)).header("Content-Type", "application/json");
+        let result = request.send(body);
+        self.finish(result, url)
+    }
+
     fn wait(&mut self) {
         if let Some(last) = self.last {
             let elapsed = last.elapsed();

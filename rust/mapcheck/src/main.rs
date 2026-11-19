@@ -3,10 +3,11 @@
 use mapcheck::cli::Args;
 use mapcheck::dates;
 use mapcheck::http::Client;
+use mapcheck::import::{import_ticker, ImportError};
 use mapcheck::registry::Registry;
-use mapcheck::run::{check_all, check_cached, facts_path, map_ticker, report_json, values_json, Status};
+use mapcheck::run::{check_all, check_cached, facts_path, report_json, values_json, Status};
 use mapcheck::summary::{detail, listing, summary, values_listing};
-use mapcheck::{sec, store};
+use mapcheck::sec;
 use std::fs;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -281,36 +282,26 @@ fn cmd_import(raw: &[String]) -> Result<bool, String> {
         return Err("give one or more tickers".to_string());
     }
     let periods: usize = args.number("--periods", 12)?;
+    let delay: f64 = args.number("--delay", 0.15)?;
     let mut ok = true;
     for ticker in &tickers {
-        let facts = match sec::load_or_fetch_facts(&cache, ticker, args.number("--delay", 0.15)?) {
-            Ok(facts) => facts,
-            Err(e) => {
-                eprintln!("{ticker}: {e}");
+        match import_ticker(&registry, &cache, &dir, ticker, periods, delay, false) {
+            Ok(done) => println!(
+                "{ticker}: {} | {} annual periods, {} quarterly periods | {}",
+                done.company.name,
+                done.company.annual.len(),
+                done.company.quarterly.len(),
+                done.store_path.display()
+            ),
+            Err(ImportError::Unsupported(message)) => {
+                eprintln!("{message}");
                 ok = false;
-                continue;
             }
-        };
-        if !facts.has_us_gaap() {
-            let namespaces: Vec<&String> = facts.facts.keys().collect();
-            eprintln!("{ticker}: does not report under us-gaap (namespaces found: {namespaces:?}). IFRS and non-US-GAAP filers are not supported.");
-            ok = false;
-            continue;
+            Err(ImportError::Failed(message)) => {
+                eprintln!("{ticker}: {message}");
+                ok = false;
+            }
         }
-        let company = map_ticker(&registry, &cache, ticker, &facts, periods);
-        let cik = match &facts.cik {
-            serde_json::Value::Number(n) => n.to_string(),
-            serde_json::Value::String(s) => s.clone(),
-            _ => String::new(),
-        };
-        let path = store::write_store(&dir, &registry, ticker, &cik, &company)?;
-        println!(
-            "{ticker}: {} | {} annual periods, {} quarterly periods | {}",
-            company.name,
-            company.annual.len(),
-            company.quarterly.len(),
-            path.display()
-        );
     }
     Ok(ok)
 }

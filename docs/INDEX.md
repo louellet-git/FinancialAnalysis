@@ -16,7 +16,7 @@ pipeline or an audit gate; regenerate, don't hand-edit).
 | `docs/HIDDEN-ASSUMPTIONS.md` | Trap registry: 49 non-obvious assumptions/landmines with evidence pointers | informative (code governs) |
 | `docs/INDEX.md` | This file | informative |
 | `docs/visualizer-design-brief.md` | Contract for cosmetic restyles of the HTML report (structure + hard constraints) | binding (for visualizer restyles) |
-| `docs/design-specs/2026-07-16-ratings-desk-blueprint.md` | Accepted visual design spec applied to `visualize_dcf.py` (tokens, chart chrome) | binding (visualizer styling) |
+| `docs/design-specs/2026-07-16-ratings-desk-blueprint.md` | Accepted visual design spec applied to the report (`rust/src/report/`; the Python script `visualize_dcf.py` is deleted) (tokens, chart chrome) | binding (visualizer styling) |
 | `docs/superpowers/plans/2026-06-03-financial-analysis-pipeline.md` | Original pipeline implementation plan | historical |
 | `docs/superpowers/plans/2026-06-05-financial-statement-automation.md` | Ticket 4/4.5 implementation plan | historical |
 | `docs/superpowers/plans/2026-06-05-ticket-4-6-market-data-enrichment.md` | Ticket 4.6 implementation plan | historical |
@@ -31,7 +31,7 @@ pipeline or an audit gate; regenerate, don't hand-edit).
 | `PLANNING/token-ledger.md` | Cost-per-run ledger (success metric #1) + targets; update per run | live |
 | `PLANNING/proposals/2026-10-15-investor-verdict-layer.md` | Proposal: investor verdict layer as five small pieces, each with a value test; piece 2 (verdict band) shipped first | proposed (for review) |
 | `analysis/IBM/README.md` | IBM v3 analysis: fundamentals, net-debt bridge, v3 scenarios ($37/$141/$232), data notes | historical (v3 — superseded by the v4 report for headline numbers; bridge/data notes still referenced by v4) |
-| `analysis/IBM/DRIVERS.md` | v4 assumption register companion table (drivers, items, correlations) | binding, EXCEPT that `driver_model.py` rationale strings govern over its prose (stated in its own header) |
+| `analysis/IBM/DRIVERS.md` | v4 assumption register companion table (drivers, items, correlations) | binding, EXCEPT that `driver_model.toml` rationale strings govern over its prose (stated in its own header) |
 | `analysis/IBM/DRIVER-REVIEW.md` | Round-1 driver/formula/matrix reviews (19 + 4 consolidations) → dispositions | binding (recorded dispositions; do not re-litigate) |
 | `analysis/IBM/REVIEW.md` | v1→v3 adversarial review: findings F1–F19, dispositions, deferred tickets T-DCF-1/2, T-IMP-1 | binding (recorded dispositions; do not re-litigate) |
 | `analysis/IBM/research-ledger.md` | Frozen source-tagged facts consumed by the model (RPO; expiry at Q2-2026 10-Q) | binding (evidence record, with expiry) |

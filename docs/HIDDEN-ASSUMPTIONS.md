@@ -4,6 +4,21 @@ Non-obvious assumptions an agent can trip on. Each entry carries an evidence poi
 every entry below was re-verified against the code/docs on 2026-07-17. If you find a new
 one, add it here with a pointer.
 
+**Deleted evidence files (2026-11-19).** The entries 1 to 135 name Python files as evidence. These
+files are deleted: `financial_analysis/{backtest,dcf,driver_dcf,scenarios,schema,store,market_data,options}.py`,
+`analysis/{IBM,JNJ,ANT}/driver_model.py` and `scripts/visualize_dcf.py`. A trap is still a trap; its
+Rust form is in the files below. The line numbers refer to the old files: read the old text with
+`git show 4e6d0ba:<path>` (the last commit that has the files).
+
+| Deleted file | Rust form |
+|---|---|
+| `driver_dcf.py`, `analysis/<T>/driver_model.py` | `rust/src/dcf/driver.rs`, `rust/src/dcf/model.rs`, `analysis/<T>/driver_model.toml` |
+| `dcf.py`, `scenarios.py` | `rust/src/dcf/classic.rs`, `rust/src/dcf/scenarios.rs` |
+| `backtest.py` | `rust/src/dcf/backtest.rs` |
+| `schema.py`, `store.py` | `rust/src/company.rs` (`Company`, `series`), `rust/mapcheck/src/store.rs` |
+| `market_data.py`, `options.py` | `rust/src/market/prices.rs`, `rust/src/market/options.rs` |
+| `scripts/visualize_dcf.py` | `rust/src/report/` (`fa report`) |
+
 ## Data layer
 
 **1. Recast-financials landmine (IBM FY2019–20).** The store mixes continuing-ops
@@ -50,7 +65,7 @@ Filing-level instance-document extraction is Ticket 7. Evidence:
 
 **6. The JSON store holds statements only — no prices, options, or estimates.**
 `store.save()` serializes `periods` exclusively; market data attached by
-`scripts/analyze.py` lives only in the xlsx and in dated snapshots under
+`fa analyze` (earlier `scripts/analyze.py`) lives only in the xlsx and in dated snapshots under
 `data/raw/TICKER/` (options/, estimates/, prices.json). IBM's JSON `prices` array is
 empty; the report's price/dividend/analyst-target figures were **hand-entered** from
 cited sources, not pipeline outputs (disclosed). Evidence:
@@ -144,8 +159,9 @@ divided by EPS shows it, and the source records the correction. A stock split af
 period is not corrected: the value is the count that the filer reported.
 
 **48. The Python commands need the Rust program.** The Python importer has no mapping
-logic. `scripts.analyze`, `scripts.import_financials` and each command that imports a
-ticker run `rust/mapcheck/target/release/mapcheck`. If the program is not built, they
+logic. (Update 2026-11-19: `scripts.analyze` and `scripts.import_financials` are deleted; `fa import` and
+`fa analyze` call the Rust import in the same process.) Each Python command that imports a
+ticker runs `rust/mapcheck/target/release/mapcheck`. If the program is not built, they
 stop with `MapcheckError` and the build command. Build it again after a change of
 `financial_analysis/standard_variables.toml` (the program contains the file).
 
@@ -282,7 +298,8 @@ usable periods per vintage and records skips. Evidence:
 **17. The xlsx always has nine sheets; the console tab count lies by omission.**
 `write_xlsx` creates every sheet regardless of flags; `--no-market` etc. just leave
 header-only sheets, while the "Done: ... across N tabs" message counts populated groups.
-Evidence: `scripts/analyze.py:70-81, 279-284, 370-379`.
+(Closed 2026-11-19: `fa analyze` prints the number of sheets, 9, and the number of data rows.)
+Evidence: `rust/src/analyze.rs` (`command`).
 
 **18. (Closed 2026-11-19.) Generated files were tracked.** Two xlsx files and four
 .pyc files were in git although `.gitignore` excludes them. They are removed from the
@@ -291,8 +308,8 @@ index. `data/` and `__pycache__/` are not in git; do not add them.
 **19. RPO rows hide on the Balance Sheet tab.** `remaining_performance_obligation` is a
 disclosure fact but is written to the Balance Sheet tab with `statement="disclosure"`
 (no dedicated tab). Its current/noncurrent duration split is text-only in filings and
-is not extracted. Evidence: `scripts/analyze.py:51-58` (`_TAB_FOR`);
-`financial_analysis/xbrl_tags.py:147-155`.
+is not extracted. Evidence: `rust/src/analyze.rs` (`sheet_for`);
+`financial_analysis/standard_variables.toml` (`remaining_performance_obligation`).
 
 **20. Default scenario presets are generic mature-large-cap.** `DEFAULT_SCENARIOS`
 (bear 1%/base 4%/bull 6% growth) applies to ANY ticker without an override — running
@@ -627,6 +644,134 @@ agree (306 values, no difference). The repo has no `.xls` reader, thus this chec
 not automatic.
 *Evidence:* `financial_analysis/bonds.py` module docstring.
 
+## DCF in Rust (added 2026-11-19)
+
+**120. The Rust random numbers are the numpy stream for an integer seed only.**
+`rust/src/dcf/nprandom.rs` makes the same numbers as `np.random.default_rng(seed)`:
+`SeedSequence`, `PCG64` and the ziggurat `standard_normal`. The tables and the
+algorithm are from numpy v2.5.3. The tests compare 1,000 values for each of the seeds
+0, 7, 42 and 123456789, bit for bit, and a long stream that reaches the tail branch.
+A seed must be an integer from 0 to 2^64 - 1 (a list or a `SeedSequence` is not
+supported). Numpy can change a `Generator` method in a new version. If the fixture
+tests fail after a numpy update, the Python numbers changed, not the Rust numbers.
+*Evidence:* `rust/src/dcf/tests.rs` (`standard_normal_matches_numpy_bit_for_bit`).
+
+**121. Rust and Python differ in the last digit for some values.** The driver engine in
+Rust makes `(1 + g)^t` and the discount factor by repeated multiplication. Python used
+`**` on arrays. The values differ by about 1e-16 relative. The percentiles of the IBM,
+JNJ and ANT runs differ by 2e-16 at most. The attribution values differ by 1e-14 at
+most. The Rust mean and std of the classic engine use a plain sum, numpy uses a
+pairwise sum (1e-15). The tests accept 1e-9. A printed number with 2 decimals does not
+change.
+*Evidence:* `cargo test parity_report -- --ignored --nocapture`.
+
+**122. A seed of None gives a new number at each run in both languages.** In Python
+`seed=None` uses the operating system. In Rust the seed comes from the clock. Do not
+use a run without a seed for a published number. The Rust drivers command has the
+default seed 7.
+
+**123. A driver model has one copy: the TOML file (changed 2026-11-19).**
+`analysis/<TICKER>/driver_model.toml` is the only copy. The Python copies `driver_model.py`
+and the runners (`dcf_drivers_run.py`, `first_pass_run.py`) are deleted. A test shows that the TOML
+file gives the numbers that the Python code gave on 2026-11-19, including each rationale text
+(the fixtures are the record). After a model change, record new fixtures. The IBM version 4
+model is a closed record: its test must not change without a review of the same weight.
+*Evidence:* `rust/src/dcf/tests.rs` (`toml_models_give_the_python_models`).
+
+**124. The Rust engine allows a schedule on the margin drivers only.** The Python engine
+accepted a schedule on any deterministic driver. For a CAPM driver or a growth driver
+the Python result had one WACC for each year and path, and no model used it. The Rust
+engine refuses this input. A schedule can be a list of values or a ramp (`start`,
+`end`, `ramp_years`); only a ramp follows a change of the horizon (`--years`).
+
+**125. The runners did not use the same rule for a changed mean.** The IBM and JNJ
+runners changed the mean and kept the bounds `lo` and `hi`. The ANT runner moved the
+bounds with the mean. `fa dcf drivers --set` keeps the bounds. Add `--shift-bounds` to
+move them. The wrong choice changes the result: for ANT a growth mean of 30% with fixed
+bounds gives a different P50.
+*Evidence:* `rust/src/dcf/runner_tests.rs` (the ANT lines use `shift_bounds`).
+
+**126. `fa verdict` with market rates runs in Rust (changed 2026-11-19).** All options
+of the old `scripts.verdict` (`--rf-date`, `--rf-base-date`, `--rating`) run in Rust. A
+ticker needs `driver_model.toml`.
+The JSON fields are the same. The last digit of a percentile can differ (see #121).
+`fa dcf classic`, `fa dcf scenarios` and `fa backtest` read
+`data/processed/<TICKER>.json`; a new worktree has no `data/` folder (it is not in
+git): use `--data-dir`.
+
+**127. The backtest has one copy (changed 2026-11-19).** `fa backtest` and the report use
+`rust/src/dcf/backtest.rs`. The Python copy `financial_analysis/backtest.py` and the Python command
+`scripts.backtest` are deleted. For IBM on the real store the text of the Rust command was the same as the
+text of the Python command, character for character; the fixtures have synthetic companies with the IBM
+data flag, a 10-K/A, late filings, phantom rows and thin history.
+*Evidence:* `rust/src/dcf/tests.rs` (`backtest_parity`); `rust/tests/fixtures/backtest/`.
+
+**128. FRED does not answer the cloud container.** On 2026-11-19 the connection to
+`fred.stlouisfed.org` was closed by the other side (Rust: "peer closed connection without
+sending TLS close_notify"; curl: HTTP/2 stream INTERNAL_ERROR). The Python client had the
+same refusal. The Treasury, the New York Fed and the BLS sites answered the client
+`FinancialAnalysis fa (personal research)`. The code does not retry, does not change the
+client name and does not imitate a browser. These commands need FRED: `fa bonds` (all
+subcommands), `fa verdict` with `--rating`, `fa rates fred` and `fa rates check`. They
+could not run against the real site. The other `fa rates` commands do not need FRED. Their parsers and logic are tested on fixtures: the
+FRED series in `rust/tests/fixtures/rates/fred.json` are made up (ICE data may not be
+copied into a public repo). On a network that FRED answers, run `fa bonds` and
+`fa bonds check` once before you trust a `--rating` result.
+*Evidence:* `fa rates fred --series DGS10` on 2026-11-19.
+
+**129. The BLS API has a daily request limit for each address.** On 2026-11-19 the CPI
+request got "the daily threshold for total number of requests ... has been reached". API
+version 1 gives 25 requests a day for each address, and an address can be shared. The code
+saves the answer for 24 hours in `data/raw/rates/bls_cpi.json`, does not save an answer
+that failed, and uses an old file with a warning when the request fails. The file that
+the old Python code wrote is valid for the Rust code. If there is no file, `fa rates
+inflation` and `fa verdict --rf-date` stop with the BLS text.
+
+**130. The rates, the bonds and the verdict with rates are equal to the Python output.**
+Checked 2026-11-19 on the real Treasury, New York Fed and BLS answers (not FRED): `fa rates
+yield|curve|history|nyfed|inflation|snapshot` and `fa verdict IBM --price 228.53 --rf-date
+today --rf-base-date 2026-07-16` equal the Python JSON to 1e-9 relative, and the error text
+for a missing tenor is the same. Two differences: the snapshot has the field `real` in the
+two curves (the Rust type always had it; the real curve is now `true`), and the Rust
+programs send one request less (the EFFR rate and the FOMC range come from one answer).
+The ICE, Moody's and HQM paths equal the Python output on the fixtures only (#128).
+*Evidence:* `rust/src/rates_tests.rs` (`parity_with_python`).
+
+**131. The network commands wait and do not retry.** Each `fa` data command waits 2
+seconds between requests and makes one request for each file; the Python code tried 3
+times. A first `fa bonds` makes 24 FRED requests (about 50 seconds); later runs read
+`data/raw/bonds/` (6 hours). A refusal is an error. If a download fails and a cache file
+exists, the old file is used and a warning goes to stderr: read the dates of the output.
+
+**132. `fa dcf scenarios IBM` keeps the version 3 inputs.** The Python script
+`dcf_scenarios.py` (deleted) took the FCFF margins from the store. On the store of
+2026-11-19 it gave a mean margin of 18.4% and P50 $43 / $149 / $243 (bear / base / bull);
+the pinned version 3 inputs of the README have 17.8% and $37 / $141 / $232. The Rust
+scenario entries are the pinned inputs, so the Rust command gives the README numbers. The
+loci and the WACC grid of the README: `fa dcf classic ...` (see `analysis/IBM/README.md`).
+A classic row reads the base revenue from `data/processed/IBM.json`; the margin, the net
+debt and the share count come from the options.
+
+**133. Two numbers of the JNJ first pass differ in the second decimal.** The text of
+`analysis/JNJ/FIRST-PASS.md` used a solver that is not in the repo (commit `076a953`):
+core margin 32.4%, terminal growth 4.78%, rf 3.13% and 2.26%. `--implied-price` gives
+32.3%, 4.76%, 3.15% and 2.27%. The classic-engine row ($142.55 / $200.59) cannot be made
+again: `data/processed/JNJ.json` changed after the first pass.
+
+**134. A change of the mature margin needs a rule for the margin of year 1.** The ANT
+runner kept the margin of year 1 when it changed `core_margin` (the drift ramp moved).
+The option `--keep-year1-margin` does this. Without the option, a change of
+`core_margin` changes year 1 too. A model without a ramp on `margin_mix_drift` gives an
+error with the option.
+*Evidence:* `rust/src/dcf/runner_tests.rs` (`keep_year1_margin_is_the_core_mean_of_the_ant_runner`).
+
+**135. Python files that stay, and why (changed 2026-11-19).** The report moved to Rust, and the Python engine
+files, the store, the schema, the market-data readers, the report script, the three `driver_model.py`
+files and all Python tests are deleted (#147 to #153). Five Python files remain: the legacy SEC
+client in `financial_analysis/` (the SEC contact text is in it), `financial_analysis/importer.py` (only `_run`),
+`financial_analysis/__init__.py`, `scripts/import_edgar.py` and `scripts/__init__.py`. They stay until the owner
+decides the new place of the SEC contact text (ticket `T-20261119-python-to-rust`, the one open step).
+
 ## Bond reconciliation (added 2026-11-19, branch `claude/bond-recon`)
 
 **60. The price source is not a market quote feed.** The prices are the end-of-day prices
@@ -880,6 +1025,140 @@ paper step during the session sees the bars that have ended. The live price row 
 with seconds, for example 09:35:26) is not a bar and the program drops it. On an early-close day
 Yahoo adds a row at 13:00 with no volume; the program drops it with `meta.tradingPeriods`.
 *Evidence:* `rust/src/trading/fetch.rs` (`rows_from_chart`).
+
+## Report, market data and company data in Rust (added 2026-11-19, branch `claude/report-rust`)
+
+**140. Prices are adjusted for splits and dividends.** The Python code used `yfinance` with
+`auto_adjust=True`: open, high and low are multiplied by `adjclose / close`, and the close is the adjusted
+close. The Rust code does the same with the `adjclose` array of the Yahoo chart reply (`includeAdjustedClose=true`).
+Thus an old close in `data/raw/<T>/prices.json` is not the price of that day. Each new dividend changes
+all older rows, and a cache file that is old has rows that differ from a new download. The last row is the
+live row of the running session, as in the Python code. A row with no open, high, low or close is dropped
+(the Python code wrote `NaN`, which is not JSON); a row with all prices and the volume empty or zero is dropped.
+The date of a row is the New York date (`America/New_York` is the time zone of all U.S. stocks; for another
+zone the program uses the offset of `meta.gmtoffset`).
+*Evidence:* `rust/src/market/prices.rs`; the fixture `rust/tests/fixtures/market/yahoo_prices.json` is made with the
+functions of yfinance (`parse_quotes`, `fix_Yahoo_returning_live_separate`, `auto_adjust`).
+
+**141. Yahoo answers HTTP 429 to the prices request from the container.** Tested 2026-11-19: two requests,
+some minutes apart, both HTTP 429. The program does not get around this and does not imitate a browser. It
+says "Yahoo answered HTTP 429 (too many requests)". A cache file stays as it is: with `--refresh` and an
+answer of 429, the old file is used and the message says so. With no cache file, the prices are empty and
+the other sheets are still written. The price loader was tested with a fixture reply and with the cache of the
+Python code, not with a live reply.
+*Evidence:* `rust/src/market/prices.rs` (`load_prices`), test `a_cache_file_is_used_and_a_refresh_that_fails_keeps_it`.
+
+**142. The forward consensus and the earnings dates have no source in Rust.** `estimates.py` and
+`load_earnings_surprises` used `yfinance`. Its endpoints need a cookie and a crumb, and Yahoo refuses them for a
+program that gives its real name (#93). The program does not imitate a browser. So `fa analyze` reads the files that
+exist (`data/raw/<T>/estimates/<date>.json` and `yf_earnings.json`, made by the earlier Python code) and says
+"no source" when they do not exist. For the snapshot, today's file is used; else the latest older file is used and the
+console says its date (each row of the sheet has the `snapshot_date`). Nothing makes new files of these two kinds.
+**Open decision of the owner:** which free source gives estimates and earnings dates (Financial Modeling Prep
+with a key, a data source with a published API, or another).
+*Evidence:* `rust/src/market/consensus.rs`.
+
+**143. The option chain is from Cboe, not Yahoo.** Four differences from the Python snapshots: (a) the implied
+volatility is the value of Cboe (a fraction, 0.31); Yahoo solved its own values, so a history that has both
+kinds of snapshot is not one series; (b) the spot price is `current_price` of the Cboe file (about 15 minutes
+late), not the last daily close; (c) `in_the_money` is computed from that spot price (call: strike below spot, put:
+strike above); (d) only the options of the root of the ticker are in the snapshot (the adjusted options, for
+example `B1IBM`, are not). Cboe gives IV 0.0 to an option with no solved value; the metrics treat an IV
+below 0.0001 as missing, as before. The metrics (`compute_chain_metrics`) are the same calculation as in Python
+(tested on 7 chains with the expected values from the Python functions, 533 quotes). A ticker with no listed
+options gets an HTTP 404 from Cboe: no snapshot file is written.
+*Evidence:* `rust/src/market/options.rs`; `curl` of the IBM file 2026-11-19 (2,208 options, 20 expiries).
+
+**144. FMP: key handling, legacy endpoints, error objects.** The key is read from `FMP_API_KEY` (environment, else
+the `.env` file in the repository folder). The key is in the URL, so the program takes it out of every
+error text. The endpoints are the v3 endpoints of the Python code (`api/v3/analyst-estimates`,
+`api/v3/earnings-surprises`); FMP closed the v3 endpoints for new keys in August 2025, and the new program
+was not tested with a live key (there is none in the container). An answer with HTTP 200 and an error object
+(`{"Error Message": ...}`) is an error now. The Python code wrote that object into the cache and failed later. A
+surprise record with a missing number is skipped; the Python code stopped with `TypeError`.
+*Evidence:* `rust/src/market/fmp.rs`; tests with fixture text only.
+
+**145. The xlsx file of Rust differs from the file of Python in three small ways.** Compared on 2026-11-19 for IBM and
+JNJ (203,004 and 179,351 cells): no difference in a value, a sheet name, a sheet size or a number format
+(all "General"). The differences: (a) a source text that starts with `=` (a registry formula such as
+`= revenue - cogs_total`, 199 and 203 cells) is a text cell; openpyxl wrote a formula, and Excel shows `#NAME?`;
+(b) the source text of the derived rows `free_cash_flow` and `fcf_margin` does not name the deleted file `schema.py`; (c) openpyxl
+writes 16 significant digits, and Rust writes the exact value, so 16 and 13 cells differ in the last digit
+(relative difference 3e-16 or less). A NaN is an empty cell in both files (the future dates of `yf_earnings.json`).
+*Evidence:* `rust/src/analyze.rs`; the proof is the comparison script of the ticket `report-rust`.
+
+**146. The company data has one list of variable names: the registry.** The Python dataclass
+`PeriodFinancials` repeated the names, and `store.load` dropped each field that the dataclass did not have. The Rust
+type (`rust/src/company.rs`) reads each value by the name from the registry, so a new variable cannot be lost
+and the test "the field order of `schema.py` equals the registry" is not necessary in Rust. `schema.py` and
+`tests/test_schema.py` are deleted (2026-11-19).
+The unit text of the xlsx (`USD/share`, `shares`, `ratio`) is a fixed rule in `analyze.rs` (`unit_of`); the registry says
+`USD/shares` for the EPS lines, and the xlsx keeps the old text.
+*Evidence:* `rust/src/company.rs`, `rust/src/analyze.rs`.
+
+## The HTML report and the end of the Python engines (added 2026-11-19, branch `claude/dcf-engine-rust`)
+
+**147. The report page needs the network to draw its charts.** `fa report` writes a page that loads the
+plotly.js library from `https://cdn.plot.ly/plotly-4.1.1.min.js` (a fixed version: the version that the Python
+library plotly 7.1.0 inlined in the old page). The old page had the library inside the file (about 3.5 MB) and
+worked offline. Now the tables and the texts show without the network, and each chart shows a note. If the CDN
+removes the file, or a firewall blocks it, no chart shows. The program does not carry a copy of the library (it
+is about 4.8 MB, and the repo is public). **Open decision of the owner:** an option that inlines a local copy
+of the library into the page.
+*Evidence:* `rust/src/report/mod.rs` (`PLOTLY_JS_URL`); the test `the_page_loads_plotly_from_the_cdn_with_a_fixed_version_...`.
+
+**148. A plotly figure from Rust has no plotly Python template.** The Python figures carried the template
+`plotly` (about 5 KB of defaults in each figure). The Rust figures carry only the values that change the picture:
+`autotypenumbers: "strict"`, `automargin`, `ticks`, and the title standoff. Without `autotypenumbers` a year as
+text ("2026") on a category axis is read as a number, and plotly.js writes the error `rotate(0,NaN,..)` in the
+console (the waterfall chart). The bars have no thin template outline. A screenshot of the IBM page differs from the
+screenshot of the Python page in 0.16% of the pixels. If you add a figure, set `type: "category"` for a text axis.
+*Evidence:* `rust/src/report/figs.rs` (`chrome`); a browser run of the page with the same library gives 0 console
+errors for IBM, JNJ and KO.
+
+**149. Without `--price` the report uses the last close of the price history.** The Python script asked
+`yfinance` for the live price. The Rust report reads `data/raw/<TICKER>/prices.json` (the cache file of
+`fa analyze`), and asks the Yahoo chart endpoint only when there is no cache file (HTTP 429 is common: #141). An
+old cache file gives an old price. The header says where the price comes from (`last close $X (data/raw/<T>/prices.json)`).
+For a decision, give the price: `fa report IBM --price 228.53`.
+*Evidence:* `rust/src/report/mod.rs` (`make_report`); the test `without_a_price_the_report_uses_the_last_close_and_says_so`.
+
+**150. The path sample uses the numpy `Generator.choice` without replacement for one case only.** The path
+explorer draws a seeded sample of the middle band (`default_rng(7).choice(middle, n, replace=False)`). The Rust
+code (`Pcg64::choice_set`) does Floyd's algorithm with the 32-bit Lemire bounded integer; it equals numpy for 8
+recorded cases. Numpy uses a tail shuffle when the population is above 10,000 and the sample is more than 1/50 of it.
+The Rust code returns an error for this case and does not guess. It cannot happen now: the driver run has
+10,000 paths, so the middle band is smaller than 10,000. A change of `DRIVER_SIMS` above 10,000 needs the tail shuffle.
+*Evidence:* `rust/src/dcf/nprandom.rs` (`choice_set`); the test `the_path_sample_equals_numpy`.
+
+**151. The report fixtures are the only record of the Python page.** The tests of `fa report` compare the page with
+the page that the Python script made (IBM, JNJ, KO without prices and driver model, KO with a short price history and an
+empty option chain). The Python script is deleted. A change of a text or a figure of the report needs new expected
+files by hand: the old values are in `rust/tests/fixtures/report/`. The words that name a Python command are other words
+in the Rust page; the list is `TEXT_CHANGES` in `rust/src/report/tests.rs`. The inputs of the fixtures are small
+copies of the cache files (prices as `date,close`, the store with the fields that the report reads), so the tests need no
+`data/` folder. ANT has no company data (its prospectus has no XBRL values, see #68; `fa import ANT` gives no data), so no ANT report exists.
+*Evidence:* `rust/tests/fixtures/report/`; `rust/src/report/tests.rs`.
+
+**152. Segment names that are only in `segment_history` come in alphabetical order.** The model file is read into a
+sorted map. The Python code kept the order of the file. It matters only for a name in `segment_history` that is not a
+segment of the model (none of the three models has one): the order of the legend of the segment chart.
+*Evidence:* `rust/src/dcf/model.rs` (`segment_history`), `rust/src/report/figs.rs` (`segment_history_figure`).
+
+**153. No `fa` command starts Python (changed 2026-11-19).** `fa run`, `Fa::run_captured`, `default_python`, the
+variable `FA_PYTHON` and the Python error type are deleted. The viewer calls `fa report` in the same process. `FaError`
+has two cases: `Data` and `Json`. The SEC contact text is in the legacy SEC client only. `fa import` and `mapcheck` need the
+environment variable `SEC_USER_AGENT`; the Python function `importer._run` gives it the text of the legacy client when the
+variable is not set. This is the one open step of the move to Rust.
+*Evidence:* `rust/src/lib.rs`, `rust/src/serve.rs`, `financial_analysis/importer.py`.
+
+**154. The Python tests had cases without a recorded fixture; each has a Rust test now.** Before the deletion, each Python
+test case was mapped to a Rust test or ported (the lists are in the ticket `T-20261119-dcf-engine-rust`). New Rust
+tests: `python_tests` in `rust/src/dcf/tests.rs` (classic engine properties, net debt and shares rules, vetted
+formulas, sampling, driver run properties), `series_are_sorted_and_have_the_derived_metrics` and
+`a_written_store_file_is_pretty_json_and_loads_again_in_any_case` in `rust/src/company.rs`, and the ports in
+`rust/src/report/tests.rs`. Two Python functions have no Rust form: `store.compare` (a loop over `get_series`, no
+caller) and the in-memory cache of `store.load` (Rust reads the file each time).
 
 ## Could not verify
 

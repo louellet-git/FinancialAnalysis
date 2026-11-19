@@ -1,0 +1,22 @@
+{
+ "IBM": {
+  "ticker": "IBM",
+  "price": 228.53,
+  "as_of": "2026-11-19"
+ },
+ "JNJ": {
+  "ticker": "JNJ",
+  "price": 155.25,
+  "as_of": "2026-11-19"
+ },
+ "KO": {
+  "ticker": "KO",
+  "price": 70.1,
+  "as_of": "2026-11-19"
+ },
+ "KOS": {
+  "ticker": "KO",
+  "price": 70.1,
+  "as_of": "2026-11-19"
+ }
+}

@@ -1,0 +1,1 @@
+No saved data for NOPE. Run: python -m scripts.import_financials NOPE

@@ -3,8 +3,9 @@
 **First pass. Not reviewed. Do not use it alone for a trade. Claude models made it, and
 Anthropic makes Claude.** No skeptic, reviewer or auditor examined this work.
 
-Reproduce: `python -m analysis.ANT.first_pass_run` (seed 7, 10,000 simulations, 10 years).
-Driver reasons: `driver_model.py`. Facts: `research-ledger.md` (final prospectus).
+Reproduce: `fa dcf drivers ANT --price 83 --price 105 --path` (seed 7, 10,000 simulations,
+10 years). The command for each number is in `COMMANDS.md`.
+Driver reasons: `driver_model.toml` (and `driver_model.py`, the older copy). Facts: `research-ledger.md` (final prospectus).
 "Press" marks a news source, which has lower quality than the prospectus.
 
 ## Value range for each share

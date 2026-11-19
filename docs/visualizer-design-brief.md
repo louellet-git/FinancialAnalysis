@@ -1,5 +1,12 @@
 # Visualizer design brief — cosmetic redesign handoff
 
+**Change of 2026-11-19.** `fa report` (Rust, `rust/src/report/`) makes the page now. The Python script
+`scripts/visualize_dcf.py` named below is deleted. Read "Python" in this document as "the Rust
+report code" and "f-strings" as "the Rust format strings". Hard constraint 1 changed: the page does
+**not** carry plotly.js. It loads plotly.js 4.1.1 from `https://cdn.plot.ly` and needs the network
+when a person opens it. The old constraint (one file, zero external requests) is the aim of an
+open point: an option that inlines a local copy of the library.
+
 Audience: a design agent doing a **purely cosmetic** restyle of the single-page
 company report produced by `scripts/visualize_dcf.py` (e.g.
 `data/processed/IBM_dcf.html`). This document is the contract: everything a

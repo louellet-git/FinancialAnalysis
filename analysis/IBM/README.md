@@ -58,7 +58,7 @@ Shares: **948.7M diluted** (FY2025 10-K), held flat — SBC is charged as a cash
 
 rf 4.3% + β 0.85 × ERP 4.75% → cost of equity ≈ 8.3%; after-tax cost of debt ≈ 4.1% on $61.3B; market-value weights E/V ≈ 76.5% (at $212 — itself circular post-crash, noted) → **WACC ≈ 7.3%, used 7.5% ± 0.75%** (top of the defensible band: trailing beta from the pre-warning regime plausibly understates forward risk). Sensitivity below.
 
-## Monte Carlo DCF v3 (`python -m analysis.IBM.dcf_scenarios`)
+## Monte Carlo DCF v3 (`fa dcf scenarios IBM`)
 
 10,000 sims, 10-year horizon, seed 7. Equity/share = (PV of FCFF − net debt $54.0B) / 948.7M. Growth and M&A charge are **paired**: charging fraction f of the $4.46B/yr average M&A spend credits g = organic 1.65% + f × 1.0pp acquired growth. The recurrence gradient across scenarios encodes a thesis: bull = organic AI momentum (deals return without buying growth); bear = disruption, where M&A becomes defensive spend that buys no growth.
 
@@ -97,5 +97,22 @@ Options-market context (from the `options-extractor` branch, snapshot 2026-07-16
 
 ```bash
 python -m scripts.analyze IBM            # pull financials + prices + option chain
-python -m analysis.IBM.dcf_scenarios     # v3 scenarios, loci, sensitivity grids
+fa dcf scenarios IBM                     # v3 scenarios: bear, base, bull (the pinned v3 inputs)
+fa dcf drivers IBM                       # v4 headline: $83.84 / $151.84 / $258.03 (seed 7)
 ```
+
+The loci and the WACC grid of v3 (classic engine, net debt $54.0B, 948,675,228 shares, seed 7):
+each row is one command, for example the row f = 0.5 (growth 2.15%, margin 14.5%):
+
+```bash
+fa dcf classic IBM --growth 0.0215 --wacc 0.075 --terminal-growth 0.0225 --growth-std 0.02 \
+  --wacc-std 0.0075 --margin-mean 0.1451 --margin-std 0.02 --net-debt 54.0e9 --shares 948675228
+```
+
+For the other rows of the locus use growth `0.0165 + f x 0.01` and margin
+`0.1781 - f x 0.06607`. For the WACC grid change `--wacc`. The v4 loci, the disclosure runs and
+the equity-weight fixed point: `fa dcf drivers IBM --set ma_recurrence=F --set g_software=G`
+(G = `0.04 + F x 0.02`), `--flat sbc_ratio=0.0254`, `--ramp sbc_ratio=0.0254:0.045:10`,
+`--sensitivity beta=0.68,0.85,1.00`, `--corr rf,g_software=-0.15` (and the same for
+`g_consulting` and `g_infrastructure`), `--set tax_rate=0`, `--ev-fixed-point 0.765` and
+`--reinvestment-check`.

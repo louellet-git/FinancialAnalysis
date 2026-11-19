@@ -1,6 +1,6 @@
 //! The registry of standard variables (financial_analysis/standard_variables.toml).
 //!
-//! Python reads the same file (financial_analysis/xbrl_tags.py). `Registry::load`
+//! Only Rust reads this file. `Registry::load`
 //! also checks the rules of the file, thus an edit that can cause a double count
 //! does not load.
 
@@ -347,6 +347,41 @@ tags = ["us-gaap/C"]
         assert!(registry.core().len() >= 14);
         assert!(!registry.rollups.is_empty());
         assert!(registry.try_var("total_debt").is_some());
+    }
+
+    /// The facts that `tests/test_xbrl_tags.py` checked for the Python loader of the registry. The loader
+    /// (`load`) checks the other rules of that file: a tag or a formula for each variable, a namespace for each
+    /// tag, one tag for one variable, the statement names, the rollup and within names, and the memo rule.
+    #[test]
+    fn embedded_registry_has_the_known_facts() {
+        use crate::registry::Period::{Duration, Instant};
+        let r = Registry::embedded().unwrap();
+        let v = |name: &str| &r.variables[r.var(name)];
+        assert!(v("capex").sign_flip && v("repurchases_common_stock").sign_flip && !v("revenue").sign_flip);
+        assert_eq!((v("eps_diluted").unit.as_str(), v("shares_diluted").unit.as_str()), ("USD/shares", "shares"));
+        for variable in &r.variables {
+            let expected = match variable.statement.as_str() {
+                "income_statement" | "cash_flow" => Duration,
+                _ => Instant,
+            };
+            assert_eq!(variable.period, expected, "{}", variable.name);
+        }
+        let core: Vec<&str> = r.core().iter().map(|&i| r.variables[i].name.as_str()).collect();
+        for name in ["revenue", "operating_cash_flow", "capex", "total_debt", "cash_and_equivalents", "shares_diluted"] {
+            assert!(core.contains(&name), "{name} is a core input");
+        }
+        let tags = |name: &str| v(name).tags.iter().map(|t| t.full.as_str()).collect::<Vec<_>>();
+        assert!(!tags("long_term_debt").contains(&"us-gaap/LongTermDebt"));
+        assert!(tags("long_term_debt_total").contains(&"us-gaap/LongTermDebt"));
+        assert_eq!(v("remaining_performance_obligation").statement, "disclosure");
+        assert_eq!(tags("remaining_performance_obligation"), ["us-gaap/RevenueRemainingPerformanceObligation"]);
+        assert!(!r.within.is_empty());
+        assert!(r.excluded.iter().all(|(_, reason)| !reason.is_empty()));
+        for rollup in &r.rollups {
+            let lines: Vec<usize> = rollup.parts.iter().chain(rollup.details.iter()).copied().collect();
+            let unique: std::collections::HashSet<usize> = lines.iter().copied().collect();
+            assert_eq!(lines.len(), unique.len(), "rollup {}", rollup.name);
+        }
     }
 
     #[test]

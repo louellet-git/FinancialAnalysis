@@ -8,9 +8,9 @@ map) and `docs/HIDDEN-ASSUMPTIONS.md` (known traps).
 Two persons use this repo (GitHub logins `louellet-git` and `merlan1996`) to make
 investment decisions and to trade options. The repo has two parts:
 
-1. **Valuation** (`rust/mapcheck/`, `financial_analysis/`, `analysis/<TICKER>/`). The
+1. **Valuation** (`rust/mapcheck/`, `rust/src/dcf/`, `analysis/<TICKER>/`). The
    Rust program `mapcheck` gets SEC EDGAR data and makes the standard input variables.
-   The Python code (legacy) runs two Monte Carlo DCF engines and compares the value
+   The Rust program `fa` runs two Monte Carlo DCF engines and compares the value
    range with the market price.
 2. **Options trading research** (`trading/`). A backtester and a paper trader for
    SPY/QQQ option strategies. All backtest option prices are model prices.
@@ -25,10 +25,10 @@ The repo gives analysis. It does not send orders to a broker.
 
 ## Which source is correct when two sources disagree
 
-1. **Engine code is correct.** `financial_analysis/driver_dcf.py` and
-   `financial_analysis/dcf.py` define the calculation. A number in a document that
+1. **Engine code is correct.** The Rust engines `rust/src/dcf/driver.rs` and
+   `rust/src/dcf/classic.rs` define the calculation. A number in a document that
    disagrees with a new engine run is old.
-2. **`analysis/<TICKER>/driver_model.py` is correct** before `DRIVERS.md` text.
+2. **`analysis/<TICKER>/driver_model.toml` is correct** before `DRIVERS.md` text.
 3. **Recorded decisions stay.** `analysis/IBM/REVIEW.md` (F1 to F19) and
    `analysis/IBM/DRIVER-REVIEW.md` are closed decisions. To open one again, do a review
    of the same weight.
@@ -38,10 +38,10 @@ The repo gives analysis. It does not send orders to a broker.
    read the standard variable names only, not XBRL tag names and not `raw_extras`. To
    add a tag, add it to this file, with the same scope as its variable. The Rust program
    `rust/mapcheck` is the only code that makes the variables. After a change: build
-   `rust/mapcheck`, run `cargo test` and `python -m pytest`.
-6. **The IBM entries in `financial_analysis/scenarios.py` are version 3 on purpose**
+   `rust/mapcheck`, then run `cargo test` for `rust/mapcheck` and for `rust/`.
+6. **The IBM entries in `rust/src/dcf/scenarios.rs` are version 3 on purpose**
    (`docs/HIDDEN-ASSUMPTIONS.md` #13). The version 4 headline numbers come only from
-   `python -m analysis.IBM.dcf_drivers_run`.
+   `fa dcf drivers IBM` (seed 7: $83.84 / $151.84 / $258.03).
 7. **Published reports are frozen.** Do not change `analysis/IBM/report/*`. Write a new
    version.
 8. `README.md` and `docs/` are for orientation only. `THOUGHTS` is a list of raw ideas.
@@ -63,11 +63,13 @@ The repo gives analysis. It does not send orders to a broker.
 - **No bloat.** Add one small part, show that it gives value, then add the next part.
 - **The language is Rust** (owner decision, 2026-11-19). Write all new code in Rust.
   Do not write new Python code. One part has one implementation: do not keep a Python
-  copy and a Rust copy of the same part. The Python code that stays (engines, backtest,
-  report, market data, trading) is legacy code. Before you change the function of a
-  legacy part, move it to Rust and delete the Python part. The sequence is in the board
-  ticket `python-to-rust`. A Rust program that only calls Python code does not move a
-  part to Rust.
+  copy and a Rust copy of the same part. The only Python code that stays is the legacy
+  SEC client in `financial_analysis/` with its callers (`financial_analysis/importer.py`,
+  `financial_analysis/__init__.py`, `scripts/import_edgar.py`, `scripts/__init__.py`). It
+  stays until the owner decides the new place of the SEC contact text (board ticket
+  `python-to-rust`). Before you change the function of one of these files, move the part
+  to Rust and delete the Python part. A Rust program that only calls Python code does not
+  move a part to Rust.
 - **Do not commit** `data/`, `__pycache__/`, `.env`, or private review-framework files
   (`.claude/agents/`, `vendor/`). This repo is public.
 - **Token ledger.** Add a row to `PLANNING/token-ledger.md` for each run.
@@ -93,16 +95,21 @@ Do not use a first pass alone for a trade.
 ## Commands
 
 ```bash
-pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest                              # 349 tests, no network
-cargo test --manifest-path rust/mapcheck/Cargo.toml   # 86 Rust tests
-python -m scripts.analyze IBM                 # import + market data -> xlsx
-python -m scripts.verdict IBM --price 228.53  # value range against a price
+cargo test --manifest-path rust/mapcheck/Cargo.toml   # 89 Rust tests, no network
+cargo test --manifest-path rust/Cargo.toml --locked   # 343 Rust tests (325 + 17 + 1), no network
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
 rust/mapcheck/target/release/mapcheck values IBM          # each input value with its source
 rust/mapcheck/target/release/mapcheck IBM --detail        # mapping checks
 rust/mapcheck/target/release/mapcheck filing IBM --focus  # capex, depreciation and debt lines of the 10-K
 cargo build --release --manifest-path rust/Cargo.toml             # the fa command
+rust/target/release/fa import IBM             # SEC data -> data/processed/IBM.json
+rust/target/release/fa analyze IBM            # import + market data -> xlsx (nine tabs)
+rust/target/release/fa verdict IBM --price 228.53   # value range against a price (add --rf-date today --rating A-)
+rust/target/release/fa dcf drivers IBM        # version 4 headline numbers; options for each analysis (fa dcf --help)
+rust/target/release/fa dcf scenarios IBM      # classic engine, bear/base/bull (version 3 inputs)
+rust/target/release/fa backtest IBM           # point-in-time vintage backtest of revenue and FCF
+rust/target/release/fa report IBM             # one-page HTML report: data/processed/IBM_dcf.html (plotly.js from the CDN)
+rust/target/release/fa rates                  # Treasury curves, SOFR, EFFR, inflation (also: fa bonds)
 rust/target/release/fa trade fetch            # option bots: download the bars (Yahoo) into the cache
 rust/target/release/fa trade backtest         # option bots, leaderboard
 rust/target/release/fa trade paper            # option bots: one paper-trade step (live Cboe chain)

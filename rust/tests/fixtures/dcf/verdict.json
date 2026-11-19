@@ -1,0 +1,226 @@
+{
+ "cases": [
+  {
+   "ticker": "IBM",
+   "price": 80.0,
+   "seed": 7,
+   "n": 10000,
+   "p": [
+    83.83878020528333,
+    112.56700170531785,
+    151.84412442274504,
+    200.38715793478244,
+    258.028949296036
+   ],
+   "chance_price_too_high": 0.0855,
+   "verdict": "Strong opportunity"
+  },
+  {
+   "ticker": "IBM",
+   "price": 150.0,
+   "seed": 7,
+   "n": 10000,
+   "p": [
+    83.83878020528333,
+    112.56700170531785,
+    151.84412442274504,
+    200.38715793478244,
+    258.028949296036
+   ],
+   "chance_price_too_high": 0.4877,
+   "verdict": "No edge"
+  },
+  {
+   "ticker": "IBM",
+   "price": 228.53,
+   "seed": 7,
+   "n": 10000,
+   "p": [
+    83.83878020528333,
+    112.56700170531785,
+    151.84412442274504,
+    200.38715793478244,
+    258.028949296036
+   ],
+   "chance_price_too_high": 0.8423,
+   "verdict": "Strongly overpriced"
+  },
+  {
+   "ticker": "IBM",
+   "price": 400.0,
+   "seed": 7,
+   "n": 10000,
+   "p": [
+    83.83878020528333,
+    112.56700170531785,
+    151.84412442274504,
+    200.38715793478244,
+    258.028949296036
+   ],
+   "chance_price_too_high": 0.99,
+   "verdict": "Strongly overpriced"
+  },
+  {
+   "ticker": "JNJ",
+   "price": 80.0,
+   "seed": 7,
+   "n": 10000,
+   "p": [
+    69.98663848556488,
+    88.63005573817891,
+    112.63790582802464,
+    141.8155906209498,
+    175.37644659279553
+   ],
+   "chance_price_too_high": 0.1751,
+   "verdict": "Strong opportunity"
+  },
+  {
+   "ticker": "JNJ",
+   "price": 150.0,
+   "seed": 7,
+   "n": 10000,
+   "p": [
+    69.98663848556488,
+    88.63005573817891,
+    112.63790582802464,
+    141.8155906209498,
+    175.37644659279553
+   ],
+   "chance_price_too_high": 0.8011,
+   "verdict": "Strongly overpriced"
+  },
+  {
+   "ticker": "JNJ",
+   "price": 228.53,
+   "seed": 7,
+   "n": 10000,
+   "p": [
+    69.98663848556488,
+    88.63005573817891,
+    112.63790582802464,
+    141.8155906209498,
+    175.37644659279553
+   ],
+   "chance_price_too_high": 0.982,
+   "verdict": "Strongly overpriced"
+  },
+  {
+   "ticker": "JNJ",
+   "price": 400.0,
+   "seed": 7,
+   "n": 10000,
+   "p": [
+    69.98663848556488,
+    88.63005573817891,
+    112.63790582802464,
+    141.8155906209498,
+    175.37644659279553
+   ],
+   "chance_price_too_high": 0.9998,
+   "verdict": "Strongly overpriced"
+  },
+  {
+   "ticker": "ANT",
+   "price": 80.0,
+   "seed": 7,
+   "n": 10000,
+   "p": [
+    12.815627681466236,
+    19.302940015172965,
+    30.968583585429023,
+    49.540102926624456,
+    74.95579868547165
+   ],
+   "chance_price_too_high": 0.9144,
+   "verdict": "Strongly overpriced"
+  },
+  {
+   "ticker": "ANT",
+   "price": 150.0,
+   "seed": 7,
+   "n": 10000,
+   "p": [
+    12.815627681466236,
+    19.302940015172965,
+    30.968583585429023,
+    49.540102926624456,
+    74.95579868547165
+   ],
+   "chance_price_too_high": 0.9899,
+   "verdict": "Strongly overpriced"
+  },
+  {
+   "ticker": "ANT",
+   "price": 228.53,
+   "seed": 7,
+   "n": 10000,
+   "p": [
+    12.815627681466236,
+    19.302940015172965,
+    30.968583585429023,
+    49.540102926624456,
+    74.95579868547165
+   ],
+   "chance_price_too_high": 0.999,
+   "verdict": "Strongly overpriced"
+  },
+  {
+   "ticker": "ANT",
+   "price": 400.0,
+   "seed": 7,
+   "n": 10000,
+   "p": [
+    12.815627681466236,
+    19.302940015172965,
+    30.968583585429023,
+    49.540102926624456,
+    74.95579868547165
+   ],
+   "chance_price_too_high": 1.0,
+   "verdict": "Strongly overpriced"
+  }
+ ],
+ "bands": [
+  {
+   "p": 0.0,
+   "verdict": "Strong opportunity"
+  },
+  {
+   "p": 0.2499,
+   "verdict": "Strong opportunity"
+  },
+  {
+   "p": 0.25,
+   "verdict": "Opportunity"
+  },
+  {
+   "p": 0.3999,
+   "verdict": "Opportunity"
+  },
+  {
+   "p": 0.4,
+   "verdict": "No edge"
+  },
+  {
+   "p": 0.6,
+   "verdict": "No edge"
+  },
+  {
+   "p": 0.6001,
+   "verdict": "Overpriced"
+  },
+  {
+   "p": 0.75,
+   "verdict": "Overpriced"
+  },
+  {
+   "p": 0.7501,
+   "verdict": "Strongly overpriced"
+  },
+  {
+   "p": 1.0,
+   "verdict": "Strongly overpriced"
+  }
+ ]
+}

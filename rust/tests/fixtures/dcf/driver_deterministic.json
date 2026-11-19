@@ -1,0 +1,370 @@
+[
+ {
+  "name": "flat_no_pin_10y",
+  "years": 10,
+  "year1_pin": false,
+  "schedule": null,
+  "hand_per_share": 81.64441895661233,
+  "hand_ev": 420222094783.0616,
+  "hand_pv_terminal": 266705421326.4755,
+  "engine_p10": 81.6444189566124,
+  "engine_p50": 81.6444189566124,
+  "engine_p90": 81.6444189566124,
+  "engine_at_means": 81.64441895661238,
+  "model": {
+   "drivers": [
+    {
+     "name": "g_a",
+     "stochastic": false,
+     "mean": 0.05,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "g_b",
+     "stochastic": false,
+     "mean": -0.01,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "core_margin",
+     "stochastic": false,
+     "mean": 0.2,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "margin_mix_drift",
+     "stochastic": false,
+     "mean": 0.0,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "sbc_ratio",
+     "stochastic": false,
+     "mean": 0.03,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "ma_ratio",
+     "stochastic": false,
+     "mean": 0.06,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "ma_recurrence",
+     "stochastic": false,
+     "mean": 0.5,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "rf",
+     "stochastic": false,
+     "mean": 0.04,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "beta",
+     "stochastic": false,
+     "mean": 1.1,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "erp",
+     "stochastic": false,
+     "mean": 0.05,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "kd_spread",
+     "stochastic": false,
+     "mean": 0.01,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "tax_rate",
+     "stochastic": false,
+     "mean": 0.25,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "equity_weight",
+     "stochastic": false,
+     "mean": 0.8,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "terminal_growth",
+     "stochastic": false,
+     "mean": 0.035,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    }
+   ],
+   "corr": [],
+   "segments": [
+    {
+     "name": "A",
+     "base_revenue": 100000000000.0,
+     "growth_driver": "g_a",
+     "year1_growth": null
+    },
+    {
+     "name": "B",
+     "base_revenue": 40000000000.0,
+     "growth_driver": "g_b",
+     "year1_growth": null
+    }
+   ],
+   "net_debt": 12000000000.0,
+   "shares": 5000000000.0,
+   "projection_years": 10
+  }
+ },
+ {
+  "name": "pin_and_schedule_8y",
+  "years": 8,
+  "year1_pin": true,
+  "schedule": [
+   0.0,
+   0.002,
+   0.004,
+   0.006,
+   0.008,
+   0.01,
+   0.012,
+   0.014
+  ],
+  "hand_per_share": 91.69322539235189,
+  "hand_ev": 470466126961.75946,
+  "hand_pv_terminal": 331657142253.156,
+  "engine_p10": 91.69322539235198,
+  "engine_p50": 91.69322539235198,
+  "engine_p90": 91.69322539235198,
+  "engine_at_means": 91.69322539235198,
+  "model": {
+   "drivers": [
+    {
+     "name": "g_a",
+     "stochastic": false,
+     "mean": 0.05,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "g_b",
+     "stochastic": false,
+     "mean": -0.01,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "core_margin",
+     "stochastic": false,
+     "mean": 0.2,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "margin_mix_drift",
+     "stochastic": false,
+     "mean": 0.0,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": [
+      0.0,
+      0.002,
+      0.004,
+      0.006,
+      0.008,
+      0.01,
+      0.012,
+      0.014
+     ]
+    },
+    {
+     "name": "sbc_ratio",
+     "stochastic": false,
+     "mean": 0.03,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "ma_ratio",
+     "stochastic": false,
+     "mean": 0.06,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "ma_recurrence",
+     "stochastic": false,
+     "mean": 0.5,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "rf",
+     "stochastic": false,
+     "mean": 0.04,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "beta",
+     "stochastic": false,
+     "mean": 1.1,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "erp",
+     "stochastic": false,
+     "mean": 0.05,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "kd_spread",
+     "stochastic": false,
+     "mean": 0.01,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "tax_rate",
+     "stochastic": false,
+     "mean": 0.25,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "equity_weight",
+     "stochastic": false,
+     "mean": 0.8,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    },
+    {
+     "name": "terminal_growth",
+     "stochastic": false,
+     "mean": 0.035,
+     "std": 0.0,
+     "dist": "normal",
+     "lo": null,
+     "hi": null,
+     "schedule": null
+    }
+   ],
+   "corr": [],
+   "segments": [
+    {
+     "name": "A",
+     "base_revenue": 100000000000.0,
+     "growth_driver": "g_a",
+     "year1_growth": 0.1
+    },
+    {
+     "name": "B",
+     "base_revenue": 40000000000.0,
+     "growth_driver": "g_b",
+     "year1_growth": null
+    }
+   ],
+   "net_debt": 12000000000.0,
+   "shares": 5000000000.0,
+   "projection_years": 8
+  }
+ }
+]

@@ -1,0 +1,238 @@
+# Driver model of JNJ as data. Read by `fa dcf` (rust/src/dcf/model.rs).
+# Made from analysis/JNJ/driver_model.py at the move to Rust: each number is the value that
+# the Python code gives. The rationale texts are copied without change.
+# Status: First pass. No review was done. Do not use alone for a trade. Source documents: analysis/JNJ/FIRST-PASS.md.
+#
+# Comments of the Python source (copied without change, for the record):
+#   Segment sales, continuing operations (Kenvue recast), $ — FY2025 10-K
+#   (2025/2024/2023) and FY2023 10-K (2022/2021) segment tables.
+#   Net-debt bridge, stock-vs-flow (IBM F15 convention), $ — Q2-2026 10-Q unless noted:
+#     debt 49.04B (short-term borrowings 11.69 + long-term debt 37.34)
+#   + pension/OPEB liability 6.96B (FY2025 10-K) x (1 - 21%) = 5.50B, liability only
+#   + talc reserves ~9.2B pre-tax (~3.7B PV per the Q2-2026 10-Q + 5.52B Q3-2026
+#     litigation special item for the proposed ovarian settlement) x (1 - 21%) = 7.27B
+#   - cash & marketable securities 20.76B (20.42 + 0.34)
+#   Operating leases (1.4B) excluded: their flows already sit in the margin.
+#   : M&A recurrence f — single source of truth, paired with the growth credit
+#   : exactly as in the IBM register (charge f x M&A in margin, credit f x acquired
+#   : growth in the segment means).
+#   Year-1 pins = Oct-2026 guidance ($101.2B reported) split by the nine-month
+#   run rate: Innovative Medicine +8.8% YTD, MedTech +4.9% YTD (Q3-26 8-K).
+
+ticker = "JNJ"
+notes = "JNJ driver-based DCF model — FIRST PASS (2026-10-16), NOT a vetted driver build.\n\nBuilt in one session to test the IBM template on a new ticker (Luc's review on\nPR #16: \"test using an entirely different stock\"). No driver, formula or\ncorrelation review fan-out has been run; every rationale below is a first-pass\nargument awaiting the same per-driver review IBM received (DRIVER-REVIEW.md).\nFindings and sources: analysis/JNJ/FIRST-PASS.md.\n\nContract (same as analysis/IBM/driver_model.py):\n    build() -> {\"model\", \"segments\", \"net_debt\", \"shares\", \"segment_history\"}"
+net_debt = 41050000000.0
+shares = 2440100000.0
+projection_years = 10
+
+[segment_history."Innovative Medicine"]
+2021 = 51680000000.0
+2022 = 52563000000.0
+2023 = 54759000000.0
+2024 = 56964000000.0
+2025 = 60401000000.0
+
+[segment_history."MedTech"]
+2021 = 27060000000.0
+2022 = 27427000000.0
+2023 = 30400000000.0
+2024 = 31857000000.0
+2025 = 33792000000.0
+
+[[segments]]
+name = "Innovative Medicine"
+base_revenue = 60401000000.0
+growth_driver = "g_im"
+year1_growth = 0.086
+
+[[segments]]
+name = "MedTech"
+base_revenue = 33792000000.0
+growth_driver = "g_medtech"
+year1_growth = 0.05
+
+[[drivers]]
+name = "g_im"
+stochastic = true
+mean = 0.05
+std = 0.03
+dist = "truncnorm"
+hi = 0.12
+rationale = "Innovative Medicine, 10y average from year 2. FY22-25 reported growth +1.7/+4.2/+4.0/+6.0% while absorbing the STELARA loss of exclusivity (~690bp drag in Q3-26); organic ~4% plus f x 2pp acquired. Std 3% (above IBM software's 2.5%): patent cliffs and trial readouts make the decade outcome wider. hi 12%: no decade precedent above that at $60B scale."
+
+[[drivers]]
+name = "g_medtech"
+stochastic = true
+mean = 0.045000000000000005
+std = 0.02
+dist = "truncnorm"
+hi = 0.09
+rationale = "MedTech, 10y average from year 2. FY22-25 +1.4/+10.8 (Abiomed)/+4.8/+6.1% (Shockwave); organic ~3.5% plus f x 2pp acquired. The planned Orthopaedics separation is NOT modeled (segment kept whole)."
+
+[[drivers]]
+name = "core_margin"
+stochastic = true
+mean = 0.208
+std = 0.02
+rationale = "Pre-SBC, pre-M&A FCFF margin at the FY2025 level: (OCF 24.53 - capex 4.83 - after-tax net interest 0.07) / revenue 94.19 = 20.8%; FY2024 21.8%. Endpoint, not mean (IBM F19 rule). FY2022-23 excluded: their OCF includes Kenvue while revenue is recast (same landmine as IBM FY2019-20)."
+
+[[drivers]]
+name = "margin_mix_drift"
+stochastic = false
+mean = 0.0
+schedule = [0.0, 0.00044444444444444447, 0.0008888888888888889, 0.0013333333333333335, 0.0017777777777777779, 0.0022222222222222222, 0.002666666666666667, 0.0031111111111111114, 0.0035555555555555557, 0.004]
+rationale = "DETERMINISTIC 0 -> +0.4pp by y10: Innovative Medicine (FY2025 pre-tax segment margin 36.9%) grows faster than MedTech (12.2%) at the means."
+
+[[drivers]]
+name = "sbc_ratio"
+stochastic = false
+mean = 0.0143
+rationale = "DETERMINISTIC 1.43% (FY2025 1.35B / 94.19B); flat since FY2021 (1.45%), so no ramp, unlike IBM."
+
+[[drivers]]
+name = "ma_ratio"
+stochastic = true
+mean = 0.116
+std = 0.04
+dist = "truncnorm"
+lo = 0.0
+rationale = "Acquisition spend % of revenue FY21-25: 0.1/22.1/0.0/17.1/18.6% (Abiomed, Shockwave, Intra-Cellular), mean 11.6%; FY16-25 ~12.7% with Actelion. Std 4%: one draw per path, so decade-average dispersion of a very lumpy series (annual sigma ~14% / sqrt(10)). lo 0 at 2.9 sigma."
+
+[[drivers]]
+name = "ma_recurrence"
+stochastic = false
+mean = 0.5
+rationale = "DETERMINISTIC f=0.50, the IBM headline convention, paired with the growth credit. First-pass caveat: in pharma, acquired pipeline revenue turns 'organic' after one year, so the 2pp acquired-growth credit likely understates what M&A buys; the f-locus is published."
+
+[[drivers]]
+name = "rf"
+stochastic = true
+mean = 0.051
+std = 0.005
+dist = "truncnorm"
+lo = 0.01
+rationale = "10y Treasury 5.10% (^TNX close 2026-10-16); std 0.5% = permanent-component uncertainty (IBM convention)."
+
+[[drivers]]
+name = "beta"
+stochastic = false
+mean = 0.65
+rationale = "DETERMINISTIC judgment 0.65. Regression betas are unusable: 0.22 (5y monthly) and ~0 (2y weekly) vs the S&P 500; Blume-adjusted 0.48. 0.65 sits between that and a pharma/medtech industry beta; locus 0.45 / 0.65 / 0.85 published."
+
+[[drivers]]
+name = "erp"
+stochastic = true
+mean = 0.042
+std = 0.0075
+dist = "truncnorm"
+lo = 0.02
+rationale = "Damodaran implied ERP 4.20% (Oct 1, 2026); std 0.75% (IBM convention)."
+
+[[drivers]]
+name = "kd_spread"
+stochastic = false
+mean = 0.004
+rationale = "DETERMINISTIC +40bp over rf: AAA-rated issuer (first-pass estimate, not calibrated to the debt ladder)."
+
+[[drivers]]
+name = "tax_rate"
+stochastic = false
+mean = 0.21
+rationale = "DETERMINISTIC statutory 21%."
+
+[[drivers]]
+name = "equity_weight"
+stochastic = false
+mean = 0.93
+rationale = "DETERMINISTIC E/V 0.93: market cap ~$616B (255.56 x 2.41B) vs net debt $41.1B. Not iterated to the price-value fixed point (first pass)."
+
+[[drivers]]
+name = "terminal_growth"
+stochastic = true
+mean = 0.0225
+std = 0.0075
+rationale = "Long-run nominal growth 2.25%, std 0.75% (IBM convention)."
+
+[[corr]]
+a = "g_im"
+b = "g_medtech"
+rho = 0.3
+note = "shared healthcare demand and pricing"
+
+[[corr]]
+a = "g_im"
+b = "core_margin"
+rho = 0.3
+note = "pharma mix lifts margin"
+
+[[corr]]
+a = "g_medtech"
+b = "core_margin"
+rho = 0.15
+
+[[corr]]
+a = "g_im"
+b = "ma_ratio"
+rho = 0.25
+note = "M&A concentrated in pharma pipeline"
+
+[[corr]]
+a = "g_medtech"
+b = "ma_ratio"
+rho = 0.15
+
+[[corr]]
+a = "rf"
+b = "erp"
+rho = -0.3
+
+[[corr]]
+a = "rf"
+b = "g_im"
+rho = 0.1
+
+[[corr]]
+a = "rf"
+b = "g_medtech"
+rho = 0.1
+
+[[corr]]
+a = "ma_ratio"
+b = "rf"
+rho = -0.15
+
+[[corr]]
+a = "erp"
+b = "g_im"
+rho = -0.15
+note = "defensive sector: weaker demand link than IBM"
+
+[[corr]]
+a = "erp"
+b = "g_medtech"
+rho = -0.15
+
+[[corr]]
+a = "terminal_growth"
+b = "g_im"
+rho = 0.35
+
+[[corr]]
+a = "terminal_growth"
+b = "g_medtech"
+rho = 0.25
+
+[[corr]]
+a = "terminal_growth"
+b = "rf"
+rho = 0.25
+
+[[corr]]
+a = "terminal_growth"
+b = "erp"
+rho = -0.2
+
+[[corr]]
+a = "terminal_growth"
+b = "ma_ratio"
+rho = 0.15

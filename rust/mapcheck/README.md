@@ -3,8 +3,8 @@
 `mapcheck` is the Rust program that makes the standard DCF input variables from SEC
 data and checks them. It is the only implementation of this work: fetch, period
 selection, tags, formulas, sources, checks, filing statements. No Python code does
-these steps. The Python valuation code (engines, backtest, report) is legacy code; it
-reads the store file that `mapcheck import` writes, until it moves to Rust.
+these steps. The valuation code (`fa`: engines, backtest, report) reads the store file
+that `mapcheck import` writes.
 
 Speed on 4 processors: 472 companies in 2.8 seconds (166 companies in one second).
 2,000 companies need approximately 12 seconds.
@@ -13,8 +13,8 @@ The registry of standard variables is one data file:
 `financial_analysis/standard_variables.toml`. `mapcheck` contains the file at build
 time. Build the program again after you change the registry.
 
-The repo has a second Rust crate, `rust/` (the `fa` command). It calls the Python code;
-it is not part of `mapcheck`.
+The repo has a second Rust crate, `rust/` (the `fa` command). It uses `mapcheck` as a
+library; it is not part of `mapcheck`.
 
 ## Commands
 

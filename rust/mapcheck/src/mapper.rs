@@ -1,6 +1,6 @@
 //! From company facts to the standard variables of one period.
 //!
-//! This is the only implementation of the mapping. The Python valuation code reads
+//! This is the only implementation of the mapping. The valuation code (`fa`) reads
 //! the result from the store file (rust/mapcheck/src/store.rs).
 
 use crate::facts::{period_ends, select, CompanyFacts, Forms};

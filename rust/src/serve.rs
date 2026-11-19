@@ -14,7 +14,6 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 
 const PAGE: &str = include_str!("viewer.html");
@@ -37,12 +36,14 @@ pub struct Ctx {
     /// The SEC cache of mapcheck (`<repo>/data/raw`).
     pub cache: PathBuf,
     pub registry: Registry,
+    /// Gets a web address (the price history of a report, when the cache has none). Tests set a function that does not use the network.
+    pub fetch: fn(&str) -> Result<Vec<u8>, String>,
 }
 
 impl Ctx {
     pub fn new(fa: Fa) -> Result<Ctx, String> {
         let cache = fa.repo.join("data").join("raw");
-        Ok(Ctx { fa, cache, registry: Registry::embedded()? })
+        Ok(Ctx { fa, cache, registry: Registry::embedded()?, fetch: financial_analysis::market::download })
     }
 }
 
@@ -68,22 +69,6 @@ impl Reply {
             status,
             content_type: "application/json; charset=utf-8",
             body: json!({"error": message, "hint": hint}).to_string(),
-            file: None,
-        }
-    }
-
-    /// An error with a long text (a Python traceback): the last line is the message
-    /// and the full text is the detail.
-    fn error_with_detail(status: u16, text: &str, hint: &str) -> Reply {
-        let lines: Vec<&str> = text.lines().filter(|l| !l.trim().is_empty()).collect();
-        if lines.len() <= 2 {
-            return Reply::error(status, text, hint);
-        }
-        let last = lines[lines.len() - 1].trim();
-        Reply {
-            status,
-            content_type: "application/json; charset=utf-8",
-            body: json!({"error": format!("Python failed: {last}"), "hint": hint, "detail": text}).to_string(),
             file: None,
         }
     }
@@ -133,7 +118,7 @@ pub fn split_url(url: &str) -> (String, HashMap<String, String>) {
 
 /// A ticker in upper case: 1 to 10 letters, digits, '.' or '-', and a letter or a
 /// digit first. This also prevents a path out of the cache folder and an option for
-/// the Python command.
+/// a command.
 pub fn valid_ticker(text: Option<&String>) -> Result<String, Reply> {
     let t = text.map(|s| s.trim().to_uppercase()).unwrap_or_default();
     let ok = !t.is_empty()
@@ -223,13 +208,14 @@ pub fn tickers(cache: &Path) -> Answer {
     Ok(Reply::json(&out))
 }
 
-/// Tickers with `analysis/<TICKER>/driver_model.py`: the Monte Carlo DCF can run for them.
+/// Tickers with a driver model file: `analysis/<TICKER>/driver_model.toml`. The Monte Carlo DCF and the
+/// company report use it.
 pub fn models(repo: &Path) -> Vec<String> {
     let mut out: Vec<String> = fs::read_dir(repo.join("analysis"))
         .map(|entries| {
             entries
                 .filter_map(|e| e.ok())
-                .filter(|e| e.path().join("driver_model.py").is_file())
+                .filter(|e| e.path().join("driver_model.toml").is_file())
                 .map(|e| e.file_name().to_string_lossy().to_string())
                 .collect()
         })
@@ -293,14 +279,14 @@ fn valid_date(text: &str) -> bool {
     text == "today" || (text.len() == 10 && dates::parse(text).is_some())
 }
 
-/// Check the verdict query and make the options. No Python is started here.
+/// Check the verdict query and make the options. Nothing runs here.
 pub fn verdict_request(repo: &Path, q: &HashMap<String, String>) -> Result<(String, f64, VerdictOptions), Reply> {
     let ticker = valid_ticker(q.get("ticker"))?;
     let available = models(repo);
     if !available.contains(&ticker) {
         return Err(Reply::error(
             400,
-            &format!("{ticker} has no driver model (analysis/{ticker}/driver_model.py)."),
+            &format!("{ticker} has no driver model (analysis/{ticker}/driver_model.toml)."),
             &format!("The Monte Carlo DCF can run for: {}.", available.join(", ")),
         ));
     }
@@ -337,14 +323,13 @@ fn verdict(ctx: &Ctx, q: &HashMap<String, String>) -> Answer {
 }
 
 // ---------------------------------------------------------------------------
-// Company report (scripts.visualize_dcf)
+// Company report (`fa report`)
 // ---------------------------------------------------------------------------
 
 /// The cache folder of the company reports, under `data/` (not in git).
 const REPORT_DIR: &str = "data/reports";
-/// The text that the Python script writes in the report when it has no price.
+/// The text that the report has when it has no price.
 const NO_PRICE_TEXT: &str = "current price unavailable";
-static REPORT_RUNS: AtomicU32 = AtomicU32::new(0);
 
 /// The file name of a report: `IBM_228.53.html` (price from the user) or
 /// `IBM_auto.html` (the script gets the price). Only a checked ticker and a number
@@ -366,14 +351,14 @@ pub fn report_name_ok(name: &str) -> bool {
 }
 
 /// Check the report query. The price is rounded to the cent, so the name and the
-/// command use the same number. No Python is started here.
+/// report use the same number. Nothing is made here.
 pub fn report_request(repo: &Path, q: &HashMap<String, String>) -> Result<(String, Option<f64>, PathBuf), Reply> {
     let ticker = valid_ticker(q.get("ticker"))?;
     let price = match q.get("price").map(|s| s.trim()).filter(|s| !s.is_empty()) {
         None => None,
         Some(s) => {
             let p: f64 = s.parse().map_err(|_| Reply::error(400, &format!("The price '{s}' is not a number."), ""))?;
-            if !(p.is_finite() && p >= 0.005 && p <= 10_000_000.0) {
+            if !(p.is_finite() && (0.005..=10_000_000.0).contains(&p)) {
                 return Err(Reply::error(400, "Type a market price that is more than 0, or leave the price empty.", ""));
             }
             Some(format!("{p:.2}").parse::<f64>().unwrap_or(p))
@@ -395,7 +380,7 @@ pub fn report_state(repo: &Path, ticker: &str, price: Option<f64>, path: &Path, 
         .and_then(|m| m.modified().ok())
         .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
         .map(|d| d.as_secs());
-    // Without a price from the user, the script reads the price from the network.
+    // Without a price from the user, the report takes the last close of the price history.
     let price_missing = meta.is_some()
         && price.is_none()
         && fs::read(path).map(|b| b.windows(NO_PRICE_TEXT.len()).any(|w| w == NO_PRICE_TEXT.as_bytes())).unwrap_or(false);
@@ -434,26 +419,21 @@ fn report_file(ctx: &Ctx, q: &HashMap<String, String>) -> Answer {
     Ok(Reply { status: 200, content_type: "text/html; charset=utf-8", body: String::new(), file: Some(path) })
 }
 
-/// A failed report command, with a hint for the report.
-fn report_error(e: FaError) -> Reply {
-    let text = e.to_string();
-    let lower = text.to_lowercase();
-    if lower.contains("no module named 'plotly") || lower.contains("no module named \"plotly") {
-        return Reply::error_with_detail(
-            502,
-            &text,
-            "The Python library plotly is not installed. Run: pip install -r requirements.txt",
-        );
+/// A failed report, with a hint.
+fn report_error(text: &str) -> Reply {
+    if text.contains("No saved data") {
+        let ticker = text.split_whitespace().skip_while(|w| *w != "for").nth(1).unwrap_or("TICKER").trim_end_matches(['.', ',']);
+        return Reply::error(404, text, &format!("Import the company data first: fa import {ticker}"));
     }
-    if lower.contains("no saved data") {
-        return Reply::error_with_detail(502, &text, "Import the company data first: python -m scripts.import_financials TICKER");
+    if ["Yahoo", "HTTP", "timed out", "connection"].iter().any(|w| text.contains(w)) {
+        return Reply::error(502, text, "A data site did not answer or refused the request. Try again later.");
     }
-    fa_error(e)
+    Reply::error(502, &format!("The report cannot be made: {text}"), "")
 }
 
 /// Make the report when no file exists or when the user asks (`force=1`), then
-/// give the state of the file. The command writes to a temporary file first, so a
-/// failed run does not destroy an earlier report.
+/// give the state of the file. The file is written in one step (a temporary file, then a
+/// rename), so a failed run does not destroy an earlier report.
 fn report_make(ctx: &Ctx, q: &HashMap<String, String>) -> Answer {
     let (ticker, price, path) = report_request(&ctx.fa.repo, q)?;
     let processed = ctx.fa.repo.join("data").join("processed").join(format!("{ticker}.json"));
@@ -461,42 +441,16 @@ fn report_make(ctx: &Ctx, q: &HashMap<String, String>) -> Answer {
         return Err(Reply::error(
             404,
             &format!("There is no saved company data for {ticker}."),
-            &format!("Run: python -m scripts.import_financials {ticker}"),
+            &format!("Run: fa import {ticker}"),
         ));
     }
     let force = q.get("force").map(|v| v == "1" || v == "true").unwrap_or(false);
     let made_now = force || !path.is_file();
     if made_now {
-        let dir = ctx.fa.repo.join(REPORT_DIR);
-        fs::create_dir_all(&dir)
-            .map_err(|e| Reply::error(500, &format!("Cannot make the folder {}: {e}", dir.display()), ""))?;
-        let tmp = dir.join(format!(".{}.{}.{}.tmp", ticker, std::process::id(), REPORT_RUNS.fetch_add(1, Ordering::Relaxed)));
-        let mut args = vec![ticker.clone()];
-        if let Some(p) = price {
-            args.push("--price".into());
-            args.push(format!("{p:.2}"));
-        }
-        args.push("--out".into());
-        args.push(tmp.to_string_lossy().into_owned());
-        match ctx.fa.run_captured("scripts.visualize_dcf", &args) {
-            Ok(_) if tmp.is_file() => {
-                if let Err(e) = fs::rename(&tmp, &path) {
-                    let _ = fs::remove_file(&tmp);
-                    return Err(Reply::error(500, &format!("Cannot save the report {}: {e}", path.display()), ""));
-                }
-            }
-            Ok(_) => {
-                return Err(Reply::error(
-                    502,
-                    "The report command did not write a file.",
-                    "Run python -m scripts.visualize_dcf in a terminal to see the reason.",
-                ))
-            }
-            Err(e) => {
-                let _ = fs::remove_file(&tmp);
-                return Err(report_error(e));
-            }
-        }
+        let built = financial_analysis::report::make_report(&ctx.fa.repo, &ticker, price, &financial_analysis::market::today_iso(), &ctx.fetch)
+            .map_err(|e| report_error(&e))?;
+        financial_analysis::market::write_atomic(&path, &built.html())
+            .map_err(|e| Reply::error(500, &format!("Cannot save the report {}: {e}", path.display()), ""))?;
     }
     Ok(Reply::json(&report_state(&ctx.fa.repo, &ticker, price, &path, made_now)))
 }
@@ -508,32 +462,22 @@ fn leaderboard(repo: &Path) -> Answer {
         .map_err(|e| Reply::error(500, &format!("Cannot read {}: {e}", path.display()), "The file is part of the repository (trading/research/LEADERBOARD.md)."))
 }
 
-/// An error of the Python pipeline, with a hint that tells the user what to do.
+/// An error of a typed call, with a hint that tells the user what to do.
 pub fn fa_error(e: FaError) -> Reply {
     let text = e.to_string();
     let lower = text.to_lowercase();
     let hint = match &e {
-        FaError::Spawn { .. } => {
-            "Python did not start. Install Python 3. Then run: pip install -r requirements.txt. \
-             Or set FA_PYTHON to the full path of the Python program."
-        }
-        FaError::Json { .. } => "The Python output was not the expected JSON. Make sure that the Python code and the fa program are from the same version.",
-        FaError::Python { .. } if lower.contains("modulenotfounderror") || lower.contains("no module named") => {
-            "A Python package is missing. Run: pip install -r requirements.txt"
-        }
-        FaError::Python { .. } if lower.contains("mapcheck") => {
-            "Build mapcheck: cargo build --release --manifest-path rust/mapcheck/Cargo.toml"
-        }
-        FaError::Python { .. }
-            if ["fetch failed", "request failed", "connection", "timed out", "timeout", "threshold"]
+        FaError::Json { .. } => "A reply was not the expected JSON. Try again later.",
+        FaError::Data(_)
+            if ["fetch failed", "request failed", "connection", "timed out", "timeout", "threshold", "http 4", "http 5", "tls", "dns"]
                 .iter()
                 .any(|w| lower.contains(w)) =>
         {
             "A data site did not answer or refused the request. Make sure that the computer has a network connection. Try again later."
         }
-        FaError::Python { .. } => "",
+        FaError::Data(_) => "",
     };
-    Reply::error_with_detail(502, &text, hint)
+    Reply::error(502, &text, hint)
 }
 
 // ---------------------------------------------------------------------------
@@ -661,7 +605,6 @@ pub fn serve(fa: Fa, args: &[String]) -> ExitCode {
     let url = format!("http://127.0.0.1:{port}/");
     println!("FinancialAnalysis viewer: {url}");
     println!("Repository: {}", ctx.fa.repo.display());
-    println!("Python: {}", ctx.fa.python.display());
     println!("Push Ctrl+C to stop the server.");
     if open {
         open_browser(&url);
@@ -685,7 +628,7 @@ mod tests {
         fs::create_dir_all(root.join("data/raw/_sec")).unwrap();
         fs::create_dir_all(root.join("analysis/TEST")).unwrap();
         fs::create_dir_all(root.join("analysis/NOMODEL")).unwrap();
-        fs::write(root.join("analysis/TEST/driver_model.py"), "").unwrap();
+        fs::write(root.join("analysis/TEST/driver_model.toml"), "").unwrap();
         fs::create_dir_all(root.join("trading/research")).unwrap();
         fs::write(root.join("trading/research/LEADERBOARD.md"), "# Leaderboard\n").unwrap();
         let fact = |y: i32, val: f64| {
@@ -699,8 +642,14 @@ mod tests {
         root
     }
 
+    fn offline(_: &str) -> Result<Vec<u8>, String> {
+        Err("offline".to_string())
+    }
+
     fn ctx(root: &Path) -> Ctx {
-        Ctx::new(Fa::new("python-that-does-not-exist", root)).unwrap()
+        let mut c = Ctx::new(Fa::new(root)).unwrap();
+        c.fetch = offline;
+        c
     }
 
     fn body(r: &Reply) -> Value {
@@ -788,7 +737,7 @@ mod tests {
     }
 
     #[test]
-    fn verdict_query_is_checked_before_python() {
+    fn verdict_query_is_checked_before_the_run() {
         let root = fixture("verdict");
         let q = |url: &str| split_url(url).1;
         let (t, p, o) = verdict_request(&root, &q("/?ticker=test&price=228.53")).unwrap();
@@ -805,26 +754,17 @@ mod tests {
     }
 
     #[test]
-    fn missing_python_gives_a_hint() {
-        let root = fixture("python");
+    fn a_broken_model_file_gives_an_error_and_a_data_error_gives_a_hint() {
+        let root = fixture("brokenmodel");
         let c = ctx(&root);
+        // the model file of TEST is empty: the run stops with the reason, and no program is started
         let r = route(&c, "GET", "/api/verdict?ticker=TEST&price=10");
         assert_eq!(r.status, 502);
-        assert!(body(&r)["hint"].as_str().unwrap().contains("Install Python"));
+        assert!(body(&r)["error"].as_str().unwrap().contains("model file"), "{}", r.body);
+        let net = fa_error(FaError::Data("request failed: connection reset".into()));
+        assert!(body(&net)["hint"].as_str().unwrap().contains("network"));
+        assert_eq!(body(&fa_error(FaError::Data("bad input".into())))["hint"], "");
         assert_eq!(route(&c, "GET", "/api/rates/nyfed?rate=XYZ").status, 400);
-    }
-
-    #[test]
-    fn traceback_gives_last_line_and_detail() {
-        let e = FaError::Python {
-            code: Some(1),
-            kind: None,
-            message: "Traceback (most recent call last):\n  File \"x.py\"\nrequests.exceptions.ReadTimeout: read timed out".into(),
-        };
-        let j = body(&fa_error(e));
-        assert_eq!(j["error"], "Python failed: requests.exceptions.ReadTimeout: read timed out");
-        assert!(j["detail"].as_str().unwrap().starts_with("python failed"));
-        assert!(j["hint"].as_str().unwrap().contains("network"));
     }
 
     #[test]
@@ -839,7 +779,7 @@ mod tests {
     }
 
     #[test]
-    fn report_query_is_checked_before_python() {
+    fn report_query_is_checked_before_the_run() {
         let root = fixture("reportq");
         let q = |url: &str| split_url(url).1;
         let (t, p, path) = report_request(&root, &q("/?ticker=test&price=228.534")).unwrap();
@@ -904,39 +844,84 @@ mod tests {
         assert_eq!(route(&c, "GET", "/api/report/info?ticker=%2e%2e").status, 400);
     }
 
+    /// A company with ten annual periods: enough for the report.
+    fn write_company(root: &Path) {
+        let periods: Vec<Value> = (2016..=2025)
+            .map(|y| {
+                let r = 100.0e9 * 1.05f64.powi(y - 2016);
+                json!({"form": "10-K", "period_end": format!("{y}-12-31"), "filed_date": format!("{}-02-15", y + 1), "revenue": r,
+                       "operating_cash_flow": r * 0.22, "capex": -r * 0.02, "total_debt": 40.0e9, "cash_and_equivalents": 10.0e9,
+                       "shares_outstanding": 1.0e9})
+            })
+            .collect();
+        fs::create_dir_all(root.join("data/processed")).unwrap();
+        fs::write(root.join("data/processed/TEST.json"), json!({"ticker": "TEST", "cik": "1", "company_name": "Test Company", "periods": periods}).to_string())
+            .unwrap();
+    }
+
     #[test]
-    fn report_make_checks_before_python_and_reuses_the_file() {
+    fn report_make_checks_first_reuses_the_file_and_keeps_it_when_a_run_fails() {
         let root = fixture("reportmake");
         let c = ctx(&root);
         assert_eq!(route(&c, "GET", "/api/report/make?ticker=../x").status, 400);
-        // No saved company data: a clear error, and Python does not start.
+        // No saved company data: a clear error with the import command.
         let r = route(&c, "GET", "/api/report/make?ticker=TEST&price=10");
         assert_eq!(r.status, 404);
-        assert!(body(&r)["hint"].as_str().unwrap().contains("import_financials"));
-        // Data exists, but Python does not: the error has the Python hint, and no file stays.
+        assert!(body(&r)["hint"].as_str().unwrap().contains("fa import"));
+        // A company file without annual periods: the report stops with the reason, and no file stays.
         fs::create_dir_all(root.join("data/processed")).unwrap();
         fs::write(root.join("data/processed/TEST.json"), "{}").unwrap();
         let r = route(&c, "GET", "/api/report/make?ticker=TEST&price=10");
         assert_eq!(r.status, 502);
-        assert!(body(&r)["hint"].as_str().unwrap().contains("Install Python"));
-        assert_eq!(fs::read_dir(root.join("data/reports")).unwrap().count(), 0);
-        // A file exists and the user does not ask again: Python does not start.
+        assert!(body(&r)["error"].as_str().unwrap().contains("no annual"), "{}", r.body);
+        assert!(!root.join("data/reports").exists() || fs::read_dir(root.join("data/reports")).unwrap().count() == 0);
+        // A file exists and the user does not ask again: the report is not made again.
+        fs::create_dir_all(root.join("data/reports")).unwrap();
         fs::write(root.join("data/reports/TEST_10.00.html"), "<p>old</p>").unwrap();
         let r = route(&c, "GET", "/api/report/make?ticker=TEST&price=10");
         assert_eq!(r.status, 200, "{}", r.body);
         let j = body(&r);
         assert_eq!((j["exists"].clone(), j["made_now"].clone()), (json!(true), json!(false)));
-        // With force the command runs again (here it fails, and the old file stays).
+        // With force the report is made again; here it fails, and the old file stays.
         assert_eq!(route(&c, "GET", "/api/report/make?ticker=TEST&price=10&force=1").status, 502);
-        assert!(root.join("data/reports/TEST_10.00.html").is_file());
+        assert_eq!(fs::read_to_string(root.join("data/reports/TEST_10.00.html")).unwrap(), "<p>old</p>");
+    }
+
+    #[test]
+    fn report_make_writes_the_page_with_the_fields_that_the_viewer_reads() {
+        let root = fixture("reportwrite");
+        write_company(&root);
+        let c = ctx(&root);
+        let r = route(&c, "GET", "/api/report/make?ticker=test&price=10");
+        assert_eq!(r.status, 200, "{}", r.body);
+        let j = body(&r);
+        for k in ["ticker", "price", "exists", "made_at", "size", "made_now", "driver_model", "price_missing", "url"] {
+            assert!(j.get(k).is_some(), "{k}");
+        }
+        assert_eq!((j["ticker"].clone(), j["exists"].clone(), j["made_now"].clone(), j["price_missing"].clone()), (json!("TEST"), json!(true), json!(true), json!(false)));
+        assert_eq!(j["url"], "/report/file?ticker=TEST&price=10.00");
+        let page = fs::read_to_string(root.join("data/reports/TEST_10.00.html")).unwrap();
+        assert!(page.contains("<title>TEST \u{2014} Company report</title>") && page.contains("cdn.plot.ly/plotly-4.1.1.min.js"));
+        // the model file of the fixture is empty: the section says so and the report goes on
+        assert!(page.contains("Driver model could not be loaded"));
+        assert!(page.contains("Price history not available"));
+        // without a price from the user and without a price history, the page says so and the viewer shows the warning
+        let r = route(&c, "GET", "/api/report/make?ticker=TEST");
+        assert_eq!(body(&r)["price_missing"], json!(true), "{}", r.body);
+        // a second call reuses the file
+        let again = body(&route(&c, "GET", "/api/report/make?ticker=TEST&price=10"));
+        assert_eq!(again["made_now"], json!(false));
     }
 
     #[test]
     fn report_errors_have_hints() {
-        let plotly = FaError::Python { code: Some(1), kind: None, message: "ModuleNotFoundError: No module named 'plotly'".into() };
-        assert!(body(&report_error(plotly))["hint"].as_str().unwrap().contains("pip install -r requirements.txt"));
-        let nodata = FaError::Python { code: Some(1), kind: None, message: "No saved data for ZZZ. Run: python -m scripts.import_financials ZZZ".into() };
-        assert!(body(&report_error(nodata))["hint"].as_str().unwrap().contains("import_financials"));
+        let nodata = report_error("No saved data for ZZZ at /x/ZZZ.json. Run: fa import ZZZ");
+        assert_eq!(nodata.status, 404);
+        assert!(body(&nodata)["hint"].as_str().unwrap().contains("fa import ZZZ"));
+        let net = report_error("Yahoo answered HTTP 429 (too many requests)");
+        assert!(body(&net)["hint"].as_str().unwrap().contains("Try again later"));
+        let other = report_error("TEST: no annual (10-K) periods available.");
+        assert!(body(&other)["error"].as_str().unwrap().starts_with("The report cannot be made"));
     }
 
     #[test]
