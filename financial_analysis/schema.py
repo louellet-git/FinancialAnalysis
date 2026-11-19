@@ -80,6 +80,9 @@ class PeriodFinancials:
     filed_date: date
     currency: str = "USD"
 
+    # The fields below are the standard variables. Their tags, formulas and scope
+    # are in financial_analysis/xbrl_tags.py (same names, same sequence).
+
     # --- Income Statement ---
     revenue: Optional[float] = None
     cogs_total: Optional[float] = None
@@ -88,16 +91,30 @@ class PeriodFinancials:
     sm_expense: Optional[float] = None
     ga_expense: Optional[float] = None
     sga_expense: Optional[float] = None
+    advertising_expense: Optional[float] = None
     opex_amortization: Optional[float] = None
     opex_restructuring: Optional[float] = None
+    goodwill_impairment: Optional[float] = None
+    asset_impairment: Optional[float] = None
+    operating_expenses_total: Optional[float] = None
+    costs_and_expenses_total: Optional[float] = None
     operating_income: Optional[float] = None
     interest_income: Optional[float] = None
     interest_expense: Optional[float] = None
+    interest_net_nonoperating: Optional[float] = None
     gains_losses_on_investments: Optional[float] = None
     other_nonop_income: Optional[float] = None
+    nonoperating_income_total: Optional[float] = None
+    equity_method_income: Optional[float] = None
     income_before_tax: Optional[float] = None
+    income_before_tax_domestic: Optional[float] = None
+    income_before_tax_foreign: Optional[float] = None
     income_tax_expense: Optional[float] = None
     net_income: Optional[float] = None
+    net_income_incl_nci: Optional[float] = None
+    net_income_noncontrolling: Optional[float] = None
+    discontinued_operations_income: Optional[float] = None
+    depreciation: Optional[float] = None
     da_total: Optional[float] = None
     sbc_total: Optional[float] = None
     eps_basic: Optional[float] = None
@@ -108,32 +125,65 @@ class PeriodFinancials:
     # --- Balance Sheet ---
     cash_and_equivalents: Optional[float] = None
     short_term_investments: Optional[float] = None
+    cash_and_short_term_investments: Optional[float] = None
+    long_term_investments: Optional[float] = None
+    equity_method_investments: Optional[float] = None
     accounts_receivable_net: Optional[float] = None
     inventory: Optional[float] = None
+    prepaid_and_other_current_assets: Optional[float] = None
     total_current_assets: Optional[float] = None
+    ppe_gross: Optional[float] = None
+    accumulated_depreciation: Optional[float] = None
     ppe_net: Optional[float] = None
     goodwill: Optional[float] = None
+    finite_lived_intangibles_net: Optional[float] = None
+    indefinite_lived_intangibles: Optional[float] = None
     intangibles_net: Optional[float] = None
     operating_lease_rou_assets: Optional[float] = None
     deferred_tax_assets: Optional[float] = None
     other_noncurrent_assets: Optional[float] = None
     total_assets: Optional[float] = None
     accounts_payable: Optional[float] = None
+    accounts_payable_and_accrued: Optional[float] = None
     accrued_compensation: Optional[float] = None
     accrued_liabilities: Optional[float] = None
+    income_taxes_payable: Optional[float] = None
     deferred_revenue_current: Optional[float] = None
+    other_current_liabilities: Optional[float] = None
     total_current_liabilities: Optional[float] = None
+    short_term_borrowings: Optional[float] = None
+    long_term_debt_current: Optional[float] = None
+    debt_current: Optional[float] = None
     long_term_debt: Optional[float] = None
-    deferred_revenue_noncurrent: Optional[float] = None
+    long_term_debt_total: Optional[float] = None
+    total_debt: Optional[float] = None
+    finance_lease_liabilities: Optional[float] = None
+    operating_lease_liabilities_current: Optional[float] = None
     operating_lease_liabilities_noncurrent: Optional[float] = None
+    operating_lease_liabilities: Optional[float] = None
+    deferred_revenue_noncurrent: Optional[float] = None
+    pension_liabilities_noncurrent: Optional[float] = None
     deferred_tax_liabilities: Optional[float] = None
+    other_noncurrent_liabilities: Optional[float] = None
     total_liabilities: Optional[float] = None
+    temporary_equity: Optional[float] = None
+    retained_earnings: Optional[float] = None
     equity: Optional[float] = None
+    noncontrolling_interest: Optional[float] = None
+    total_equity_incl_nci: Optional[float] = None
+    total_liabilities_and_equity: Optional[float] = None
     shares_outstanding: Optional[float] = None
 
     # --- Cash Flow ---
     operating_cash_flow: Optional[float] = None
+    change_receivables: Optional[float] = None
+    change_inventories: Optional[float] = None
+    change_payables: Optional[float] = None
+    change_deferred_revenue: Optional[float] = None
+    deferred_income_tax: Optional[float] = None
     capex: Optional[float] = None
+    capitalized_software: Optional[float] = None
+    purchases_of_intangibles: Optional[float] = None
     purchases_investments: Optional[float] = None
     proceeds_investments: Optional[float] = None
     acquisitions_net_of_cash: Optional[float] = None
@@ -144,6 +194,8 @@ class PeriodFinancials:
     proceeds_issuance_debt: Optional[float] = None
     repayment_of_debt: Optional[float] = None
     net_cash_from_financing: Optional[float] = None
+    interest_paid: Optional[float] = None
+    income_taxes_paid: Optional[float] = None
 
     # --- Disclosures (point-in-time facts from the notes) ---
     # Total remaining performance obligation (RPO). The current/noncurrent
@@ -154,6 +206,9 @@ class PeriodFinancials:
     # see the importer.py module docstring. Extraction from filing-level XBRL
     # instance documents is ticketed (PLANNING/tickets.md, Ticket 7).
     segment_revenue: Optional[Dict[str, float]] = None
+
+    # --- Source of each value: {field: XBRL tag, or "= formula"} ---
+    sources: Dict[str, str] = field(default_factory=dict)
 
     # --- Unmapped XBRL concepts ---
     raw_extras: Dict[str, Any] = field(default_factory=dict)

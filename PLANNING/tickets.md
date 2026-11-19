@@ -34,10 +34,17 @@ The validators, the red-team corpus and the coverage validator are on the board
 
 ## Importer
 
-- **T-IMP-1.** Remove phantom annual periods. Align recast revenue with recast operating
-  cash flow across divestitures (IBM FY2019-20, JNJ FY2022-23). Save prices in the JSON
-  store. Source: `analysis/IBM/REVIEW.md` (F13), `analysis/JNJ/FIRST-PASS.md` (defect 4).
+- **T-IMP-1.** Align recast revenue with recast operating cash flow across divestitures
+  (IBM FY2019-20, JNJ FY2022-23). Save prices in the JSON store. (The phantom annual
+  periods are removed, 2026-11-19.) Source: `analysis/IBM/REVIEW.md` (F13), `analysis/JNJ/FIRST-PASS.md` (defect 4).
 - **Ticket 7, segment revenue.** The full specification is at the end of this file.
+  Extend it to all dimensional facts and company-specific tags: this is the next step
+  to get the most granular inputs (the companyfacts source has line items only).
+- **Successor registrants.** A ticker that moved to a new registrant (XOM) has no
+  history. Join the facts of the old and the new CIK.
+- **Fourth-quarter rows.** The quarterly rows are Q1 to Q3. Calculate Q4 as the fiscal
+  year less the 9-month value.
+- **Statement templates for banks, insurers and REITs.** The audit only marks them.
 
 ## Templates (source: `analysis/JNJ/FIRST-PASS.md`)
 

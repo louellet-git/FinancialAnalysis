@@ -17,3 +17,10 @@ Parts:
 2. One registry of standard variables: aliases in a fixed sequence, formulas as fallback, a recorded source for each value.
 3. Checks: accounting identities, and a list of material tags that have no mapping.
 4. Later (Ticket 7 in the backlog): filing-level XBRL for segment data and company-specific tags.
+
+Result, 2026-11-19 (parts 1 to 3 are done on the branch; `python -m scripts.mapping_audit --panel`):
+- Annual rows on a 29-ticker panel: 672 before, 340 now. 338 of the old rows were not fiscal years.
+- Core inputs, 28 companies with the standard template: 12 of 14 at 96% or more; `interest_expense` 93% (4 from the `interest_paid` fallback); `total_debt` 96%.
+- Latest 3 fiscal years, 14 fields, 29 tickers: 1,023 values the same, 138 new values, 21 values corrected (revenue for PFE, WMT, CVX, GE; `long_term_debt` is now the non-current part only), 3 values removed (TSLA `long_term_debt`: the filer gives only the total).
+- IBM version 4 headline is the same ($83.84 / $151.84 / $258.03). The IBM backtest now has 42 results (32 in the band, 76%); before it had 18 (14 in the band).
+- Open: the estimates of total debt disagree for IBM, JNJ, HD, CVX and CSCO (ticket `bridge-per-ticker-rule`). XOM has no history under its new registrant. Part 4 is Ticket 7 in the backlog.

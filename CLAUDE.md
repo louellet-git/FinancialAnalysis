@@ -33,12 +33,15 @@ The repo gives analysis. It does not send orders to a broker.
    of the same weight.
 4. **`PLANNING/RULES.md` rules are mandatory** in their scope. To remove a rule, do a
    review of the same weight as the review that made the rule.
-5. **The IBM entries in `financial_analysis/scenarios.py` are version 3 on purpose**
+5. **`financial_analysis/xbrl_tags.py` defines the input variables.** Models read the
+   standard variable names only, not XBRL tag names and not `raw_extras`. To add a tag,
+   add it to the registry, with the same scope as its variable.
+6. **The IBM entries in `financial_analysis/scenarios.py` are version 3 on purpose**
    (`docs/HIDDEN-ASSUMPTIONS.md` #13). The version 4 headline numbers come only from
    `python -m analysis.IBM.dcf_drivers_run`.
-6. **Published reports are frozen.** Do not change `analysis/IBM/report/*`. Write a new
+7. **Published reports are frozen.** Do not change `analysis/IBM/report/*`. Write a new
    version.
-7. `README.md` and `docs/` are for orientation only. `THOUGHTS` is a list of raw ideas.
+8. `README.md` and `docs/` are for orientation only. `THOUGHTS` is a list of raw ideas.
 
 ## Work rules
 
@@ -81,9 +84,10 @@ Do not use a first pass alone for a trade.
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest                              # 331 tests, no network
+python -m pytest                              # 372 tests, no network
 python -m scripts.analyze IBM                 # import + market data -> xlsx
 python -m scripts.verdict IBM --price 228.53  # value range against a price
+python -m scripts.mapping_audit IBM           # each input value with its source
 python -m scripts.trade_backtest              # option bots, leaderboard
 ```
 

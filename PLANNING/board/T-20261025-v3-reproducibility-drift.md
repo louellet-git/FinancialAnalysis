@@ -9,3 +9,4 @@ created: 2026-10-25
 acceptance: analysis.IBM.dcf_scenarios prints the signed-off $37/$141/$232 again, or its output carries a reproduces-as-of note.
 ---
 `docs/HIDDEN-ASSUMPTIONS.md` #24: `dcf_scenarios` calculates margins from the re-imported store and now prints $43/$149/$243. Pin the v3 inputs as constants, or add a note to the output.
+Also: `analysis/IBM/dcf_scenarios.py` line 46 reads `raw_extras["us-gaap/InterestIncomeOther"]`. This tag is an alias of the standard variable `interest_income`, thus it is not in `raw_extras` and the script gets 0. Use `p.interest_income` when the v3 inputs are pinned.

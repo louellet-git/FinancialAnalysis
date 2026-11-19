@@ -19,7 +19,7 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest                       # 331 tests, no network
+python -m pytest                       # 372 tests, no network
 ```
 
 Run all commands from the repo root.
@@ -71,6 +71,8 @@ python -m scripts.run_dcf PANW [--simulations 10000] [--years 10] [--growth 0.15
 python -m scripts.backtest IBM [--horizon 3] [--simulations 10000] [--seed 7]
 python -m scripts.visualize_dcf IBM [--price 195.40] [--out report.html]
 python -m scripts.verdict IBM --price 228.53 [--simulations 10000] [--seed 7]
+python -m scripts.mapping_audit IBM JNJ    # each input value with its source
+python -m scripts.mapping_audit --panel    # mapping summary for 32 tickers
 python -m analysis.IBM.dcf_drivers_run     # IBM version 4 headline numbers (seed 7)
 python -m analysis.IBM.dcf_scenarios       # IBM version 3 (historical)
 python -m analysis.JNJ.first_pass_run      # JNJ first pass
@@ -82,6 +84,30 @@ debt. Do not compare this number with a share price.
 Remote data has a disk cache in `data/raw/TICKER/`. Option chains and consensus
 estimates are saved as dated snapshots, because yfinance gives only current data. A run
 on the same day reads the disk; `--refresh` gets new data.
+
+## Standard input variables
+
+Companies use different XBRL tag names for the same line. For example, interest expense
+is `InterestExpense` for IBM, `InterestExpenseNonoperating` for Microsoft and
+`InterestExpenseDebt` for Chevron. The registry `financial_analysis/xbrl_tags.py` gives
+each line one standard variable name (109 variables). The models read only these names.
+
+- Each variable has a list of tags with the same meaning. The first tag that has a
+  value is used.
+- If no tag has a value, a formula over other variables is used (for example
+  `total_debt = debt_current + long_term_debt`).
+- Each value has a recorded source: the tag, or the formula. The xlsx file shows it in
+  the `source` column. `python -m scripts.mapping_audit TICKER` prints it.
+- An annual row is always a full fiscal year. A quarterly row is always one quarter.
+- Tags with no standard variable stay in the `Raw` tab.
+
+Before you use a variable in a model, run the audit for the ticker and read the source
+of the value. The audit also shows where the data does not agree. Total debt is the
+most frequent problem: on the 32-ticker panel the two estimates of total debt disagree
+for 5 companies, because companies tag debt in ways that overlap.
+
+Limits: the SEC data source has no segment data and no company-specific tags. Banks,
+insurers and REITs have a different statement structure; the audit marks them.
 
 ## The two DCF engines
 
@@ -136,10 +162,10 @@ option-chain metrics for a ticker (implied move, skew, put/call ratios, in the x
 
 | Tab | Contents |
 |-----|----------|
-| Income Statement | Approximately 25 metrics for each period |
-| Balance Sheet | Approximately 24 metrics, and RPO rows (`statement=disclosure`) |
+| Income Statement | The income-statement standard variables for each period, with the source of each value |
+| Balance Sheet | The balance-sheet standard variables, and RPO rows (`statement=disclosure`) |
 | Cash Flow | Operating cash flow, capex, free cash flow, buybacks, dividends, debt flows |
-| Raw | All us-gaap USD concepts that have no mapping |
+| Raw | All us-gaap USD tags that have no standard variable |
 | Prices | Daily prices from yfinance (full history) |
 | Estimates | Past earnings surprises (yfinance), and FMP estimates if available |
 | Estimates Fwd | Dated snapshot of consensus revenue/EPS estimates and analyst price targets |
@@ -176,7 +202,7 @@ analysis/IBM/             IBM model (version 4), reviews, published report
 analysis/JNJ/             JNJ first pass (not reviewed)
 trading/                  option strategy backtester, paper trader, 22 bots, research notes
 scripts/                  command-line entry points
-tests/                    331 tests
+tests/                    372 tests
 
 docs/                     ARCHITECTURE.md, HIDDEN-ASSUMPTIONS.md, INDEX.md, design documents
 PLANNING/board/           open work, one file for each ticket

@@ -14,12 +14,6 @@ from financial_analysis.schema import CompanyFinancials, PeriodFinancials
 
 SCENARIO_SEED = 7
 
-_SHORT_TERM_DEBT_KEYS = (
-    "us-gaap/ShortTermBorrowings",
-    "us-gaap/LongTermDebtAndCapitalLeaseObligationsCurrent",
-)
-
-
 @dataclass(frozen=True)
 class Scenario:
     key: str    # "bear" | "base" | "bull"
@@ -124,27 +118,30 @@ def capital_structure_for(company: CompanyFinancials) -> CapitalStructure:
     """Net debt and share count for equity-per-share math.
 
     A ticker override in CAPITAL_OVERRIDES wins. Otherwise derived from the
-    latest annual period: long_term_debt + short-term borrowings (first
-    available key in _SHORT_TERM_DEBT_KEYS; 0 when neither is reported) minus
-    cash_and_equivalents. Shares come from shares_outstanding, falling back to
-    shares_diluted. Raises ValueError when required fields are missing.
+    latest annual period: the standard variable total_debt (all interest-bearing
+    debt; see financial_analysis/xbrl_tags.py) minus cash_and_equivalents. Shares
+    come from shares_outstanding, falling back to shares_diluted. Raises ValueError
+    when required fields are missing.
+
+    The derived total_debt is a first estimate (filers tag debt in different ways).
+    A reviewed valuation needs a reviewed bridge in CAPITAL_OVERRIDES.
     """
     override = CAPITAL_OVERRIDES.get(company.ticker.upper())
     if override is not None:
         return override
 
     latest = latest_annual(company)
-    if latest.long_term_debt is None or latest.cash_and_equivalents is None:
+    total_debt = latest.total_debt
+    if total_debt is None and latest.long_term_debt is not None:
+        # A period that did not come from the importer (an old store file, or a
+        # period made by hand) has no formula results: use the first formula here.
+        total_debt = latest.long_term_debt + (latest.debt_current or 0.0)
+    if total_debt is None or latest.cash_and_equivalents is None:
         raise ValueError(
             f"{company.ticker}: cannot derive net debt — latest annual period "
-            f"({latest.period_end}) is missing long_term_debt or "
+            f"({latest.period_end}) is missing total_debt or "
             "cash_and_equivalents. Add an override to scenarios.CAPITAL_OVERRIDES."
         )
-    short_term = next(
-        (latest.raw_extras[k] for k in _SHORT_TERM_DEBT_KEYS
-         if latest.raw_extras.get(k) is not None),
-        0.0,
-    )
     shares = latest.shares_outstanding or latest.shares_diluted
     if not shares:
         raise ValueError(
@@ -152,5 +149,5 @@ def capital_structure_for(company: CompanyFinancials) -> CapitalStructure:
             f"latest annual period ({latest.period_end}). Add an override to "
             "scenarios.CAPITAL_OVERRIDES."
         )
-    net_debt = latest.long_term_debt + short_term - latest.cash_and_equivalents
+    net_debt = total_debt - latest.cash_and_equivalents
     return CapitalStructure(net_debt=float(net_debt), shares=float(shares))

@@ -194,3 +194,144 @@ def test_import_company_saves_when_save_true(tmp_path):
          patch("financial_analysis.importer.store.save") as mock_save:
         import_company("NVDA", save=True, cache_dir=tmp_path)
     mock_save.assert_called_once()
+
+
+# --- standard mapping: period length, aliases, formulas, sources ---
+
+def _f(start, end, val, form="10-K", filed="2025-02-01"):
+    entry = {"end": end, "val": val, "form": form, "filed": filed}
+    if start:
+        entry["start"] = start
+    return entry
+
+
+def _company(gaap: dict, tmp_path):
+    facts = {"entityName": "ACME", "cik": 1, "facts": {"us-gaap": {
+        name: {"units": {"USD": entries}} for name, entries in gaap.items()
+    }}}
+    with patch("financial_analysis.importer.load_company_facts", return_value=facts):
+        return import_company("ACME", save=False, cache_dir=tmp_path)
+
+
+_FY = ("2024-01-01", "2024-12-31")
+
+
+def test_annual_row_is_a_full_fiscal_year(tmp_path):
+    company = _company({"Revenues": [
+        _f(*_FY, 100.0),
+        _f("2024-10-01", "2024-12-31", 27.0, filed="2025-02-02"),   # Q4 in the 10-K
+        _f("2024-07-01", "2024-09-29", 26.0),                        # Q3 in the 10-K
+    ]}, tmp_path)
+    annual = [p for p in company.periods if p.form == "10-K"]
+    assert [p.period_end for p in annual] == [date(2024, 12, 31)]
+    assert annual[0].revenue == 100.0
+
+
+def test_same_variable_from_different_tags(tmp_path):
+    # Two filers, two tag names, one standard variable.
+    a = _company({"Revenues": [_f(*_FY, 100.0)],
+                  "InterestExpense": [_f(*_FY, 5.0)]}, tmp_path)
+    b = _company({"Revenues": [_f(*_FY, 100.0)],
+                  "InterestExpenseNonoperating": [_f(*_FY, 7.0)]}, tmp_path)
+    assert a.periods[0].interest_expense == 5.0
+    assert b.periods[0].interest_expense == 7.0
+    assert a.periods[0].sources["interest_expense"] == "us-gaap/InterestExpense"
+    assert b.periods[0].sources["interest_expense"] == "us-gaap/InterestExpenseNonoperating"
+
+
+def test_formula_fills_a_variable_that_has_no_tag(tmp_path):
+    company = _company({"Revenues": [_f(*_FY, 100.0)],
+                        "CostOfRevenue": [_f(*_FY, 60.0)]}, tmp_path)
+    p = company.periods[0]
+    assert p.gross_profit == 40.0
+    assert p.sources["gross_profit"] == "= revenue - cogs_total"
+
+
+def test_tag_wins_over_formula(tmp_path):
+    company = _company({"Revenues": [_f(*_FY, 100.0)],
+                        "CostOfRevenue": [_f(*_FY, 60.0)],
+                        "GrossProfit": [_f(*_FY, 41.0)]}, tmp_path)
+    p = company.periods[0]
+    assert p.gross_profit == 41.0
+    assert p.sources["gross_profit"] == "us-gaap/GrossProfit"
+
+
+def test_total_debt_from_parts(tmp_path):
+    company = _company({"Revenues": [_f(*_FY, 100.0)],
+                        "CommercialPaper": [_f(None, "2024-12-31", 2.0)],
+                        "LongTermDebtCurrent": [_f(None, "2024-12-31", 10.0)],
+                        "LongTermDebtNoncurrent": [_f(None, "2024-12-31", 68.0)]}, tmp_path)
+    p = company.periods[0]
+    assert p.debt_current == 12.0
+    assert p.long_term_debt == 68.0
+    assert p.long_term_debt_total == 78.0
+    assert p.total_debt == 80.0
+    assert p.sources["total_debt"].startswith("= debt_current + long_term_debt")
+
+
+def test_long_term_debt_tag_with_current_part_is_not_the_noncurrent_variable(tmp_path):
+    # us-gaap/LongTermDebt includes the current part.
+    company = _company({"Revenues": [_f(*_FY, 100.0)],
+                        "LongTermDebt": [_f(None, "2024-12-31", 78.0)],
+                        "LongTermDebtCurrent": [_f(None, "2024-12-31", 10.0)]}, tmp_path)
+    p = company.periods[0]
+    assert p.long_term_debt_total == 78.0
+    assert p.long_term_debt == 68.0
+    assert p.total_debt == 78.0
+
+
+def test_two_tags_with_the_same_value_count_one_time(tmp_path):
+    # One short-term debt item with two tags (the IBM case).
+    company = _company({"Revenues": [_f(*_FY, 100.0)],
+                        "ShortTermBorrowings": [_f(None, "2024-12-31", 6.4)],
+                        "LongTermDebtAndCapitalLeaseObligationsCurrent": [_f(None, "2024-12-31", 6.4)],
+                        "LongTermDebtNoncurrent": [_f(None, "2024-12-31", 54.8)]}, tmp_path)
+    p = company.periods[0]
+    assert p.debt_current == 6.4
+    assert "counted one time" in p.sources["debt_current"]
+    assert p.total_debt == pytest.approx(61.2)
+
+
+def test_optional_formula_term_is_recorded_when_absent(tmp_path):
+    company = _company({"Revenues": [_f(*_FY, 100.0)],
+                        "Depreciation": [_f(*_FY, 8.0)]}, tmp_path)
+    p = company.periods[0]
+    assert p.da_total == 8.0
+    assert "no value: opex_amortization" in p.sources["da_total"]
+
+
+def test_quarterly_cash_flow_is_one_quarter_not_year_to_date(tmp_path):
+    company = _company({
+        "Revenues": [_f("2024-01-01", "2024-03-31", 24.0, "10-Q"),
+                     _f("2024-04-01", "2024-06-30", 26.0, "10-Q")],
+        "NetCashProvidedByUsedInOperatingActivities": [
+            _f("2024-01-01", "2024-03-31", 5.0, "10-Q"),
+            _f("2024-01-01", "2024-06-30", 12.0, "10-Q")],
+    }, tmp_path)
+    q2 = [p for p in company.periods if p.period_end == date(2024, 6, 30)][0]
+    assert q2.operating_cash_flow == 7.0
+    assert "year-to-date difference" in q2.sources["operating_cash_flow"]
+
+
+def test_n_periods_counts_fiscal_years(tmp_path):
+    company_facts = {"Revenues": [_f(f"{y}-01-01", f"{y}-12-31", float(y)) for y in range(2010, 2025)]}
+    facts = {"entityName": "ACME", "cik": 1, "facts": {"us-gaap": {
+        name: {"units": {"USD": entries}} for name, entries in company_facts.items()}}}
+    with patch("financial_analysis.importer.load_company_facts", return_value=facts):
+        company = import_company("ACME", n_periods=5, save=False, cache_dir=tmp_path)
+    assert [p.period_end.year for p in company.periods] == [2020, 2021, 2022, 2023, 2024]
+
+
+def test_filed_date_is_a_filing_date_when_the_period_has_no_revenue(tmp_path):
+    company = _company({"NetIncomeLoss": [_f(*_FY, 9.0, filed="2025-02-20")]}, tmp_path)
+    p = company.periods[0]
+    assert p.revenue is None
+    assert p.filed_date == date(2025, 2, 20)   # not the period end
+
+
+def test_unmapped_tag_stays_in_raw_extras_with_the_annual_value(tmp_path):
+    company = _company({"Revenues": [_f(*_FY, 100.0)],
+                        "SomeCompanyDetail": [_f(*_FY, 3.0),
+                                              _f("2024-10-01", "2024-12-31", 1.0, filed="2025-03-01")]},
+                       tmp_path)
+    assert company.periods[0].raw_extras == {"us-gaap/SomeCompanyDetail": 3.0}

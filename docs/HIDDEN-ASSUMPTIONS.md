@@ -15,22 +15,17 @@ Evidence: `analysis/IBM/README.md` §Data notes; `financial_analysis/backtest.py
 (`DATA_FLAGS`); `analysis/IBM/REVIEW.md` F13; commit `8153323` (IBM backtest bias driven
 by the recast).
 
-**2. Phantom "10-K" rows.** The importer keys periods off *any* mapped concept's period
-end, so stray XBRL facts create annual rows with 1–2 fields and no revenue/OCF (IBM:
-2012-06-30, 2018-01-01, 2019-01-01 — the latter two also have `filed_date` equal to
-`period_end`, the importer's placeholder). They carry no FCF and never enter the DCF
-engines, but any code iterating `company.periods` naively will hit them.
-`backtest._clean_annuals` filters them by requiring revenue AND OCF. Evidence:
-`financial_analysis/importer.py:149-160` (row creation), `:154` (filed_date
-placeholder); `financial_analysis/backtest.py:76-94`; `tests/test_backtest.py:77`;
-`analysis/IBM/README.md:91`.
+**2. (Closed 2026-11-19.) Phantom "10-K" rows.** Before this date, half of the annual
+rows were not fiscal years (on a 29-ticker panel: 338 of 672). A 10-K also contains
+quarter values, and the old importer made a row for each end date. Now a row exists
+only if an anchor tag (revenue, net income, operating cash flow, tax expense) has a
+fact of the correct length for that end date. Evidence: `financial_analysis/facts.py`
+(`period_ends`); `tests/test_facts.py`.
 
-**3. `n_periods=8` is per-concept, not per-company.** `extract_series` returns the last
-8 entries *per concept*; the union of period-ends across ~60 concepts yields far more
-than 8 periods (IBM: 22 annual rows), with older rows only partially populated (e.g.
-IBM buybacks populated FY2012–19 while revenue is None before FY2018). Do not treat
-older rows as complete statements. Evidence: `financial_analysis/importer.py:120,146`;
-`financial_analysis/xbrl_api.py:74` (`[-n:]`).
+**3. (Closed 2026-11-19.) `n_periods` counts fiscal years.** `import_company(n_periods=12)`
+gives the latest 12 fiscal years and the latest 12 quarters. Each row has all the
+variables that the filer reports for that period. Evidence:
+`financial_analysis/importer.py` (`DEFAULT_N_PERIODS`).
 
 **4. Filed-date visibility lag (point-in-time honesty).** For companyfacts-sourced
 data, `filed_date` is the date of the filing the figure was *drawn from* — usually a
@@ -40,8 +35,8 @@ filters vintages on `filed_date <= as_of`, so vintages are **conservative** (see
 periods than a real-time observer), never optimistic — the safe leakage direction, but
 do not read `filed_date` as "when this became public." Evidence:
 `financial_analysis/backtest.py:1-37` (module docstring, caveat #1);
-`financial_analysis/xbrl_api.py:25-32` (`_deduplicate`);
-`financial_analysis/importer.py:97-117`.
+`financial_analysis/facts.py` (`_latest`: the latest filing wins);
+`financial_analysis/importer.py` (`resolve_period`).
 
 **5. Segment data is hand-entered; companyfacts has no segment axis.** The SEC
 companyfacts API strips dimensional facts (verified across every us-gaap concept in
@@ -80,6 +75,24 @@ persisted as a dated snapshot (one per calendar day; same-day re-run reads disk,
 `--refresh` overwrites). If you never ran a ticker, there is no history to load.
 Evidence: `financial_analysis/options.py:1-8`, `financial_analysis/estimates.py:1-14`
 (module docstrings).
+
+**32. One tag name can have a different scope for a different filer.** The registry
+(`financial_analysis/xbrl_tags.py`) puts tags in one alias list only if their scope is
+the same, but filers do not all obey the tag definitions. Known cases: the
+`...AndCapitalLeaseObligations` debt tags include finance leases for some filers (HD)
+and not for others (IBM); `CostOfGoodsAndServicesSold` for CVX is only purchased crude
+and products, thus the `gross_profit` formula result for CVX is not a real gross profit;
+`Revenues` for CVX includes other income. Read the `sources` of a value before you use
+it in a model. A value whose source starts with `=` came from a formula.
+
+**33. A new registrant has no history under its ticker.** The ticker XOM now points to
+ExxonMobil Holdings Corporation (CIK 2115436), which has only 10-Q facts; the history is
+under the old CIK. `import_company("XOM")` gives no annual rows. No tool joins the two.
+
+**34. Company-specific tags and segment data are not in companyfacts.** A filer that
+uses its own tag for a line (CAT and NEE for interest expense, NEE for capital
+expenditure) has no value for that variable, or a fallback (`interest_expense` uses
+`= interest_paid`). Filing-level XBRL is necessary (PLANNING/tickets.md, Ticket 7).
 
 ## Model layer (IBM v4 / driver engine)
 
@@ -161,9 +174,8 @@ is not extracted. Evidence: `scripts/analyze.py:51-58` (`_TAB_FOR`);
 **20. Default scenario presets are generic mature-large-cap.** `DEFAULT_SCENARIOS`
 (bear 1%/base 4%/bull 6% growth) applies to ANY ticker without an override — running
 `visualize_dcf` on a hypergrowth name silently produces mature-large-cap scenario
-labels and assumptions. Net-debt derivation also reads short-term borrowings from
-`raw_extras` keys and treats absence as 0. Evidence:
-`financial_analysis/scenarios.py:45-49, 92-125`.
+labels and assumptions. Evidence:
+`financial_analysis/scenarios.py` (`DEFAULT_SCENARIOS`).
 
 ## Carried from the parallel registry (PR #11, verified there against code/data 2026-07-17)
 
@@ -171,14 +183,12 @@ Two documentation agents ran the same brief in parallel on 2026-07-17 (see CLAUD
 orchestration norms); these entries existed only in the other agent's registry and are
 carried over with their original evidence pointers.
 
-**21. `filed_date` can be outright fabricated (placeholder = period_end).** The importer
-initializes `filed_date` to the period end and only overwrites it where a *revenue*
-concept fact matched that (end, form). Phantom rows and sparse pre-2018 rows keep the
-placeholder — e.g. IBM's 2012-06-30 row claims it was "filed" 2012-06-30. Never trust
-`filed_date` on a row without revenue.
-*Evidence:* `importer.py` (`"filed_date": end,  # placeholder`) and
-`_populate_filed_dates` (revenue concepts only); IBM.json phantom rows show
-filed_date == period_end.
+**21. (Closed 2026-11-19.) `filed_date` was the period end on rows with no revenue.**
+Now `filed_date` is the filing date of the revenue fact; if the period has no revenue
+fact, it is the latest filing date of the facts in use. Rows with no anchor fact do not
+exist (#2). Trap #4 (the date is that of a later filing) stays.
+*Evidence:* `financial_analysis/importer.py` (`resolve_period`);
+`tests/test_importer.py::test_filed_date_is_a_filing_date_when_the_period_has_no_revenue`.
 
 **22. The correlation matrix is reviewed *judgment*, and it moves tails only.** All 28
 entries (including the 3 deliberate zeros) are argued assumptions (rationales in
@@ -208,8 +218,11 @@ for anything current. (The v4 driver run does NOT drift: its inputs are pinned c
 analysis/IBM/README.md; `dcf_scenarios.py` `fcff_v3_margins` reads the store.
 
 **25. Default capital-structure derivation ≠ the reviewed IBM bridge.** For tickers
-without a `CAPITAL_OVERRIDES` entry, net debt = long-term debt + short-term borrowings −
-cash — **no pension, no marketable securities, no stock-vs-flow review**. The IBM
+without a `CAPITAL_OVERRIDES` entry, net debt = the standard variable `total_debt` −
+cash — **no pension, no marketable securities, no stock-vs-flow review**. `total_debt`
+is a first estimate: filers tag debt in different ways and the tags can overlap (on the
+2026-11-19 panel the two formulas disagree for IBM, JNJ, HD, CVX and CSCO; see
+`python -m scripts.mapping_audit`). The IBM
 override embeds the F15-reviewed bridge (debt + after-tax pension − cash&securities);
 the DUOL override includes HTM securities + LT investments on the cash side. A
 cross-ticker comparison (the ORCL/basket runs) that mixes overridden and derived capital

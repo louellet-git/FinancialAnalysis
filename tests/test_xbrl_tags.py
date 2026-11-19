@@ -63,3 +63,60 @@ def test_rpo_is_a_disclosure_tag():
         "us-gaap/RevenueRemainingPerformanceObligation"
     ]
     assert STATEMENT_MAP["remaining_performance_obligation"] == "disclosure"
+
+
+# --- registry rules ---
+
+def test_schema_fields_match_the_registry():
+    from dataclasses import fields
+    from financial_analysis.schema import PeriodFinancials
+    from financial_analysis.xbrl_tags import ALL_TAGS
+    names = {f.name for f in fields(PeriodFinancials)}
+    assert set(ALL_TAGS) <= names
+
+
+def test_each_tag_is_an_alias_of_one_variable_only():
+    from financial_analysis.xbrl_tags import ALL_TAGS
+    seen = {}
+    for name, spec in ALL_TAGS.items():
+        for concept in spec.concepts:
+            assert concept not in seen, f"{concept} is in {seen[concept]} and {name}"
+            seen[concept] = name
+
+
+def test_formula_terms_are_standard_variables():
+    from financial_analysis.importer import _parse_formula
+    from financial_analysis.xbrl_tags import ALL_TAGS
+    for name, spec in ALL_TAGS.items():
+        for formula in spec.formulas:
+            for _, term, _ in _parse_formula(formula):
+                assert term in ALL_TAGS, f"{name}: '{term}' is not a standard variable"
+                assert term != name
+
+
+def test_period_type_follows_the_statement():
+    from financial_analysis.xbrl_tags import BALANCE_SHEET_TAGS, CASH_FLOW_TAGS, INCOME_STATEMENT_TAGS
+    assert all(s.period == "duration" for s in INCOME_STATEMENT_TAGS.values())
+    assert all(s.period == "duration" for s in CASH_FLOW_TAGS.values())
+    assert all(s.period == "instant" for s in BALANCE_SHEET_TAGS.values())
+
+
+def test_core_inputs_are_declared():
+    from financial_analysis.xbrl_tags import CORE_FIELDS
+    for name in ("revenue", "operating_cash_flow", "capex", "total_debt",
+                 "cash_and_equivalents", "shares_diluted"):
+        assert name in CORE_FIELDS
+
+
+def test_long_term_debt_total_tag_is_not_an_alias_of_noncurrent_debt():
+    from financial_analysis.xbrl_tags import BALANCE_SHEET_TAGS
+    assert "us-gaap/LongTermDebt" not in BALANCE_SHEET_TAGS["long_term_debt"].concepts
+    assert "us-gaap/LongTermDebt" in BALANCE_SHEET_TAGS["long_term_debt_total"].concepts
+
+
+def test_exclusion_patterns_compile_and_have_reasons():
+    import re
+    from financial_analysis.xbrl_tags import EXCLUDED_CONCEPTS
+    for pattern, reason in EXCLUDED_CONCEPTS:
+        re.compile(pattern)
+        assert reason

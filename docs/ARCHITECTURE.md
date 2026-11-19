@@ -117,8 +117,7 @@ normative over DRIVERS.md prose (see CLAUDE.md).
   (restatements included) — how forecasts are judged in practice.
 - **DATA_FLAGS, not fixes**: vintages whose parameter window touches IBM FY2019/FY2020
   carry the recast-mismatch flag; inputs are marked, never silently repaired.
-- `_clean_annuals` requires both revenue and OCF — this is what filters the phantom
-  10-K rows (HIDDEN-ASSUMPTIONS #2).
+- `_clean_annuals` requires both revenue and OCF.
 - Scope: revenue/FCF projections only — no WACC, no terminal value, no price.
 
 The HTML report renders it as section 6 ("Backtest — mechanical vintages"): coverage +
@@ -139,14 +138,16 @@ decorative until a driver build exists.
 | `edgar.py` | 272 | SEC HTTP client (User-Agent, 0.15s rate limit), CIK lookup from company_tickers.json, full-index filing downloads (`EdgarClient.download_for_ticker`), `EdgarClientError`. |
 | `estimates.py` | 193 | yfinance **forward** consensus (revenue/EPS estimates, price targets) → `ConsensusEstimates`; persisted as dated snapshots `data/raw/TICKER/estimates/YYYY-MM-DD.json` (yfinance has no history — history accumulates from first pull; empty snapshots saved so absence is dated evidence). `fetch_estimates`, `list_snapshots`, `load_snapshot`. |
 | `fmp.py` | 120 | Optional FMP API client (`FMP_API_KEY` in `.env`): analyst estimates/surprises, IFRS statements stub (`NotImplementedError`). Free-plan v3 endpoints unavailable since Aug 2025 — pipeline degrades to yfinance. |
-| `importer.py` | 196 | companyfacts → `PeriodFinancials`: maps concepts via `xbrl_tags` (first-wins merge across fallback concepts per period_end, sign flips), collects unmapped us-gaap USD concepts into `raw_extras`, best-effort `filed_date` from revenue-concept `filed` fields, raises `UnsupportedFilingError` for non-us-gaap filers. Module docstring documents why `segment_revenue` is always None from this source (companyfacts strips dimensional facts — Ticket 7). |
+| `importer.py` | 224 | companyfacts → `PeriodFinancials`. For each fiscal year and each quarter (`facts.py`), it gets each standard variable from the first alias tag that has a fact (`xbrl_tags.py`), then from a formula. It records the source of each value in `sources`, puts the tags with no standard variable in `raw_extras`, and raises `UnsupportedFilingError` for non-us-gaap filers. `segment_revenue` is always None from this source (Ticket 7). |
+| `facts.py` | 146 | Selection of facts by period length: an annual value covers a full fiscal year (350 to 380 days), a quarterly value covers one quarter (or is a year-to-date difference), a balance is selected by its date. The latest filing wins. |
+| `mapping_audit.py` | 196 | Audit of the mapping for one period: core inputs with no value, accounting identities that do not agree, estimates of total debt that disagree, material tags with no standard variable, and the filer template (standard / bank / insurer / reit). |
 | `market_data.py` | 136 | yfinance daily OHLCV (`load_prices`, cached at `data/raw/TICKER/prices.json`) and earnings surprises (`load_earnings_surprises`). |
 | `options.py` | 375 | yfinance option-chain snapshots (dated, one per day, `data/raw/TICKER/options/YYYY-MM-DD.json`) + derived per-expiry metrics: ATM IV, straddle-mid implied move, 90/110 skew, put/call volume & OI ratios (`fetch_option_chain`, `compute_chain_metrics`, `list_snapshots`, `load_snapshot`). |
-| `scenarios.py` | 125 | Bear/base/bull presets (`DEFAULT_SCENARIOS` generic mature-large-cap; `_SCENARIO_OVERRIDES["IBM"]` = v3 framework), `CAPITAL_OVERRIDES` (IBM: net debt $54.0B, 948,675,228 diluted shares), `capital_structure_for` (derives net debt from latest 10-K: long_term_debt + short-term borrowings from raw_extras − cash; shares_outstanding falling back to diluted). |
-| `schema.py` | 187 | Dataclasses: `PeriodFinancials` (~60 statement fields + `remaining_performance_obligation`, reserved `segment_revenue`, `raw_extras`; derived `free_cash_flow = OCF − abs(capex)` and `fcf_margin`), `CompanyFinancials`, `PricePoint`, `EarningsEstimate`, `EarningsSurprise`, `OptionQuote`, `OptionChainSnapshot`, `ConsensusEstimates`. |
+| `scenarios.py` | 125 | Bear/base/bull presets (`DEFAULT_SCENARIOS` generic mature-large-cap; `_SCENARIO_OVERRIDES["IBM"]` = v3 framework), `CAPITAL_OVERRIDES` (IBM: net debt $54.0B, 948,675,228 diluted shares), `capital_structure_for` (derives net debt from the latest 10-K: standard variable `total_debt` − cash; shares_outstanding falling back to diluted). |
+| `schema.py` | 187 | Dataclasses: `PeriodFinancials` (109 standard variables with the same names as the registry, `sources` = the tag or formula behind each value, reserved `segment_revenue`, `raw_extras`; derived `free_cash_flow = OCF − abs(capex)` and `fcf_margin`), `CompanyFinancials`, `PricePoint`, `EarningsEstimate`, `EarningsSurprise`, `OptionQuote`, `OptionChainSnapshot`, `ConsensusEstimates`. |
 | `store.py` | 105 | JSON persistence `data/processed/TICKER.json` (**periods only** — no market data), in-memory session cache, `get_series`/`compare` query helpers with metric-name validation. |
 | `xbrl_api.py` | 74 | companyfacts fetch + series extraction: filters by form type/unit, deduplicates by end date keeping the **latest-filed** entry, returns last `n` entries. |
-| `xbrl_tags.py` | 173 | The concept registry: `TagSpec` (fallback concept lists, unit, sign_flip) for income statement / balance sheet / cash flow / disclosure (RPO) fields, plus `STATEMENT_MAP` and `UNIT_MAP`. Inline comments document precedence rationales (interest_income, dividends_paid). |
+| `xbrl_tags.py` | 537 | The registry of standard variables: for each variable a `TagSpec` (alias tags in a fixed sequence, fallback formulas, unit, sign, period type, core flag). Also `CORE_FIELDS` (the 14 core DCF inputs), `ANCHOR_CONCEPTS` (tags that show that a period exists), `EXCLUDED_CONCEPTS` (material tags with no variable on purpose, with reasons), `STATEMENT_MAP` and `UNIT_MAP`. |
 | `verdict.py` | 31 | Investor verdict, read-only over driver-engine paths: chance the price is too high (share of paths valued below the price) and a five-band verdict (25%/75% outer cutoffs, Morningstar-style; 40%/60% middle cutoffs are judgment). Plan: PLANNING/proposals/2026-10-15-investor-verdict-layer.md. |
 
 ## `scripts/` (verified 2026-07-17)
@@ -160,6 +161,7 @@ decorative until a driver build exists.
 | `backtest.py` | `python -m scripts.backtest TICKER [--horizon 3] [--simulations 10000] [--seed 7]` | Vintage backtest console report: per-vintage P10/P50/P90 vs actuals, band coverage vs nominal 80%, signed bias by horizon, data flags, skipped vintages. No network. |
 | `visualize_dcf.py` | `python -m scripts.visualize_dcf TICKER [--price X] [--out PATH]` | Single-page self-contained HTML report (plotly.js inlined, ~5.9k lines of output): header chips, price & valuation, fundamentals, the four aggregate-DCF panels (fan / distribution / waterfall / tornado), the driver-model section (segment history, driver table, correlation heatmap, driver-vs-aggregate compare, attribution tornado, **MC path explorer**: stratified 301-path spaghetti, 2,000-path parallel coordinates, bottom/top-10 outlier table with \|z\|≥1.5 drivers bolded), options section (IV term structure, implied move, skew, OI heatmap). Driver section renders only if `analysis/<TICKER>/driver_model.py` exposes `build()`; every section degrades to a labeled "not available" note. Styling follows docs/design-specs/2026-07-16-ratings-desk-blueprint.md. The sixth section "Backtest — mechanical vintages" (vintage table + hedgehog charts from `financial_analysis/backtest.py`, honesty labels, merged PR #9) makes SECTION_TITLES six entries. The skew panel excludes expiries under 2 days from the snapshot (`_SKEW_MIN_DTE`, PR #14) — near-expiry wing IVs are solver noise. |
 | `verdict.py` | `python -m scripts.verdict TICKER --price X [--simulations 10000] [--seed 7]` | Console verdict for a ticker with `analysis/<TICKER>/driver_model.py`: P10/P25/P50/P75/P90, chance the price is too high, verdict band. No network, writes nothing. |
+| `mapping_audit.py` | `python -m scripts.mapping_audit [TICKER ...] [--panel] [--field NAME] [--refresh]` | Audit of the standard-variable mapping: each value with its source, identity failures, material tags with no variable. `--panel` gives the summary for 32 tickers. Writes no files in `data/processed/`. |
 | `trade_backtest.py` | `python -m scripts.trade_backtest [BOT ...] [--fetch] [--max-risk DOLLARS] [-v]` | Backtest of the SPY/QQQ option bots in `trading/`; prints a leaderboard. Option prices are model prices. |
 | `trade_paper.py` | `python -m scripts.trade_paper [BOT ...] [--no-refresh] [--no-live] [--equity X] [--max-risk DOLLARS]` | One forward paper-trade step for each bot, with live-chain prices when available. It sends no broker orders. |
 
@@ -170,6 +172,33 @@ decorative until a driver build exists.
 | `python -m analysis.IBM.dcf_scenarios` | v3 aggregate framework console report: FCFF v3 margins, paired (growth, f) scenarios, WACC grid, f-locus. Historical — superseded by the driver run for headline numbers, kept reproducible. |
 | `python -m analysis.IBM.dcf_drivers_run` | v4 driver-engine runner: headline P10/P50/P90 + attribution, E/V fixed-point iteration, f-locus (g_software mean moves WITH f), SBC-drift locus, beta locus, supply-shock correlation and τ=0 disclosure runs, implied-reinvestment check. Seed 7, 10k sims, 10y. |
 | `python -m analysis.JNJ.first_pass_run` | JNJ first pass (unreviewed register): headline, engine-vs-hand-DCF cross-check at means, f / beta / rf loci and one stacked case. Seed 7, 10k sims. |
+
+## Standard variables (2026-11-19)
+
+Filers use different XBRL tags for the same line. The registry
+`financial_analysis/xbrl_tags.py` gives each line one standard variable name; the
+engines and the analysis code read only these names.
+
+1. **Period.** `facts.py` finds the fiscal years and quarters and selects the fact of
+   the correct length.
+2. **Alias.** For each variable, the first tag in its list that has a fact gives the
+   value. A tag is in a list only if its scope is the same as the variable.
+3. **Formula.** If no tag has a fact, a formula over other variables gives the value
+   (for example `total_debt = debt_current + long_term_debt`). In a sum, two terms with
+   the same value count one time.
+4. **Source.** `PeriodFinancials.sources[variable]` records the tag or the formula. The
+   xlsx file has a `source` column.
+5. **Audit.** `python -m scripts.mapping_audit TICKER` prints each value with its
+   source, the identities that do not agree, and the material tags with no variable.
+   `--panel` prints the summary for 32 tickers.
+
+Result on the panel (2026-11-19, 28 companies with the standard template, latest fiscal
+year): 12 of the 14 core inputs have a value for 96% or more; `interest_expense` 93%
+(4 of these from the `interest_paid` fallback); `total_debt` 96%, and for 5 companies
+the estimates of total debt disagree by more than 2%.
+
+Limits: no segment data and no company-specific tags (Ticket 7); banks, insurers and
+REITs have a different statement structure and the audit only marks them.
 
 ## `trading/` (added 2026-11-19 from branch `claude/trading-bot-spy-qqq-xl1o2o`)
 
@@ -194,6 +223,6 @@ model result.
 
 ## Tests
 
-`python -m pytest` from the repo root: 331 tests, all pass on 2026-11-19 (3 s).
-21 test modules are in `tests/`. The suite makes no network calls; HTTP is mocked and
+`python -m pytest` from the repo root: 372 tests, all pass on 2026-11-19 (3 s).
+23 test modules are in `tests/`. The suite makes no network calls; HTTP is mocked and
 files use `tmp_path`. Install `pytest` with `pip install -r requirements-dev.txt`.

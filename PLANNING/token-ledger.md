@@ -12,6 +12,7 @@ constant per run).
 | IBM v4.1 RPO update | 2026-07-17 | targeted: 2 driver re-looks + report delta | ~160k | first exception-scope run: 2 re-looks (~79k) + analyst delta (~82k). vs the 2.6M frontier run — the compression the validators must make routine |
 | DUOL first pass | 2026-07-17 | import + consensus-anchored presets + capital override + html | ~0 (inline) | orchestrator-inline, no subagents: analyze, two scenarios.py registry entries, report. NOT a frontier run — no driver model, no reviews; mechanical backtest coverage 0/6 says growth-phase tickers need the driver engine |
 | Repo consolidation | 2026-11-19 | merge of PRs #16 and #17 and the trading branch; removal of generated and private files; status documents rewritten | ~0 (inline) | orchestrator only, no subagents; not a valuation run |
+| Standard input mapping | 2026-11-19 | registry of 109 standard variables, period selection, source record, mapping audit on a 32-ticker panel | ~0 (inline) | orchestrator only, no subagents; not a valuation run |
 
 Targets: frontier ticker ≤500k · repeat run ≤50k · ORCL (ticker #2) is the first measured
 frontier run under the cheapened pipeline.
