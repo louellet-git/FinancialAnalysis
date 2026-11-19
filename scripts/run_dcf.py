@@ -58,13 +58,13 @@ def main() -> None:
     print(f"\n{company.company_name} ({ticker}) — Monte Carlo DCF")
     print(f"  {args.simulations:,} simulations · {args.years}y horizon · "
           f"growth {args.growth:.0%} · WACC {args.wacc:.0%}\n")
-    print(f"  Enterprise/equity value (present value):")
+    print(f"  Enterprise value (present value; net debt is not subtracted):")
     print(f"    P10 : {_fmt_b(result.p10_value)}")
     print(f"    P50 : {_fmt_b(result.median_value)}")
     print(f"    P90 : {_fmt_b(result.p90_value)}")
     print(f"    mean: {_fmt_b(result.mean_value)}  (std {_fmt_b(result.std_value)})")
     if result.median_per_share is not None:
-        print(f"\n  P50 per share: ${result.median_per_share:,.2f}")
+        print(f"\n  P50 enterprise value per share (net debt is not subtracted): ${result.median_per_share:,.2f}")
     else:
         print("\n  Per-share: N/A (no shares outstanding in annual data)")
 

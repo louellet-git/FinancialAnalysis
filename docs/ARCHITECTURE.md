@@ -147,6 +147,7 @@ decorative until a driver build exists.
 | `store.py` | 105 | JSON persistence `data/processed/TICKER.json` (**periods only** — no market data), in-memory session cache, `get_series`/`compare` query helpers with metric-name validation. |
 | `xbrl_api.py` | 74 | companyfacts fetch + series extraction: filters by form type/unit, deduplicates by end date keeping the **latest-filed** entry, returns last `n` entries. |
 | `xbrl_tags.py` | 173 | The concept registry: `TagSpec` (fallback concept lists, unit, sign_flip) for income statement / balance sheet / cash flow / disclosure (RPO) fields, plus `STATEMENT_MAP` and `UNIT_MAP`. Inline comments document precedence rationales (interest_income, dividends_paid). |
+| `verdict.py` | 31 | Investor verdict, read-only over driver-engine paths: chance the price is too high (share of paths valued below the price) and a five-band verdict (25%/75% outer cutoffs, Morningstar-style; 40%/60% middle cutoffs are judgment). Plan: PLANNING/proposals/2026-10-15-investor-verdict-layer.md. |
 
 ## `scripts/` (verified 2026-07-17)
 
@@ -158,8 +159,9 @@ decorative until a driver build exists.
 | `run_dcf.py` | `python -m scripts.run_dcf TICKER [--simulations 10000] [--years 10] [--growth 0.15] [--wacc 0.10] [--terminal-growth 0.03] [--seed N]` | Classic-engine MC DCF on stored data; no network. |
 | `backtest.py` | `python -m scripts.backtest TICKER [--horizon 3] [--simulations 10000] [--seed 7]` | Vintage backtest console report: per-vintage P10/P50/P90 vs actuals, band coverage vs nominal 80%, signed bias by horizon, data flags, skipped vintages. No network. |
 | `visualize_dcf.py` | `python -m scripts.visualize_dcf TICKER [--price X] [--out PATH]` | Single-page self-contained HTML report (plotly.js inlined, ~5.9k lines of output): header chips, price & valuation, fundamentals, the four aggregate-DCF panels (fan / distribution / waterfall / tornado), the driver-model section (segment history, driver table, correlation heatmap, driver-vs-aggregate compare, attribution tornado, **MC path explorer**: stratified 301-path spaghetti, 2,000-path parallel coordinates, bottom/top-10 outlier table with \|z\|≥1.5 drivers bolded), options section (IV term structure, implied move, skew, OI heatmap). Driver section renders only if `analysis/<TICKER>/driver_model.py` exposes `build()`; every section degrades to a labeled "not available" note. Styling follows docs/design-specs/2026-07-16-ratings-desk-blueprint.md. The sixth section "Backtest — mechanical vintages" (vintage table + hedgehog charts from `financial_analysis/backtest.py`, honesty labels, merged PR #9) makes SECTION_TITLES six entries. The skew panel excludes expiries under 2 days from the snapshot (`_SKEW_MIN_DTE`, PR #14) — near-expiry wing IVs are solver noise. |
-| `memo-review-reminder.sh` | (PostToolUse hook, not a CLI) | Blocks freshly produced .docx memos until a memo-reviewer pass (exit 2 surfaces the policy message). |
-| `setup-officecli.sh` | `scripts/setup-officecli.sh [--install]` | Checks (default) or installs (`--install`, manual only) the officecli binary for the docx toolchain. |
+| `verdict.py` | `python -m scripts.verdict TICKER --price X [--simulations 10000] [--seed 7]` | Console verdict for a ticker with `analysis/<TICKER>/driver_model.py`: P10/P25/P50/P75/P90, chance the price is too high, verdict band. No network, writes nothing. |
+| `trade_backtest.py` | `python -m scripts.trade_backtest [BOT ...] [--fetch] [--max-risk DOLLARS] [-v]` | Backtest of the SPY/QQQ option bots in `trading/`; prints a leaderboard. Option prices are model prices. |
+| `trade_paper.py` | `python -m scripts.trade_paper [BOT ...] [--no-refresh] [--no-live] [--equity X] [--max-risk DOLLARS]` | One forward paper-trade step for each bot, with live-chain prices when available. It sends no broker orders. |
 
 ## Root-level analysis entry points
 
@@ -167,11 +169,31 @@ decorative until a driver build exists.
 |---|---|
 | `python -m analysis.IBM.dcf_scenarios` | v3 aggregate framework console report: FCFF v3 margins, paired (growth, f) scenarios, WACC grid, f-locus. Historical — superseded by the driver run for headline numbers, kept reproducible. |
 | `python -m analysis.IBM.dcf_drivers_run` | v4 driver-engine runner: headline P10/P50/P90 + attribution, E/V fixed-point iteration, f-locus (g_software mean moves WITH f), SBC-drift locus, beta locus, supply-shock correlation and τ=0 disclosure runs, implied-reinvestment check. Seed 7, 10k sims, 10y. |
+| `python -m analysis.JNJ.first_pass_run` | JNJ first pass (unreviewed register): headline, engine-vs-hand-DCF cross-check at means, f / beta / rf loci and one stacked case. Seed 7, 10k sims. |
+
+## `trading/` (added 2026-11-19 from branch `claude/trading-bot-spy-qqq-xl1o2o`)
+
+A research package for SPY/QQQ option strategies. It is independent of
+`financial_analysis/`; no module imports across the two packages.
+
+| Module | Function |
+|---|---|
+| `data.py` | Loads bars, volatility indexes and rates from yfinance into a CSV cache that keeps history. |
+| `pricing.py` | Option pricer. The default is a model price: Black-Scholes on VIX/VXN/VIX1D with skew and spread. `LiveChainPricer` uses live bid/ask for new signals. |
+| `structures.py` | Option structures with a known maximum loss at entry. |
+| `strategy.py` | The `Strategy` and `Context` interface that each bot implements. |
+| `engine.py` | Event-driven backtester with account risk rules (size, pattern-day-trader limit). |
+| `metrics.py` | Performance statistics and the in-sample / out-of-sample split. |
+| `registry.py` | Finds the bots in `trading/strategies/`. |
+| `paper.py` | Forward paper trading. It sends no broker orders. |
+| `strategies/` | 22 bots (s01 to s21 and s14b) and a template. |
+| `research/` | One note for each bot, and `LEADERBOARD.md` with the results and limits. |
+
+Limit: no free source of historical option quotes exists, thus each backtest result is a
+model result.
 
 ## Tests
 
-`python -m pytest` from the repo root — **302 tests, all passing** as of 2026-07-17
-(11.6s). 17 test modules under `tests/`, mirroring the package (largest:
-`test_driver_dcf.py`, `test_visualize_dcf.py`, `test_options.py`, `test_backtest.py`).
-No network calls in the suite; HTTP is mocked and files use `tmp_path`. `pytest` is not
-in `requirements.txt` — install it separately.
+`python -m pytest` from the repo root: 331 tests, all pass on 2026-11-19 (3 s).
+21 test modules are in `tests/`. The suite makes no network calls; HTTP is mocked and
+files use `tmp_path`. Install `pytest` with `pip install -r requirements-dev.txt`.

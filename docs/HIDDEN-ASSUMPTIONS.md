@@ -65,8 +65,8 @@ cited sources, not pipeline outputs (disclosed). Evidence:
 **7. Capex sign convention.** The importer stores capex sign-flipped (negative);
 `free_cash_flow = OCF − abs(capex)`. A 2026-06-12 bug overstated FCF by 2×capex before
 the abs() fix — do not "simplify" it away. Evidence: `financial_analysis/schema.py:161-167`;
-`financial_analysis/xbrl_tags.py:106-109` (`sign_flip=True`); `context.json`
-`fcf_sign_note`; `PLANNING/tickets.md` Ticket 5 results.
+`financial_analysis/xbrl_tags.py:106-109` (`sign_flip=True`);
+`PLANNING/tickets-closed.md` Ticket 5 results.
 
 **8. `dividends_paid` third fallback is dividends DECLARED, not paid.**
 `us-gaap/DividendsCommonStockCash` is an equity charge used as a last-resort proxy when
@@ -148,11 +148,9 @@ usable periods per vintage and records skips. Evidence:
 header-only sheets, while the "Done: ... across N tabs" message counts populated groups.
 Evidence: `scripts/analyze.py:70-81, 279-284, 370-379`.
 
-**18. Tracked-but-gitignored churn.** `data/processed/NVDA_financials.xlsx` and
-`data/processed/PANW_financials.xlsx` are tracked in git although `data/processed/` is
-gitignored — running the pipeline dirties them. Never commit those changes (candidate
-fix: `git rm --cached`). Evidence: `git ls-files data/`; `.gitignore`;
-`PLANNING/HANDOFF.md` §Known state.
+**18. (Closed 2026-11-19.) Generated files were tracked.** Two xlsx files and four
+.pyc files were in git although `.gitignore` excludes them. They are removed from the
+index. `data/` and `__pycache__/` are not in git; do not add them.
 
 **19. RPO rows hide on the Balance Sheet tab.** `remaining_performance_obligation` is a
 disclosure fact but is written to the Balance Sheet tab with `statement="disclosure"`
@@ -220,22 +218,20 @@ structures compares different net-debt definitions.
 analysis/IBM/README.md bridge table.
 
 **26. officecli mutates a .docx on open.** Reviews and audits must run against a COPY
-(`cp doc /tmp/review.docx`); only deliberate edits touch the master. officecli lives at
-`~/.local/bin/officecli` (`export PATH="$HOME/.local/bin:$PATH"`).
-*Evidence:* `.claude/agents/memo-reviewer.md` ("Review a COPY, never the original").
+(`cp doc /tmp/review.docx`); only deliberate edits touch the master.
+*Evidence:* the memo-reviewer agent definition (private framework; not in this repo
+since 2026-11-19).
 
-**27. A PostToolUse hook fires on any produced .docx.** `scripts/memo-review-reminder.sh`
-exits 2 (surfacing a demand for a memo-reviewer pass) whenever a Bash command creates a
-.docx by any route (officecli create/merge, pandoc, python-docx save, libreoffice
-convert). Expect it; don't fight it.
-*Evidence:* `.claude/settings.json` hooks + the script.
+**27. (Closed 2026-11-19.) No hooks are in this repo.** The .docx review hook and the
+officecli setup hook were part of a private framework and are removed. The review
+steps in `CLAUDE.md` are a manual duty.
 
 **28. Timed/background tasks in this environment can be killed mid-run — persist resume
 state in files.** A documentation agent died at the reading stage to a session token
-limit on 2026-07-17; PLANNING/HANDOFF.md is the live pattern: write open work-state to a
-file as you go, delete items as completed. Interrupted fan-outs must resume, never
+limit on 2026-07-17. Write open work-state to the board ticket (`PLANNING/board/`) as
+you go. Interrupted fan-outs must resume, never
 restart (vision ✦6b).
-*Evidence:* PLANNING/HANDOFF.md history; reusable-dcf-vision.md ✦6b.
+*Evidence:* git history of `PLANNING/HANDOFF.md` (deleted 2026-11-19); reusable-dcf-vision.md ✦6b.
 
 **29. Branch fragmentation — "done" work may not be on your branch.** Two live examples
 from the day this file was written: (a) the backtest harness sat complete-with-tests on

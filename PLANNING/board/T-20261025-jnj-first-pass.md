@@ -8,5 +8,4 @@ branch: jnj-first-pass
 created: 2026-10-25
 acceptance: PR #17 merges with CI green and analysis/JNJ produced by the pipeline.
 ---
-
-Created on merlan1996's behalf by louellet-git's session (2026-10-25) for open PR #17; the owner may change or close it.
+Pull request #17. The commits are also in branch `claude/admiring-allen-f5aaeq` (consolidation, 2026-11-19).

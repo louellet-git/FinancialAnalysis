@@ -8,5 +8,4 @@ branch: verdict-layer
 created: 2026-10-25
 acceptance: PR #16 merges with CI green and the verdict band tests passing.
 ---
-
-Created on merlan1996's behalf by louellet-git's session (2026-10-25) for open PR #16; the owner may change or close it.
+Pull request #16. The commits are also in branch `claude/admiring-allen-f5aaeq` (consolidation, 2026-11-19).

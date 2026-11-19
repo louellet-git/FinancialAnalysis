@@ -1,50 +1,45 @@
----
-id: DOC-BOARD-README
-type: specification
-item: 10.60 System requirements specification
-status: current
-date: 2026-10-25
-scope: Ticket format of the scrum board PLANNING/board/, enforced by scripts/board.py; status meanings below.
----
-# Scrum board ticket specification
+# Board
+
+The board is the one list of work that a person does now or does next.
+One ticket is one file: `PLANNING/board/<id>.md`.
+Work without a ticket is in the backlog: `PLANNING/tickets.md`.
+
+## Ticket format
 
 ```
 ---
-id: T-20261025-example
-title: Short imperative title
+id: T-20261119-example
+title: Short title that starts with a verb
 area: engine
 status: backlog
 owner: louellet-git
 branch:
-created: 2026-10-25
-acceptance: One checkable sentence.
+created: 2026-11-19
+acceptance: One sentence that a person can check.
 ---
+Free text.
 ```
 
-| ID | Requirement |
+| Field | Rule |
 |---|---|
-| TK1 | One ticket per file `PLANNING/board/<id>.md`; the filename equals the id. |
-| TK2 | id is `T-YYYYMMDD-<slug>`, slug lowercase `a-z0-9` and hyphens; unique on the board. |
-| TK3 | Front matter sits between `---` lines, one `key: value` per line, with all eight keys above, each non-empty except `branch`; the body is free text. |
-| TK4 | `area` is `engine`, `importer`, `docs`, `planning`, or `ticker:<TICKER>` (`ticker:[A-Z]{1,5}(\.[A-Z])?`). |
-| TK5 | `status` is one of the statuses below. |
-| TK6 | `owner` is a GitHub login. |
-| TK7 | `branch` is the git branch doing the work; required when status is `in-progress` or `review`. |
-| TK8 | `created` is `YYYY-MM-DD`. |
-| TK9 | `acceptance` is one checkable sentence. |
-| TK10 | At most one `in-progress` or `review` ticket per area and per branch (claimed on `origin/main`: `docs/COLLABORATION.md`). |
+| `id` | `T-YYYYMMDD-<slug>`. The file name is the id. |
+| `area` | `engine`, `importer`, `trading`, `docs`, `planning`, or `ticker:<TICKER>`. |
+| `status` | `backlog`, `in-progress`, `review`, or `done`. |
+| `owner` | A GitHub login. |
+| `branch` | The git branch. Necessary when the status is `in-progress` or `review`. |
+| `acceptance` | One sentence that a person can check. |
 
 | Status | Meaning |
 |---|---|
-| `backlog` | planned, unclaimed |
-| `in-progress` | work on the ticket's branch |
-| `review` | PR open |
-| `done` | merged, branch deleted |
+| `backlog` | Planned. No person has the ticket. |
+| `in-progress` | A person works on the branch of the ticket. |
+| `review` | A pull request is open. |
+| `done` | The pull request is merged. Delete the ticket file in the subsequent change. |
 
-Constraint: transitions and ownership of tickets are in `docs/COLLABORATION.md`.
+## Rules
 
-Assurance: `python scripts/board.py check` enforces TK1–TK5 (TK2: shape, not date; TK3: keys
-and non-empty values, not line layout), TK7, TK8 and TK10 (TK6 and TK9 by review). Any other
-file under `PLANNING/board/` also fails. On a violation it prints the failing file and the
-problem.
-`python scripts/board.py branch <name>` prints the active ticket id for a branch (exit 1 if none).
+1. Before you start work, set the ticket to `in-progress` with your login and branch.
+   Push this change first. Then the other person can see that the ticket is yours.
+2. Use one branch for one ticket. Start the branch from `origin/main`.
+3. Merge to `main` only through a pull request.
+4. No tool enforces these rules. Each person and each agent obeys them.

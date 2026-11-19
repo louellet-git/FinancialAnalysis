@@ -18,3 +18,8 @@ data/processed/
 
 # Claude local settings
 .claude/settings.local.json
+
+# Private review frameworks: local install only, never commit (this repo is public)
+.claude/agents/
+.claude/skills/officecli/
+vendor/

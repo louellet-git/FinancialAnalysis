@@ -1,0 +1,2 @@
+# The token ledger gets new rows from two persons. A union merge keeps both rows.
+PLANNING/token-ledger.md merge=union
