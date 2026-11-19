@@ -1,0 +1,18 @@
+[package]
+name = "financial-analysis"
+version = "0.1.0"
+edition = "2021"
+description = "Rust interface to the FinancialAnalysis Python pipeline: rates, inflation, verdict, and any entry point."
+publish = false
+
+[lib]
+name = "financial_analysis"
+path = "src/lib.rs"
+
+[[bin]]
+name = "fa"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
