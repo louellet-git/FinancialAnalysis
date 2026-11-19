@@ -19,9 +19,10 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest                       # 361 tests, no network
+python -m pytest                       # 349 tests, no network
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
 cargo test --manifest-path rust/mapcheck/Cargo.toml    # 82 Rust tests
+cargo test --manifest-path rust/Cargo.toml --locked    # 136 Rust tests (`fa` crate: rates, models, futures, option trading)
 ```
 
 Run all commands from the repo root.
@@ -214,7 +215,8 @@ you use `--rating` for IBM.
 ### Rust interface
 
 The `rust/` crate calls the Python code and gives typed results. Python stays the only
-implementation.
+implementation of these parts. The option backtester (`fa trade backtest`) and `fa forwards`
+are Rust code and call no Python code.
 
 ```bash
 cd rust
@@ -335,15 +337,27 @@ More detail: `docs/ARCHITECTURE.md`.
 ## Options trading research
 
 ```bash
-python -m scripts.trade_backtest --fetch              # download market data
-python -m scripts.trade_backtest                      # all bots, leaderboard
-python -m scripts.trade_backtest s14b_spy_trend_calls -v
-python -m scripts.trade_backtest --max-risk 250       # larger risk for each trade
-python -m scripts.trade_paper                         # one paper-trade step for each bot
+cargo build --release --manifest-path rust/Cargo.toml # one time
+rust/target/release/fa trade fetch                    # download the bars (Yahoo) into data/raw/trading/
+rust/target/release/fa trade backtest                 # all bots, leaderboard (Rust, 1 second)
+rust/target/release/fa trade backtest --bot s14b_spy_trend_calls -v
+rust/target/release/fa trade backtest --max-risk 250  # larger risk for each trade
+rust/target/release/fa trade paper                    # one paper-trade step for each bot
 ```
 
-The package `trading/` contains 22 bots. Each bot has a research note in
+`fa trade backtest --help` shows all options (`--out FILE` writes the leaderboard as CSV,
+`--trades-dir DIR` writes the trades of each bot). `fa trade paper --help` shows the paper
+options (`--no-refresh`, `--no-live`, `--start D`, `--max-risk N`).
+
+The code is in `rust/src/trading/`. It has 22 bots. Each bot has a research note in
 `trading/research/`. The results are in `trading/research/LEADERBOARD.md`.
+
+Data sources (free, no key, no login). `fa trade fetch` gets the bars from the Yahoo
+chart endpoint. It waits 2 seconds between two requests. If Yahoo answers HTTP 429, the
+command waits, tries one more time, and then stops; the cache files stay as they are.
+`fa trade paper` gets the live option chain from the Cboe delayed quotes (about 15 minutes
+late). Yahoo is not a source of option chains: it refuses a program that has no browser
+identity (HTTP 429 at the crumb request).
 
 Limits that you must know before you trade:
 
@@ -354,7 +368,9 @@ Limits that you must know before you trade:
   exposure with a trend filter) and `s05_ic_0dte` (3 years of data; a small number of
   trades give most of the profit). Most other bots are negative results.
 - Paper-test a bot against live quotes before you use real money (board ticket
-  `options-paper-test`).
+  `options-paper-test`). The bots assume an expiry on each trading day. The live chain has
+  daily expiries for the next two weeks only, then Fridays. A signal with an expiry that
+  the chain does not list is priced with the model, and the report says so.
 
 The valuation part and the trading part are not connected. The valuation part has
 option-chain metrics for a ticker (implied move, skew, put/call ratios, in the xlsx tabs
@@ -411,10 +427,10 @@ rust/mapcheck/            Rust: SEC data to standard variables, checks, filing s
 financial_analysis/       valuation package (import, store, engines, backtest, verdict)
 analysis/IBM/             IBM model (version 4), reviews, published report
 analysis/JNJ/             JNJ first pass (not reviewed)
-trading/                  option strategy backtester, paper trader, 22 bots, research notes
+trading/                  research notes of the 22 option bots, LEADERBOARD.md (the code is in rust/src/trading/)
 scripts/                  command-line entry points
-rust/                     Rust interface: library and `fa` command (calls the Python code)
-tests/                    361 Python tests (legacy code)
+rust/                     Rust: `fa` command (calls the Python code; has the option trading: fetch, backtest, paper)
+tests/                    349 Python tests (legacy code)
 
 docs/                     ARCHITECTURE.md, HIDDEN-ASSUMPTIONS.md, INDEX.md, design documents
 PLANNING/board/           open work, one file for each ticket

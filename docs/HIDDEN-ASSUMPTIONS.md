@@ -616,6 +616,47 @@ agree (306 values, no difference). The repo has no `.xls` reader, thus this chec
 not automatic.
 *Evidence:* `financial_analysis/bonds.py` module docstring.
 
+**90. Yahoo answers HTTP 429 to the bar downloads from a shared network address.** From the
+cloud container, about half of the requests of `fa trade fetch` got HTTP 429 (2026-11-19), also
+with 2 seconds between two requests. The program waits 30 seconds and asks one more time. If
+the answer is 429 again, it stops, and the cache files stay as they are. Run the command again
+later. It does not use a browser identity and it does not go around the limit.
+*Evidence:* `rust/src/trading/fetch.rs` (`refresh`, `BACKOFF_SECONDS`).
+
+**91. Yahoo corrects the volume of recent bars, and the cache of an old run can have wrong
+volume.** The Python cache of 2026-11-18 had a volume of 59,627,886 for the hourly SPY bar of
+10:30 on 2026-11-18; Yahoo gives 5,636,182 on 2026-11-19. The prices were the same. A refresh
+replaces the row, so the volume changes. The bot s02 (VWAP) uses the volume. A result of a bot
+for the last days can change after a refresh. The older rows were the same text in the
+comparison (see the ticket `option-backtest-rust`).
+*Evidence:* `fa trade fetch` into a copy of the cache, 2026-11-19.
+
+**92. The live option chain is the Cboe delayed quote file, and it does not list each expiry that
+a bot asks for.** The file is the one that the delayed-quotes pages of cboe.com read. It is not a
+published API: Cboe can change it. The quotes are about 15 minutes late, and before the open they
+can be stale. The bots assume an expiry on each trading day, and they use `busday_offset`
+(no holiday calendar). The chain has an expiry on each trading day for about two weeks, then
+fewer (SPY on 2026-11-19: each day to 12-04, then 12-11, 12-18, 12-24, 12-31, then one or two
+a month). A signal with a missing expiry gets the model price, and `fa trade paper` says so in the signal line. The Python paper
+trader said "live chain" in that case. The adjusted options (root `B1SPY`) are not used.
+*Evidence:* `rust/src/trading/chain.rs`, `rust/src/trading/paper.rs` (`price_signals`).
+
+**93. Yahoo gives no option chain to the honest client.** The option endpoint needs a cookie and
+a crumb. The crumb request answered HTTP 429 to the program with its plain User-Agent
+(2026-11-19). The program does not imitate a browser. Thus the chain of Cboe could not be
+compared with a chain of Yahoo. The comparison that was possible: the underlying price (Cboe
+737.92 and Yahoo `fulldayPrice` 737.919 for SPY before the open) and the last close (both 730.2).
+*Evidence:* `curl` of `fc.yahoo.com` and `v1/test/getcrumb` with the User-Agent of `fa`.
+
+**94. The cache has no bar that has not ended.** The earlier Python download wrote the partial bar
+of the running session (the daily bar of today, and the hourly bar in progress), and the paper
+trader used it as a closed bar. `fa trade fetch` writes a bar only after its end time (the end of
+the hour or of the 5 minutes, but not after 16:00; a daily bar after 16:00). A
+paper step during the session sees the bars that have ended. The live price row of Yahoo (a row
+with seconds, for example 09:35:26) is not a bar and the program drops it. On an early-close day
+Yahoo adds a row at 13:00 with no volume; the program drops it with `meta.tradingPeriods`.
+*Evidence:* `rust/src/trading/fetch.rs` (`rows_from_chart`).
+
 ## Could not verify
 
 - (none of the named traps failed verification — all located in current code/docs; the

@@ -505,7 +505,7 @@ fn leaderboard(repo: &Path) -> Answer {
     let path = repo.join("trading").join("research").join("LEADERBOARD.md");
     fs::read_to_string(&path)
         .map(|text| Reply::json(&json!({"path": "trading/research/LEADERBOARD.md", "text": text})))
-        .map_err(|e| Reply::error(500, &format!("Cannot read {}: {e}", path.display()), "Run python -m scripts.trade_backtest to make the file."))
+        .map_err(|e| Reply::error(500, &format!("Cannot read {}: {e}", path.display()), "The file is part of the repository (trading/research/LEADERBOARD.md)."))
 }
 
 /// An error of the Python pipeline, with a hint that tells the user what to do.
