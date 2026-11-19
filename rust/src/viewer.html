@@ -528,7 +528,7 @@ api("/api/tickers").then((list) => {
 }).catch(() => {});
 api("/api/models").then((list) => {
   $("mc-ticker").innerHTML = list.map((t) => `<option>${esc(t)}</option>`).join("");
-  if (!list.length) $("mc-status").innerHTML = '<div class="error">No ticker has a driver model (analysis/&lt;TICKER&gt;/driver_model.py).</div>';
+  if (!list.length) $("mc-status").innerHTML = '<div class="error">No ticker has a driver model (analysis/&lt;TICKER&gt;/driver_model.toml).</div>';
 }).catch((e) => { $("mc-status").innerHTML = '<div class="error">' + esc(e.error) + '</div>'; });
 
 let start = "stock";

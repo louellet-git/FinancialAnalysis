@@ -78,6 +78,22 @@ python -m financial_analysis.rates [snapshot|yield|curve|history|nyfed|inflation
 python -m analysis.IBM.dcf_drivers_run     # IBM version 4 headline numbers (seed 7)
 python -m analysis.IBM.dcf_scenarios       # IBM version 3 (historical)
 python -m analysis.JNJ.first_pass_run      # JNJ first pass
+python -m analysis.ANT.first_pass_run      # ANT first pass
+```
+
+The same engines run in Rust (the random numbers are the same as numpy's, so the numbers
+are the same). The driver models are the files `analysis/<TICKER>/driver_model.toml`.
+
+```bash
+fa dcf drivers IBM [--seed 7] [--sims 10000] [--price 228.53] [--json]        # headline, hand DCF check, attribution
+fa dcf drivers ANT --price 83 --price 105 --sensitivity beta=1.1,1.7          # P50 for each value of one driver mean
+fa dcf drivers ANT --implied-price 83 --implied-driver g_total --range 0,0.8  # the mean that gives the price
+fa dcf drivers IBM --set beta=1.0 [--shift-bounds] --flat sbc_ratio=0.0254 --ramp sbc_ratio=0.0254:0.045:10 \
+    --corr rf,g_software=-0.15 --net-debt 5e10 --shares 9.5e8 --years 10 --year1-revenue NAME=X   # overrides
+fa dcf classic JNJ [--sims 10000] [--years 10] [--growth 0.15] [--wacc 0.10] [--terminal-growth 0.03] [--seed 7] [--data-dir D]
+fa dcf scenarios IBM [--data-dir D] [--json]      # bear, base, bull; value per share after net debt
+fa dcf models                                     # tickers that have a driver model file
+fa verdict IBM --price 228.53                     # Rust engine; --rf-date or --rating still use Python
 ```
 
 `scripts.run_dcf` prints an enterprise value for each share. It does not subtract net
@@ -214,8 +230,9 @@ you use `--rating` for IBM.
 
 ### Rust interface
 
-The `rust/` crate calls the Python code and gives typed results. Python stays the only
-implementation.
+The `rust/` crate calls the Python code and gives typed results. The DCF engines, the
+scenarios and the verdict (without market rates) are Rust code (`fa dcf ...`). The rest
+is Python until its ticket moves it.
 
 ```bash
 cd rust

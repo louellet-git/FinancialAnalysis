@@ -1,0 +1,61 @@
+==============================================================================
+IBM driver DCF v4 -- headline (n=10,000, seed=7, 10y, conditional on f=0.50)
+==============================================================================
+  Base                         P10 $  83.84   P50 $ 151.84   P90 $ 258.03
+  TV/EV at means: 64.1%   tg guard pinned fraction: 0.0009
+
+  Attribution (P50 delta vs base at mean +/- 1 sigma, same seed, correlations intact):
+  driver                  -1sd      +1sd
+  core_margin           -31.34    +31.43
+  terminal_growth       -19.27    +26.34
+  rf                    +23.29    -18.96
+  erp                   +22.68    -18.54
+  g_software            -18.18    +21.19
+  ma_ratio              +18.75    -18.71
+  g_consulting           -9.87    +11.66
+  g_infrastructure       -5.45     +5.58
+
+------------------------------------------------------------------------------
+E/V price-value fixed point at means (equity_weight disposition)
+------------------------------------------------------------------------------
+  iter 1: E/V in 0.7650 -> value/share $ 143.27 -> E/V out 0.7157
+  iter 2: E/V in 0.7157 -> value/share $ 153.44 -> E/V out 0.7294
+  iter 3: E/V in 0.7294 -> value/share $ 150.50 -> E/V out 0.7256
+  iter 4: E/V in 0.7256 -> value/share $ 151.31 -> E/V out 0.7266
+  iter 5: E/V in 0.7266 -> value/share $ 151.09 -> E/V out 0.7264
+  Fixed point E/V ~ 0.726 (model uses 0.72 per the ledger).
+
+------------------------------------------------------------------------------
+ma_recurrence locus (g_software mean moves WITH f: shift (f - 0.5) x 2pp -- pairing kept)
+------------------------------------------------------------------------------
+  f=0.00 (g_sw mean 0.040)     P10 $ 119.63   P50 $ 197.79   P90 $ 320.88
+  f=0.25 (g_sw mean 0.045)     P10 $ 103.07   P50 $ 175.37   P90 $ 289.25
+  f=0.50 (g_sw mean 0.050)     P10 $  83.84   P50 $ 151.84   P90 $ 258.03
+  f=0.75 (g_sw mean 0.055)     P10 $  60.87   P50 $ 127.46   P90 $ 226.60
+  f=1.00 (g_sw mean 0.060)     P10 $  34.06   P50 $ 101.44   P90 $ 197.88
+
+------------------------------------------------------------------------------
+SBC-drift locus
+------------------------------------------------------------------------------
+  flat 2.54%                   P10 $  92.76   P50 $ 164.11   P90 $ 275.22
+  ramp 2.54% -> 3.5% (base)    P10 $  83.84   P50 $ 151.84   P90 $ 258.03
+  ramp 2.54% -> 4.5%           P10 $  74.27   P50 $ 139.20   P90 $ 240.47
+
+------------------------------------------------------------------------------
+Beta locus (deterministic driver, epistemic probe)
+------------------------------------------------------------------------------
+  beta 0.68 (trailing post-crash) P10 $ 100.75   P50 $ 179.42   P90 $ 304.79
+  beta 0.85 (base)             P10 $  83.84   P50 $ 151.84   P90 $ 258.03
+  beta 1.00                    P10 $  71.52   P50 $ 132.34   P90 $ 224.87
+
+------------------------------------------------------------------------------
+Disclosure runs
+------------------------------------------------------------------------------
+  supply-shock corr (rf x g = -0.15) P10 $  81.24   P50 $ 151.89   P90 $ 263.54
+  tau = 0 (no debt tax shield) P10 $  77.52   P50 $ 140.72   P90 $ 236.81
+
+------------------------------------------------------------------------------
+Implied-reinvestment check at means (terminal year)
+------------------------------------------------------------------------------
+  Terminal reinvestment = f x ma_ratio = 0.50 x 0.071 = 3.55% of revenue; terminal FCFF margin 13.55%; RR = 20.8% of pre-reinvestment cash earnings (17.10%).
+  One line: sustaining tg = 2.25% on that reinvestment implies ROIC = tg/RR = 10.8% -- a plausible (not heroic) incremental return, so the terminal no longer carries cost-without-growth.

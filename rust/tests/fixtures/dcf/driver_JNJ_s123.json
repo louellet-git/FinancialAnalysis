@@ -1,0 +1,540 @@
+{
+ "ticker": "JNJ",
+ "model": {
+  "drivers": [
+   {
+    "name": "g_im",
+    "stochastic": true,
+    "mean": 0.05,
+    "std": 0.03,
+    "dist": "truncnorm",
+    "lo": null,
+    "hi": 0.12,
+    "rationale": "Innovative Medicine, 10y average from year 2. FY22-25 reported growth +1.7/+4.2/+4.0/+6.0% while absorbing the STELARA loss of exclusivity (~690bp drag in Q3-26); organic ~4% plus f x 2pp acquired. Std 3% (above IBM software's 2.5%): patent cliffs and trial readouts make the decade outcome wider. hi 12%: no decade precedent above that at $60B scale.",
+    "schedule": null
+   },
+   {
+    "name": "g_medtech",
+    "stochastic": true,
+    "mean": 0.045000000000000005,
+    "std": 0.02,
+    "dist": "truncnorm",
+    "lo": null,
+    "hi": 0.09,
+    "rationale": "MedTech, 10y average from year 2. FY22-25 +1.4/+10.8 (Abiomed)/+4.8/+6.1% (Shockwave); organic ~3.5% plus f x 2pp acquired. The planned Orthopaedics separation is NOT modeled (segment kept whole).",
+    "schedule": null
+   },
+   {
+    "name": "core_margin",
+    "stochastic": true,
+    "mean": 0.208,
+    "std": 0.02,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "Pre-SBC, pre-M&A FCFF margin at the FY2025 level: (OCF 24.53 - capex 4.83 - after-tax net interest 0.07) / revenue 94.19 = 20.8%; FY2024 21.8%. Endpoint, not mean (IBM F19 rule). FY2022-23 excluded: their OCF includes Kenvue while revenue is recast (same landmine as IBM FY2019-20).",
+    "schedule": null
+   },
+   {
+    "name": "margin_mix_drift",
+    "stochastic": false,
+    "mean": 0.0,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC 0 -> +0.4pp by y10: Innovative Medicine (FY2025 pre-tax segment margin 36.9%) grows faster than MedTech (12.2%) at the means.",
+    "schedule": [
+     0.0,
+     0.00044444444444444447,
+     0.0008888888888888889,
+     0.0013333333333333335,
+     0.0017777777777777779,
+     0.0022222222222222222,
+     0.002666666666666667,
+     0.0031111111111111114,
+     0.0035555555555555557,
+     0.004
+    ]
+   },
+   {
+    "name": "sbc_ratio",
+    "stochastic": false,
+    "mean": 0.0143,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC 1.43% (FY2025 1.35B / 94.19B); flat since FY2021 (1.45%), so no ramp, unlike IBM.",
+    "schedule": null
+   },
+   {
+    "name": "ma_ratio",
+    "stochastic": true,
+    "mean": 0.116,
+    "std": 0.04,
+    "dist": "truncnorm",
+    "lo": 0.0,
+    "hi": null,
+    "rationale": "Acquisition spend % of revenue FY21-25: 0.1/22.1/0.0/17.1/18.6% (Abiomed, Shockwave, Intra-Cellular), mean 11.6%; FY16-25 ~12.7% with Actelion. Std 4%: one draw per path, so decade-average dispersion of a very lumpy series (annual sigma ~14% / sqrt(10)). lo 0 at 2.9 sigma.",
+    "schedule": null
+   },
+   {
+    "name": "ma_recurrence",
+    "stochastic": false,
+    "mean": 0.5,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC f=0.50, the IBM headline convention, paired with the growth credit. First-pass caveat: in pharma, acquired pipeline revenue turns 'organic' after one year, so the 2pp acquired-growth credit likely understates what M&A buys; the f-locus is published.",
+    "schedule": null
+   },
+   {
+    "name": "rf",
+    "stochastic": true,
+    "mean": 0.051,
+    "std": 0.005,
+    "dist": "truncnorm",
+    "lo": 0.01,
+    "hi": null,
+    "rationale": "10y Treasury 5.10% (^TNX close 2026-10-16); std 0.5% = permanent-component uncertainty (IBM convention).",
+    "schedule": null
+   },
+   {
+    "name": "beta",
+    "stochastic": false,
+    "mean": 0.65,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC judgment 0.65. Regression betas are unusable: 0.22 (5y monthly) and ~0 (2y weekly) vs the S&P 500; Blume-adjusted 0.48. 0.65 sits between that and a pharma/medtech industry beta; locus 0.45 / 0.65 / 0.85 published.",
+    "schedule": null
+   },
+   {
+    "name": "erp",
+    "stochastic": true,
+    "mean": 0.042,
+    "std": 0.0075,
+    "dist": "truncnorm",
+    "lo": 0.02,
+    "hi": null,
+    "rationale": "Damodaran implied ERP 4.20% (Oct 1, 2026); std 0.75% (IBM convention).",
+    "schedule": null
+   },
+   {
+    "name": "kd_spread",
+    "stochastic": false,
+    "mean": 0.004,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC +40bp over rf: AAA-rated issuer (first-pass estimate, not calibrated to the debt ladder).",
+    "schedule": null
+   },
+   {
+    "name": "tax_rate",
+    "stochastic": false,
+    "mean": 0.21,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC statutory 21%.",
+    "schedule": null
+   },
+   {
+    "name": "equity_weight",
+    "stochastic": false,
+    "mean": 0.93,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC E/V 0.93: market cap ~$616B (255.56 x 2.41B) vs net debt $41.1B. Not iterated to the price-value fixed point (first pass).",
+    "schedule": null
+   },
+   {
+    "name": "terminal_growth",
+    "stochastic": true,
+    "mean": 0.0225,
+    "std": 0.0075,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "Long-run nominal growth 2.25%, std 0.75% (IBM convention).",
+    "schedule": null
+   }
+  ],
+  "corr": [
+   {
+    "a": "g_im",
+    "b": "g_medtech",
+    "rho": 0.3
+   },
+   {
+    "a": "g_im",
+    "b": "core_margin",
+    "rho": 0.3
+   },
+   {
+    "a": "g_medtech",
+    "b": "core_margin",
+    "rho": 0.15
+   },
+   {
+    "a": "g_im",
+    "b": "ma_ratio",
+    "rho": 0.25
+   },
+   {
+    "a": "g_medtech",
+    "b": "ma_ratio",
+    "rho": 0.15
+   },
+   {
+    "a": "rf",
+    "b": "erp",
+    "rho": -0.3
+   },
+   {
+    "a": "rf",
+    "b": "g_im",
+    "rho": 0.1
+   },
+   {
+    "a": "rf",
+    "b": "g_medtech",
+    "rho": 0.1
+   },
+   {
+    "a": "ma_ratio",
+    "b": "rf",
+    "rho": -0.15
+   },
+   {
+    "a": "erp",
+    "b": "g_im",
+    "rho": -0.15
+   },
+   {
+    "a": "erp",
+    "b": "g_medtech",
+    "rho": -0.15
+   },
+   {
+    "a": "terminal_growth",
+    "b": "g_im",
+    "rho": 0.35
+   },
+   {
+    "a": "terminal_growth",
+    "b": "g_medtech",
+    "rho": 0.25
+   },
+   {
+    "a": "terminal_growth",
+    "b": "rf",
+    "rho": 0.25
+   },
+   {
+    "a": "terminal_growth",
+    "b": "erp",
+    "rho": -0.2
+   },
+   {
+    "a": "terminal_growth",
+    "b": "ma_ratio",
+    "rho": 0.15
+   }
+  ],
+  "segments": [
+   {
+    "name": "Innovative Medicine",
+    "base_revenue": 60401000000.0,
+    "growth_driver": "g_im",
+    "year1_growth": 0.086
+   },
+   {
+    "name": "MedTech",
+    "base_revenue": 33792000000.0,
+    "growth_driver": "g_medtech",
+    "year1_growth": 0.05
+   }
+  ],
+  "net_debt": 41050000000.0,
+  "shares": 2440100000,
+  "projection_years": 10,
+  "segment_history": {
+   "Innovative Medicine": {
+    "2021": 51680000000.0,
+    "2022": 52563000000.0,
+    "2023": 54759000000.0,
+    "2024": 56964000000.0,
+    "2025": 60401000000.0
+   },
+   "MedTech": {
+    "2021": 27060000000.0,
+    "2022": 27427000000.0,
+    "2023": 30400000000.0,
+    "2024": 31857000000.0,
+    "2025": 33792000000.0
+   }
+  }
+ },
+ "result": {
+  "n": 2000,
+  "seed": 123456789,
+  "per_share_p10": 70.69923841819114,
+  "per_share_p50": 113.27951794890008,
+  "per_share_p90": 173.56513562687888,
+  "quantiles_10_25_50_75_90": [
+   70.69923841819114,
+   88.48202349661199,
+   113.27951794890008,
+   140.17050952502052,
+   173.56513562687888
+  ],
+  "tv_ev_share_at_means": 0.6331572348553105,
+  "tg_pinned_fraction": 0.0,
+  "value_at_means": 112.01938315627656,
+  "attribution": {
+   "g_im": [
+    -16.296694209633827,
+    19.465831364324643
+   ],
+   "g_medtech": [
+    -5.697169762789812,
+    6.273045788564744
+   ],
+   "core_margin": [
+    -19.731802966864507,
+    19.086620106402407
+   ],
+   "ma_ratio": [
+    18.89429025543531,
+    -19.73180296686452
+   ],
+   "rf": [
+    14.266210860335406,
+    -12.069154594726712
+   ],
+   "erp": [
+    12.986249625441772,
+    -11.119871684985142
+   ],
+   "terminal_growth": [
+    -11.526182110510447,
+    14.639808883209227
+   ]
+  },
+  "attribution_order": [
+   "g_im",
+   "g_medtech",
+   "core_margin",
+   "ma_ratio",
+   "rf",
+   "erp",
+   "terminal_growth"
+  ],
+  "first20": [
+   159.99851359463187,
+   84.46226120110991,
+   119.6094731141009,
+   100.48831029317458,
+   177.52738088166637,
+   140.42618430481687,
+   94.20088602948934,
+   84.66259491435508,
+   174.93951028220548,
+   125.7226720425744,
+   170.5153417550955,
+   138.83805295638254,
+   123.34914662291247,
+   90.92518810443376,
+   257.67086440038986,
+   48.461225836527376,
+   211.30714084102723,
+   138.0724420724555,
+   185.9653856262567,
+   86.69040732258307
+  ],
+  "per_share_stats": {
+   "sum": 236447.29311571695,
+   "min": 24.172786882127962,
+   "max": 350.5498742512269,
+   "p50": 113.27951794890008
+  },
+  "every_500th": [
+   159.99851359463187,
+   125.81268001305564,
+   123.3691744504511,
+   192.83964927014344
+  ],
+  "wacc": {
+   "sum": 151.4900629987601,
+   "min": 0.057034443538487016,
+   "max": 0.09345086272222781,
+   "p50": 0.07565336957723245,
+   "mean": 0.07574503149938004
+  },
+  "fcff_year_sums": [
+   27321252999916.043,
+   28745057135566.914,
+   30261334083830.78,
+   31876819694721.38,
+   33598787761609.89,
+   35435096134266.94,
+   37394237017749.75,
+   39485391855103.234,
+   41718491231138.53,
+   44104280277849.53
+  ],
+  "fcff_first_path": [
+   14549730454.953014,
+   15246657517.849632,
+   15976899975.552383,
+   16742048286.990702,
+   17543768779.70094,
+   18383807267.784706,
+   19263992842.40757,
+   20186241843.069744,
+   21152562018.273075,
+   22165056884.620434
+  ],
+  "pv_fcff_year_sums": [
+   25394586862997.703,
+   24834867659702.27,
+   24303152485051.68,
+   23798153183897.074,
+   23318659710053.867,
+   22863535360350.074,
+   22431712338889.19,
+   22022187627968.598,
+   21634019143891.586,
+   21266322157566.605
+  ],
+  "pv_terminal": {
+   "sum": 427187843401292.3,
+   "min": 48680771781.21623,
+   "max": 704121759540.9274,
+   "p50": 200126967613.03943,
+   "first5": [
+    309810157313.0838,
+    156427765040.5526,
+    212165460588.74896,
+    177992516360.49908,
+    311026310708.7944
+   ]
+  },
+  "driver_draws": {
+   "g_im": {
+    "sum": 100.7414162657742,
+    "min": -0.03625680706007929,
+    "max": 0.12,
+    "p50": 0.05054171908261373,
+    "first5": [
+     0.042910314149065494,
+     0.066401490680849,
+     0.05301135362205703,
+     0.1002986665300381,
+     0.06484533683024238
+    ],
+    "mean": 0.050370708132887104
+   },
+   "g_medtech": {
+    "sum": 90.97480242057944,
+    "min": -0.019724564702890336,
+    "max": 0.09,
+    "p50": 0.04569066726218819,
+    "first5": [
+     0.047935018788607196,
+     0.02785781283580438,
+     0.03824910918101049,
+     0.05236787674032012,
+     0.043902732892591875
+    ],
+    "mean": 0.04548740121028972
+   },
+   "core_margin": {
+    "sum": 415.96342919757444,
+    "min": 0.13664487053518695,
+    "max": 0.2930080335847562,
+    "p50": 0.20833615657380805,
+    "first5": [
+     0.22923089657192677,
+     0.1924074589464394,
+     0.22466241886230726,
+     0.18957274982897082,
+     0.23381896940622268
+    ],
+    "mean": 0.20798171459878723
+   },
+   "ma_ratio": {
+    "sum": 234.1245501743511,
+    "min": 0.0,
+    "max": 0.23923717535046413,
+    "p50": 0.11660838407839455,
+    "first5": [
+     0.14196804727640708,
+     0.14392402815950378,
+     0.14475311974652333,
+     0.12103774180779743,
+     0.06628331217160992
+    ],
+    "mean": 0.11706227508717555
+   },
+   "rf": {
+    "sum": 101.75065103693042,
+    "min": 0.034366820771485916,
+    "max": 0.06751957151724662,
+    "p50": 0.05087618959882738,
+    "first5": [
+     0.05378349689872452,
+     0.05347855812659809,
+     0.046545857593747034,
+     0.05857084235414007,
+     0.050696067808902234
+    ],
+    "mean": 0.05087532551846521
+   },
+   "erp": {
+    "sum": 84.02439459399923,
+    "min": 0.02,
+    "max": 0.06828825425244664,
+    "p50": 0.0419006770055657,
+    "first5": [
+     0.0341643735036949,
+     0.0448667890679826,
+     0.039062226421047536,
+     0.04593335760970365,
+     0.044294548619309114
+    ],
+    "mean": 0.042012197296999614
+   },
+   "terminal_growth": {
+    "sum": 45.01215526463612,
+    "min": 0.00010742130437449426,
+    "max": 0.05176809866480676,
+    "p50": 0.022500276730894747,
+    "first5": [
+     0.0374710457231302,
+     0.025715186512859936,
+     0.016247687435332794,
+     0.022382961722441412,
+     0.02673049663048755
+    ],
+    "mean": 0.022506077632318062
+   }
+  },
+  "chance_below": {
+   "50.0": 0.018,
+   "100.0": 0.375,
+   "150.0": 0.8145,
+   "228.53": 0.9775,
+   "300.0": 0.9985
+  }
+ }
+}

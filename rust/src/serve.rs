@@ -223,13 +223,23 @@ pub fn tickers(cache: &Path) -> Answer {
     Ok(Reply::json(&out))
 }
 
-/// Tickers with `analysis/<TICKER>/driver_model.py`: the Monte Carlo DCF can run for them.
+/// Tickers with a driver model file: `analysis/<TICKER>/driver_model.toml` (Rust engine) or
+/// `driver_model.py` (Python engine, old form). The Monte Carlo DCF can run for them.
 pub fn models(repo: &Path) -> Vec<String> {
+    models_with(repo, &["driver_model.toml", "driver_model.py"])
+}
+
+/// Tickers with `analysis/<TICKER>/driver_model.py` only: the Python company report needs it.
+pub fn models_python(repo: &Path) -> Vec<String> {
+    models_with(repo, &["driver_model.py"])
+}
+
+fn models_with(repo: &Path, files: &[&str]) -> Vec<String> {
     let mut out: Vec<String> = fs::read_dir(repo.join("analysis"))
         .map(|entries| {
             entries
                 .filter_map(|e| e.ok())
-                .filter(|e| e.path().join("driver_model.py").is_file())
+                .filter(|e| files.iter().any(|f| e.path().join(f).is_file()))
                 .map(|e| e.file_name().to_string_lossy().to_string())
                 .collect()
         })
@@ -300,7 +310,7 @@ pub fn verdict_request(repo: &Path, q: &HashMap<String, String>) -> Result<(Stri
     if !available.contains(&ticker) {
         return Err(Reply::error(
             400,
-            &format!("{ticker} has no driver model (analysis/{ticker}/driver_model.py)."),
+            &format!("{ticker} has no driver model (analysis/{ticker}/driver_model.toml)."),
             &format!("The Monte Carlo DCF can run for: {}.", available.join(", ")),
         ));
     }
@@ -410,7 +420,7 @@ pub fn report_state(repo: &Path, ticker: &str, price: Option<f64>, path: &Path, 
         "made_at": made_at,
         "size": meta.as_ref().map(|m| m.len()),
         "made_now": made_now,
-        "driver_model": models(repo).iter().any(|m| m == ticker),
+        "driver_model": models_python(repo).iter().any(|m| m == ticker),
         "price_missing": price_missing,
         "url": url,
     })

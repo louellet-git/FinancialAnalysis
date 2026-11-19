@@ -1,0 +1,138 @@
+[
+ {
+  "company": [
+   {
+    "form": "10-K",
+    "period_end": "2020-12-31",
+    "revenue": 10000000000.0,
+    "operating_cash_flow": 2000000000.0,
+    "capex_total": -500000000.0,
+    "capex": null,
+    "shares_outstanding": 1000000000.0
+   },
+   {
+    "form": "10-K",
+    "period_end": "2021-12-31",
+    "revenue": 10000000000.0,
+    "operating_cash_flow": 2000000000.0,
+    "capex_total": -500000000.0,
+    "capex": null,
+    "shares_outstanding": 1000000000.0
+   },
+   {
+    "form": "10-K",
+    "period_end": "2022-12-31",
+    "revenue": 10000000000.0,
+    "operating_cash_flow": 2000000000.0,
+    "capex_total": -500000000.0,
+    "capex": null,
+    "shares_outstanding": 1000000000.0
+   },
+   {
+    "form": "10-K",
+    "period_end": "2023-12-31",
+    "revenue": 10000000000.0,
+    "operating_cash_flow": 2000000000.0,
+    "capex_total": -500000000.0,
+    "capex": null,
+    "shares_outstanding": 1000000000.0
+   },
+   {
+    "form": "10-K",
+    "period_end": "2024-12-31",
+    "revenue": 50000000000.0,
+    "operating_cash_flow": 2000000000.0,
+    "capex_total": -500000000.0,
+    "capex": null,
+    "shares_outstanding": 1000000000.0
+   }
+  ],
+  "assumptions": {
+   "n_simulations": 20,
+   "projection_years": 10,
+   "growth_rate_mean": 0.04,
+   "growth_rate_std": 0.0,
+   "terminal_growth_mean": 0.025,
+   "terminal_growth_std": 0.0,
+   "wacc_mean": 0.085,
+   "wacc_std": 0.0,
+   "fcf_margin_mean": 0.15,
+   "fcf_margin_std": 0.0,
+   "seed": 3
+  },
+  "hand_ev": 143735868881.93558,
+  "engine_median": 143735868881.93567,
+  "engine_p10": 143735868881.93567,
+  "engine_p90": 143735868881.93567,
+  "engine_mean": 143735868881.93564,
+  "engine_std": 3.0517578125e-05
+ },
+ {
+  "company": [
+   {
+    "form": "10-K",
+    "period_end": "2020-12-31",
+    "revenue": 10000000000.0,
+    "operating_cash_flow": 2000000000.0,
+    "capex_total": -500000000.0,
+    "capex": null,
+    "shares_outstanding": 1000000000.0
+   },
+   {
+    "form": "10-K",
+    "period_end": "2021-12-31",
+    "revenue": 10000000000.0,
+    "operating_cash_flow": 2000000000.0,
+    "capex_total": -500000000.0,
+    "capex": null,
+    "shares_outstanding": 1000000000.0
+   },
+   {
+    "form": "10-K",
+    "period_end": "2022-12-31",
+    "revenue": 10000000000.0,
+    "operating_cash_flow": 2000000000.0,
+    "capex_total": -500000000.0,
+    "capex": null,
+    "shares_outstanding": 1000000000.0
+   },
+   {
+    "form": "10-K",
+    "period_end": "2023-12-31",
+    "revenue": 10000000000.0,
+    "operating_cash_flow": 2000000000.0,
+    "capex_total": -500000000.0,
+    "capex": null,
+    "shares_outstanding": 1000000000.0
+   },
+   {
+    "form": "10-K",
+    "period_end": "2024-12-31",
+    "revenue": 8000000000.0,
+    "operating_cash_flow": 2000000000.0,
+    "capex_total": -500000000.0,
+    "capex": null,
+    "shares_outstanding": 1000000000.0
+   }
+  ],
+  "assumptions": {
+   "n_simulations": 20,
+   "projection_years": 7,
+   "growth_rate_mean": 0.1,
+   "growth_rate_std": 0.0,
+   "terminal_growth_mean": 0.03,
+   "terminal_growth_std": 0.0,
+   "wacc_mean": 0.09,
+   "wacc_std": 0.0,
+   "fcf_margin_mean": 0.3,
+   "fcf_margin_std": 0.0,
+   "seed": 3
+  },
+  "hand_ev": 61347774097.02902,
+  "engine_median": 61347774097.029015,
+  "engine_p10": 61347774097.029015,
+  "engine_p90": 61347774097.029015,
+  "engine_mean": 61347774097.029015,
+  "engine_std": 0.0
+ }
+]

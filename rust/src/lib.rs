@@ -16,6 +16,7 @@
 //! # Ok::<(), financial_analysis::FaError>(())
 //! ```
 
+pub mod dcf;
 pub mod forwards;
 pub mod futures;
 pub mod ratemodels;
@@ -431,8 +432,19 @@ impl Fa {
         self.rates(vec!["check".into(), "--days".into(), days.to_string()])
     }
 
-    /// Driver-engine verdict for a ticker with `analysis/<TICKER>/driver_model.py`.
+    /// Driver-engine verdict for a ticker with a driver model.
+    ///
+    /// A ticker with `analysis/<TICKER>/driver_model.toml` runs in Rust when no market rates are
+    /// asked for (`rf_date`, `rating`). The rates come from Python (network), so a run with
+    /// rates, and a ticker that has only the old `driver_model.py`, call `scripts.verdict`.
     pub fn verdict(&self, ticker: &str, price: f64, opts: &VerdictOptions) -> Result<Verdict> {
+        if opts.rf_date.is_none() && opts.rf_base_date.is_none() && opts.rating.is_none() {
+            match dcf::cli::verdict(&self.repo, ticker, price, opts.simulations.unwrap_or(10_000), opts.seed.unwrap_or(7)) {
+                Ok(Some(v)) => return Ok(v),
+                Ok(None) => {}
+                Err(e) => return Err(FaError::Python { code: Some(1), kind: Some("ValueError".into()), message: e.0 }),
+            }
+        }
         self.call("scripts.verdict", &verdict_args(ticker, price, opts))
     }
 

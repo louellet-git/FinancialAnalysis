@@ -1,0 +1,448 @@
+{
+ "ticker": "ANT",
+ "model": {
+  "drivers": [
+   {
+    "name": "g_total",
+    "stochastic": true,
+    "mean": 0.2,
+    "std": 0.08,
+    "dist": "truncnorm",
+    "lo": 0.0,
+    "hi": 0.4,
+    "rationale": "Revenue growth from year 2, one constant draw for each path (the engine has no fade). JUDGMENT. Mean 20% gives year-10 revenue of 542B from 105B. Base rate (market notes 3.4): the best 10-year result from a 30B start is AMZN 27.4% a year, equal to 397B from this base; from a 100B start the median is 6.7% and the maximum is 21.0%. Public forecasts: Damodaran 1,011B in year 10 (28.9% a year from his year 1); press: New Street 505B and Goldman more than 600B in 2030. The mean is between the base rate and the forecasts, nearer to the base rate. Std 8% is the spread of the 9-year rate: about 240B at P10 and 1,100B at P90 in year 10. Bounds 0% and 40% are 2.5 std from the mean.",
+    "schedule": null
+   },
+   {
+    "name": "core_margin",
+    "stochastic": true,
+    "mean": 0.22,
+    "std": 0.06,
+    "dist": "truncnorm",
+    "lo": 0.04999999999999999,
+    "hi": 0.4,
+    "rationale": "Mature FCFF margin: after tax, after capex, before the SBC charge. JUDGMENT. 22% less 6% SBC = 16% after SBC. Peers, FCF less SBC (market notes 3.1 and 3.2): MSFT, GOOGL and META 12% to 16% now, while they build AI capacity; 20% to 34% before; AMZN -7% to 5%. Damodaran: 19.0% in year 10, 13.9% in the terminal year. Std 6%: P10 to P90 is 8% to 24% after SBC. One draw moves all years by the same amount (engine limit). Bounds are 2.8 and 3.0 std from the mean.",
+    "schedule": null
+   },
+   {
+    "name": "margin_mix_drift",
+    "stochastic": false,
+    "mean": -0.29000000000000004,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC ramp. Year 1 is -7% before SBC. 9M2026: operating cash flow 6,569 - interest income 2,359 - capex 925 - lease prepayments 1,955 = 1,330 = 4.0% of revenue (L4692, L447, L4694, L4695). Committed spend in the next 12 months is 70.7B (L1655) = 67% of year-1 revenue; compute and infrastructure was 57% of 9M2026 revenue (L440): 4.0% - 10.7% = -6.7%. The prospectus says that short-term compute will compress the margin (L1617) and that operating and investing activities will use cash 'for the foreseeable future' (L2249). Linear to the mature level in year 8. Year 4 is +5.4%; the Goldman briefing (press) has the first positive free cash flow in 2030 at about 5.6% of revenue.",
+    "schedule": [
+     -0.29000000000000004,
+     -0.2485714285714286,
+     -0.20714285714285718,
+     -0.16571428571428573,
+     -0.1242857142857143,
+     -0.08285714285714288,
+     -0.041428571428571426,
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "name": "sbc_ratio",
+    "stochastic": false,
+    "mean": 0.25,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC. Cost of NEW equity grants (IBM F5: SBC is a cash cost). The awards that exist are in the share count, thus their cost is not here, and the one-time 14.7B IPO charge (L2443) is not here. Year 1 25%: the grants after 2026-09-30 were 3.7B in 7 weeks (L6036), about 27B a year, on 105B of revenue; the 9M2026 grants were 542.9M RSUs at $49.38 and 91.2M options at $20.11 = 28.6B (L5719, L5683, L5691). Mature 6%: GOOGL 6.2%, between MSFT 3.7% and META 10.2%. Linear to year 8. The donation matching charges of future years (2,086 in 9M2026, L2090) are not here.",
+    "schedule": [
+     0.25,
+     0.22285714285714286,
+     0.19571428571428573,
+     0.16857142857142857,
+     0.14142857142857143,
+     0.1142857142857143,
+     0.08714285714285713,
+     0.06,
+     0.06,
+     0.06
+    ]
+   },
+   {
+    "name": "ma_ratio",
+    "stochastic": false,
+    "mean": 0.0,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC 0. No evidence of material acquisitions: goodwill is 595 on 154,320 of assets.",
+    "schedule": null
+   },
+   {
+    "name": "ma_recurrence",
+    "stochastic": false,
+    "mean": 0.0,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC 0, paired with ma_ratio 0. No growth credit.",
+    "schedule": null
+   },
+   {
+    "name": "rf",
+    "stochastic": true,
+    "mean": 0.0507,
+    "std": 0.005,
+    "dist": "truncnorm",
+    "lo": 0.01,
+    "hi": null,
+    "rationale": "10-year Treasury par yield 5.07%, 2026-11-18 (market notes 1.5). Std 0.5% (repo convention).",
+    "schedule": null
+   },
+   {
+    "name": "beta",
+    "stochastic": false,
+    "mean": 1.4,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC JUDGMENT 1.40. ANT has no price history. Peer 5-year betas: median 1.38, range 0.98 to 2.25. Damodaran industry betas: software 1.28, semiconductor 1.52, internet software 1.69. Fixed compute commitments increase the risk of the equity. Locus 1.10 / 1.40 / 1.70 in the runner.",
+    "schedule": null
+   },
+   {
+    "name": "erp",
+    "stochastic": true,
+    "mean": 0.0441,
+    "std": 0.0075,
+    "dist": "truncnorm",
+    "lo": 0.02,
+    "hi": null,
+    "rationale": "Damodaran implied ERP 4.41%, 2026-11-01. Std 0.75% (repo convention).",
+    "schedule": null
+   },
+   {
+    "name": "kd_spread",
+    "stochastic": false,
+    "mean": 0.02,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC 2.0% above rf. JUDGMENT for a BB+ rating (Damodaran slides). Not calibrated. No effect on WACC at equity weight 1.0; the runner uses it for the commitments-as-debt sensitivity.",
+    "schedule": null
+   },
+   {
+    "name": "tax_rate",
+    "stochastic": false,
+    "mean": 0.21,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC statutory 21%. Used on the debt shield only.",
+    "schedule": null
+   },
+   {
+    "name": "equity_weight",
+    "stochastic": false,
+    "mean": 1.0,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC 1.0. Debt is 1.7B of finance leases against more than 200B of cash. The rollover notes are shares. Cash is not negative debt in the weights. WACC = cost of equity.",
+    "schedule": null
+   },
+   {
+    "name": "terminal_growth",
+    "stochastic": true,
+    "mean": 0.0225,
+    "std": 0.0075,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "Long-run nominal growth 2.25%, std 0.75% (repo convention).",
+    "schedule": null
+   }
+  ],
+  "corr": [
+   {
+    "a": "g_total",
+    "b": "core_margin",
+    "rho": 0.4
+   },
+   {
+    "a": "rf",
+    "b": "erp",
+    "rho": -0.3
+   },
+   {
+    "a": "erp",
+    "b": "g_total",
+    "rho": -0.15
+   },
+   {
+    "a": "terminal_growth",
+    "b": "rf",
+    "rho": 0.25
+   },
+   {
+    "a": "terminal_growth",
+    "b": "g_total",
+    "rho": 0.25
+   }
+  ],
+  "segments": [
+   {
+    "name": "Total",
+    "base_revenue": 35282000000.0,
+    "growth_driver": "g_total",
+    "year1_growth": 1.9760217674734992
+   }
+  ],
+  "net_debt": -230677000000.0,
+  "shares": 18137587873,
+  "projection_years": 10,
+  "segment_history": {
+   "Total": {
+    "2023": 41000000.0,
+    "2024": 386000000.0,
+    "2025": 4585000000.0
+   }
+  }
+ },
+ "result": {
+  "n": 10000,
+  "seed": 7,
+  "per_share_p10": 12.815627681466236,
+  "per_share_p50": 30.968583585429023,
+  "per_share_p90": 74.95579868547165,
+  "quantiles_10_25_50_75_90": [
+   12.815627681466236,
+   19.302940015172965,
+   30.968583585429023,
+   49.540102926624456,
+   74.95579868547165
+  ],
+  "tv_ev_share_at_means": 0.9863541669519031,
+  "tg_pinned_fraction": 0.0,
+  "value_at_means": 31.697140287065892,
+  "attribution": {
+   "g_total": [
+    -10.115666186880567,
+    17.103498600409345
+   ],
+   "core_margin": [
+    -11.552874416236946,
+    11.62803083066391
+   ],
+   "rf": [
+    2.063156604470585,
+    -1.8134208339822742
+   ],
+   "erp": [
+    4.731932064199327,
+    -3.624002964541255
+   ],
+   "terminal_growth": [
+    -1.4798535170548348,
+    1.7282390623096475
+   ]
+  },
+  "attribution_order": [
+   "g_total",
+   "core_margin",
+   "rf",
+   "erp",
+   "terminal_growth"
+  ],
+  "first20": [
+   21.44003781083581,
+   34.27746357152205,
+   18.534647719439853,
+   28.262767778442385,
+   32.52064838750365,
+   20.079703136229696,
+   23.95328558342832,
+   74.02241945730536,
+   25.491102192909437,
+   16.436376329893744,
+   40.166376002047876,
+   22.470655207133635,
+   33.00056737757192,
+   22.75377294168532,
+   39.819230572829774,
+   46.98240539606108,
+   19.448699355088486,
+   23.96727305247533,
+   10.276203769867198,
+   21.095160129987974
+  ],
+  "per_share_stats": {
+   "sum": 391555.2971879826,
+   "min": -2.193734175828278,
+   "max": 312.0585837116427,
+   "p50": 30.968583585429023
+  },
+  "every_500th": [
+   21.44003781083581,
+   40.21062105774391,
+   35.99209377063719,
+   13.647829230716704,
+   14.150580863819972,
+   41.4022898761438,
+   42.743949820926055,
+   21.647577152069687,
+   69.69031997569603,
+   47.197559101654676,
+   71.86011500881943,
+   72.56197261757585,
+   20.593242214421434,
+   123.01814079748996,
+   32.07715594893379,
+   4.811331165441533,
+   7.904586823535566,
+   36.32313323262202,
+   8.33323491243706,
+   50.88583376282753
+  ],
+  "wacc": {
+   "sum": 1122.4520979171327,
+   "min": 0.06666393758972886,
+   "max": 0.15039546747983149,
+   "p50": 0.11219026888755085,
+   "mean": 0.11224520979171328
+  },
+  "fcff_year_sums": [
+   -336324516001025.94,
+   -315015591604536.5,
+   -273090448808638.53,
+   -201787391358403.38,
+   -89073865453981.48,
+   81537640981480.11,
+   332601700330138.94,
+   694936109948236.2,
+   864818671090927.0,
+   1080213629557642.2
+  ],
+  "fcff_first_path": [
+   -37812155403.07572,
+   -36737599095.35078,
+   -33719033711.157578,
+   -28021497553.747654,
+   -18693736496.801155,
+   -4511071847.628014,
+   16095935675.747501,
+   45130422668.712494,
+   54160948589.732635,
+   64998468409.49934
+  ],
+  "pv_fcff_year_sums": [
+   -302413293666992.25,
+   -254760591226929.25,
+   -198693511874308.53,
+   -132124266509572.47,
+   -52518778386599.734,
+   43208415489253.625,
+   158824135104211.03,
+   298937538132189.06,
+   335144885373805.1,
+   377212836175393.06
+  ],
+  "pv_terminal": {
+   "sum": 4522281241275215.0,
+   "min": -29253231449.00682,
+   "max": 4567564271121.283,
+   "p50": 327567646315.2651,
+   "first5": [
+    210929320650.39563,
+    368503204317.99243,
+    169711826381.01123,
+    215329522158.30786,
+    323836714189.97955
+   ]
+  },
+  "driver_draws": {
+   "g_total": {
+    "sum": 1990.1367629793663,
+    "min": 0.0,
+    "max": 0.4,
+    "p50": 0.19893001288516096,
+    "first5": [
+     0.20009841226859862,
+     0.2238996430006776,
+     0.1780689715710226,
+     0.12875265289941806,
+     0.1636263371862622
+    ],
+    "mean": 0.19901367629793662
+   },
+   "core_margin": {
+    "sum": 2196.909371418801,
+    "min": 0.04999999999999999,
+    "max": 0.4,
+    "p50": 0.2197312255177275,
+    "first5": [
+     0.17988423425642175,
+     0.22683667367844498,
+     0.17394520476943756,
+     0.3218344768018963,
+     0.26078958721498713
+    ],
+    "mean": 0.21969093714188012
+   },
+   "rf": {
+    "sum": 507.18805335875516,
+    "min": 0.02953068300801528,
+    "max": 0.06857924248379785,
+    "p50": 0.05067676413508271,
+    "first5": [
+     0.0556992091123259,
+     0.048013584032172194,
+     0.049573055123070364,
+     0.051278890056369,
+     0.0511114473704436
+    ],
+    "mean": 0.050718805335875514
+   },
+   "erp": {
+    "sum": 439.47431754169827,
+    "min": 0.02,
+    "max": 0.07280286572390206,
+    "p50": 0.04403533656497548,
+    "first5": [
+     0.04873601309304026,
+     0.05212850192318529,
+     0.049446193499996474,
+     0.05370037558137308,
+     0.04354952647976977
+    ],
+    "mean": 0.043947431754169826
+   },
+   "terminal_growth": {
+    "sum": 224.92327272094704,
+    "min": -0.006696788959988473,
+    "max": 0.048546525695510226,
+    "p50": 0.02262476789546054,
+    "first5": [
+     0.02566844878376732,
+     0.025160949161385438,
+     0.01683435956930681,
+     0.009881441282607343,
+     0.022117797412774736
+    ],
+    "mean": 0.022492327272094704
+   }
+  },
+  "chance_below": {
+   "50.0": 0.7547,
+   "100.0": 0.9547,
+   "150.0": 0.9899,
+   "228.53": 0.999,
+   "300.0": 0.9998
+  }
+ }
+}

@@ -1,0 +1,78 @@
+ANT first pass - seed 7, 10,000 simulations, 10 years
+  IPO price $83.00; second reference $105.00 = opening indication (press), no trade yet
+  base revenue $35.282B (12 months to 2026-09-30); year 1 pinned at $105.0B (+198%)
+
+HEADLINE (value for each share, USD)
+  P10 12.82 | P25 19.30 | P50 30.97 | P75 49.54 | P90 74.96
+  paths with value below $83.00: 92.2%; below $105.00: 96.0%
+  WACC at means 11.24% (rf 5.07% + beta 1.40 x ERP 4.41%, equity weight 1.00); terminal growth pinned on 0.00% of paths
+  terminal value share of EV at means 98.6%
+  year  1 at means: revenue $  105.0B, FCFF margin after SBC -32.0%, FCFF $  -33.6B
+  year  3 at means: revenue $  151.2B, FCFF margin after SBC -18.3%, FCFF $  -27.6B
+  year  5 at means: revenue $  217.7B, FCFF margin after SBC  -4.6%, FCFF $  -10.0B
+  year 10 at means: revenue $  541.8B, FCFF margin after SBC +16.0%, FCFF $   86.7B
+  year-10 revenue: P10 $241B | P50 $537B | P90 $1119B
+  equity value at P50 $562B on 18,137.6M shares; net cash $230.7B ($12.72 a share); EV at P50 $331B = 9.4 x trailing revenue
+  market value at $83.00: $1,505B; EV 36 x trailing revenue
+  market value at $105.00: $1,904B; EV 47 x trailing revenue
+  base rate: AMZN 27.4% a year for 10 years from this base = $397B in year 10
+
+ENGINE CHECK (each driver at its mean)
+  engine $31.6971 | hand DCF $31.6971 | EV $344.2B, of which terminal value $339.5B
+
+ENGINE GROWTH LIMIT (hand calculation at means, same margins, same year-10 revenue)
+  constant 20% from year 2: $31.70; year-5 revenue $218B
+  fade from 38.9% in year 2 to 2.25% in year 10: $31.81; year-5 revenue $318B; difference $+0.11
+
+COMMITMENT CHECK (prospectus L1655, L440; revenue at means)
+  next 12 months: committed $70.7B = 67% of year-1 revenue (compute and infrastructure was 57% of 9M2026 revenue)
+  to 2030-12-31: committed $451.6B = 73% of revenue at mean growth ($618B), 86% at P10 growth 9.7% ($523B)
+  FCFF margin before SBC, years 1 to 4: model -7% / -3% / +1% / +5%; from the committed spend +2% / -24% / -9% / +4%
+  where the committed spend gives a lower margin (years 2 to 4), the effect at means is $-1.85 a share; this is NOT in the base
+
+SENSITIVITIES (P50, one change, the other drivers at base)
+  base: 30.97
+  growth mean 10% (year-10 revenue $248B): 19.12
+  growth mean 15% (year-10 revenue $369B): 24.04
+  growth mean 25% (year-10 revenue $782B): 40.61
+  growth mean 30% (year-10 revenue $1,113B): 53.92
+  mature margin after SBC 10% (year 1 held): 20.89
+  mature margin after SBC 22% (year 1 held): 41.16
+  mature margin after SBC 28% (year 1 held): 51.08
+  year-1 revenue $80.6B (run rate stays at $81B): 26.73
+  year-1 revenue $125.0B (run rate adds as in 2026): 34.44
+  mature margin and SBC reached in year 6: 34.31
+  mature margin and SBC reached in year 10: 27.24
+  SBC year 1 at 15% (expense basis): 33.33
+  beta 1.10 (cost of equity 9.92%): 37.19
+  beta 1.70 (cost of equity 12.57%): 26.53
+  rf 4.07%: 35.45
+  rf 6.07%: 27.50
+  horizon 15 years, growth mean 20% (year-15 revenue $1,348B, no precedent): 48.84
+  horizon 15 years, growth mean 16.7% (year-15 revenue $910B): 36.67
+  shares without the 846.8M that the subsidiary holds (17,290.7M): 32.49
+  shares outstanding only (12,372.8M), notes as a liability of $109.7B; no options, no RSUs, thus not a correct count: 36.53
+  leases not started ($451.2B) as debt at 7.07% and out of the margin (net debt +$58.6B): 27.74
+  Damodaran debt $472.3B added, margin not changed (counts the cost two times): 4.93
+
+WHAT A PRICE IMPLIES (bisection on the engine P50, one driver, others at base)
+  $83.00 (IPO price); equity $1,505B
+    (a) growth from year 2: 37.4% a year for 9 years; year-10 revenue $1,833B
+    (b) mature FCFF margin after SBC: 46.9% (52.9% before SBC)
+    (c) beta: 0.24; cost of equity 6.11%
+    joint: growth 30.7% (year-10 revenue $1,171B) with mature margin 19% after SBC and beta 1.10 (cost of equity 9.92%)
+  $105.00 (opening indication (press), no trade yet); equity $1,904B
+    (a) growth from year 2: 41.4% a year for 9 years; year-10 revenue $2,376B
+    (b) mature FCFF margin after SBC: 60.0% (66.0% before SBC)
+    (c) beta: 0.07; cost of equity 5.39%
+    joint: growth 34.6% (year-10 revenue $1,522B) with mature margin 19% after SBC and beta 1.10 (cost of equity 9.92%)
+  Damodaran year-10 revenue $1,011B (growth 28.6%) and margin 19% after SBC, repo discount rate: P50 59.08
+  Damodaran equity value $1,475B on this share count: $81.32 a share
+
+DRIVERS OF THE SPREAD (engine attribution: P50 change for mean -1 std / +1 std)
+  g_total           -10.12 /  +17.10 (std 8.00%)
+  core_margin       -11.55 /  +11.63 (std 6.00%)
+  erp                +4.73 /   -3.62 (std 0.75%)
+  rf                 +2.06 /   -1.81 (std 0.50%)
+  terminal_growth    -1.48 /   +1.73 (std 0.75%)
+  beta has no draw (deterministic): see the beta lines above.

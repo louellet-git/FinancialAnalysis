@@ -40,6 +40,9 @@ persisted to the JSON store** — `store.save()` serializes `periods` only
 
 ## The two DCF engines
 
+(The Rust form is in the section `rust/src/dcf/`. The text below describes the Python
+engines, which define the calculation until they are deleted.)
+
 The repo has two distinct Monte Carlo DCF engines. They coexist deliberately; neither
 replaces the other.
 
@@ -330,6 +333,33 @@ is a table (JSON, or CSV with `--out`); a window that fails has the error in its
 
 **Commands.** See `fa help` and the README. The tests are in `tests.rs`; they run with
 `cargo test --manifest-path rust/Cargo.toml --locked`.
+
+### `rust/src/dcf/` — the DCF engines in Rust (2026-11-19)
+
+Rust form of the two Python engines, the scenarios and the verdict (ticket
+`T-20261119-dcf-engine-rust`, stages 1 and 2). The Python files stay until each Python
+user is moved (stage 4). The random numbers are the numpy stream, so each published
+number stays the same (`docs/HIDDEN-ASSUMPTIONS.md` #120 to #126).
+
+**Files.** `nprandom.rs` (`SeedSequence`, `PCG64`, ziggurat normal; tables in
+`ziggurat_tables.rs`), `stats.rs` (percentile, Cholesky, mean, std), `classic.rs`
+(`StochasticDCF`), `driver.rs` (`DriverDCF`, drivers, correlations, attribution),
+`scenarios.rs` (presets, capital structure), `verdict.rs`, `model.rs` (a driver model as a
+TOML file, `Overrides`, hand DCF, bisection), `analysis.rs` (runs with overrides,
+sensitivity, implied value), `cli.rs` (`fa dcf`, `fa verdict`), `tests.rs` and
+`runner_tests.rs`.
+
+**Data.** `analysis/<TICKER>/driver_model.toml` (IBM, JNJ, ANT): drivers with their
+rationale text, correlations, segments, net debt, shares, horizon. The fixtures of
+the tests are in `rust/tests/fixtures/dcf/`. They are the recorded output of the Python
+engines (numpy 2.5.3) and of the three Python runners. `THIRD-PARTY.md` has the license
+text for the numpy tables.
+
+**Speed.** One run of 10,000 paths, 10 years and the attribution of 8 drivers takes
+about 30 ms on 4 threads (60 ms on 1 thread). The z rows are made once; the paths run
+in parallel. Parallel paths do not change a result.
+
+**Commands.** `fa dcf drivers|classic|scenarios|models`, `fa verdict`. See the README.
 
 ## `trading/` (added 2026-11-19 from branch `claude/trading-bot-spy-qqq-xl1o2o`)
 

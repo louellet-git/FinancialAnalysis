@@ -1,0 +1,679 @@
+{
+ "ticker": "IBM",
+ "model": {
+  "drivers": [
+   {
+    "name": "g_software",
+    "stochastic": true,
+    "mean": 0.05,
+    "std": 0.025,
+    "dist": "truncnorm",
+    "lo": null,
+    "hi": 0.11,
+    "rationale": "Largest segment (44%). Organic growth ~3.75-4% (F16 decomposition); acquired growth ~2-2.5pp of which f=MA_RECURRENCE=0.50 is paid for in the margin, crediting ~1pp: mean 5.0% all-in on the charged basis. History footnote (corrected): headline FY22-25 growth of 5-11% mixes recast bases and includes HashiCorp \u2014 it is NOT an organic run-rate; guide ~10% and Q2-26 warning +5% bracket the near term. hi=11%: ten straight years at 11%+ on a $30B base has no precedent \u2014 the truncation caps that tail. Stochastic: demand-driven, the main uncertainty. RPO evidence (research-ledger.md, consumed per rule R1, expires at the Q2-2026 10-Q): $71.0B backlog, coverage 105% \u2014 corroborates the mean; the +12.7% YoY print consolidates HashiCorp obligations and is NOT organic evidence (RPO re-look verdict), so no parameter change.",
+    "schedule": null
+   },
+   {
+    "name": "g_consulting",
+    "stochastic": true,
+    "mean": 0.0175,
+    "std": 0.025,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "FY22-25: +7.1/+5/-1/+2% (recast footnote: Jan-2024 segment change moved Security Services Software->Consulting; growth across that boundary is not like-for-like); guide low-to-mid singles. GenAI is two-sided but the cannibalization left tail (AI does the work) is the heavier side: mean 1.75% and std 2.5% proxy the left-skewed mixture the reviewer derived (implied mean ~1.75%); a true mixture marginal is an engine ticket. Stochastic: cyclical + secular uncertainty. RPO evidence (research-ledger.md, R1, expires at the Q2-2026 10-Q): 2-year contracted cover cannot rebut the 10-year cannibalization thesis (contracts run off; the tail is renewals after AI substitution) \u2014 mean unchanged; bear-tail vs backlog reconciliation: violation probability identically zero (year-1 pinned revenue alone exceeds the 2-year contracted amount), so evidence floors were rejected as cosmetic.",
+    "schedule": null
+   },
+   {
+    "name": "g_infrastructure",
+    "stochastic": true,
+    "mean": -0.01,
+    "std": 0.025,
+    "dist": "truncnorm",
+    "lo": null,
+    "hi": 0.03,
+    "rationale": "Mainframe-cycle sawtooth (+7.8/-5/-4/+12); guide down low singles; Q2-26 -7%. Because the engine holds one draw constant per path (T-DCF-1 embed, disclosed), std must be the dispersion of the 10-YEAR CAGR, not annual volatility: annual sigma ~8.4% with cycle mean-reversion compresses to ~1.5-2.7% at the decade horizon \u2014 std 2.5% sits in that band. hi=+3%: a hardware segment compounding >=+3%/yr for a decade has never happened. Mean -1% kept: slightly negative through the cycle.",
+    "schedule": null
+   },
+   {
+    "name": "g_financing",
+    "stochastic": false,
+    "mean": 0.0,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC flat: 1.1% of revenue; a +/-50% error moves total revenue <0.6% \u2014 materiality does not justify a sampled process. Disclosure: the terminal value grows this flat segment at tg like the others (second-order at 1.1% weight). Disclosure: financing volume is not linked to the infrastructure cycle here \u2014 that volume link is severed by the flat treatment.",
+    "schedule": null
+   },
+   {
+    "name": "core_margin",
+    "stochastic": true,
+    "mean": 0.194,
+    "std": 0.02,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "Pre-SBC pre-M&A FCFF margin at the FY2025 LEVEL (19.4%): F19 shows the margin declining three straight years, so a 5y mean overstates the starting point \u2014 the endpoint is the honest base. The offsetting software-mix improvement is NOT loaded into this mean; it is the separate deterministic margin_mix_drift schedule (implemented together, per the core_margin review). Stochastic: the operational uncertainty core. Std from the v3 per-year dispersion.",
+    "schedule": null
+   },
+   {
+    "name": "margin_mix_drift",
+    "stochastic": false,
+    "mean": 0.0,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC schedule, linear 0 -> +1.2pp by year 10: software-mix margin drift (per the core_margin review: holding mix flat while software compounds faster than the company contradicts the model's own revenue mix \u2014 by y10 the software share implies ~+1.2pp of margin). Deterministic: it is a mechanical consequence of the segment growth means, not an independent random process; the randomness already lives in the growth draws.",
+    "schedule": [
+     0.0,
+     0.0013333333333333333,
+     0.0026666666666666666,
+     0.004,
+     0.005333333333333333,
+     0.006666666666666666,
+     0.008,
+     0.009333333333333332,
+     0.010666666666666666,
+     0.012
+    ]
+   },
+   {
+    "name": "sbc_ratio",
+    "stochastic": false,
+    "mean": 0.0254,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC schedule, linear 2.54% (FY2025 actual, no flattering rounding) -> 3.5% by year 10: the ratio rose 1.74% -> 2.54% since 2021 and is accelerating \u2014 a constant embeds an unexplained trend break. 3.5% is a deliberate partial-persistence choice (full historical pace reaches ~4.5%; MSFT sits at 4.3%): management-set, slow-moving policy, so a schedule not a sampled process. The flat-2.54% / ramp-3.5% / ramp-4.5% locus is published by dcf_drivers_run.py.",
+    "schedule": [
+     0.0254,
+     0.026466666666666666,
+     0.027533333333333333,
+     0.0286,
+     0.029666666666666668,
+     0.030733333333333335,
+     0.0318,
+     0.03286666666666667,
+     0.033933333333333336,
+     0.035
+    ]
+   },
+   {
+    "name": "ma_ratio",
+    "stochastic": true,
+    "mean": 0.071,
+    "std": 0.024,
+    "dist": "truncnorm",
+    "lo": 0.0,
+    "hi": null,
+    "rationale": "Acquisition spend % of revenue: 5.7/3.9/8.2/5.2/12.3% FY21-25 \u2014 simple average 7.06%, so mean 7.1% (the old 6.6% was flattering-backward; the endpoint rule applied to sbc_ratio must not be selectively skipped here). Std 2.4%: one draw is held for all 10 years, so dispersion is DECADE-AVERAGE scale \u2014 the margin consolidation ruled that at high spend persistence (AR(1) rho~0.8, supported by the accelerating 12.3% endpoint) the decade-average std is ~2.4%, and the prior 1.8% made the FY2025 endpoint a 2.9-sigma event. The fat right tail lives in the lognormal-marginal engine ticket. Truncated at 0: spend cannot be negative (lo now 3.0 sigma out).",
+    "schedule": null
+   },
+   {
+    "name": "ma_recurrence",
+    "stochastic": false,
+    "mean": 0.5,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC f=0.50. The correct defense is per-path PAIRING COHERENCE, not 'fake precision' (the old rationale was backwards \u2014 sampling would widen the distribution honestly): g_software's mean credits f x acquired growth because f x M&A cost is charged here; sampling f alone would break that pairing path-by-path (a path with f=0.2 would still carry the f=0.5 growth credit). f is a judgment (v3 F2/F16), explored via the published locus in which the growth credit moves WITH f. Headline results are conditional on f=0.50. Single module-level MA_RECURRENCE constant (was hardcoded in two places).",
+    "schedule": null
+   },
+   {
+    "name": "rf",
+    "stochastic": true,
+    "mean": 0.046,
+    "std": 0.005,
+    "dist": "truncnorm",
+    "lo": 0.01,
+    "hi": null,
+    "rationale": "10y Treasury ~4.56-4.60% spot (Jul 2026): mean 4.6%. Framing (rewritten): one draw held per path is NOT 'rates are stochastic' year-to-year \u2014 it is uncertainty about the PERMANENT COMPONENT of the discount rate over the decade; std 0.5% is calibrated to that permanent-component reading, not annual rate vol. lo=1% is a formal guard only (4.6% is 7.2 sigma away), not a modeling claim.",
+    "schedule": null
+   },
+   {
+    "name": "beta",
+    "stochastic": false,
+    "mean": 0.85,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC 0.85 on EPISTEMIC grounds: beta is an estimation constant, not a year-to-year random process \u2014 sampling it would model our ignorance as world randomness. (Corrected: the old 'sampling beta double-counts ERP vol' claim was technically wrong \u2014 a random loading and a random price of risk compound legitimately; the deterministic choice stands on epistemic grounds alone.) Regime risk is real: trailing beta ~0.68 post-crash vs arguably higher forward beta for an AI-capex-levered IBM \u2014 probed via the published beta locus (0.68/0.85/1.00) in dcf_drivers_run.py, not sampled.",
+    "schedule": null
+   },
+   {
+    "name": "erp",
+    "stochastic": true,
+    "mean": 0.045,
+    "std": 0.0075,
+    "dist": "truncnorm",
+    "lo": 0.02,
+    "hi": null,
+    "rationale": "Equity risk premium: mean 4.5% per Damodaran implied ERP (~4.45% Jul-2026; 4.23% Jan-2026) \u2014 the old 4.75% was unsourced. Stochastic because the ERP is a STATE VARIABLE of risk appetite, not an estimation constant like beta: it comoves with the demand and rate drivers (see the erp rows of the correlation matrix \u2014 that comovement is the point of sampling it). Std 0.75% spans the post-2008 implied-ERP range.",
+    "schedule": null
+   },
+   {
+    "name": "kd_spread",
+    "stochastic": false,
+    "mean": -0.001,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC -10bp spread over the rf draw; after-tax kd is DERIVED per path as (rf + spread) x (1 - tax_rate), so kd floats with rates and negative-credit-spread paths (3.8% under the old fixed 4.1%) cannot occur. Calibration (adjudicated conflict #2): fair value of the debt stack \u2014 blended ~7y ladder yields ~4.45% pre-tax at rf 4.56%, i.e. spread ~ -10bp (IBM's ladder trades through the 10y point because its duration is shorter). The old 4.1% 'after-tax' level failed provenance (it was a pre-tax-looking number) and is retired with the position.",
+    "schedule": null
+   },
+   {
+    "name": "tax_rate",
+    "stochastic": false,
+    "mean": 0.21,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC 21% statutory federal rate on the debt shield \u2014 a disclosed modeling choice (IBM's effective cash tax rate runs lower, which cuts the shield's value). The tau=0 disclosure scenario is run by dcf_drivers_run.py, not by changing this driver.",
+    "schedule": null
+   },
+   {
+    "name": "equity_weight",
+    "stochastic": false,
+    "mean": 0.72,
+    "std": 0.0,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "DETERMINISTIC E/V = 0.72: ITERATED price-value fixed point at the driver means (disclosure != treatment \u2014 v3 disclosed the circularity of weighting at the $212 market price but kept it; this revision iterates E = model value x shares, V = E + net debt until E/V converges; the iteration itself is shown in dcf_drivers_run.py). Core-debt swap rejected as cherry-picking. Non-stationary weights as debt grows + Harris-Pringle relever remain ticketed.",
+    "schedule": null
+   },
+   {
+    "name": "terminal_growth",
+    "stochastic": true,
+    "mean": 0.0225,
+    "std": 0.0075,
+    "dist": "normal",
+    "lo": null,
+    "hi": null,
+    "rationale": "Long-run nominal growth, mean 2.25% (survives the reviewer's own mix-weighted-fade math). Stochastic while beta is not \u2014 the asymmetry is deliberate and defended: tg is a WORLD-STATE OUTCOME (which long-run demand world was realized), correlated with the realized growth draws (the F6 tail-fattening links), whereas beta is an estimation constant about which we are merely uncertain. Std 0.75% (was 0.5% \u2014 tightest-to-impact input, widened per review). Engine enforces tg < WACC - 2% jointly per path (T-DCF-2) and now reports the pinned fraction; deriving tg per path from faded segment draws is ticket T-DCF-3.",
+    "schedule": null
+   }
+  ],
+  "corr": [
+   {
+    "a": "g_software",
+    "b": "g_consulting",
+    "rho": 0.4
+   },
+   {
+    "a": "g_software",
+    "b": "g_infrastructure",
+    "rho": 0.35
+   },
+   {
+    "a": "g_consulting",
+    "b": "g_infrastructure",
+    "rho": 0.2
+   },
+   {
+    "a": "g_software",
+    "b": "core_margin",
+    "rho": 0.3
+   },
+   {
+    "a": "g_consulting",
+    "b": "core_margin",
+    "rho": 0.1
+   },
+   {
+    "a": "g_infrastructure",
+    "b": "core_margin",
+    "rho": 0.15
+   },
+   {
+    "a": "g_software",
+    "b": "ma_ratio",
+    "rho": 0.3
+   },
+   {
+    "a": "g_consulting",
+    "b": "ma_ratio",
+    "rho": 0.1
+   },
+   {
+    "a": "rf",
+    "b": "erp",
+    "rho": -0.3
+   },
+   {
+    "a": "rf",
+    "b": "g_software",
+    "rho": 0.15
+   },
+   {
+    "a": "rf",
+    "b": "g_consulting",
+    "rho": 0.15
+   },
+   {
+    "a": "rf",
+    "b": "g_infrastructure",
+    "rho": 0.1
+   },
+   {
+    "a": "ma_ratio",
+    "b": "rf",
+    "rho": -0.15
+   },
+   {
+    "a": "erp",
+    "b": "g_software",
+    "rho": -0.25
+   },
+   {
+    "a": "erp",
+    "b": "g_consulting",
+    "rho": -0.25
+   },
+   {
+    "a": "erp",
+    "b": "g_infrastructure",
+    "rho": -0.15
+   },
+   {
+    "a": "erp",
+    "b": "core_margin",
+    "rho": -0.15
+   },
+   {
+    "a": "erp",
+    "b": "ma_ratio",
+    "rho": -0.1
+   },
+   {
+    "a": "terminal_growth",
+    "b": "g_software",
+    "rho": 0.4
+   },
+   {
+    "a": "terminal_growth",
+    "b": "g_consulting",
+    "rho": 0.3
+   },
+   {
+    "a": "terminal_growth",
+    "b": "g_infrastructure",
+    "rho": 0.2
+   },
+   {
+    "a": "terminal_growth",
+    "b": "core_margin",
+    "rho": 0.15
+   },
+   {
+    "a": "terminal_growth",
+    "b": "rf",
+    "rho": 0.25
+   },
+   {
+    "a": "terminal_growth",
+    "b": "erp",
+    "rho": -0.2
+   },
+   {
+    "a": "terminal_growth",
+    "b": "ma_ratio",
+    "rho": 0.15
+   }
+  ],
+  "segments": [
+   {
+    "name": "Software",
+    "base_revenue": 29962000000.0,
+    "growth_driver": "g_software",
+    "year1_growth": 0.05
+   },
+   {
+    "name": "Consulting",
+    "base_revenue": 21055000000.0,
+    "growth_driver": "g_consulting",
+    "year1_growth": 0.0
+   },
+   {
+    "name": "Infrastructure",
+    "base_revenue": 14869000000.0,
+    "growth_driver": "g_infrastructure",
+    "year1_growth": -0.016898244670119134
+   },
+   {
+    "name": "Financing",
+    "base_revenue": 737000000.0,
+    "growth_driver": "g_financing",
+    "year1_growth": 0.0
+   }
+  ],
+  "net_debt": 54000000000.0,
+  "shares": 948675228,
+  "projection_years": 10,
+  "segment_history": {
+   "Software": {
+    "2021": 24141000000.0,
+    "2022": 25037000000.0,
+    "2023": 26308000000.0,
+    "2024": 27085000000.0,
+    "2025": 29962000000.0
+   },
+   "Consulting": {
+    "2021": 17844000000.0,
+    "2022": 19107000000.0,
+    "2023": 19985000000.0,
+    "2024": 20692000000.0,
+    "2025": 21055000000.0
+   },
+   "Infrastructure": {
+    "2021": 14188000000.0,
+    "2022": 15288000000.0,
+    "2023": 14593000000.0,
+    "2024": 14020000000.0,
+    "2025": 15718000000.0
+   },
+   "Financing": {
+    "2021": 774000000.0,
+    "2022": 645000000.0,
+    "2023": 741000000.0,
+    "2024": 713000000.0,
+    "2025": 737000000.0
+   }
+  }
+ },
+ "result": {
+  "n": 10000,
+  "seed": 7,
+  "per_share_p10": 83.83878020528333,
+  "per_share_p50": 151.84412442274504,
+  "per_share_p90": 258.028949296036,
+  "quantiles_10_25_50_75_90": [
+   83.83878020528333,
+   112.56700170531785,
+   151.84412442274504,
+   200.38715793478244,
+   258.028949296036
+  ],
+  "tv_ev_share_at_means": 0.6410619495685473,
+  "tg_pinned_fraction": 0.0009,
+  "value_at_means": 152.50652770509134,
+  "attribution": {
+   "g_software": [
+    -18.17784465038352,
+    21.19443796898318
+   ],
+   "g_consulting": [
+    -9.872752097231285,
+    11.66093347819131
+   ],
+   "g_infrastructure": [
+    -5.4521630285412925,
+    5.579959910292956
+   ],
+   "core_margin": [
+    -31.34115900257737,
+    31.427852998747937
+   ],
+   "ma_ratio": [
+    18.74853555994582,
+    -18.70981858782892
+   ],
+   "rf": [
+    23.289666188647345,
+    -18.9596691232926
+   ],
+   "erp": [
+    22.677238544132763,
+    -18.538527456258322
+   ],
+   "terminal_growth": [
+    -19.26849997725884,
+    26.337884436979238
+   ]
+  },
+  "attribution_order": [
+   "g_software",
+   "g_consulting",
+   "g_infrastructure",
+   "core_margin",
+   "ma_ratio",
+   "rf",
+   "erp",
+   "terminal_growth"
+  ],
+  "first20": [
+   177.73445781945696,
+   219.31163470990984,
+   156.64894549280984,
+   219.5796921122104,
+   118.11148519032477,
+   121.82886871261817,
+   159.29823266637314,
+   276.6898339277221,
+   191.1405971740128,
+   194.90803675041374,
+   128.87930411786806,
+   124.7594665337494,
+   149.47236973241476,
+   151.707855680617,
+   175.59518907695582,
+   226.03022523637588,
+   130.90810352980873,
+   52.650449366269115,
+   88.8493229460313,
+   186.3812722553202
+  ],
+  "per_share_stats": {
+   "sum": 1636442.361135001,
+   "min": -19.54098540364227,
+   "max": 707.9049019929259,
+   "p50": 151.84412442274504
+  },
+  "every_500th": [
+   177.73445781945696,
+   171.99404331050567,
+   69.96244615974722,
+   101.9035263370293,
+   92.24962486848467,
+   131.84766185736143,
+   93.92246559191969,
+   206.13363853567301,
+   209.25502360447302,
+   108.85565730396317,
+   224.94439114161008,
+   166.70809678888563,
+   91.56814469235673,
+   215.02334112820776,
+   97.40798596757293,
+   111.31919235745424,
+   90.5464411558504,
+   178.76435166169557,
+   217.8507107015991,
+   214.4784340100866
+  ],
+  "wacc": {
+   "sum": 707.0508612611823,
+   "min": 0.04868064232559337,
+   "max": 0.0928142749144802,
+   "p50": 0.07068068000880262,
+   "mean": 0.07070508612611823
+  },
+  "fcff_year_sums": [
+   89978693206730.69,
+   92550633147672.05,
+   95301289838479.06,
+   98241381284871.02,
+   101382482623728.44,
+   104737091714651.19,
+   108318700510800.38,
+   112141872710387.27,
+   116222328237397.6,
+   120577035151778.92
+  ],
+  "fcff_first_path": [
+   10635604445.400997,
+   10931302069.369978,
+   11240667668.832167,
+   11564390677.881327,
+   11903195910.35679,
+   12257845382.21465,
+   12629140227.796394,
+   13017922714.830326,
+   13425078363.249954,
+   13851538173.175276
+  ],
+  "pv_fcff_year_sums": [
+   84039818251132.05,
+   80740105773957.06,
+   77659103781952.14,
+   74780955135618.44,
+   72091122336668.58,
+   69576269322576.66,
+   67224154636495.18,
+   65023534815977.59,
+   62964076967470.62,
+   61036279603299.64
+  ],
+  "pv_terminal": {
+   "sum": 1377316909433457.5,
+   "min": 22092965851.74562,
+   "max": 613193032837.9373,
+   "p50": 126722994254.29646,
+   "first5": [
+    137872770555.42902,
+    179548902351.78717,
+    122946437928.70187,
+    172141079751.15292,
+    101040182964.66805
+   ]
+  },
+  "driver_draws": {
+   "g_software": {
+    "sum": 496.29234808306205,
+    "min": -0.0415270452551698,
+    "max": 0.11,
+    "p50": 0.0496656290266128,
+    "first5": [
+     0.05003075383393707,
+     0.05746863843771175,
+     0.04314655361594456,
+     0.027735204031068147,
+     0.03863323037070694
+    ],
+    "mean": 0.04962923480830621
+   },
+   "g_consulting": {
+    "sum": 173.63818949762708,
+    "min": -0.06815096707546653,
+    "max": 0.11106580216372398,
+    "p50": 0.017388010632386465,
+    "first5": [
+     0.0007850976068424012,
+     0.020348614032685407,
+     -0.0016894980127343528,
+     0.05993103200079013,
+     0.03449566133957798
+    ],
+    "mean": 0.01736381894976271
+   },
+   "g_infrastructure": {
+    "sum": -105.95801329621914,
+    "min": -0.11218465650430877,
+    "max": 0.03,
+    "p50": -0.009954923374998658,
+    "first5": [
+     0.012173752168680387,
+     -0.019947626445224007,
+     -0.018838992822846717,
+     -0.011421007418603697,
+     -0.010517224492201986
+    ],
+    "mean": -0.010595801329621913
+   },
+   "core_margin": {
+    "sum": 1935.0205374569823,
+    "min": 0.09759435285978442,
+    "max": 0.26628143260031145,
+    "p50": 0.19364271959246943,
+    "first5": [
+     0.2148998562905297,
+     0.21460696320624498,
+     0.20564074165649524,
+     0.20876139659008214,
+     0.18732636643802347
+    ],
+    "mean": 0.19350205374569823
+   },
+   "ma_ratio": {
+    "sum": 710.533624572821,
+    "min": 0.0,
+    "max": 0.16118334264674228,
+    "p50": 0.07133792889424455,
+    "first5": [
+     0.06558791006609849,
+     0.07940469120130594,
+     0.04891596599283661,
+     0.026701137680786184,
+     0.07157530303218511
+    ],
+    "mean": 0.07105336245728211
+   },
+   "rf": {
+    "sum": 459.93863995011816,
+    "min": 0.02723575446759934,
+    "max": 0.06423503118709302,
+    "p50": 0.04599742092540236,
+    "first5": [
+     0.034784303193960094,
+     0.049052863336033065,
+     0.04827431111825132,
+     0.04426998286122357,
+     0.04969695072977755
+    ],
+    "mean": 0.04599386399501182
+   },
+   "erp": {
+    "sum": 451.582701536162,
+    "min": 0.02,
+    "max": 0.07473600963912633,
+    "p50": 0.04513809064517474,
+    "first5": [
+     0.057998603645015225,
+     0.03424723592490938,
+     0.04224301745894445,
+     0.05425251613277886,
+     0.05188917346795381
+    ],
+    "mean": 0.0451582701536162
+   },
+   "terminal_growth": {
+    "sum": 224.41507952934614,
+    "min": -0.00171943662944829,
+    "max": 0.05154882702652372,
+    "p50": 0.02233922934916867,
+    "first5": [
+     0.015192402484338077,
+     0.02594228990356414,
+     0.018437331912599605,
+     0.029613513640530557,
+     0.025025015092126776
+    ],
+    "mean": 0.022441507952934616
+   }
+  },
+  "chance_below": {
+   "50.0": 0.0174,
+   "100.0": 0.1772,
+   "150.0": 0.4877,
+   "228.53": 0.8423,
+   "300.0": 0.9496
+  }
+ }
+}

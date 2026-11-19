@@ -627,6 +627,62 @@ agree (306 values, no difference). The repo has no `.xls` reader, thus this chec
 not automatic.
 *Evidence:* `financial_analysis/bonds.py` module docstring.
 
+## DCF in Rust (added 2026-11-19)
+
+**120. The Rust random numbers are the numpy stream for an integer seed only.**
+`rust/src/dcf/nprandom.rs` makes the same numbers as `np.random.default_rng(seed)`:
+`SeedSequence`, `PCG64` and the ziggurat `standard_normal`. The tables and the
+algorithm are from numpy v2.5.3. The tests compare 1,000 values for each of the seeds
+0, 7, 42 and 123456789, bit for bit, and a long stream that reaches the tail branch.
+A seed must be an integer from 0 to 2^64 - 1 (a list or a `SeedSequence` is not
+supported). Numpy can change a `Generator` method in a new version. If the fixture
+tests fail after a numpy update, the Python numbers changed, not the Rust numbers.
+*Evidence:* `rust/src/dcf/tests.rs` (`standard_normal_matches_numpy_bit_for_bit`).
+
+**121. Rust and Python differ in the last digit for some values.** The driver engine in
+Rust makes `(1 + g)^t` and the discount factor by repeated multiplication. Python used
+`**` on arrays. The values differ by about 1e-16 relative. The percentiles of the IBM,
+JNJ and ANT runs differ by 2e-16 at most. The attribution values differ by 1e-14 at
+most. The Rust mean and std of the classic engine use a plain sum, numpy uses a
+pairwise sum (1e-15). The tests accept 1e-9. A printed number with 2 decimals does not
+change.
+*Evidence:* `cargo test parity_report -- --ignored --nocapture`.
+
+**122. A seed of None gives a new number at each run in both languages.** In Python
+`seed=None` uses the operating system. In Rust the seed comes from the clock. Do not
+use a run without a seed for a published number. The Rust drivers command has the
+default seed 7.
+
+**123. A driver model has two copies until the Python code is deleted.**
+`analysis/<TICKER>/driver_model.toml` is the Rust copy. `driver_model.py` is the Python
+copy. A test shows that the TOML file gives the numbers that the Python code gave on
+2026-11-19, including each rationale text. A change in one copy does not change the
+other. Until the Python files are deleted (ticket `T-20261119-dcf-engine-rust`, stage 4),
+make a model change in both files. Then record the new fixtures. The IBM version 4
+model is a closed record: its test must not change without a review of the same weight.
+*Evidence:* `rust/src/dcf/tests.rs` (`toml_models_give_the_python_models`).
+
+**124. The Rust engine allows a schedule on the margin drivers only.** The Python engine
+accepted a schedule on any deterministic driver. For a CAPM driver or a growth driver
+the Python result had one WACC for each year and path, and no model used it. The Rust
+engine refuses this input. A schedule can be a list of values or a ramp (`start`,
+`end`, `ramp_years`); only a ramp follows a change of the horizon (`--years`).
+
+**125. The runners did not use the same rule for a changed mean.** The IBM and JNJ
+runners changed the mean and kept the bounds `lo` and `hi`. The ANT runner moved the
+bounds with the mean. `fa dcf drivers --set` keeps the bounds. Add `--shift-bounds` to
+move them. The wrong choice changes the result: for ANT a growth mean of 30% with fixed
+bounds gives a different P50.
+*Evidence:* `rust/src/dcf/runner_tests.rs` (the ANT lines use `shift_bounds`).
+
+**126. `fa verdict` with market rates still runs Python.** A run without `--rf-date`
+and without `--rating` uses the Rust engine when the ticker has `driver_model.toml`.
+A run with market rates needs the Treasury and ICE data, which only Python gets, and
+runs `scripts.verdict` (same for a ticker that has only `driver_model.py`). Both paths
+have the same JSON fields. The last digit of a percentile can differ (see #121).
+`fa dcf classic` and `fa dcf scenarios` read `data/processed/<TICKER>.json`; a new
+worktree has no `data/` folder (it is not in git): use `--data-dir`.
+
 ## Could not verify
 
 - (none of the named traps failed verification — all located in current code/docs; the

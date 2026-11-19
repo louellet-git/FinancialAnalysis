@@ -2,7 +2,7 @@
 //! Typed commands print pretty JSON; `fa run` passes any Python entry point through.
 
 use financial_analysis::{
-    CheckResult, CreditSnapshot, Curve, Fa, HqmCurve, Inflation, RateObservation, Snapshot, Verdict,
+    CheckResult, CreditSnapshot, Curve, Fa, HqmCurve, Inflation, RateObservation, Snapshot,
 };
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -39,8 +39,10 @@ USAGE:
   fa futures check [--date D]                     cross-checks of two sources (exit 1 on mismatch)
   fa models calibrate|rolling|frequencies|compare|simulate ...
                                                   stochastic rate models (Rust); see below
+  fa dcf drivers|classic|scenarios|models ...     Monte Carlo DCF in Rust (fa dcf --help)
   fa verdict TICKER --price P [--rf-date D|today] [--rf-base-date D] [--rating A-]
              [--simulations N] [--seed S]
+                                                  Rust engine; with --rf-date or --rating the rates come from Python
   fa run MODULE [ARGS...]                         any entry point, e.g. fa run scripts.analyze IBM
   fa serve [--port N] [--no-open]                 local viewer in the browser (http://127.0.0.1:8765/)
 
@@ -137,6 +139,33 @@ fn forwards_cmd(fa: &Fa, rest: &[String]) -> ExitCode {
     })
 }
 
+/// `fa verdict TICKER --price P ...`: the same options as `python -m scripts.verdict`.
+fn verdict_cmd(fa: &Fa, rest: &[String]) -> financial_analysis::Result<ExitCode> {
+    let flag = |name: &str| rest.iter().position(|a| a == name).and_then(|i| rest.get(i + 1)).cloned();
+    let Some(ticker) = rest.first().filter(|t| !t.starts_with('-')) else {
+        return Ok(usage_error("verdict needs a ticker"));
+    };
+    let Some(price) = flag("--price").and_then(|p| p.parse::<f64>().ok()) else {
+        return Ok(usage_error("verdict needs --price P (a number)"));
+    };
+    let parse = |name: &str| -> Result<Option<i64>, String> {
+        flag(name).map_or(Ok(None), |v| v.parse::<i64>().map(Some).map_err(|_| format!("bad {name} '{v}'")))
+    };
+    let (simulations, seed) = match (parse("--simulations"), parse("--seed")) {
+        (Ok(s), Ok(d)) => (s, d),
+        (Err(m), _) | (_, Err(m)) => return Ok(usage_error(&m)),
+    };
+    let opts = financial_analysis::VerdictOptions {
+        simulations: simulations.map(|s| s.max(0) as u32),
+        seed,
+        rf_date: flag("--rf-date"),
+        rf_base_date: flag("--rf-base-date"),
+        rating: flag("--rating"),
+    };
+    print_json(&fa.verdict(ticker, price, &opts)?);
+    Ok(ExitCode::SUCCESS)
+}
+
 fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
     match args.first().map(String::as_str) {
         None | Some("help" | "-h" | "--help") => {
@@ -151,10 +180,8 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
         }),
         Some("forwards") => Ok(forwards_cmd(fa, &args[1..])),
         Some("futures") => Ok(financial_analysis::futures::cli::run(&fa.repo, &args[1..])),
-        Some("verdict") => {
-            print_json(&fa.call::<Verdict>("scripts.verdict", &args[1..])?);
-            Ok(ExitCode::SUCCESS)
-        }
+        Some("dcf") => Ok(ExitCode::from(financial_analysis::dcf::cli::run(&fa.repo, &args[1..]))),
+        Some("verdict") => verdict_cmd(fa, &args[1..]),
         Some("serve") => {
             if args[1..].iter().any(|a| a == "-h" || a == "--help") {
                 println!("{}", serve::USAGE);
