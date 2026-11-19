@@ -88,7 +88,7 @@ Do not use a first pass alone for a trade.
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest                              # 435 tests, no network
+python -m pytest                              # 465 tests, no network
 cargo test --manifest-path rust/mapcheck/Cargo.toml   # 43 Rust tests
 python -m scripts.analyze IBM                 # import + market data -> xlsx
 python -m scripts.verdict IBM --price 228.53  # value range against a price

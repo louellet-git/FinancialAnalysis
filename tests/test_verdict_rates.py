@@ -37,3 +37,23 @@ def test_rates_context_sets_rf_and_splits_the_change():
     assert b["nominal_change"] == pytest.approx(0.0050)
     assert b["real_change"] == pytest.approx(0.0053)
     assert b["breakeven_change"] == pytest.approx(-0.0003)
+
+
+def test_credit_context_sets_kd_spread_from_rating():
+    from financial_analysis import bonds
+    from scripts.verdict import credit_context
+    model = DriverModel(drivers=[
+        Driver("kd_spread", stochastic=False, mean=-0.001),
+        Driver("tax_rate", stochastic=False, mean=0.21),
+    ])
+    d = date(2026, 11, 17)
+    with patch.object(bonds, "spread_over_10y", return_value=_obs("A - 10Y", d, 0.0067, "A- uses the A index")), \
+         patch.object(bonds, "corporate_yield", return_value=_obs("A yield", d, 0.0577)), \
+         patch.object(bonds, "credit_spread", return_value=_obs("A OAS", d, 0.0076)), \
+         patch.object(bonds, "moodys_yield", side_effect=lambda g, on: _obs(g, d, 0.0618 if g == "Aaa" else 0.0663)):
+        new, ctx = credit_context(model, "A-", "today", rf=0.0507)
+    assert new.driver("kd_spread").mean == 0.0067
+    assert ctx["index"] == "A"
+    assert ctx["kd_spread_change_vs_model"] == pytest.approx(0.0077)
+    assert ctx["kd_pretax"] == pytest.approx(0.0574)
+    assert ctx["kd_after_tax"] == pytest.approx(0.0574 * 0.79)
