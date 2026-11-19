@@ -1623,6 +1623,89 @@ The sheet `Estimates` has the surprises from the Nasdaq file first (then the Pyt
 ticker changed has the past dates under the old symbol in the vendor data and is not joined.
 *Evidence:* `nasdaq_est::same_symbol`; the calendar fixture.
 
+**230. No keyed loader ran against the real server.** The loaders for Alpaca (stock bars, option contracts, option bars, chain snapshots), the FRED API and the Tiingo source follow the official
+documentation, read on 2026-11-19. No key was in the container. Each parser has a test on text that follows the documented reply. The first run with a real key can fail on a detail that the
+documentation does not show (a field name, a status code, the form of a missing value). Do this at the first run: `fa prices get IBM --source alpaca`, `fa prices intraday SPY --from 2024-06-03 --to 2024-06-07`,
+`fa options history SPY --date 2024-06-07 --plan`, `fa rates fred --series DGS10`. A failure prints the HTTP code and no key.
+*Evidence:* `rust/src/market/alpaca.rs`, `fred_api.rs` (tests); `docs/ARCHITECTURE.md`, section "Keyed data sources".
+
+**231. The depth of the list of expired option contracts is not in the documentation.** The option surface of a past date needs the contracts that existed on that date. The program gets them from
+`GET /v2/options/contracts` of the trading API (`status=inactive`). The page says only that a request returns active contracts by default. It does not say how far back the inactive contracts go.
+The history of the option bars starts in February 2024 (confirmed), but the contract list could be shorter. The list is on `paper-api.alpaca.markets`, not on the data address: it needs the keys of the
+paper account (a key of a live account is refused there; `APCA_API_BASE_URL` changes the address). `fa options history ... --plan` shows the contract count of a date before any close is requested.
+*Evidence:* `https://docs.alpaca.markets/reference/get-options-contracts`; `alpaca.rs` (`Client::contracts`).
+
+**232. The free Alpaca plan gives the IEX exchange only.** The daily close of a stock is the last IEX trade, not the consolidated close, so it can differ from the official close by some cents. The volume
+is the IEX volume (a small part of the market volume). A minute or 5-minute bar exists only if a trade happened on IEX in that interval. For the volume of the whole market, the SIP feed needs a paid plan.
+The documentation names two history depths: "Since 2016" (docs) and "7+ years" (pricing page). The program asks from 2016-01-01. The paper account can call the data API (confirmed); a funded account
+is not named as a condition (not stated either way).
+*Evidence:* `https://docs.alpaca.markets/docs/about-market-data-api`, `https://alpaca.markets/data`.
+
+**233. The 15-minute rule of the free plan.** The documentation says that the history of the free plan is limited to "the latest 15 minutes". It does not say if a request for this window fails or
+returns less. The program leaves `end` out when the window reaches today (the API then uses "15 minutes ago", as the reference says), and it does not write the daily bar of today before 16:20 New York time.
+The program writes no intraday bar that has not ended.
+*Evidence:* `alpaca.rs` (`end_param`, `daily_rows`, `intraday_rows`).
+
+**234. The Alpaca price series is split adjusted and not dividend adjusted.** The request has `adjustment=split`. The cache record says `adjusted: splits` and `detail: feed=iex adjustment=split`. The cache never mixes it
+with a Tiingo or Yahoo cache (`splits+dividends`): a new source replaces the whole file or does not touch it (rule of #200 to #214). The older value of `fa prices check` that compares two sources needs
+the two sources to have the same adjustment; compare Alpaca with Nasdaq, not with Yahoo.
+*Evidence:* `price_cache.rs` (`update_many`, `update_with`), `alpaca.rs` (`fetch_many`).
+
+**235. The 1-minute file is read by no bot.** `fa prices intraday --interval 1m` writes `data/raw/trading/<SYMBOL>_1m.csv`. The reader of the option bots (`trading::data::Interval`) knows `1d`, `1h` and `5m`.
+The file is for work on realized variance. A 5-minute file from Alpaca and a 5-minute file from Yahoo have the same name and the same form; the merge rule is "a fresh row replaces the cached row of the same time", so two
+sources in one file mix their volumes (Yahoo: consolidated volume; Alpaca free: IEX volume). Use one source for one file.
+*Evidence:* `intraday.rs`; `trading/fetch.rs` (`merge`).
+
+**236. The surface of closes is not the surface of quotes.** The historical option bars of Alpaca are the open, high, low, close and volume of the trades of one day. The snapshot has the close in `last_price`,
+and `bid` and `ask` are empty (`quote_kind: close`). A contract with no trade that day has no bar, so the surface has only the contracts that traded: far strikes and far expiries are missing, and the
+surface is biased to liquid strikes. A close is the price of the last trade, at any time of the day, while the underlying moved. The spread, the mid and the bid-ask metrics do not exist.
+No page about historical option QUOTES was found.
+*Evidence:* `option_history.rs` (`day_snapshot`); `https://docs.alpaca.markets/reference/optionbars`.
+
+**237. The implied volatility of the history is a first version with known errors.** (1) The model is Black-76, a European model; SPY and the single-stock options are American. The early-exercise premium makes the
+volatility of an in-the-money option too high, and a dividend before the expiry changes the forward. So the builder gives a volatility for the options out of the money and within 1% of the forward only. (2) The forward comes
+from put-call parity at the three strikes nearest to the spot (the median); with American options the parity is an inequality, so the forward is an estimate. With no pair of closes the forward is the spot times
+`exp(r T)` (no dividend), and the note of the file says how many expiries had a parity forward. (3) The time is the calendar days divided by 365, to the end of the expiry day; the close of a thin contract can be
+older than 16:00. (4) The rate is the Treasury par yield at the same time (linear between the tenors), not a zero rate. (5) The test recovers a known smile to 5e-5, with exact closes; real closes are rounded to a cent,
+so a cheap option has a large error in its volatility. Do not use the volatility of an option under $0.10 without a check.
+*Evidence:* `option_iv.rs`, `option_history.rs` (tests with a known surface).
+
+**238. The underlying close of the history is `raw` and IEX.** The builder asks for the close with `adjustment=raw` (a split adjusted close would not fit the strike). The close is the last IEX trade of the day. It sets
+the selection (strike range), the moneyness filter and the check of the parity forward; it does not set the volatility (the forward comes from the options). For a split in the range, the contract list has adjusted
+contracts with another root (for example `SPY1...`): the program leaves them out.
+*Evidence:* `option_history.rs` (`contract_from_info`).
+
+**239. The request counts for the option surface are estimates.** The fixture tests measure the structure: one request for each group of 100 contracts for a whole month, and the same set of requests for each single date.
+The number of SPY contracts (12,000 live; 700 new each day; the selection keeps half) is an assumption from the Cboe file of the live chain, not a measurement. Run `--plan` with a key. The result
+of the estimate: one date is 65 to 125 requests; a year, date by date, is 16,000 to 31,000 requests (80 to 155 minutes at the free limit of 200 each minute); a year, month by month, is about 1,700 requests.
+*Evidence:* `docs/ARCHITECTURE.md`, request counts; `option_history.rs` (test `a_range_of_dates_costs_one_set_of_requests_and_not_one_for_each_date`).
+
+**240. A snapshot of closes never replaces a snapshot with a real bid and ask.** The files of the live chain and of the history have the same path (`data/raw/<T>/options/<date>.json`). `fa options history` skips a date
+that has a file with no `quote_kind` (Cboe) or with another kind. A file of closes is replaced only with `--refresh`. A person who wants the live quotes of a date must save them on that date: a past date has no
+bid and ask from any source of the repo. The new fields of the snapshot (`source`, `feed`, `quote_kind`, `note`) are optional, and an old file has none of them. The reader `compute_chain_metrics` does not look at them: the
+straddle of a file of closes is the sum of two closes.
+*Evidence:* `options_cli.rs` (`may_write`); `options.rs`.
+
+**241. The FRED API key is in the URL.** The key is the parameter `api_key`. Each error text of the API path passes through `fred_api::scrub` (the key value and each `api_key=` value become `***`), and the log line of the
+fallback too. A tool that logs the full URL outside the program (a proxy log) can still see the key. The program does not know how the API writes a missing value (the page does not say); it skips `.` and an empty text.
+The limit is 120 requests each minute; a loader of many series does not count its requests. Whether a key removes the refusal of the keyless address in the cloud container (#128) is not known: the API host
+`api.stlouisfed.org` is another host and could answer. If the API fails, the program tries the keyless address.
+*Evidence:* `fred_api.rs` (tests `the_key_is_not_in_any_error_or_log_line`); `rates.rs` (`fred_text`); `https://fred.stlouisfed.org/docs/api/fred/errors.html`.
+
+**242. Index options (SPX, VIX) have no confirmed free source.** Alpaca: not confirmed (one `SPXW` symbol in a quote sample; the trading overview names equity options only). Massive: the pages read do not
+say it for the snapshot, the contract list or the aggregates; VIX options are not named. The data set "option surface history of SPX and VIX" is therefore open. The cheap test is the free Massive key (see
+`docs/ARCHITECTURE.md`). The builder works for any underlying that the source lists; for an index the forward must come from the parity (the index has no tradable spot).
+*Evidence:* `docs/ARCHITECTURE.md`, section "Massive".
+
+**243. The terms for stored data are not confirmed for Alpaca and Massive.** No data page of Alpaca states a rule for stored or automated use, and the two exchange agreements on the disclosure page were not read. The Massive
+terms page names "Individual Use" and "Business Use" and refers to other documents (not read). The FRED terms ask each user of an application to have an own key and say nothing about storage. The repo is public: do not commit
+`data/` (CLAUDE.md). A cache of vendor data in a public repo can break the terms of the vendor.
+*Evidence:* `https://alpaca.markets/disclosures`, `https://massive.com/legal/terms`, `https://fred.stlouisfed.org/docs/api/fred/terms_of_use.html`.
+
+**244. The Massive plan numbers come from pages that change.** Prices ($29 and $49 each month) are from the research file of 2026-11-19, not from a page read in this task. The depth by plan (2, 4 and all years) is from the aggregate
+pages. The flat-file path of the day file and the form of the index option ticker are not confirmed. The trait `OptionHistorySource` has no Massive implementation; a person must decide first (see the ticket).
+*Evidence:* `PLANNING/board/T-20261119-keyed-data-sources.md`.
+
 ## Could not verify
 
 - (none of the named traps failed verification — all located in current code/docs; the

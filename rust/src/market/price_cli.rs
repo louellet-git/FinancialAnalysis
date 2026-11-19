@@ -13,9 +13,13 @@ fa prices - daily price history of stocks and ETFs, cached in data/raw/<TICKER>/
 USAGE:
   fa prices get TICKER... [--tickers-file F] [--source S] [--full]
                               get or update the history (one request each 2 seconds for each site);
-                              S is tiingo (needs TIINGO_API_KEY), yahoo or nasdaq; without --source: the
-                              source of the cache first, else tiingo (with a key), yahoo, nasdaq.
+                              S is tiingo (needs TIINGO_API_KEY), alpaca (needs the two Alpaca keys; many tickers in one
+                              request), yahoo or nasdaq; without --source: the source of the cache first, else tiingo and
+                              alpaca (with keys), yahoo, nasdaq.
                               --full gets the whole history again. A stopped run continues when you run it again.
+  fa prices intraday SYMBOL [--interval 1m|5m] [--from D] [--to D] [--feed iex|sip]
+                              1-minute or 5-minute bars of Alpaca (needs APCA_API_KEY_ID and APCA_API_SECRET_KEY) into
+                              data/raw/trading/<SYMBOL>_<interval>.csv; a stopped run continues when you run it again
   fa prices show TICKER [--from D] [--to D]       rows of the cache (default: the last 15)
   fa prices last TICKER...                        last close, its date and source; warns when older than 5 weekdays
   fa prices check TICKER... [--sources A,B] [--tolerance T]
@@ -116,25 +120,31 @@ fn get(repo: &Path, rest: &[String]) -> Result<i32, String> {
     let (mut updated, mut current, mut failed): (Vec<String>, Vec<String>, Vec<(String, String)>) = (vec![], vec![], vec![]);
     let n = p.tickers.len();
     let mut stopped_at = None;
-    for (i, t) in p.tickers.iter().enumerate() {
-        if run.blocked.len() >= sources.len() {
-            stopped_at = Some(i);
-            break;
+    let mut handle = |i: usize, t: &str, status: &Status| match status {
+        Status::Current => {
+            eprintln!("[{}/{n}] {t}: current", i + 1);
+            current.push(t.to_string());
         }
-        let status = price_cache::update_ticker(&cache, t, &sources, &opt, &mut run);
-        match &status {
-            Status::Current => {
-                eprintln!("[{}/{n}] {t}: current", i + 1);
-                current.push(t.clone());
+        Status::Updated { source, added, full, note } => {
+            eprintln!("[{}/{n}] {t}: {source} {} +{added} rows ({note})", i + 1, if *full { "full history" } else { "update" });
+            updated.push(t.to_string());
+        }
+        Status::Failed(why) => {
+            eprintln!("[{}/{n}] {t}: FAILED {why}", i + 1);
+            failed.push((t.to_string(), why.clone()));
+        }
+    };
+    if sources.len() == 1 && sources[0].batch_size() > 1 {
+        // A source with multi-symbol requests (Alpaca): the tickers go in groups, one request for each group and page.
+        price_cache::update_many(&cache, &p.tickers, sources[0].as_ref(), &opt, &mut run, |i, st| handle(i, &p.tickers[i], st));
+    } else {
+        for (i, t) in p.tickers.iter().enumerate() {
+            if run.blocked.len() >= sources.len() {
+                stopped_at = Some(i);
+                break;
             }
-            Status::Updated { source, added, full, note } => {
-                eprintln!("[{}/{n}] {t}: {source} {} +{added} rows ({note})", i + 1, if *full { "full history" } else { "update" });
-                updated.push(t.clone());
-            }
-            Status::Failed(why) => {
-                eprintln!("[{}/{n}] {t}: FAILED {why}", i + 1);
-                failed.push((t.clone(), why.clone()));
-            }
+            let status = price_cache::update_ticker(&cache, t, &sources, &opt, &mut run);
+            handle(i, t, &status);
         }
     }
     println!("prices: {} updated, {} current, {} failed, {} not tried; {:.0} s", updated.len(), current.len(), failed.len(), stopped_at.map_or(0, |i| n - i), started.elapsed().as_secs_f64());
@@ -256,6 +266,7 @@ pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
         Some("show") => show(repo, &args[1..]),
         Some("last") => last(repo, &args[1..]),
         Some("check") => check(repo, &args[1..]),
+        Some("intraday") => super::intraday::command(repo, &args[1..]),
         Some(other) => Err(format!("unknown prices command '{other}'; see fa prices --help")),
     }
 }

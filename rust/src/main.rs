@@ -45,6 +45,9 @@ USAGE:
                                                   --rf-date takes the Treasury 10Y as rf,
                                                   --rating takes the market kd spread of the rating (network)
   fa prices get TICKER... [--tickers-file F] [--source S] [--full]   daily price history into data/raw (fa prices --help)
+  fa prices intraday SYMBOL [--interval 1m|5m] --from D [--to D]   1- and 5-minute bars of Alpaca (free key) into data/raw/trading
+  fa options snapshot SYMBOL [--source cboe|alpaca] | history SYMBOL --date D | --from D --to D
+                                                  option chain of today, or the surface of past dates from daily closes (fa options --help)
   fa prices show TICKER [--from D] [--to D] | last TICKER... | check TICKER... [--sources A,B]
                                                   rows of the cache, last close, or a cross-check of two sources
   fa estimates get TICKER... [--tickers-file F] [--endpoints LIST] [--momentum] [--refresh]
@@ -249,6 +252,10 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
         Some("futures") => Ok(financial_analysis::futures::cli::run(&fa.repo, &args[1..])),
         Some("backtest") => Ok(ExitCode::from(financial_analysis::dcf::cli::backtest(&fa.repo, &args[1..]))),
         Some("dcf") => Ok(ExitCode::from(financial_analysis::dcf::cli::run(&fa.repo, &args[1..]))),
+        Some("options") => match financial_analysis::market::options_cli::run(&fa.repo, &args[1..]) {
+            Ok(code) => Ok(ExitCode::from(code as u8)),
+            Err(e) => Ok(usage_error(&e)),
+        },
         Some("prices") => match financial_analysis::market::price_cli::run(&fa.repo, &args[1..]) {
             Ok(code) => Ok(ExitCode::from(code as u8)),
             Err(e) => Ok(usage_error(&e)),

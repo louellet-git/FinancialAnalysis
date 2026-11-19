@@ -721,6 +721,114 @@ A snapshot of the Python code for the same date is never replaced. The source or
 Read-only functions for other modules: `consensus::forward_pe(price, eps)` and `ConsensusEstimates::eps_growth()`. The DCF model files and `dcf/auto.rs` are not changed;
 `fa estimates show` does not print the growth start of `fa dcf auto` (no cheap function to call).
 
+## Keyed data sources (`market/alpaca.rs`, `fred_api.rs`, `option_history.rs`, 2026-11-19, branch `claude/keyed-data-sources`)
+
+Owner request: solid data sources that a person syncs whenever the person wants. No process runs all the time. So each data set needs a source
+that gives the PAST on request through a published API. All loaders of this section follow the official documentation (read on 2026-11-19).
+No key was available, so NO loader ran against the real server. Each test uses text that follows the documentation. The table of all data sets is
+`docs/DATA-SOURCES.md`.
+
+### Alpaca Market Data API (free plan)
+
+Facts from the documentation. "Confirmed" means that a page states it.
+
+| Fact | State | URL |
+|---|---|---|
+| (a) The free plan has the feed IEX for stocks and the feed "indicative" for options. 200 requests each minute. Stock history "Since 2016" (the pricing page says "7+ years"). The history limit of the free plan is "latest 15 minutes": the page does not say that a request for this window fails. The reference says that without real-time access `end` defaults to 15 minutes ago. The program never asks for the latest 15 minutes (it leaves `end` out when the window reaches today) | confirmed, except the exact failure | `https://docs.alpaca.markets/docs/about-market-data-api`, `https://docs.alpaca.markets/reference/stockbars`, `https://alpaca.markets/data` |
+| (b) Indicative option feed: free; "quotes are not actual OPRA quotes", trades delayed 15 minutes. The chain snapshot has bid, ask, last trade, implied volatility and the greeks. Historical option bars exist "since February 2024" (`GET /v1beta1/options/bars`, up to 100 contracts in a request, 10,000 points in a page). Historical option quotes: no page found | bars and snapshots confirmed; quotes not confirmed | `https://docs.alpaca.markets/docs/historical-option-data`, `https://docs.alpaca.markets/reference/optionbars`, `https://docs.alpaca.markets/reference/optionchain` |
+| (c) Index options (SPX, VIX). One quote sample has the symbol `SPXW240327P04925000`, but no page says that index options are covered. The trading overview names "US listed equities options" only | not confirmed | `https://docs.alpaca.markets/docs/real-time-option-data`, `https://docs.alpaca.markets/docs/options-trading-overview` |
+| (d) Account. Paper accounts can call the Market Data API with their own keys. No page says that the free data needs a funded account. Whether Alpaca asks for a document when a person opens a paper account is not in the pages read | paper keys confirmed; funding rule not stated | `https://docs.alpaca.markets/docs/authentication` |
+| (e) Headers `APCA-API-KEY-ID` and `APCA-API-SECRET-KEY` (or HTTP Basic). Data address `https://data.alpaca.markets` (`/v2/stocks/bars`, `/v1beta1/options/bars`, `/v1beta1/options/snapshots/{underlying}`). The list of option contracts is on the trading address `https://paper-api.alpaca.markets/v2/options/contracts` | confirmed | `https://docs.alpaca.markets/docs/authentication`, `https://docs.alpaca.markets/reference/get-options-contracts` |
+| (f) Terms for stored data and automated use. The data pages do not state them. The disclosure page lists the agreements "NASDAQ OMX Global Subscriber Agreement" and "NYSE Market Data Display Services Agreement" by title only; they were not read | not confirmed | `https://alpaca.markets/disclosures` |
+
+Modules:
+
+| Module (`rust/src/market/`) | Function |
+|---|---|
+| `keys.rs` | Reads a key from the environment, else `.env`. `scrub_all` and `scrub_api_key_param` take key values out of a text. `urlenc`. |
+| `alpaca.rs` | The client (keys in headers, 0.4 s between requests, request counter, paging by `next_page_token`), the parsers (bars, contracts, chain snapshots), the daily rows, the intraday rows, and the price source `Alpaca`. |
+| `price_source.rs`, `price_cache.rs` | The trait `PriceSource` got `batch_size`, `fetch_many` and `detail`. `price_cache::update_many` updates many tickers with one request for each group of tickers (the overlap rule, the "no mixing" rule and the 90% rule stay). `prices.meta.json` has the new field `detail` (`feed=iex adjustment=split`). |
+| `intraday.rs` | `fa prices intraday`: the range goes in calendar months; each month is one request; the file is written after each month. |
+| `option_iv.rs` | Black-76 price, the implied volatility (bisection), the forward from put-call parity. |
+| `option_history.rs` | The trait `OptionHistorySource`, the builder `build_range` (selection, forward, implied volatility, snapshot of each date) and the Alpaca source. |
+| `options_cli.rs` | `fa options snapshot` and `fa options history`. |
+| `fred_api.rs` | The FRED API loader (see below). |
+
+Commands and rules:
+
+1. **Daily prices.** `fa prices get TICKER... --source alpaca`. The call is `GET /v2/stocks/bars` with `timeframe=1Day`, `adjustment=split`, `feed=iex`,
+   100 symbols in a request, `limit=10000`, and paging. The series is split adjusted and not dividend adjusted (the same series as the Nasdaq source). The cache record says
+   `adjusted: splits` and `detail: feed=iex adjustment=split`. The bar of today stays out until 16:20 New York time.
+2. **Intraday bars.** `fa prices intraday SYMBOL --interval 5m|1m --from D [--to D] [--feed iex|sip]` writes `data/raw/trading/<SYMBOL>_5m.csv` (or `_1m.csv`) in the form of
+   `fa trade fetch`. The file keeps the regular session and complete bars. A stopped run continues from the last cached day when the cache starts at `--from`.
+3. **Option chain now.** `fa options snapshot SYMBOL --source alpaca` writes `data/raw/<T>/options/<date>.json` with `source: alpaca`, `feed: indicative`, `quote_kind: indicative`.
+4. **Option surface of past dates.** `fa options history SYMBOL --date D` (or `--from D --to D`). Steps for each month of the range: (1) the closes of the underlying (`raw`); (2) the contract
+   list with an expiry from the first day to the last day plus `--max-days`, and a strike in the moneyness range of the lowest and the highest close (status `active` and `inactive`);
+   (3) the daily bars of the contracts in groups of 100 for the whole month; (4) for each date: the filter (a close, a volume above zero, the expiry after the date, the selection), the forward of each
+   expiry from put-call parity, the implied volatility, and the snapshot file. The file has `quote_kind: close`. `fa options history ... --plan` lists the contracts and the number of requests and gets no closes.
+   Default selection: expiry up to 365 days, strike 0.8 to 1.2 times the spot. The rate is the Treasury par curve of the date (linear in the time to expiry); `--rate R` gives one flat rate.
+5. **Rules for the files.** A snapshot with real bid and ask is never replaced by closes. A file of closes is replaced only with `--refresh`. The new fields `source`, `feed`, `quote_kind` and `note` are
+   optional: a file of the older form (Cboe) has none of them, and the older readers read both forms.
+6. **Keys.** `APCA_API_KEY_ID` and `APCA_API_SECRET_KEY` from the environment, else `<repo>/.env`. They go in headers only. Each error text has them taken out (tests).
+
+Request counts. The first two lines are measured with fixtures (a fake server with the paging rule of the documentation). The lines about SPY are estimates, not measurements.
+
+| Job | Requests | Time at 0.4 s for each request |
+|---|---|---|
+| 1,000 tickers, daily update (7 rows each) | 10 (fixture test) | 4 s |
+| 1,000 tickers, full history since 2016 (about 2,700 rows each) | about 280: 10 groups of 100 symbols, 28 pages each (fixture: 2,520 rows give 26 pages for each group, 260 in all) | about 2 minutes |
+| One year of 5-minute bars of one symbol | 12 (one for each month); 19,656 rows at most; about 1.2 MB (59 bytes for each row) | 5 s |
+| One year of 1-minute bars of one symbol | 12; 98,280 rows at most; about 5.8 MB | 5 s |
+| One past date of SPY | 1 (underlying) + 2 or more (contract list, active and inactive, 10,000 for each page) + about 60 to 120 (closes: 6,000 to 12,000 contracts in groups of 100). The Cboe file lists about 12,000 live SPY options; the selection removes about half | about 30 to 50 s |
+| One year of dates, one date at a time | 252 x (65 to 125) = about 16,000 to 31,000 | 1.8 to 3.5 hours (the limit of 200 each minute gives 80 to 155 minutes at best) |
+| One year of dates, month by month (the builder) | each month asks for each contract one time, whatever the number of dates: about 14,000 contracts after the selection for a month (12,000 live + 21 days x 700 new contracts, half kept) = about 140 + 4 requests; about 1,700 for the year | about 12 minutes |
+
+The assumptions behind the SPY lines are 12,000 live contracts, 700 new contracts for each day and a selection that keeps half. They are not measured. Run `fa options history SPY --date D --plan`
+with a key to get the real contract count. A thin contract that traded on one day only gives one point, so the pages of closes are never the limit: the number of contracts is.
+The depth of the INACTIVE contract list is not in the documentation (hidden assumption 231): if it is short, an old date has no contracts, and the command says so.
+
+### FRED API with a key
+
+Official documentation: `https://fred.stlouisfed.org/docs/api/fred/series_observations.html` (endpoint `https://api.stlouisfed.org/fred/series/observations`; parameters `series_id`,
+`api_key`, `file_type=json`, `observation_start`, `limit` up to 100,000, `offset`), `.../api_key.html` (32 lowercase characters; a key for each application; each user has an own key; the account is
+at `fredaccount.stlouisfed.org`), `.../errors.html` (120 requests each minute, then HTTP 429 and a possible block; an error is `{"error_code", "error_message"}`), `.../terms_of_use.html`
+(no number for storage; no application that replaces the FRED site; third-party series need the permission of the owner for more than personal use).
+With `FRED_API_KEY` in the environment or in `.env`, `Rates::fred_text` asks the API first and turns the reply into the CSV text of the keyless address, so the cache files
+(`data/raw/bonds/fred_<ID>.csv`) and the parsers stay as they were. If the API fails, the program tries the keyless address. The key is a URL parameter: the program takes the key value
+and each `api_key=` value out of each error text and log line (tests). The code does not know how the API writes a missing value; it skips `.` and the empty text.
+
+### Massive (the former Polygon.io), paid: the plan for the owner's decision
+
+Nothing here is built, and no key was used. The pages below were read on 2026-11-19. Prices and plans come from the research file (pricing pages that change).
+
+| Fact | State | URL |
+|---|---|---|
+| Option chain snapshot `GET /v3/snapshot/options/{underlyingAsset}`: `limit` default 10, maximum 250; greeks, implied volatility, open interest, `day` bar; Starter and higher (15 minutes late); no past dates (it is a snapshot). The page has no `I:SPX` example | index underlying not confirmed | `https://massive.com/docs/rest/options/snapshots/option-chain-snapshot` |
+| Option aggregates `GET /v2/aggs/ticker/{optionsTicker}/range/{multiplier}/{timespan}/{from}/{to}`: one ticker in each request; `limit` up to 50,000; ticker form `O:...`; records from 2014-06-02; depth by plan: Basic 2 years, Starter 2 years, Developer 4 years, Advanced and Business all | confirmed | `https://massive.com/docs/rest/options/aggregates/custom-bars` |
+| Index aggregates `GET /v2/aggs/ticker/I:SPX/range/...`: fields `o h l c t`; depth "all history", records from 2023-02-14; the page does not list which index tickers a plan has (SPX and VIX not named) | SPX, VIX not confirmed | `https://massive.com/docs/rest/indices/aggregates/custom-bars` |
+| Contract list `GET /v3/reference/options/contracts`: `as_of` (a past date), `expired=true`, `underlying_ticker`, `expiration_date`, `strike_price`, `limit` up to 1,000. The page does not say if SPX, SPXW, VIX or VIXW are listed | index options not confirmed | `https://massive.com/docs/rest/options/contracts/all-contracts` |
+| Flat files: S3 address `https://files.massive.com`, bucket `flatfiles`, prefix `us_options_opra`, gzip CSV, one file for each day; options day aggregates have `ticker, volume, open, close, high, low, window_start, transactions`; "Included in select Options plans": Starter, Developer, Advanced, Business (not Basic); depth as the plan; the file of a day is ready about 11:00 New York time the next day. The exact key of the day file is not on the pages read | partly confirmed | `https://massive.com/docs/flat-files/quickstart`, `https://massive.com/docs/flat-files/options/day-aggregates` |
+| Request limit: "Five requests a minute per asset class you have not subscribed to, and no limit on the ones you have" | confirmed | `https://massive.com/knowledge-base/article/what-is-the-request-limit-for-massives-restful-apis` |
+| VIX options (root VIX, VIXW) | not confirmed | no page found |
+| Terms for stored data after a cancelled plan, and for automated use | not confirmed (the terms page names "Individual Use" and "Business Use" products and refers to other documents) | `https://massive.com/legal/terms` |
+
+Plan for one year of SPX surfaces (the trait `OptionHistorySource` fits both forms: `bars_per_request` is 1 for the REST form and very large for the flat-file form):
+
+1. **Flat files (best; 253 requests).** Download one file for each trading day (`us_options_opra/day_aggs_v1/YYYY/MM/YYYY-MM-DD.csv.gz`; the path is not confirmed) with an S3 client: 252 files. Keep the rows
+   of the roots SPX and SPXW (the ticker form `O:SPXW...` is not confirmed). Get the underlying close with one request `GET /v2/aggs/ticker/I:SPX/range/1/day/{from}/{to}` (limit 50,000). Use `build_range`: the
+   source answers `closes` from the files, and the forward comes from put-call parity (SPX has no tradable spot; the parity forward is the right forward). Plan needed: Options Starter ($29 each month; 2 years)
+   or Developer ($79; 4 years), and an Indices plan for `I:SPX` (Indices Starter, $49). All numbers: research file; read the pricing page again before a payment.
+2. **REST (not advised; at least 100,000 requests).** For each date: `GET /v3/reference/options/contracts?underlying_ticker=SPX&expired=true&as_of=D&limit=1000` (about 3 to 6 pages), then one `aggs` request for each contract
+   for the whole year. With a selection (365 days, 0.8 to 1.2 of the spot) the year has more than 100,000 different SPX and SPXW contracts (an estimate: the daily expiries of SPXW alone are 252 each year with about 300 strikes). The paid plans have no request limit, but 100,000 requests take
+   hours.
+3. **Test before a payment, with the free key.** Options Basic (free, 5 requests each minute for each asset class) has reference data and 2 years of aggregates. With this key the owner can check for no money if the contract
+   list has `SPX`, `SPXW`, `VIX` and `VIXW`, and if `O:SPXW...` has aggregates. Then the owner knows the one fact that decides the purchase: index options coverage.
+
+### Tests and counts
+
+`cargo test --manifest-path rust/Cargo.toml --locked`: 473 Rust tests (455 + 17 + 1; 2 more are ignored). 36 tests are new (alpaca 10, intraday 3, option_iv 3, option_history 5, options_cli 4, fred_api 6,
+keys 3, price_cache 2). The traps are #230 to #244 of `docs/HIDDEN-ASSUMPTIONS.md`.
+
 ## The company report (`rust/src/report/`, `fa report`, 2026-11-19)
 
 `fa report TICKER [--price P] [--out FILE]` writes one HTML page. It is the Rust form of
@@ -804,7 +912,7 @@ ticket `option-backtest-rust`).
 
 ## Tests
 
-`cargo test --manifest-path rust/Cargo.toml --locked`: 412 Rust tests (394 + 17 + 1; 2 more are ignored) (the `fa` crate).
+`cargo test --manifest-path rust/Cargo.toml --locked`: 473 Rust tests (455 + 17 + 1; 2 more are ignored) (the `fa` crate).
 `cargo test --manifest-path rust/mapcheck/Cargo.toml`: 89 Rust tests. The suites make no network calls and start no
 Python program; HTTP is replaced by a function that the test gives, and files are in a temp folder.
 No Python test remains (the last 211 Python tests were deleted on 2026-11-19 after each case had a Rust test).
