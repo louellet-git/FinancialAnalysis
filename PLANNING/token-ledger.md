@@ -14,6 +14,8 @@ constant per run).
 | Corporate bond source | 2026-11-18 | `financial_analysis/bonds.py`, `scripts.verdict --rating`, `fa bonds`; IBM and JNJ verdicts at market credit spreads | ~0 (inline) | orchestrator only, no subagents; not a valuation run. Cross-check: Moody's minus Treasury 10Y agrees with FRED on 9,218 of 9,219 days since 1990 (one FRED-side difference, 1991-01-29) |
 | Rates and inflation source | 2026-11-18 | `financial_analysis/rates.py`, `scripts.verdict --rf-date`, `rust/` interface; IBM and JNJ verdicts at the Treasury rate | ~0 (inline) | orchestrator only, no subagents; not a valuation run. Cross-check: 27,520 Treasury points since 2020 agree with FRED |
 | Repo consolidation | 2026-11-19 | merge of PRs #16 and #17 and the trading branch; removal of generated and private files; status documents rewritten | ~0 (inline) | orchestrator only, no subagents; not a valuation run |
+| Standard input mapping | 2026-11-19 | registry of 109 standard variables, period selection, source record, mapping audit on a 32-ticker panel | ~0 (inline) | orchestrator only, no subagents; not a valuation run |
+| Mapping test framework (Rust) | 2026-11-19 | registry as one TOML file; `rust/mapcheck` (mapper, 22 checks, parallel run); bulk fetch; Rust-Python parity; runs on 32, 50 and 472 tickers | ~0 (inline) | orchestrator only, no subagents; not a valuation run |
 
 Targets: frontier ticker ≤500k · repeat run ≤50k · ORCL (ticker #2) is the first measured
 frontier run under the cheapened pipeline.

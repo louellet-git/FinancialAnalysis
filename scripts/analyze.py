@@ -30,7 +30,7 @@ from financial_analysis.xbrl_tags import STATEMENT_MAP, UNIT_MAP
 
 COLUMNS = [
     "ticker", "cik", "company_name", "period_end", "form_type",
-    "filed_date", "statement", "metric", "value", "unit",
+    "filed_date", "statement", "metric", "value", "unit", "source",
 ]
 
 PRICE_COLUMNS = ["ticker", "date", "open", "high", "low", "close", "volume"]
@@ -102,6 +102,7 @@ def _flatten(company: CompanyFinancials) -> dict[str, list[dict[str, Any]]]:
                 "metric": metric,
                 "value": val,
                 "unit": _unit_for(metric),
+                "source": (p.sources or {}).get(metric, ""),
             })
 
         for metric, statement in _DERIVED_METRICS.items():
@@ -113,6 +114,7 @@ def _flatten(company: CompanyFinancials) -> dict[str, list[dict[str, Any]]]:
                     "metric": metric,
                     "value": val,
                     "unit": _unit_for(metric),
+                    "source": "= derived (financial_analysis/schema.py)",
                 })
 
         for concept, val in (p.raw_extras or {}).items():
@@ -123,6 +125,7 @@ def _flatten(company: CompanyFinancials) -> dict[str, list[dict[str, Any]]]:
                     "metric": concept,
                     "value": val,
                     "unit": "USD",
+                    "source": "no standard variable",
                 })
 
     for pp in company.prices:

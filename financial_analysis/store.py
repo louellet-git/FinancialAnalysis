@@ -65,8 +65,8 @@ def load(ticker: str, data_dir: Path = _DEFAULT_DATA_DIR) -> CompanyFinancials:
         for f in dataclass_fields(PeriodFinancials):
             if f.name in _DATE_FIELDS:
                 kwargs[f.name] = _to_date(p[f.name])
-            elif f.name == "raw_extras":
-                kwargs[f.name] = p.get(f.name, {})
+            elif f.name in ("raw_extras", "sources"):
+                kwargs[f.name] = p.get(f.name) or {}
             elif f.name == "currency":
                 kwargs[f.name] = p.get(f.name, "USD")
             else:

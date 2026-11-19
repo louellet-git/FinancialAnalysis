@@ -53,7 +53,7 @@ def _make_company() -> CompanyFinancials:
         2025, revenue=50e9 * (1.05 ** 4), ocf=12e9 * (1.05 ** 4), capex=-2e9,
         net_income=9e9, sbc_total=0.6e9, acquisitions_net_of_cash=-2e9,
         long_term_debt=20e9, cash_and_equivalents=5e9,
-        raw_extras={"us-gaap/ShortTermBorrowings": 1e9},
+        debt_current=1e9,
         shares_outstanding=1e9,
     ))
     return CompanyFinancials(ticker="ACME", cik="0", company_name="Acme Corp",

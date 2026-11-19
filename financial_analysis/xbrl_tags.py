@@ -1,167 +1,127 @@
+"""Registry of standard variables: the one mapping from XBRL tags to model inputs.
+
+The registry data is in ``financial_analysis/standard_variables.toml``. Read the
+header of that file for the rules. This module loads the file and gives the Python
+names that the importer, the audit and the xlsx writer use. The Rust test framework
+(``rust/mapcheck``) reads the same file, thus Python and Rust use one definition.
+
+The importer records where each value came from in ``PeriodFinancials.sources``
+(a tag name, or the formula). Tags that are not in the registry stay available in
+``PeriodFinancials.raw_extras``.
+
+Limits: the SEC companyfacts API has no dimensional facts (segments, products,
+regions) and no company-specific tags. Those need filing-level XBRL
+(PLANNING/tickets.md, Ticket 7).
+"""
 from __future__ import annotations
-from dataclasses import dataclass
+import tomllib
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Optional
+
+REGISTRY_PATH = Path(__file__).with_name("standard_variables.toml")
+
+_PERIOD_FOR_STATEMENT = {
+    "income_statement": "duration",
+    "balance_sheet": "instant",
+    "cash_flow": "duration",
+    "disclosure": "instant",
+}
 
 
 @dataclass
 class TagSpec:
     concepts: list[str]
     unit: str = "USD"
-    sign_flip: bool = False
+    sign_flip: bool = False   # store as a negative number (a cash outflow)
+    negate: bool = False      # change the sign of the tag value
+    formulas: list[str] = field(default_factory=list)
+    period: Optional[str] = None  # "duration" or "instant"; set from the statement
+    core: bool = False
+    memo: bool = False
+    note: str = ""
 
 
-INCOME_STATEMENT_TAGS: dict[str, TagSpec] = {
-    "revenue": TagSpec([
-        "us-gaap/RevenueFromContractWithCustomerExcludingAssessedTax",
-        "us-gaap/Revenues",
-    ]),
-    "cogs_total": TagSpec([
-        "us-gaap/CostOfRevenue",
-        "us-gaap/CostOfGoodsAndServicesSold",
-    ]),
-    "gross_profit": TagSpec(["us-gaap/GrossProfit"]),
-    "rd_expense": TagSpec(["us-gaap/ResearchAndDevelopmentExpense"]),
-    "sm_expense": TagSpec(["us-gaap/SellingAndMarketingExpense"]),
-    "ga_expense": TagSpec(["us-gaap/GeneralAndAdministrativeExpense"]),
-    "sga_expense": TagSpec(["us-gaap/SellingGeneralAndAdministrativeExpense"]),
-    "opex_amortization": TagSpec(["us-gaap/AmortizationOfIntangibleAssets"]),
-    "opex_restructuring": TagSpec(["us-gaap/RestructuringCharges"]),
-    "operating_income": TagSpec(["us-gaap/OperatingIncomeLoss"]),
-    # Precedence: InterestIncomeNonoperating (the most specific "interest earned,
-    # non-operating" concept) > InvestmentIncomeInterest (interest on investments;
-    # common for cash-rich tech filers) > InterestIncomeOther (catch-all "other
-    # interest income"; IBM reports ONLY this one). Specific-before-generic so a
-    # filer tagging both never gets the catch-all.
-    "interest_income": TagSpec([
-        "us-gaap/InterestIncomeNonoperating",
-        "us-gaap/InvestmentIncomeInterest",
-        "us-gaap/InterestIncomeOther",
-    ]),
-    "interest_expense": TagSpec(["us-gaap/InterestExpense"]),
-    "gains_losses_on_investments": TagSpec(["us-gaap/GainLossOnInvestments"]),
-    "other_nonop_income": TagSpec(["us-gaap/OtherNonoperatingIncomeExpense"]),
-    "income_before_tax": TagSpec([
-        "us-gaap/IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest",
-        "us-gaap/IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments",
-    ]),
-    "income_tax_expense": TagSpec(["us-gaap/IncomeTaxExpenseBenefit"]),
-    "net_income": TagSpec(["us-gaap/NetIncomeLoss"]),
-    "da_total": TagSpec(["us-gaap/DepreciationDepletionAndAmortization"]),
-    "sbc_total": TagSpec(["us-gaap/ShareBasedCompensation"]),
-    "eps_basic": TagSpec(["us-gaap/EarningsPerShareBasic"], unit="USD/shares"),
-    "eps_diluted": TagSpec(["us-gaap/EarningsPerShareDiluted"], unit="USD/shares"),
-    "shares_basic": TagSpec(
-        ["us-gaap/WeightedAverageNumberOfSharesOutstandingBasic"], unit="shares"
-    ),
-    "shares_diluted": TagSpec(
-        ["us-gaap/WeightedAverageNumberOfDilutedSharesOutstanding"], unit="shares"
-    ),
+@dataclass(frozen=True)
+class Rollup:
+    name: str
+    total: str
+    parts: tuple[str, ...]      # lines that are usually separate lines on the statement
+    details: tuple[str, ...]    # lines that are frequently a detail inside one of the parts
+    combined: dict  # {one-line variable: (the parts it replaces, ...)}
+    signed: bool = False   # parts have signs (cash flows): the sum can be negative
+    exact: bool = False    # the parts are all the lines: the sum must equal the total
+
+
+def _load() -> dict:
+    with REGISTRY_PATH.open("rb") as handle:
+        return tomllib.load(handle)
+
+
+_RAW = _load()
+
+INCOME_STATEMENT_TAGS: dict[str, TagSpec] = {}
+BALANCE_SHEET_TAGS: dict[str, TagSpec] = {}
+CASH_FLOW_TAGS: dict[str, TagSpec] = {}
+DISCLOSURE_TAGS: dict[str, TagSpec] = {}
+_BY_STATEMENT = {
+    "income_statement": INCOME_STATEMENT_TAGS,
+    "balance_sheet": BALANCE_SHEET_TAGS,
+    "cash_flow": CASH_FLOW_TAGS,
+    "disclosure": DISCLOSURE_TAGS,
 }
 
-BALANCE_SHEET_TAGS: dict[str, TagSpec] = {
-    "cash_and_equivalents": TagSpec(["us-gaap/CashAndCashEquivalentsAtCarryingValue"]),
-    "short_term_investments": TagSpec([
-        "us-gaap/ShortTermInvestments",
-        "us-gaap/AvailableForSaleSecuritiesCurrent",
-    ]),
-    "accounts_receivable_net": TagSpec(["us-gaap/AccountsReceivableNetCurrent"]),
-    "inventory": TagSpec(["us-gaap/InventoryNet"]),
-    "total_current_assets": TagSpec(["us-gaap/AssetsCurrent"]),
-    "ppe_net": TagSpec(["us-gaap/PropertyPlantAndEquipmentNet"]),
-    "goodwill": TagSpec(["us-gaap/Goodwill"]),
-    "intangibles_net": TagSpec([
-        "us-gaap/IntangibleAssetsNetExcludingGoodwill",
-        "us-gaap/FiniteLivedIntangibleAssetsNet",
-    ]),
-    "operating_lease_rou_assets": TagSpec(["us-gaap/OperatingLeaseRightOfUseAsset"]),
-    "deferred_tax_assets": TagSpec(["us-gaap/DeferredIncomeTaxAssetsNet"]),
-    "other_noncurrent_assets": TagSpec(["us-gaap/OtherAssetsNoncurrent"]),
-    "total_assets": TagSpec(["us-gaap/Assets"]),
-    "accounts_payable": TagSpec(["us-gaap/AccountsPayableCurrent"]),
-    "accrued_compensation": TagSpec(["us-gaap/EmployeeRelatedLiabilitiesCurrent"]),
-    "accrued_liabilities": TagSpec(["us-gaap/AccruedLiabilitiesCurrent"]),
-    "deferred_revenue_current": TagSpec([
-        "us-gaap/DeferredRevenueCurrent",
-        "us-gaap/ContractWithCustomerLiabilityCurrent",
-    ]),
-    "total_current_liabilities": TagSpec(["us-gaap/LiabilitiesCurrent"]),
-    "long_term_debt": TagSpec([
-        "us-gaap/LongTermDebtNoncurrent",
-        "us-gaap/LongTermDebt",
-    ]),
-    "deferred_revenue_noncurrent": TagSpec([
-        "us-gaap/DeferredRevenueNoncurrent",
-        "us-gaap/ContractWithCustomerLiabilityNoncurrent",
-    ]),
-    "operating_lease_liabilities_noncurrent": TagSpec(["us-gaap/OperatingLeaseLiabilityNoncurrent"]),
-    "deferred_tax_liabilities": TagSpec(["us-gaap/DeferredIncomeTaxLiabilitiesNet"]),
-    "total_liabilities": TagSpec(["us-gaap/Liabilities"]),
-    "equity": TagSpec(["us-gaap/StockholdersEquity"]),
-    "shares_outstanding": TagSpec(
-        ["us-gaap/CommonStockSharesOutstanding"], unit="shares"
-    ),
-}
+# All variables, in the sequence of the registry file.
+ALL_TAGS: dict[str, TagSpec] = {}
+STATEMENT_MAP: dict[str, str] = {}
 
-CASH_FLOW_TAGS: dict[str, TagSpec] = {
-    "operating_cash_flow": TagSpec(["us-gaap/NetCashProvidedByUsedInOperatingActivities"]),
-    "capex": TagSpec([
-        "us-gaap/PaymentsToAcquireProductiveAssets",
-        "us-gaap/PaymentsToAcquirePropertyPlantAndEquipment",
-    ], sign_flip=True),
-    "purchases_investments": TagSpec([
-        "us-gaap/PaymentsToAcquireAvailableForSaleSecuritiesDebt",
-        "us-gaap/PaymentsToAcquireInvestments",
-    ], sign_flip=True),
-    "proceeds_investments": TagSpec([
-        "us-gaap/ProceedsFromMaturitiesPrepaymentsAndCallsOfAvailableForSaleSecurities",
-        "us-gaap/ProceedsFromSaleMaturityAndCollectionsOfInvestments",
-    ]),
-    "acquisitions_net_of_cash": TagSpec([
-        "us-gaap/PaymentsToAcquireBusinessesNetOfCashAcquired",
-    ], sign_flip=True),
-    "net_cash_from_investing": TagSpec(["us-gaap/NetCashProvidedByUsedInInvestingActivities"]),
-    "repurchases_common_stock": TagSpec([
-        "us-gaap/PaymentsForRepurchaseOfCommonStock",
-    ], sign_flip=True),
-    "taxes_paid_net_share_settlement": TagSpec([
-        "us-gaap/PaymentsRelatedToTaxWithholdingForShareBasedCompensation",
-    ], sign_flip=True),
-    # Precedence: PaymentsOfDividends (total cash dividends paid, all classes) >
-    # PaymentsOfDividendsCommonStock (common-only cash paid; IBM reports ONLY this
-    # one) > DividendsCommonStockCash (dividends DECLARED, an equity charge, not a
-    # cash-flow line — last-resort proxy; for steady payers declared ~= paid).
-    # First-wins merging means the declared proxy is used only for periods where
-    # neither payments concept exists.
-    "dividends_paid": TagSpec([
-        "us-gaap/PaymentsOfDividends",
-        "us-gaap/PaymentsOfDividendsCommonStock",
-        "us-gaap/DividendsCommonStockCash",
-    ], sign_flip=True),
-    "proceeds_issuance_debt": TagSpec(["us-gaap/ProceedsFromIssuanceOfLongTermDebt"]),
-    "repayment_of_debt": TagSpec([
-        "us-gaap/RepaymentsOfLongTermDebt",
-        "us-gaap/RepaymentsOfDebt",
-    ], sign_flip=True),
-    "net_cash_from_financing": TagSpec(["us-gaap/NetCashProvidedByUsedInFinancingActivities"]),
-}
+for _entry in _RAW["variable"]:
+    _spec = TagSpec(
+        concepts=list(_entry["tags"]),
+        unit=_entry.get("unit", "USD"),
+        sign_flip=_entry.get("sign_flip", False),
+        negate=_entry.get("negate", False),
+        formulas=list(_entry.get("formulas", [])),
+        period=_PERIOD_FOR_STATEMENT[_entry["statement"]],
+        core=_entry.get("core", False),
+        memo=_entry.get("memo", False),
+        note=_entry.get("note", ""),
+    )
+    if _entry["name"] in ALL_TAGS:
+        raise ValueError(f"standard_variables.toml: variable '{_entry['name']}' is there two times")
+    ALL_TAGS[_entry["name"]] = _spec
+    _BY_STATEMENT[_entry["statement"]][_entry["name"]] = _spec
+    STATEMENT_MAP[_entry["name"]] = _entry["statement"]
 
-# Point-in-time (instant) facts disclosed in the notes, not statement line items.
-# remaining_performance_obligation: total RPO (RULES.md R1 — forward-looking
-# disclosures bearing on growth drivers must be consumed). The current/noncurrent
-# duration split is a text disclosure only — not extractable from XBRL numerics.
-DISCLOSURE_TAGS: dict[str, TagSpec] = {
-    "remaining_performance_obligation": TagSpec([
-        "us-gaap/RevenueRemainingPerformanceObligation",
-    ]),
-}
+STATEMENT_MAP["free_cash_flow"] = "cash_flow"
+STATEMENT_MAP["fcf_margin"] = "cash_flow"
 
-STATEMENT_MAP: dict[str, str] = {
-    **{k: "income_statement" for k in INCOME_STATEMENT_TAGS},
-    **{k: "balance_sheet" for k in BALANCE_SHEET_TAGS},
-    **{k: "cash_flow" for k in CASH_FLOW_TAGS},
-    **{k: "disclosure" for k in DISCLOSURE_TAGS},
-    "free_cash_flow": "cash_flow",
-    "fcf_margin": "cash_flow",
-}
+CORE_FIELDS: tuple[str, ...] = tuple(k for k, s in ALL_TAGS.items() if s.core)
+
+# Tags that show that a period exists. A fiscal year (or a quarter) is in the
+# output only if one of these tags has a fact of the correct length for it.
+ANCHOR_CONCEPTS: tuple[str, ...] = tuple(_RAW["anchors"])
+
+# Material tags that have no standard variable on purpose: (regex, reason).
+EXCLUDED_CONCEPTS: tuple[tuple[str, str], ...] = tuple(
+    (e["pattern"], e["reason"]) for e in _RAW["excluded"]
+)
+
+ROLLUPS: tuple[Rollup, ...] = tuple(
+    Rollup(
+        name=r["name"],
+        total=r["total"],
+        parts=tuple(r["parts"]),
+        details=tuple(r.get("details", [])),
+        combined={k: tuple(v) for k, v in r.get("combined", {}).items()},
+        signed=r.get("signed", False),
+        exact=r.get("exact", False),
+    )
+    for r in _RAW.get("rollup", [])
+)
+
+# (part, total): a variable that must not be larger than a total.
+WITHIN: tuple[tuple[str, str], ...] = tuple((w["part"], w["total"]) for w in _RAW.get("within", []))
 
 UNIT_MAP: dict[str, str] = {
     "eps_basic": "USD/share",

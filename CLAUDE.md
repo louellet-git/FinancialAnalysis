@@ -33,12 +33,17 @@ The repo gives analysis. It does not send orders to a broker.
    of the same weight.
 4. **`PLANNING/RULES.md` rules are mandatory** in their scope. To remove a rule, do a
    review of the same weight as the review that made the rule.
-5. **The IBM entries in `financial_analysis/scenarios.py` are version 3 on purpose**
+5. **`financial_analysis/standard_variables.toml` defines the input variables.** Models
+   read the standard variable names only, not XBRL tag names and not `raw_extras`. To
+   add a tag, add it to this file, with the same scope as its variable. Python and Rust
+   read the same file. After a change: build `rust/mapcheck`, run `cargo test`,
+   `python -m pytest` and `python -m scripts.mapping_parity`.
+6. **The IBM entries in `financial_analysis/scenarios.py` are version 3 on purpose**
    (`docs/HIDDEN-ASSUMPTIONS.md` #13). The version 4 headline numbers come only from
    `python -m analysis.IBM.dcf_drivers_run`.
-6. **Published reports are frozen.** Do not change `analysis/IBM/report/*`. Write a new
+7. **Published reports are frozen.** Do not change `analysis/IBM/report/*`. Write a new
    version.
-7. `README.md` and `docs/` are for orientation only. `THOUGHTS` is a list of raw ideas.
+8. `README.md` and `docs/` are for orientation only. `THOUGHTS` is a list of raw ideas.
 
 ## Work rules
 
@@ -55,6 +60,8 @@ The repo gives analysis. It does not send orders to a broker.
 - **Smoke test.** A ticket is complete only after the real command runs and the next
   step can use the output.
 - **No bloat.** Add one small part, show that it gives value, then add the next part.
+- **New code for speed is in Rust** (`rust/`). The valuation code stays in Python until
+  a part is moved. A part that exists in two languages has a parity test.
 - **Do not commit** `data/`, `__pycache__/`, `.env`, or private review-framework files
   (`.claude/agents/`, `vendor/`). This repo is public.
 - **Token ledger.** Add a row to `PLANNING/token-ledger.md` for each run.
@@ -81,9 +88,12 @@ Do not use a first pass alone for a trade.
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest                              # 390 tests, no network
+python -m pytest                              # 439 tests, no network
+cargo test --manifest-path rust/mapcheck/Cargo.toml   # 41 Rust tests
 python -m scripts.analyze IBM                 # import + market data -> xlsx
 python -m scripts.verdict IBM --price 228.53  # value range against a price
+python -m scripts.mapping_audit IBM           # each input value with its source
+rust/mapcheck/target/release/mapcheck IBM --detail    # mapping checks (build first)
 python -m scripts.trade_backtest              # option bots, leaderboard
 ```
 
