@@ -1,7 +1,9 @@
 //! `fa`: command-line access to the FinancialAnalysis pipeline from Rust.
 //! Typed commands print pretty JSON; `fa run` passes any Python entry point through.
 
-use financial_analysis::{CheckResult, Curve, Fa, Inflation, RateObservation, Snapshot, Verdict};
+use financial_analysis::{
+    CheckResult, CreditSnapshot, Curve, Fa, HqmCurve, Inflation, RateObservation, Snapshot, Verdict,
+};
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::process::ExitCode;
@@ -18,7 +20,14 @@ USAGE:
   fa rates inflation [--date D]                   breakevens, 5y5y forward, CPI (BLS)
   fa rates fred --series ID [--start D] [--raw]   any FRED series
   fa rates check [--days N]                       cross-check against FRED (exit 1 on mismatch)
-  fa verdict TICKER --price P [--rf-date D|today] [--rf-base-date D] [--simulations N] [--seed S]
+  fa bonds [snapshot] [--date D]                  every rating, Moody's Aaa/Baa, HQM corporate curve
+  fa bonds spread|yield|over10y --rating A- [--date D]
+                                                  ICE OAS, index yield, or yield minus UST 10Y
+  fa bonds moodys --grade Aaa|Baa [--date D]      Moody's seasoned corporate yield
+  fa bonds hqm [--date D]                         Treasury HQM corporate spot curve (monthly)
+  fa bonds check [--days N]                       Moody's - 10Y vs FRED (exit 1 on mismatch)
+  fa verdict TICKER --price P [--rf-date D|today] [--rf-base-date D] [--rating A-]
+             [--simulations N] [--seed S]
   fa run MODULE [ARGS...]                         any entry point, e.g. fa run scripts.analyze IBM
 
 D is YYYY-MM-DD or 'today'. Rates are decimals (0.0507 = 5.07%).
@@ -28,6 +37,43 @@ ENVIRONMENT:
   FA_PYTHON  Python interpreter (default: <repo>/.venv/bin/python, else python3)";
 
 const RATES: &str = "financial_analysis.rates";
+const BONDS: &str = "financial_analysis.bonds";
+
+/// Default subcommand "snapshot" when none (or only a flag) is given.
+fn with_default_sub(rest: &[String]) -> (Vec<String>, String) {
+    let mut args = rest.to_vec();
+    match rest.first() {
+        Some(s) if !s.starts_with('-') => (args, s.clone()),
+        _ => {
+            args.insert(0, "snapshot".into());
+            (args, "snapshot".into())
+        }
+    }
+}
+
+fn exit_on_mismatch(results: &[CheckResult]) -> ExitCode {
+    if results.iter().any(|r| !r.mismatches.is_empty()) {
+        ExitCode::from(1)
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+fn bonds(fa: &Fa, rest: &[String]) -> financial_analysis::Result<ExitCode> {
+    let (args, sub) = with_default_sub(rest);
+    match sub.as_str() {
+        "snapshot" => print_json(&fa.call::<CreditSnapshot>(BONDS, &args)?),
+        "spread" | "yield" | "over10y" | "moodys" => print_json(&fa.call::<RateObservation>(BONDS, &args)?),
+        "hqm" => print_json(&fa.call::<HqmCurve>(BONDS, &args)?),
+        "check" => {
+            let results = fa.call::<Vec<CheckResult>>(BONDS, &args)?;
+            print_json(&results);
+            return Ok(exit_on_mismatch(&results));
+        }
+        other => return Ok(usage_error(&format!("unknown bonds command '{other}'"))),
+    }
+    Ok(ExitCode::SUCCESS)
+}
 
 fn print_json<T: Serialize>(value: &T) {
     println!("{}", serde_json::to_string_pretty(value).expect("serializable"));
@@ -39,19 +85,8 @@ fn usage_error(msg: &str) -> ExitCode {
 }
 
 fn rates(fa: &Fa, rest: &[String]) -> financial_analysis::Result<ExitCode> {
-    let mut args = rest.to_vec();
-    let sub = match rest.first().map(String::as_str) {
-        None => {
-            args.insert(0, "snapshot".into());
-            "snapshot"
-        }
-        Some(s) if s.starts_with('-') => {
-            args.insert(0, "snapshot".into());
-            "snapshot"
-        }
-        Some(s) => s,
-    };
-    match sub {
+    let (args, sub) = with_default_sub(rest);
+    match sub.as_str() {
         "snapshot" => print_json(&fa.call::<Snapshot>(RATES, &args)?),
         "yield" | "nyfed" => print_json(&fa.call::<RateObservation>(RATES, &args)?),
         "curve" => print_json(&fa.call::<Curve>(RATES, &args)?),
@@ -60,9 +95,7 @@ fn rates(fa: &Fa, rest: &[String]) -> financial_analysis::Result<ExitCode> {
         "check" => {
             let results = fa.call::<Vec<CheckResult>>(RATES, &args)?;
             print_json(&results);
-            if results.iter().any(|r| !r.mismatches.is_empty()) {
-                return Ok(ExitCode::from(1));
-            }
+            return Ok(exit_on_mismatch(&results));
         }
         other => return Ok(usage_error(&format!("unknown rates command '{other}'"))),
     }
@@ -76,6 +109,7 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
             Ok(ExitCode::SUCCESS)
         }
         Some("rates") => rates(fa, &args[1..]),
+        Some("bonds") => bonds(fa, &args[1..]),
         Some("verdict") => {
             print_json(&fa.call::<Verdict>("scripts.verdict", &args[1..])?);
             Ok(ExitCode::SUCCESS)

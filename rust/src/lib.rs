@@ -130,6 +130,61 @@ pub struct RatesContext {
     pub base: Option<BaseSplit>,
 }
 
+/// One rating index (ICE BofA): spread and yield, all decimals.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RatingQuote {
+    /// Option-adjusted spread over the Treasury curve at each bond's maturity.
+    pub oas: RateObservation,
+    #[serde(rename = "yield")]
+    pub effective_yield: RateObservation,
+    /// Index yield minus UST 10Y: the engine's `kd_spread` definition.
+    pub spread_over_10y: RateObservation,
+}
+
+/// U.S. Treasury HQM corporate spot curve (monthly average), maturities "1Y".."30Y".
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct HqmCurve {
+    pub date: String,
+    pub source: String,
+    pub maturities: BTreeMap<String, f64>,
+}
+
+impl HqmCurve {
+    /// Maturities in increasing order (a `BTreeMap` sorts "10Y" before "1Y").
+    pub fn ordered(&self) -> Vec<(String, f64)> {
+        let mut v: Vec<(String, f64)> = self.maturities.iter().map(|(k, x)| (k.clone(), *x)).collect();
+        v.sort_by_key(|(k, _)| k.trim_end_matches('Y').parse::<u32>().unwrap_or(u32::MAX));
+        v
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CreditSnapshot {
+    /// Keyed by "AAA", "AA", "A", "BBB", "BB", "B", "CCC".
+    pub ratings: BTreeMap<String, RatingQuote>,
+    /// Keyed by "Aaa" and "Baa".
+    pub moodys: BTreeMap<String, RateObservation>,
+    pub hqm_curve: HqmCurve,
+}
+
+/// What `--rating` did to the cost of debt in a verdict.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CreditContext {
+    pub rating: String,
+    /// The ICE index used: the rating without notches ("A-" -> "A").
+    pub index: String,
+    pub kd_spread: RateObservation,
+    pub model_kd_spread: f64,
+    pub kd_spread_change_vs_model: f64,
+    pub index_yield: f64,
+    pub oas: f64,
+    pub moodys_aaa: f64,
+    pub moodys_baa: f64,
+    pub kd_pretax: f64,
+    pub kd_after_tax: f64,
+    pub tax_rate: f64,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Verdict {
     pub ticker: String,
@@ -145,6 +200,9 @@ pub struct Verdict {
     pub verdict: String,
     /// Present only when `rf_date` was given.
     pub rates: Option<RatesContext>,
+    /// Present only when `rating` was given.
+    #[serde(default)]
+    pub credit: Option<CreditContext>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -155,6 +213,8 @@ pub struct VerdictOptions {
     pub rf_date: Option<String>,
     /// "YYYY-MM-DD": split the 10Y change since this date into real rate and inflation.
     pub rf_base_date: Option<String>,
+    /// S&P ("A-") or Moody's ("A3") rating: use the market `kd_spread` for it. Needs `rf_date`.
+    pub rating: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -355,6 +415,55 @@ impl Fa {
     pub fn verdict(&self, ticker: &str, price: f64, opts: &VerdictOptions) -> Result<Verdict> {
         self.call("scripts.verdict", &verdict_args(ticker, price, opts))
     }
+
+    fn bonds<T: DeserializeOwned>(&self, args: Vec<String>) -> Result<T> {
+        self.call("financial_analysis.bonds", &args)
+    }
+
+    fn rating_cmd<T: DeserializeOwned>(&self, cmd: &str, rating: &str, date: Option<&str>) -> Result<T> {
+        let mut a = vec![cmd.into(), "--rating".into(), rating.into()];
+        push_date(&mut a, date);
+        self.bonds(a)
+    }
+
+    /// ICE BofA option-adjusted spread for a rating ("A-", "Baa2", ...).
+    pub fn credit_spread(&self, rating: &str, date: Option<&str>) -> Result<RateObservation> {
+        self.rating_cmd("spread", rating, date)
+    }
+
+    /// ICE BofA effective yield for a rating.
+    pub fn corporate_yield(&self, rating: &str, date: Option<&str>) -> Result<RateObservation> {
+        self.rating_cmd("yield", rating, date)
+    }
+
+    /// Index yield minus UST 10Y on the same date: the engine's `kd_spread`.
+    pub fn spread_over_10y(&self, rating: &str, date: Option<&str>) -> Result<RateObservation> {
+        self.rating_cmd("over10y", rating, date)
+    }
+
+    /// Moody's seasoned corporate yield: grade "Aaa" or "Baa".
+    pub fn moodys(&self, grade: &str, date: Option<&str>) -> Result<RateObservation> {
+        let mut a = vec!["moodys".into(), "--grade".into(), grade.into()];
+        push_date(&mut a, date);
+        self.bonds(a)
+    }
+
+    pub fn hqm_curve(&self, date: Option<&str>) -> Result<HqmCurve> {
+        let mut a = vec!["hqm".into()];
+        push_date(&mut a, date);
+        self.bonds(a)
+    }
+
+    pub fn credit_snapshot(&self, date: Option<&str>) -> Result<CreditSnapshot> {
+        let mut a = vec!["snapshot".into()];
+        push_date(&mut a, date);
+        self.bonds(a)
+    }
+
+    /// Moody's minus UST 10Y vs FRED AAA10Y / BAA10Y over the last `days`.
+    pub fn check_bonds(&self, days: u32) -> Result<Vec<CheckResult>> {
+        self.bonds(vec!["check".into(), "--days".into(), days.to_string()])
+    }
 }
 
 fn push_date(a: &mut Vec<String>, date: Option<&str>) {
@@ -377,6 +486,9 @@ pub fn verdict_args(ticker: &str, price: f64, opts: &VerdictOptions) -> Vec<Stri
     }
     if let Some(d) = &opts.rf_base_date {
         a.extend(["--rf-base-date".into(), d.clone()]);
+    }
+    if let Some(r) = &opts.rating {
+        a.extend(["--rating".into(), r.clone()]);
     }
     a
 }
@@ -490,12 +602,60 @@ mod tests {
     }
 
     #[test]
+    fn parses_credit_snapshot_and_orders_hqm() {
+        let q = format!(
+            r#"{{"oas": {}, "yield": {}, "spread_over_10y": {}}}"#,
+            obs_json("A OAS", 0.0076, ""),
+            obs_json("A yield", 0.0577, ""),
+            obs_json("A - 10Y", 0.0067, "")
+        );
+        let j = format!(
+            r#"{{"ratings": {{"A": {q}}}, "moodys": {{"Baa": {}}},
+                "hqm_curve": {{"date": "2026-10-01", "source": "U.S. Treasury HQM via FRED",
+                               "maturities": {{"10Y": 0.0602, "1Y": 0.048, "2Y": 0.0517, "30Y": 0.0681}}}}}}"#,
+            obs_json("Baa", 0.0663, "")
+        );
+        let s: CreditSnapshot = parse_output(&j).unwrap();
+        assert_eq!(s.ratings["A"].effective_yield.value, 0.0577);
+        assert_eq!(s.ratings["A"].spread_over_10y.value, 0.0067);
+        let order: Vec<String> = s.hqm_curve.ordered().into_iter().map(|(k, _)| k).collect();
+        assert_eq!(order, vec!["1Y", "2Y", "10Y", "30Y"]);
+    }
+
+    #[test]
+    fn parses_verdict_credit_and_old_output_without_it() {
+        let base = r#""ticker": "IBM", "simulations": 10000, "seed": 7, "price": 231.09,
+            "p10": 69.91, "p25": 94.69, "p50": 127.71, "p75": 167.72, "p90": 214.08,
+            "chance_price_too_high": 0.932, "verdict": "Strongly overpriced", "rates": null"#;
+        let v: Verdict = parse_output(&format!("{{{base}}}")).unwrap();
+        assert!(v.credit.is_none());
+        let credit = format!(
+            r#"{{"rating": "A-", "index": "A", "kd_spread": {}, "model_kd_spread": -0.001,
+                "kd_spread_change_vs_model": 0.0077, "index_yield": 0.0577, "oas": 0.0076,
+                "moodys_aaa": 0.0618, "moodys_baa": 0.0663, "kd_pretax": 0.0574,
+                "kd_after_tax": 0.045346, "tax_rate": 0.21}}"#,
+            obs_json("A - 10Y", 0.0067, "A- uses the A index")
+        );
+        let v: Verdict = parse_output(&format!("{{{base}, \"credit\": {credit}}}")).unwrap();
+        let c = v.credit.unwrap();
+        assert_eq!((c.index.as_str(), c.kd_spread.value), ("A", 0.0067));
+    }
+
+    #[test]
     fn verdict_args_include_options() {
         let a = verdict_args(
             "IBM",
             231.09,
-            &VerdictOptions { seed: Some(7), rf_date: Some("today".into()), ..Default::default() },
+            &VerdictOptions {
+                seed: Some(7),
+                rf_date: Some("today".into()),
+                rating: Some("A-".into()),
+                ..Default::default()
+            },
         );
-        assert_eq!(a, vec!["IBM", "--price", "231.09", "--seed", "7", "--rf-date", "today"]);
+        assert_eq!(
+            a,
+            vec!["IBM", "--price", "231.09", "--seed", "7", "--rf-date", "today", "--rating", "A-"]
+        );
     }
 }
