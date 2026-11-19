@@ -535,6 +535,60 @@ change when the range changes. Example: on 2026-11-17 the mean for the window th
 two days apart.
 *Evidence:* `rust/src/futures/mpt.rs`; `fa futures policy-path`.
 
+**80. The rate series are proxies of the short rate.** The default series is the GSW
+1-year zero yield. It is a fitted yield of a 1-year bond, not an overnight rate. It has a
+term premium and it moves less than the overnight rate. A model fitted to it is a model of
+this series. The instantaneous forward rate at 0 (`f(0,0)`, 4.13% on 2026-11-13) is
+different from the 1-year yield (4.63%). A Treasury 3-month history is not built.
+*Evidence:* `rust/src/ratemodels/cli.rs` (`load_series`); `fa forwards --date 2026-11-13`.
+
+**81. Mean reversion of a rate is weakly identified.** On the full GSW 1Y history
+(1961 to 2026, daily), Vasicek ML gives kappa = 0.046 with standard error 0.037
+(t = 1.26): not different from zero. In rolling 5-year windows (weekly data, step 3
+months), 64 of 242 windows have an AR(1) coefficient of 1 or more, and the fit gives an
+error. Only 12 of the 178 other windows have t above 2.86. Least-squares kappa is also
+biased up in a short sample. Do not use theta as a forecast. Read the standard error and
+the flag in each fit.
+*Evidence:* `fa models calibrate --model vasicek --method ml`; `fa models rolling`.
+
+**82. The parameters depend on the sampling frequency.** Vasicek sigma on the full history
+is 0.0096 (daily), 0.0120 (weekly) and 0.0149 (monthly), and kappa is 0.046, 0.071 and
+0.109. This is not a code error. The exact map removes the effect of the step for data
+that come from the model (tests at two steps). Real changes of rates are autocorrelated,
+and the volatility changes with time. So the model is not right at all frequencies.
+`dt` is the mean calendar spacing (about 1/249 year for daily data).
+*Evidence:* `fa models frequencies --model vasicek --method ml`.
+
+**83. CIR and CKLS need positive rates, and ML can hit a bound.** CIR and CKLS give an
+error if one rate is 0 or lower. For the last 10 years (1Y yield near 0 in 2020 and 2021,
+about 4.6% now), CIR ML and CKLS quasi-ML push kappa to the lower bound 1e-4 and the code
+gives an error. The Feller ratio of the full-history CIR fit is 1.3: near the limit.
+The CIR sampling scheme is QE (not the exact chi-square): it is correct near 0 but it is
+an approximation of the law of each step (mean and variance are exact).
+*Evidence:* `rust/src/ratemodels/calib.rs`; `fa models calibrate --model cir --method ml --start 2016-11-13`.
+
+**84. CKLS gamma is not stable between methods.** On the full history, GMM gives
+gamma = 1.00 (standard error 0.07), and quasi-ML gives 0.43. The two methods use different
+information (the GMM variance equation uses `E[(e^2 - s r^(2g)) r] = 0`). The quasi-likelihood
+has the exact mean and an Euler-type variance, so its AIC is close to the exact ones but
+not strictly equal. The CKLS simulation scheme (Milstein, full truncation) is biased near 0;
+for gamma = 1/2 use `Cir`.
+*Evidence:* `fa models calibrate --model ckls --method gmm` and `--method ml`.
+
+**85. Hull-White and Ho-Lee mix two measures.** `theta(t)` comes from the zero curve of one
+date. It is in the pricing measure, and the model reprices that curve. `a` and `sigma` come
+from the history, in the real-world measure. A path of this model is not a forecast. The
+curve is the Svensson curve of the day, so maturities above 30 years are an extrapolation.
+Ho-Lee has no mean reversion: the rate can be negative and the variance grows with time.
+*Evidence:* `rust/src/ratemodels/models.rs` (`HullWhite`); the output field `zero_curve`.
+
+**86. The Monte Carlo bond price has two small errors.** The discount integral uses the
+trapezoid rule (error of order dt^2). A simulation with few steps for each year has a
+bias in the price. The test tolerance is 4 standard errors plus 5e-5. The same seed
+gives the same numbers with any number of threads, but not the same numbers if you change
+`steps-per-year` or the number of paths.
+*Evidence:* `rust/src/ratemodels/sim.rs` (`trapezoid`); `fa models simulate`.
+
 ## Corporate bonds (added 2026-11-18)
 
 **45. For IBM, `--rating` replaces a reviewed calibration with a proxy.** The IBM

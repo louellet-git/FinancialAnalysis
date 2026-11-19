@@ -18,6 +18,7 @@
 
 pub mod forwards;
 pub mod futures;
+pub mod ratemodels;
 
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
