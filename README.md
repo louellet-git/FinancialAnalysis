@@ -20,8 +20,8 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 ```bash
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program that makes the standard variables (necessary)
 cargo build --release --manifest-path rust/Cargo.toml            # the `fa` program
-cargo test --manifest-path rust/mapcheck/Cargo.toml    # 89 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked    # 473 Rust tests (455 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research)
+cargo test --manifest-path rust/mapcheck/Cargo.toml    # 90 Rust tests, no network
+cargo test --manifest-path rust/Cargo.toml --locked    # 498 Rust tests (480 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research)
 ```
 
 No Python test remains. The only Python code that remains is the legacy SEC client with its
@@ -102,6 +102,10 @@ fa prices get IBM MSFT [--tickers-file rust/mapcheck/universe/sp500.txt] [--sour
 fa prices show IBM [--from D] [--to D]            # rows of the cache
 fa prices last IBM JNJ                            # last close, date, source; warns when older than 5 weekdays
 fa prices check MSFT --sources yahoo,nasdaq       # compare two sources on the common dates (network)
+fa estimates get IBM MSFT [--tickers-file F] [--endpoints forecast,surprise,targets,momentum] [--momentum] [--refresh]   # consensus EPS, price targets, surprises into data/raw (Nasdaq site, no key; network)
+fa estimates show IBM [--price P]                 # consensus by period, revisions, forward P/E, target against the last close, next report date
+fa earnings calendar [IBM...] [--tickers-file F] [--from D] [--days 60]   # Nasdaq earnings calendar scan, next report date of each ticker (network)
+fa earnings dates IBM JNJ [--tolerance 1]         # past report dates against the SEC 8-K list (mapcheck fetch --submissions TICKER)
 fa verdict IBM [--price 228.53] [--simulations 10000] [--seed 7] [--rf-date today] [--rf-base-date 2026-07-16] [--rating A-]
 fa rates [snapshot|yield|curve|history|nyfed|inflation|fred|check] [--date D]   # JSON
 fa bonds [snapshot|spread|yield|over10y|moodys|hqm|check] [--rating A-] [--date D]   # JSON
@@ -120,8 +124,7 @@ Remote data has a disk cache in `data/raw/TICKER/`. Option chains are saved as d
 snapshots, because the source gives only current data. A run on the same day reads the
 disk; `fa analyze --refresh` gets new data. Prices come from the Yahoo chart endpoint. Yahoo
 often answers HTTP 429 (too many requests) to a cloud container: then the program says so and
-keeps the cache file. The forward consensus snapshot and the earnings dates have no source in
-Rust: the program reads the cache files that exist (see `docs/HIDDEN-ASSUMPTIONS.md`, #140 to #145).
+keeps the cache file. The forward consensus (EPS, price targets, ratings), the surprises and the earnings dates come from the Nasdaq site API (no key): `fa estimates get` and `fa earnings calendar` write the cache, `fa analyze` reads it (see `docs/HIDDEN-ASSUMPTIONS.md`, #215 to #229). Revenue estimates need `FMP_API_KEY`.
 
 ## Standard input variables
 

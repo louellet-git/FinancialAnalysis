@@ -1546,6 +1546,83 @@ their own events is checked by `check_events` in unit tests only.
 who gets the cache with `--source nasdaq` has a split adjusted close without the dividend adjustment: this is the price paid, and it is the right price for a verdict.
 *Evidence:* `main.rs` (`verdict_cmd`), `price_cli::cached_price`.
 
+## Estimates and earnings dates (added 2026-11-19, branch `claude/estimates-earnings`)
+
+**215. The Nasdaq analyst data is not a published API, and the vendor is Zacks.** The endpoints are the ones that the Nasdaq pages call. The reply
+format, the limits and the access can change or stop without a notice. The program gives its real client name, asks with no key, no cookie and
+no login, and does not imitate a browser. It stops at HTTP 429, at HTTP 403 and at a reply that is not JSON: it waits 60 seconds one time, tries
+again, and then stops the source for the run. The cache stays. Use the numbers as a vendor consensus, not as a record of each analyst.
+*Evidence:* `rust/src/market/nasdaq_est.rs` (`Client::request`, test `a_block_is_tried_once_more_and_then_the_source_stops`).
+
+**216. There are no revenue estimates in the source.** The consensus has EPS only. The field `revenue_estimate` of the snapshot is empty, and the
+xlsx file has no revenue row from it. Revenue estimates come from FMP when `FMP_API_KEY` exists (`fmp.rs`, the v3 endpoints are closed for new keys,
+so a new key may give an error). A record of FMP goes to the period of the snapshot that ends in the same month and year. The count of analysts of FMP is the
+EPS count and is not copied to revenue. Two other free sources were read on 2026-11-19: Alpha Vantage (`EARNINGS_ESTIMATES`) and Finnhub (`revenue-estimate`).
+The documentation did not show in a clear way that the free plan gives revenue estimates (Finnhub: the pricing page shows revenue estimates in
+paid tiers), so neither was built.
+*Evidence:* `consensus::merge_revenue`, `estimates_cli.rs` (test `revenue_of_fmp_goes_to_the_period_with_the_same_month`).
+
+**217. Symbol rules and the tickers with no data.** The site writes a share class with a dot: `BRK-B` gives `Symbol not exists` (code 1001) and `BRK.B`
+is right (`nasdaq_est::symbol`). `BRK.B` and a new listing (`ANT`, 2026-11-19) answer HTTP 200 with null tables ("not available") or code 1002
+("No record found"). The program does not write a file for these and says `no data`. This is not an error and not a zero. The SEC list has `ANT` with no form 8-K
+that has item 2.02.
+*Evidence:* test `no_data_unknown_symbol_and_block`; the files `rust/tests/fixtures/market/nasdaq/`.
+
+**218. Number forms are text.** A value can be `4.71` (text), `"$0.64"`, `"$1,010,441,910,000"`, `"N/A"`, `""` or a JSON number. A value that does not
+parse is missing (`None`) and is never zero. A forecast row with no consensus is skipped.
+*Evidence:* test `text_number_forms`.
+
+**219. The source gives the consensus of today only.** A second request on a later day gives the new consensus, and the old one is gone at the source. So
+each day is a new file `estimates/<date>.json`, and the sequence of the files is the history (the revisions). `fa estimates show` compares the first and the last snapshot only for
+the same fiscal period. A snapshot of the Python code for the same date has no `source` field and is never replaced. One run a week gives a weekly history; there is no history
+before the first run. The endpoint `targetprice` has 13 monthly points of the mean target and of the ratings; the program keeps them only in the answer, not in the file.
+*Evidence:* `estimates_cache.rs` (tests `one_run_writes_the_snapshot_the_surprises_and_the_dates`, `a_snapshot_of_the_python_code_is_never_replaced`).
+
+**220. `0q` and `0y` are the first period that is not reported.** The first row of each table of the source is the next quarter and the next fiscal year
+that the company has not reported, as in the Yahoo layout (`0q`, `+1q`, `0y`, `+1y`). The source has four to five quarters and four years (`+4q`, `+2y`, `+3y` are new keys). The label `0y` moves when a company reports its year (MSFT: `0y` is
+June 2027, since June 2026 is reported); the snapshot has `period_ends` for this. The growth of `0y` over the last reported year is not in the source. `fa estimates show` gives the growth
+of `+1y` and later years only. The consensus EPS is the vendor definition (mostly adjusted), not GAAP EPS. IBM 2026-11-19: `0y` is 12.42, the same as the Yahoo snapshot.
+*Evidence:* `nasdaq_est::apply_forecast`, `ConsensusEstimates::eps_growth`.
+
+**221. The calendar reaches about 8 weeks ahead, and most companies have no date in it.** A day beyond the horizon answers HTTP 200 with `data: null` and code 1002
+(2027-01-14 and later on 2026-11-19): the program treats it as an empty day. In a 60-day scan on 2026-11-19 there were 554 company rows, and 59 of the 505 companies of
+`sp500.txt` had a date (JPM 2027-01-12, ORCL 2026-12-09). The time of the day is often `not-supplied` for a day that is far away. The scan makes no request for a Saturday or a Sunday. A past day is final
+when it was fetched after the day; a future day is asked again each day.
+*Evidence:* `earnings_dates.rs` (tests `calendar_cache_rule`, `scan_asks_only_for_the_days_that_the_cache_does_not_have`).
+
+**222. The next date of most companies is a guess.** When the calendar has no date, the program uses the report date of one year before plus 364 days (the same weekday), from the
+Nasdaq surprise dates and the SEC 8-K dates. The file and the text say `estimate`. A company can report a week earlier or later. It gives no date when the nearest guess is more than 100 days away.
+*Evidence:* `earnings_dates::estimate_next`.
+
+**223. Two sources of past dates agree, with one kind of extra row.** For IBM, JNJ and MSFT (2026-11-19) each Nasdaq date of the last four quarters equals the date of a form 8-K with item 2.02 (0 days apart, 12 of 12).
+The SEC list has more rows than the quarters: an item 2.02 can be a pre-announcement or another event (IBM 2026-07-14). The program lists these as `SEC only`. It uses `filed` and `reportDate` of the filing and takes the nearer one.
+Two dates that are 10 days apart or less are the same event with two dates; farther apart are two events. The Nasdaq table shows only 4 quarters, so the comparison covers one year. The SEC file has the recent filings only (`filings.recent`).
+*Evidence:* `earnings_dates::compare_dates`, `mapcheck/src/sec.rs` (`earnings_filings`).
+
+**224. The Nasdaq surprise is not the Yahoo surprise.** IBM third quarter 2026: Nasdaq consensus 2.88, Yahoo (Python cache) 2.87. The consensus is the vendor value at the time of the report. The percentage of the source is rounded to
+two places; the sheet recomputes the surprise from the two EPS values (`surprise / abs(consensus)`, a ratio). The source shows 4 quarters; the rows add up in `earnings_surprises.json` over the runs. A row of the same date is replaced by the new row.
+*Evidence:* `estimates_cache::surprises_for_sheet`, `merge_surprises`.
+
+**225. The price target is the mean of the vendor, with no `current` and no `median`.** The snapshot has `mean`, `low` and `high`. The ratings are the counts `buy`, `hold`, `sell` of the same endpoint (the endpoint `ratings` has broker names only, and is not used).
+The target against the last close uses the price cache; if that cache is old, the percentage is old. A target can be below the price (AAPL, DUOL, 2026-11-19).
+*Evidence:* `nasdaq_est::apply_targets`, `estimates_cli::render_show`.
+
+**226. Requests for each ticker.** Necessary: `earnings-forecast`, `earnings-surprise`, `targetprice` (3 requests, about 6 to 8 seconds). Optional: `estimate-momentum` (`--momentum`). Not used: `quote/<T>/eps` (the same numbers),
+`ratings`, `company/<T>/revenue` (reported values). A file of today is not asked again. A bulk run of 500 tickers with two endpoints is about 1,000 requests and about 40 minutes.
+*Evidence:* `Endpoint::DEFAULT`, `fa estimates --help`.
+
+**227. `fa analyze` and `fa report` read the cache and make no request to this source.** The sheet `Estimates Fwd` has the same columns. New rows: the periods `+2q` to `+4q` and `+2y`, `+3y`; metrics `up` and `down` (revisions of 4 weeks)
+in `earnings_estimate`; `price_target` has `mean`, `low`, `high`; new kinds `ratings` and `consensus_change`. Empty: `revenue_estimate` (no source; with a key FMP fills it in memory), `price_target current` and `median`, `yearAgoEps`, `growth`.
+The sheet `Estimates` has the surprises from the Nasdaq file first (then the Python file, then FMP), and the next report date as a row with no actual result, as in the Python file. `fa report` does not show the estimates (it did not before).
+*Evidence:* `analyze.rs` (`load_market`, `flatten`).
+
+**228. The Nasdaq `eps` of a quarter that is not reported.** The endpoint `quote/<T>/eps` shows `earnings: 0.0` for an upcoming quarter. This is not an EPS. The program does not use this endpoint.
+*Evidence:* the replies of 2026-11-19 (`quote/MSFT/eps`).
+
+**229. Tickers with a SEC list entry but a different name in the vendor data.** The SEC ticker `BRK-B` is `BRK.B` at Nasdaq and `BRK/B` in its replies; `same_symbol` accepts the three. The calendar has the symbol of the vendor (`MOG.A`). A company whose
+ticker changed has the past dates under the old symbol in the vendor data and is not joined.
+*Evidence:* `nasdaq_est::same_symbol`; the calendar fixture.
+
 **230. No keyed loader ran against the real server.** The loaders for Alpaca (stock bars, option contracts, option bars, chain snapshots), the FRED API and the Tiingo source follow the official
 documentation, read on 2026-11-19. No key was in the container. Each parser has a test on text that follows the documented reply. The first run with a real key can fail on a detail that the
 documentation does not show (a field name, a status code, the form of a missing value). Do this at the first run: `fa prices get IBM --source alpaca`, `fa prices intraday SPY --from 2024-06-03 --to 2024-06-07`,

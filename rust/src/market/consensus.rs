@@ -1,16 +1,15 @@
 //! Forward consensus snapshots and the earnings cache of the Python code (the Rust form of `estimates.py`
 //! and the cache part of `market_data.py`).
 //!
-//! The Python code got these from yfinance, which uses Yahoo endpoints that need a cookie and a crumb.
-//! Yahoo refuses those for a program that gives its real name (trap #93 of `docs/HIDDEN-ASSUMPTIONS.md`),
-//! and this program does not imitate a browser. So there is **no source** in Rust for:
+//! The snapshot is `data/raw/<T>/estimates/<date>.json`. The source in Rust is the Nasdaq site API
+//! (`nasdaq_est`, `estimates_cache`; `fa estimates get`). The Python code got the snapshot from yfinance,
+//! whose Yahoo endpoints refuse a program that gives its real name (trap #93 of `docs/HIDDEN-ASSUMPTIONS.md`);
+//! the files that it made are still read. The Nasdaq snapshot has the same layout (`0q`, `+1q`, `0y`, `+1y`
+//! and the columns `avg`, `low`, `high`, `numberOfAnalysts`) and a few more fields (`source`, `endpoints`,
+//! `period_ends`, `ratings`, `consensus_change`). It has no revenue estimates; `fmp` gives them when the key exists.
 //!
-//! - the forward consensus snapshot (`data/raw/<T>/estimates/<date>.json`), and
-//! - the earnings dates with the estimate and the actual result (`data/raw/<T>/yf_earnings.json`).
-//!
-//! The program reads the files that exist (made earlier by the Python code), and it says that there is
-//! no source when a file does not exist. The snapshot has its date in each row of the sheet.
-//! `fmp` gives estimates and surprises when the key exists.
+//! The older earnings cache is `data/raw/<T>/yf_earnings.json` (read by `cached_surprises`).
+//! The report date and the surprise of the Nasdaq source are in `earnings_surprises.json`.
 
 use super::fmp::EarningsSurprise;
 use super::{lenient_json, parse_date, round6, ticker_dir, write_atomic, Ordered};
@@ -32,6 +31,21 @@ pub struct ConsensusEstimates {
     pub earnings_estimate: Periods,
     #[serde(default)]
     pub analyst_price_targets: Ordered<Option<f64>>,
+    /// The source of the snapshot (`nasdaq`). A snapshot of the Python code has none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+    /// The endpoints that gave the data of this snapshot (`forecast`, `targets`, `momentum`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub endpoints: Vec<String>,
+    /// The end of each fiscal period as `YYYY-MM` (`0y` is `2027-06`).
+    #[serde(default, skip_serializing_if = "Ordered::is_empty")]
+    pub period_ends: Ordered<String>,
+    /// The number of analysts for each rating: `buy`, `hold`, `sell`.
+    #[serde(default, skip_serializing_if = "Ordered::is_empty")]
+    pub ratings: Ordered<Option<f64>>,
+    /// The consensus EPS now, 1 week ago and 1 month ago, for the quarter (`qtr_*`) and the year (`yr_*`).
+    #[serde(default, skip_serializing_if = "Ordered::is_empty")]
+    pub consensus_change: Ordered<Option<f64>>,
 }
 
 impl ConsensusEstimates {
@@ -39,6 +53,81 @@ impl ConsensusEstimates {
     pub fn record_count(&self) -> usize {
         self.revenue_estimate.len() + self.earnings_estimate.len() + self.analyst_price_targets.len()
     }
+
+    /// An empty snapshot of a source.
+    pub fn empty(ticker: &str, date: &str, source: &str) -> ConsensusEstimates {
+        ConsensusEstimates {
+            ticker: ticker.to_uppercase(),
+            snapshot_date: date.to_string(),
+            revenue_estimate: Ordered::default(),
+            earnings_estimate: Ordered::default(),
+            analyst_price_targets: Ordered::default(),
+            source: Some(source.to_string()),
+            endpoints: Vec::new(),
+            period_ends: Ordered::default(),
+            ratings: Ordered::default(),
+            consensus_change: Ordered::default(),
+        }
+    }
+
+    /// A value of the earnings estimate: `eps("0y", "avg")`.
+    pub fn eps(&self, period: &str, metric: &str) -> Option<f64> {
+        let (_, metrics) = self.earnings_estimate.0.iter().find(|(p, _)| p == period)?;
+        metrics.0.iter().find(|(m, _)| m == metric).and_then(|(_, v)| *v)
+    }
+
+    /// The periods of the earnings estimate that end in years (`0y`, `+1y`, ...), in the file order.
+    pub fn year_periods(&self) -> Vec<&str> {
+        self.earnings_estimate.0.iter().map(|(p, _)| p.as_str()).filter(|p| p.ends_with('y')).collect()
+    }
+
+    /// The consensus EPS of the next four quarters (`0q` to `+3q`): the sum, or `None` when a quarter is missing.
+    pub fn eps_next_four_quarters(&self) -> Option<f64> {
+        ["0q", "+1q", "+2q", "+3q"].iter().map(|p| self.eps(p, "avg")).sum()
+    }
+
+    /// The growth of the consensus EPS of each fiscal year over the year before: `(period, growth)` from `+1y` on.
+    /// A year with no EPS, or with an EPS of zero or less in the year before, gives no growth.
+    pub fn eps_growth(&self) -> Vec<(String, f64)> {
+        let years = self.year_periods();
+        let mut out = Vec::new();
+        for pair in years.windows(2) {
+            if let (Some(a), Some(b)) = (self.eps(pair[0], "avg"), self.eps(pair[1], "avg")) {
+                if a > 0.0 && b.is_finite() {
+                    out.push((pair[1].to_string(), b / a - 1.0));
+                }
+            }
+        }
+        out
+    }
+}
+
+/// The forward price/earnings ratio: price over the consensus EPS. `None` when the EPS is not positive.
+pub fn forward_pe(price: f64, eps: Option<f64>) -> Option<f64> {
+    eps.filter(|e| *e > 0.0 && e.is_finite() && price.is_finite()).map(|e| price / e)
+}
+
+/// Put the revenue consensus of FMP (annual and quarterly records) into a snapshot. A record goes to the period of the
+/// snapshot that ends in the same month and year (`period_ends`). A period with no FMP record has no revenue.
+/// FMP gives the average only; the range and the number of analysts of revenue stay empty. Returns the number of periods.
+pub fn merge_revenue(snapshot: &mut ConsensusEstimates, estimates: &[super::fmp::EarningsEstimate]) -> usize {
+    let mut table: Vec<(String, Ordered<Option<f64>>)> = Vec::new();
+    for (period, end) in &snapshot.period_ends.0 {
+        let kind = if period.ends_with('y') { "annual" } else { "quarterly" };
+        let found = estimates.iter().find(|e| e.period_type == kind && e.period_end.get(..7) == Some(end.as_str()) && e.estimated_revenue.is_some());
+        if let Some(e) = found {
+            // `number_of_analysts` of FMP counts the EPS analysts, so it is not a revenue field.
+            table.push((period.clone(), Ordered(vec![("avg".to_string(), e.estimated_revenue)])));
+        }
+    }
+    let n = table.len();
+    if n > 0 {
+        snapshot.revenue_estimate = Ordered(table);
+        if !snapshot.endpoints.iter().any(|e| e == "fmp-revenue") {
+            snapshot.endpoints.push("fmp-revenue".to_string());
+        }
+    }
+    n
 }
 
 pub fn estimates_dir(cache: &Path, ticker: &str) -> PathBuf {
@@ -98,9 +187,9 @@ pub fn snapshot_for_report(cache: &Path, ticker: &str, today: &str) -> (Option<C
     match latest(cache, ticker) {
         Some(s) => {
             let (n, date) = (s.record_count(), s.snapshot_date.clone());
-            (Some(s), format!("{n} forward consensus records loaded from the snapshot of {date} (older than today; there is no source for a new one)"))
+            (Some(s), format!("{n} forward consensus records loaded from the snapshot of {date} (older than today; this command makes no request: run fa estimates get {ticker} for a new one)"))
         }
-        None => (None, "no source for forward consensus (Yahoo needs a browser identity; the program does not give one) and no snapshot in the cache".to_string()),
+        None => (None, format!("no snapshot in the cache and no source in this command; run: fa estimates get {ticker}")),
     }
 }
 

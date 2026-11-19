@@ -44,13 +44,13 @@ pub fn cached_price(repo: &Path, ticker: &str) -> Result<(f64, String), String> 
 }
 
 #[derive(Debug)]
-struct Parsed {
-    tickers: Vec<String>,
-    flags: Vec<(String, String)>,
-    switches: Vec<String>,
+pub(super) struct Parsed {
+    pub(super) tickers: Vec<String>,
+    pub(super) flags: Vec<(String, String)>,
+    pub(super) switches: Vec<String>,
 }
 
-fn parse(rest: &[String], values: &[&str], switches: &[&str]) -> Result<Parsed, String> {
+pub(super) fn parse(rest: &[String], values: &[&str], switches: &[&str]) -> Result<Parsed, String> {
     let mut p = Parsed { tickers: Vec::new(), flags: Vec::new(), switches: Vec::new() };
     let mut i = 0;
     while i < rest.len() {
@@ -76,7 +76,7 @@ fn parse(rest: &[String], values: &[&str], switches: &[&str]) -> Result<Parsed, 
 }
 
 impl Parsed {
-    fn flag(&self, name: &str) -> Option<&str> {
+    pub(super) fn flag(&self, name: &str) -> Option<&str> {
         self.flags.iter().find(|(k, _)| k == name).map(|(_, v)| v.as_str())
     }
 }
@@ -90,7 +90,7 @@ fn valid_symbol(t: &str) -> bool {
     !t.is_empty() && t.len() <= 12 && t.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '.' || c == '^')
 }
 
-fn collect_tickers(p: &mut Parsed) -> Result<(), String> {
+pub(super) fn collect_tickers(p: &mut Parsed) -> Result<(), String> {
     if let Some(f) = p.flag("--tickers-file") {
         let text = std::fs::read_to_string(f).map_err(|e| format!("{f}: {e}"))?;
         for t in tickers_from_text(&text) {

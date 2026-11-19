@@ -14,6 +14,7 @@
 
 use crate::company::Company;
 use crate::market::consensus::{self, ConsensusEstimates};
+use crate::market::estimates_cache;
 use crate::market::fmp::{self, EarningsEstimate, EarningsSurprise, Fmp, FmpError};
 use crate::market::options::{self, compute_chain_metrics, OptionChainSnapshot};
 use crate::market::prices::{self, PricePoint};
@@ -224,6 +225,17 @@ pub fn flatten(registry: &Registry, company: &Company, market: &Market) -> Vec<S
                 rows.push(row("price_target", "current", metric, *v));
             }
         }
+        // Fields of the Nasdaq snapshot (the snapshots of the Python code have none of them).
+        for (metric, value) in &c.ratings.0 {
+            if let Some(v) = value {
+                rows.push(row("ratings", "current", metric, *v));
+            }
+        }
+        for (key, value) in &c.consensus_change.0 {
+            if let (Some(v), Some((scope, when))) = (value, key.split_once('_')) {
+                rows.push(row("consensus_change", if scope == "qtr" { "0q" } else { "0y" }, when, *v));
+            }
+        }
     }
 
     if let Some(snap) = &market.option_chain {
@@ -339,9 +351,10 @@ xlsx file (default: data/processed/<TICKER>_financials.xlsx).
   --no-estimates  skip the forward consensus snapshot
 
 Sources (one request for each source, 2 seconds apart): prices from the Yahoo chart endpoint, the option
-chain from the Cboe delayed quotes, estimates and surprises from Financial Modeling Prep (key: FMP_API_KEY
-in the environment or in .env). The forward consensus and the earnings dates of the Python code have no
-source in Rust: the program reads the cache files that exist. SEC requests need SEC_USER_AGENT.";
+chain from the Cboe delayed quotes, the revenue estimates from Financial Modeling Prep (key: FMP_API_KEY
+in the environment or in .env). The forward consensus (EPS, price targets, ratings), the earnings surprises
+and the earnings dates are read from the cache that `fa estimates get` and `fa earnings calendar` write
+(Nasdaq site API, no key); this command makes no request to that source. SEC requests need SEC_USER_AGENT.";
 
 pub fn parse_args(args: &[String]) -> Result<(String, Options), String> {
     let mut ticker = None;
@@ -391,36 +404,53 @@ pub fn load_market(cache: &Path, ticker: &str, o: &Options, src: &Sources) -> Ma
         Err(e) => println!("  Warning: price fetch failed: {e}"),
     }
 
-    println!("Reading earnings surprises (cache file of the Python code; there is no free source in Rust)...");
-    match consensus::cached_surprises(cache, ticker) {
+    // The earnings surprises: the Nasdaq file (`fa estimates get`) first, then the cache file of the Python code.
+    println!("Reading earnings surprises (cache: fa estimates get; the older Python cache file is the second choice)...");
+    let nasdaq_surprises = estimates_cache::surprises_for_sheet(cache, ticker, &src.today).filter(|s| !s.is_empty());
+    match nasdaq_surprises {
         Some(s) => {
-            println!("  {} earnings surprise records loaded", s.len());
+            println!("  {} earnings surprise records loaded (Nasdaq file)", s.len());
             m.surprises = s;
         }
-        None => println!("  no earnings cache file for {ticker}"),
+        None => match consensus::cached_surprises(cache, ticker) {
+            Some(s) => {
+                println!("  {} earnings surprise records loaded (Python cache file)", s.len());
+                m.surprises = s;
+            }
+            None => println!("  no earnings cache for {ticker}; run: fa estimates get {ticker}"),
+        },
     }
 
-    println!("Fetching analyst estimates (FMP, optional)...");
+    println!("Fetching analyst estimates (FMP, optional; the revenue estimates)...");
     let estimates = fmp::load_estimates(cache, ticker, o.refresh, src.fmp.as_ref());
     match estimates {
         Ok(e) => {
-            let surprises = fmp::load_surprises(cache, ticker, o.refresh, src.fmp.as_ref());
-            match surprises {
-                Ok(s) if !s.is_empty() => m.surprises = s,
-                Ok(_) => {}
-                Err(e) => println!("  Warning: FMP surprises failed: {e}"),
+            // FMP surprises only when the cache has no surprises of Nasdaq or of the Python code.
+            if m.surprises.is_empty() {
+                match fmp::load_surprises(cache, ticker, o.refresh, src.fmp.as_ref()) {
+                    Ok(s) if !s.is_empty() => m.surprises = s,
+                    Ok(_) => {}
+                    Err(e) => println!("  Warning: FMP surprises failed: {e}"),
+                }
             }
             println!("  {} FMP estimate records loaded", e.len());
             m.estimates = e;
         }
-        Err(FmpError::NoKey) => println!("  FMP unavailable ({}): no source for estimates", FmpError::NoKey),
-        Err(e) => println!("  FMP unavailable ({e}): no source for estimates"),
+        Err(FmpError::NoKey) => println!("  FMP unavailable ({}): no revenue estimates", FmpError::NoKey),
+        Err(e) => println!("  FMP unavailable ({e}): no revenue estimates"),
     }
 
     if !o.no_estimates {
-        println!("Reading forward consensus estimates (snapshot files; there is no source in Rust)...");
-        let (snapshot, text) = consensus::snapshot_for_report(cache, ticker, &src.today);
+        println!("Reading forward consensus estimates (snapshot files; fa estimates get makes them)...");
+        let (mut snapshot, text) = consensus::snapshot_for_report(cache, ticker, &src.today);
         println!("  {text}");
+        // The Nasdaq snapshot has no revenue: the FMP records fill it in memory (the file stays as it is).
+        if let Some(s) = snapshot.as_mut().filter(|s| s.revenue_estimate.is_empty()) {
+            let n = consensus::merge_revenue(s, &m.estimates);
+            if n > 0 {
+                println!("  revenue estimates of FMP for {n} period(s)");
+            }
+        }
         m.consensus = snapshot;
     }
 

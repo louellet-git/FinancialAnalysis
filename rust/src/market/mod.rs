@@ -12,7 +12,7 @@
 //! | Intraday bars | Alpaca (key) | `intraday`, `alpaca` |
 //! | FRED series | FRED API (key), keyless CSV | `fred_api` (used by `rates`) |
 //! | Estimates, earnings surprises | Financial Modeling Prep (key in `FMP_API_KEY`) | `fmp` |
-//! | Forward consensus snapshot | no source (cache only) | `consensus` |
+//! | Forward consensus snapshot, price targets, surprises, earnings dates | Nasdaq site API (no key) | `nasdaq_est`, `estimates_cache`, `earnings_dates` (`fa estimates`, `fa earnings`) |
 //!
 //! The cache files keep the formats of the Python code, so each reader of them still works:
 //! `data/raw/<T>/prices.json`, `options/<date>.json`, `estimates/<date>.json`, `yf_earnings.json`,
@@ -20,12 +20,16 @@
 
 pub mod alpaca;
 pub mod consensus;
+pub mod earnings_dates;
+pub mod estimates_cache;
+pub mod estimates_cli;
 pub mod fmp;
 pub mod fred_api;
 pub mod intraday;
 pub mod keys;
 pub mod option_history;
 pub mod option_iv;
+pub mod nasdaq_est;
 pub mod options;
 pub mod options_cli;
 pub mod price_cache;

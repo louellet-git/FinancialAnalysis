@@ -95,9 +95,12 @@ Do not use a first pass alone for a trade.
 ## Commands
 
 ```bash
-cargo test --manifest-path rust/mapcheck/Cargo.toml   # 89 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked   # 473 Rust tests (455 + 17 + 1), no network
+cargo test --manifest-path rust/mapcheck/Cargo.toml   # 90 Rust tests, no network
+cargo test --manifest-path rust/Cargo.toml --locked   # 498 Rust tests (480 + 17 + 1), no network
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
+rust/mapcheck/target/release/mapcheck fetch --submissions IBM   # SEC 8-K item 2.02 list into data/raw/IBM/sec_8k_earnings.json
+rust/target/release/fa estimates get IBM; rust/target/release/fa estimates show IBM   # consensus, targets, surprises (Nasdaq site, no key)
+rust/target/release/fa earnings calendar IBM; rust/target/release/fa earnings dates IBM   # next report date; past dates against the SEC list
 rust/mapcheck/target/release/mapcheck values IBM          # each input value with its source
 rust/mapcheck/target/release/mapcheck IBM --detail        # mapping checks
 rust/mapcheck/target/release/mapcheck filing IBM --focus  # capex, depreciation and debt lines of the 10-K
