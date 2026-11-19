@@ -8,7 +8,8 @@
 //!                                    change_in_cash, net_income_identity
 //! - Are the periods correct?         fiscal_year_spacing, quarters_exceed_year, stale_annual
 //! - Can the DCF use the inputs?      core_missing_critical, sign, short_history,
-//!                                    core_approximate, source_switch
+//!                                    core_approximate, source_switch,
+//!                                    share_count_identity, share_count_scaled
 //!
 //! Severity: Fail = the mapping is incorrect or the DCF cannot use it. Warn = a person
 //! must examine it. Info = a record with no decision.
@@ -27,6 +28,7 @@ pub const TOTAL_DEBT_TOLERANCE: f64 = 0.02;
 pub const STALE_DAYS: i64 = 500; // from the latest fiscal year end to the as-of date
 pub const SOURCE_SWITCH_CHANGE: f64 = 0.30;
 pub const MIN_FCF_YEARS: usize = 4;
+pub const SHARE_COUNT_TOLERANCE: f64 = 0.10; // EPS is a rounded number
 
 /// Without these inputs the DCF does not run.
 pub const CRITICAL: [&str; 6] = [
@@ -224,6 +226,24 @@ pub fn check_period(registry: &Registry, p: &PeriodData) -> PeriodChecks {
                 "sign_unusual",
                 format!("interest_expense = {} (the filer reports the expense as a negative number)", billions(v)),
             ));
+        }
+    }
+
+    // The share count against net income / EPS.
+    if let Some(i) = registry.try_var("shares_diluted") {
+        if let Some(source) = &p.sources[i] {
+            if source.contains("scale from net income / EPS") {
+                out.findings.push(finding(Severity::Info, "share_count_scaled", source.clone()));
+            }
+        }
+        if let (Some(shares), Some(implied)) = (p.values[i], crate::mapper::implied_share_count(registry, &p.values, "eps_diluted")) {
+            if shares > 0.0 && ((shares - implied) / shares).abs() > SHARE_COUNT_TOLERANCE {
+                out.findings.push(finding(
+                    Severity::Warn,
+                    "share_count_identity",
+                    format!("shares_diluted {:.1}M != net income / eps_diluted {:.1}M", shares / 1e6, implied / 1e6),
+                ));
+            }
         }
     }
 

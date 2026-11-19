@@ -116,6 +116,51 @@ def _apply_formulas(values: Dict[str, float], sources: Dict[str, str]) -> None:
         resolve(name)
 
 
+SHARE_SCALE_FACTORS = (1_000.0, 1_000_000.0)
+SHARE_SCALE_TOLERANCE = 0.10
+MIN_EPS_FOR_SHARE_CHECK = 0.05
+
+
+def implied_share_count(values: Dict[str, float], eps_name: str) -> Optional[float]:
+    """Net income for the common shareholders divided by EPS (None if not available)."""
+    eps = values.get(eps_name)
+    income = values.get("net_income_to_common", values.get("net_income"))
+    if eps is None or income is None or abs(eps) < MIN_EPS_FOR_SHARE_CHECK:
+        return None
+    implied = income / eps
+    return implied if implied > 0 else None
+
+
+def _correct_share_scale(values: Dict[str, float], sources: Dict[str, str]) -> None:
+    """Correct a share count that the filer reports in thousands or in millions.
+
+    Some filers tag the share count as the number in the statement (for example 716.4
+    for 716.4 million shares). Net income divided by EPS gives the real size. If the
+    two differ by a factor of 1,000 or 1,000,000 (10% tolerance), the share count is
+    multiplied by that factor and the source records the correction.
+    """
+    applied: Optional[float] = None
+    for shares_name, eps_name in (("shares_diluted", "eps_diluted"), ("shares_basic", "eps_basic")):
+        shares = values.get(shares_name)
+        implied = implied_share_count(values, eps_name)
+        if not shares or shares <= 0 or implied is None:
+            continue
+        for factor in SHARE_SCALE_FACTORS:
+            if abs(implied / (shares * factor) - 1.0) <= SHARE_SCALE_TOLERANCE:
+                values[shares_name] = shares * factor
+                sources[shares_name] = f"{sources.get(shares_name, '')} (x{int(factor):,}: scale from net income / EPS)"
+                applied = factor
+                break
+    # The balance-sheet share count has the same scale if it is near the weighted count.
+    outstanding = values.get("shares_outstanding")
+    weighted = values.get("shares_diluted") or values.get("shares_basic")
+    if applied and outstanding and weighted and 0.5 <= outstanding * applied / weighted <= 2.0:
+        values["shares_outstanding"] = outstanding * applied
+        sources["shares_outstanding"] = (
+            f"{sources.get('shares_outstanding', '')} (x{int(applied):,}: same scale as the weighted share count)"
+        )
+
+
 def resolve_period(
     facts: dict, end: str, forms: Tuple[str, ...]
 ) -> Tuple[Dict[str, float], Dict[str, str], Optional[str]]:
@@ -144,6 +189,7 @@ def resolve_period(
                 filed_dates[name] = sel.filed
             break
     _apply_formulas(values, sources)
+    _correct_share_scale(values, sources)
     filed = filed_dates.get("revenue") or (max(filed_dates.values()) if filed_dates else None)
     return values, sources, filed
 

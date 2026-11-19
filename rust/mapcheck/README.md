@@ -43,6 +43,9 @@ rust/mapcheck/target/release/mapcheck --out report.jsonl      # one JSON line fo
 python -m scripts.mapping_parity --tickers-file rust/mapcheck/universe/batch50.txt
 python -m scripts.mapping_parity --sample 120
 
+# Compare with an independent source (network: Yahoo Finance)
+python -m scripts.mapping_crosscheck --tickers-file rust/mapcheck/universe/batch50.txt
+
 # Unit tests
 cargo test --manifest-path rust/mapcheck/Cargo.toml
 ```
@@ -72,6 +75,8 @@ finding `earlier_years_fail` (a warning).
 | | `sign` | FAIL | A value has an impossible sign (negative revenue, negative cash). |
 | | `no_revenue` | WARN | Revenue is zero. |
 | | `short_history` | WARN | Fewer than 4 fiscal years have revenue, operating cash flow and capex. |
+| | `share_count_identity` | WARN | The share count differs more than 10% from net income divided by EPS. |
+| | `share_count_scaled` | INFO | The filer reports the share count with no scale; the mapper corrected a factor of 1,000 or 1,000,000. |
 | Was a value counted two times? | `exceeds_total` | FAIL | One variable is larger than a total that contains it. |
 | | `overlap:<rollup>` | WARN | Lines that are usually separate are together larger than their total: two of them overlap for this filer. |
 | | `nested:<rollup>` | INFO | A variable is a detail inside a different line of this filer. Do not add it to the other lines. |
@@ -130,6 +135,31 @@ and 166 have a variable that is a detail inside a different line.
 The first run on the 50 new tickers gave 6 `FAIL`. Three were registry gaps and are
 corrected (capex and cash aliases, a net-income fallback). The registry got 22
 variables and 17 aliases from the 50 and the 472 runs (131 variables now).
+
+## Three tests
+
+| Test | Question | Command |
+|---|---|---|
+| Consistency | Is the mapped data of a company consistent in itself? | `mapcheck` |
+| Parity | Do the Rust mapper and the Python importer give the same values? | `scripts.mapping_parity` |
+| Cross-check | Do the values agree with an independent source? | `scripts.mapping_crosscheck` |
+
+Cross-check with Yahoo Finance, the 50 new tickers, latest fiscal year (2026-11-19):
+
+| Input | Agree | Different definition | Differ | No value | Agreement |
+|---|---|---|---|---|---|
+| income_before_tax, income_tax_expense, operating_cash_flow, cash_and_equivalents, total_assets, total_liabilities, equity | 50 | 0 | 0 | 0 | 100% |
+| net_income | 49 | 0 | 0 | 0 | 100% |
+| sbc_total | 44 | 0 | 1 | 0 | 98% |
+| revenue | 48 | 0 | 2 | 0 | 96% |
+| shares_diluted | 46 | 0 | 3 | 1 | 94% |
+| total_debt | 39 | 1 | 7 | 2 | 83% |
+| capex | 36 | 9 | 3 | 1 | 75% |
+| da_total | 35 | 0 | 12 | 1 | 74% |
+
+For 9 companies, capex agrees only when capitalized software and purchased intangibles
+are included. The share-count differences are stock splits after the period (Yahoo
+adjusts the old numbers) and one company with more than one share class.
 
 ## How to expand
 

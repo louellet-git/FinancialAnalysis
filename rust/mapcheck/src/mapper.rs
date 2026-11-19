@@ -110,6 +110,66 @@ impl FormulaRun<'_> {
     }
 }
 
+pub const SHARE_SCALE_FACTORS: [(f64, &str); 2] = [(1_000.0, "1,000"), (1_000_000.0, "1,000,000")];
+pub const SHARE_SCALE_TOLERANCE: f64 = 0.10;
+pub const MIN_EPS_FOR_SHARE_CHECK: f64 = 0.05;
+
+/// Net income for the common shareholders divided by EPS (None if not available).
+pub fn implied_share_count(registry: &Registry, values: &[Option<f64>], eps_name: &str) -> Option<f64> {
+    let value = |name: &str| registry.try_var(name).and_then(|i| values[i]);
+    let eps = value(eps_name)?;
+    let income = value("net_income_to_common").or_else(|| value("net_income"))?;
+    if eps.abs() < MIN_EPS_FOR_SHARE_CHECK {
+        return None;
+    }
+    let implied = income / eps;
+    if implied > 0.0 {
+        Some(implied)
+    } else {
+        None
+    }
+}
+
+/// Correct a share count that the filer reports in thousands or in millions (for
+/// example 716.4 for 716.4 million shares). Net income divided by EPS gives the real
+/// size. The same rule is in financial_analysis/importer.py (`_correct_share_scale`).
+fn correct_share_scale(registry: &Registry, values: &mut [Option<f64>], sources: &mut [Option<String>]) {
+    let mut applied: Option<(f64, &str)> = None;
+    for (shares_name, eps_name) in [("shares_diluted", "eps_diluted"), ("shares_basic", "eps_basic")] {
+        let Some(i) = registry.try_var(shares_name) else { continue };
+        let Some(shares) = values[i] else { continue };
+        let Some(implied) = implied_share_count(registry, values, eps_name) else { continue };
+        if shares <= 0.0 {
+            continue;
+        }
+        for (factor, text) in SHARE_SCALE_FACTORS {
+            if (implied / (shares * factor) - 1.0).abs() <= SHARE_SCALE_TOLERANCE {
+                values[i] = Some(shares * factor);
+                sources[i] = Some(format!("{} (x{}: scale from net income / EPS)", sources[i].as_deref().unwrap_or(""), text));
+                applied = Some((factor, text));
+                break;
+            }
+        }
+    }
+    // The balance-sheet share count has the same scale if it is near the weighted count.
+    let Some((factor, text)) = applied else { return };
+    let value = |name: &str, values: &[Option<f64>]| registry.try_var(name).and_then(|i| values[i]);
+    let weighted = value("shares_diluted", values).filter(|v| *v != 0.0).or_else(|| value("shares_basic", values).filter(|v| *v != 0.0));
+    if let (Some(i), Some(weighted)) = (registry.try_var("shares_outstanding"), weighted) {
+        if let Some(outstanding) = values[i].filter(|v| *v != 0.0) {
+            let ratio = outstanding * factor / weighted;
+            if (0.5..=2.0).contains(&ratio) {
+                values[i] = Some(outstanding * factor);
+                sources[i] = Some(format!(
+                    "{} (x{}: same scale as the weighted share count)",
+                    sources[i].as_deref().unwrap_or(""),
+                    text
+                ));
+            }
+        }
+    }
+}
+
 /// The standard variables for one period.
 pub fn resolve_period(registry: &Registry, facts: &CompanyFacts, end: &str, forms: Forms) -> PeriodData {
     let n = registry.variables.len();
@@ -141,6 +201,8 @@ pub fn resolve_period(registry: &Registry, facts: &CompanyFacts, end: &str, form
     for i in 0..n {
         run.resolve(i);
     }
+
+    correct_share_scale(registry, &mut values, &mut sources);
 
     let revenue_filed = registry.try_var("revenue").and_then(|i| filed_dates[i].clone());
     let filed = revenue_filed.or_else(|| filed_dates.iter().flatten().max().cloned());
@@ -271,6 +333,38 @@ mod tests {
     fn sign_flip_gives_a_negative_outflow() {
         let (r, p) = resolve(vec![("Revenues", flow(100.0)), ("PaymentsToAcquirePropertyPlantAndEquipment", flow(9.0))]);
         assert_eq!(p.get(&r, "capex"), Some(-9.0));
+    }
+
+    fn shares_company(shares: f64, eps: f64, income: f64) -> (Registry, PeriodData) {
+        let registry = Registry::embedded().unwrap();
+        let mut facts = company(vec![("Revenues", flow(26_000_000_000.0)), ("NetIncomeLoss", flow(income))]);
+        let gaap = facts.facts.get_mut("us-gaap").unwrap();
+        for (name, unit, val) in [
+            ("EarningsPerShareDiluted", "USD/shares", eps),
+            ("WeightedAverageNumberOfDilutedSharesOutstanding", "shares", shares),
+        ] {
+            let mut units = std::collections::HashMap::new();
+            units.insert(unit.to_string(), flow(val));
+            gaap.insert(name.to_string(), crate::facts::Concept { units });
+        }
+        let period = resolve_period(&registry, &facts, FY.1, Forms::Annual);
+        (registry, period)
+    }
+
+    #[test]
+    fn share_count_in_millions_is_corrected() {
+        let (r, p) = shares_company(716.4, 11.95, 8_563_000_000.0);
+        assert!((p.get(&r, "shares_diluted").unwrap() - 716_400_000.0).abs() < 1.0);
+        assert!(p.source(&r, "shares_diluted").contains("x1,000,000"));
+    }
+
+    #[test]
+    fn correct_share_count_and_a_stock_split_do_not_change() {
+        let (r, p) = shares_company(716_400_000.0, 11.95, 8_563_000_000.0);
+        assert_eq!(p.get(&r, "shares_diluted"), Some(716_400_000.0));
+        assert_eq!(p.source(&r, "shares_diluted"), "us-gaap/WeightedAverageNumberOfDilutedSharesOutstanding");
+        let (r, p) = shares_company(179_100_000.0, 11.95, 8_563_000_000.0);   // a factor of 4
+        assert_eq!(p.get(&r, "shares_diluted"), Some(179_100_000.0));
     }
 
     #[test]

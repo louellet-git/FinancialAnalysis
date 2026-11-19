@@ -19,8 +19,8 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest                       # 409 tests, no network
-cargo test --manifest-path rust/mapcheck/Cargo.toml   # 41 Rust tests
+python -m pytest                       # 424 tests, no network
+cargo test --manifest-path rust/mapcheck/Cargo.toml   # 43 Rust tests
 ```
 
 Run all commands from the repo root.
@@ -126,6 +126,7 @@ python -m scripts.fetch_facts --tickers-file rust/mapcheck/universe/batch50.txt 
 rust/mapcheck/target/release/mapcheck --tickers-file rust/mapcheck/universe/top500.txt
 rust/mapcheck/target/release/mapcheck IBM --detail
 python -m scripts.mapping_parity --sample 120                                     # Rust against Python
+python -m scripts.mapping_crosscheck --tickers-file rust/mapcheck/universe/batch50.txt   # against Yahoo Finance
 ```
 
 Result on 2026-11-19, 472 of the 500 largest SEC registrants: 312 are US companies
@@ -139,6 +140,18 @@ Two results that you must know before you add variables in a model:
   example income taxes payable inside accrued liabilities). If you add the two, you
   count the amount two times. `mapcheck TICKER --detail` shows these as `nested`.
 - For 47 of the 312 companies, the estimates of total debt disagree.
+
+A third test compares the core inputs with Yahoo Finance, an independent source
+(`scripts.mapping_crosscheck`). Result for the 50 new tickers on 2026-11-19: eight inputs
+agree for 98% to 100% of the companies (pre-tax income, tax, net income, operating
+cash flow, cash, total assets, total liabilities, equity, share-based compensation),
+revenue for 96%, share count for 94%, total debt for 83%, capital expenditure for 75%
+and depreciation and amortization for 74%. Do not use the last three inputs for a
+ticker before you examine them.
+
+The share count of some filers has no scale (McDonald's reports 716.4 for 716.4 million
+shares). The importer corrects a factor of 1,000 or 1,000,000 with net income divided
+by EPS, and records the correction in the source.
 
 ## Interest rates and inflation
 
@@ -283,7 +296,7 @@ analysis/JNJ/             JNJ first pass (not reviewed)
 trading/                  option strategy backtester, paper trader, 22 bots, research notes
 scripts/                  command-line entry points
 rust/                     Rust interface: library and `fa` command (calls the Python code)
-tests/                    409 tests
+tests/                    424 tests
 
 docs/                     ARCHITECTURE.md, HIDDEN-ASSUMPTIONS.md, INDEX.md, design documents
 PLANNING/board/           open work, one file for each ticket

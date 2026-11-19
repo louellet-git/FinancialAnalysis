@@ -335,3 +335,61 @@ def test_unmapped_tag_stays_in_raw_extras_with_the_annual_value(tmp_path):
                                               _f("2024-10-01", "2024-12-31", 1.0, filed="2025-03-01")]},
                        tmp_path)
     assert company.periods[0].raw_extras == {"us-gaap/SomeCompanyDetail": 3.0}
+
+
+# --- share count scale ---
+
+def _shares_company(tmp_path, shares, eps=11.95, income=8_563_000_000.0, extra=None):
+    facts = {"entityName": "ACME", "cik": 1, "facts": {"us-gaap": {
+        "Revenues": {"units": {"USD": [_f(*_FY, 26_000_000_000.0)]}},
+        "NetIncomeLoss": {"units": {"USD": [_f(*_FY, income)]}},
+        "EarningsPerShareDiluted": {"units": {"USD/shares": [_f(*_FY, eps)]}},
+        "WeightedAverageNumberOfDilutedSharesOutstanding": {"units": {"shares": [_f(*_FY, shares)]}},
+        **(extra or {}),
+    }}}
+    with patch("financial_analysis.importer.load_company_facts", return_value=facts):
+        return import_company("ACME", save=False, cache_dir=tmp_path).periods[0]
+
+
+def test_share_count_in_millions_is_corrected(tmp_path):
+    # The filer tags 716.4 for 716.4 million shares (the McDonald's case).
+    p = _shares_company(tmp_path, 716.4)
+    assert p.shares_diluted == pytest.approx(716_400_000.0)
+    assert "x1,000,000" in p.sources["shares_diluted"]
+
+
+def test_share_count_in_thousands_is_corrected(tmp_path):
+    p = _shares_company(tmp_path, 716_400.0)
+    assert p.shares_diluted == pytest.approx(716_400_000.0)
+    assert "x1,000:" in p.sources["shares_diluted"]
+
+
+def test_correct_share_count_does_not_change(tmp_path):
+    p = _shares_company(tmp_path, 716_400_000.0)
+    assert p.shares_diluted == 716_400_000.0
+    assert p.sources["shares_diluted"] == "us-gaap/WeightedAverageNumberOfDilutedSharesOutstanding"
+
+
+def test_share_count_that_differs_for_a_different_reason_does_not_change(tmp_path):
+    # A stock split after the period: a factor of 4, not 1,000. No correction.
+    p = _shares_company(tmp_path, 179_100_000.0)
+    assert p.shares_diluted == 179_100_000.0
+
+
+def test_small_eps_gives_no_correction(tmp_path):
+    p = _shares_company(tmp_path, 500.0, eps=0.01, income=5_000_000.0)
+    assert p.shares_diluted == 500.0
+
+
+def test_balance_sheet_share_count_gets_the_same_scale(tmp_path):
+    extra = {"CommonStockSharesOutstanding": {"units": {"shares": [_f(None, "2024-12-31", 714.9)]}}}
+    p = _shares_company(tmp_path, 716.4, extra=extra)
+    assert p.shares_outstanding == pytest.approx(714_900_000.0)
+    assert "same scale" in p.sources["shares_outstanding"]
+
+
+def test_share_check_uses_net_income_for_the_common_shareholders(tmp_path):
+    # Preferred dividends: net income 2,235 but 1,890 for the common shareholders.
+    extra = {"NetIncomeLossAvailableToCommonStockholdersDiluted": {"units": {"USD": [_f(*_FY, 1_890_000_000.0)]}}}
+    p = _shares_company(tmp_path, 762.3, eps=2.48, income=2_235_000_000.0, extra=extra)
+    assert p.shares_diluted == pytest.approx(762_300_000.0)

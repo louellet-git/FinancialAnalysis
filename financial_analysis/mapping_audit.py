@@ -120,6 +120,15 @@ def identity_checks(p: PeriodFinancials) -> List[Tuple[str, Optional[float]]]:
             "long_term_debt_total = long_term_debt + long_term_debt_current",
             _gap(v("long_term_debt_total"), v("long_term_debt") + v("long_term_debt_current"), v("total_assets")),
         ))
+    eps, shares = v("eps_diluted"), v("shares_diluted")
+    income = v("net_income_to_common") if v("net_income_to_common") is not None else v("net_income")
+    if eps is not None and shares and income is not None and abs(eps) >= 0.05 and income / eps > 0:
+        gap = (shares - income / eps) / shares
+        # The tolerance is 10% (EPS is a rounded number; two share classes change it).
+        checks.append((
+            f"shares_diluted = net income / eps_diluted ({shares / 1e6:,.1f}M and {income / eps / 1e6:,.1f}M)",
+            gap if abs(gap) > 0.10 else 0.0,
+        ))
     alternatives = total_debt_alternatives(p)
     if len(alternatives) > 1:
         low, high = min(alternatives.values()), max(alternatives.values())
