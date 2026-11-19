@@ -79,7 +79,30 @@ fn numbers(array: &Value, what: &str, n: usize) -> Result<Vec<Option<f64>>> {
         .collect()
 }
 
-pub fn parse_chart(bytes: &[u8]) -> Result<Chart> {
+/// The arrays of a chart reply, as Yahoo gives them. The bar rules (daily or intraday) are
+/// the job of the caller.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RawChart {
+    pub symbol: String,
+    pub name: String,
+    pub time_zone: String,
+    /// `meta.gmtoffset`: the offset of today, in seconds.
+    pub offset: i64,
+    pub last_trade: Option<i64>,
+    /// The regular trading periods of the range (`meta.tradingPeriods`): start and end, UTC seconds. Empty
+    /// when the reply has none. A day with an early close has a short period.
+    pub regular_periods: Vec<(i64, i64)>,
+    /// UTC seconds of each row.
+    pub stamps: Vec<i64>,
+    pub open: Vec<Option<f64>>,
+    pub high: Vec<Option<f64>>,
+    pub low: Vec<Option<f64>>,
+    pub close: Vec<Option<f64>>,
+    pub volume: Vec<Option<f64>>,
+}
+
+/// Read the JSON of a chart reply. All price arrays have the length of the time stamp array.
+pub fn parse_raw(bytes: &[u8]) -> Result<RawChart> {
     let root: Value = serde_json::from_str(&text(bytes, "Yahoo response")?).map_err(|e| format!("Yahoo response is not JSON: {e}"))?;
     let chart = root.get("chart").ok_or("Yahoo response has no 'chart'")?;
     if let Some(error) = chart.get("error").filter(|e| !e.is_null()) {
@@ -108,6 +131,39 @@ pub fn parse_chart(bytes: &[u8]) -> Result<Chart> {
         ),
         _ => (vec![], vec![], vec![], vec![], vec![]),
     };
+    Ok(RawChart { symbol, name, time_zone, offset, last_trade, regular_periods: trading_periods(meta), stamps, open, high, low, close, volume })
+}
+
+/// `meta.tradingPeriods`: a list of days, each a list of `{start, end}` (or an object with the keys `pre`,
+/// `regular` and `post`, each such a list).
+fn trading_periods(meta: &Value) -> Vec<(i64, i64)> {
+    fn collect(v: &Value, out: &mut Vec<(i64, i64)>) {
+        match v {
+            Value::Array(items) => items.iter().for_each(|i| collect(i, out)),
+            Value::Object(_) => {
+                if let (Some(a), Some(b)) = (v.get("start").and_then(Value::as_i64), v.get("end").and_then(Value::as_i64)) {
+                    out.push((a, b));
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut out = Vec::new();
+    match meta.get("tradingPeriods") {
+        Some(obj @ Value::Object(_)) if obj.get("start").is_none() => {
+            if let Some(r) = obj.get("regular") {
+                collect(r, &mut out);
+            }
+        }
+        Some(v) => collect(v, &mut out),
+        None => {}
+    }
+    out
+}
+
+pub fn parse_chart(bytes: &[u8]) -> Result<Chart> {
+    let RawChart { symbol, name, time_zone, offset, last_trade, stamps, open, high, low, close, volume, .. } = parse_raw(bytes)?;
+    let n = stamps.len();
     let mut bars: Vec<Bar> = Vec::new();
     let mut live = None;
     let mut null_closes = 0;
@@ -116,8 +172,6 @@ pub fn parse_chart(bytes: &[u8]) -> Result<Chart> {
             null_closes += 1;
             continue;
         };
-        // meta.gmtoffset is the offset of today. A bar of the other half of the year is
-        // midnight with one hour of daylight saving time more or less.
         // meta.gmtoffset is the offset of today. A bar of the other half of the year is
         // midnight with one hour of daylight saving time more or less.
         let midnight = [0, 3600].into_iter().map(|shift| ts + offset + shift).find(|local| local.rem_euclid(86_400) == 0);

@@ -43,6 +43,13 @@ USAGE:
   fa verdict TICKER --price P [--rf-date D|today] [--rf-base-date D] [--rating A-]
              [--simulations N] [--seed S]
                                                   Rust engine; with --rf-date or --rating the rates come from Python
+  fa recon bonds [--date D] [--out FILE]          bond values from our rates vs market prices (see: fa recon help)
+  fa recon bills [--date D]                       tests of each cause of the bill difference of recon bonds
+  fa recon rich-cheap [--date D] [--out FILE]     fitted NSS curve, difference of each security, rich and cheap candidates
+  fa recon history [--from D] [--to D] [--out F]  the same difference over the cached dates: how long it lasts
+  fa trade fetch [--symbol S]... [--interval I]...  download the bars of the option bots (Yahoo) into the CSV cache
+  fa trade backtest [--bot ID]... [--max-risk N] [--out FILE] [-v]   backtest the option bots (fa trade backtest --help)
+  fa trade paper [BOT]... [--no-refresh] [--no-live]   forward paper trading, live Cboe option chain (fa trade paper --help)
   fa run MODULE [ARGS...]                         any entry point, e.g. fa run scripts.analyze IBM
   fa serve [--port N] [--no-open]                 local viewer in the browser (http://127.0.0.1:8765/)
 
@@ -174,6 +181,7 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
         }
         Some("rates") => rates(fa, &args[1..]),
         Some("bonds") => bonds(fa, &args[1..]),
+        Some("recon") => Ok(financial_analysis::recon::run(fa, &args[1..])),
         Some("models") => financial_analysis::ratemodels::cli::run(&fa.repo, &args[1..]).map(|_| ExitCode::SUCCESS).or_else(|e| {
             eprintln!("fa: {e}");
             Ok(ExitCode::from(2))
@@ -182,6 +190,21 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
         Some("futures") => Ok(financial_analysis::futures::cli::run(&fa.repo, &args[1..])),
         Some("dcf") => Ok(ExitCode::from(financial_analysis::dcf::cli::run(&fa.repo, &args[1..]))),
         Some("verdict") => verdict_cmd(fa, &args[1..]),
+        Some("trade") => match args.get(1).map(String::as_str) {
+            Some("backtest") => match financial_analysis::trading::cli::backtest(&fa.repo, &args[2..]) {
+                Ok(code) => Ok(ExitCode::from(code as u8)),
+                Err(e) => Ok(usage_error(&e)),
+            },
+            Some("fetch") => match financial_analysis::trading::fetch::command(financial_analysis::trading::data::Store::from_env(&fa.repo).dir(), &args[2..]) {
+                Ok(code) => Ok(ExitCode::from(code as u8)),
+                Err(e) => Ok(usage_error(&e)),
+            },
+            Some("paper") => match financial_analysis::trading::paper::command(&fa.repo, &args[2..]) {
+                Ok(code) => Ok(ExitCode::from(code as u8)),
+                Err(e) => Ok(usage_error(&e)),
+            },
+            _ => Ok(usage_error("trade needs a command: backtest, fetch or paper")),
+        },
         Some("serve") => {
             if args[1..].iter().any(|a| a == "-h" || a == "--help") {
                 println!("{}", serve::USAGE);
