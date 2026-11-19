@@ -2,7 +2,7 @@
 id: T-20261119-price-history
 title: Get the daily price history of each ticker from more than one source, with a check
 area: engine
-status: in-progress
+status: review
 owner: louellet-git
 branch: claude/price-history
 created: 2026-11-19
@@ -25,3 +25,14 @@ Tests from the cloud container on 2026-11-19, with the client name
 Design: one interface for a price source; Tiingo first when its key is in the
 environment, then Yahoo, then Nasdaq; a cache that gets only the new days; a
 cross-check between two sources.
+
+Result, 2026-11-19 (subagent run, the orchestrator examines):
+
+- Built: the price layer `rust/src/market/price_source.rs`, `price_cache.rs`, `price_check.rs`, `price_cli.rs`; the commands
+  `fa prices get|show|last|check`; `fa verdict TICKER` without `--price` uses the last close of the cache. `fa dcf drivers --price`
+  is not changed (the file `rust/src/dcf/cli.rs` belongs to another ticket): it can call `price_cli::cached_price`.
+- Real runs: Nasdaq gave 12 tickers (IBM, JNJ, MSFT, AAPL, NVDA, XOM, JPM, KO, DUOL, ORCL, SPY, QQQ) and then 502 of 503 tickers of the
+  S&P 500 file in 2,271 seconds. BF-B failed (no rows). Yahoo answered HTTP 429 to each request of the container; Tiingo has no key.
+- Not done: the Tiingo loader was not run against the real site; the cross-check `fa prices check` of two live sources was not run
+  (see `docs/HIDDEN-ASSUMPTIONS.md` #206 and #213).
+- Open: `fa dcf drivers` and `fa dcf auto` must use `last_close`; run `fa prices check TICKER --sources tiingo,nasdaq` when a key exists.

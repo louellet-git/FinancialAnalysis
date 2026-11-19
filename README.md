@@ -21,7 +21,7 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program that makes the standard variables (necessary)
 cargo build --release --manifest-path rust/Cargo.toml            # the `fa` program
 cargo test --manifest-path rust/mapcheck/Cargo.toml    # 89 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked    # 387 Rust tests (369 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research)
+cargo test --manifest-path rust/Cargo.toml --locked    # 412 Rust tests (394 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research)
 ```
 
 No Python test remains. The only Python code that remains is the legacy SEC client with its
@@ -35,9 +35,10 @@ Run all commands from the repo root.
 # 1. Get the data. Output: data/processed/IBM_financials.xlsx (nine tabs)
 cargo run --release --bin fa -- analyze IBM
 
-# 2. Get the value range and the verdict against a price (the price is an input)
+# 2. Get the price history, then the value range and the verdict (without --price: the last close of the cache)
 cargo build --release --manifest-path rust/Cargo.toml   # one time: the `fa` program
-rust/target/release/fa verdict IBM --price 228.53
+rust/target/release/fa prices get IBM                   # daily prices into data/raw/IBM/prices.json (Tiingo, Yahoo, Nasdaq)
+rust/target/release/fa verdict IBM [--price 228.53]
 
 # 3. Make the one-page HTML report. Output: data/processed/IBM_dcf.html
 rust/target/release/fa report IBM [--price 228.53]
@@ -94,7 +95,11 @@ fa dcf scenarios IBM [--data-dir D] [--json]      # bear, base, bull; value per 
 fa dcf models                                     # tickers that have a driver model file
 fa backtest IBM [--horizon 3] [--simulations 10000] [--seed 7] [--data-dir D]   # vintage backtest, no network
 fa dcf calibrate [--cache DIR] [--out FILE] [--no-bands]   # AR(1) parameters of growth and margins from the company cache, band coverage, no network
-fa verdict IBM --price 228.53 [--simulations 10000] [--seed 7] [--rf-date today] [--rf-base-date 2026-07-16] [--rating A-]
+fa prices get IBM MSFT [--tickers-file rust/mapcheck/universe/sp500.txt] [--source tiingo|yahoo|nasdaq] [--full]   # price history into data/raw (network)
+fa prices show IBM [--from D] [--to D]            # rows of the cache
+fa prices last IBM JNJ                            # last close, date, source; warns when older than 5 weekdays
+fa prices check MSFT --sources yahoo,nasdaq       # compare two sources on the common dates (network)
+fa verdict IBM [--price 228.53] [--simulations 10000] [--seed 7] [--rf-date today] [--rf-base-date 2026-07-16] [--rating A-]
 fa rates [snapshot|yield|curve|history|nyfed|inflation|fred|check] [--date D]   # JSON
 fa bonds [snapshot|spread|yield|over10y|moodys|hqm|check] [--rating A-] [--date D]   # JSON
 ```
