@@ -85,6 +85,11 @@ class PeriodFinancials:
 
     # --- Income Statement ---
     revenue: Optional[float] = None
+    revenue_from_contracts: Optional[float] = None
+    lease_income: Optional[float] = None
+    investment_income_operating: Optional[float] = None
+    net_interest_income: Optional[float] = None
+    noninterest_income: Optional[float] = None
     cogs_total: Optional[float] = None
     gross_profit: Optional[float] = None
     rd_expense: Optional[float] = None
@@ -194,6 +199,7 @@ class PeriodFinancials:
     deferred_income_tax: Optional[float] = None
     capex: Optional[float] = None
     capitalized_software: Optional[float] = None
+    capex_total: Optional[float] = None
     purchases_of_intangibles: Optional[float] = None
     purchases_investments: Optional[float] = None
     proceeds_investments: Optional[float] = None
@@ -237,11 +243,18 @@ class PeriodFinancials:
 
     @property
     def free_cash_flow(self) -> Optional[float]:
-        if self.operating_cash_flow is None or self.capex is None:
+        """Operating cash flow less capital expenditure.
+
+        Capital expenditure is ``capex_total``: equipment and capitalized software
+        (PLANNING/RULES.md R2). Purchased intangibles are not included. A period with
+        no ``capex_total`` (made by hand, or from an old store file) uses ``capex``.
+        """
+        capex = self.capex_total if self.capex_total is not None else self.capex
+        if self.operating_cash_flow is None or capex is None:
             return None
-        # capex is a cash outflow; the importer stores it sign-flipped (negative).
-        # abs() makes the subtraction correct for either sign convention.
-        return self.operating_cash_flow - abs(self.capex)
+        # A cash outflow is stored as a negative number. abs() makes the subtraction
+        # correct for either sign convention.
+        return self.operating_cash_flow - abs(capex)
 
     @property
     def fcf_margin(self) -> Optional[float]:

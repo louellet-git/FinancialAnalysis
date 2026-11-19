@@ -1,0 +1,506 @@
+# S&P 500 members: ticker, SEC CIK, and the GICS sector as a comment.
+# Source: en.wikipedia.org/wiki/List_of_S%26P_500_companies, read on 2026-11-19.
+# 503 tickers of 500 companies (some companies have two share classes).
+A 1090872  # Health Care: Agilent Technologies
+AAPL 320193  # Information Technology: Apple Inc.
+ABBV 1551152  # Health Care: AbbVie
+ABNB 1559720  # Consumer Discretionary: Airbnb
+ABT 1800  # Health Care: Abbott Laboratories
+ACGL 947484  # Financials: Arch Capital Group
+ACN 1467373  # Information Technology: Accenture
+ADBE 796343  # Information Technology: Adobe Inc.
+ADI 6281  # Information Technology: Analog Devices
+ADM 7084  # Consumer Staples: Archer Daniels Midland
+ADP 8670  # Industrials: Automatic Data Processing
+ADSK 769397  # Information Technology: Autodesk
+AEE 1002910  # Utilities: Ameren
+AEP 4904  # Utilities: American Electric Power
+AES 874761  # Utilities: AES Corporation
+AFL 4977  # Financials: Aflac
+AIG 5272  # Financials: American International Group
+AIZ 1267238  # Financials: Assurant
+AJG 354190  # Financials: Arthur J. Gallagher & Co.
+AKAM 1086222  # Information Technology: Akamai Technologies
+ALB 915913  # Materials: Albemarle Corporation
+ALGN 1097149  # Health Care: Align Technology
+ALL 899051  # Financials: Allstate
+ALLE 1579241  # Industrials: Allegion
+AMAT 6951  # Information Technology: Applied Materials
+AMCR 1748790  # Materials: Amcor
+AMD 2488  # Information Technology: Advanced Micro Devices
+AME 1037868  # Industrials: Ametek
+AMGN 318154  # Health Care: Amgen
+AMP 820027  # Financials: Ameriprise Financial
+AMT 1053507  # Real Estate: American Tower
+AMZN 1018724  # Consumer Discretionary: Amazon
+ANET 1596532  # Information Technology: Arista Networks
+AON 315293  # Financials: Aon plc
+AOS 91142  # Industrials: A. O. Smith
+APA 1841666  # Energy: APA Corporation
+APD 2969  # Materials: Air Products
+APH 820313  # Information Technology: Amphenol
+APO 1858681  # Financials: Apollo Global Management
+APP 1751008  # Communication Services: AppLovin
+APTV 1521332  # Consumer Discretionary: Aptiv
+ARE 1035443  # Real Estate: Alexandria Real Estate Equities
+ARES 1176948  # Financials: Ares Management
+ATO 731802  # Utilities: Atmos Energy
+AVGO 1730168  # Information Technology: Broadcom
+AVY 8818  # Materials: Avery Dennison
+AWK 1410636  # Utilities: American Water Works
+AXON 1069183  # Industrials: Axon Enterprise
+AXP 4962  # Financials: American Express
+AZO 866787  # Consumer Discretionary: AutoZone
+BA 12927  # Industrials: Boeing
+BAC 70858  # Financials: Bank of America
+BALL 9389  # Materials: Ball Corporation
+BAX 10456  # Health Care: Baxter International
+BBY 764478  # Consumer Discretionary: Best Buy
+BDX 10795  # Health Care: Becton Dickinson
+BE 1664703  # Industrials: Bloom Energy
+BEN 38777  # Financials: Franklin Resources
+BF-B 14693  # Consumer Staples: Brown–Forman
+BG 1996862  # Consumer Staples: Bunge Global
+BIIB 875045  # Health Care: Biogen
+BKNG 1075531  # Consumer Discretionary: Booking Holdings
+BKR 1701605  # Energy: Baker Hughes
+BLK 2012383  # Financials: BlackRock
+BMY 14272  # Health Care: Bristol Myers Squibb
+BNY 1390777  # Financials: BNY Mellon
+BR 1383312  # Industrials: Broadridge Financial Solutions
+BRK-B 1067983  # Financials: Berkshire Hathaway
+BRO 79282  # Financials: Brown & Brown
+BSX 885725  # Health Care: Boston Scientific
+BX 1393818  # Financials: Blackstone Inc.
+BXP 1037540  # Real Estate: BXP, Inc.
+C 831001  # Financials: Citigroup
+CAH 721371  # Health Care: Cardinal Health
+CARR 1783180  # Industrials: Carrier Global
+CASY 726958  # Consumer Staples: Casey's
+CAT 18230  # Industrials: Caterpillar Inc.
+CB 896159  # Financials: Chubb Limited
+CBOE 1374310  # Financials: Cboe Global Markets
+CBRE 1138118  # Real Estate: CBRE Group
+CCI 1051470  # Real Estate: Crown Castle
+CCL 815097  # Consumer Discretionary: Carnival Corporation
+CDNS 813672  # Information Technology: Cadence Design Systems
+CDW 1402057  # Information Technology: CDW Corporation
+CEG 1868275  # Utilities: Constellation Energy
+CF 1324404  # Materials: CF Industries
+CFG 759944  # Financials: Citizens Financial Group
+CHD 313927  # Consumer Staples: Church & Dwight
+CHRW 1043277  # Industrials: C.H. Robinson
+CHTR 1091667  # Communication Services: Charter Communications
+CI 1739940  # Health Care: Cigna
+CIEN 936395  # Information Technology: Ciena
+CINF 20286  # Financials: Cincinnati Financial
+CL 21665  # Consumer Staples: Colgate-Palmolive
+CLX 21076  # Consumer Staples: Clorox
+CMCSA 1166691  # Communication Services: Comcast
+CME 1156375  # Financials: CME Group
+CMG 1058090  # Consumer Discretionary: Chipotle Mexican Grill
+CMI 26172  # Industrials: Cummins
+CMS 811156  # Utilities: CMS Energy
+CNC 1071739  # Health Care: Centene Corporation
+CNP 1130310  # Utilities: CenterPoint Energy
+COF 927628  # Financials: Capital One
+COHR 820318  # Information Technology: Coherent Corp.
+COIN 1679788  # Financials: Coinbase
+COO 711404  # Health Care: Cooper Companies (The)
+COP 1163165  # Energy: ConocoPhillips
+COR 1140859  # Health Care: Cencora
+COST 909832  # Consumer Staples: Costco
+CPAY 1175454  # Financials: Corpay
+CPRT 900075  # Industrials: Copart
+CPT 906345  # Real Estate: Camden Property Trust
+CRH 849395  # Materials: CRH plc
+CRL 1100682  # Health Care: Charles River Laboratories
+CRM 1108524  # Information Technology: Salesforce
+CRWD 1535527  # Information Technology: CrowdStrike
+CSCO 858877  # Information Technology: Cisco
+CSGP 1057352  # Real Estate: CoStar Group
+CSX 277948  # Industrials: CSX Corporation
+CTAS 723254  # Industrials: Cintas
+CTSH 1058290  # Information Technology: Cognizant
+CVNA 1690820  # Consumer Discretionary: Carvana
+CVS 64803  # Health Care: CVS Health
+CVX 93410  # Energy: Chevron Corporation
+D 715957  # Utilities: Dominion Energy
+DAL 27904  # Industrials: Delta Air Lines
+DASH 1792789  # Consumer Discretionary: DoorDash
+DD 1666700  # Industrials: DuPont
+DDOG 1561550  # Information Technology: Datadog
+DE 315189  # Industrials: Deere & Company
+DECK 910521  # Consumer Discretionary: Deckers Brands
+DELL 1571996  # Information Technology: Dell Technologies
+DG 29534  # Consumer Staples: Dollar General
+DGX 1022079  # Health Care: Quest Diagnostics
+DHI 882184  # Consumer Discretionary: D. R. Horton
+DHR 313616  # Health Care: Danaher Corporation
+DIS 1744489  # Communication Services: Walt Disney Company (The)
+DLR 1297996  # Real Estate: Digital Realty
+DLTR 935703  # Consumer Staples: Dollar Tree
+DOC 765880  # Real Estate: Healthpeak Properties
+DOV 29905  # Industrials: Dover Corporation
+DOW 1751788  # Materials: Dow Inc.
+DPZ 1286681  # Consumer Discretionary: Domino's
+DRI 940944  # Consumer Discretionary: Darden Restaurants
+DTE 936340  # Utilities: DTE Energy
+DUK 1326160  # Utilities: Duke Energy
+DVA 927066  # Health Care: DaVita
+DVN 1090012  # Energy: Devon Energy
+DXCM 1093557  # Health Care: Dexcom
+EBAY 1065088  # Consumer Discretionary: eBay Inc.
+ECHO 1415404  # Communication Services: EchoStar
+ECL 31462  # Materials: Ecolab
+ED 1047862  # Utilities: Consolidated Edison
+EFX 33185  # Industrials: Equifax
+EG 1095073  # Financials: Everest Group
+EIX 827052  # Utilities: Edison International
+EL 1001250  # Consumer Staples: Estée Lauder Companies (The)
+ELV 1156039  # Health Care: Elevance Health
+EME 105634  # Industrials: Emcor
+EMR 32604  # Industrials: Emerson Electric
+EOG 821189  # Energy: EOG Resources
+EQIX 1101239  # Real Estate: Equinix
+EQT 33213  # Energy: EQT Corporation
+ERIE 922621  # Financials: Erie Indemnity
+ES 72741  # Utilities: Eversource Energy
+ESS 920522  # Real Estate: Essex Property Trust
+ETN 1551182  # Industrials: Eaton Corporation
+ETR 65984  # Utilities: Entergy
+EVRG 1711269  # Utilities: Evergy
+EW 1099800  # Health Care: Edwards Lifesciences
+EXC 1109357  # Utilities: Exelon
+EXE 895126  # Energy: Expand Energy
+EXPD 746515  # Industrials: Expeditors International
+EXPE 1324424  # Consumer Discretionary: Expedia Group
+EXR 1289490  # Real Estate: Extra Space Storage
+F 37996  # Consumer Discretionary: Ford Motor Company
+FANG 1539838  # Energy: Diamondback Energy
+FAST 815556  # Industrials: Fastenal
+FCX 831259  # Materials: Freeport-McMoRan
+FDS 1013237  # Financials: FactSet
+FDX 1048911  # Industrials: FedEx
+FDXF 2082247  # Industrials: FedEx Freight
+FE 1031296  # Utilities: FirstEnergy
+FERG 2011641  # Industrials: Ferguson Enterprises
+FFIV 1048695  # Information Technology: F5, Inc.
+FICO 814547  # Information Technology: Fair Isaac
+FIS 1136893  # Financials: Fidelity National Information Services
+FISV 798354  # Financials: Fiserv
+FITB 35527  # Financials: Fifth Third Bancorp
+FIX 1035983  # Industrials: Comfort Systems USA
+FLEX 866374  # Information Technology: Flex Ltd.
+FOX 1754301  # Communication Services: Fox Corporation (Class B)
+FOXA 1754301  # Communication Services: Fox Corporation (Class A)
+FRT 34903  # Real Estate: Federal Realty Investment Trust
+FSLR 1274494  # Information Technology: First Solar
+FTNT 1262039  # Information Technology: Fortinet
+FTV 1659166  # Industrials: Fortive
+GD 40533  # Industrials: General Dynamics
+GDDY 1609711  # Information Technology: GoDaddy
+GE 40545  # Industrials: GE Aerospace
+GEHC 1932393  # Health Care: GE HealthCare
+GEN 849399  # Information Technology: Gen Digital
+GEV 1996810  # Industrials: GE Vernova
+GILD 882095  # Health Care: Gilead Sciences
+GIS 40704  # Consumer Staples: General Mills
+GL 320335  # Financials: Globe Life
+GLW 24741  # Information Technology: Corning Inc.
+GM 1467858  # Consumer Discretionary: General Motors
+GNRC 1474735  # Industrials: Generac
+GOOG 1652044  # Communication Services: Alphabet Inc. (Class C)
+GOOGL 1652044  # Communication Services: Alphabet Inc. (Class A)
+GPC 40987  # Consumer Discretionary: Genuine Parts Company
+GPN 1123360  # Financials: Global Payments
+GRMN 1121788  # Consumer Discretionary: Garmin
+GS 886982  # Financials: Goldman Sachs
+GWW 277135  # Industrials: W. W. Grainger
+HAL 45012  # Energy: Halliburton
+HAS 46080  # Consumer Discretionary: Hasbro
+HBAN 49196  # Financials: Huntington Bancshares
+HCA 860730  # Health Care: HCA Healthcare
+HD 354950  # Consumer Discretionary: Home Depot (The)
+HIG 874766  # Financials: Hartford (The)
+HII 1501585  # Industrials: Huntington Ingalls Industries
+HLT 1585689  # Consumer Discretionary: Hilton Worldwide
+HON 773840  # Industrials: Honeywell Technologies
+HONA 2089271  # Industrials: Honeywell Aerospace
+HOOD 1783879  # Financials: Robinhood Markets
+HPE 1645590  # Information Technology: Hewlett Packard Enterprise
+HPQ 47217  # Information Technology: HP Inc.
+HRL 48465  # Consumer Staples: Hormel Foods
+HSIC 1000228  # Health Care: Henry Schein
+HST 1070750  # Real Estate: Host Hotels & Resorts
+HSY 47111  # Consumer Staples: Hershey Company (The)
+HUBB 48898  # Industrials: Hubbell Incorporated
+HUM 49071  # Health Care: Humana
+HWM 4281  # Industrials: Howmet Aerospace
+IBKR 1381197  # Financials: Interactive Brokers
+IBM 51143  # Information Technology: IBM
+ICE 1571949  # Financials: Intercontinental Exchange
+IDXX 874716  # Health Care: Idexx Laboratories
+IEX 832101  # Industrials: IDEX Corporation
+IFF 51253  # Materials: International Flavors & Fragrances
+ILMN 1110803  # Health Care: Illumina, Inc.
+INCY 879169  # Health Care: Incyte
+INTC 50863  # Information Technology: Intel
+INTU 896878  # Information Technology: Intuit
+INVH 1687229  # Real Estate: Invitation Homes
+IP 51434  # Materials: International Paper
+IQV 1478242  # Health Care: IQVIA
+IR 1699150  # Industrials: Ingersoll Rand
+IRM 1020569  # Real Estate: Iron Mountain
+ISRG 1035267  # Health Care: Intuitive Surgical
+IT 749251  # Information Technology: Gartner
+ITW 49826  # Industrials: Illinois Tool Works
+IVZ 914208  # Financials: Invesco
+J 52988  # Industrials: Jacobs Solutions
+JBHT 728535  # Industrials: J.B. Hunt
+JBL 898293  # Information Technology: Jabil
+JCI 833444  # Industrials: Johnson Controls
+JKHY 779152  # Financials: Jack Henry & Associates
+JNJ 200406  # Health Care: Johnson & Johnson
+JPM 19617  # Financials: JPMorgan Chase
+KDP 1418135  # Consumer Staples: Keurig Dr Pepper
+KEY 91576  # Financials: KeyCorp
+KEYS 1601046  # Information Technology: Keysight Technologies
+KHC 1637459  # Consumer Staples: Kraft Heinz
+KIM 879101  # Real Estate: Kimco Realty
+KKR 1404912  # Financials: KKR & Co.
+KLAC 319201  # Information Technology: KLA Corporation
+KMB 55785  # Consumer Staples: Kimberly-Clark
+KMI 1506307  # Energy: Kinder Morgan
+KO 21344  # Consumer Staples: Coca-Cola Company (The)
+KR 56873  # Consumer Staples: Kroger
+L 60086  # Financials: Loews Corporation
+LDOS 1336920  # Industrials: Leidos
+LEN 920760  # Consumer Discretionary: Lennar
+LH 920148  # Health Care: Labcorp
+LHX 202058  # Industrials: L3Harris
+LII 1069202  # Industrials: Lennox International
+LIN 1707925  # Materials: Linde plc
+LITE 1633978  # Information Technology: Lumentum
+LLY 59478  # Health Care: Lilly (Eli)
+LMT 936468  # Industrials: Lockheed Martin
+LNT 352541  # Utilities: Alliant Energy
+LOW 60667  # Consumer Discretionary: Lowe's
+LRCX 707549  # Information Technology: Lam Research
+LULU 1397187  # Consumer Discretionary: Lululemon Athletica
+LUV 92380  # Industrials: Southwest Airlines
+LVS 1300514  # Consumer Discretionary: Las Vegas Sands
+LYB 1489393  # Materials: LyondellBasell
+LYV 1335258  # Communication Services: Live Nation Entertainment
+MA 1141391  # Financials: Mastercard
+MAA 912595  # Real Estate: Mid-America Apartment Communities
+MAR 1048286  # Consumer Discretionary: Marriott International
+MAS 62996  # Industrials: Masco
+MCD 63908  # Consumer Discretionary: McDonald's
+MCHP 827054  # Information Technology: Microchip Technology
+MCK 927653  # Health Care: McKesson
+MCO 1059556  # Financials: Moody's Corporation
+MDLZ 1103982  # Consumer Staples: Mondelez International
+MDT 1613103  # Health Care: Medtronic
+MET 1099219  # Financials: MetLife
+META 1326801  # Communication Services: Meta Platforms
+MGM 789570  # Consumer Discretionary: MGM Resorts
+MKC 63754  # Consumer Staples: McCormick & Company
+MLM 916076  # Materials: Martin Marietta Materials
+MMM 66740  # Industrials: 3M
+MNST 865752  # Consumer Staples: Monster Beverage
+MO 764180  # Consumer Staples: Altria
+MOS 1285785  # Materials: Mosaic Company (The)
+MPC 1510295  # Energy: Marathon Petroleum
+MPWR 1280452  # Information Technology: Monolithic Power Systems
+MRK 310158  # Health Care: Merck & Co.
+MRNA 1682852  # Health Care: Moderna
+MRSH 62709  # Financials: Marsh McLennan
+MRVL 1835632  # Information Technology: Marvell Technology
+MS 895421  # Financials: Morgan Stanley
+MSCI 1408198  # Financials: MSCI
+MSFT 789019  # Information Technology: Microsoft
+MSI 68505  # Information Technology: Motorola Solutions
+MTB 36270  # Financials: M&T Bank
+MTD 1037646  # Health Care: Mettler Toledo
+MU 723125  # Information Technology: Micron Technology
+NCLH 1513761  # Consumer Discretionary: Norwegian Cruise Line Holdings
+NDAQ 1120193  # Financials: Nasdaq, Inc.
+NDSN 72331  # Industrials: Nordson Corporation
+NEE 753308  # Utilities: NextEra Energy
+NEM 1164727  # Materials: Newmont
+NFLX 1065280  # Communication Services: Netflix
+NI 1111711  # Utilities: NiSource
+NKE 320187  # Consumer Discretionary: Nike, Inc.
+NOC 1133421  # Industrials: Northrop Grumman
+NOW 1373715  # Information Technology: ServiceNow
+NRG 1013871  # Utilities: NRG Energy
+NSC 702165  # Industrials: Norfolk Southern
+NTAP 1002047  # Information Technology: NetApp
+NTRS 73124  # Financials: Northern Trust
+NUE 73309  # Materials: Nucor
+NVDA 1045810  # Information Technology: Nvidia
+NVR 906163  # Consumer Discretionary: NVR, Inc.
+NWS 1564708  # Communication Services: News Corp (Class B)
+NWSA 1564708  # Communication Services: News Corp (Class A)
+NXPI 1413447  # Information Technology: NXP Semiconductors
+O 726728  # Real Estate: Realty Income
+ODFL 878927  # Industrials: Old Dominion
+OKE 1039684  # Energy: Oneok
+OKTA 1660134  # Information Technology: Okta, Inc.
+OMC 29989  # Communication Services: Omnicom Group
+ON 1097864  # Information Technology: ON Semiconductor
+ORCL 1341439  # Information Technology: Oracle Corporation
+ORLY 898173  # Consumer Discretionary: O'Reilly Automotive
+OTIS 1781335  # Industrials: Otis Worldwide
+OXY 797468  # Energy: Occidental Petroleum
+P 1474432  # Information Technology: Everpure
+PANW 1327567  # Information Technology: Palo Alto Networks
+PAYX 723531  # Industrials: Paychex
+PCAR 75362  # Industrials: Paccar
+PCG 1004980  # Utilities: PG&E Corporation
+PEG 788784  # Utilities: Public Service Enterprise Group
+PEP 77476  # Consumer Staples: PepsiCo
+PFE 78003  # Health Care: Pfizer
+PFG 1126328  # Financials: Principal Financial Group
+PG 80424  # Consumer Staples: Procter & Gamble
+PGR 80661  # Financials: Progressive Corporation
+PH 76334  # Industrials: Parker Hannifin
+PHM 822416  # Consumer Discretionary: PulteGroup
+PKG 75677  # Materials: Packaging Corporation of America
+PLD 1045609  # Real Estate: Prologis
+PLTR 1321655  # Information Technology: Palantir Technologies
+PM 1413329  # Consumer Staples: Philip Morris International
+PNC 713676  # Financials: PNC Financial Services
+PNR 77360  # Industrials: Pentair
+PNW 764622  # Utilities: Pinnacle West Capital
+PODD 1145197  # Health Care: Insulet Corporation
+PPG 79879  # Materials: PPG Industries
+PPL 922224  # Utilities: PPL Corporation
+PRU 1137774  # Financials: Prudential Financial
+PSA 1393311  # Real Estate: Public Storage
+PSX 1534701  # Energy: Phillips 66
+PTC 857005  # Information Technology: PTC Inc.
+PWR 1050915  # Industrials: Quanta Services
+PYPL 1633917  # Financials: PayPal
+Q 2058873  # Information Technology: Qnity Electronics
+QCOM 804328  # Information Technology: Qualcomm
+RCL 884887  # Consumer Discretionary: Royal Caribbean Group
+RDDT 1713445  # Communication Services: Reddit
+REG 910606  # Real Estate: Regency Centers
+REGN 872589  # Health Care: Regeneron Pharmaceuticals
+RF 1281761  # Financials: Regions Financial Corporation
+RJF 720005  # Financials: Raymond James Financial
+RL 1037038  # Consumer Discretionary: Ralph Lauren Corporation
+RMD 943819  # Health Care: ResMed
+ROK 1024478  # Industrials: Rockwell Automation
+ROL 84839  # Industrials: Rollins, Inc.
+ROP 882835  # Information Technology: Roper Technologies
+ROST 745732  # Consumer Discretionary: Ross Stores
+RSG 1060391  # Industrials: Republic Services
+RTX 101829  # Industrials: RTX Corporation
+RVTY 31791  # Health Care: Revvity
+SBAC 1034054  # Real Estate: SBA Communications
+SBUX 829224  # Consumer Discretionary: Starbucks
+SCHW 316709  # Financials: Charles Schwab Corporation
+SHW 89800  # Materials: Sherwin-Williams
+SJM 91419  # Consumer Staples: J.M. Smucker Company (The)
+SKYD 2041610  # Communication Services: Skydance
+SLB 87347  # Energy: Schlumberger
+SMCI 1375365  # Information Technology: Supermicro
+SNA 91440  # Industrials: Snap-on
+SNDK 2023554  # Information Technology: Sandisk
+SNPS 883241  # Information Technology: Synopsys
+SO 92122  # Utilities: Southern Company
+SOLV 1964738  # Health Care: Solventum
+SPG 1063761  # Real Estate: Simon Property Group
+SPGI 64040  # Financials: S&P Global
+SRE 1032208  # Utilities: Sempra
+STE 1757898  # Health Care: Steris
+STLD 1022671  # Materials: Steel Dynamics
+STT 93751  # Financials: State Street Corporation
+STX 1137789  # Information Technology: Seagate Technology
+STZ 16918  # Consumer Staples: Constellation Brands
+SW 2005951  # Materials: Smurfit Westrock
+SWK 93556  # Industrials: Stanley Black & Decker
+SWKS 4127  # Information Technology: Skyworks Solutions
+SYF 1601712  # Financials: Synchrony Financial
+SYK 310764  # Health Care: Stryker Corporation
+SYY 96021  # Consumer Staples: Sysco
+T 732717  # Communication Services: AT&T
+TDG 1260221  # Industrials: TransDigm Group
+TDY 1094285  # Information Technology: Teledyne Technologies
+TECH 842023  # Health Care: Bio-Techne
+TEL 1385157  # Information Technology: TE Connectivity
+TER 97210  # Information Technology: Teradyne
+TFC 92230  # Financials: Truist Financial
+TGT 27419  # Consumer Staples: Target Corporation
+TJX 109198  # Consumer Discretionary: TJX Companies
+TKO 1973266  # Communication Services: TKO Group Holdings
+TMO 97745  # Health Care: Thermo Fisher Scientific
+TMUS 1283699  # Communication Services: T-Mobile US
+TPL 1811074  # Energy: Texas Pacific Land Corporation
+TPR 1116132  # Consumer Discretionary: Tapestry, Inc.
+TRGP 1389170  # Energy: Targa Resources
+TRMB 864749  # Information Technology: Trimble Inc.
+TROW 1113169  # Financials: T. Rowe Price
+TRV 86312  # Financials: Travelers Companies (The)
+TSCO 916365  # Consumer Discretionary: Tractor Supply
+TSLA 1318605  # Consumer Discretionary: Tesla, Inc.
+TSN 100493  # Consumer Staples: Tyson Foods
+TT 1466258  # Industrials: Trane Technologies
+TTWO 946581  # Communication Services: Take-Two Interactive
+TWLO 1447669  # Information Technology: Twilio
+TXN 97476  # Information Technology: Texas Instruments
+TXT 217346  # Industrials: Textron
+TYL 860731  # Information Technology: Tyler Technologies
+UAL 100517  # Industrials: United Airlines Holdings
+UBER 1543151  # Industrials: Uber
+UDR 74208  # Real Estate: UDR, Inc.
+UHS 352915  # Health Care: Universal Health Services
+ULTA 1403568  # Consumer Discretionary: Ulta Beauty
+UNH 731766  # Health Care: UnitedHealth Group
+UNP 100885  # Industrials: Union Pacific Corporation
+UPS 1090727  # Industrials: United Parcel Service
+URI 1067701  # Industrials: United Rentals
+USB 36104  # Financials: U.S. Bancorp
+V 1403161  # Financials: Visa Inc.
+VEEV 1393052  # Health Care: Veeva Systems
+VICI 1705696  # Real Estate: Vici Properties
+VLO 1035002  # Energy: Valero Energy
+VLTO 1967680  # Industrials: Veralto
+VMC 1396009  # Materials: Vulcan Materials Company
+VMRK 906107  # Real Estate: Vivmark Residential
+VRSK 1442145  # Industrials: Verisk Analytics
+VRSN 1014473  # Information Technology: Verisign
+VRT 1674101  # Industrials: Vertiv
+VRTX 875320  # Health Care: Vertex Pharmaceuticals
+VST 1692819  # Utilities: Vistra Corp.
+VTR 740260  # Real Estate: Ventas
+VTRS 1792044  # Health Care: Viatris
+VYLR 2128626  # Consumer Staples: Vylor
+VZ 732712  # Communication Services: Verizon
+WAB 943452  # Industrials: Wabtec
+WAT 1000697  # Health Care: Waters Corporation
+WDAY 1327811  # Information Technology: Workday, Inc.
+WDC 106040  # Information Technology: Western Digital
+WEC 783325  # Utilities: WEC Energy Group
+WELL 766704  # Real Estate: Welltower
+WFC 72971  # Financials: Wells Fargo
+WM 823768  # Industrials: Waste Management
+WMB 107263  # Energy: Williams Companies
+WMT 104169  # Consumer Staples: Walmart
+WRB 11544  # Financials: W. R. Berkley Corporation
+WSM 719955  # Consumer Discretionary: Williams-Sonoma, Inc.
+WST 105770  # Health Care: West Pharmaceutical Services
+WTW 1140536  # Financials: Willis Towers Watson
+WY 106535  # Real Estate: Weyerhaeuser
+WYNN 1174922  # Consumer Discretionary: Wynn Resorts
+XEL 72903  # Utilities: Xcel Energy
+XOM 2115436  # Energy: ExxonMobil
+XYL 1524472  # Industrials: Xylem Inc.
+XYZ 1512673  # Financials: Block, Inc.
+YUM 1041061  # Consumer Discretionary: Yum! Brands
+ZBH 1136869  # Health Care: Zimmer Biomet
+ZBRA 877212  # Information Technology: Zebra Technologies
+ZTS 1555280  # Health Care: Zoetis

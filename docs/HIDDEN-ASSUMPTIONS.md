@@ -19,8 +19,8 @@ by the recast).
 rows were not fiscal years (on a 29-ticker panel: 338 of 672). A 10-K also contains
 quarter values, and the old importer made a row for each end date. Now a row exists
 only if an anchor tag (revenue, net income, operating cash flow, tax expense) has a
-fact of the correct length for that end date. Evidence: `financial_analysis/facts.py`
-(`period_ends`); `tests/test_facts.py`.
+fact of the correct length for that end date. Evidence: `rust/mapcheck/src/facts.rs`
+(`period_ends` and its tests).
 
 **3. (Closed 2026-11-19.) `n_periods` counts fiscal years.** `import_company(n_periods=12)`
 gives the latest 12 fiscal years and the latest 12 quarters. Each row has all the
@@ -35,8 +35,8 @@ filters vintages on `filed_date <= as_of`, so vintages are **conservative** (see
 periods than a real-time observer), never optimistic — the safe leakage direction, but
 do not read `filed_date` as "when this became public." Evidence:
 `financial_analysis/backtest.py:1-37` (module docstring, caveat #1);
-`financial_analysis/facts.py` (`_latest`: the latest filing wins);
-`financial_analysis/importer.py` (`resolve_period`).
+`rust/mapcheck/src/facts.rs` (`latest`: the latest filing wins);
+`rust/mapcheck/src/mapper.rs` (`resolve_period`).
 
 **5. Segment data is hand-entered; companyfacts has no segment axis.** The SEC
 companyfacts API strips dimensional facts (verified across every us-gaap concept in
@@ -117,6 +117,94 @@ necessary.
 **41. Foreign filers and IFRS filers are out of scope.** A foreign filer with annual
 reports on form 20-F or 40-F has no 10-K (51 of the 500 largest registrants), and an
 IFRS filer has no us-gaap facts (59 of 500). `mapcheck` gives them `N/A` and `ERROR`.
+A filer that reports in a currency that is not USD (IMO, Canadian dollars) is `N/A`.
+
+**42. Three core inputs are weak in the standard variables.** A comparison with Yahoo
+Finance for 50 companies (2026-11-19) gives agreement of 98% or more for eight core
+inputs, but 75% for `capex`, 74% for `da_total` and 83% for `total_debt`. Causes: the
+standard capex is equipment only (capitalized software and company tags are not in it);
+the depreciation tags have a different scope for each filer; debt tags overlap. Before
+you use these three inputs for a ticker, run `mapcheck filing TICKER --focus` and
+compare. Free cash flow is too high when capex is too low. Since rule R2
+(`PLANNING/RULES.md`), free cash flow uses `capex_total` (equipment and capitalized
+software). This corrects only the companies that use a standard tag for software (14 of
+324); a company tag for software (IBM) is not in the standard source.
+*Evidence:* `rust/mapcheck/README.md` (the record of the Yahoo comparison, and
+`mapcheck crosscheck`).
+
+**43. The filing-level values come from tag-name patterns.** `rust/mapcheck/src/filing.rs`
+finds the capex, depreciation and debt lines by words in the tag name. A line can be
+missing (a capex line with an unusual name) or incorrect
+(FDX and DUK: debt is counted two times; V and MA: a line that is not depreciation).
+The printed lines show what the value contains.
+
+**44. A share count can have no scale.** McDonald's tags 716.4 for 716.4 million shares.
+The importer and the Rust mapper correct a factor of 1,000 or 1,000,000 when net income
+divided by EPS shows it, and the source records the correction. A stock split after the
+period is not corrected: the value is the count that the filer reported.
+
+**48. The Python commands need the Rust program.** The Python importer has no mapping
+logic. `scripts.analyze`, `scripts.import_financials` and each command that imports a
+ticker run `rust/mapcheck/target/release/mapcheck`. If the program is not built, they
+stop with `MapcheckError` and the build command. Build it again after a change of
+`financial_analysis/standard_variables.toml` (the program contains the file).
+
+**49. A request to the SEC needs `SEC_USER_AGENT`.** The Rust program reads the contact
+text from this environment variable. `www.sec.gov` (ticker list, filing files) refuses
+a request with no contact. The Python importer gives the Rust program the contact text
+of the legacy Python SEC client when the variable is not set.
+
+**50. A critical input can come from the 10-K, and it is an estimate.** When revenue,
+capex or the share count has no value in the company facts, and the 10-K is in the
+cache, `mapcheck` reads the value from the filing (`rust/mapcheck/src/supplement.rs`;
+rules in `rust/mapcheck/README.md`, "Values from the 10-K"). 24 of the S&P 500 members
+and 37 of the next 500 companies get a value in this way. The source text starts with
+`filing`, and the finding `filled_from_filing` is a warning. Read the source before you
+use the value: a capex value is a sum of lines that are found by words in the tag name
+or the label (NEE: four lines, 25B; URI: rental equipment and other equipment).
+If the 10-K is not in the cache, the input has no value and the status is `FAIL`; run
+`mapcheck fetch --filings --gaps`.
+
+**51. Capex is 0 when the 10-K has no capex line.** Some companies do not show capital
+expenditure in the cash-flow statement (ABNB, APP, COIN, TPL, royalty companies, asset
+managers). The amount is small for them and it is inside a different investing line.
+`mapcheck` then gives `capex` = 0 with a source text that says so (5 of the S&P 500,
+9 of the next 500). Free cash flow is then equal to operating cash flow, which is some
+percent too high. The purchase of royalty interests or of mineral rights (RGLD, VNOM,
+TPL) is not capex under rule R2; for these companies it is the main investment, and a
+valuation must treat it separately.
+
+**52. The share count of a company with share classes is a selection.** The 10-K gives
+a count for each class. `mapcheck` uses the largest class (V, BRK-B, ERIE: the count of
+this class includes the other classes after conversion), or the sum of the classes when
+the sum agrees with net income divided by EPS. For a company with an operating
+partnership (HESM, PAGP) or a tracking stock (FWONA: no value), examine the count.
+
+**53. A 10-K gives three fiscal years.** A company that gets capex from the 10-K has
+capex for the three years of the latest 10-K only. Earlier years have no value, and
+the finding `short_history` says that the classic engine does not have its four years.
+An oil company: `capex` is the payments to explore and develop; the purchase of
+properties from other companies is not in it (FANG: 5.9B in 2025).
+
+**54. Revenue has four sources, in a fixed sequence.** (1) A total tag (`Revenues`, the
+utility tag, the tag for revenue net of interest expense). (2) A bank: net interest
+income and noninterest income. (3) Contract revenue. (4) Lease income (a landlord),
+then total investment income (an investment company). A bank uses the contract-revenue
+tag only for a part of its fee income; before this rule, MTB had 1.5B of revenue, not
+9.3B. A mortgage REIT (NLY, AGNC) has no revenue total and stays `FAIL`. The filing
+date of a period comes from the revenue fact or the contract-revenue fact.
+
+**55. A formula value that is larger than its total is not used.** If a formula gives
+a value that is more than 2% larger than a total that must contain it (the `[[within]]`
+rules of the registry), two terms contain the same amount. The variable then has no
+value, the source text says why, and the finding is `formula_not_used` (ASTS: the
+short-term investments are inside the cash line; INCY 2018 and VMRK 2022: total debt).
+A value from a tag is not removed: it stays, with the finding `exceeds_total` (`FAIL`).
+
+**56. `mapcheck` judges a bank, an insurer and a REIT, but the DCF engines do not fit
+them.** The status of these company types says that revenue, net income, total assets,
+equity and the share count are there. It does not say that a free-cash-flow DCF gives
+a correct value. A company with no revenue in the latest three fiscal years is `N/A`.
 
 ## Model layer (IBM v4 / driver engine)
 
@@ -246,7 +334,7 @@ without a `CAPITAL_OVERRIDES` entry, net debt = the standard variable `total_deb
 cash — **no pension, no marketable securities, no stock-vs-flow review**. `total_debt`
 is a first estimate: filers tag debt in different ways and the tags can overlap (on the
 2026-11-19 panel the two formulas disagree for IBM, JNJ, HD, CVX and CSCO; see
-`python -m scripts.mapping_audit`). The IBM
+`mapcheck --detail`). The IBM
 override embeds the F15-reviewed bridge (debt + after-tax pension − cash&securities);
 the DUOL override includes HTM securities + LT investments on the cash side. A
 cross-ticker comparison (the ORCL/basket runs) that mixes overridden and derived capital
@@ -330,7 +418,7 @@ it in a point-in-time backtest without a release-date check.
 
 ## Corporate bonds (added 2026-11-18)
 
-**36. For IBM, `--rating` replaces a reviewed calibration with a proxy.** The IBM
+**45. For IBM, `--rating` replaces a reviewed calibration with a proxy.** The IBM
 `kd_spread` (-0.10%) comes from the fair value of the IBM debt ladder (DRIVER-REVIEW,
 adjudicated conflict #2). The A index spread over the 10Y was +0.67% on 2026-11-17. With
 `--rating A-` the IBM P50 goes from $133.90 to $127.71. The index is a general proxy for
@@ -339,14 +427,14 @@ the same weight. For a ticker without a calibrated spread (for example JNJ), the
 gives a sourced value.
 *Evidence:* `python -m scripts.verdict IBM --price 231.09 --rf-date 2026-11-18 --rating A-`.
 
-**37. The ICE data on FRED has only 3 years, and ICE does not allow redistribution.**
+**46. The ICE data on FRED has only 3 years, and ICE does not allow redistribution.**
 The series start on 2023-11-20. A date before that gives an error, not an old value. Do
 not commit the cache (`data/raw/bonds/`) or put ICE values in a public file. For a
 longer history, use Moody's Aaa and Baa (from 1983 and 1986). Those are long bonds (20
 years or more), thus their spread over the 10Y is larger than the spread of an index.
 *Evidence:* FRED BAMLC0A3CA first observation 2023-11-20.
 
-**38. The rating index has no notches and its own duration.** `A-`, `A` and `A+` all use
+**47. The rating index has no notches and its own duration.** `A-`, `A` and `A+` all use
 the `A` index. The index duration is approximately 6 to 7 years, not 10 years. Thus the
 OAS and the yield minus the 10Y are different numbers. The engine uses the yield minus
 the 10Y, because the engine defines `kd = rf_10Y + kd_spread`. The HQM curve is monthly

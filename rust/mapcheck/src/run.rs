@@ -1,8 +1,10 @@
 //! Run the mapping and the checks for one ticker, and for a list of tickers.
 
-use crate::checks::{check_company, check_period, filer_template, Finding, PeriodChecks, Severity};
+use crate::checks::{check_company_as, check_period_as, filer_template, Finding, PeriodChecks, Severity};
 use crate::facts::CompanyFacts;
-use crate::mapper::{map_company, Company};
+use crate::mapper::{map_company_with, Company, Fill};
+use crate::supplement::Supplement;
+use std::cell::OnceCell;
 use crate::registry::Registry;
 use flate2::read::GzDecoder;
 use rayon::prelude::*;
@@ -17,8 +19,9 @@ pub enum Status {
     Pass,
     Warn,
     Fail,
-    /// A bank, insurer or REIT (the standard variables do not fit), or a foreign
-    /// filer with annual reports on form 20-F or 40-F. Not judged.
+    /// Not judged: a foreign filer with annual reports on form 20-F or 40-F, a filer
+    /// with a reporting currency that is not USD, a new registrant that has no 10-K,
+    /// or a company that has no revenue (the DCF does not fit).
     Template,
     /// The data cannot be read (no file, not us-gaap, not JSON).
     Error,
@@ -68,15 +71,20 @@ pub fn facts_path(cache: &Path, ticker: &str) -> Option<PathBuf> {
     None
 }
 
-pub fn read_facts(path: &Path) -> Result<CompanyFacts, String> {
+/// The bytes of a cache file (a `.gz` file is decompressed).
+pub fn read_bytes(path: &Path) -> Result<Vec<u8>, String> {
     let file = File::open(path).map_err(|e| format!("{}: {e}", path.display()))?;
-    let mut text = Vec::new();
+    let mut bytes = Vec::new();
     if path.extension().map(|e| e == "gz").unwrap_or(false) {
-        GzDecoder::new(BufReader::new(file)).read_to_end(&mut text).map_err(|e| format!("{}: {e}", path.display()))?;
+        GzDecoder::new(BufReader::new(file)).read_to_end(&mut bytes).map_err(|e| format!("{}: {e}", path.display()))?;
     } else {
-        BufReader::new(file).read_to_end(&mut text).map_err(|e| format!("{}: {e}", path.display()))?;
+        BufReader::new(file).read_to_end(&mut bytes).map_err(|e| format!("{}: {e}", path.display()))?;
     }
-    serde_json::from_slice(&text).map_err(|e| format!("{}: {e}", path.display()))
+    Ok(bytes)
+}
+
+pub fn read_facts(path: &Path) -> Result<CompanyFacts, String> {
+    serde_json::from_slice(&read_bytes(path)?).map_err(|e| format!("{}: {e}", path.display()))
 }
 
 fn error_report(ticker: &str, message: String, seconds: f64) -> TickerReport {
@@ -97,26 +105,48 @@ fn error_report(ticker: &str, message: String, seconds: f64) -> TickerReport {
     }
 }
 
-/// Map and check one company from its facts.
+/// Map one company. A 10-K of the ticker in the cache gives the critical inputs that
+/// the company facts do not have. The filing is read only if an input has no value.
+pub fn map_ticker(registry: &Registry, cache: &Path, ticker: &str, facts: &CompanyFacts, n_periods: usize) -> Company {
+    let filing: OnceCell<Option<Supplement>> = OnceCell::new();
+    let fill = |end: &str, name: &str| {
+        filing.get_or_init(|| Supplement::load(registry, cache, ticker)).as_ref().and_then(|s| s.fill(registry, end, name))
+    };
+    map_company_with(registry, facts, n_periods, Some(&fill))
+}
+
+/// Map and check one company from its facts (no filing).
 pub fn check_facts(registry: &Registry, ticker: &str, facts: &CompanyFacts, n_periods: usize, as_of: i64, keep_values: bool) -> TickerReport {
+    check_facts_with(registry, ticker, facts, n_periods, as_of, keep_values, None)
+}
+
+/// Map and check one company from its facts, and from the 10-K in the cache.
+pub fn check_cached(registry: &Registry, cache: &Path, ticker: &str, facts: &CompanyFacts, n_periods: usize, as_of: i64, keep_values: bool) -> TickerReport {
+    let filing: OnceCell<Option<Supplement>> = OnceCell::new();
+    let fill = |end: &str, name: &str| {
+        filing.get_or_init(|| Supplement::load(registry, cache, ticker)).as_ref().and_then(|s| s.fill(registry, end, name))
+    };
+    check_facts_with(registry, ticker, facts, n_periods, as_of, keep_values, Some(&fill))
+}
+
+fn check_facts_with(registry: &Registry, ticker: &str, facts: &CompanyFacts, n_periods: usize, as_of: i64, keep_values: bool, fill: Option<Fill>) -> TickerReport {
     let start = Instant::now();
     if !facts.has_us_gaap() {
         let namespaces: Vec<&String> = facts.facts.keys().collect();
         return error_report(ticker, format!("not a us-gaap filer (namespaces: {namespaces:?})"), start.elapsed().as_secs_f64());
     }
-    let company = map_company(registry, facts, n_periods);
-    let mut findings = check_company(registry, &company, as_of);
+    let company = map_company_with(registry, facts, n_periods, fill);
+    let mut template = company.annual.last().map(|p| filer_template(registry, p)).unwrap_or("standard");
+    let mut findings = check_company_as(registry, &company, as_of, template);
     let mut latest = PeriodChecks::default();
-    let mut template = "standard";
     let mut earlier_failures = 0usize;
     if let Some(period) = company.annual.last() {
-        template = filer_template(facts, &period.end);
-        latest = check_period(registry, period);
+        latest = check_period_as(registry, period, template);
         findings.extend(latest.findings.iter().cloned());
         // Earlier fiscal years: count the years that have a Fail.
         let mut codes: Vec<String> = Vec::new();
         for earlier in &company.annual[..company.annual.len() - 1] {
-            let checks = check_period(registry, earlier);
+            let checks = check_period_as(registry, earlier, template);
             let fails: Vec<&Finding> = checks.findings.iter().filter(|f| f.severity == Severity::Fail).collect();
             if !fails.is_empty() {
                 earlier_failures += 1;
@@ -135,11 +165,27 @@ pub fn check_facts(registry: &Registry, ticker: &str, facts: &CompanyFacts, n_pe
             });
         }
     }
-    if company.annual.is_empty() && has_foreign_annual_form(facts) {
-        template = "foreign";
+    // Not judged: a foreign filer, a currency that is not USD, a registrant that has
+    // no 10-K (a new company), or a company with no revenue.
+    let mut judged = true;
+    if company.annual.is_empty() {
+        if has_form(facts, &["20-F", "20-F/A", "40-F", "40-F/A"]) {
+            template = "foreign";
+            judged = false;
+        } else if !has_form(facts, &["10-K", "10-K/A"]) {
+            template = "new";
+            judged = false;
+        } else if let Some(currency) = other_currency(facts) {
+            findings.push(Finding { severity: Severity::Info, code: "currency".to_string(), detail: format!("the filer reports in {currency}, not in USD") });
+            template = "non-usd";
+            judged = false;
+        }
+    } else if template == "standard" && no_revenue(registry, &company) {
+        template = "no-revenue";
+        judged = false;
     }
     let worst = findings.iter().map(|f| f.severity).max().unwrap_or(Severity::Info);
-    let status = if template != "standard" {
+    let status = if !judged {
         Status::Template
     } else {
         match worst {
@@ -166,16 +212,35 @@ pub fn check_facts(registry: &Registry, ticker: &str, facts: &CompanyFacts, n_pe
     }
 }
 
-/// True if the filer has a fact from a form 20-F or 40-F (a foreign filer; such a
-/// filer has no 10-K and can report in a currency that is not USD).
-fn has_foreign_annual_form(facts: &CompanyFacts) -> bool {
+/// The reporting currency, if the total assets have no value in USD.
+fn other_currency(facts: &CompanyFacts) -> Option<String> {
+    let units = &facts.facts.get("us-gaap")?.get("Assets")?.units;
+    if units.contains_key("USD") {
+        return None;
+    }
+    units.keys().find(|u| u.len() == 3 && u.chars().all(|c| c.is_ascii_uppercase())).cloned()
+}
+
+/// True for a company that has no revenue now (for example a drug developer before
+/// its first product): the latest three fiscal years have no revenue, the latest year
+/// has a loss, and no revenue tag without a variable has a value. A free-cash-flow
+/// DCF does not fit.
+fn no_revenue(registry: &Registry, company: &Company) -> bool {
+    let Some(latest) = company.annual.last() else { return false };
+    let revenue_tag = |tag: &str| tag.starts_with("us-gaap/Revenue") || tag.contains("Revenues") || tag.contains("SalesRevenue");
+    company.annual.iter().rev().take(3).all(|p| p.get(registry, "revenue").unwrap_or(0.0) == 0.0)
+        && latest.get(registry, "net_income").map(|v| v < 0.0).unwrap_or(false)
+        && !latest.raw_extras.iter().any(|(tag, value)| revenue_tag(tag) && *value > 0.0)
+}
+
+/// True if the filer has a fact from one of these forms.
+fn has_form(facts: &CompanyFacts, forms: &[&str]) -> bool {
     facts.facts.values().any(|namespace| {
         namespace.values().any(|concept| {
-            concept.units.values().any(|entries| {
-                entries
-                    .iter()
-                    .any(|e| matches!(e.form.as_deref(), Some("20-F") | Some("20-F/A") | Some("40-F") | Some("40-F/A")))
-            })
+            concept
+                .units
+                .values()
+                .any(|entries| entries.iter().any(|e| e.form.as_deref().map(|f| forms.contains(&f)).unwrap_or(false)))
         })
     })
 }
@@ -187,7 +252,7 @@ pub fn check_ticker(registry: &Registry, cache: &Path, ticker: &str, n_periods: 
     };
     match read_facts(&path) {
         Ok(facts) => {
-            let mut report = check_facts(registry, ticker, &facts, n_periods, as_of, keep_values);
+            let mut report = check_cached(registry, cache, ticker, &facts, n_periods, as_of, keep_values);
             report.seconds = start.elapsed().as_secs_f64();
             report
         }
@@ -233,8 +298,8 @@ pub fn report_json(report: &TickerReport) -> Value {
     })
 }
 
-/// The mapped values of all periods, one JSON line for each period (for the parity
-/// test with the Python importer).
+/// The mapped values of all periods, one JSON line for each period (for a comparison
+/// of two runs).
 pub fn values_json(registry: &Registry, report: &TickerReport) -> Vec<Value> {
     let Some(company) = &report.company else { return Vec::new() };
     let mut lines = Vec::new();
