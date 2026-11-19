@@ -2,9 +2,9 @@
 id: T-20261119-data-sync
 title: Make one command that updates all data sets, and only the old ones
 area: engine
-status: backlog
+status: in-progress
 owner: louellet-git
-branch:
+branch: claude/data-sync
 created: 2026-11-19
 acceptance: `fa sync` updates each data set that is older than its maximum age for a list of tickers, continues when one source fails, prints one summary line for each source, and a second run on the same day makes no network request.
 ---
