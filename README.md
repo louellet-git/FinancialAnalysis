@@ -504,7 +504,7 @@ README.md                 this file
 requirements.txt          packages of the legacy SEC client (the only Python code)
 rust/mapcheck/            Rust: SEC data to standard variables, checks, filing statements
 .env.example              names of the optional API keys
-.github/workflows/        CI: runs the Rust tests on each pull request
+.github/workflows/        CI: runs the Rust tests on a pull request that changes code (not for a change of documents only)
 
 financial_analysis/       the registry standard_variables.toml; the legacy SEC client (Python)
 analysis/IBM/             IBM model (version 4), reviews, published report
