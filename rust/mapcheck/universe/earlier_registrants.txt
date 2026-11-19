@@ -1,0 +1,5 @@
+# A company that changed its SEC registrant (a new holding company): the ticker
+# points to the new CIK, and the history is under the earlier CIK. `mapcheck fetch`
+# and `mapcheck import` get the facts of each CIK and make one file.
+# One line: TICKER EARLIER_CIK [EARLIER_CIK ...]
+XOM 34088

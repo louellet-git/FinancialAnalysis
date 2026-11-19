@@ -1,6 +1,6 @@
 //! SEC companyfacts data, and the selection of facts by period length.
 //!
-//! This is the same logic as financial_analysis/facts.py:
+//! Rules:
 //! - an annual value covers a full fiscal year (350 to 380 days);
 //! - a quarterly value covers one quarter (80 to 100 days), or is the year-to-date
 //!   value less the prior year-to-date value;
