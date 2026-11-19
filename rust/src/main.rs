@@ -28,6 +28,8 @@ USAGE:
   fa bonds check [--days N]                       Moody's - 10Y vs FRED (exit 1 on mismatch)
   fa forwards [--date D]                          GSW zero-coupon yields and forward rates (Federal Reserve Board)
   fa forwards check [--days N]                    GSW par yields against Treasury (exit 1 on mismatch)
+  fa models calibrate|rolling|frequencies|compare|simulate ...
+                                                  stochastic rate models (Rust); see below
   fa verdict TICKER --price P [--rf-date D|today] [--rf-base-date D] [--rating A-]
              [--simulations N] [--seed S]
   fa run MODULE [ARGS...]                         any entry point, e.g. fa run scripts.analyze IBM
@@ -127,11 +129,15 @@ fn forwards_cmd(fa: &Fa, rest: &[String]) -> ExitCode {
 fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
     match args.first().map(String::as_str) {
         None | Some("help" | "-h" | "--help") => {
-            println!("{USAGE}");
+            println!("{USAGE}\n\nMODELS (fa models ...):\n{}", financial_analysis::ratemodels::cli::USAGE);
             Ok(ExitCode::SUCCESS)
         }
         Some("rates") => rates(fa, &args[1..]),
         Some("bonds") => bonds(fa, &args[1..]),
+        Some("models") => financial_analysis::ratemodels::cli::run(&fa.repo, &args[1..]).map(|_| ExitCode::SUCCESS).or_else(|e| {
+            eprintln!("fa: {e}");
+            Ok(ExitCode::from(2))
+        }),
         Some("forwards") => Ok(forwards_cmd(fa, &args[1..])),
         Some("verdict") => {
             print_json(&fa.call::<Verdict>("scripts.verdict", &args[1..])?);

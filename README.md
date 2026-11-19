@@ -223,6 +223,11 @@ cargo run --bin fa -- verdict IBM --price 231.09 --rf-date today --rating A-
 cargo run --bin fa -- bonds over10y --rating A-
 cargo run --bin fa -- forwards --date 2026-11-13   # GSW zero-coupon yields and forward rates (Rust only)
 cargo run --bin fa -- forwards check               # GSW against Treasury par yields, exit 1 on mismatch
+cargo run --release --bin fa -- models calibrate --model cir --method ml --start 2000-01-01 --freq weekly   # fit one model to GSW 1Y zero yield
+cargo run --release --bin fa -- models rolling --model vasicek --method ml --window 5y --step 3m --out roll.csv  # parameters in windows
+cargo run --release --bin fa -- models frequencies --model vasicek --method ml   # daily, weekly, monthly
+cargo run --release --bin fa -- models compare --start 1990-01-01                # vasicek, cir, ckls, holee: log-likelihood, AIC
+cargo run --release --bin fa -- models simulate --model cir --kappa 0.5 --theta 0.05 --sigma 0.1 --years 10 --paths 100000 --seed 1
 cargo run --bin fa -- run scripts.analyze IBM     # any Python entry point
 cargo run --example dcf_rates -- IBM 231.09 A-    # library example
 ```

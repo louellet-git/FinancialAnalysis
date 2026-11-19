@@ -123,6 +123,7 @@ name = "financial-analysis"
 version = "0.1.0"
 dependencies = [
  "mapcheck",
+ "rayon",
  "serde",
  "serde_json",
 ]

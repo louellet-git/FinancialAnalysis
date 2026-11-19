@@ -80,6 +80,23 @@ impl Dataset {
         Ok(row.values[self.column(name)?])
     }
 
+    /// The full history of one column (for example "SVENY01"): the day numbers and the decimal values.
+    /// A row with "NA" in the column is left out.
+    pub fn history(&self, column: &str) -> Result<(Vec<i64>, Vec<f64>)> {
+        let c = self.column(column)?;
+        let (mut days, mut values) = (Vec::new(), Vec::new());
+        for row in &self.rows {
+            if let Some(v) = row.values[c] {
+                days.push(row.day);
+                values.push(decimal(v));
+            }
+        }
+        if days.is_empty() {
+            return Err(format!("GSW column {column} has no values"));
+        }
+        Ok((days, values))
+    }
+
     pub fn first_date(&self) -> String {
         dates::format(self.rows[0].day)
     }
