@@ -56,6 +56,19 @@ pub struct OptionChainSnapshot {
     #[serde(default)]
     pub spot_price: Option<f64>,
     pub quotes: Vec<OptionQuote>,
+    /// Where the quotes came from: `alpaca` or `alpaca-history`. A file with no value is a Cboe delayed snapshot.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+    /// The feed of the source (`indicative` for Alpaca live chains).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub feed: Option<String>,
+    /// What a quote is: `close` (a daily close of the contract: no bid and no ask) or `indicative` (modified quotes of
+    /// the free Alpaca feed). A file with no value has real bid and ask (Cboe).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quote_kind: Option<String>,
+    /// A text of the method (how the implied volatility was calculated).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -175,7 +188,7 @@ pub fn snapshot_from_cboe(bytes: &[u8], ticker: &str, snapshot_date: &str) -> Re
         });
     }
     quotes.sort_by(|a, b| (&a.expiry, &a.option_type).cmp(&(&b.expiry, &b.option_type)).then(a.strike.total_cmp(&b.strike)));
-    Ok(OptionChainSnapshot { ticker, snapshot_date: snapshot_date.to_string(), spot_price: spot, quotes })
+    Ok(OptionChainSnapshot { ticker, snapshot_date: snapshot_date.to_string(), spot_price: spot, quotes, source: None, feed: None, quote_kind: None, note: None })
 }
 
 #[derive(Debug, PartialEq)]

@@ -49,6 +49,9 @@ pub struct Meta {
     pub first_date: String,
     pub last_date: String,
     pub rows: usize,
+    /// What the source did besides its name, for example `feed=iex adjustment=split` (Alpaca).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
 }
 
 pub fn prices_path(cache: &Path, ticker: &str) -> PathBuf {
@@ -67,6 +70,7 @@ fn meta_for(rows: &[PricePoint], source: &str, adjusted: &str, updated: &str) ->
         first_date: rows.first().map(|r| r.date.clone()).unwrap_or_default(),
         last_date: rows.last().map(|r| r.date.clone()).unwrap_or_default(),
         rows: rows.len(),
+        detail: None,
     }
 }
 
@@ -236,6 +240,11 @@ fn attempt(src: &dyn PriceSource, ticker: &str, existing: &Existing, opt: &Optio
 /// Update the cache of one ticker from the sources (in the order of use). The cache source goes first
 /// unless the person forced a source or asked for the full history.
 pub fn update_ticker(cache: &Path, ticker: &str, sources: &[Box<dyn PriceSource>], opt: &Options, run: &mut Run) -> Status {
+    update_with(cache, ticker, sources.iter().map(|s| s.as_ref()).collect(), opt, run)
+}
+
+/// `update_ticker` for sources that are not boxed (the same rules).
+pub fn update_with(cache: &Path, ticker: &str, mut order: Vec<&dyn PriceSource>, opt: &Options, run: &mut Run) -> Status {
     let existing = load_existing(cache, ticker);
     if !opt.full && !opt.forced {
         if let Some((_, m)) = &existing {
@@ -244,7 +253,6 @@ pub fn update_ticker(cache: &Path, ticker: &str, sources: &[Box<dyn PriceSource>
             }
         }
     }
-    let mut order: Vec<&dyn PriceSource> = sources.iter().map(|s| s.as_ref()).collect();
     if !opt.full && !opt.forced {
         if let Some((_, m)) = &existing {
             order.sort_by_key(|s| s.name() != m.source);
@@ -254,7 +262,8 @@ pub fn update_ticker(cache: &Path, ticker: &str, sources: &[Box<dyn PriceSource>
     for src in order {
         match attempt(src, ticker, &existing, opt, run) {
             Ok((rows, added, full, note)) => {
-                let meta = meta_for(&rows, src.name(), if src.adjusts_dividends() { ADJUSTED_ALL } else { ADJUSTED_SPLITS }, &opt.today);
+                let mut meta = meta_for(&rows, src.name(), if src.adjusts_dividends() { ADJUSTED_ALL } else { ADJUSTED_SPLITS }, &opt.today);
+                meta.detail = src.detail();
                 return match save(cache, ticker, &rows, &meta) {
                     Ok(()) => Status::Updated { source: src.name().into(), added, full, note },
                     Err(e) => Status::Failed(e),
@@ -264,6 +273,101 @@ pub fn update_ticker(cache: &Path, ticker: &str, sources: &[Box<dyn PriceSource>
         }
     }
     Status::Failed(reasons.join("; "))
+}
+
+/// Rows that one batch request already got. A request from a day that the batch covers is answered from
+/// the rows; any other request goes to the source (a full history after a split, for example).
+struct Prefetched<'a> {
+    source: &'a dyn PriceSource,
+    rows: Vec<Row>,
+    /// The first day of the batch request (`None`: the full history).
+    covers_from: Option<String>,
+}
+
+impl PriceSource for Prefetched<'_> {
+    fn name(&self) -> &'static str {
+        self.source.name()
+    }
+    fn adjusts_dividends(&self) -> bool {
+        self.source.adjusts_dividends()
+    }
+    fn detail(&self) -> Option<String> {
+        self.source.detail()
+    }
+    fn fetch(&self, ticker: &str, from: Option<&str>, to: &str) -> Result<Vec<Row>, FetchError> {
+        let covered = match (&self.covers_from, from) {
+            (None, _) => true,
+            (Some(c), Some(f)) => f >= c.as_str(),
+            (Some(_), None) => false,
+        };
+        if covered {
+            Ok(self.rows.iter().filter(|r| from.is_none_or(|f| r.date.as_str() >= f)).cloned().collect())
+        } else {
+            self.source.fetch(ticker, from, to)
+        }
+    }
+}
+
+/// One batch request with the 429 rule of `fetch`: wait one time, try again, then stop the source for the run.
+fn fetch_group(src: &dyn PriceSource, tickers: &[String], from: Option<&str>, opt: &Options, run: &mut Run) -> Result<std::collections::HashMap<String, Vec<Row>>, Attempt> {
+    if run.blocked.contains(src.name()) {
+        return Err(Attempt::Failed(format!("{} was stopped for this run (HTTP 429)", src.name())));
+    }
+    let mut tries = 0;
+    loop {
+        match src.fetch_many(tickers, from, &opt.today) {
+            Ok(m) => return Ok(m),
+            Err(FetchError::RateLimited(m)) => {
+                tries += 1;
+                if tries >= 2 {
+                    run.blocked.insert(src.name().to_string());
+                    return Err(Attempt::RateLimited(format!("{m} (waited once, then stopped {} for this run; the cache is unchanged)", src.name())));
+                }
+                eprintln!("fa: {} answered HTTP 429; waiting {} s before one new try", src.name(), opt.retry_wait.as_secs());
+                std::thread::sleep(opt.retry_wait);
+            }
+            Err(FetchError::Failed(m)) => return Err(Attempt::Failed(m)),
+        }
+    }
+}
+
+/// Update many tickers from one source that has multi-symbol requests. The tickers go in groups of
+/// `batch_size`: the tickers with a cache of this source get one request from the earliest overlap day of the
+/// group, and the other tickers get one request for the full history. Then each ticker passes the rules of
+/// `update_with` (overlap check, no mixing, the 90% rule). `on_status` gets the index in `tickers` and the status.
+pub fn update_many(cache: &Path, tickers: &[String], src: &dyn PriceSource, opt: &Options, run: &mut Run, mut on_status: impl FnMut(usize, &Status)) {
+    let adjusted = if src.adjusts_dividends() { ADJUSTED_ALL } else { ADJUSTED_SPLITS };
+    let mut todo: Vec<(usize, Option<String>)> = Vec::new(); // (index, overlap start; None = full history)
+    for (i, t) in tickers.iter().enumerate() {
+        match load_existing(cache, t) {
+            Some((_, m)) if !opt.full && !opt.forced && m.updated == opt.today => on_status(i, &Status::Current),
+            Some((rows, m)) if !opt.full && m.source == src.name() && m.adjusted == adjusted => {
+                let from = rows.last().and_then(|p| add_days(&p.date, -OVERLAP_DAYS));
+                todo.push((i, from));
+            }
+            _ => todo.push((i, None)),
+        }
+    }
+    for full in [false, true] {
+        let group: Vec<&(usize, Option<String>)> = todo.iter().filter(|(_, f)| f.is_none() == full).collect();
+        for chunk in group.chunks(src.batch_size().max(1)) {
+            let names: Vec<String> = chunk.iter().map(|(i, _)| tickers[*i].clone()).collect();
+            let from: Option<String> = if full { None } else { chunk.iter().filter_map(|(_, f)| f.clone()).min() };
+            match fetch_group(src, &names, from.as_deref(), opt, run) {
+                Ok(mut map) => {
+                    for ((i, _), name) in chunk.iter().zip(&names) {
+                        let pre = Prefetched { source: src, rows: map.remove(name).unwrap_or_default(), covers_from: from.clone() };
+                        on_status(*i, &update_with(cache, name, vec![&pre], opt, run));
+                    }
+                }
+                Err(Attempt::RateLimited(m)) | Err(Attempt::Failed(m)) => {
+                    for (i, _) in chunk {
+                        on_status(*i, &Status::Failed(format!("{}: {m}", src.name())));
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -489,6 +593,122 @@ mod tests {
             assert!(matches!(s, Status::Updated { .. }));
         }
         assert!(t0.elapsed().as_secs() < 20, "{:?}", t0.elapsed());
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    /// A source with multi-symbol requests: `batch_calls` counts `fetch_many`, `single_calls` counts `fetch`.
+    type BatchCalls = Rc<RefCell<Vec<(usize, Option<String>)>>>;
+
+    struct Batch {
+        rows: Rc<RefCell<Vec<Row>>>,
+        batch_calls: BatchCalls,
+        single_calls: Rc<RefCell<usize>>,
+    }
+
+    impl PriceSource for Batch {
+        fn name(&self) -> &'static str {
+            "alpaca"
+        }
+        fn adjusts_dividends(&self) -> bool {
+            false
+        }
+        fn detail(&self) -> Option<String> {
+            Some("feed=iex adjustment=split".into())
+        }
+        fn batch_size(&self) -> usize {
+            2
+        }
+        fn fetch(&self, _t: &str, from: Option<&str>, _to: &str) -> Result<Vec<Row>, FetchError> {
+            *self.single_calls.borrow_mut() += 1;
+            Ok(self.rows.borrow().iter().filter(|r| from.is_none_or(|f| r.date.as_str() >= f)).cloned().collect())
+        }
+        fn fetch_many(&self, tickers: &[String], from: Option<&str>, to: &str) -> Result<std::collections::HashMap<String, Vec<Row>>, FetchError> {
+            self.batch_calls.borrow_mut().push((tickers.len(), from.map(String::from)));
+            let mut m = std::collections::HashMap::new();
+            for t in tickers {
+                m.insert(t.clone(), self.fetch(t, from, to)?);
+                *self.single_calls.borrow_mut() -= 1; // the batch is one request; fetch above is only the row filter
+            }
+            Ok(m)
+        }
+    }
+
+    #[test]
+    fn many_tickers_use_batch_requests_and_keep_the_cache_rules() {
+        let d = dir("batch");
+        let rows = Rc::new(RefCell::new(series(30)));
+        let (batch_calls, single_calls) = (Rc::new(RefCell::new(vec![])), Rc::new(RefCell::new(0usize)));
+        let src = Batch { rows: rows.clone(), batch_calls: batch_calls.clone(), single_calls: single_calls.clone() };
+        let names: Vec<String> = ["AAA", "BBB", "CCC"].iter().map(|s| s.to_string()).collect();
+        let mut run = Run::default();
+        let mut statuses = vec![Status::Current; 3];
+        update_many(&d, &names, &src, &opt("2024-02-05"), &mut run, |i, s| statuses[i] = s.clone());
+        assert!(statuses.iter().all(|s| matches!(s, Status::Updated { full: true, .. })), "{statuses:?}");
+        assert_eq!(*batch_calls.borrow(), vec![(2, None), (1, None)], "3 tickers, 2 in a request: 2 requests for the full histories");
+        let meta: Meta = serde_json::from_str(&std::fs::read_to_string(meta_path(&d, "BBB")).unwrap()).unwrap();
+        assert_eq!((meta.source.as_str(), meta.adjusted.as_str(), meta.detail.as_deref()), ("alpaca", "splits", Some("feed=iex adjustment=split")));
+        assert_eq!(history(&d, "CCC").unwrap().len(), 30);
+
+        // The next day: each ticker has a cache of this source: one request from the earliest overlap day of the group.
+        batch_calls.borrow_mut().clear();
+        rows.borrow_mut().push(row("2024-01-31", 130.0));
+        let mut statuses = vec![Status::Current; 3];
+        update_many(&d, &names, &src, &opt("2024-02-06"), &mut run, |i, s| statuses[i] = s.clone());
+        assert!(statuses.iter().all(|s| matches!(s, Status::Updated { full: false, .. })), "{statuses:?}");
+        assert_eq!(batch_calls.borrow().len(), 2);
+        assert!(batch_calls.borrow().iter().all(|(_, from)| from.is_some()));
+        // A ticker that was updated today is current and is not asked.
+        batch_calls.borrow_mut().clear();
+        let mut statuses = vec![Status::Failed(String::new()); 3];
+        update_many(&d, &names, &src, &Options { forced: false, ..opt("2024-02-06") }, &mut run, |i, s| statuses[i] = s.clone());
+        assert!(statuses.iter().all(|s| *s == Status::Current));
+        assert!(batch_calls.borrow().is_empty());
+
+        // A split in the history: the overlap differs, and the ticker gets its full history with its own request (the fallback).
+        for r in rows.borrow_mut().iter_mut() {
+            r.close /= 2.0;
+            r.open /= 2.0;
+            r.high /= 2.0;
+            r.low /= 2.0;
+        }
+        batch_calls.borrow_mut().clear();
+        *single_calls.borrow_mut() = 0;
+        let mut statuses = vec![Status::Current; 3];
+        update_many(&d, &names, &src, &opt("2024-02-07"), &mut run, |i, s| statuses[i] = s.clone());
+        assert!(statuses.iter().all(|s| matches!(s, Status::Updated { full: true, .. })), "{statuses:?}");
+        assert_eq!(*single_calls.borrow(), 3, "one full request for each ticker");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn a_rate_limited_batch_stops_the_source_and_keeps_the_cache() {
+        let d = dir("batch429");
+        let src = Batch { rows: Rc::new(RefCell::new(series(10))), batch_calls: Rc::new(RefCell::new(vec![])), single_calls: Rc::new(RefCell::new(0)) };
+        let names: Vec<String> = ["AAA", "BBB", "CCC", "DDD"].iter().map(|s| s.to_string()).collect();
+        struct Limited(Batch);
+        impl PriceSource for Limited {
+            fn name(&self) -> &'static str {
+                "alpaca"
+            }
+            fn adjusts_dividends(&self) -> bool {
+                false
+            }
+            fn batch_size(&self) -> usize {
+                2
+            }
+            fn fetch(&self, t: &str, f: Option<&str>, to: &str) -> Result<Vec<Row>, FetchError> {
+                self.0.fetch(t, f, to)
+            }
+            fn fetch_many(&self, _t: &[String], _f: Option<&str>, _to: &str) -> Result<std::collections::HashMap<String, Vec<Row>>, FetchError> {
+                Err(FetchError::RateLimited("HTTP 429 for x".into()))
+            }
+        }
+        let mut run = Run::default();
+        let mut statuses = vec![Status::Current; 4];
+        update_many(&d, &names, &Limited(src), &opt("2024-02-05"), &mut run, |i, s| statuses[i] = s.clone());
+        assert!(statuses.iter().all(|s| matches!(s, Status::Failed(m) if m.contains("429"))), "{statuses:?}");
+        assert!(run.blocked.contains("alpaca"));
+        assert!(history(&d, "AAA").is_none(), "no file was written");
         let _ = std::fs::remove_dir_all(&d);
     }
 }

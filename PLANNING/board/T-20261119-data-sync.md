@@ -29,3 +29,5 @@ The value commands (`fa dcf auto`, `fa verdict`) do not start a sync. They print
 warning when their data is old.
 
 The SEC part needs the SEC contact text (open decision in `T-20261119-python-to-rust`).
+
+Owner decision, 2026-11-19: the sync runs on request only. No watch mode in this ticket.

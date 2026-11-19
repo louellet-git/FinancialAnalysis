@@ -23,7 +23,7 @@
 //!
 //! UNITS: decimals (0.0067 = 0.67%). The cache is `data/raw/bonds/fred_<ID>.csv`.
 
-use crate::rates::{compare, is_fresh_file, iso, observation, parse_fred_csv, round6, save_cache, Rates, Res, FRED_CSV};
+use crate::rates::{compare, is_fresh_file, iso, observation, parse_fred_csv, round6, save_cache, Rates, Res};
 use crate::{CheckResult, CreditSnapshot, HqmCurve, RateObservation, RatingQuote};
 use std::collections::BTreeMap;
 
@@ -126,8 +126,7 @@ impl Rates {
         let parsed = if path.exists() && !refresh && is_fresh_file(&path, 6.0) {
             parse_fred_csv(&read(&path)?, true)?
         } else {
-            let url = FRED_CSV.replace("{series}", series_id).replace("{start}", "1900-01-01");
-            let fetched = self.get(&url).and_then(|t| {
+            let fetched = self.fred_text(series_id, "1900-01-01").and_then(|t| {
                 let header = t.trim_start_matches('\u{feff}').split('\n').next().unwrap_or("").trim().to_string();
                 if header.split(',').next_back() != Some(series_id) {
                     let head: String = header.chars().take(60).collect();

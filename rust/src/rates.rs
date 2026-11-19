@@ -119,16 +119,24 @@ pub struct Rates {
     /// Today as a day number (a test sets it).
     pub today: i64,
     pub(crate) fred_memo: HashMap<String, BTreeMap<i64, f64>>,
+    /// The FRED API key (`FRED_API_KEY`). With a key the FRED loaders use the API first, then the keyless CSV.
+    pub(crate) fred_key: Option<String>,
 }
 
 impl Rates {
     /// The network, the cache `<repo>/data/raw`, today from the clock.
     pub fn live(repo: &Path) -> Rates {
-        Rates::with_net(repo.join("data").join("raw"), Box::new(Live::new()), dates::today())
+        Rates::with_net(repo.join("data").join("raw"), Box::new(Live::new()), dates::today()).with_fred_key(crate::market::keys::read_key(repo, crate::market::fred_api::KEY_ENV))
+    }
+
+    /// Use the FRED API with this key as the first source of the FRED series (`None`: the keyless CSV only).
+    pub fn with_fred_key(mut self, key: Option<String>) -> Rates {
+        self.fred_key = key;
+        self
     }
 
     pub fn with_net(cache: PathBuf, net: Box<dyn Net>, today: i64) -> Rates {
-        Rates { cache, net, today, fred_memo: HashMap::new() }
+        Rates { cache, net, today, fred_memo: HashMap::new(), fred_key: None }
     }
 
     pub(crate) fn get(&mut self, url: &str) -> Res<String> {
@@ -651,8 +659,30 @@ impl Rates {
     /// Any FRED series. Examples: DGS10, DFII10, T10YIE (percent), CPIAUCNS (raw).
     pub fn fred_series(&mut self, series_id: &str, start: Option<i64>, percent: bool) -> Res<BTreeMap<i64, f64>> {
         let start = start.unwrap_or(self.today - 30);
-        let url = FRED_CSV.replace("{series}", series_id).replace("{start}", &iso(start));
-        parse_fred_csv(&self.net.get(&url)?, percent)
+        let text = self.fred_text(series_id, &iso(start))?;
+        parse_fred_csv(&text, percent)
+    }
+
+    /// The CSV text of a FRED series from `start`: the keyed API first (when `FRED_API_KEY` is set), then the keyless address.
+    /// The text of the API is turned into the CSV form, so each cache file and parser stays as it was. The key is in the URL
+    /// of the API: each error text and log line has it taken out.
+    pub(crate) fn fred_text(&mut self, series_id: &str, start: &str) -> Res<String> {
+        let mut keyed_error = None;
+        if let Some(key) = self.fred_key.clone() {
+            let net = &mut self.net;
+            match crate::market::fred_api::fetch_csv(series_id, start, &key, &mut |u: &str| net.get(u)) {
+                Ok(text) => return Ok(text),
+                Err(e) => {
+                    eprintln!("{}", crate::market::fred_api::fallback_message(series_id, &e, &key));
+                    keyed_error = Some(crate::market::fred_api::scrub(&e, &key));
+                }
+            }
+        }
+        let url = FRED_CSV.replace("{series}", series_id).replace("{start}", start);
+        self.get(&url).map_err(|e| match keyed_error {
+            Some(k) => format!("{e}; the FRED API with a key failed too: {k}"),
+            None => e,
+        })
     }
 }
 

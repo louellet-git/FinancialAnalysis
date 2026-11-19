@@ -10,6 +10,7 @@
 //! | Tiingo | `TIINGO_API_KEY` | adjusted | adjusted (`adjClose`) | 30 years and more | yes |
 //! | Yahoo chart | none | adjusted | adjusted (`adjclose`) | from the first trade | no |
 //! | Nasdaq site | none | adjusted | not adjusted | 10 years | no |
+//! | Alpaca | `APCA_API_KEY_ID`, `APCA_API_SECRET_KEY` | adjusted | not adjusted | since 2016 | yes (`alpaca.rs`) |
 //!
 //! The Tiingo loader follows the documentation (`tiingo.com/documentation/end-of-day`, read on
 //! 2026-11-19). It was not run against the real site: there was no key.
@@ -61,7 +62,7 @@ impl std::fmt::Display for FetchError {
     }
 }
 
-fn classify(error: String) -> FetchError {
+pub(crate) fn classify(error: String) -> FetchError {
     if error.starts_with("HTTP 429 ") {
         FetchError::RateLimited(error)
     } else {
@@ -75,6 +76,23 @@ pub trait PriceSource {
     fn adjusts_dividends(&self) -> bool;
     /// Rows from `from` (YYYY-MM-DD, `None` for the full history) to `to`, oldest first.
     fn fetch(&self, ticker: &str, from: Option<&str>, to: &str) -> Result<Vec<Row>, FetchError>;
+    /// Tickers that one request can carry (1 when the source has one ticker for each request).
+    fn batch_size(&self) -> usize {
+        1
+    }
+    /// Rows of many tickers. The default asks one ticker after the other; a source with a multi-symbol
+    /// request (Alpaca) answers with fewer requests. A ticker with no rows is in the map with an empty list.
+    fn fetch_many(&self, tickers: &[String], from: Option<&str>, to: &str) -> Result<std::collections::HashMap<String, Vec<Row>>, FetchError> {
+        let mut out = std::collections::HashMap::new();
+        for t in tickers {
+            out.insert(t.clone(), self.fetch(t, from, to)?);
+        }
+        Ok(out)
+    }
+    /// What the source did besides its name (the feed and the adjustment). It goes into `prices.meta.json`.
+    fn detail(&self) -> Option<String> {
+        None
+    }
 }
 
 /// A request function: URL in, bytes out. The tests give their own.
@@ -133,6 +151,14 @@ fn sort_dedupe(mut rows: Vec<Row>) -> Vec<Row> {
     rows.sort_by(|a, b| a.date.cmp(&b.date));
     rows.dedup_by(|b, a| a.date == b.date); // the first row of a date stays
     rows
+}
+
+pub(crate) fn sort_dedupe_rows(rows: Vec<Row>) -> Vec<Row> {
+    sort_dedupe(rows)
+}
+
+pub(crate) fn finite_rows(rows: Vec<Row>) -> Vec<Row> {
+    finite(rows)
 }
 
 fn finite(rows: Vec<Row>) -> Vec<Row> {
@@ -422,12 +448,17 @@ impl PriceSource for Nasdaq {
     }
 }
 
-/// The sources in the order of use: Tiingo (when a key exists), Yahoo, Nasdaq. `only` forces one.
+/// The sources in the order of use: Tiingo and Alpaca (when their keys exist), Yahoo, Nasdaq. `only` forces one.
 pub fn sources(repo: &Path, only: Option<&str>) -> Result<Vec<Box<dyn PriceSource>>, String> {
     let mut all: Vec<Box<dyn PriceSource>> = Vec::new();
     match tiingo_key(repo) {
         Some(key) => all.push(Box::new(Tiingo::live(&key))),
         None if only == Some("tiingo") => return Err(format!("{TIINGO_KEY_ENV} is not set in the environment or in .env")),
+        None => {}
+    }
+    match super::alpaca::Keys::read(repo) {
+        Some(keys) => all.push(Box::new(super::alpaca::Alpaca::live(keys))),
+        None if only == Some("alpaca") => return Err(format!("{} and {} are not both set in the environment or in .env", super::alpaca::KEY_ID_ENV, super::alpaca::SECRET_ENV)),
         None => {}
     }
     all.push(Box::new(Yahoo::live()));
@@ -437,7 +468,7 @@ pub fn sources(repo: &Path, only: Option<&str>) -> Result<Vec<Box<dyn PriceSourc
         Some(name) => {
             let chosen: Vec<_> = all.into_iter().filter(|s| s.name() == name).collect();
             if chosen.is_empty() {
-                Err(format!("unknown source '{name}'; the sources are tiingo, yahoo and nasdaq"))
+                Err(format!("unknown source '{name}'; the sources are tiingo, alpaca, yahoo and nasdaq"))
             } else {
                 Ok(chosen)
             }
@@ -604,8 +635,11 @@ mod tests {
         assert!(names(Some("stooq")).is_err());
         std::fs::write(dir.join(".env"), "TIINGO_API_KEY=k\n").unwrap();
         if std::env::var(TIINGO_KEY_ENV).is_err() {
-            assert_eq!(names(None).unwrap(), ["tiingo", "yahoo", "nasdaq"]);
+            // With Alpaca keys in the environment of the person, `alpaca` is in the list too.
+            let names: Vec<&str> = names(None).unwrap().into_iter().filter(|n| *n != "alpaca").collect();
+            assert_eq!(names, ["tiingo", "yahoo", "nasdaq"]);
         }
+        assert!(sources(&dir, Some("alpaca")).is_err() || std::env::var(super::super::alpaca::KEY_ID_ENV).is_ok());
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
