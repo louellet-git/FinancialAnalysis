@@ -3,7 +3,8 @@
 //! Cache layout (the same folders as before):
 //!   <cache>/_sec/company_tickers.json            the SEC ticker list
 //!   <cache>/<TICKER>/company_facts.json[.gz]     the company facts
-//!   <cache>/<TICKER>/filings/<accession>/        MetaLinks.json and the instance document
+//!   <cache>/<TICKER>/filings/<accession>/        MetaLinks.json and the instance document,
+//!                                                or the primary document of a prospectus
 
 use crate::facts::CompanyFacts;
 use crate::http::{Client, HttpError};
@@ -59,6 +60,10 @@ pub fn merge_facts(current: &mut Value, earlier: &Value) {
 
 fn facts_url(cik: &str) -> String {
     format!("https://data.sec.gov/api/xbrl/companyfacts/CIK{:0>10}.json", cik)
+}
+
+fn submissions_url(cik: &str) -> String {
+    format!("https://data.sec.gov/submissions/CIK{:0>10}.json", cik)
 }
 
 fn archive_url(cik: &str, accession: &str, name: &str) -> String {
@@ -240,6 +245,72 @@ pub fn fetch_filing(cache: &Path, ticker: &str, delay: f64, refresh: bool) -> Re
     Ok(folder)
 }
 
+/// One filing of the SEC submissions data.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FilingRef {
+    pub form: String,
+    pub accession: String,
+    pub document: String,
+    pub filed: String,
+}
+
+/// The prospectus forms, in the sequence of the selection: the final prospectus, then
+/// the changed registration statement, then the first registration statement.
+pub const PROSPECTUS_FORMS: [&str; 3] = ["424B4", "S-1/A", "S-1"];
+
+/// The latest prospectus in the SEC submissions data (`filings.recent`): the latest
+/// 424B4; if none, the latest S-1/A; if none, the latest S-1.
+pub fn latest_prospectus(json: &[u8]) -> Result<FilingRef, String> {
+    let value: Value = serde_json::from_slice(json).map_err(|e| format!("submissions: {e}"))?;
+    let recent = value.pointer("/filings/recent").ok_or("submissions: no filings.recent")?;
+    let column = |name: &str| recent.get(name).and_then(Value::as_array).ok_or_else(|| format!("submissions: no filings.recent.{name}"));
+    let (forms, accessions, documents, dates) = (column("form")?, column("accessionNumber")?, column("primaryDocument")?, column("filingDate")?);
+    for wanted in PROSPECTUS_FORMS {
+        let mut best: Option<FilingRef> = None;
+        for (i, form) in forms.iter().enumerate() {
+            let text = |list: &[Value]| list.get(i).and_then(Value::as_str).unwrap_or("").to_string();
+            if form.as_str() != Some(wanted) || text(documents).is_empty() || text(accessions).is_empty() {
+                continue;
+            }
+            // The same date two times: the first row stays (the SEC puts the latest filing first).
+            if best.as_ref().map(|b| text(dates) > b.filed).unwrap_or(true) {
+                best = Some(FilingRef { form: wanted.to_string(), accession: text(accessions), document: text(documents), filed: text(dates) });
+            }
+        }
+        if let Some(filing) = best {
+            return Ok(filing);
+        }
+    }
+    Err("the registrant has no 424B4, S-1/A or S-1 in the recent filings".to_string())
+}
+
+/// Get the primary document of the latest prospectus into the cache. Returns the filing
+/// and the path of the file. The company facts must be in the cache (they give the CIK).
+/// Network: data.sec.gov, 1 request; www.sec.gov, 1 request for a file that is not in the cache.
+pub fn fetch_prospectus(cache: &Path, ticker: &str, delay: f64, refresh: bool) -> Result<(FilingRef, PathBuf), String> {
+    let facts = facts_path(cache, ticker).ok_or_else(|| format!("{ticker}: no company facts in the cache (run: mapcheck fetch {ticker})"))?;
+    let cik = match read_facts(&facts)?.cik {
+        Value::Number(n) => n.to_string(),
+        Value::String(s) => s.trim_start_matches('0').to_string(),
+        _ => return Err(format!("{ticker}: the company facts have no CIK")),
+    };
+    let mut client = Client::sec(delay)?;
+    let filing = latest_prospectus(&client.get(&submissions_url(&cik)).map_err(|e| e.to_string())?).map_err(|e| format!("{ticker}: {e}"))?;
+    // The names come from the SEC data and become a path: accept a plain name only.
+    let plain = |name: &str| !name.starts_with('.') && name.chars().all(|c| c.is_ascii_alphanumeric() || "-_.".contains(c));
+    if !plain(&filing.document) || !plain(&filing.accession) {
+        return Err(format!("{ticker}: '{}' in {} is not a plain file name", filing.document, filing.accession));
+    }
+    let folder = filing_folder(cache, ticker, &filing.accession);
+    let path = folder.join(&filing.document);
+    if refresh || !path.is_file() {
+        let body = client.get(&archive_url(&cik, &filing.accession, &filing.document)).map_err(|e| e.to_string())?;
+        fs::create_dir_all(&folder).map_err(|e| e.to_string())?;
+        fs::write(&path, body).map_err(|e| format!("{}: {e}", path.display()))?;
+    }
+    Ok((filing, path))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -287,5 +358,34 @@ mod tests {
             {"end":"2025-03-31","val":1,"form":"10-Q","filed":"2025-05-01","accn":"0000000007-25-000009"}]}}}}}"#).unwrap();
         assert_eq!(latest_annual_filing(&path).unwrap(), ("7".to_string(), "0000000007-25-000001".to_string()));
         fs::remove_dir_all(&dir).ok();
+    }
+
+    /// Submissions data from rows of [form, accession number, primary document, filing date].
+    fn submissions(rows: &[[&str; 4]]) -> Vec<u8> {
+        let column = |i: usize| rows.iter().map(|r| r[i]).collect::<Vec<_>>();
+        let recent = serde_json::json!({"form": column(0), "accessionNumber": column(1), "primaryDocument": column(2), "filingDate": column(3)});
+        serde_json::to_vec(&serde_json::json!({"cik": "7", "filings": {"recent": recent}})).unwrap()
+    }
+
+    #[test]
+    fn latest_prospectus_is_the_424b4_then_the_s1a_then_the_s1() {
+        assert_eq!(submissions_url("2130357"), "https://data.sec.gov/submissions/CIK0002130357.json");
+        let s1 = ["S-1", "0000000007-26-000001", "s1.htm", "2026-10-26"];
+        let s1a_first = ["S-1/A", "0000000007-26-000002", "s1a1.htm", "2026-11-02"];
+        let s1a_last = ["S-1/A", "0000000007-26-000003", "s1a2.htm", "2026-11-17"];
+        let fwp = ["FWP", "0000000007-26-000004", "fwp.htm", "2026-11-19"];
+        let final_prospectus = ["424B4", "0000000007-26-000005", "final.htm", "2026-11-19"];
+        // The final prospectus wins, also when a later row has a later form.
+        let all = latest_prospectus(&submissions(&[fwp, final_prospectus, s1a_last, s1a_first, s1])).unwrap();
+        assert_eq!(all, FilingRef { form: "424B4".into(), accession: "0000000007-26-000005".into(), document: "final.htm".into(), filed: "2026-11-19".into() });
+        // No 424B4: the latest S-1/A, in any row sequence.
+        assert_eq!(latest_prospectus(&submissions(&[s1, s1a_first, s1a_last, fwp])).unwrap().document, "s1a2.htm");
+        // No S-1/A: the S-1.
+        assert_eq!(latest_prospectus(&submissions(&[fwp, s1])).unwrap().accession, "0000000007-26-000001");
+        // A row with no primary document is not used.
+        let no_document = ["424B4", "0000000007-26-000006", "", "2026-11-20"];
+        assert_eq!(latest_prospectus(&submissions(&[no_document, s1])).unwrap().form, "S-1");
+        assert!(latest_prospectus(&submissions(&[fwp])).is_err());
+        assert!(latest_prospectus(br#"{"filings":{}}"#).is_err());
     }
 }

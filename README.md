@@ -21,7 +21,7 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 pip install -r requirements.txt -r requirements-dev.txt
 python -m pytest                       # 361 tests, no network
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
-cargo test --manifest-path rust/mapcheck/Cargo.toml    # 82 Rust tests
+cargo test --manifest-path rust/mapcheck/Cargo.toml    # 86 Rust tests
 ```
 
 Run all commands from the repo root.
@@ -121,6 +121,7 @@ $M values IBM                      # each variable with its value and its source
 $M IBM --detail                    # the checks for one ticker
 $M --tickers-file rust/mapcheck/universe/sp500.txt      # the checks for many tickers (S&P 500)
 $M fetch --filings --gaps --tickers-file rust/mapcheck/universe/sp500.txt   # the 10-K of each company with a missing critical input
+$M fetch --prospectus ANT          # the latest prospectus of a new registrant (424B4, or S-1/A, or S-1) into the cache
 $M filing IBM --focus              # the capex, depreciation and debt lines of the latest 10-K
 $M filing VZ --statement cash      # one statement of the 10-K as the company structures it
 $M crosscheck --tickers-file rust/mapcheck/universe/batch50.txt   # standard variables against the filing

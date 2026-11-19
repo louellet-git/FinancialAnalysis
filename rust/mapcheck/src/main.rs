@@ -51,6 +51,7 @@ fetch (network: SEC EDGAR; set the environment variable SEC_USER_AGENT)
                          company facts do not have
     --gaps               with --filings: only the tickers that have a critical
                          input with no value
+    --prospectus         get the latest prospectus of each ticker (424B4, or S-1/A, or S-1)
 
 import (gets the company facts if they are not in the cache)
     --store DIR          output directory (default: data/processed)
@@ -146,9 +147,23 @@ fn cmd_check(raw: &[String]) -> Result<bool, String> {
 fn cmd_fetch(raw: &[String]) -> Result<bool, String> {
     let mut with_value = COMMON_VALUES.to_vec();
     with_value.extend(["--top", "--write-list", "--delay"]);
-    let args = Args::parse(raw, &with_value, &["--refresh", "--filings", "--gaps"])?;
+    let args = Args::parse(raw, &with_value, &["--refresh", "--filings", "--gaps", "--prospectus"])?;
     let cache = cache_of(&args);
     let delay: f64 = args.number("--delay", 0.15)?;
+    if args.flag("--prospectus") {
+        // The primary document of the latest prospectus (the company facts must be in the cache).
+        let mut ok = true;
+        for ticker in &args.tickers()? {
+            match sec::fetch_prospectus(&cache, ticker, delay, args.flag("--refresh")) {
+                Ok((filing, path)) => println!("{ticker}: {} {} filed {} | {}", filing.form, filing.accession, filing.filed, path.display()),
+                Err(e) => {
+                    println!("{e}");
+                    ok = false;
+                }
+            }
+        }
+        return Ok(ok);
+    }
     if args.flag("--gaps") && !args.flag("--filings") {
         return Err("--gaps is an option of --filings".to_string());
     }
