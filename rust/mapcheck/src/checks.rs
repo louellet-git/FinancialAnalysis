@@ -3,7 +3,7 @@
 //! Each check answers one question about the mapping:
 //! - Did a value get lost?            core_missing, unmapped_lines, material_unmapped
 //! - Was a value counted two times?   exceeds_total, overlap, nested, equal_parts,
-//!                                    total_debt_estimates
+//!                                    total_debt_estimates, capex_software_overlap
 //! - Do the statements agree?         balance_sheet_identity, rollup_mismatch,
 //!                                    change_in_cash, net_income_identity
 //! - Are the periods correct?         fiscal_year_spacing, quarters_exceed_year, stale_annual
@@ -225,6 +225,23 @@ pub fn check_period(registry: &Registry, p: &PeriodData) -> PeriodChecks {
                 Severity::Warn,
                 "sign_unusual",
                 format!("interest_expense = {} (the filer reports the expense as a negative number)", billions(v)),
+            ));
+        }
+    }
+
+    // Capital expenditure for free cash flow is capex + capitalized software
+    // (PLANNING/RULES.md R2). A "productive assets" tag can already include software.
+    if let (Some(software), Some(capex)) = (get("capitalized_software"), get("capex")) {
+        if software != 0.0 && p.source(registry, "capex").contains("ProductiveAssets") {
+            out.findings.push(finding(
+                Severity::Warn,
+                "capex_software_overlap",
+                format!(
+                    "capex {} [{}] can already include the capitalized software {}; capex_total adds the two",
+                    billions(capex),
+                    p.source(registry, "capex"),
+                    billions(software)
+                ),
             ));
         }
     }
@@ -678,6 +695,22 @@ mod tests {
     fn total_debt_estimates_that_disagree_are_reported() {
         let c = checks(with(vec![("DebtCurrent", balance(150.0)), ("LongTermDebt", balance(450.0))]));
         assert!(codes(&c, Severity::Warn).contains(&"total_debt_estimates".to_string()), "{:?}", c.findings);
+    }
+
+    #[test]
+    fn capex_total_adds_software_and_a_broad_capex_tag_gives_a_warning() {
+        let registry = Registry::embedded().unwrap();
+        let facts = with_shares(company(with(vec![("PaymentsToDevelopSoftware", flow(30.0))])));
+        let p = resolve_period(&registry, &facts, END, Forms::Annual);
+        assert_eq!(p.get(&registry, "capex_total"), Some(-80.0));     // equipment 50 + software 30
+        assert!(!codes(&check_period(&registry, &p), Severity::Warn).contains(&"capex_software_overlap".to_string()));
+
+        let broad: Vec<_> = with(vec![("PaymentsToDevelopSoftware", flow(30.0)), ("PaymentsToAcquireProductiveAssets", flow(50.0))])
+            .into_iter()
+            .filter(|(n, _)| *n != "PaymentsToAcquirePropertyPlantAndEquipment")
+            .collect();
+        let c = checks(broad);
+        assert!(codes(&c, Severity::Warn).contains(&"capex_software_overlap".to_string()), "{:?}", c.findings);
     }
 
     #[test]

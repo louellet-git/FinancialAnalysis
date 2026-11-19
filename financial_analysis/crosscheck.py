@@ -29,10 +29,15 @@ def _label(name: str) -> Theirs:
     return lambda y: y.get(name)
 
 
+def _capex_total(p: PeriodFinancials) -> Optional[float]:
+    return p.capex_total if p.capex_total is not None else p.capex
+
+
 def _wide_capex(p: PeriodFinancials) -> Optional[float]:
-    if p.capex is None:
+    total = _capex_total(p)
+    if total is None:
         return None
-    return p.capex + (p.capitalized_software or 0.0) + (p.purchases_of_intangibles or 0.0)
+    return total + (p.purchases_of_intangibles or 0.0)
 
 
 def _debt_without_leases(y: Dict[str, float]) -> Optional[float]:
@@ -58,9 +63,11 @@ COMPARISONS: Tuple[Comparison, ...] = (
     Comparison("net_income", (("standard", _get("net_income"), _label("Net Income")),)),
     Comparison("shares_diluted", (("standard", _get("shares_diluted"), _label("Diluted Average Shares")),), 0.02),
     Comparison("operating_cash_flow", (("standard", _get("operating_cash_flow"), _label("Operating Cash Flow")),)),
+    # The standard is capex_total: equipment and capitalized software (RULES.md R2).
     Comparison("capex", (
-        ("standard", _get("capex"), _label("Capital Expenditure")),
-        ("with capitalized software and purchased intangibles", _wide_capex, _label("Capital Expenditure")),
+        ("standard", _capex_total, _label("Capital Expenditure")),
+        ("with purchased intangibles", _wide_capex, _label("Capital Expenditure")),
+        ("equipment only", _get("capex"), _label("Capital Expenditure")),
     )),
     Comparison("da_total", (("standard", _get("da_total"), _label("Depreciation And Amortization")),), 0.02),
     Comparison("sbc_total", (("standard", _get("sbc_total"), _label("Stock Based Compensation")),)),

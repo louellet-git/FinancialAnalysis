@@ -8,6 +8,7 @@
 #              (income_statement and cash_flow values are flows over the period;
 #              balance_sheet and disclosure values are balances on the end date)
 #   tags       XBRL tags with the SAME scope as the variable, in a fixed sequence.
+#              The list can be empty if the variable has a formula.
 #              For each period the first tag that has a fact gives the value. A tag
 #              with a different scope (a part, or a larger total) gets its own
 #              variable. One tag is in one variable only.
@@ -986,6 +987,13 @@ tags = [
     "us-gaap/PaymentsToDevelopSoftware",
     "us-gaap/PaymentsForSoftware",
 ]
+
+[[variable]]
+name = "capex_total"
+statement = "cash_flow"
+note = "Capital expenditure for free cash flow: equipment (capex) and capitalized software. Purchased intangibles are not included. Owner decision of 2026-11-19, PLANNING/RULES.md R2. It has no tag: the value comes from the formula."
+tags = []
+formulas = ["capex + capitalized_software?"]
 
 [[variable]]
 name = "purchases_of_intangibles"

@@ -34,11 +34,17 @@ def test_sign_convention_of_an_outflow_is_not_a_difference():
     assert r.outcome == AGREE
 
 
-def test_capex_that_agrees_only_with_software_included_is_a_definition_difference():
-    period = _period(capex=-300.0, capitalized_software=-70.0)
-    r = _by_variable(compare_period(period, {"Capital Expenditure": -370.0}))["capex"]
-    assert r.outcome == DEFINITION
-    assert "capitalized software" in r.note
+def test_capex_standard_is_equipment_and_capitalized_software():
+    period = _period(capex=-300.0, capitalized_software=-70.0, capex_total=-370.0)
+    assert _by_variable(compare_period(period, {"Capital Expenditure": -370.0}))["capex"].outcome == AGREE
+
+
+def test_capex_that_agrees_only_with_a_different_definition():
+    period = _period(capex=-300.0, capitalized_software=-70.0, capex_total=-370.0, purchases_of_intangibles=-30.0)
+    wide = _by_variable(compare_period(period, {"Capital Expenditure": -400.0}))["capex"]
+    assert wide.outcome == DEFINITION and wide.note == "with purchased intangibles"
+    narrow = _by_variable(compare_period(period, {"Capital Expenditure": -300.0}))["capex"]
+    assert narrow.outcome == DEFINITION and narrow.note == "equipment only"
 
 
 def test_total_debt_is_compared_without_leases_first():

@@ -82,6 +82,7 @@ finding `earlier_years_fail` (a warning).
 | | `nested:<rollup>` | INFO | A variable is a detail inside a different line of this filer. Do not add it to the other lines. |
 | | `equal_parts:<rollup>` | WARN | Two variables have the same value: possibly one item with two tags. |
 | | `total_debt_estimates` | WARN | The ways to calculate total debt disagree by more than 2%. |
+| | `capex_software_overlap` | WARN | The capex tag is a "productive assets" tag and the filer also has capitalized software: `capex_total` (the sum, rule R2) can count the software two times. |
 | Was a value lost? | `unmapped_lines:<rollup>` | WARN | More than 10% of a total has no variable (25% for cash-flow totals). |
 | | `material_unmapped` | INFO | Large tags of the filer that have no variable and no exclusion. |
 | Do the statements agree? | `balance_sheet_identity` | FAIL | Total assets are not equal to total liabilities and equity. |
@@ -154,11 +155,11 @@ Cross-check with Yahoo Finance, the 50 new tickers, latest fiscal year (2026-11-
 | revenue | 48 | 0 | 2 | 0 | 96% |
 | shares_diluted | 46 | 0 | 3 | 1 | 94% |
 | total_debt | 39 | 1 | 7 | 2 | 83% |
-| capex | 36 | 9 | 3 | 1 | 75% |
+| capex (`capex_total`: equipment and capitalized software, rule R2) | 38 | 7 | 3 | 1 | 79% |
 | da_total | 35 | 0 | 12 | 1 | 74% |
 
-For 9 companies, capex agrees only when capitalized software and purchased intangibles
-are included. The share-count differences are stock splits after the period (Yahoo
+For 7 companies, capex agrees only when purchased intangibles are included (rule R2
+does not include them). The share-count differences are stock splits after the period (Yahoo
 adjusts the old numbers) and one company with more than one share class.
 
 ## How to expand

@@ -12,7 +12,7 @@ The first part is in `main`: `financial_analysis/filing.py` and `python -m scrip
 
 Measured on 2026-11-19 against Yahoo Finance, 50 tickers: capex 73% with the standard variables and 92% with the filing lines; total debt 80% and 90%; depreciation and amortization 73% and 81%.
 
-Open decision of the owner: the definition of capital expenditure in free cash flow (equipment only, with capitalized software, or with software and purchased intangibles). The recommendation is: with capitalized software.
+Decision of the owner, 2026-11-19: capital expenditure in free cash flow is equipment and capitalized software, without purchased intangibles (`PLANNING/RULES.md` R2). The filing values must use the same definition; a company tag for software (IBM) is then included.
 
 Next steps:
 1. Replace the tag-name patterns with rules on the calculation tree (the lines under the investing total and the liabilities total), and correct the known errors (trap #43).

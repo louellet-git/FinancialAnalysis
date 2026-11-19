@@ -13,10 +13,10 @@ def test_tagspec_defaults():
     assert spec.unit == "USD"
     assert spec.sign_flip is False
 
-def test_all_dicts_have_non_empty_concept_lists():
+def test_each_variable_has_a_tag_or_a_formula():
     all_tags = {**INCOME_STATEMENT_TAGS, **BALANCE_SHEET_TAGS, **CASH_FLOW_TAGS}
     for field_name, spec in all_tags.items():
-        assert spec.concepts, f"{field_name} has no concepts"
+        assert spec.concepts or spec.formulas, f"{field_name} has no tag and no formula"
 
 def test_all_concepts_have_namespace_prefix():
     all_tags = {**INCOME_STATEMENT_TAGS, **BALANCE_SHEET_TAGS, **CASH_FLOW_TAGS}

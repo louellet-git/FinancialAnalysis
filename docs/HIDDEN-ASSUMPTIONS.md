@@ -124,8 +124,10 @@ inputs, but 75% for `capex`, 74% for `da_total` and 83% for `total_debt`. Causes
 standard capex is equipment only (capitalized software and company tags are not in it);
 the depreciation tags have a different scope for each filer; debt tags overlap. Before
 you use these three inputs for a ticker, run `python -m scripts.filing_tree TICKER
---focus` and compare. Free cash flow (`operating_cash_flow` less `capex`) is too high
-when capex is too low.
+--focus` and compare. Free cash flow is too high when capex is too low. Since rule R2
+(`PLANNING/RULES.md`), free cash flow uses `capex_total` (equipment and capitalized
+software). This corrects only the companies that use a standard tag for software (14 of
+324); a company tag for software (IBM) is not in the standard source.
 *Evidence:* `python -m scripts.mapping_crosscheck`; `rust/mapcheck/README.md`.
 
 **43. The filing-level values come from tag-name patterns.** `financial_analysis/filing.py`

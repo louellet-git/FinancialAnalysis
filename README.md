@@ -19,8 +19,8 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest                       # 465 tests, no network
-cargo test --manifest-path rust/mapcheck/Cargo.toml   # 43 Rust tests
+python -m pytest                       # 469 tests, no network
+cargo test --manifest-path rust/mapcheck/Cargo.toml   # 45 Rust tests
 ```
 
 Run all commands from the repo root.
@@ -93,7 +93,7 @@ on the same day reads the disk; `--refresh` gets new data.
 Companies use different XBRL tag names for the same line. For example, interest expense
 is `InterestExpense` for IBM, `InterestExpenseNonoperating` for Microsoft and
 `InterestExpenseDebt` for Chevron. The registry `financial_analysis/xbrl_tags.py` gives
-each line one standard variable name (131 variables). The models read only these names.
+each line one standard variable name (132 variables). The models read only these names.
 The registry data is in `financial_analysis/standard_variables.toml`; Python and Rust
 read this one file.
 
@@ -104,6 +104,9 @@ read this one file.
 - Each value has a recorded source: the tag, or the formula. The xlsx file shows it in
   the `source` column. `python -m scripts.mapping_audit TICKER` prints it.
 - An annual row is always a full fiscal year. A quarterly row is always one quarter.
+- Free cash flow is operating cash flow less `capex_total`. `capex_total` is equipment
+  (`capex`) and capitalized software. Purchased intangibles are not included. This is
+  rule R2 in `PLANNING/RULES.md`, with the reasons.
 - Tags with no standard variable stay in the `Raw` tab.
 
 Before you use a variable in a model, run the audit for the ticker and read the source
@@ -359,7 +362,7 @@ analysis/JNJ/             JNJ first pass (not reviewed)
 trading/                  option strategy backtester, paper trader, 22 bots, research notes
 scripts/                  command-line entry points
 rust/                     Rust interface: library and `fa` command (calls the Python code)
-tests/                    465 tests
+tests/                    469 tests
 
 docs/                     ARCHITECTURE.md, HIDDEN-ASSUMPTIONS.md, INDEX.md, design documents
 PLANNING/board/           open work, one file for each ticket

@@ -393,3 +393,37 @@ def test_share_check_uses_net_income_for_the_common_shareholders(tmp_path):
     extra = {"NetIncomeLossAvailableToCommonStockholdersDiluted": {"units": {"USD": [_f(*_FY, 1_890_000_000.0)]}}}
     p = _shares_company(tmp_path, 762.3, eps=2.48, income=2_235_000_000.0, extra=extra)
     assert p.shares_diluted == pytest.approx(762_300_000.0)
+
+
+# --- capital expenditure for free cash flow (PLANNING/RULES.md R2) ---
+
+def test_capex_total_is_equipment_and_capitalized_software(tmp_path):
+    company = _company({"Revenues": [_f(*_FY, 1000.0)],
+                        "NetCashProvidedByUsedInOperatingActivities": [_f(*_FY, 300.0)],
+                        "PaymentsToAcquirePropertyPlantAndEquipment": [_f(*_FY, 50.0)],
+                        "PaymentsToDevelopSoftware": [_f(*_FY, 30.0)],
+                        "PaymentsToAcquireIntangibleAssets": [_f(*_FY, 10.0)]}, tmp_path)
+    p = company.periods[0]
+    assert p.capex == -50.0                        # the equipment number stays available
+    assert p.capitalized_software == -30.0
+    assert p.purchases_of_intangibles == -10.0     # not in capex_total
+    assert p.capex_total == -80.0
+    assert p.sources["capex_total"] == "= capex + capitalized_software"
+    assert p.free_cash_flow == 220.0               # 300 - 80
+
+
+def test_capex_total_is_capex_when_the_filer_has_no_software_tag(tmp_path):
+    company = _company({"Revenues": [_f(*_FY, 1000.0)],
+                        "NetCashProvidedByUsedInOperatingActivities": [_f(*_FY, 300.0)],
+                        "PaymentsToAcquirePropertyPlantAndEquipment": [_f(*_FY, 50.0)]}, tmp_path)
+    p = company.periods[0]
+    assert p.capex_total == -50.0
+    assert "no value: capitalized_software" in p.sources["capex_total"]
+    assert p.free_cash_flow == 250.0
+
+
+def test_free_cash_flow_of_a_period_made_by_hand_uses_capex():
+    from financial_analysis.schema import PeriodFinancials
+    p = PeriodFinancials(ticker="ACME", period_end=date(2024, 12, 31), form="10-K",
+                         filed_date=date(2025, 2, 1), operating_cash_flow=300.0, capex=-50.0)
+    assert p.capex_total is None and p.free_cash_flow == 250.0
