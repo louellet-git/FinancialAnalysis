@@ -25,10 +25,13 @@ The repo gives analysis. It does not send orders to a broker.
 
 ## Which source is correct when two sources disagree
 
-1. **Engine code is correct.** `financial_analysis/driver_dcf.py` and
-   `financial_analysis/dcf.py` define the calculation. A number in a document that
-   disagrees with a new engine run is old.
-2. **`analysis/<TICKER>/driver_model.py` is correct** before `DRIVERS.md` text.
+1. **Engine code is correct.** The Rust engines `rust/src/dcf/driver.rs` and
+   `rust/src/dcf/classic.rs` define the calculation. `financial_analysis/driver_dcf.py`
+   and `financial_analysis/dcf.py` are older copies: they stay only until
+   `scripts/visualize_dcf.py` moves to Rust, and a change to one needs the same change
+   to the other. A number in a document that disagrees with a new engine run is old.
+2. **`analysis/<TICKER>/driver_model.toml` is correct** before `DRIVERS.md` text. The
+   file `driver_model.py` is an older copy that the Python report still reads.
 3. **Recorded decisions stay.** `analysis/IBM/REVIEW.md` (F1 to F19) and
    `analysis/IBM/DRIVER-REVIEW.md` are closed decisions. To open one again, do a review
    of the same weight.
@@ -41,7 +44,7 @@ The repo gives analysis. It does not send orders to a broker.
    `rust/mapcheck`, run `cargo test` and `python -m pytest`.
 6. **The IBM entries in `financial_analysis/scenarios.py` are version 3 on purpose**
    (`docs/HIDDEN-ASSUMPTIONS.md` #13). The version 4 headline numbers come only from
-   `python -m analysis.IBM.dcf_drivers_run`.
+   `fa dcf drivers IBM` (seed 7: $83.84 / $151.84 / $258.03).
 7. **Published reports are frozen.** Do not change `analysis/IBM/report/*`. Write a new
    version.
 8. `README.md` and `docs/` are for orientation only. `THOUGHTS` is a list of raw ideas.
@@ -94,15 +97,20 @@ Do not use a first pass alone for a trade.
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest                              # 349 tests, no network
+python -m pytest                              # 278 tests (4 skipped), no network
 cargo test --manifest-path rust/mapcheck/Cargo.toml   # 86 Rust tests
+cargo test --manifest-path rust/Cargo.toml            # 266 + 17 + 1 Rust tests, no network
 python -m scripts.analyze IBM                 # import + market data -> xlsx
-python -m scripts.verdict IBM --price 228.53  # value range against a price
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
 rust/mapcheck/target/release/mapcheck values IBM          # each input value with its source
 rust/mapcheck/target/release/mapcheck IBM --detail        # mapping checks
 rust/mapcheck/target/release/mapcheck filing IBM --focus  # capex, depreciation and debt lines of the 10-K
 cargo build --release --manifest-path rust/Cargo.toml             # the fa command
+rust/target/release/fa verdict IBM --price 228.53   # value range against a price (add --rf-date today --rating A-)
+rust/target/release/fa dcf drivers IBM        # version 4 headline numbers; options for each analysis (fa dcf --help)
+rust/target/release/fa dcf scenarios IBM      # classic engine, bear/base/bull (version 3 inputs)
+rust/target/release/fa backtest IBM           # point-in-time vintage backtest of revenue and FCF
+rust/target/release/fa rates                  # Treasury curves, SOFR, EFFR, inflation (also: fa bonds)
 rust/target/release/fa trade fetch            # option bots: download the bars (Yahoo) into the cache
 rust/target/release/fa trade backtest         # option bots, leaderboard
 rust/target/release/fa trade paper            # option bots: one paper-trade step (live Cboe chain)

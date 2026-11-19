@@ -99,14 +99,16 @@ and the drivers are the only stochastic objects. In plain language:
   tax_rate, equity_weight, terminal_growth) plus one growth driver per revenue segment.
   `SegmentSpec` can pin year-1 growth to known actuals (draws apply from year 2).
 
-Per-ticker parameterization lives in `analysis/<TICKER>/driver_model.py` (IBM is the
-only instance): drivers with written rationales, the correlation matrix, segment bases,
-net debt, shares, exposing `build()`. The rationale strings in `driver_model.py` are
-normative over DRIVERS.md prose (see CLAUDE.md).
+Per-ticker parameterization lives in `analysis/<TICKER>/driver_model.toml` (IBM, JNJ, ANT):
+drivers with written rationales, the correlation matrix, segment bases, net debt, shares.
+The rationale strings are normative over DRIVERS.md prose (see CLAUDE.md). The older copy
+`driver_model.py` (exposing `build()`) stays only because `scripts/visualize_dcf.py` reads
+it; a change needs the same change in both files.
 
 ## The backtest harness
 
-`run_backtest(company, horizon=3, n=10_000, seed=7)` in `financial_analysis/backtest.py`
+`run_backtest(company, horizon, n, seed)` in `rust/src/dcf/backtest.rs` (`fa backtest TICKER`;
+the older Python copy `financial_analysis/backtest.py` stays only for `scripts/visualize_dcf.py`)
 — walk-forward vintages, one per clean fiscal-year-end + 90 days:
 
 - **Point-in-time estimates**: a vintage sees only periods with `filed_date <= as_of`.
@@ -143,14 +145,11 @@ decorative until a driver build exists.
 | `importer.py` | 100 | No mapping logic. Runs the Rust program `mapcheck import` (it gets the SEC data if it is not in the cache) and reads the store file. Raises `UnsupportedFilingError` for non-us-gaap filers and `MapcheckError` if the Rust program is not built. |
 | `market_data.py` | 136 | yfinance daily OHLCV (`load_prices`, cached at `data/raw/TICKER/prices.json`) and earnings surprises (`load_earnings_surprises`). |
 | `options.py` | 375 | yfinance option-chain snapshots (dated, one per day, `data/raw/TICKER/options/YYYY-MM-DD.json`) + derived per-expiry metrics: ATM IV, straddle-mid implied move, 90/110 skew, put/call volume & OI ratios (`fetch_option_chain`, `compute_chain_metrics`, `list_snapshots`, `load_snapshot`). |
-| `rates.py` | 677 | US rates and inflation from the publishers, with no API key. U.S. Treasury par yield curves: nominal 1M to 30Y from 1990, real (TIPS) 5Y to 30Y from 2003. New York Fed SOFR, EFFR, OBFR, TGCR, BGCR and the FOMC target range. BLS CPI-U, headline and core. Breakeven inflation and 5y5y forward inflation use the FRED formulas. `cross_check` and `cross_check_inflation` compare each value with FRED. `with_risk_free` sets the `rf` driver mean of a `DriverModel`. Values are decimals. Cache: `data/raw/rates/`. CLI with `--json`: `python -m financial_analysis.rates`. |
-| `bonds.py` | 300 | US corporate bond data, with no API key, through the FRED CSV: ICE BofA option-adjusted spread and effective yield for each rating (AAA to CCC; FRED keeps only 3 years), Moody's seasoned Aaa and Baa yields (daily from 1983 and 1986), and the U.S. Treasury HQM corporate spot curve (monthly from 1984). `rating_bucket` maps S&P and Moody's ratings to an index. `spread_over_10y` = index yield minus UST 10Y, the engine's `kd_spread`. `with_kd_spread` sets that driver mean. A value more than 7 days old (70 days for HQM) raises an error. `cross_check_bonds` compares Moody's minus UST 10Y with FRED AAA10Y and BAA10Y. Cache: `data/raw/bonds/`. CLI with `--json`: `python -m financial_analysis.bonds`. |
 | `scenarios.py` | 125 | Bear/base/bull presets (`DEFAULT_SCENARIOS` generic mature-large-cap; `_SCENARIO_OVERRIDES["IBM"]` = v3 framework), `CAPITAL_OVERRIDES` (IBM: net debt $54.0B, 948,675,228 diluted shares), `capital_structure_for` (derives net debt from the latest 10-K: standard variable `total_debt` − cash; shares_outstanding falling back to diluted). |
 | `schema.py` | 187 | Dataclasses: `PeriodFinancials` (132 standard variables with the same names as the registry, `sources` = the tag or formula behind each value, reserved `segment_revenue`, `raw_extras`; derived `free_cash_flow = OCF − abs(capex_total)` (rule R2: equipment and capitalized software) and `fcf_margin`), `CompanyFinancials`, `PricePoint`, `EarningsEstimate`, `EarningsSurprise`, `OptionQuote`, `OptionChainSnapshot`, `ConsensusEstimates`. |
 | `store.py` | 105 | JSON persistence `data/processed/TICKER.json` (**periods only** — no market data), in-memory session cache, `get_series`/`compare` query helpers with metric-name validation. |
 | `standard_variables.toml` | 1,385 | The registry of standard variables (data): for each variable its alias tags in a fixed sequence, fallback formulas, unit, sign, core flag and memo flag; the rollups; the containment rules; the excluded tags with reasons. The Rust program `rust/mapcheck` uses it to make the variables. |
 | `xbrl_tags.py` | 135 | Loads the registry file for the Python code that stays (schema fields, xlsx writer): `ALL_TAGS`, the four statement dicts, `CORE_FIELDS`, `ROLLUPS`, `WITHIN`, `STATEMENT_MAP`, `UNIT_MAP`. It does no mapping. |
-| `verdict.py` | 31 | Investor verdict, read-only over driver-engine paths: chance the price is too high (share of paths valued below the price) and a five-band verdict (25%/75% outer cutoffs, Morningstar-style; 40%/60% middle cutoffs are judgment). Plan: PLANNING/proposals/2026-10-15-investor-verdict-layer.md. |
 
 ## `scripts/` (verified 2026-07-17)
 
@@ -159,18 +158,12 @@ decorative until a driver build exists.
 | `analyze.py` | `python -m scripts.analyze TICKER [--refresh] [--out PATH] [--no-market] [--no-options] [--no-estimates]` | Full pipeline: import → attach prices/surprises/consensus/options → write `data/processed/TICKER_financials.xlsx`. The workbook **always contains all nine sheets** (Income Statement, Balance Sheet, Cash Flow, Raw, Prices, Estimates, Estimates Fwd, Options, Options Summary); skipped groups leave header-only sheets, and the console "N tabs" count refers to populated groups. RPO rows share the Balance Sheet tab with `statement=disclosure`. |
 | `import_financials.py` | `python -m scripts.import_financials TICKER [--refresh]` | Import + save JSON only, no xlsx. |
 | `import_edgar.py` | `python -m scripts.import_edgar TICKER VALUATION_DATE [--output-dir data/raw] [--lookback-months 18] [--lookahead-months 6]` | Bulk full-index filing download (archival fallback path — companyfacts is the primary parse path). |
-| `run_dcf.py` | `python -m scripts.run_dcf TICKER [--simulations 10000] [--years 10] [--growth 0.15] [--wacc 0.10] [--terminal-growth 0.03] [--seed N]` | Classic-engine MC DCF on stored data; no network. |
-| `backtest.py` | `python -m scripts.backtest TICKER [--horizon 3] [--simulations 10000] [--seed 7]` | Vintage backtest console report: per-vintage P10/P50/P90 vs actuals, band coverage vs nominal 80%, signed bias by horizon, data flags, skipped vintages. No network. |
 | `visualize_dcf.py` | `python -m scripts.visualize_dcf TICKER [--price X] [--out PATH]` | Single-page self-contained HTML report (plotly.js inlined, ~5.9k lines of output): header chips, price & valuation, fundamentals, the four aggregate-DCF panels (fan / distribution / waterfall / tornado), the driver-model section (segment history, driver table, correlation heatmap, driver-vs-aggregate compare, attribution tornado, **MC path explorer**: stratified 301-path spaghetti, 2,000-path parallel coordinates, bottom/top-10 outlier table with \|z\|≥1.5 drivers bolded), options section (IV term structure, implied move, skew, OI heatmap). Driver section renders only if `analysis/<TICKER>/driver_model.py` exposes `build()`; every section degrades to a labeled "not available" note. Styling follows docs/design-specs/2026-07-16-ratings-desk-blueprint.md. The sixth section "Backtest — mechanical vintages" (vintage table + hedgehog charts from `financial_analysis/backtest.py`, honesty labels, merged PR #9) makes SECTION_TITLES six entries. The skew panel excludes expiries under 2 days from the snapshot (`_SKEW_MIN_DTE`, PR #14) — near-expiry wing IVs are solver noise. |
-| `verdict.py` | `python -m scripts.verdict TICKER --price X [--simulations 10000] [--seed 7] [--rf-date D] [--rf-base-date D] [--rating R] [--json]` | Console verdict for a ticker with `analysis/<TICKER>/driver_model.py`: P10/P25/P50/P75/P90, chance the price is too high, verdict band. It writes nothing. Without `--rf-date` it uses no network. `--rf-date` sets the `rf` mean to the Treasury 10Y of that date and prints the real and inflation parts of the rate. `--rating` (with `--rf-date`) sets the `kd_spread` mean to the market spread for the rating. `--json` gives machine output for `rust/`. |
 
 ## Root-level analysis entry points
 
 | Entry point | What it does |
 |---|---|
-| `python -m analysis.IBM.dcf_scenarios` | v3 aggregate framework console report: FCFF v3 margins, paired (growth, f) scenarios, WACC grid, f-locus. Historical — superseded by the driver run for headline numbers, kept reproducible. |
-| `python -m analysis.IBM.dcf_drivers_run` | v4 driver-engine runner: headline P10/P50/P90 + attribution, E/V fixed-point iteration, f-locus (g_software mean moves WITH f), SBC-drift locus, beta locus, supply-shock correlation and τ=0 disclosure runs, implied-reinvestment check. Seed 7, 10k sims, 10y. |
-| `python -m analysis.JNJ.first_pass_run` | JNJ first pass (unreviewed register): headline, engine-vs-hand-DCF cross-check at means, f / beta / rf loci and one stacked case. Seed 7, 10k sims. |
 
 ## Standard variables and `rust/mapcheck/` (2026-11-19)
 
@@ -481,20 +474,28 @@ number stays the same (`docs/HIDDEN-ASSUMPTIONS.md` #120 to #126).
 (`StochasticDCF`), `driver.rs` (`DriverDCF`, drivers, correlations, attribution),
 `scenarios.rs` (presets, capital structure), `verdict.rs`, `model.rs` (a driver model as a
 TOML file, `Overrides`, hand DCF, bisection), `analysis.rs` (runs with overrides,
-sensitivity, implied value), `cli.rs` (`fa dcf`, `fa verdict`), `tests.rs` and
-`runner_tests.rs`.
+sensitivity, implied value, the fade check, the commitment check, the equity-weight fixed point),
+`backtest.rs` (point-in-time vintage backtest), `cli.rs` (`fa dcf`, `fa backtest`), `tests.rs`
+and `runner_tests.rs`. Outside `dcf/`: `rust/src/rates.rs` (Treasury curves, New York Fed rates,
+BLS CPI, FRED, inflation, cross-checks), `rust/src/bonds.rs` (ICE BofA, Moody's, HQM, ratings),
+`rust/src/verdict_rates.rs` (market `rf` and `kd_spread` in a driver model); the `Fa` struct in
+`lib.rs` keeps the method names and calls them.
 
 **Data.** `analysis/<TICKER>/driver_model.toml` (IBM, JNJ, ANT): drivers with their
 rationale text, correlations, segments, net debt, shares, horizon. The fixtures of
 the tests are in `rust/tests/fixtures/dcf/`. They are the recorded output of the Python
-engines (numpy 2.5.3) and of the three Python runners. `THIRD-PARTY.md` has the license
+engines (numpy 2.5.3) and of the three Python runners (deleted 2026-11-19; the fixtures are
+their record). `rust/tests/fixtures/backtest/` and `rust/tests/fixtures/rates/` are the same kind
+for the backtest, the rates, the bonds and the verdict with market rates; the Treasury, New York
+Fed and BLS files there are saved answers, the FRED series are made up (see
+`docs/HIDDEN-ASSUMPTIONS.md` #128). `THIRD-PARTY.md` has the license
 text for the numpy tables.
 
 **Speed.** One run of 10,000 paths, 10 years and the attribution of 8 drivers takes
 about 30 ms on 4 threads (60 ms on 1 thread). The z rows are made once; the paths run
 in parallel. Parallel paths do not change a result.
 
-**Commands.** `fa dcf drivers|classic|scenarios|models`, `fa verdict`. See the README.
+**Commands.** `fa dcf drivers|classic|scenarios|models`, `fa backtest`, `fa verdict`, `fa rates`, `fa bonds`. See the README.
 
 ## Options trading (`rust/src/trading/`, `fa trade ...`)
 
@@ -546,7 +547,7 @@ ticket `option-backtest-rust`).
 
 ## Tests
 
-`python -m pytest` from the repo root: 349 tests, all pass on 2026-11-19 (4 s).
-19 test modules are in `tests/`. `cargo test --manifest-path rust/mapcheck/Cargo.toml`: 86 Rust
-tests. The suites make no network calls; HTTP is mocked and
+`python -m pytest` from the repo root: 278 tests (274 pass, 4 are skipped) on 2026-11-19 (5 s).
+`cargo test --manifest-path rust/Cargo.toml`: 266 + 17 + 1 Rust tests (the `fa` crate).
+`cargo test --manifest-path rust/mapcheck/Cargo.toml`: 86 Rust tests. The suites make no network calls; HTTP is mocked and
 files use `tmp_path`. Install `pytest` with `pip install -r requirements-dev.txt`.

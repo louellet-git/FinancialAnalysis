@@ -1,17 +1,15 @@
-//! `fa`: command-line access to the FinancialAnalysis pipeline from Rust.
-//! Typed commands print pretty JSON; `fa run` passes any Python entry point through.
+//! `fa`: command-line access to FinancialAnalysis. Rates, bonds, forwards, futures, models,
+//! DCF, backtest, verdict, recon and trade are Rust. Typed commands print pretty JSON; `fa run`
+//! passes a Python entry point through (the parts that are still Python).
 
-use financial_analysis::{
-    CheckResult, CreditSnapshot, Curve, Fa, HqmCurve, Inflation, RateObservation, Snapshot,
-};
+use financial_analysis::{CheckResult, Fa};
 use serde::Serialize;
-use std::collections::BTreeMap;
 use std::process::ExitCode;
 
 mod serve;
 
 const USAGE: &str = "\
-fa - Rust interface to the FinancialAnalysis Python pipeline
+fa - FinancialAnalysis in Rust
 
 USAGE:
   fa rates [snapshot] [--date D]                  curves, SOFR, EFFR, FOMC range, inflation
@@ -40,9 +38,12 @@ USAGE:
   fa models calibrate|rolling|frequencies|compare|simulate ...
                                                   stochastic rate models (Rust); see below
   fa dcf drivers|classic|scenarios|models ...     Monte Carlo DCF in Rust (fa dcf --help)
+  fa backtest TICKER [--horizon Y] [--simulations N] [--seed S]
+                                                  point-in-time vintage backtest of revenue and FCF projections (Rust)
   fa verdict TICKER --price P [--rf-date D|today] [--rf-base-date D] [--rating A-]
              [--simulations N] [--seed S]
-                                                  Rust engine; with --rf-date or --rating the rates come from Python
+                                                  Monte Carlo verdict; --rf-date takes the Treasury 10Y as rf,
+                                                  --rating takes the market kd spread of the rating (network)
   fa recon bonds [--date D] [--out FILE]          bond values from our rates vs market prices (see: fa recon help)
   fa recon bills [--date D]                       tests of each cause of the bill difference of recon bonds
   fa recon rich-cheap [--date D] [--out FILE]     fitted NSS curve, difference of each security, rich and cheap candidates
@@ -57,11 +58,8 @@ D is YYYY-MM-DD or 'today'. Rates are decimals (0.0507 = 5.07%).
 
 ENVIRONMENT:
   FA_REPO    repository root (default: the repository that holds this crate)
-  FA_PYTHON  Python interpreter (default: <repo>/.venv/bin/python, else python3;
+  FA_PYTHON  Python interpreter for `fa run` (default: <repo>/.venv/bin/python, else python3;
              Windows: <repo>\\.venv\\Scripts\\python.exe, else python)";
-
-const RATES: &str = "financial_analysis.rates";
-const BONDS: &str = "financial_analysis.bonds";
 
 /// Default subcommand "snapshot" when none (or only a flag) is given.
 fn with_default_sub(rest: &[String]) -> (Vec<String>, String) {
@@ -83,14 +81,39 @@ fn exit_on_mismatch(results: &[CheckResult]) -> ExitCode {
     }
 }
 
+/// `--name value` in the arguments after the command word.
+fn flag(rest: &[String], name: &str) -> Option<String> {
+    rest.iter().position(|a| a == name).and_then(|i| rest.get(i + 1)).cloned()
+}
+
+fn has(rest: &[String], name: &str) -> bool {
+    rest.iter().any(|a| a == name)
+}
+
+fn days_flag(rest: &[String], default: u32) -> Result<u32, String> {
+    flag(rest, "--days").map_or(Ok(default), |d| d.parse::<u32>().map_err(|_| format!("bad --days '{d}'")))
+}
+
 fn bonds(fa: &Fa, rest: &[String]) -> financial_analysis::Result<ExitCode> {
     let (args, sub) = with_default_sub(rest);
+    let date = flag(&args, "--date");
+    let date = date.as_deref();
+    let rating = flag(&args, "--rating").unwrap_or_else(|| "A".into());
     match sub.as_str() {
-        "snapshot" => print_json(&fa.call::<CreditSnapshot>(BONDS, &args)?),
-        "spread" | "yield" | "over10y" | "moodys" => print_json(&fa.call::<RateObservation>(BONDS, &args)?),
-        "hqm" => print_json(&fa.call::<HqmCurve>(BONDS, &args)?),
+        "snapshot" => print_json(&fa.credit_snapshot(date)?),
+        "spread" => print_json(&fa.credit_spread(&rating, date)?),
+        "yield" => print_json(&fa.corporate_yield(&rating, date)?),
+        "over10y" => print_json(&fa.spread_over_10y(&rating, date)?),
+        "moodys" => {
+            let grade = flag(&args, "--grade").unwrap_or_else(|| "Baa".into());
+            print_json(&fa.moodys(&grade, date)?)
+        }
+        "hqm" => print_json(&fa.hqm_curve(date)?),
         "check" => {
-            let results = fa.call::<Vec<CheckResult>>(BONDS, &args)?;
+            let results = match days_flag(&args, 90) {
+                Ok(d) => fa.check_bonds(d)?,
+                Err(m) => return Ok(usage_error(&m)),
+            };
             print_json(&results);
             return Ok(exit_on_mismatch(&results));
         }
@@ -110,14 +133,29 @@ fn usage_error(msg: &str) -> ExitCode {
 
 fn rates(fa: &Fa, rest: &[String]) -> financial_analysis::Result<ExitCode> {
     let (args, sub) = with_default_sub(rest);
+    let date = flag(&args, "--date");
+    let date = date.as_deref();
+    let real = has(&args, "--real");
     match sub.as_str() {
-        "snapshot" => print_json(&fa.call::<Snapshot>(RATES, &args)?),
-        "yield" | "nyfed" => print_json(&fa.call::<RateObservation>(RATES, &args)?),
-        "curve" => print_json(&fa.call::<Curve>(RATES, &args)?),
-        "history" | "fred" => print_json(&fa.call::<BTreeMap<String, f64>>(RATES, &args)?),
-        "inflation" => print_json(&fa.call::<Inflation>(RATES, &args)?),
+        "snapshot" => print_json(&fa.snapshot(date)?),
+        "yield" => print_json(&fa.treasury_yield(&flag(&args, "--tenor").unwrap_or_else(|| "10Y".into()), date, real)?),
+        "nyfed" => print_json(&fa.nyfed(&flag(&args, "--rate").unwrap_or_else(|| "SOFR".into()), date)?),
+        "curve" => print_json(&fa.curve(date, real)?),
+        "history" => {
+            let Some(start) = flag(&args, "--start") else { return Ok(usage_error("rates history needs --start D")) };
+            let tenor = flag(&args, "--tenor").unwrap_or_else(|| "10Y".into());
+            print_json(&fa.history(&tenor, &start, flag(&args, "--end").as_deref(), real)?)
+        }
+        "fred" => {
+            let Some(series) = flag(&args, "--series") else { return Ok(usage_error("rates fred needs --series ID")) };
+            print_json(&fa.fred(&series, flag(&args, "--start").as_deref(), has(&args, "--raw"))?)
+        }
+        "inflation" => print_json(&fa.inflation(date)?),
         "check" => {
-            let results = fa.call::<Vec<CheckResult>>(RATES, &args)?;
+            let results = match days_flag(&args, 30) {
+                Ok(d) => fa.check(d)?,
+                Err(m) => return Ok(usage_error(&m)),
+            };
             print_json(&results);
             return Ok(exit_on_mismatch(&results));
         }
@@ -146,9 +184,9 @@ fn forwards_cmd(fa: &Fa, rest: &[String]) -> ExitCode {
     })
 }
 
-/// `fa verdict TICKER --price P ...`: the same options as `python -m scripts.verdict`.
+/// `fa verdict TICKER --price P ...`
 fn verdict_cmd(fa: &Fa, rest: &[String]) -> financial_analysis::Result<ExitCode> {
-    let flag = |name: &str| rest.iter().position(|a| a == name).and_then(|i| rest.get(i + 1)).cloned();
+    let flag = |name: &str| flag(rest, name);
     let Some(ticker) = rest.first().filter(|t| !t.starts_with('-')) else {
         return Ok(usage_error("verdict needs a ticker"));
     };
@@ -188,6 +226,7 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
         }),
         Some("forwards") => Ok(forwards_cmd(fa, &args[1..])),
         Some("futures") => Ok(financial_analysis::futures::cli::run(&fa.repo, &args[1..])),
+        Some("backtest") => Ok(ExitCode::from(financial_analysis::dcf::cli::backtest(&fa.repo, &args[1..]))),
         Some("dcf") => Ok(ExitCode::from(financial_analysis::dcf::cli::run(&fa.repo, &args[1..]))),
         Some("verdict") => verdict_cmd(fa, &args[1..]),
         Some("trade") => match args.get(1).map(String::as_str) {

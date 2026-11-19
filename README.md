@@ -19,10 +19,10 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest                       # 349 tests, no network
+python -m pytest                       # 278 tests (4 skipped), no network
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
 cargo test --manifest-path rust/mapcheck/Cargo.toml    # 86 Rust tests
-cargo test --manifest-path rust/Cargo.toml --locked    # 185 Rust tests (`fa` crate: rates, models, futures, option trading, bond research)
+cargo test --manifest-path rust/Cargo.toml --locked    # 266 + 17 + 1 Rust tests (`fa` crate: DCF, backtest, rates, bonds, models, futures, option trading, bond research)
 ```
 
 Run all commands from the repo root.
@@ -34,17 +34,18 @@ Run all commands from the repo root.
 python -m scripts.analyze IBM
 
 # 2. Get the value range and the verdict against a price (the price is an input)
-python -m scripts.verdict IBM --price 228.53
+cargo build --release --manifest-path rust/Cargo.toml   # one time: the `fa` program
+rust/target/release/fa verdict IBM --price 228.53
 
 # 3. Make the one-page HTML report. Output: data/processed/IBM_dcf.html
 python -m scripts.visualize_dcf IBM
 
 # 4. Examine how the mechanical model performed on past years
-python -m scripts.backtest IBM
+rust/target/release/fa backtest IBM
 ```
 
-Step 2 is available only for a ticker that has `analysis/<TICKER>/driver_model.py`.
-On 2026-11-19 these are IBM (reviewed) and JNJ (first pass, not reviewed).
+Step 2 is available only for a ticker that has `analysis/<TICKER>/driver_model.toml`.
+On 2026-11-19 these are IBM (reviewed), JNJ and ANT (first passes, not reviewed).
 
 The verdict is the percentage of simulated values that are below the price:
 
@@ -60,7 +61,7 @@ Limits that you must know before you use a verdict:
 
 - The P10 and P90 values are too narrow (backlog item T-DCF-1). The chance value is
   thus too sure.
-- A verdict is only as good as its driver model. The JNJ model has no review.
+- A verdict is only as good as its driver model. The JNJ and ANT models have no review.
 - The IBM report is from July 2026. Its watch list is not graded against the Q2 and Q3
   results (board ticket `ibm-q2-grading`).
 
@@ -70,20 +71,13 @@ Limits that you must know before you use a verdict:
 python -m scripts.analyze IBM [--refresh] [--no-market] [--no-options] [--no-estimates] [--out custom.xlsx]
 python -m scripts.import_financials IBM [--refresh]      # JSON store only, no xlsx
 python -m scripts.import_edgar IBM 2026-07-01 [--output-dir data/raw] [--lookback-months 18] [--lookahead-months 6]
-python -m scripts.run_dcf PANW [--simulations 10000] [--years 10] [--growth 0.15] [--wacc 0.10] [--terminal-growth 0.03] [--seed 7]
-python -m scripts.backtest IBM [--horizon 3] [--simulations 10000] [--seed 7]
 python -m scripts.visualize_dcf IBM [--price 195.40] [--out report.html]
-python -m scripts.verdict IBM --price 228.53 [--simulations 10000] [--seed 7] [--rf-date today] [--rf-base-date 2026-07-16] [--rating A-] [--json]
-python -m financial_analysis.bonds [snapshot|spread|yield|over10y|moodys|hqm|check] [--rating A-] [--json]
-python -m financial_analysis.rates [snapshot|yield|curve|history|nyfed|inflation|fred|check] [--json]
-python -m analysis.IBM.dcf_drivers_run     # IBM version 4 headline numbers (seed 7)
-python -m analysis.IBM.dcf_scenarios       # IBM version 3 (historical)
-python -m analysis.JNJ.first_pass_run      # JNJ first pass
-python -m analysis.ANT.first_pass_run      # ANT first pass
 ```
 
-The same engines run in Rust (the random numbers are the same as numpy's, so the numbers
-are the same). The driver models are the files `analysis/<TICKER>/driver_model.toml`.
+The valuation engines, the backtest, the verdict, the rates and the bonds are Rust
+code (the `fa` program). The random numbers are the same as numpy's, so the numbers are
+the same as the numbers that the Python engines gave. The driver models are the files
+`analysis/<TICKER>/driver_model.toml`.
 
 ```bash
 fa dcf drivers IBM [--seed 7] [--sims 10000] [--price 228.53] [--json]        # headline, hand DCF check, attribution
@@ -92,13 +86,23 @@ fa dcf drivers ANT --implied-price 83 --implied-driver g_total --range 0,0.8  # 
 fa dcf drivers IBM --set beta=1.0 [--shift-bounds] --flat sbc_ratio=0.0254 --ramp sbc_ratio=0.0254:0.045:10 \
     --corr rf,g_software=-0.15 --net-debt 5e10 --shares 9.5e8 --years 10 --year1-revenue NAME=X   # overrides
 fa dcf classic JNJ [--sims 10000] [--years 10] [--growth 0.15] [--wacc 0.10] [--terminal-growth 0.03] [--seed 7] [--data-dir D]
+fa dcf classic IBM --margin-mean 0.145 --margin-std 0.02 --net-debt 54e9 --shares 948675228   # classic engine, value per share
 fa dcf scenarios IBM [--data-dir D] [--json]      # bear, base, bull; value per share after net debt
 fa dcf models                                     # tickers that have a driver model file
-fa verdict IBM --price 228.53                     # Rust engine; --rf-date or --rating still use Python
+fa backtest IBM [--horizon 3] [--simulations 10000] [--seed 7] [--data-dir D]   # vintage backtest, no network
+fa verdict IBM --price 228.53 [--simulations 10000] [--seed 7] [--rf-date today] [--rf-base-date 2026-07-16] [--rating A-]
+fa rates [snapshot|yield|curve|history|nyfed|inflation|fred|check] [--date D]   # JSON
+fa bonds [snapshot|spread|yield|over10y|moodys|hqm|check] [--rating A-] [--date D]   # JSON
 ```
 
-`scripts.run_dcf` prints an enterprise value for each share. It does not subtract net
-debt. Do not compare this number with a share price.
+More options of `fa dcf drivers` (each analysis of the three first passes and of the IBM
+version 4 runner): `--ev-fixed-point`, `--reinvestment-check`, `--path`, `--fade`,
+`--commitments`, `--keep-year1-margin`. The command for each number of the first
+passes: `analysis/ANT/COMMANDS.md`, `analysis/JNJ/COMMANDS.md`; for IBM:
+`analysis/IBM/README.md` (section "Reproduce").
+
+`fa dcf classic` prints an enterprise value. It subtracts net debt only when you give
+`--net-debt` and `--shares`. Do not compare an enterprise value with a share price.
 
 Remote data has a disk cache in `data/raw/TICKER/`. Option chains and consensus
 estimates are saved as dated snapshots, because yfinance gives only current data. A run
@@ -177,20 +181,23 @@ the checks mark them. Foreign filers (form 20-F) and IFRS filers are out of scop
 
 ## Interest rates and inflation
 
-`financial_analysis/rates.py` gets US rates from the publishers. All values are
-decimals (0.0507 is 5.07%). Each value has the date of its observation.
+`fa rates` (Rust, `rust/src/rates.rs`) gets US rates from the publishers. All values are
+decimals (0.0507 is 5.07%). Each value has the date of its observation. The cache is
+`data/raw/rates/` (not in git). The requests use the client name `FinancialAnalysis fa
+(personal research)` and wait 2 seconds between requests.
 
 ```bash
-python -m financial_analysis.rates                 # snapshot and a cross-check against FRED
-python -m financial_analysis.rates yield --tenor 10Y --date 2026-07-16 --json
-python -m financial_analysis.rates inflation
+fa rates                                  # snapshot: curves, SOFR, EFFR, FOMC range, inflation
+fa rates yield --tenor 10Y --date 2026-07-16
+fa rates inflation
+fa rates check                            # cross-check against FRED (exit 1 on a mismatch)
 ```
 
 The driver models keep their own `rf`. To use the Treasury 10-year rate of a date, add
-`--rf-date` to `scripts.verdict`:
+`--rf-date` to `fa verdict`:
 
 ```bash
-python -m scripts.verdict IBM --price 231.09 --rf-date today --rf-base-date 2026-07-16
+fa verdict IBM --price 231.09 --rf-date today --rf-base-date 2026-07-16
 ```
 
 The output shows these items:
@@ -206,12 +213,14 @@ inflation part of a rate change is large, examine the growth drivers too.
 
 ### Corporate bonds and the cost of debt
 
-The engine uses `kd = rf + kd_spread`. `financial_analysis/bonds.py` gives market
-values for `kd_spread`.
+The engine uses `kd = rf + kd_spread`. `fa bonds` (Rust, `rust/src/bonds.rs`) gives market
+values for `kd_spread`. The data come through the FRED CSV file (see
+`docs/HIDDEN-ASSUMPTIONS.md` #128 if FRED does not answer).
 
 ```bash
-python -m financial_analysis.bonds                       # all ratings, Moody's, HQM curve, check
-python -m financial_analysis.bonds over10y --rating A-   # the market kd_spread for a rating
+fa bonds                       # all ratings, Moody's, HQM curve
+fa bonds over10y --rating A-   # the market kd_spread for a rating
+fa bonds check                 # Moody's minus UST 10Y against FRED (exit 1 on a mismatch)
 ```
 
 `over10y` is the yield of the ICE BofA index for the rating minus the Treasury 10-year
@@ -222,7 +231,7 @@ index.
 To use the market spread in a verdict, add `--rating` to a run with `--rf-date`:
 
 ```bash
-python -m scripts.verdict JNJ --price 200 --rf-date today --rating AAA
+fa verdict JNJ --price 200 --rf-date today --rating AAA
 ```
 
 The output shows the market spread, the model spread and the pre-tax and after-tax cost
@@ -231,11 +240,12 @@ you use `--rating` for IBM.
 
 ### Rust interface
 
-The `rust/` crate calls the Python code for the parts that are Python, and gives typed results.
-The DCF engines, the scenarios and the verdict (without market rates) are Rust code
-(`fa dcf ...`). The option trading (`fa trade ...`), `fa forwards`, `fa futures`, `fa models`
-and `fa recon` are Rust code and call no Python code. The rest is Python until its ticket
-moves it.
+The `rust/` crate (the `fa` program) gives typed results. The DCF engines, the scenarios,
+the verdict (with or without market rates), the backtest, the rates and the bonds are Rust
+code (`fa dcf ...`, `fa verdict`, `fa backtest`, `fa rates`, `fa bonds`). The option trading
+(`fa trade ...`), `fa forwards`, `fa futures`, `fa models` and `fa recon` are Rust code too and
+call no Python code. `fa run MODULE` starts a Python entry point for the parts that are still
+Python (the analysis, the import and the report) until their tickets move them.
 
 ```bash
 cd rust
@@ -318,15 +328,15 @@ The program finds Python in this sequence: `FA_PYTHON`, then `.venv` in the repo
 | View | What it shows | Source |
 |---|---|---|
 | Stock | The standard variables of the latest fiscal years with value and source, the status (PASS, WARN, FAIL, N/A), the company type and the findings. | `mapcheck` library, cache `data/raw/` |
-| Monte Carlo DCF | P10 to P90 of the value for each share, the chance that the price is too high, and the verdict. Optional: the market rates of today and a credit rating. | `scripts.verdict` |
-| Rates | The nominal and real Treasury curves, SOFR, EFFR, breakevens, the 5y5y forward and CPI. | `financial_analysis.rates` |
-| Bonds | The ICE BofA yield and spread for each rating, Moody's Aaa and Baa, the HQM corporate curve. | `financial_analysis.bonds` |
+| Monte Carlo DCF | P10 to P90 of the value for each share, the chance that the price is too high, and the verdict. Optional: the market rates of today and a credit rating. | `fa verdict` (Rust) |
+| Rates | The nominal and real Treasury curves, SOFR, EFFR, breakevens, the 5y5y forward and CPI. | `fa rates` (Rust) |
+| Bonds | The ICE BofA yield and spread for each rating, Moody's Aaa and Baa, the HQM corporate curve. | `fa bonds` (Rust) |
 | Option bots | The text of `trading/research/LEADERBOARD.md`. | file |
 
 Limits:
 
 - The server accepts connections from this computer only (127.0.0.1).
-- The Monte Carlo DCF runs only for a ticker with `analysis/<TICKER>/driver_model.py`.
+- The Monte Carlo DCF runs only for a ticker with `analysis/<TICKER>/driver_model.toml`.
   The page shows the percentiles as a range chart. It does not show a histogram.
 - A ticker that is not in `data/raw/` needs the SEC. Set `SEC_USER_AGENT` before you
   start the server (see `rust/mapcheck/README.md`). A fresh clone has no `data/raw/`,
@@ -339,19 +349,22 @@ Limits:
 
 ## The two DCF engines
 
-**Classic engine**, `financial_analysis/dcf.py`. It samples revenue growth, free-cash-flow
+**Classic engine**, `rust/src/dcf/classic.rs` (the older Python copy `financial_analysis/dcf.py` stays
+only for `scripts/visualize_dcf.py`). It samples revenue growth, free-cash-flow
 margin, WACC and terminal growth directly. The presets (bear, base, bull) and the net
 debt and share count for each ticker are in `financial_analysis/scenarios.py`. The IBM
 entries there are version 3 on purpose (`docs/HIDDEN-ASSUMPTIONS.md` #13).
 
-**Driver engine**, `financial_analysis/driver_dcf.py`. The top-level items (revenue,
+**Driver engine**, `rust/src/dcf/driver.rs` (the older Python copy `financial_analysis/driver_dcf.py`
+stays only for `scripts/visualize_dcf.py`). The top-level items (revenue,
 margin, WACC, terminal value) are fixed formulas. All randomness is in named drivers.
 Each driver has a written reason. Each path uses one draw for each driver, with a
 correlation matrix. WACC is calculated for each path. Terminal growth is limited to
 `WACC − 2%` for each path. The model for a ticker is in
-`analysis/<TICKER>/driver_model.py`.
+`analysis/<TICKER>/driver_model.toml`.
 
-**Backtest**, `financial_analysis/backtest.py`. For each past fiscal year end plus 90
+**Backtest**, `rust/src/dcf/backtest.rs` (`fa backtest`; the Python copy `financial_analysis/backtest.py`
+stays only for `scripts/visualize_dcf.py`). For each past fiscal year end plus 90
 days, it uses only the data that was filed before that date, projects revenue and free
 cash flow for 1 to 3 years, and compares the projection with the actual results. It
 tests operating projections only: no WACC, no terminal value, no price.

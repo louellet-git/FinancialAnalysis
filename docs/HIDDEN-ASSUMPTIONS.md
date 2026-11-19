@@ -657,8 +657,10 @@ default seed 7.
 `analysis/<TICKER>/driver_model.toml` is the Rust copy. `driver_model.py` is the Python
 copy. A test shows that the TOML file gives the numbers that the Python code gave on
 2026-11-19, including each rationale text. A change in one copy does not change the
-other. Until the Python files are deleted (ticket `T-20261119-dcf-engine-rust`, stage 4),
-make a model change in both files. Then record the new fixtures. The IBM version 4
+other. The runners (`dcf_drivers_run.py`, `first_pass_run.py`) are deleted. The three
+`driver_model.py` files stay because `scripts/visualize_dcf.py` reads them. Until that
+script moves to Rust (ticket `T-20261119-dcf-engine-rust`, stage 4), make a model change
+in both files. Then record the new fixtures. The IBM version 4
 model is a closed record: its test must not change without a review of the same weight.
 *Evidence:* `rust/src/dcf/tests.rs` (`toml_models_give_the_python_models`).
 
@@ -675,13 +677,88 @@ move them. The wrong choice changes the result: for ANT a growth mean of 30% wit
 bounds gives a different P50.
 *Evidence:* `rust/src/dcf/runner_tests.rs` (the ANT lines use `shift_bounds`).
 
-**126. `fa verdict` with market rates still runs Python.** A run without `--rf-date`
-and without `--rating` uses the Rust engine when the ticker has `driver_model.toml`.
-A run with market rates needs the Treasury and ICE data, which only Python gets, and
-runs `scripts.verdict` (same for a ticker that has only `driver_model.py`). Both paths
-have the same JSON fields. The last digit of a percentile can differ (see #121).
-`fa dcf classic` and `fa dcf scenarios` read `data/processed/<TICKER>.json`; a new
-worktree has no `data/` folder (it is not in git): use `--data-dir`.
+**126. `fa verdict` with market rates runs in Rust (changed 2026-11-19).** All options
+of the old `scripts.verdict` (`--rf-date`, `--rf-base-date`, `--rating`) run in Rust. A
+ticker needs `driver_model.toml`: a ticker with only `driver_model.py` gives an error.
+The JSON fields are the same. The last digit of a percentile can differ (see #121).
+`fa dcf classic`, `fa dcf scenarios` and `fa backtest` read
+`data/processed/<TICKER>.json`; a new worktree has no `data/` folder (it is not in
+git): use `--data-dir`.
+
+**127. The backtest has two copies until the report moves.** `fa backtest` (Rust,
+`rust/src/dcf/backtest.rs`) and `financial_analysis/backtest.py` give the same numbers:
+for IBM on the real store the text of the two commands is the same, character for
+character; the fixtures have synthetic companies with the IBM data flag, a 10-K/A, late
+filings, phantom rows and thin history. The Python file stays because
+`scripts/visualize_dcf.py` imports it. The Python command `scripts.backtest` is deleted.
+A change of the backtest needs the same change in both files.
+*Evidence:* `rust/src/dcf/tests.rs` (`backtest_parity`); `rust/tests/fixtures/backtest/`.
+
+**128. FRED does not answer the cloud container.** On 2026-11-19 the connection to
+`fred.stlouisfed.org` was closed by the other side (Rust: "peer closed connection without
+sending TLS close_notify"; curl: HTTP/2 stream INTERNAL_ERROR). The Python client had the
+same refusal. The Treasury, the New York Fed and the BLS sites answered the client
+`FinancialAnalysis fa (personal research)`. The code does not retry, does not change the
+client name and does not imitate a browser. These commands need FRED: `fa bonds` (all
+subcommands), `fa verdict` with `--rating`, `fa rates fred` and `fa rates check`. They
+could not run against the real site. The other `fa rates` commands do not need FRED. Their parsers and logic are tested on fixtures: the
+FRED series in `rust/tests/fixtures/rates/fred.json` are made up (ICE data may not be
+copied into a public repo). On a network that FRED answers, run `fa bonds` and
+`fa bonds check` once before you trust a `--rating` result.
+*Evidence:* `fa rates fred --series DGS10` on 2026-11-19.
+
+**129. The BLS API has a daily request limit for each address.** On 2026-11-19 the CPI
+request got "the daily threshold for total number of requests ... has been reached". API
+version 1 gives 25 requests a day for each address, and an address can be shared. The code
+saves the answer for 24 hours in `data/raw/rates/bls_cpi.json`, does not save an answer
+that failed, and uses an old file with a warning when the request fails. The file that
+the old Python code wrote is valid for the Rust code. If there is no file, `fa rates
+inflation` and `fa verdict --rf-date` stop with the BLS text.
+
+**130. The rates, the bonds and the verdict with rates are equal to the Python output.**
+Checked 2026-11-19 on the real Treasury, New York Fed and BLS answers (not FRED): `fa rates
+yield|curve|history|nyfed|inflation|snapshot` and `fa verdict IBM --price 228.53 --rf-date
+today --rf-base-date 2026-07-16` equal the Python JSON to 1e-9 relative, and the error text
+for a missing tenor is the same. Two differences: the snapshot has the field `real` in the
+two curves (the Rust type always had it; the real curve is now `true`), and the Rust
+programs send one request less (the EFFR rate and the FOMC range come from one answer).
+The ICE, Moody's and HQM paths equal the Python output on the fixtures only (#128).
+*Evidence:* `rust/src/rates_tests.rs` (`parity_with_python`).
+
+**131. The network commands wait and do not retry.** Each `fa` data command waits 2
+seconds between requests and makes one request for each file; the Python code tried 3
+times. A first `fa bonds` makes 24 FRED requests (about 50 seconds); later runs read
+`data/raw/bonds/` (6 hours). A refusal is an error. If a download fails and a cache file
+exists, the old file is used and a warning goes to stderr: read the dates of the output.
+
+**132. `fa dcf scenarios IBM` keeps the version 3 inputs.** The Python script
+`dcf_scenarios.py` (deleted) took the FCFF margins from the store. On the store of
+2026-11-19 it gave a mean margin of 18.4% and P50 $43 / $149 / $243 (bear / base / bull);
+the pinned version 3 inputs of the README have 17.8% and $37 / $141 / $232. The Rust
+scenario entries are the pinned inputs, so the Rust command gives the README numbers. The
+loci and the WACC grid of the README: `fa dcf classic ...` (see `analysis/IBM/README.md`).
+A classic row reads the base revenue from `data/processed/IBM.json`; the margin, the net
+debt and the share count come from the options.
+
+**133. Two numbers of the JNJ first pass differ in the second decimal.** The text of
+`analysis/JNJ/FIRST-PASS.md` used a solver that is not in the repo (commit `076a953`):
+core margin 32.4%, terminal growth 4.78%, rf 3.13% and 2.26%. `--implied-price` gives
+32.3%, 4.76%, 3.15% and 2.27%. The classic-engine row ($142.55 / $200.59) cannot be made
+again: `data/processed/JNJ.json` changed after the first pass.
+
+**134. A change of the mature margin needs a rule for the margin of year 1.** The ANT
+runner kept the margin of year 1 when it changed `core_margin` (the drift ramp moved).
+The option `--keep-year1-margin` does this. Without the option, a change of
+`core_margin` changes year 1 too. A model without a ramp on `margin_mix_drift` gives an
+error with the option.
+*Evidence:* `rust/src/dcf/runner_tests.rs` (`keep_year1_margin_is_the_core_mean_of_the_ant_runner`).
+
+**135. Python files that stay, and why.** `scripts/visualize_dcf.py` (the Python report, in
+the work of another ticket) imports `financial_analysis/driver_dcf.py`, `dcf.py`,
+`scenarios.py` and `backtest.py`, and reads `analysis/<TICKER>/driver_model.py` at run
+time. Thus these stay for now. `scenarios.py` imports `dcf.py`; `dcf.py` and `backtest.py`
+import `schema.py`. They go when the report moves to Rust (ticket
+`T-20261119-dcf-engine-rust`, stage 4).
 
 ## Bond reconciliation (added 2026-11-19, branch `claude/bond-recon`)
 

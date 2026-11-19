@@ -18,6 +18,9 @@ pub struct Period {
     /// ISO date `YYYY-MM-DD` (text order is date order).
     #[serde(default)]
     pub period_end: String,
+    /// ISO date of the filing that the figures come from (the backtest uses it).
+    #[serde(default)]
+    pub filed_date: String,
     #[serde(default)]
     pub revenue: Option<f64>,
     #[serde(default)]

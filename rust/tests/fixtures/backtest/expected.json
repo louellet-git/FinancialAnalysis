@@ -1,0 +1,4730 @@
+{
+ "runs": [
+  {
+   "ticker": "SYN",
+   "horizon": 3,
+   "n": 2000,
+   "seed": 7,
+   "vintages": [
+    {
+     "as_of": "2021-03-31",
+     "base_fy": 2020,
+     "base_revenue": "4239ab697e800000",
+     "growth": "3fa99999999999a0",
+     "growth_std": "3f847ae147ae147b",
+     "m_mean": "3fc999999999999b",
+     "m_std": "3f847ae147ae147b",
+     "window": [
+      2018,
+      2019,
+      2020
+     ],
+     "flags": [],
+     "targets": [
+      2021,
+      2022,
+      2023
+     ],
+     "rev": [
+      [
+       "423a9fd9105a3bbd",
+       "423b9d603f643f91",
+       "423ca455a012debe"
+      ],
+      [
+       "423aeff2226f96d6",
+       "423c4481c52117cc",
+       "423da9e307ac1552"
+      ],
+      [
+       "423b4519a0674a8e",
+       "423cf854678c894d",
+       "423ec6b1791d2082"
+      ]
+     ],
+     "fcf": [
+      [
+       "42142da792252183",
+       "421518482c857712",
+       "42160a71a386a2d3"
+      ],
+      [
+       "42158975240d1814",
+       "42169c1f42c36e28",
+       "4217b2fc8b3368f4"
+      ],
+      [
+       "4216f65fa1bbbfec",
+       "42182f881abb47bf",
+       "421984b87a8a756f"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2021,
+       "metric": "revenue",
+       "actual": "423af3fb91a00001",
+       "error_pct": "3fadf8e3fcad8580",
+       "in_band": true
+      },
+      {
+       "fy": 2021,
+       "metric": "fcf",
+       "actual": "42158ffc74800001",
+       "error_pct": "3fbe50385eea2540",
+       "in_band": true
+      },
+      {
+       "fy": 2022,
+       "metric": "revenue",
+       "actual": "423c4cfb58e80002",
+       "error_pct": "3fbdfb22ebc33940",
+       "in_band": true
+      },
+      {
+       "fy": 2022,
+       "metric": "fcf",
+       "actual": "4216a3fc47200002",
+       "error_pct": "3fc163a30d09b760",
+       "in_band": true
+      },
+      {
+       "fy": 2023,
+       "metric": "revenue",
+       "actual": "423db73b1d5a0002",
+       "error_pct": "3fc67e098f372c60",
+       "in_band": true
+      },
+      {
+       "fy": 2023,
+       "metric": "fcf",
+       "actual": "4217c5c8e4480002",
+       "error_pct": "3fd3d47ebc75efe0",
+       "in_band": true
+      }
+     ]
+    },
+    {
+     "as_of": "2022-03-31",
+     "base_fy": 2021,
+     "base_revenue": "423af3fb91a00001",
+     "growth": "3fa99999999999a0",
+     "growth_std": "3f847ae147ae147b",
+     "m_mean": "3fc999999999999a",
+     "m_std": "3f847ae147ae147b",
+     "window": [
+      2018,
+      2019,
+      2020,
+      2021
+     ],
+     "flags": [],
+     "targets": [
+      2022,
+      2023,
+      2024
+     ],
+     "rev": [
+      [
+       "423bf4a3eac52521",
+       "423cfed8428fa925",
+       "423e12f381ad69e2"
+      ],
+      [
+       "423c48be3dc1f7fb",
+       "423dae550efc58fe",
+       "423f2594c80e4996"
+      ],
+      [
+       "423ca227b539417d",
+       "423e6b256cb9f692",
+       "424028505f95b112"
+      ]
+     ],
+     "fcf": [
+      [
+       "42152feff30d6330",
+       "4216264bc858f039",
+       "42172490ebb3c491"
+      ],
+      [
+       "42169d2165da8c7c",
+       "4217bd87394d33aa",
+       "4218e255f88f949a"
+      ],
+      [
+       "42181c4ad0385651",
+       "4219651bb5ab0b54",
+       "421acb5b4d77c81b"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2022,
+       "metric": "revenue",
+       "actual": "423c4cfb58e80002",
+       "error_pct": "3fadf8e3fcad8580",
+       "in_band": true
+      },
+      {
+       "fy": 2022,
+       "metric": "fcf",
+       "actual": "4216a3fc47200002",
+       "error_pct": "3fbe50385eea2540",
+       "in_band": true
+      },
+      {
+       "fy": 2023,
+       "metric": "revenue",
+       "actual": "423db73b1d5a0002",
+       "error_pct": "3fbdfb22ebc33300",
+       "in_band": true
+      },
+      {
+       "fy": 2023,
+       "metric": "fcf",
+       "actual": "4217c5c8e4480002",
+       "error_pct": "3fc163a30d09b760",
+       "in_band": true
+      },
+      {
+       "fy": 2024,
+       "metric": "revenue",
+       "actual": "423f3397ab9e8003",
+       "error_pct": "3fc67e098f372f80",
+       "in_band": true
+      },
+      {
+       "fy": 2024,
+       "metric": "fcf",
+       "actual": "4218f612efb20003",
+       "error_pct": "3fd3d47ebc75f170",
+       "in_band": true
+      }
+     ]
+    },
+    {
+     "as_of": "2023-03-31",
+     "base_fy": 2022,
+     "base_revenue": "423c4cfb58e80002",
+     "growth": "3fa99999999999a0",
+     "growth_std": "3f847ae147ae147b",
+     "m_mean": "3fc999999999999a",
+     "m_std": "3f847ae147ae147b",
+     "window": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022
+     ],
+     "flags": [],
+     "targets": [
+      2023,
+      2024,
+      2025
+     ],
+     "rev": [
+      [
+       "423d5a78e9b566fe",
+       "423e71fcac4a0b35",
+       "423f93e614f61595"
+      ],
+      [
+       "423db2c7c0d87796",
+       "423f2a3fb62290a5",
+       "42405a214f6de6a3"
+      ],
+      [
+       "423e10a9b17c1e5e",
+       "423ff080e55cdc80",
+       "4240f7213129f9ed"
+      ]
+     ],
+     "fcf": [
+      [
+       "42163f2258ce0e8d",
+       "421741cf925d62a3",
+       "42184ccb5de327ff"
+      ],
+      [
+       "4217be96448be050",
+       "4218ed6795c4430d",
+       "421a20da44fd28d6"
+      ],
+      [
+       "421950e8276e5aa3",
+       "421aaa29e526cbe6",
+       "421c225311575eea"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2023,
+       "metric": "revenue",
+       "actual": "423db73b1d5a0002",
+       "error_pct": "3fadf8e3fcad7900",
+       "in_band": true
+      },
+      {
+       "fy": 2023,
+       "metric": "fcf",
+       "actual": "4217c5c8e4480002",
+       "error_pct": "3fbe50385eea1f00",
+       "in_band": true
+      },
+      {
+       "fy": 2024,
+       "metric": "revenue",
+       "actual": "423f3397ab9e8003",
+       "error_pct": "3fbdfb22ebc33300",
+       "in_band": true
+      },
+      {
+       "fy": 2024,
+       "metric": "fcf",
+       "actual": "4218f612efb20003",
+       "error_pct": "3fc163a30d09b760",
+       "in_band": true
+      },
+      {
+       "fy": 2025,
+       "metric": "revenue",
+       "actual": "4240617c6d4cd002",
+       "error_pct": "3fc67e098f372c60",
+       "in_band": true
+      },
+      {
+       "fy": 2025,
+       "metric": "fcf",
+       "actual": "421a3593e2148004",
+       "error_pct": "3fd3d47ebc75efe0",
+       "in_band": true
+      }
+     ]
+    },
+    {
+     "as_of": "2024-03-30",
+     "base_fy": 2023,
+     "base_revenue": "423db73b1d5a0002",
+     "growth": "3fa99999999999a0",
+     "growth_std": "3f847ae147ae147b",
+     "m_mean": "3fc999999999999a",
+     "m_std": "3f847ae147ae147b",
+     "window": [
+      2019,
+      2020,
+      2021,
+      2022,
+      2023
+     ],
+     "flags": [],
+     "targets": [
+      2024,
+      2025,
+      2026
+     ],
+     "rev": [
+      [
+       "423ed2322898128a",
+       "423ff7afb4e75891",
+       "4240940bfe3464ee"
+      ],
+      [
+       "423f2eeb5749b0c3",
+       "42405c94a60558be",
+       "42412b6fc699cbc5"
+      ],
+      [
+       "423f917efa5becaf",
+       "4240c4aa1203f3c3",
+       "4241d049406c1339"
+      ]
+     ],
+     "fcf": [
+      [
+       "42175be41071f5ad",
+       "42186b8059aedac6",
+       "421983d588fb5066"
+      ],
+      [
+       "4218ee842e5fab86",
+       "421a2c799074799a",
+       "421b6f4b953d047a"
+      ],
+      [
+       "421a94f3c300abf8",
+       "421bff78ca35894a",
+       "421d8a70d23556db"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2024,
+       "metric": "revenue",
+       "actual": "423f3397ab9e8003",
+       "error_pct": "3fadf8e3fcad8580",
+       "in_band": true
+      },
+      {
+       "fy": 2024,
+       "metric": "fcf",
+       "actual": "4218f612efb20003",
+       "error_pct": "3fbe50385eea2b80",
+       "in_band": true
+      },
+      {
+       "fy": 2025,
+       "metric": "revenue",
+       "actual": "4240617c6d4cd002",
+       "error_pct": "3fbdfb22ebc33300",
+       "in_band": true
+      },
+      {
+       "fy": 2025,
+       "metric": "fcf",
+       "actual": "421a3593e2148004",
+       "error_pct": "3fc163a30d09b760",
+       "in_band": true
+      },
+      {
+       "fy": 2026,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2026,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      }
+     ]
+    },
+    {
+     "as_of": "2025-03-31",
+     "base_fy": 2024,
+     "base_revenue": "423f3397ab9e8003",
+     "growth": "3fa99999999999a0",
+     "growth_std": "3f847ae147ae147b",
+     "m_mean": "3fc999999999999a",
+     "m_std": "3f847ae147ae147b",
+     "window": [
+      2020,
+      2021,
+      2022,
+      2023,
+      2024
+     ],
+     "flags": [],
+     "targets": [
+      2025,
+      2026,
+      2027
+     ],
+     "rev": [
+      [
+       "42402e5a554fd689",
+       "4240c86f722ca819",
+       "4241683fcaea36c7"
+      ],
+      [
+       "42405f085aa0499a",
+       "42412e027b1f36c7",
+       "424207355d54af8f"
+      ],
+      [
+       "424092c9103d0f76",
+       "42419b4c2c84265a",
+       "4242b44cea0b142f"
+      ]
+     ],
+     "fcf": [
+      [
+       "421886e2aade0ec4",
+       "4219a413915dff4f",
+       "421aca6d0307e139"
+      ],
+      [
+       "421a2da463e4741a",
+       "421b7b7fa47a4c7c",
+       "421cce75c319ab1b"
+      ],
+      [
+       "421be933265a4e2b",
+       "421d65d86deb69c3",
+       "421f04900feb34ce"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2025,
+       "metric": "revenue",
+       "actual": "4240617c6d4cd002",
+       "error_pct": "3fadf8e3fcad8580",
+       "in_band": true
+      },
+      {
+       "fy": 2025,
+       "metric": "fcf",
+       "actual": "421a3593e2148004",
+       "error_pct": "3fbe50385eea2b80",
+       "in_band": true
+      },
+      {
+       "fy": 2026,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2026,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2027,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2027,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      }
+     ]
+    },
+    {
+     "as_of": "2026-03-31",
+     "base_fy": 2025,
+     "base_revenue": "4240617c6d4cd002",
+     "growth": "3fa99999999999a0",
+     "growth_std": "3f847ae147ae147b",
+     "m_mean": "3fc999999999999a",
+     "m_std": "3f847ae147ae147b",
+     "window": [
+      2021,
+      2022,
+      2023,
+      2024,
+      2025
+     ],
+     "flags": [],
+     "targets": [
+      2026,
+      2027,
+      2028
+     ],
+     "rev": [
+      [
+       "4240fd78732d6e10",
+       "42419f41d17bb081",
+       "4242470fc842b985"
+      ],
+      [
+       "42413095925b807c",
+       "424209e901472cb8",
+       "4242edf80865b856"
+      ],
+      [
+       "424166ecb773503d",
+       "42427ca995245b79",
+       "4243a3b728f20865"
+      ]
+     ],
+     "fcf": [
+      [
+       "4219c0d4669c5c4e",
+       "421aec47bf0918e2",
+       "421c2158dcc84615"
+      ],
+      [
+       "421b7cb968e31382",
+       "421cdb46064d36b6",
+       "421e3f2ed9a7c077"
+      ],
+      [
+       "421d4e75b5120548",
+       "421ede2340372f0e",
+       "422048cba1f51553"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2026,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2026,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2027,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2027,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2028,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2028,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      }
+     ]
+    }
+   ],
+   "skipped": [
+    [
+     "2019-03-31",
+     "only 1 usable annual period(s) available \u2014 at least 3 are required to derive mechanical backtest parameters (revenue CAGR and FCF margin distribution)."
+    ],
+    [
+     "2020-03-30",
+     "only 2 usable annual period(s) available \u2014 at least 3 are required to derive mechanical backtest parameters (revenue CAGR and FCF margin distribution)."
+    ]
+   ],
+   "coverage": [
+    24,
+    24
+   ],
+   "bias": {
+    "1": {
+     "fcf": [
+      "3fbe50385eea2680",
+      5
+     ],
+     "revenue": [
+      "3fadf8e3fcad8300",
+      5
+     ]
+    },
+    "2": {
+     "fcf": [
+      "3fc163a30d09b760",
+      4
+     ],
+     "revenue": [
+      "3fbdfb22ebc33490",
+      4
+     ]
+    },
+    "3": {
+     "fcf": [
+      "3fd3d47ebc75f065",
+      3
+     ],
+     "revenue": [
+      "3fc67e098f372d6b",
+      3
+     ]
+    }
+   },
+   "cli_stdout": "\nSynthetic Co (SYN) -- point-in-time vintage backtest\n  horizon 3y | 2,000 paths | seed 7\n  estimates: point-in-time (filed_date <= as-of) | actuals: as currently reported (may be restated)\n\nREVENUE ($B)\n  vintage       base  target      P10      P50      P90   actual    err%  band  flags\n  2021-03-31    2020    2021    114.4    115.7    117.1    115.8    +0.1   yes  -\n  2021-03-31    2020    2022    118.6    121.4    124.4    121.6    +0.1   yes  -\n  2021-03-31    2020    2023    123.0    127.4    132.2    127.6    +0.2   yes  -\n  2022-03-31    2021    2022    120.1    121.5    123.0    121.6    +0.1   yes  -\n  2022-03-31    2021    2023    124.5    127.5    130.6    127.6    +0.1   yes  -\n  2022-03-31    2021    2024    129.2    133.8    138.8    134.0    +0.2   yes  -\n  2023-03-31    2022    2023    126.1    127.6    129.1    127.6    +0.1   yes  -\n  2023-03-31    2022    2024    130.8    133.9    137.2    134.0    +0.1   yes  -\n  2023-03-31    2022    2025    135.6    140.5    145.7    140.7    +0.2   yes  -\n  2024-03-30    2023    2024    132.4    133.9    135.6    134.0    +0.1   yes  -\n  2024-03-30    2023    2025    137.3    140.5    144.0    140.7    +0.1   yes  -\n  2024-03-30    2023    2026    142.4    147.5    153.0        .       .     .  -\n  2025-03-31    2024    2025    139.0    140.6    142.4    140.7    +0.1   yes  -\n  2025-03-31    2024    2026    144.2    147.6    151.2        .       .     .  -\n  2025-03-31    2024    2027    149.5    154.9    160.7        .       .     .  -\n  2026-03-31    2025    2026    145.9    147.7    149.5        .       .     .  -\n  2026-03-31    2025    2027    151.4    155.0    158.8        .       .     .  -\n  2026-03-31    2025    2028    157.0    162.6    168.7        .       .     .  -\n\nFREE CASH FLOW ($B)\n  vintage       base  target      P10      P50      P90   actual    err%  band  flags\n  2021-03-31    2020    2021     21.7     23.1     24.7     23.2    +0.1   yes  -\n  2021-03-31    2020    2022     22.7     24.3     26.0     24.3    +0.1   yes  -\n  2021-03-31    2020    2023     23.7     25.4     27.4     25.5    +0.3   yes  -\n  2022-03-31    2021    2022     22.7     24.3     25.9     24.3    +0.1   yes  -\n  2022-03-31    2021    2023     23.8     25.5     27.3     25.5    +0.1   yes  -\n  2022-03-31    2021    2024     24.8     26.7     28.8     26.8    +0.3   yes  -\n  2023-03-31    2022    2023     23.9     25.5     27.2     25.5    +0.1   yes  -\n  2023-03-31    2022    2024     25.0     26.8     28.6     26.8    +0.1   yes  -\n  2023-03-31    2022    2025     26.1     28.1     30.2     28.1    +0.3   yes  -\n  2024-03-30    2023    2024     25.1     26.8     28.5     26.8    +0.1   yes  -\n  2024-03-30    2023    2025     26.2     28.1     30.1     28.1    +0.1   yes  -\n  2024-03-30    2023    2026     27.4     29.5     31.7        .       .     .  -\n  2025-03-31    2024    2025     26.3     28.1     30.0     28.1    +0.1   yes  -\n  2025-03-31    2024    2026     27.5     29.5     31.6        .       .     .  -\n  2025-03-31    2024    2027     28.8     30.9     33.3        .       .     .  -\n  2026-03-31    2025    2026     27.7     29.5     31.5        .       .     .  -\n  2026-03-31    2025    2027     28.9     31.0     33.1        .       .     .  -\n  2026-03-31    2025    2028     30.2     32.5     35.0        .       .     .  -\n\n  Coverage: 24 of 24 realized outcomes inside the P10-P90 band (100%; nominal 80%)\n  Mean signed error (actual vs P50; + = model underestimated):\n    +1y: revenue +0.1% (n=5) | fcf +0.1% (n=5)\n    +2y: revenue +0.1% (n=4) | fcf +0.1% (n=4)\n    +3y: revenue +0.2% (n=3) | fcf +0.3% (n=3)\n  Skipped vintages (2 -- insufficient point-in-time history):\n    2019-03-31: only 1 usable annual period(s) available \u2014 at least 3 are required to derive mechanical backtest parameters (revenue CAGR and FCF margin distribution).\n    2020-03-30: only 2 usable annual period(s) available \u2014 at least 3 are required to derive mechanical backtest parameters (revenue CAGR and FCF margin distribution).\n",
+   "cli_code": 0
+  },
+  {
+   "ticker": "SYN",
+   "horizon": 2,
+   "n": 1000,
+   "seed": 42,
+   "vintages": [
+    {
+     "as_of": "2021-03-31",
+     "base_fy": 2020,
+     "base_revenue": "4239ab697e800000",
+     "growth": "3fa99999999999a0",
+     "growth_std": "3f847ae147ae147b",
+     "m_mean": "3fc999999999999b",
+     "m_std": "3f847ae147ae147b",
+     "window": [
+      2018,
+      2019,
+      2020
+     ],
+     "flags": [],
+     "targets": [
+      2021,
+      2022
+     ],
+     "rev": [
+      [
+       "423a9fa9fd24b18b",
+       "423b9cfe98dbb31d"
+      ],
+      [
+       "423af4637f7f37b4",
+       "423c4dd59ae1d31a"
+      ],
+      [
+       "423b466355096aa5",
+       "423cfb10ff95f6a1"
+      ]
+     ],
+     "fcf": [
+      [
+       "4213fc7e0b422c25",
+       "4214eb72264d2cb1"
+      ],
+      [
+       "42157cdc4703a7f2",
+       "42169328abf49138"
+      ],
+      [
+       "4216e2f499f88647",
+       "42180efe377d1e66"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2021,
+       "metric": "revenue",
+       "actual": "423af3fb91a00001",
+       "error_pct": "bf7819214b620a00",
+       "in_band": true
+      },
+      {
+       "fy": 2021,
+       "metric": "fcf",
+       "actual": "42158ffc74800001",
+       "error_pct": "3fd6407aac5b5180",
+       "in_band": true
+      },
+      {
+       "fy": 2022,
+       "metric": "revenue",
+       "actual": "423c4cfb58e80002",
+       "error_pct": "bf8818f2de4d6000",
+       "in_band": true
+      },
+      {
+       "fy": 2022,
+       "metric": "fcf",
+       "actual": "4216a3fc47200002",
+       "error_pct": "3fd2a25ca4bfd960",
+       "in_band": true
+      }
+     ]
+    },
+    {
+     "as_of": "2022-03-31",
+     "base_fy": 2021,
+     "base_revenue": "423af3fb91a00001",
+     "growth": "3fa99999999999a0",
+     "growth_std": "3f847ae147ae147b",
+     "m_mean": "3fc999999999999a",
+     "m_std": "3f847ae147ae147b",
+     "window": [
+      2018,
+      2019,
+      2020,
+      2021
+     ],
+     "flags": [],
+     "targets": [
+      2022,
+      2023
+     ],
+     "rev": [
+      [
+       "423bf4727d0020d3",
+       "423cfe71ba19e279"
+      ],
+      [
+       "423c4d68791260e4",
+       "423db8204906b742"
+      ],
+      [
+       "423ca381e616affb",
+       "423e6e050c5d762a"
+      ]
+     ],
+     "fcf": [
+      [
+       "4214fc51256be18c",
+       "4215f737db6aa220"
+      ],
+      [
+       "42168fe74a90a38b",
+       "4217b41de7c0cbad"
+      ],
+      [
+       "421807e73b44f364",
+       "421942f153dcf984"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2022,
+       "metric": "revenue",
+       "actual": "423c4cfb58e80002",
+       "error_pct": "bf7819214b61d800",
+       "in_band": true
+      },
+      {
+       "fy": 2022,
+       "metric": "fcf",
+       "actual": "4216a3fc47200002",
+       "error_pct": "3fd6407aac5b5310",
+       "in_band": true
+      },
+      {
+       "fy": 2023,
+       "metric": "revenue",
+       "actual": "423db73b1d5a0002",
+       "error_pct": "bf8818f2de4d7900",
+       "in_band": true
+      },
+      {
+       "fy": 2023,
+       "metric": "fcf",
+       "actual": "4217c5c8e4480002",
+       "error_pct": "3fd2a25ca4bfd960",
+       "in_band": true
+      }
+     ]
+    },
+    {
+     "as_of": "2023-03-31",
+     "base_fy": 2022,
+     "base_revenue": "423c4cfb58e80002",
+     "growth": "3fa99999999999a0",
+     "growth_std": "3f847ae147ae147b",
+     "m_mean": "3fc999999999999a",
+     "m_std": "3f847ae147ae147b",
+     "window": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022
+     ],
+     "flags": [],
+     "targets": [
+      2023,
+      2024
+     ],
+     "rev": [
+      [
+       "423d5a4503402279",
+       "423e71910367fa9a"
+      ],
+      [
+       "423db7adb2534c24",
+       "423f34884cad73a0"
+      ],
+      [
+       "423e12153197d262",
+       "423ff3854cfbbc14"
+      ]
+     ],
+     "fcf": [
+      [
+       "421608eecdb1466e",
+       "421710610cc990a3"
+      ],
+      [
+       "4217b0b2db17deec",
+       "4218e385ccf0d5de"
+      ],
+      [
+       "42193b7f97d532c5",
+       "421a864a31a805ff"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2023,
+       "metric": "revenue",
+       "actual": "423db73b1d5a0002",
+       "error_pct": "bf7819214b623c00",
+       "in_band": true
+      },
+      {
+       "fy": 2023,
+       "metric": "fcf",
+       "actual": "4217c5c8e4480002",
+       "error_pct": "3fd6407aac5b5310",
+       "in_band": true
+      },
+      {
+       "fy": 2024,
+       "metric": "revenue",
+       "actual": "423f3397ab9e8003",
+       "error_pct": "bf8818f2de4d7900",
+       "in_band": true
+      },
+      {
+       "fy": 2024,
+       "metric": "fcf",
+       "actual": "4218f612efb20003",
+       "error_pct": "3fd2a25ca4bfd7d0",
+       "in_band": true
+      }
+     ]
+    },
+    {
+     "as_of": "2024-03-30",
+     "base_fy": 2023,
+     "base_revenue": "423db73b1d5a0002",
+     "growth": "3fa99999999999a0",
+     "growth_std": "3f847ae147ae147b",
+     "m_mean": "3fc999999999999a",
+     "m_std": "3f847ae147ae147b",
+     "window": [
+      2019,
+      2020,
+      2021,
+      2022,
+      2023
+     ],
+     "flags": [],
+     "targets": [
+      2024,
+      2025
+     ],
+     "rev": [
+      [
+       "423ed1fba9d02431",
+       "423ff73ea9f9fa54"
+      ],
+      [
+       "423f340ffb3ddcbf",
+       "424061fac1db0fe7"
+      ],
+      [
+       "423f92fca745d01a",
+       "4240c63f95375c57"
+      ]
+     ],
+     "fcf": [
+      [
+       "421722fabe6089f4",
+       "421837991a3a0b11"
+      ],
+      [
+       "4218dfeeffa5dd44",
+       "421a22194a6346f5"
+      ],
+      [
+       "421a7e792c39754e",
+       "421bd9cde756d319"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2024,
+       "metric": "revenue",
+       "actual": "423f3397ab9e8003",
+       "error_pct": "bf7819214b620a00",
+       "in_band": true
+      },
+      {
+       "fy": 2024,
+       "metric": "fcf",
+       "actual": "4218f612efb20003",
+       "error_pct": "3fd6407aac5b54a0",
+       "in_band": true
+      },
+      {
+       "fy": 2025,
+       "metric": "revenue",
+       "actual": "4240617c6d4cd002",
+       "error_pct": "bf8818f2de4d6000",
+       "in_band": true
+      },
+      {
+       "fy": 2025,
+       "metric": "fcf",
+       "actual": "421a3593e2148004",
+       "error_pct": "3fd2a25ca4bfdaf0",
+       "in_band": true
+      }
+     ]
+    },
+    {
+     "as_of": "2025-03-31",
+     "base_fy": 2024,
+     "base_revenue": "423f3397ab9e8003",
+     "growth": "3fa99999999999a0",
+     "growth_std": "3f847ae147ae147b",
+     "m_mean": "3fc999999999999a",
+     "m_std": "3f847ae147ae147b",
+     "window": [
+      2020,
+      2021,
+      2022,
+      2023,
+      2024
+     ],
+     "flags": [],
+     "targets": [
+      2025,
+      2026
+     ],
+     "rev": [
+      [
+       "42402e3db926dfce",
+       "4240c834193cd6a0"
+      ],
+      [
+       "424061bb971a13e5",
+       "424133adb1f2d0b3"
+      ],
+      [
+       "42409391716b0d42",
+       "42419cf5f646edc3"
+      ]
+     ],
+     "fcf": [
+      [
+       "42184b20e17ef740",
+       "42196d93f523586c"
+      ],
+      [
+       "421a1e548c6e2856",
+       "421b709a8e1b70e9"
+      ],
+      [
+       "421bd198d4d5ee5f",
+       "421d3e4b661b2a74"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2025,
+       "metric": "revenue",
+       "actual": "4240617c6d4cd002",
+       "error_pct": "bf7819214b620a00",
+       "in_band": true
+      },
+      {
+       "fy": 2025,
+       "metric": "fcf",
+       "actual": "421a3593e2148004",
+       "error_pct": "3fd6407aac5b5310",
+       "in_band": true
+      },
+      {
+       "fy": 2026,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2026,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      }
+     ]
+    },
+    {
+     "as_of": "2026-03-31",
+     "base_fy": 2025,
+     "base_revenue": "4240617c6d4cd002",
+     "growth": "3fa99999999999a0",
+     "growth_std": "3f847ae147ae147b",
+     "m_mean": "3fc999999999999a",
+     "m_std": "3f847ae147ae147b",
+     "window": [
+      2021,
+      2022,
+      2023,
+      2024,
+      2025
+     ],
+     "flags": [],
+     "targets": [
+      2026,
+      2027
+     ],
+     "rev": [
+      [
+       "4240fd5a68cf37cc",
+       "42419f0380e647c2"
+      ],
+      [
+       "4241336b5ea82e7e",
+       "42420fdcc7a55b24"
+      ],
+      [
+       "424167bf1d7d3452",
+       "42427e68a8fdacd9"
+      ]
+     ],
+     "fcf": [
+      [
+       "42198215b9921d38",
+       "421ab30e8e31e9a5"
+      ],
+      [
+       "421b6ca59373aa5a",
+       "421ccfd57b9cd028"
+      ],
+      [
+       "421d35ad45e0a0b1",
+       "421eb49bf802ec95"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2026,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2026,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2027,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2027,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      }
+     ]
+    }
+   ],
+   "skipped": [
+    [
+     "2019-03-31",
+     "only 1 usable annual period(s) available \u2014 at least 3 are required to derive mechanical backtest parameters (revenue CAGR and FCF margin distribution)."
+    ],
+    [
+     "2020-03-30",
+     "only 2 usable annual period(s) available \u2014 at least 3 are required to derive mechanical backtest parameters (revenue CAGR and FCF margin distribution)."
+    ]
+   ],
+   "coverage": [
+    18,
+    18
+   ],
+   "bias": {
+    "1": {
+     "fcf": [
+      "3fd6407aac5b5310",
+      5
+     ],
+     "revenue": [
+      "bf7819214b620a00",
+      5
+     ]
+    },
+    "2": {
+     "fcf": [
+      "3fd2a25ca4bfd960",
+      4
+     ],
+     "revenue": [
+      "bf8818f2de4d6c80",
+      4
+     ]
+    }
+   },
+   "cli_stdout": "\nSynthetic Co (SYN) -- point-in-time vintage backtest\n  horizon 2y | 1,000 paths | seed 42\n  estimates: point-in-time (filed_date <= as-of) | actuals: as currently reported (may be restated)\n\nREVENUE ($B)\n  vintage       base  target      P10      P50      P90   actual    err%  band  flags\n  2021-03-31    2020    2021    114.3    115.8    117.1    115.8    -0.0   yes  -\n  2021-03-31    2020    2022    118.6    121.6    124.5    121.6    -0.0   yes  -\n  2022-03-31    2021    2022    120.1    121.6    123.0    121.6    -0.0   yes  -\n  2022-03-31    2021    2023    124.5    127.6    130.7    127.6    -0.0   yes  -\n  2023-03-31    2022    2023    126.1    127.6    129.2    127.6    -0.0   yes  -\n  2023-03-31    2022    2024    130.8    134.0    137.2    134.0    -0.0   yes  -\n  2024-03-30    2023    2024    132.4    134.0    135.6    134.0    -0.0   yes  -\n  2024-03-30    2023    2025    137.3    140.7    144.1    140.7    -0.0   yes  -\n  2025-03-31    2024    2025    139.0    140.7    142.4    140.7    -0.0   yes  -\n  2025-03-31    2024    2026    144.2    147.8    151.3        .       .     .  -\n  2026-03-31    2025    2026    145.9    147.8    149.5        .       .     .  -\n  2026-03-31    2025    2027    151.4    155.2    158.9        .       .     .  -\n\nFREE CASH FLOW ($B)\n  vintage       base  target      P10      P50      P90   actual    err%  band  flags\n  2021-03-31    2020    2021     21.5     23.1     24.6     23.2    +0.3   yes  -\n  2021-03-31    2020    2022     22.5     24.2     25.8     24.3    +0.3   yes  -\n  2022-03-31    2021    2022     22.5     24.2     25.8     24.3    +0.3   yes  -\n  2022-03-31    2021    2023     23.6     25.5     27.1     25.5    +0.3   yes  -\n  2023-03-31    2022    2023     23.7     25.4     27.1     25.5    +0.3   yes  -\n  2023-03-31    2022    2024     24.8     26.7     28.5     26.8    +0.3   yes  -\n  2024-03-30    2023    2024     24.8     26.7     28.4     26.8    +0.3   yes  -\n  2024-03-30    2023    2025     26.0     28.1     29.9     28.1    +0.3   yes  -\n  2025-03-31    2024    2025     26.1     28.0     29.9     28.1    +0.3   yes  -\n  2025-03-31    2024    2026     27.3     29.5     31.4        .       .     .  -\n  2026-03-31    2025    2026     27.4     29.4     31.4        .       .     .  -\n  2026-03-31    2025    2027     28.7     30.9     33.0        .       .     .  -\n\n  Coverage: 18 of 18 realized outcomes inside the P10-P90 band (100%; nominal 80%)\n  Mean signed error (actual vs P50; + = model underestimated):\n    +1y: revenue -0.0% (n=5) | fcf +0.3% (n=5)\n    +2y: revenue -0.0% (n=4) | fcf +0.3% (n=4)\n  Skipped vintages (2 -- insufficient point-in-time history):\n    2019-03-31: only 1 usable annual period(s) available \u2014 at least 3 are required to derive mechanical backtest parameters (revenue CAGR and FCF margin distribution).\n    2020-03-30: only 2 usable annual period(s) available \u2014 at least 3 are required to derive mechanical backtest parameters (revenue CAGR and FCF margin distribution).\n",
+   "cli_code": 0
+  },
+  {
+   "ticker": "IBM",
+   "horizon": 3,
+   "n": 5000,
+   "seed": 7,
+   "vintages": [
+    {
+     "as_of": "2011-03-31",
+     "base_fy": 2010,
+     "base_revenue": "423387da92b03d7c",
+     "growth": "3fa74b8a51bc95c0",
+     "growth_std": "3f98f888beb5d100",
+     "m_mean": "3fb063ec198d10c9",
+     "m_std": "3f95c4541fd5bfb6",
+     "window": [
+      2008,
+      2009,
+      2010
+     ],
+     "flags": [],
+     "targets": [
+      2011,
+      2012,
+      2013
+     ],
+     "rev": [
+      [
+       "4233ce21b74d2763",
+       "42341565be0d8093",
+       "42345daa34e6b7f2"
+      ],
+      [
+       "423467a2635cbd1e",
+       "4235516e41fb7e50",
+       "423645b0f139463a"
+      ],
+      [
+       "423503706351b53c",
+       "42369bd7914b47f2",
+       "423853403225c2d1"
+      ]
+     ],
+     "fcf": [
+      [
+       "41e7b6a32ac31aaa",
+       "41e8ca4810943e91",
+       "41e9bb64a6fd073b"
+      ],
+      [
+       "41f4fada8e8c625e",
+       "41f5f2f87fe62888",
+       "41f6dab084a12825"
+      ],
+      [
+       "41fdb1946029106f",
+       "41ff1f360801c8e2",
+       "42005df0508c5b4d"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2011,
+       "metric": "revenue",
+       "actual": "4235682198af5ba6",
+       "error_pct": "4013a429a70bd4c4",
+       "in_band": false
+      },
+      {
+       "fy": 2011,
+       "metric": "fcf",
+       "actual": "42095d8ec119297f",
+       "error_pct": "4061b9d53a37f71e",
+       "in_band": false
+      },
+      {
+       "fy": 2012,
+       "metric": "revenue",
+       "actual": "4238076856d48eaa",
+       "error_pct": "40296eaf8db98076",
+       "in_band": false
+      },
+      {
+       "fy": 2012,
+       "metric": "fcf",
+       "actual": "4206cebb148f186f",
+       "error_pct": "405af49ce4e1e3ad",
+       "in_band": false
+      },
+      {
+       "fy": 2013,
+       "metric": "revenue",
+       "actual": "423912bae4ca6909",
+       "error_pct": "402926dc1d95ce10",
+       "in_band": false
+      },
+      {
+       "fy": 2013,
+       "metric": "fcf",
+       "actual": "4209c9c991d67dc2",
+       "error_pct": "405f6b3bee7d913e",
+       "in_band": false
+      }
+     ]
+    },
+    {
+     "as_of": "2012-03-30",
+     "base_fy": 2011,
+     "base_revenue": "4235682198af5ba6",
+     "growth": "3fafc9dcc7480440",
+     "growth_std": "3f9fb25a791fb03f",
+     "m_mean": "3fb5c5ac4a113752",
+     "m_std": "3fa4e3ef1f9aae66",
+     "window": [
+      2008,
+      2009,
+      2010,
+      2011
+     ],
+     "flags": [],
+     "targets": [
+      2012,
+      2013,
+      2014
+     ],
+     "rev": [
+      [
+       "4235e1a862dbc688",
+       "42365de11577646d",
+       "4236dcdafd207003"
+      ],
+      [
+       "4236b7390e85c456",
+       "42381acde34b8872",
+       "42399420d3a1a9e8"
+      ],
+      [
+       "42378ffda5a8eb3b",
+       "4239ef6c76a8d9a2",
+       "423c8c06b53a3d94"
+      ]
+     ],
+     "fcf": [
+      [
+       "41e725f3182f09b1",
+       "41e886e2da77f23c",
+       "41ea2ab424cc3129"
+      ],
+      [
+       "41ff10998ba6f20c",
+       "42007cd881f2e5ca",
+       "4201724ed9a3e556"
+      ],
+      [
+       "4208d7e86e5b43c8",
+       "420a75e03f237e11",
+       "420c4cc87632a907"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2012,
+       "metric": "revenue",
+       "actual": "4238076856d48eaa",
+       "error_pct": "40171fdc7f75411b",
+       "in_band": false
+      },
+      {
+       "fy": 2012,
+       "metric": "fcf",
+       "actual": "4206cebb148f186f",
+       "error_pct": "40476b4d190932ca",
+       "in_band": true
+      },
+      {
+       "fy": 2013,
+       "metric": "revenue",
+       "actual": "423912bae4ca6909",
+       "error_pct": "40101225e750b548",
+       "in_band": true
+      },
+      {
+       "fy": 2013,
+       "metric": "fcf",
+       "actual": "4209c9c991d67dc2",
+       "error_pct": "404c345dd282c9d7",
+       "in_band": true
+      },
+      {
+       "fy": 2014,
+       "metric": "revenue",
+       "actual": "4238b6f1d600e0f2",
+       "error_pct": "c00b05c311f47ba9",
+       "in_band": true
+      },
+      {
+       "fy": 2014,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      }
+     ]
+    },
+    {
+     "as_of": "2013-03-31",
+     "base_fy": 2011,
+     "base_revenue": "4235682198af5ba6",
+     "growth": "3fafc9dcc7480440",
+     "growth_std": "3f9fb25a791fb03f",
+     "m_mean": "3fb5c5ac4a113752",
+     "m_std": "3fa4e3ef1f9aae66",
+     "window": [
+      2008,
+      2009,
+      2010,
+      2011
+     ],
+     "flags": [],
+     "targets": [
+      2012,
+      2013,
+      2014
+     ],
+     "rev": [
+      [
+       "4235e1a862dbc688",
+       "42365de11577646d",
+       "4236dcdafd207003"
+      ],
+      [
+       "4236b7390e85c456",
+       "42381acde34b8872",
+       "42399420d3a1a9e8"
+      ],
+      [
+       "42378ffda5a8eb3b",
+       "4239ef6c76a8d9a2",
+       "423c8c06b53a3d94"
+      ]
+     ],
+     "fcf": [
+      [
+       "41e725f3182f09b1",
+       "41e886e2da77f23c",
+       "41ea2ab424cc3129"
+      ],
+      [
+       "41ff10998ba6f20c",
+       "42007cd881f2e5ca",
+       "4201724ed9a3e556"
+      ],
+      [
+       "4208d7e86e5b43c8",
+       "420a75e03f237e11",
+       "420c4cc87632a907"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2012,
+       "metric": "revenue",
+       "actual": "4238076856d48eaa",
+       "error_pct": "40171fdc7f75411b",
+       "in_band": false
+      },
+      {
+       "fy": 2012,
+       "metric": "fcf",
+       "actual": "4206cebb148f186f",
+       "error_pct": "40476b4d190932ca",
+       "in_band": true
+      },
+      {
+       "fy": 2013,
+       "metric": "revenue",
+       "actual": "423912bae4ca6909",
+       "error_pct": "40101225e750b548",
+       "in_band": true
+      },
+      {
+       "fy": 2013,
+       "metric": "fcf",
+       "actual": "4209c9c991d67dc2",
+       "error_pct": "404c345dd282c9d7",
+       "in_band": true
+      },
+      {
+       "fy": 2014,
+       "metric": "revenue",
+       "actual": "4238b6f1d600e0f2",
+       "error_pct": "c00b05c311f47ba9",
+       "in_band": true
+      },
+      {
+       "fy": 2014,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      }
+     ]
+    },
+    {
+     "as_of": "2014-03-31",
+     "base_fy": 2013,
+     "base_revenue": "423912bae4ca6909",
+     "growth": "3fb1f1a047481270",
+     "growth_std": "3fa4a30847de138f",
+     "m_mean": "3fb94224a4281392",
+     "m_std": "3fa552f21d3e0858",
+     "window": [
+      2009,
+      2010,
+      2011,
+      2012,
+      2013
+     ],
+     "flags": [],
+     "targets": [
+      2014,
+      2015,
+      2016
+     ],
+     "rev": [
+      [
+       "4239870eafbd7d27",
+       "4239fd7e2e7a4fe9",
+       "423a761328f5d09a"
+      ],
+      [
+       "423accc7a88fcbf3",
+       "423ca545f029f1d4",
+       "423e9e4e765e0126"
+      ],
+      [
+       "423c17632534c905",
+       "423f790daeea09ad",
+       "4241a176571bf801"
+      ]
+     ],
+     "fcf": [
+      [
+       "41f30330e681642f",
+       "41f459db26a7c3f6",
+       "41f581711b0f6b6d"
+      ],
+      [
+       "42053c985ee2d384",
+       "4206aabcf4be9528",
+       "42081fe3600a1ae8"
+      ],
+      [
+       "42104321ebc3bace",
+       "4211872ac8b2d942",
+       "4212f8fdf3450bd2"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2014,
+       "metric": "revenue",
+       "actual": "4238b6f1d600e0f2",
+       "error_pct": "c01f1fb6aa3e9974",
+       "in_band": false
+      },
+      {
+       "fy": 2014,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2015,
+       "metric": "revenue",
+       "actual": "4237977efdea72bd",
+       "error_pct": "c031a47ed248f726",
+       "in_band": false
+      },
+      {
+       "fy": 2015,
+       "metric": "fcf",
+       "actual": "4207becd6dc3706e",
+       "error_pct": "401307a9edb41426",
+       "in_band": true
+      },
+      {
+       "fy": 2016,
+       "metric": "revenue",
+       "actual": "4239491b2cf9aa92",
+       "error_pct": "c0316ac29973f367",
+       "in_band": false
+      },
+      {
+       "fy": 2016,
+       "metric": "fcf",
+       "actual": "420cc90b466480f8",
+       "error_pct": "403351d035136c3f",
+       "in_band": true
+      }
+     ]
+    },
+    {
+     "as_of": "2015-03-31",
+     "base_fy": 2014,
+     "base_revenue": "4238b6f1d600e0f2",
+     "growth": "3faf096215103c20",
+     "growth_std": "3faad4b835a799f2",
+     "m_mean": "3fbc7c417e332410",
+     "m_std": "3fa2fa1286408d04",
+     "window": [
+      2010,
+      2011,
+      2012,
+      2013,
+      2014
+     ],
+     "flags": [],
+     "targets": [
+      2015,
+      2016,
+      2017
+     ],
+     "rev": [
+      [
+       "42388af87e653f78",
+       "42385f4d64a3582e",
+       "423833effd84a833"
+      ],
+      [
+       "423a2c66f7fa7bfa",
+       "423bb7e7570c5bc0",
+       "423d5ac00d020e8c"
+      ],
+      [
+       "423bd4180c47eeb8",
+       "423f55ada1cb1997",
+       "4241a42d04845ccc"
+      ]
+     ],
+     "fcf": [
+      [
+       "41fa5bd2f480b108",
+       "41fb7b0fb30ea085",
+       "41fc66d65e682423"
+      ],
+      [
+       "420768d2d0bff14e",
+       "42089eb817a77da9",
+       "420a0704a3cb6463"
+      ],
+      [
+       "42109f885db08d72",
+       "4211e38e2749d8d7",
+       "42135871dc6b7092"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2015,
+       "metric": "revenue",
+       "actual": "4237977efdea72bd",
+       "error_pct": "c023ba341e8f425a",
+       "in_band": false
+      },
+      {
+       "fy": 2015,
+       "metric": "fcf",
+       "actual": "4207becd6dc3706e",
+       "error_pct": "3ff6f48694a8e4b0",
+       "in_band": true
+      },
+      {
+       "fy": 2016,
+       "metric": "revenue",
+       "actual": "4239491b2cf9aa92",
+       "error_pct": "c0218dc0916726e1",
+       "in_band": true
+      },
+      {
+       "fy": 2016,
+       "metric": "fcf",
+       "actual": "420cc90b466480f8",
+       "error_pct": "4030eb2230f3beff",
+       "in_band": true
+      },
+      {
+       "fy": 2017,
+       "metric": "revenue",
+       "actual": "42396bf2f0bf8779",
+       "error_pct": "c02acb9b04895fb6",
+       "in_band": true
+      },
+      {
+       "fy": 2017,
+       "metric": "fcf",
+       "actual": "42172449093bf673",
+       "error_pct": "405374db368a8815",
+       "in_band": false
+      }
+     ]
+    },
+    {
+     "as_of": "2016-03-30",
+     "base_fy": 2015,
+     "base_revenue": "4237977efdea72bd",
+     "growth": "3f992f8ec1ca0800",
+     "growth_std": "3fb05cccbd882746",
+     "m_mean": "3fc0ad2f095a6bee",
+     "m_std": "3f86597136742531",
+     "window": [
+      2011,
+      2012,
+      2013,
+      2014,
+      2015
+     ],
+     "flags": [],
+     "targets": [
+      2016,
+      2017,
+      2018
+     ],
+     "rev": [
+      [
+       "42363a507c2f9046",
+       "4234f152363ea831",
+       "4233bb595d21ae57"
+      ],
+      [
+       "423820505553dd7e",
+       "4238ac3b220fd272",
+       "42393b515dafa00c"
+      ],
+      [
+       "423a0d9a08265fa3",
+       "423cc5725eea28df",
+       "423fc5e3d2dfa34e"
+      ]
+     ],
+     "fcf": [
+      [
+       "4205cf7d4308f54f",
+       "4204f0f312f67f86",
+       "4203f7cf3640d732"
+      ],
+      [
+       "4209234deec64b7d",
+       "4209b06dd7e2d970",
+       "420a587986435ed6"
+      ],
+      [
+       "420c84880efe806b",
+       "420eea39361e2298",
+       "4210dfe0580b90c6"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2016,
+       "metric": "revenue",
+       "actual": "4239491b2cf9aa92",
+       "error_pct": "401338a8d27ec806",
+       "in_band": true
+      },
+      {
+       "fy": 2016,
+       "metric": "fcf",
+       "actual": "420cc90b466480f8",
+       "error_pct": "402d04efc3c9343c",
+       "in_band": false
+      },
+      {
+       "fy": 2017,
+       "metric": "revenue",
+       "actual": "42396bf2f0bf8779",
+       "error_pct": "400848574e388992",
+       "in_band": true
+      },
+      {
+       "fy": 2017,
+       "metric": "fcf",
+       "actual": "42172449093bf673",
+       "error_pct": "40540ab4051b22ea",
+       "in_band": false
+      },
+      {
+       "fy": 2018,
+       "metric": "revenue",
+       "actual": "423a45e70c6d761e",
+       "error_pct": "4010822f6525cf2f",
+       "in_band": true
+      },
+      {
+       "fy": 2018,
+       "metric": "fcf",
+       "actual": "42087df677fabdc7",
+       "error_pct": "c01c246b49805f35",
+       "in_band": true
+      }
+     ]
+    },
+    {
+     "as_of": "2017-03-31",
+     "base_fy": 2016,
+     "base_revenue": "4239491b2cf9aa92",
+     "growth": "3f8a442b6355a980",
+     "growth_std": "3fa7a8b5aef1439c",
+     "m_mean": "3fc07d8c96ad64aa",
+     "m_std": "3f847ae147ae147b",
+     "window": [
+      2012,
+      2013,
+      2014,
+      2015,
+      2016
+     ],
+     "flags": [],
+     "targets": [
+      2017,
+      2018,
+      2019
+     ],
+     "rev": [
+      [
+       "42381a73e30fe40b",
+       "4236f9f32ed90418",
+       "4235e6efb01d5ca1"
+      ],
+      [
+       "4239930a1235ce18",
+       "4239ddd124536be0",
+       "423a2972db6747e6"
+      ],
+      [
+       "423b11460c41a63b",
+       "423cf996777f6be5",
+       "423f045060e4a049"
+      ]
+     ],
+     "fcf": [
+      [
+       "4207562cc2656aff",
+       "4206a3187402628f",
+       "4205d53fa766498d"
+      ],
+      [
+       "420a5f1fc1345e44",
+       "420aae30379bbc5b",
+       "420af5795f1c677f"
+      ],
+      [
+       "420d5ebae220c5a3",
+       "420ee94a8f6142d7",
+       "42106552dffa25ff"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2017,
+       "metric": "revenue",
+       "actual": "42396bf2f0bf8779",
+       "error_pct": "bfe31b30d52114a0",
+       "in_band": true
+      },
+      {
+       "fy": 2017,
+       "metric": "fcf",
+       "actual": "42172449093bf673",
+       "error_pct": "4052e0546e360d56",
+       "in_band": false
+      },
+      {
+       "fy": 2018,
+       "metric": "revenue",
+       "actual": "423a45e70c6d761e",
+       "error_pct": "3ff92654c8838d24",
+       "in_band": true
+      },
+      {
+       "fy": 2018,
+       "metric": "fcf",
+       "actual": "42087df677fabdc7",
+       "error_pct": "c0206786830c6e76",
+       "in_band": true
+      },
+      {
+       "fy": 2019,
+       "metric": "revenue",
+       "actual": "423b5012b5dac811",
+       "error_pct": "401198a1c89014ec",
+       "in_band": true
+      },
+      {
+       "fy": 2019,
+       "metric": "fcf",
+       "actual": "420a05601e8279f7",
+       "error_pct": "c00bd4e24872af18",
+       "in_band": true
+      }
+     ]
+    },
+    {
+     "as_of": "2018-03-31",
+     "base_fy": 2017,
+     "base_revenue": "42396bf2f0bf8779",
+     "growth": "3f6c51cea813ce00",
+     "growth_std": "3fa5fc81a8773594",
+     "m_mean": "3fc3f9ecc4d1efa1",
+     "m_std": "3fa5615d68bd5eb9",
+     "window": [
+      2013,
+      2014,
+      2015,
+      2016,
+      2017
+     ],
+     "flags": [],
+     "targets": [
+      2018,
+      2019,
+      2020
+     ],
+     "rev": [
+      [
+       "42381a1c70ebb2f2",
+       "4236d9cf979d9d55",
+       "4235aa23543c74f7"
+      ],
+      [
+       "423979f50b6bf756",
+       "423987fede2a6714",
+       "423996106d3bb9a5"
+      ],
+      [
+       "423adf1474eb8413",
+       "423c67601cce2c59",
+       "423e060ae3d300a6"
+      ]
+     ],
+     "fcf": [
+      [
+       "4204a7233e219bd6",
+       "42045e546e724a4f",
+       "4204292873ed6966"
+      ],
+      [
+       "420fef4aea426acc",
+       "420fccd83a6c0f32",
+       "420fea89e5df1ba4"
+      ],
+      [
+       "42155df520c87810",
+       "4215b7543e0f3b28",
+       "42162e0690bd7b7d"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2018,
+       "metric": "revenue",
+       "actual": "423a45e70c6d761e",
+       "error_pct": "400904368763f6d4",
+       "in_band": true
+      },
+      {
+       "fy": 2018,
+       "metric": "fcf",
+       "actual": "42087df677fabdc7",
+       "error_pct": "c0374e52f17355c2",
+       "in_band": true
+      },
+      {
+       "fy": 2019,
+       "metric": "revenue",
+       "actual": "423b5012b5dac811",
+       "error_pct": "401be967bd77fdd8",
+       "in_band": true
+      },
+      {
+       "fy": 2019,
+       "metric": "fcf",
+       "actual": "420a05601e8279f7",
+       "error_pct": "c0322c64adff45bd",
+       "in_band": true
+      },
+      {
+       "fy": 2020,
+       "metric": "revenue",
+       "actual": "423b8046572d69fb",
+       "error_pct": "401deface6285b6d",
+       "in_band": true
+      },
+      {
+       "fy": 2020,
+       "metric": "fcf",
+       "actual": "420bb82106cc805f",
+       "error_pct": "c02a4cb2d7deca5c",
+       "in_band": true
+      }
+     ]
+    },
+    {
+     "as_of": "2019-03-31",
+     "base_fy": 2017,
+     "base_revenue": "42396bf2f0bf8779",
+     "growth": "3f6c51cea813ce00",
+     "growth_std": "3fa5fc81a8773594",
+     "m_mean": "3fc3f9ecc4d1efa1",
+     "m_std": "3fa5615d68bd5eb9",
+     "window": [
+      2013,
+      2014,
+      2015,
+      2016,
+      2017
+     ],
+     "flags": [],
+     "targets": [
+      2018,
+      2019,
+      2020
+     ],
+     "rev": [
+      [
+       "42381a1c70ebb2f2",
+       "4236d9cf979d9d55",
+       "4235aa23543c74f7"
+      ],
+      [
+       "423979f50b6bf756",
+       "423987fede2a6714",
+       "423996106d3bb9a5"
+      ],
+      [
+       "423adf1474eb8413",
+       "423c67601cce2c59",
+       "423e060ae3d300a6"
+      ]
+     ],
+     "fcf": [
+      [
+       "4204a7233e219bd6",
+       "42045e546e724a4f",
+       "4204292873ed6966"
+      ],
+      [
+       "420fef4aea426acc",
+       "420fccd83a6c0f32",
+       "420fea89e5df1ba4"
+      ],
+      [
+       "42155df520c87810",
+       "4215b7543e0f3b28",
+       "42162e0690bd7b7d"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2018,
+       "metric": "revenue",
+       "actual": "423a45e70c6d761e",
+       "error_pct": "400904368763f6d4",
+       "in_band": true
+      },
+      {
+       "fy": 2018,
+       "metric": "fcf",
+       "actual": "42087df677fabdc7",
+       "error_pct": "c0374e52f17355c2",
+       "in_band": true
+      },
+      {
+       "fy": 2019,
+       "metric": "revenue",
+       "actual": "423b5012b5dac811",
+       "error_pct": "401be967bd77fdd8",
+       "in_band": true
+      },
+      {
+       "fy": 2019,
+       "metric": "fcf",
+       "actual": "420a05601e8279f7",
+       "error_pct": "c0322c64adff45bd",
+       "in_band": true
+      },
+      {
+       "fy": 2020,
+       "metric": "revenue",
+       "actual": "423b8046572d69fb",
+       "error_pct": "401deface6285b6d",
+       "in_band": true
+      },
+      {
+       "fy": 2020,
+       "metric": "fcf",
+       "actual": "420bb82106cc805f",
+       "error_pct": "c02a4cb2d7deca5c",
+       "in_band": true
+      }
+     ]
+    },
+    {
+     "as_of": "2020-03-30",
+     "base_fy": 2019,
+     "base_revenue": "423b5012b5dac811",
+     "growth": "3fa31806c78c2700",
+     "growth_std": "3f982aef41771221",
+     "m_mean": "3fc2b8b3151cfbd2",
+     "m_std": "3fa551a91fd91ecd",
+     "window": [
+      2015,
+      2016,
+      2017,
+      2018,
+      2019
+     ],
+     "flags": [
+      "FY2019-20 recast mismatch: continuing-ops revenue vs unrecast consolidated OCF (margin/growth distorted)"
+     ],
+     "targets": [
+      2020,
+      2021,
+      2022
+     ],
+     "rev": [
+      [
+       "423b800d01e396d7",
+       "423bb05b950b476c",
+       "423be0ff035cc62c"
+      ],
+      [
+       "423c4fd02dc482ee",
+       "423d58e83d7bec58",
+       "423e6bb27a7fad78"
+      ],
+      [
+       "423d22b0fdfca3df",
+       "423f14731846dd1b",
+       "424093b682a23d8c"
+      ]
+     ],
+     "fcf": [
+      [
+       "4204d7b8a272ddf3",
+       "42058e6f49e2633a",
+       "420633f566cae6b9"
+      ],
+      [
+       "42109f2f8dcb8e72",
+       "42113f4950d1a79e",
+       "4211d0845781057c"
+      ],
+      [
+       "4216890ebe7b9062",
+       "421776aafa8b87ee",
+       "42188488fb1b1a1e"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2020,
+       "metric": "revenue",
+       "actual": "423b8046572d69fb",
+       "error_pct": "c006e85f279d5a32",
+       "in_band": true
+      },
+      {
+       "fy": 2020,
+       "metric": "fcf",
+       "actual": "420bb82106cc805f",
+       "error_pct": "c0309e2cc058eb4e",
+       "in_band": true
+      },
+      {
+       "fy": 2021,
+       "metric": "revenue",
+       "actual": "423faafc01b0c410",
+       "error_pct": "401fa133031f43bf",
+       "in_band": false
+      },
+      {
+       "fy": 2021,
+       "metric": "fcf",
+       "actual": "c1e4447853007d7a",
+       "error_pct": "c05cac17963ab44f",
+       "in_band": false
+      },
+      {
+       "fy": 2022,
+       "metric": "revenue",
+       "actual": "424079cb9e333ed1",
+       "error_pct": "4020a38ef7d60b0c",
+       "in_band": true
+      },
+      {
+       "fy": 2022,
+       "metric": "fcf",
+       "actual": "421601e5835a0935",
+       "error_pct": "4037894eb986403f",
+       "in_band": true
+      }
+     ]
+    },
+    {
+     "as_of": "2021-03-31",
+     "base_fy": 2020,
+     "base_revenue": "423b8046572d69fb",
+     "growth": "3f95baa3a18258c0",
+     "growth_std": "3f8f73dd297ba35a",
+     "m_mean": "3fc2b9ddfdb9319b",
+     "m_std": "3fa54f5fe44829a8",
+     "window": [
+      2016,
+      2017,
+      2018,
+      2019,
+      2020
+     ],
+     "flags": [
+      "FY2019-20 recast mismatch: continuing-ops revenue vs unrecast consolidated OCF (margin/growth distorted)"
+     ],
+     "targets": [
+      2021,
+      2022,
+      2023
+     ],
+     "rev": [
+      [
+       "423b8a41d7cf4796",
+       "423b9440f80bfd51",
+       "423b9e43b9343fae"
+      ],
+      [
+       "423c126221978500",
+       "423ca7862c076587",
+       "423d3fc29292f6e4"
+      ],
+      [
+       "423c9c8d09059a89",
+       "423dc44e4473af00",
+       "423ef800b0ded8a0"
+      ]
+     ],
+     "fcf": [
+      [
+       "4204a9eb79012f68",
+       "4205251e4e9dc1c4",
+       "4205804ac193e81b"
+      ],
+      [
+       "421078a04f733db6",
+       "4210d2bb6cc73d41",
+       "421132260fe3e3c6"
+      ],
+      [
+       "4216571950af3be3",
+       "4216dae5d7e3a934",
+       "42176206c7f11442"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2021,
+       "metric": "revenue",
+       "actual": "423faafc01b0c410",
+       "error_pct": "40299ee6986e7a64",
+       "in_band": false
+      },
+      {
+       "fy": 2021,
+       "metric": "fcf",
+       "actual": "c1e4447853007d7a",
+       "error_pct": "c05cd86219897b90",
+       "in_band": false
+      },
+      {
+       "fy": 2022,
+       "metric": "revenue",
+       "actual": "424079cb9e333ed1",
+       "error_pct": "402dfe2bed1c1262",
+       "in_band": false
+      },
+      {
+       "fy": 2022,
+       "metric": "fcf",
+       "actual": "421601e5835a0935",
+       "error_pct": "403ed0e82ac8a1fc",
+       "in_band": true
+      },
+      {
+       "fy": 2023,
+       "metric": "revenue",
+       "actual": "4242f6bc74e968dd",
+       "error_pct": "403dabd745ad3acc",
+       "in_band": false
+      },
+      {
+       "fy": 2023,
+       "metric": "fcf",
+       "actual": "4213e1d16ca680e0",
+       "error_pct": "402f3e10b5827100",
+       "in_band": true
+      }
+     ]
+    },
+    {
+     "as_of": "2022-03-31",
+     "base_fy": 2021,
+     "base_revenue": "423faafc01b0c410",
+     "growth": "3face88fb7958b00",
+     "growth_std": "3fac6372dbe7cbbb",
+     "m_mean": "3fbd246ba9d23208",
+     "m_std": "3fb42afac8b8a5d0",
+     "window": [
+      2017,
+      2018,
+      2019,
+      2020,
+      2021
+     ],
+     "flags": [
+      "FY2019-20 recast mismatch: continuing-ops revenue vs unrecast consolidated OCF (margin/growth distorted)"
+     ],
+     "targets": [
+      2022,
+      2023,
+      2024
+     ],
+     "rev": [
+      [
+       "423f312462081223",
+       "423eb9218c264f94",
+       "423e42ec7461d8ef"
+      ],
+      [
+       "4240b3883c862740",
+       "42419dbc24696b8e",
+       "424294c447a08876"
+      ],
+      [
+       "4241d2bca061bd6f",
+       "42440ff559d5c934",
+       "42469531c683baf9"
+      ]
+     ],
+     "fcf": [
+      [
+       "41d750ce6d7fae99",
+       "41d8a9e45604f0de",
+       "41da0298064ac9cd"
+      ],
+      [
+       "420ea1c12aa54a16",
+       "42101dd493f0cc4e",
+       "4210dd003f263068"
+      ],
+      [
+       "421c9f328cdd73c1",
+       "421e8348f3f02096",
+       "422051d0114d8947"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2022,
+       "metric": "revenue",
+       "actual": "424079cb9e333ed1",
+       "error_pct": "bff59b3d232692b8",
+       "in_band": true
+      },
+      {
+       "fy": 2022,
+       "metric": "fcf",
+       "actual": "421601e5835a0935",
+       "error_pct": "4045d847de9a9e4c",
+       "in_band": true
+      },
+      {
+       "fy": 2023,
+       "metric": "revenue",
+       "actual": "4242f6bc74e968dd",
+       "error_pct": "401e99bf6b50e9d8",
+       "in_band": true
+      },
+      {
+       "fy": 2023,
+       "metric": "fcf",
+       "actual": "4213e1d16ca680e0",
+       "error_pct": "40375d5ca56ed9b3",
+       "in_band": true
+      },
+      {
+       "fy": 2024,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2024,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      }
+     ]
+    },
+    {
+     "as_of": "2023-03-31",
+     "base_fy": 2022,
+     "base_revenue": "424079cb9e333ed1",
+     "growth": "3fadd3e35dbdbf40",
+     "growth_std": "3fac0865f1adbb51",
+     "m_mean": "3fba09fbada5b1ba",
+     "m_std": "3fb043c94154d5ba",
+     "window": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022
+     ],
+     "flags": [
+      "FY2019-20 recast mismatch: continuing-ops revenue vs unrecast consolidated OCF (margin/growth distorted)"
+     ],
+     "targets": [
+      2023,
+      2024,
+      2025
+     ],
+     "rev": [
+      [
+       "424045c15b7a6634",
+       "4240125b783c00df",
+       "423fbf2fda90fc86"
+      ],
+      [
+       "4241687f4231e2f0",
+       "424264b538e4b724",
+       "42436f313aa97ae8"
+      ],
+      [
+       "42428f996066c525",
+       "4244e8f60587d1f0",
+       "42478e6e64710c43"
+      ]
+     ],
+     "fcf": [
+      [
+       "41e5044e2d97b326",
+       "41e6212bb90e2b39",
+       "41e75017ca02b9a7"
+      ],
+      [
+       "420c7ced83f0b9fe",
+       "420e07b76d108bbc",
+       "420f72d16dbb573c"
+      ],
+      [
+       "421970e6f522fcf1",
+       "421b28d11dac73a8",
+       "421d32bc10a3f674"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2023,
+       "metric": "revenue",
+       "actual": "4242f6bc74e968dd",
+       "error_pct": "4021df4e6ec9dfa6",
+       "in_band": false
+      },
+      {
+       "fy": 2023,
+       "metric": "fcf",
+       "actual": "4213e1d16ca680e0",
+       "error_pct": "4043ca88b4990484",
+       "in_band": true
+      },
+      {
+       "fy": 2024,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2024,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2025,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2025,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      }
+     ]
+    },
+    {
+     "as_of": "2024-03-30",
+     "base_fy": 2023,
+     "base_revenue": "4242f6bc74e968dd",
+     "growth": "3fb5e63592da3700",
+     "growth_std": "3fb09ba4b0aa1dcd",
+     "m_mean": "3fbac86275a09c46",
+     "m_std": "3fb08122a52cf80c",
+     "window": [
+      2019,
+      2020,
+      2021,
+      2022,
+      2023
+     ],
+     "flags": [
+      "FY2019-20 recast mismatch: continuing-ops revenue vs unrecast consolidated OCF (margin/growth distorted)"
+     ],
+     "targets": [
+      2024,
+      2025,
+      2026
+     ],
+     "rev": [
+      [
+       "4242fff07b8873be",
+       "42430928f98b7d7d",
+       "42431265f11d6abb"
+      ],
+      [
+       "42448c764176c58a",
+       "4246441873622dd0",
+       "424820787d73d406"
+      ],
+      [
+       "42461eee5c01abd0",
+       "4249cdabb55a4ed0",
+       "424e195a7f0f93f5"
+      ]
+     ],
+     "fcf": [
+      [
+       "41eadcc4f73e8b52",
+       "41ecf3fe82492006",
+       "41efd5f916e81b7e"
+      ],
+      [
+       "42114107696302b7",
+       "4212a000f7eb9302",
+       "4213f64c75e594f4"
+      ],
+      [
+       "421ebc9e715164f6",
+       "4220eafe604f5351",
+       "4222abc0623dd317"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2024,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2024,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2025,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2025,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2026,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2026,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      }
+     ]
+    }
+   ],
+   "skipped": [
+    [
+     "2009-03-31",
+     "only 1 usable annual period(s) available \u2014 at least 3 are required to derive mechanical backtest parameters (revenue CAGR and FCF margin distribution)."
+    ],
+    [
+     "2010-03-31",
+     "only 2 usable annual period(s) available \u2014 at least 3 are required to derive mechanical backtest parameters (revenue CAGR and FCF margin distribution)."
+    ]
+   ],
+   "coverage": [
+    46,
+    69
+   ],
+   "bias": {
+    "1": {
+     "fcf": [
+      "40334caf31e922dd",
+      12
+     ],
+     "revenue": [
+      "400081a3b8914399",
+      13
+     ]
+    },
+    "2": {
+     "fcf": [
+      "40321e6d74adfe74",
+      12
+     ],
+     "revenue": [
+      "400cf756d9d3f3e0",
+      12
+     ]
+    },
+    "3": {
+     "fcf": [
+      "403904ad8bcc3aeb",
+      9
+     ],
+     "revenue": [
+      "400a89e1f36808ac",
+      11
+     ]
+    }
+   },
+   "cli_stdout": "\nSynthetic Flag Co (IBM) -- point-in-time vintage backtest\n  horizon 3y | 5,000 paths | seed 7\n  estimates: point-in-time (filed_date <= as-of) | actuals: as currently reported (may be restated)\n\nREVENUE ($B)\n  vintage       base  target      P10      P50      P90   actual    err%  band  flags\n  2011-03-31    2010    2011     85.1     87.6     90.3     91.9    +4.9    NO  -\n  2011-03-31    2010    2012     86.3     91.6     97.1    103.2   +12.7    NO  -\n  2011-03-31    2010    2013     87.5     95.7    104.5    107.7   +12.6    NO  -\n  2012-03-30    2011    2012     94.0     97.6    101.2    103.2    +5.8    NO  -\n  2012-03-30    2011    2013     96.1    103.5    111.4    107.7    +4.0   yes  -\n  2012-03-30    2011    2014     98.2    109.9    122.6    106.1    -3.4   yes  -\n  2013-03-31    2011    2012     94.0     97.6    101.2    103.2    +5.8    NO  -\n  2013-03-31    2011    2013     96.1    103.5    111.4    107.7    +4.0   yes  -\n  2013-03-31    2011    2014     98.2    109.9    122.6    106.1    -3.4   yes  -\n  2014-03-31    2013    2014    109.6    115.1    120.7    106.1    -7.8    NO  -\n  2014-03-31    2013    2015    111.6    123.0    135.2    101.3   -17.6    NO  -\n  2014-03-31    2013    2016    113.7    131.5    151.4    108.6   -17.4    NO  -\n  2015-03-31    2014    2015    105.4    112.4    119.5    101.3    -9.9    NO  -\n  2015-03-31    2014    2016    104.7    119.0    134.6    108.6    -8.8   yes  -\n  2015-03-31    2014    2017    104.0    126.1    151.5    109.2   -13.4   yes  -\n  2016-03-30    2015    2016     95.5    103.6    111.9    108.6    +4.8   yes  -\n  2016-03-30    2015    2017     89.9    106.0    123.6    109.2    +3.0   yes  -\n  2016-03-30    2015    2018     84.7    108.4    136.5    112.8    +4.1   yes  -\n  2017-03-31    2016    2017    103.5    109.8    116.3    109.2    -0.6   yes  -\n  2017-03-31    2016    2018     98.7    111.1    124.4    112.8    +1.6   yes  -\n  2017-03-31    2016    2019     94.1    112.4    133.2    117.3    +4.4   yes  -\n  2018-03-31    2017    2018    103.5    109.4    115.4    112.8    +3.1   yes  -\n  2018-03-31    2017    2019     98.1    109.7    122.0    117.3    +7.0   yes  -\n  2018-03-31    2017    2020     93.0    109.9    129.0    118.1    +7.5   yes  -\n  2019-03-31    2017    2018    103.5    109.4    115.4    112.8    +3.1   yes  -\n  2019-03-31    2017    2019     98.1    109.7    122.0    117.3    +7.0   yes  -\n  2019-03-31    2017    2020     93.0    109.9    129.0    118.1    +7.5   yes  -\n  2020-03-30    2019    2020    118.1    121.6    125.1    118.1    -2.9   yes  1\n  2020-03-30    2019    2021    118.9    126.0    133.5    136.0    +7.9    NO  1\n  2020-03-30    2019    2022    119.7    130.7    142.4    141.5    +8.3   yes  1\n  2021-03-31    2020    2021    118.3    120.6    122.9    136.0   +12.8    NO  1\n  2021-03-31    2020    2022    118.5    123.1    127.8    141.5   +15.0    NO  1\n  2021-03-31    2020    2023    118.6    125.6    133.0    162.9   +29.7    NO  1\n  2022-03-31    2021    2022    134.0    143.5    153.1    141.5    -1.4   yes  1\n  2022-03-31    2021    2023    132.0    151.3    172.3    162.9    +7.7   yes  1\n  2022-03-31    2021    2024    130.0    159.6    194.0        .       .     .  1\n  2023-03-31    2022    2023    139.8    149.5    159.4    162.9    +8.9    NO  1\n  2023-03-31    2022    2024    138.1    158.0    179.6        .       .     .  1\n  2023-03-31    2022    2025    136.4    166.9    202.3        .       .     .  1\n  2024-03-30    2023    2024    163.2    176.5    190.0        .       .     .  1\n  2024-03-30    2023    2025    163.5    191.3    221.6        .       .     .  1\n  2024-03-30    2023    2026    163.8    207.2    258.5        .       .     .  1\n\nFREE CASH FLOW ($B)\n  vintage       base  target      P10      P50      P90   actual    err%  band  flags\n  2011-03-31    2010    2011      3.2      5.6      8.0     13.6  +141.8    NO  -\n  2011-03-31    2010    2012      3.3      5.9      8.4     12.2  +107.8    NO  -\n  2011-03-31    2010    2013      3.5      6.1      8.8     13.8  +125.7    NO  -\n  2012-03-30    2011    2012      3.1      8.3     13.3     12.2   +46.8   yes  -\n  2012-03-30    2011    2013      3.3      8.9     14.2     13.8   +56.4   yes  -\n  2012-03-30    2011    2014      3.5      9.4     15.2        .       .     .  -\n  2013-03-31    2011    2012      3.1      8.3     13.3     12.2   +46.8   yes  -\n  2013-03-31    2011    2013      3.3      8.9     14.2     13.8   +56.4   yes  -\n  2013-03-31    2011    2014      3.5      9.4     15.2        .       .     .  -\n  2014-03-31    2013    2014      5.1     11.4     17.5        .       .     .  -\n  2014-03-31    2013    2015      5.5     12.2     18.8     12.7    +4.8   yes  -\n  2014-03-31    2013    2016      5.8     13.0     20.4     15.5   +19.3   yes  -\n  2015-03-31    2014    2015      7.1     12.6     17.8     12.7    +1.4   yes  -\n  2015-03-31    2014    2016      7.4     13.2     19.2     15.5   +16.9   yes  -\n  2015-03-31    2014    2017      7.6     14.0     20.8     24.8   +77.8    NO  -\n  2016-03-30    2015    2016     11.7     13.5     15.3     15.5   +14.5    NO  -\n  2016-03-30    2015    2017     11.2     13.8     16.6     24.8   +80.2    NO  -\n  2016-03-30    2015    2018     10.7     14.1     18.1     13.1    -7.0   yes  -\n  2017-03-31    2016    2017     12.5     14.2     15.8     24.8   +75.5    NO  -\n  2017-03-31    2016    2018     12.2     14.3     16.6     13.1    -8.2   yes  -\n  2017-03-31    2016    2019     11.7     14.5     17.6     14.0    -3.5   yes  -\n  2018-03-31    2017    2018     11.1     17.1     22.9     13.1   -23.3   yes  -\n  2018-03-31    2017    2019     10.9     17.1     23.3     14.0   -18.2   yes  -\n  2018-03-31    2017    2020     10.8     17.1     23.8     14.9   -13.1   yes  -\n  2019-03-31    2017    2018     11.1     17.1     22.9     13.1   -23.3   yes  -\n  2019-03-31    2017    2019     10.9     17.1     23.3     14.0   -18.2   yes  -\n  2019-03-31    2017    2020     10.8     17.1     23.8     14.9   -13.1   yes  -\n  2020-03-30    2019    2020     11.2     17.8     24.2     14.9   -16.6   yes  1\n  2020-03-30    2019    2021     11.6     18.5     25.2     -2.7  -114.7    NO  1\n  2020-03-30    2019    2022     11.9     19.1     26.3     23.6   +23.5   yes  1\n  2021-03-31    2020    2021     11.1     17.7     24.0     -2.7  -115.4    NO  1\n  2021-03-31    2020    2022     11.4     18.1     24.5     23.6   +30.8   yes  1\n  2021-03-31    2020    2023     11.5     18.5     25.1     21.3   +15.6   yes  1\n  2022-03-31    2021    2022      1.6     16.4     30.7     23.6   +43.7   yes  1\n  2022-03-31    2021    2023      1.7     17.3     32.8     21.3   +23.4   yes  1\n  2022-03-31    2021    2024      1.7     18.1     35.0        .       .     .  1\n  2023-03-31    2022    2023      2.8     15.3     27.3     21.3   +39.6   yes  1\n  2023-03-31    2022    2024      3.0     16.1     29.2        .       .     .  1\n  2023-03-31    2022    2025      3.1     16.9     31.4        .       .     .  1\n  2024-03-30    2023    2024      3.6     18.5     33.0        .       .     .  1\n  2024-03-30    2023    2025      3.9     20.0     36.3        .       .     .  1\n  2024-03-30    2023    2026      4.3     21.4     40.1        .       .     .  1\n\n  Coverage: 46 of 69 realized outcomes inside the P10-P90 band (67%; nominal 80%)\n  Mean signed error (actual vs P50; + = model underestimated):\n    +1y: revenue +2.1% (n=13) | fcf +19.3% (n=12)\n    +2y: revenue +3.6% (n=12) | fcf +18.1% (n=12)\n    +3y: revenue +3.3% (n=11) | fcf +25.0% (n=9)\n  Data flags (inputs surfaced, not fixed):\n    [1] FY2019-20 recast mismatch: continuing-ops revenue vs unrecast consolidated OCF (margin/growth distorted)\n  Skipped vintages (2 -- insufficient point-in-time history):\n    2009-03-31: only 1 usable annual period(s) available \u2014 at least 3 are required to derive mechanical backtest parameters (revenue CAGR and FCF margin distribution).\n    2010-03-31: only 2 usable annual period(s) available \u2014 at least 3 are required to derive mechanical backtest parameters (revenue CAGR and FCF margin distribution).\n",
+   "cli_code": 0
+  },
+  {
+   "ticker": "IBM",
+   "horizon": 5,
+   "n": 3000,
+   "seed": 123456789,
+   "vintages": [
+    {
+     "as_of": "2011-03-31",
+     "base_fy": 2010,
+     "base_revenue": "423387da92b03d7c",
+     "growth": "3fa74b8a51bc95c0",
+     "growth_std": "3f98f888beb5d100",
+     "m_mean": "3fb063ec198d10c9",
+     "m_std": "3f95c4541fd5bfb6",
+     "window": [
+      2008,
+      2009,
+      2010
+     ],
+     "flags": [],
+     "targets": [
+      2011,
+      2012,
+      2013,
+      2014,
+      2015
+     ],
+     "rev": [
+      [
+       "4233d1bd5cca9afd",
+       "42341cb7ab3e691d",
+       "423468cd9f7d483a",
+       "4234b6036a994bea",
+       "4235045d4d801948"
+      ],
+      [
+       "42346db7e9f6e69a",
+       "42355e26a09113dc",
+       "423659a31729223d",
+       "423760af6643c088",
+       "423873d3a18ca590"
+      ],
+      [
+       "423507f4b242628c",
+       "4236a590cd48b45d",
+       "423862f334f347d9",
+       "423a428ccf50df87",
+       "423c46fe8413645e"
+      ]
+     ],
+     "fcf": [
+      [
+       "41e7cf6ff1b5ca74",
+       "41e8eebcb50f33d6",
+       "41ea01581de7c544",
+       "41eb10762a58a1fa",
+       "41ebeec0df06a479"
+      ],
+      [
+       "41f4fd24acfa329f",
+       "41f5f8f25ba202cc",
+       "41f6e887e820da5e",
+       "41f7d311042a8b7a",
+       "41f8e6205bd3eb56"
+      ],
+      [
+       "41fdb5eb1765dd2a",
+       "41ff1633574addf1",
+       "420068de3e89b144",
+       "42016c8ee420c28f",
+       "4202680cc8ac542d"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2011,
+       "metric": "revenue",
+       "actual": "4235682198af5ba6",
+       "error_pct": "4013272f2b8a7f5c",
+       "in_band": false
+      },
+      {
+       "fy": 2011,
+       "metric": "fcf",
+       "actual": "42095d8ec119297f",
+       "error_pct": "4061b6892936a4b2",
+       "in_band": false
+      },
+      {
+       "fy": 2012,
+       "metric": "revenue",
+       "actual": "4238076856d48eaa",
+       "error_pct": "4028e87c808d97a5",
+       "in_band": false
+      },
+      {
+       "fy": 2012,
+       "metric": "fcf",
+       "actual": "4206cebb148f186f",
+       "error_pct": "405ae67b6d96583b",
+       "in_band": false
+      },
+      {
+       "fy": 2013,
+       "metric": "revenue",
+       "actual": "423912bae4ca6909",
+       "error_pct": "40285ded97b5c45a",
+       "in_band": false
+      },
+      {
+       "fy": 2013,
+       "metric": "fcf",
+       "actual": "4209c9c991d67dc2",
+       "error_pct": "405f49253bb5ec52",
+       "in_band": false
+      },
+      {
+       "fy": 2014,
+       "metric": "revenue",
+       "actual": "4238b6f1d600e0f2",
+       "error_pct": "4016e02d455b0d29",
+       "in_band": true
+      },
+      {
+       "fy": 2014,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2015,
+       "metric": "revenue",
+       "actual": "4237977efdea72bd",
+       "error_pct": "c00c2875ce0dce87",
+       "in_band": true
+      },
+      {
+       "fy": 2015,
+       "metric": "fcf",
+       "actual": "4207becd6dc3706e",
+       "error_pct": "4056aef45f108de1",
+       "in_band": false
+      }
+     ]
+    },
+    {
+     "as_of": "2012-03-30",
+     "base_fy": 2011,
+     "base_revenue": "4235682198af5ba6",
+     "growth": "3fafc9dcc7480440",
+     "growth_std": "3f9fb25a791fb03f",
+     "m_mean": "3fb5c5ac4a113752",
+     "m_std": "3fa4e3ef1f9aae66",
+     "window": [
+      2008,
+      2009,
+      2010,
+      2011
+     ],
+     "flags": [],
+     "targets": [
+      2012,
+      2013,
+      2014,
+      2015,
+      2016
+     ],
+     "rev": [
+      [
+       "4235e6ad6fd97e41",
+       "423668255c012c8f",
+       "4236ec9aa379cb16",
+       "4237741ef2b5a655",
+       "4237fec45ea1a50f"
+      ],
+      [
+       "4236bfb002d5c186",
+       "42382cc8263a7cc2",
+       "4239b0c3ac750a18",
+       "423b4d11eaa44072",
+       "423d03393d367fe0"
+      ],
+      [
+       "42379646654ccf9b",
+       "4239fd43d0a74057",
+       "423ca2e404dc346f",
+       "423f8d8820e36bc3",
+       "4241621bcc3e09b5"
+      ]
+     ],
+     "fcf": [
+      [
+       "41e77a9c4b7b74b8",
+       "41e8bb6e2f5b17c9",
+       "41ea5c0eb661e6f2",
+       "41ebfdce13ca95f5",
+       "41ed9bf7b1c1a476"
+      ],
+      [
+       "41ff138495791cdb",
+       "420083098f987c6c",
+       "420182a6f70634ec",
+       "42027da7302df47a",
+       "42038dbdd449787e"
+      ],
+      [
+       "4208d7d5c2a7784c",
+       "420a6a818bf2bf3d",
+       "420c5a288e72c7bb",
+       "420ea8fb8ec0300e",
+       "42107002344ae30b"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2012,
+       "metric": "revenue",
+       "actual": "4238076856d48eaa",
+       "error_pct": "4016826b6ae557fe",
+       "in_band": false
+      },
+      {
+       "fy": 2012,
+       "metric": "fcf",
+       "actual": "4206cebb148f186f",
+       "error_pct": "404764682edb273a",
+       "in_band": true
+      },
+      {
+       "fy": 2013,
+       "metric": "revenue",
+       "actual": "423912bae4ca6909",
+       "error_pct": "400db97a37055360",
+       "in_band": true
+      },
+      {
+       "fy": 2013,
+       "metric": "fcf",
+       "actual": "4209c9c991d67dc2",
+       "error_pct": "404c170a973bf05e",
+       "in_band": true
+      },
+      {
+       "fy": 2014,
+       "metric": "revenue",
+       "actual": "4238b6f1d600e0f2",
+       "error_pct": "c00e635e35a0ed75",
+       "in_band": true
+      },
+      {
+       "fy": 2014,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2015,
+       "metric": "revenue",
+       "actual": "4237977efdea72bd",
+       "error_pct": "c02b2c511998f320",
+       "in_band": true
+      },
+      {
+       "fy": 2015,
+       "metric": "fcf",
+       "actual": "4207becd6dc3706e",
+       "error_pct": "403c6aaec3fa2763",
+       "in_band": true
+      },
+      {
+       "fy": 2016,
+       "metric": "revenue",
+       "actual": "4239491b2cf9aa92",
+       "error_pct": "c029b143aa32d224",
+       "in_band": true
+      },
+      {
+       "fy": 2016,
+       "metric": "fcf",
+       "actual": "420cc90b466480f8",
+       "error_pct": "40479b1d78b9ea27",
+       "in_band": true
+      }
+     ]
+    },
+    {
+     "as_of": "2013-03-31",
+     "base_fy": 2011,
+     "base_revenue": "4235682198af5ba6",
+     "growth": "3fafc9dcc7480440",
+     "growth_std": "3f9fb25a791fb03f",
+     "m_mean": "3fb5c5ac4a113752",
+     "m_std": "3fa4e3ef1f9aae66",
+     "window": [
+      2008,
+      2009,
+      2010,
+      2011
+     ],
+     "flags": [],
+     "targets": [
+      2012,
+      2013,
+      2014,
+      2015,
+      2016
+     ],
+     "rev": [
+      [
+       "4235e6ad6fd97e41",
+       "423668255c012c8f",
+       "4236ec9aa379cb16",
+       "4237741ef2b5a655",
+       "4237fec45ea1a50f"
+      ],
+      [
+       "4236bfb002d5c186",
+       "42382cc8263a7cc2",
+       "4239b0c3ac750a18",
+       "423b4d11eaa44072",
+       "423d03393d367fe0"
+      ],
+      [
+       "42379646654ccf9b",
+       "4239fd43d0a74057",
+       "423ca2e404dc346f",
+       "423f8d8820e36bc3",
+       "4241621bcc3e09b5"
+      ]
+     ],
+     "fcf": [
+      [
+       "41e77a9c4b7b74b8",
+       "41e8bb6e2f5b17c9",
+       "41ea5c0eb661e6f2",
+       "41ebfdce13ca95f5",
+       "41ed9bf7b1c1a476"
+      ],
+      [
+       "41ff138495791cdb",
+       "420083098f987c6c",
+       "420182a6f70634ec",
+       "42027da7302df47a",
+       "42038dbdd449787e"
+      ],
+      [
+       "4208d7d5c2a7784c",
+       "420a6a818bf2bf3d",
+       "420c5a288e72c7bb",
+       "420ea8fb8ec0300e",
+       "42107002344ae30b"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2012,
+       "metric": "revenue",
+       "actual": "4238076856d48eaa",
+       "error_pct": "4016826b6ae557fe",
+       "in_band": false
+      },
+      {
+       "fy": 2012,
+       "metric": "fcf",
+       "actual": "4206cebb148f186f",
+       "error_pct": "404764682edb273a",
+       "in_band": true
+      },
+      {
+       "fy": 2013,
+       "metric": "revenue",
+       "actual": "423912bae4ca6909",
+       "error_pct": "400db97a37055360",
+       "in_band": true
+      },
+      {
+       "fy": 2013,
+       "metric": "fcf",
+       "actual": "4209c9c991d67dc2",
+       "error_pct": "404c170a973bf05e",
+       "in_band": true
+      },
+      {
+       "fy": 2014,
+       "metric": "revenue",
+       "actual": "4238b6f1d600e0f2",
+       "error_pct": "c00e635e35a0ed75",
+       "in_band": true
+      },
+      {
+       "fy": 2014,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2015,
+       "metric": "revenue",
+       "actual": "4237977efdea72bd",
+       "error_pct": "c02b2c511998f320",
+       "in_band": true
+      },
+      {
+       "fy": 2015,
+       "metric": "fcf",
+       "actual": "4207becd6dc3706e",
+       "error_pct": "403c6aaec3fa2763",
+       "in_band": true
+      },
+      {
+       "fy": 2016,
+       "metric": "revenue",
+       "actual": "4239491b2cf9aa92",
+       "error_pct": "c029b143aa32d224",
+       "in_band": true
+      },
+      {
+       "fy": 2016,
+       "metric": "fcf",
+       "actual": "420cc90b466480f8",
+       "error_pct": "40479b1d78b9ea27",
+       "in_band": true
+      }
+     ]
+    },
+    {
+     "as_of": "2014-03-31",
+     "base_fy": 2013,
+     "base_revenue": "423912bae4ca6909",
+     "growth": "3fb1f1a047481270",
+     "growth_std": "3fa4a30847de138f",
+     "m_mean": "3fb94224a4281392",
+     "m_std": "3fa552f21d3e0858",
+     "window": [
+      2009,
+      2010,
+      2011,
+      2012,
+      2013
+     ],
+     "flags": [],
+     "targets": [
+      2014,
+      2015,
+      2016,
+      2017,
+      2018
+     ],
+     "rev": [
+      [
+       "42398eb69a9ac090",
+       "423a0d176634d683",
+       "423a8de91f451ca3",
+       "423b1137d8079e49",
+       "423b970fde699666"
+      ],
+      [
+       "423ad9b0a05f6e0c",
+       "423cc0e5be281fa9",
+       "423ecaa3629ce6a6",
+       "42407cae15e71d92",
+       "4241a7d790fc26d3"
+      ],
+      [
+       "423c20f8c193f52d",
+       "423f8e8b47cb1cb2",
+       "4241b38850927e1a",
+       "4243dbc8b6324e6b",
+       "4246475674b7a0ff"
+      ]
+     ],
+     "fcf": [
+      [
+       "41f321e612a2e9d0",
+       "41f47af54f2b9e2c",
+       "41f5dd758d9723df",
+       "41f72d120a69c377",
+       "41f8220b8c565a8c"
+      ],
+      [
+       "42053c0ae4c2ffc4",
+       "4206c3485f2ab878",
+       "42082caa2e612f0c",
+       "4209c2aef58e4643",
+       "420b6c472b7d700e"
+      ],
+      [
+       "4210388071d63c55",
+       "421180e3f5697878",
+       "42133536a86a943d",
+       "4214ef6fc7e4eeb1",
+       "4216f4662abaf504"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2014,
+       "metric": "revenue",
+       "actual": "4238b6f1d600e0f2",
+       "error_pct": "c01fd1130d9961d0",
+       "in_band": false
+      },
+      {
+       "fy": 2014,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2015,
+       "metric": "revenue",
+       "actual": "4237977efdea72bd",
+       "error_pct": "c031f39e4a38be71",
+       "in_band": false
+      },
+      {
+       "fy": 2015,
+       "metric": "fcf",
+       "actual": "4207becd6dc3706e",
+       "error_pct": "401143d587b05e7b",
+       "in_band": true
+      },
+      {
+       "fy": 2016,
+       "metric": "revenue",
+       "actual": "4239491b2cf9aa92",
+       "error_pct": "c031e1a86a9a31c0",
+       "in_band": false
+      },
+      {
+       "fy": 2016,
+       "metric": "fcf",
+       "actual": "420cc90b466480f8",
+       "error_pct": "403312c0448d1615",
+       "in_band": true
+      },
+      {
+       "fy": 2017,
+       "metric": "revenue",
+       "actual": "42396bf2f0bf8779",
+       "error_pct": "c036e76e0f6ed695",
+       "in_band": false
+      },
+      {
+       "fy": 2017,
+       "metric": "fcf",
+       "actual": "42172449093bf673",
+       "error_pct": "4053eac925f173c0",
+       "in_band": false
+      },
+      {
+       "fy": 2018,
+       "metric": "revenue",
+       "actual": "423a45e70c6d761e",
+       "error_pct": "c0399887e1689804",
+       "in_band": false
+      },
+      {
+       "fy": 2018,
+       "metric": "fcf",
+       "actual": "42087df677fabdc7",
+       "error_pct": "c025602afe1fbc71",
+       "in_band": true
+      }
+     ]
+    },
+    {
+     "as_of": "2015-03-31",
+     "base_fy": 2014,
+     "base_revenue": "4238b6f1d600e0f2",
+     "growth": "3faf096215103c20",
+     "growth_std": "3faad4b835a799f2",
+     "m_mean": "3fbc7c417e332410",
+     "m_std": "3fa2fa1286408d04",
+     "window": [
+      2010,
+      2011,
+      2012,
+      2013,
+      2014
+     ],
+     "flags": [],
+     "targets": [
+      2015,
+      2016,
+      2017,
+      2018,
+      2019
+     ],
+     "rev": [
+      [
+       "423894c83ca135b5",
+       "423872cdde79c84b",
+       "423851027a3a7fd8",
+       "42382f65ceed9967",
+       "42380df79bf72af3"
+      ],
+      [
+       "423a3cf2780463d4",
+       "423bdafd6f78a87e",
+       "423d928e19560d7e",
+       "423f653735091e86",
+       "4240aa522abb444e"
+      ],
+      [
+       "423be0607c90d545",
+       "423f715cf8c972f1",
+       "4241bb936731ab2d",
+       "42440057b2919ef1",
+       "42468f68c5a45b7c"
+      ]
+     ],
+     "fcf": [
+      [
+       "41fa8434b8472d81",
+       "41fbda5d971cb0c5",
+       "41fcee1aa60d0159",
+       "41fdbbf868eb8bab",
+       "41fe9fa53f8a9835"
+      ],
+      [
+       "420773accc898c58",
+       "4208a56157d4c9e1",
+       "420a092f89f8d9e4",
+       "420b9e17776259a4",
+       "420d35949532798c"
+      ],
+      [
+       "42109a5166415080",
+       "42121a3a904878c6",
+       "4213bf328228fe44",
+       "421580d7089d1df4",
+       "4217ae3d3dc2b598"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2015,
+       "metric": "revenue",
+       "actual": "4237977efdea72bd",
+       "error_pct": "c0242be0c2bd75a7",
+       "in_band": false
+      },
+      {
+       "fy": 2015,
+       "metric": "fcf",
+       "actual": "4207becd6dc3706e",
+       "error_pct": "3ff4058fd6f97f48",
+       "in_band": true
+      },
+      {
+       "fy": 2016,
+       "metric": "revenue",
+       "actual": "4239491b2cf9aa92",
+       "error_pct": "c022738f1affe775",
+       "in_band": true
+      },
+      {
+       "fy": 2016,
+       "metric": "fcf",
+       "actual": "420cc90b466480f8",
+       "error_pct": "4030cb88a28f96e6",
+       "in_band": true
+      },
+      {
+       "fy": 2017,
+       "metric": "revenue",
+       "actual": "42396bf2f0bf8779",
+       "error_pct": "c02c1273bf69d587",
+       "in_band": true
+      },
+      {
+       "fy": 2017,
+       "metric": "fcf",
+       "actual": "42172449093bf673",
+       "error_pct": "40537127b7ee3ded",
+       "in_band": false
+      },
+      {
+       "fy": 2018,
+       "metric": "revenue",
+       "actual": "423a45e70c6d761e",
+       "error_pct": "c03050c596176826",
+       "in_band": true
+      },
+      {
+       "fy": 2018,
+       "metric": "fcf",
+       "actual": "42087df677fabdc7",
+       "error_pct": "c026a25a1a629d24",
+       "in_band": true
+      },
+      {
+       "fy": 2019,
+       "metric": "revenue",
+       "actual": "423b5012b5dac811",
+       "error_pct": "c0320e14be0155a6",
+       "in_band": true
+      },
+      {
+       "fy": 2019,
+       "metric": "fcf",
+       "actual": "420a05601e8279f7",
+       "error_pct": "c025d4aa44e30773",
+       "in_band": true
+      }
+     ]
+    },
+    {
+     "as_of": "2016-03-30",
+     "base_fy": 2015,
+     "base_revenue": "4237977efdea72bd",
+     "growth": "3f992f8ec1ca0800",
+     "growth_std": "3fb05cccbd882746",
+     "m_mean": "3fc0ad2f095a6bee",
+     "m_std": "3f86597136742531",
+     "window": [
+      2011,
+      2012,
+      2013,
+      2014,
+      2015
+     ],
+     "flags": [],
+     "targets": [
+      2016,
+      2017,
+      2018,
+      2019,
+      2020
+     ],
+     "rev": [
+      [
+       "423645bccf7c4170",
+       "423506de425aeed3",
+       "4233d9d4e775e9a4",
+       "4232bda16f832c6a",
+       "4231b152d2773f06"
+      ],
+      [
+       "423833938ff8d1d3",
+       "4238d3b0bfdf8486",
+       "423977f13d63eafc",
+       "423a207068da9b75",
+       "423acd4a57b783fc"
+      ],
+      [
+       "423a1be6faeae007",
+       "423ce510d7b4acd7",
+       "423ffa52ad7ffd29",
+       "4241b1e57ccc4ccb",
+       "4243953aff839cb4"
+      ]
+     ],
+     "fcf": [
+      [
+       "4205db7e7a3df5d3",
+       "42052d486e57fe70",
+       "420436abcdbbcdb9",
+       "42032be8816bea79",
+       "42022a1573ee7408"
+      ],
+      [
+       "4209352bcb973dc3",
+       "4209d0a19872b931",
+       "420a6c5831068e62",
+       "420b1a17f62f0653",
+       "420bc322190def14"
+      ],
+      [
+       "420cab3b9bd04773",
+       "420eeedc2c21f6b3",
+       "4210f4bbca1ee2b9",
+       "42129dd27c164b75",
+       "42149abc3c6a3bdf"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2016,
+       "metric": "revenue",
+       "actual": "4239491b2cf9aa92",
+       "error_pct": "4011eafd5e2ed972",
+       "in_band": true
+      },
+      {
+       "fy": 2016,
+       "metric": "fcf",
+       "actual": "420cc90b466480f8",
+       "error_pct": "402c629ce48c8b30",
+       "in_band": false
+      },
+      {
+       "fy": 2017,
+       "metric": "revenue",
+       "actual": "42396bf2f0bf8779",
+       "error_pct": "40032a3dd918dbee",
+       "in_band": true
+      },
+      {
+       "fy": 2017,
+       "metric": "fcf",
+       "actual": "42172449093bf673",
+       "error_pct": "4053d2845de2564e",
+       "in_band": false
+      },
+      {
+       "fy": 2018,
+       "metric": "revenue",
+       "actual": "423a45e70c6d761e",
+       "error_pct": "4009457b49d7312e",
+       "in_band": true
+      },
+      {
+       "fy": 2018,
+       "metric": "fcf",
+       "actual": "42087df677fabdc7",
+       "error_pct": "c01d3c0cacc4ac3e",
+       "in_band": true
+      },
+      {
+       "fy": 2019,
+       "metric": "revenue",
+       "actual": "423b5012b5dac811",
+       "error_pct": "401228a2dfe299e4",
+       "in_band": true
+      },
+      {
+       "fy": 2019,
+       "metric": "fcf",
+       "actual": "420a05601e8279f7",
+       "error_pct": "c00fe838492cb418",
+       "in_band": true
+      },
+      {
+       "fy": 2020,
+       "metric": "revenue",
+       "actual": "423b8046572d69fb",
+       "error_pct": "4004de6f5f5241f0",
+       "in_band": true
+      },
+      {
+       "fy": 2020,
+       "metric": "fcf",
+       "actual": "420bb82106cc805f",
+       "error_pct": "bfc3d1910524f7e0",
+       "in_band": true
+      }
+     ]
+    },
+    {
+     "as_of": "2017-03-31",
+     "base_fy": 2016,
+     "base_revenue": "4239491b2cf9aa92",
+     "growth": "3f8a442b6355a980",
+     "growth_std": "3fa7a8b5aef1439c",
+     "m_mean": "3fc07d8c96ad64aa",
+     "m_std": "3f847ae147ae147b",
+     "window": [
+      2012,
+      2013,
+      2014,
+      2015,
+      2016
+     ],
+     "flags": [],
+     "targets": [
+      2017,
+      2018,
+      2019,
+      2020,
+      2021
+     ],
+     "rev": [
+      [
+       "4238234ddc5aade4",
+       "42370ad657c862fe",
+       "4235ff19acf8af72",
+       "4234ff83f20523ea",
+       "42340b87f3b3710a"
+      ],
+      [
+       "4239a1f722b7d2fa",
+       "4239fc0b5f1530fa",
+       "423a575c2b8243a2",
+       "423ab3ede0805ae2",
+       "423b11c4e5d68a0b"
+      ],
+      [
+       "423b1c5acf22efec",
+       "423d1154ab576198",
+       "423f2a78007572bc",
+       "4240b530851f9cc1",
+       "4241e9ee2056f7f7"
+      ]
+     ],
+     "fcf": [
+      [
+       "420759a4d84b4e2e",
+       "4206dd7ff49e7a03",
+       "420608b1629473c7",
+       "42053a4323233e6c",
+       "42044f68ec10cee3"
+      ],
+      [
+       "420a65e0bcb09c3f",
+       "420ac18cb4236944",
+       "420b1d056a36dbf9",
+       "420b6d079021664a",
+       "420bc999d98e95c8"
+      ],
+      [
+       "420d89771f38bee7",
+       "420eee34b829d31d",
+       "4210631a4ac9da05",
+       "42117a7ee8e63c77",
+       "4212a0ef63d5d01a"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2017,
+       "metric": "revenue",
+       "actual": "42396bf2f0bf8779",
+       "error_pct": "bfea5770d43b9ce4",
+       "in_band": true
+      },
+      {
+       "fy": 2017,
+       "metric": "fcf",
+       "actual": "42172449093bf673",
+       "error_pct": "4052d51aac5ecf50",
+       "in_band": false
+      },
+      {
+       "fy": 2018,
+       "metric": "revenue",
+       "actual": "423a45e70c6d761e",
+       "error_pct": "3ff1c3d141997220",
+       "in_band": true
+      },
+      {
+       "fy": 2018,
+       "metric": "fcf",
+       "actual": "42087df677fabdc7",
+       "error_pct": "c020ec6119c20a57",
+       "in_band": true
+      },
+      {
+       "fy": 2019,
+       "metric": "revenue",
+       "actual": "423b5012b5dac811",
+       "error_pct": "400d81918cae7f88",
+       "in_band": true
+      },
+      {
+       "fy": 2019,
+       "metric": "fcf",
+       "actual": "420a05601e8279f7",
+       "error_pct": "c0101d93c059d00e",
+       "in_band": true
+      },
+      {
+       "fy": 2020,
+       "metric": "revenue",
+       "actual": "423b8046572d69fb",
+       "error_pct": "4007ea0f7050a54c",
+       "in_band": true
+      },
+      {
+       "fy": 2020,
+       "metric": "fcf",
+       "actual": "420bb82106cc805f",
+       "error_pct": "3ff11d3abfcb50e8",
+       "in_band": true
+      },
+      {
+       "fy": 2021,
+       "metric": "revenue",
+       "actual": "423faafc01b0c410",
+       "error_pct": "4030fce069682d0a",
+       "in_band": true
+      },
+      {
+       "fy": 2021,
+       "metric": "fcf",
+       "actual": "c1e4447853007d7a",
+       "error_pct": "c05d8eff44dda606",
+       "in_band": false
+      }
+     ]
+    },
+    {
+     "as_of": "2018-03-31",
+     "base_fy": 2017,
+     "base_revenue": "42396bf2f0bf8779",
+     "growth": "3f6c51cea813ce00",
+     "growth_std": "3fa5fc81a8773594",
+     "m_mean": "3fc3f9ecc4d1efa1",
+     "m_std": "3fa5615d68bd5eb9",
+     "window": [
+      2013,
+      2014,
+      2015,
+      2016,
+      2017
+     ],
+     "flags": [],
+     "targets": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022
+     ],
+     "rev": [
+      [
+       "423822618c2f7b0c",
+       "4236e980b2807caf",
+       "4235c0780610e93e",
+       "4234a67a1e3c7076",
+       "42339ac3f94fd4d4"
+      ],
+      [
+       "423987e713c87bae",
+       "4239a3f9f4b1b1ac",
+       "4239c02bb54b0e07",
+       "4239dc7c7789a6f6",
+       "4239f8ec5d87ed37"
+      ],
+      [
+       "423ae96eda0c2e9a",
+       "423c7d47698b4164",
+       "423e28cc30e35b7d",
+       "423fed606d5fc49c",
+       "4240e63e178f65ce"
+      ]
+     ],
+     "fcf": [
+      [
+       "4204d4d46bd01528",
+       "42048f80c9ac08ad",
+       "42044e1dc3cfad4b",
+       "4203ced22b6593eb",
+       "42033864b3713194"
+      ],
+      [
+       "420ff9d6d84ec7e0",
+       "420fe4dd18698d69",
+       "420fecf68af6c716",
+       "420ffd855e49f7a4",
+       "4210045a6cdf2001"
+      ],
+      [
+       "42155be357acc0d8",
+       "4215f3ec949b1a03",
+       "4216956c7a3a4b97",
+       "4217302adf2a0421",
+       "421809708118750d"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2018,
+       "metric": "revenue",
+       "actual": "423a45e70c6d761e",
+       "error_pct": "40074192d325526a",
+       "in_band": true
+      },
+      {
+       "fy": 2018,
+       "metric": "fcf",
+       "actual": "42087df677fabdc7",
+       "error_pct": "c037679eb493ba3e",
+       "in_band": true
+      },
+      {
+       "fy": 2019,
+       "metric": "revenue",
+       "actual": "423b5012b5dac811",
+       "error_pct": "401a166fd57aea3e",
+       "in_band": true
+      },
+      {
+       "fy": 2019,
+       "metric": "fcf",
+       "actual": "420a05601e8279f7",
+       "error_pct": "c0326a04164d25f4",
+       "in_band": true
+      },
+      {
+       "fy": 2020,
+       "metric": "revenue",
+       "actual": "423b8046572d69fb",
+       "error_pct": "401b30a8b81399d8",
+       "in_band": true
+      },
+      {
+       "fy": 2020,
+       "metric": "fcf",
+       "actual": "420bb82106cc805f",
+       "error_pct": "c02a59e3a2d9312e",
+       "in_band": true
+      },
+      {
+       "fy": 2021,
+       "metric": "revenue",
+       "actual": "423faafc01b0c410",
+       "error_pct": "403673f83d37c978",
+       "in_band": true
+      },
+      {
+       "fy": 2021,
+       "metric": "fcf",
+       "actual": "c1e4447853007d7a",
+       "error_pct": "c05cf5ae07c0ac08",
+       "in_band": false
+      },
+      {
+       "fy": 2022,
+       "metric": "revenue",
+       "actual": "424079cb9e333ed1",
+       "error_pct": "403adf1ca202d0a5",
+       "in_band": true
+      },
+      {
+       "fy": 2022,
+       "metric": "fcf",
+       "actual": "421601e5835a0935",
+       "error_pct": "4042b33c27c52a39",
+       "in_band": true
+      }
+     ]
+    },
+    {
+     "as_of": "2019-03-31",
+     "base_fy": 2017,
+     "base_revenue": "42396bf2f0bf8779",
+     "growth": "3f6c51cea813ce00",
+     "growth_std": "3fa5fc81a8773594",
+     "m_mean": "3fc3f9ecc4d1efa1",
+     "m_std": "3fa5615d68bd5eb9",
+     "window": [
+      2013,
+      2014,
+      2015,
+      2016,
+      2017
+     ],
+     "flags": [],
+     "targets": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022
+     ],
+     "rev": [
+      [
+       "423822618c2f7b0c",
+       "4236e980b2807caf",
+       "4235c0780610e93e",
+       "4234a67a1e3c7076",
+       "42339ac3f94fd4d4"
+      ],
+      [
+       "423987e713c87bae",
+       "4239a3f9f4b1b1ac",
+       "4239c02bb54b0e07",
+       "4239dc7c7789a6f6",
+       "4239f8ec5d87ed37"
+      ],
+      [
+       "423ae96eda0c2e9a",
+       "423c7d47698b4164",
+       "423e28cc30e35b7d",
+       "423fed606d5fc49c",
+       "4240e63e178f65ce"
+      ]
+     ],
+     "fcf": [
+      [
+       "4204d4d46bd01528",
+       "42048f80c9ac08ad",
+       "42044e1dc3cfad4b",
+       "4203ced22b6593eb",
+       "42033864b3713194"
+      ],
+      [
+       "420ff9d6d84ec7e0",
+       "420fe4dd18698d69",
+       "420fecf68af6c716",
+       "420ffd855e49f7a4",
+       "4210045a6cdf2001"
+      ],
+      [
+       "42155be357acc0d8",
+       "4215f3ec949b1a03",
+       "4216956c7a3a4b97",
+       "4217302adf2a0421",
+       "421809708118750d"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2018,
+       "metric": "revenue",
+       "actual": "423a45e70c6d761e",
+       "error_pct": "40074192d325526a",
+       "in_band": true
+      },
+      {
+       "fy": 2018,
+       "metric": "fcf",
+       "actual": "42087df677fabdc7",
+       "error_pct": "c037679eb493ba3e",
+       "in_band": true
+      },
+      {
+       "fy": 2019,
+       "metric": "revenue",
+       "actual": "423b5012b5dac811",
+       "error_pct": "401a166fd57aea3e",
+       "in_band": true
+      },
+      {
+       "fy": 2019,
+       "metric": "fcf",
+       "actual": "420a05601e8279f7",
+       "error_pct": "c0326a04164d25f4",
+       "in_band": true
+      },
+      {
+       "fy": 2020,
+       "metric": "revenue",
+       "actual": "423b8046572d69fb",
+       "error_pct": "401b30a8b81399d8",
+       "in_band": true
+      },
+      {
+       "fy": 2020,
+       "metric": "fcf",
+       "actual": "420bb82106cc805f",
+       "error_pct": "c02a59e3a2d9312e",
+       "in_band": true
+      },
+      {
+       "fy": 2021,
+       "metric": "revenue",
+       "actual": "423faafc01b0c410",
+       "error_pct": "403673f83d37c978",
+       "in_band": true
+      },
+      {
+       "fy": 2021,
+       "metric": "fcf",
+       "actual": "c1e4447853007d7a",
+       "error_pct": "c05cf5ae07c0ac08",
+       "in_band": false
+      },
+      {
+       "fy": 2022,
+       "metric": "revenue",
+       "actual": "424079cb9e333ed1",
+       "error_pct": "403adf1ca202d0a5",
+       "in_band": true
+      },
+      {
+       "fy": 2022,
+       "metric": "fcf",
+       "actual": "421601e5835a0935",
+       "error_pct": "4042b33c27c52a39",
+       "in_band": true
+      }
+     ]
+    },
+    {
+     "as_of": "2020-03-30",
+     "base_fy": 2019,
+     "base_revenue": "423b5012b5dac811",
+     "growth": "3fa31806c78c2700",
+     "growth_std": "3f982aef41771221",
+     "m_mean": "3fc2b8b3151cfbd2",
+     "m_std": "3fa551a91fd91ecd",
+     "window": [
+      2015,
+      2016,
+      2017,
+      2018,
+      2019
+     ],
+     "flags": [
+      "FY2019-20 recast mismatch: continuing-ops revenue vs unrecast consolidated OCF (margin/growth distorted)"
+     ],
+     "targets": [
+      2020,
+      2021,
+      2022,
+      2023,
+      2024
+     ],
+     "rev": [
+      [
+       "423b84ef246d4f2f",
+       "423bba31e225cd64",
+       "423befdbb5088d2f",
+       "423c25ed64991c9a",
+       "423c5c67b9dd331b"
+      ],
+      [
+       "423c580c415a3dc6",
+       "423d69fd1602dedd",
+       "423e864585b9a160",
+       "423fad49854f6a7e",
+       "42406fb867d328f4"
+      ],
+      [
+       "423d28ce079f5482",
+       "423f217f6d1badac",
+       "42409e280b2db121",
+       "4241bdc74d0425dd",
+       "4242f0d8be60700f"
+      ]
+     ],
+     "fcf": [
+      [
+       "4204e1acc3c297e6",
+       "4205b8e871005314",
+       "42067f12155fc108",
+       "420709aeb3589e30",
+       "4207b2a41ea97191"
+      ],
+      [
+       "42109daf22c388ca",
+       "4211458d059a10be",
+       "4211daf63be85885",
+       "4212786218a5c6ea",
+       "421327ae38c64772"
+      ],
+      [
+       "42168e74801392d7",
+       "421771dd702c5716",
+       "42189a0c2fec541e",
+       "4219dc84c36cc323",
+       "421b33d8a9bdcb3c"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2020,
+       "metric": "revenue",
+       "actual": "423b8046572d69fb",
+       "error_pct": "c007ca234a38c0df",
+       "in_band": false
+      },
+      {
+       "fy": 2020,
+       "metric": "fcf",
+       "actual": "420bb82106cc805f",
+       "error_pct": "c03096a3aa660f0f",
+       "in_band": true
+      },
+      {
+       "fy": 2021,
+       "metric": "revenue",
+       "actual": "423faafc01b0c410",
+       "error_pct": "401ea68aa05ac6c1",
+       "in_band": false
+      },
+      {
+       "fy": 2021,
+       "metric": "fcf",
+       "actual": "c1e4447853007d7a",
+       "error_pct": "c05caac29d04f03e",
+       "in_band": false
+      },
+      {
+       "fy": 2022,
+       "metric": "revenue",
+       "actual": "424079cb9e333ed1",
+       "error_pct": "401fcde89e595dc5",
+       "in_band": true
+      },
+      {
+       "fy": 2022,
+       "metric": "fcf",
+       "actual": "421601e5835a0935",
+       "error_pct": "4037410ac0de0282",
+       "in_band": true
+      },
+      {
+       "fy": 2023,
+       "metric": "revenue",
+       "actual": "4242f6bc74e968dd",
+       "error_pct": "4033bb954f3ef3c5",
+       "in_band": false
+      },
+      {
+       "fy": 2023,
+       "metric": "fcf",
+       "actual": "4213e1d16ca680e0",
+       "error_pct": "401e9365921e72ca",
+       "in_band": true
+      },
+      {
+       "fy": 2024,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2024,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      }
+     ]
+    },
+    {
+     "as_of": "2021-03-31",
+     "base_fy": 2020,
+     "base_revenue": "423b8046572d69fb",
+     "growth": "3f95baa3a18258c0",
+     "growth_std": "3f8f73dd297ba35a",
+     "m_mean": "3fc2b9ddfdb9319b",
+     "m_std": "3fa54f5fe44829a8",
+     "window": [
+      2016,
+      2017,
+      2018,
+      2019,
+      2020
+     ],
+     "flags": [
+      "FY2019-20 recast mismatch: continuing-ops revenue vs unrecast consolidated OCF (margin/growth distorted)"
+     ],
+     "targets": [
+      2021,
+      2022,
+      2023,
+      2024,
+      2025
+     ],
+     "rev": [
+      [
+       "423b8d74eec2ccf3",
+       "423b9aa9d81a5d7d",
+       "423ba7e5163bc196",
+       "423bb526ac301327",
+       "423bc26e9d01e0c1"
+      ],
+      [
+       "423c17c758562042",
+       "423cb28afcf1854a",
+       "423d50a33b0b0d53",
+       "423df2226ba0efe6",
+       "423e971b4cc543ce"
+      ],
+      [
+       "423ca08e7310ef7f",
+       "423dcca47d3f0ad6",
+       "423f0504334dea0f",
+       "4240251731f914d5",
+       "4240ce54920dfc0a"
+      ]
+     ],
+     "fcf": [
+      [
+       "4204c16298e24c4c",
+       "4205318617ae20b7",
+       "4205a9113f9b574e",
+       "420616ef7902a538",
+       "42066fb093012280"
+      ],
+      [
+       "42107b4b888a8966",
+       "4210d810a81cc031",
+       "421139b9afab477c",
+       "42118b05c7364a04",
+       "4211e2a2fa2baf34"
+      ],
+      [
+       "421659eab763d49e",
+       "4216d5a49f15e838",
+       "42175d5cdbcf668c",
+       "4217fe19cb9ff5c2",
+       "4218c5bbee55c6d3"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2021,
+       "metric": "revenue",
+       "actual": "423faafc01b0c410",
+       "error_pct": "40297391bc4c0efa",
+       "in_band": false
+      },
+      {
+       "fy": 2021,
+       "metric": "fcf",
+       "actual": "c1e4447853007d7a",
+       "error_pct": "c05cd7c2b347f9eb",
+       "in_band": false
+      },
+      {
+       "fy": 2022,
+       "metric": "revenue",
+       "actual": "424079cb9e333ed1",
+       "error_pct": "402da5dcc3670a74",
+       "in_band": false
+      },
+      {
+       "fy": 2022,
+       "metric": "fcf",
+       "actual": "421601e5835a0935",
+       "error_pct": "403ea77d54b4761b",
+       "in_band": true
+      },
+      {
+       "fy": 2023,
+       "metric": "revenue",
+       "actual": "4242f6bc74e968dd",
+       "error_pct": "403d612f5f760c92",
+       "in_band": false
+      },
+      {
+       "fy": 2023,
+       "metric": "fcf",
+       "actual": "4213e1d16ca680e0",
+       "error_pct": "402ed85a5a7cde10",
+       "in_band": true
+      },
+      {
+       "fy": 2024,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2024,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2025,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2025,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      }
+     ]
+    },
+    {
+     "as_of": "2022-03-31",
+     "base_fy": 2021,
+     "base_revenue": "423faafc01b0c410",
+     "growth": "3face88fb7958b00",
+     "growth_std": "3fac6372dbe7cbbb",
+     "m_mean": "3fbd246ba9d23208",
+     "m_std": "3fb42afac8b8a5d0",
+     "window": [
+      2017,
+      2018,
+      2019,
+      2020,
+      2021
+     ],
+     "flags": [
+      "FY2019-20 recast mismatch: continuing-ops revenue vs unrecast consolidated OCF (margin/growth distorted)"
+     ],
+     "targets": [
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+     ],
+     "rev": [
+      [
+       "423f3e719d6c9a6f",
+       "423ed35b41641ce8",
+       "423e69b3f25f6eb3",
+       "423e0176c639f018",
+       "423d9a9ee3a7b5fb"
+      ],
+      [
+       "4240bebf5286f736",
+       "4241b56ccdab23d8",
+       "4242ba4c2d9cef88",
+       "4243ce2e8e911bec",
+       "4244f1f11537ab8c"
+      ],
+      [
+       "4241db101f78d789",
+       "424422b84a427574",
+       "4246b4e6b07ca40c",
+       "42499b1f544f63d2",
+       "424ce01d42bbc424"
+      ]
+     ],
+     "fcf": [
+      [
+       "41da1cfe10dd3b26",
+       "41dbe558be2793bc",
+       "41dc2b2bd5221db8",
+       "41ddae6d82b69949",
+       "41de60a8b41d69a4"
+      ],
+      [
+       "420ea5e95e911d4c",
+       "42102f8c45c21b01",
+       "4210f11ce5f77548",
+       "42119ac8ca440ea8",
+       "4212819d7d876044"
+      ],
+      [
+       "421c8302697b16d1",
+       "421e7ba236f7feb1",
+       "4220a4d96ac1b38f",
+       "422209b84b5b230f",
+       "4223b04b20feee0d"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2022,
+       "metric": "revenue",
+       "actual": "424079cb9e333ed1",
+       "error_pct": "bff9bc61ab54fd16",
+       "in_band": true
+      },
+      {
+       "fy": 2022,
+       "metric": "fcf",
+       "actual": "421601e5835a0935",
+       "error_pct": "4045ce892df8b245",
+       "in_band": true
+      },
+      {
+       "fy": 2023,
+       "metric": "revenue",
+       "actual": "4242f6bc74e968dd",
+       "error_pct": "401c59b479e4b922",
+       "in_band": true
+      },
+      {
+       "fy": 2023,
+       "metric": "fcf",
+       "actual": "4213e1d16ca680e0",
+       "error_pct": "4036d6526a19612a",
+       "in_band": true
+      },
+      {
+       "fy": 2024,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2024,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2025,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2025,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2026,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2026,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      }
+     ]
+    },
+    {
+     "as_of": "2023-03-31",
+     "base_fy": 2022,
+     "base_revenue": "424079cb9e333ed1",
+     "growth": "3fadd3e35dbdbf40",
+     "growth_std": "3fac0865f1adbb51",
+     "m_mean": "3fba09fbada5b1ba",
+     "m_std": "3fb043c94154d5ba",
+     "window": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022
+     ],
+     "flags": [
+      "FY2019-20 recast mismatch: continuing-ops revenue vs unrecast consolidated OCF (margin/growth distorted)"
+     ],
+     "targets": [
+      2023,
+      2024,
+      2025,
+      2026,
+      2027
+     ],
+     "rev": [
+      [
+       "42404c96ca72b9f3",
+       "42401fde020d42c9",
+       "423fe73fe13d50a7",
+       "423f8fb68ad1b2aa",
+       "423f391d6693c159"
+      ],
+      [
+       "424174054ab73bc8",
+       "42427d1742c76e12",
+       "424395e2fb696736",
+       "4244bf5749c5891e",
+       "4245fa712e4b3cab"
+      ],
+      [
+       "424298277bcbb89d",
+       "4244fc410a7d8f95",
+       "4247af1010e6c9b2",
+       "424abab38b671e36",
+       "424e2a97a207d9e5"
+      ]
+     ],
+     "fcf": [
+      [
+       "41e630f132b619d9",
+       "41e6e7db703ce0ae",
+       "41e7b66b942fe72f",
+       "41e937be74844dc5",
+       "41ea6555fa690aa6"
+      ],
+      [
+       "420c7fa8deadfbfc",
+       "420e3afe89cb5834",
+       "420f8aa2b674e2d8",
+       "42107ee38503e4aa",
+       "42115643fec0d1f1"
+      ],
+      [
+       "42195c2d3022787f",
+       "421b38e1f8a78143",
+       "421d9ea60fefccb2",
+       "42201606a70af0ad",
+       "42219a611e8da7b4"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2023,
+       "metric": "revenue",
+       "actual": "4242f6bc74e968dd",
+       "error_pct": "40214f7481105708",
+       "in_band": false
+      },
+      {
+       "fy": 2023,
+       "metric": "fcf",
+       "actual": "4213e1d16ca680e0",
+       "error_pct": "4043c3d809afa8f0",
+       "in_band": true
+      },
+      {
+       "fy": 2024,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2024,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2025,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2025,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2026,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2026,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2027,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2027,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      }
+     ]
+    },
+    {
+     "as_of": "2024-03-30",
+     "base_fy": 2023,
+     "base_revenue": "4242f6bc74e968dd",
+     "growth": "3fb5e63592da3700",
+     "growth_std": "3fb09ba4b0aa1dcd",
+     "m_mean": "3fbac86275a09c46",
+     "m_std": "3fb08122a52cf80c",
+     "window": [
+      2019,
+      2020,
+      2021,
+      2022,
+      2023
+     ],
+     "flags": [
+      "FY2019-20 recast mismatch: continuing-ops revenue vs unrecast consolidated OCF (margin/growth distorted)"
+     ],
+     "targets": [
+      2024,
+      2025,
+      2026,
+      2027,
+      2028
+     ],
+     "rev": [
+      [
+       "4243094269d2c1e0",
+       "42431bda7950ac93",
+       "42432e84b51755a6",
+       "424341412eec3c27",
+       "4243540ff8a64271"
+      ],
+      [
+       "42449c2d99eaa83e",
+       "42466634a92322a8",
+       "424857feb21d22e6",
+       "424a74ff5977129e",
+       "424cc0f6f97a768c"
+      ],
+      [
+       "42462a994b53d855",
+       "4249e8eb441a682d",
+       "424e49144f9634e3",
+       "4251b334a235e8f0",
+       "4254b06e4be78f70"
+      ]
+     ],
+     "fcf": [
+      [
+       "41ec2c07c9ce8a44",
+       "41edc3eb7c30fe84",
+       "41f00e75f7a758e3",
+       "41f14e3508d73be6",
+       "41f2b60cc58d4f92"
+      ],
+      [
+       "4211582aebd8bcae",
+       "4212b5a956213c1a",
+       "421413e09f20e62b",
+       "421592432337fe99",
+       "421726b24cce8880"
+      ],
+      [
+       "421e994a6e47969d",
+       "42210b68afb795a5",
+       "4222f50ebb6ea120",
+       "422580420adb6119",
+       "4227edfe382a4c06"
+      ]
+     ],
+     "outcomes": [
+      {
+       "fy": 2024,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2024,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2025,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2025,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2026,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2026,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2027,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2027,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2028,
+       "metric": "revenue",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      },
+      {
+       "fy": 2028,
+       "metric": "fcf",
+       "actual": null,
+       "error_pct": null,
+       "in_band": null
+      }
+     ]
+    }
+   ],
+   "skipped": [
+    [
+     "2009-03-31",
+     "only 1 usable annual period(s) available \u2014 at least 3 are required to derive mechanical backtest parameters (revenue CAGR and FCF margin distribution)."
+    ],
+    [
+     "2010-03-31",
+     "only 2 usable annual period(s) available \u2014 at least 3 are required to derive mechanical backtest parameters (revenue CAGR and FCF margin distribution)."
+    ]
+   ],
+   "coverage": [
+    74,
+    106
+   ],
+   "bias": {
+    "1": {
+     "fcf": [
+      "403333a6e469d8b3",
+      12
+     ],
+     "revenue": [
+      "3ffddf9a712dc702",
+      13
+     ]
+    },
+    "2": {
+     "fcf": [
+      "4031d319ad6113f2",
+      12
+     ],
+     "revenue": [
+      "4009e34be5b3524b",
+      12
+     ]
+    },
+    "3": {
+     "fcf": [
+      "4038c651ce910ab4",
+      9
+     ],
+     "revenue": [
+      "400623b798c1c6c7",
+      11
+     ]
+    },
+    "4": {
+     "fcf": [
+      "c0269d6f5d5bf69f",
+      9
+     ],
+     "revenue": [
+      "3ff263f19ca7b873",
+      10
+     ]
+    },
+    "5": {
+     "fcf": [
+      "402aa8b4b362ba02",
+      9
+     ],
+     "revenue": [
+      "3fab1acbfe94a839",
+      9
+     ]
+    }
+   },
+   "cli_stdout": "\nSynthetic Flag Co (IBM) -- point-in-time vintage backtest\n  horizon 5y | 3,000 paths | seed 123456789\n  estimates: point-in-time (filed_date <= as-of) | actuals: as currently reported (may be restated)\n\nREVENUE ($B)\n  vintage       base  target      P10      P50      P90   actual    err%  band  flags\n  2011-03-31    2010    2011     85.1     87.7     90.3     91.9    +4.8    NO  -\n  2011-03-31    2010    2012     86.4     91.8     97.3    103.2   +12.5    NO  -\n  2011-03-31    2010    2013     87.7     96.0    104.7    107.7   +12.2    NO  -\n  2011-03-31    2010    2014     89.0    100.4    112.8    106.1    +5.7   yes  -\n  2011-03-31    2010    2015     90.3    105.0    121.5    101.3    -3.5   yes  -\n  2012-03-30    2011    2012     94.1     97.7    101.3    103.2    +5.6    NO  -\n  2012-03-30    2011    2013     96.2    103.8    111.6    107.7    +3.7   yes  -\n  2012-03-30    2011    2014     98.5    110.3    123.0    106.1    -3.8   yes  -\n  2012-03-30    2011    2015    100.7    117.3    135.5    101.3   -13.6   yes  -\n  2012-03-30    2011    2016    103.1    124.6    149.3    108.6   -12.8   yes  -\n  2013-03-31    2011    2012     94.1     97.7    101.3    103.2    +5.6    NO  -\n  2013-03-31    2011    2013     96.2    103.8    111.6    107.7    +3.7   yes  -\n  2013-03-31    2011    2014     98.5    110.3    123.0    106.1    -3.8   yes  -\n  2013-03-31    2011    2015    100.7    117.3    135.5    101.3   -13.6   yes  -\n  2013-03-31    2011    2016    103.1    124.6    149.3    108.6   -12.8   yes  -\n  2014-03-31    2013    2014    109.8    115.3    120.8    106.1    -8.0    NO  -\n  2014-03-31    2013    2015    111.9    123.5    135.5    101.3   -18.0    NO  -\n  2014-03-31    2013    2016    114.1    132.2    152.1    108.6   -17.9    NO  -\n  2014-03-31    2013    2017    116.3    141.6    170.6    109.2   -22.9    NO  -\n  2014-03-31    2013    2018    118.5    151.7    191.4    112.8   -25.6    NO  -\n  2015-03-31    2014    2015    105.6    112.7    119.7    101.3   -10.1    NO  -\n  2015-03-31    2014    2016    105.0    119.6    135.0    108.6    -9.2   yes  -\n  2015-03-31    2014    2017    104.4    127.0    152.3    109.2   -14.0   yes  -\n  2015-03-31    2014    2018    103.9    134.8    171.8    112.8   -16.3   yes  -\n  2015-03-31    2014    2019    103.3    143.2    193.8    117.3   -18.1   yes  -\n  2016-03-30    2015    2016     95.7    103.9    112.1    108.6    +4.5   yes  -\n  2016-03-30    2015    2017     90.3    106.6    124.1    109.2    +2.4   yes  -\n  2016-03-30    2015    2018     85.3    109.4    137.3    112.8    +3.2   yes  -\n  2016-03-30    2015    2019     80.5    112.2    152.0    117.3    +4.5   yes  -\n  2016-03-30    2015    2020     76.0    115.1    168.2    118.1    +2.6   yes  -\n  2017-03-31    2016    2017    103.7    110.1    116.4    109.2    -0.8   yes  -\n  2017-03-31    2016    2018     99.0    111.6    124.8    112.8    +1.1   yes  -\n  2017-03-31    2016    2019     94.5    113.1    133.9    117.3    +3.7   yes  -\n  2017-03-31    2016    2020     90.2    114.7    143.5    118.1    +3.0   yes  -\n  2017-03-31    2016    2021     86.1    116.3    153.9    136.0   +17.0   yes  -\n  2018-03-31    2017    2018    103.7    109.7    115.6    112.8    +2.9   yes  -\n  2018-03-31    2017    2019     98.4    110.1    122.4    117.3    +6.5   yes  -\n  2018-03-31    2017    2020     93.4    110.6    129.5    118.1    +6.8   yes  -\n  2018-03-31    2017    2021     88.7    111.1    137.1    136.0   +22.5   yes  -\n  2018-03-31    2017    2022     84.2    111.6    145.2    141.5   +26.9   yes  -\n  2019-03-31    2017    2018    103.7    109.7    115.6    112.8    +2.9   yes  -\n  2019-03-31    2017    2019     98.4    110.1    122.4    117.3    +6.5   yes  -\n  2019-03-31    2017    2020     93.4    110.6    129.5    118.1    +6.8   yes  -\n  2019-03-31    2017    2021     88.7    111.1    137.1    136.0   +22.5   yes  -\n  2019-03-31    2017    2022     84.2    111.6    145.2    141.5   +26.9   yes  -\n  2020-03-30    2019    2020    118.2    121.7    125.2    118.1    -3.0    NO  1\n  2020-03-30    2019    2021    119.1    126.3    133.7    136.0    +7.7    NO  1\n  2020-03-30    2019    2022    120.0    131.1    142.7    141.5    +8.0   yes  1\n  2020-03-30    2019    2023    120.9    136.1    152.4    162.9   +19.7    NO  1\n  2020-03-30    2019    2024    121.8    141.2    162.7        .       .     .  1\n  2021-03-31    2020    2021    118.3    120.7    123.0    136.0   +12.7    NO  1\n  2021-03-31    2020    2022    118.6    123.3    128.0    141.5   +14.8    NO  1\n  2021-03-31    2020    2023    118.8    125.9    133.2    162.9   +29.4    NO  1\n  2021-03-31    2020    2024    119.0    128.6    138.7        .       .     .  1\n  2021-03-31    2020    2025    119.2    131.4    144.4        .       .     .  1\n  2022-03-31    2021    2022    134.2    143.8    153.4    141.5    -1.6   yes  1\n  2022-03-31    2021    2023    132.4    152.1    173.0    162.9    +7.1   yes  1\n  2022-03-31    2021    2024    130.6    160.9    195.0        .       .     .  1\n  2022-03-31    2021    2025    128.9    170.1    220.0        .       .     .  1\n  2022-03-31    2021    2026    127.1    179.9    248.0        .       .     .  1\n  2023-03-31    2022    2023    140.0    149.9    159.7    162.9    +8.7    NO  1\n  2023-03-31    2022    2024    138.5    158.8    180.3        .       .     .  1\n  2023-03-31    2022    2025    137.0    168.2    203.4        .       .     .  1\n  2023-03-31    2022    2026    135.6    178.2    229.6        .       .     .  1\n  2023-03-31    2022    2027    134.1    188.8    259.1        .       .     .  1\n  2024-03-30    2023    2024    163.5    177.0    190.4        .       .     .  1\n  2024-03-30    2023    2025    164.1    192.4    222.6        .       .     .  1\n  2024-03-30    2023    2026    164.8    209.1    260.2        .       .     .  1\n  2024-03-30    2023    2027    165.4    227.3    304.1        .       .     .  1\n  2024-03-30    2023    2028    166.0    247.0    355.4        .       .     .  1\n\nFREE CASH FLOW ($B)\n  vintage       base  target      P10      P50      P90   actual    err%  band  flags\n  2011-03-31    2010    2011      3.2      5.6      8.0     13.6  +141.7    NO  -\n  2011-03-31    2010    2012      3.3      5.9      8.3     12.2  +107.6    NO  -\n  2011-03-31    2010    2013      3.5      6.1      8.8     13.8  +125.1    NO  -\n  2011-03-31    2010    2014      3.6      6.4      9.4        .       .     .  -\n  2011-03-31    2010    2015      3.7      6.7      9.9     12.7   +90.7    NO  -\n  2012-03-30    2011    2012      3.2      8.3     13.3     12.2   +46.8   yes  -\n  2012-03-30    2011    2013      3.3      8.9     14.2     13.8   +56.2   yes  -\n  2012-03-30    2011    2014      3.5      9.4     15.2        .       .     .  -\n  2012-03-30    2011    2015      3.8      9.9     16.5     12.7   +28.4   yes  -\n  2012-03-30    2011    2016      4.0     10.5     17.6     15.5   +47.2   yes  -\n  2013-03-31    2011    2012      3.2      8.3     13.3     12.2   +46.8   yes  -\n  2013-03-31    2011    2013      3.3      8.9     14.2     13.8   +56.2   yes  -\n  2013-03-31    2011    2014      3.5      9.4     15.2        .       .     .  -\n  2013-03-31    2011    2015      3.8      9.9     16.5     12.7   +28.4   yes  -\n  2013-03-31    2011    2016      4.0     10.5     17.6     15.5   +47.2   yes  -\n  2014-03-31    2013    2014      5.1     11.4     17.4        .       .     .  -\n  2014-03-31    2013    2015      5.5     12.2     18.8     12.7    +4.3   yes  -\n  2014-03-31    2013    2016      5.9     13.0     20.6     15.5   +19.1   yes  -\n  2014-03-31    2013    2017      6.2     13.8     22.5     24.8   +79.7    NO  -\n  2014-03-31    2013    2018      6.5     14.7     24.6     13.1   -10.7   yes  -\n  2015-03-31    2014    2015      7.1     12.6     17.8     12.7    +1.3   yes  -\n  2015-03-31    2014    2016      7.5     13.2     19.4     15.5   +16.8   yes  -\n  2015-03-31    2014    2017      7.8     14.0     21.2     24.8   +77.8    NO  -\n  2015-03-31    2014    2018      8.0     14.8     23.1     13.1   -11.3   yes  -\n  2015-03-31    2014    2019      8.2     15.7     25.4     14.0   -10.9   yes  -\n  2016-03-30    2015    2016     11.7     13.5     15.4     15.5   +14.2    NO  -\n  2016-03-30    2015    2017     11.4     13.9     16.6     24.8   +79.3    NO  -\n  2016-03-30    2015    2018     10.9     14.2     18.2     13.1    -7.3   yes  -\n  2016-03-30    2015    2019     10.3     14.6     20.0     14.0    -4.0   yes  -\n  2016-03-30    2015    2020      9.8     14.9     22.1     14.9    -0.2   yes  -\n  2017-03-31    2016    2017     12.5     14.2     15.9     24.8   +75.3    NO  -\n  2017-03-31    2016    2018     12.3     14.4     16.6     13.1    -8.5   yes  -\n  2017-03-31    2016    2019     11.8     14.6     17.6     14.0    -4.0   yes  -\n  2017-03-31    2016    2020     11.4     14.7     18.8     14.9    +1.1   yes  -\n  2017-03-31    2016    2021     10.9     14.9     20.0     -2.7  -118.2    NO  -\n  2018-03-31    2017    2018     11.2     17.2     22.9     13.1   -23.4   yes  -\n  2018-03-31    2017    2019     11.0     17.1     23.6     14.0   -18.4   yes  -\n  2018-03-31    2017    2020     10.9     17.1     24.2     14.9   -13.2   yes  -\n  2018-03-31    2017    2021     10.6     17.2     24.9     -2.7  -115.8    NO  -\n  2018-03-31    2017    2022     10.3     17.2     25.8     23.6   +37.4   yes  -\n  2019-03-31    2017    2018     11.2     17.2     22.9     13.1   -23.4   yes  -\n  2019-03-31    2017    2019     11.0     17.1     23.6     14.0   -18.4   yes  -\n  2019-03-31    2017    2020     10.9     17.1     24.2     14.9   -13.2   yes  -\n  2019-03-31    2017    2021     10.6     17.2     24.9     -2.7  -115.8    NO  -\n  2019-03-31    2017    2022     10.3     17.2     25.8     23.6   +37.4   yes  -\n  2020-03-30    2019    2020     11.2     17.8     24.2     14.9   -16.6   yes  1\n  2020-03-30    2019    2021     11.7     18.5     25.2     -2.7  -114.7    NO  1\n  2020-03-30    2019    2022     12.1     19.2     26.4     23.6   +23.3   yes  1\n  2020-03-30    2019    2023     12.4     19.8     27.8     21.3    +7.6   yes  1\n  2020-03-30    2019    2024     12.7     20.6     29.2        .       .     .  1\n  2021-03-31    2020    2021     11.1     17.7     24.0     -2.7  -115.4    NO  1\n  2021-03-31    2020    2022     11.4     18.1     24.5     23.6   +30.7   yes  1\n  2021-03-31    2020    2023     11.6     18.5     25.1     21.3   +15.4   yes  1\n  2021-03-31    2020    2024     11.9     18.8     25.8        .       .     .  1\n  2021-03-31    2020    2025     12.0     19.2     26.6        .       .     .  1\n  2022-03-31    2021    2022      1.8     16.5     30.6     23.6   +43.6   yes  1\n  2022-03-31    2021    2023      1.9     17.4     32.7     21.3   +22.8   yes  1\n  2022-03-31    2021    2024      1.9     18.2     35.7        .       .     .  1\n  2022-03-31    2021    2025      2.0     18.9     38.7        .       .     .  1\n  2022-03-31    2021    2026      2.0     19.9     42.3        .       .     .  1\n  2023-03-31    2022    2023      3.0     15.3     27.2     21.3   +39.5   yes  1\n  2023-03-31    2022    2024      3.1     16.2     29.2        .       .     .  1\n  2023-03-31    2022    2025      3.2     16.9     31.8        .       .     .  1\n  2023-03-31    2022    2026      3.4     17.7     34.5        .       .     .  1\n  2023-03-31    2022    2027      3.5     18.6     37.8        .       .     .  1\n  2024-03-30    2023    2024      3.8     18.6     32.9        .       .     .  1\n  2024-03-30    2023    2025      4.0     20.1     36.6        .       .     .  1\n  2024-03-30    2023    2026      4.3     21.6     40.7        .       .     .  1\n  2024-03-30    2023    2027      4.6     23.2     46.2        .       .     .  1\n  2024-03-30    2023    2028      5.0     24.9     51.4        .       .     .  1\n\n  Coverage: 74 of 106 realized outcomes inside the P10-P90 band (70%; nominal 80%)\n  Mean signed error (actual vs P50; + = model underestimated):\n    +1y: revenue +1.9% (n=13) | fcf +19.2% (n=12)\n    +2y: revenue +3.2% (n=12) | fcf +17.8% (n=12)\n    +3y: revenue +2.8% (n=11) | fcf +24.8% (n=9)\n    +4y: revenue +1.1% (n=10) | fcf -11.3% (n=9)\n    +5y: revenue +0.1% (n=9) | fcf +13.3% (n=9)\n  Data flags (inputs surfaced, not fixed):\n    [1] FY2019-20 recast mismatch: continuing-ops revenue vs unrecast consolidated OCF (margin/growth distorted)\n  Skipped vintages (2 -- insufficient point-in-time history):\n    2009-03-31: only 1 usable annual period(s) available \u2014 at least 3 are required to derive mechanical backtest parameters (revenue CAGR and FCF margin distribution).\n    2010-03-31: only 2 usable annual period(s) available \u2014 at least 3 are required to derive mechanical backtest parameters (revenue CAGR and FCF margin distribution).\n",
+   "cli_code": 0
+  },
+  {
+   "ticker": "THIN",
+   "horizon": 3,
+   "n": 1000,
+   "seed": 7,
+   "vintages": [],
+   "skipped": [
+    [
+     "2023-03-31",
+     "only 1 usable annual period(s) available \u2014 at least 3 are required to derive mechanical backtest parameters (revenue CAGR and FCF margin distribution)."
+    ],
+    [
+     "2024-03-30",
+     "only 2 usable annual period(s) available \u2014 at least 3 are required to derive mechanical backtest parameters (revenue CAGR and FCF margin distribution)."
+    ]
+   ],
+   "coverage": [
+    0,
+    0
+   ],
+   "bias": {},
+   "cli_stdout": "THIN: no usable vintages \u2014 history is too thin at every fiscal-year-end vintage date.\n  2023-03-31: only 1 usable annual period(s) available \u2014 at least 3 are required to derive mechanical backtest parameters (revenue CAGR and FCF margin distribution).\n  2024-03-30: only 2 usable annual period(s) available \u2014 at least 3 are required to derive mechanical backtest parameters (revenue CAGR and FCF margin distribution).\n",
+   "cli_code": 1
+  }
+ ]
+}

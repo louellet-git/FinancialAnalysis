@@ -1,8 +1,10 @@
 //! The printed numbers of the three Python runners, made again with the generic features of
-//! `analysis.rs` and `Overrides`. The expected text is the recorded output of
-//! `analysis/IBM/dcf_drivers_run.py`, `analysis/JNJ/first_pass_run.py` and
-//! `analysis/ANT/first_pass_run.py` (`rust/tests/fixtures/dcf/runner_*.txt`). Each Rust line
-//! must be a line of that text, character for character.
+//! `analysis.rs` and `Overrides`. The expected text is the recorded output of the runners
+//! (`analysis/IBM/dcf_drivers_run.py`, `analysis/JNJ/first_pass_run.py` and
+//! `analysis/ANT/first_pass_run.py`, deleted on 2026-11-19 after this record was made;
+//! `rust/tests/fixtures/dcf/runner_*.txt`). Each Rust line must be a line of that text,
+//! character for character. The commands for each table: `analysis/ANT/COMMANDS.md`,
+//! `analysis/JNJ/COMMANDS.md`, `analysis/IBM/README.md`.
 
 use super::analysis::{at_means, full, implied_mean, p50_with_mean, quick};
 use super::driver::Ramp;
@@ -624,4 +626,69 @@ fn ant_runner_growth_limit_and_commitment_check() {
         ),
     );
     has(&doc, &format!("  base rate: AMZN 27.4% a year for 10 years from this base = ${:.0}B in year 10", ANT_BASE_REVENUE * 1.274f64.powi(10) / B));
+}
+
+// ---------------------------------------------------------------------------
+// The generic options that replace the special code of the runners
+// ---------------------------------------------------------------------------
+
+#[test]
+fn keep_year1_margin_is_the_core_mean_of_the_ant_runner() {
+    use super::analysis::p50_with_mean;
+    let m = model("ANT");
+    let keep = Overrides { shift_bounds: true, keep_year1_margin: true, ..Overrides::default() };
+    for cm in [0.16, 0.28, 0.34] {
+        let generic = p50_with_mean(&m, &keep, "core_margin", cm, N, SEED).unwrap();
+        let runner = quick(&m, &ant_core(cm, 8), N, SEED).unwrap().p50;
+        assert!((generic - runner).abs() <= 1e-9 * runner.abs(), "core {cm}: {generic} vs {runner}");
+    }
+    // without a ramp on margin_mix_drift the option is an error, not a silent no-op
+    let mut flat = m.clone();
+    for d in flat.drivers.iter_mut().filter(|d| d.name == "margin_mix_drift") {
+        d.ramp = None;
+        d.schedule = Some(vec![d.mean; 10]);
+    }
+    let e = flat.with_overrides(&Overrides { means: vec![("core_margin".into(), 0.3)], keep_year1_margin: true, ..Overrides::default() }).unwrap_err();
+    assert!(e.0.contains("needs a ramp"), "{e}");
+}
+
+#[test]
+fn the_fade_and_commitment_options_give_the_numbers_of_the_ant_runner() {
+    use super::analysis::{commitment_check, fade_check, Commitments};
+    let m = model("ANT");
+    let (hand, fade) = (ant_hand_dcf(&m, None), fade_check(&m).unwrap());
+    assert!((fade.constant_value - hand).abs() < 1e-9 * hand);
+    assert!((fade.value - 31.81).abs() < 0.005 && (fade.growth[0] - 0.389).abs() < 0.0005, "{fade:?}");
+    assert!((fade.value - fade.constant_value - 0.11).abs() < 0.005);
+    let r = full(&m, &Overrides::default(), N, SEED).unwrap();
+    let g = &r.driver_draws.iter().find(|(k, _)| k == "g_total").unwrap().1;
+    let c = commitment_check(&m, &Commitments::parse("70.7e9:451.6e9:4.25:0.31").unwrap(), g).unwrap();
+    assert!((c.first_share_of_year1_revenue - 0.67).abs() < 0.005);
+    assert!((c.total_share_at_mean_growth - 0.73).abs() < 0.005 && (c.total_share_at_p10_growth - 0.86).abs() < 0.005);
+    assert!((c.gap_per_share + 1.85).abs() < 0.005, "{}", c.gap_per_share);
+    let pct: Vec<i64> = c.margin_before_sbc_committed.iter().map(|x| (x * 100.0).round() as i64).collect();
+    assert_eq!(pct, vec![2, -24, -9, 4]);
+    assert!(Commitments::parse("70.7e9:451.6e9:1:0.31").is_err());
+    assert!(Commitments::parse("1:2:3").is_err());
+}
+
+#[test]
+fn the_equity_weight_fixed_point_and_reinvestment_options_match_the_ibm_runner() {
+    use super::analysis::{ev_fixed_point_lines, reinvestment_lines};
+    let doc = text("IBM");
+    let m = model("IBM");
+    let lines = ev_fixed_point_lines(&m, 0.765).unwrap();
+    assert!(lines.len() >= 3);
+    for l in lines.iter().filter(|l| l.contains("iter")) {
+        has(&doc, l);
+    }
+    // the last line has the model mean in the generic text; the number is the number of the runner
+    assert!(doc.contains("Fixed point E/V ~ 0.726"), "the runner has the fixed point");
+    let last = lines.last().unwrap();
+    assert!(last.starts_with("  Fixed point E/V ~ 0.726 (model mean 0.72)"), "{last}");
+    let r = reinvestment_lines(&m).unwrap();
+    let want = doc.lines().find(|l| l.starts_with("  Terminal reinvestment")).unwrap();
+    assert_eq!(r[0], want);
+    let roic = r[1].split("ROIC = tg/RR = ").nth(1).unwrap().trim_end_matches('.');
+    assert!(doc.lines().any(|l| l.contains(&format!("ROIC = tg/RR = {roic}"))), "ROIC {roic} not in the runner text");
 }

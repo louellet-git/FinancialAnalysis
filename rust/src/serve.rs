@@ -534,14 +534,14 @@ pub fn fa_error(e: FaError) -> Reply {
         FaError::Python { .. } if lower.contains("mapcheck") => {
             "Build mapcheck: cargo build --release --manifest-path rust/mapcheck/Cargo.toml"
         }
-        FaError::Python { .. }
-            if ["fetch failed", "request failed", "connection", "timed out", "timeout", "threshold"]
+        FaError::Python { .. } | FaError::Data(_)
+            if ["fetch failed", "request failed", "connection", "timed out", "timeout", "threshold", "http 4", "http 5", "tls", "dns"]
                 .iter()
                 .any(|w| lower.contains(w)) =>
         {
             "A data site did not answer or refused the request. Make sure that the computer has a network connection. Try again later."
         }
-        FaError::Python { .. } => "",
+        FaError::Python { .. } | FaError::Data(_) => "",
     };
     Reply::error_with_detail(502, &text, hint)
 }
@@ -818,9 +818,13 @@ mod tests {
     fn missing_python_gives_a_hint() {
         let root = fixture("python");
         let c = ctx(&root);
+        // the verdict is Rust: a ticker with only the old driver_model.py has no model for it
         let r = route(&c, "GET", "/api/verdict?ticker=TEST&price=10");
         assert_eq!(r.status, 502);
-        assert!(body(&r)["hint"].as_str().unwrap().contains("Install Python"));
+        assert!(body(&r)["error"].as_str().unwrap().contains("No driver model"));
+        // a Python entry point that does not start (the company report) gives the install hint
+        let spawn = FaError::Spawn { python: "python-that-does-not-exist".into(), source: std::io::Error::other("not found") };
+        assert!(body(&fa_error(spawn))["hint"].as_str().unwrap().contains("Install Python"));
         assert_eq!(route(&c, "GET", "/api/rates/nyfed?rate=XYZ").status, 400);
     }
 

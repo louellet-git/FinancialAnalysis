@@ -9,6 +9,7 @@
 use std::fmt;
 
 pub mod analysis;
+pub mod backtest;
 pub mod classic;
 pub mod cli;
 pub mod driver;

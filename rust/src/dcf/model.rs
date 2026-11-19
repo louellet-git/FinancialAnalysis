@@ -115,6 +115,7 @@ impl ModelSpec {
     /// applies the checks of the engine.
     pub fn with_overrides(&self, o: &Overrides) -> Result<ModelSpec, DcfError> {
         let mut m = self.clone();
+        let core0 = m.drivers.iter().find(|d| d.name == "core_margin").map(|d| d.mean);
         if let Some(y) = o.years {
             m.projection_years = y;
         }
@@ -155,6 +156,25 @@ impl ModelSpec {
             d.schedule = None;
             d.ramp = Some(r.clone());
             d.mean = r.start;
+        }
+        if o.keep_year1_margin {
+            let core1 = m.drivers.iter().find(|d| d.name == "core_margin").map(|d| d.mean);
+            if let (Some(c0), Some(c1)) = (core0, core1) {
+                if c0 != c1 && !o.ramps.iter().any(|(n, _)| n == "margin_mix_drift") {
+                    let d = m
+                        .drivers
+                        .iter_mut()
+                        .find(|d| d.name == "margin_mix_drift")
+                        .ok_or_else(|| DcfError("keep_year1_margin needs the driver margin_mix_drift.".into()))?;
+                    let ramp = d
+                        .ramp
+                        .as_mut()
+                        .ok_or_else(|| DcfError("keep_year1_margin needs a ramp on margin_mix_drift.".into()))?;
+                    ramp.start += c0 - c1;
+                    d.mean = ramp.start;
+                    d.schedule = None;
+                }
+            }
         }
         for (a, b, rho) in &o.corr {
             if let Some(e) = m.corr.iter_mut().find(|e| (e.a == *a && e.b == *b) || (e.a == *b && e.b == *a)) {
@@ -199,6 +219,9 @@ pub struct Overrides {
     pub year1_growth: Vec<(String, Option<f64>)>,
     /// Year-1 revenue of a segment, in dollars: the pin is `revenue / base - 1`.
     pub year1_revenue: Vec<(String, f64)>,
+    /// A change of the `core_margin` mean keeps the margin of year 1: the ramp of
+    /// `margin_mix_drift` starts at the old start plus the old mean minus the new mean.
+    pub keep_year1_margin: bool,
 }
 
 impl Overrides {

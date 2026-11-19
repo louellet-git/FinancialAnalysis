@@ -84,3 +84,25 @@ Python engine files, which is stage 4.
 Next: stage 3 (backtest), then stage 4 (report, `analyze`, deletion). Open question for
 the owner: the numbers of the Python runners become tests with a recorded text; keep the
 fixture files as the record when the runners are deleted.
+
+## State (2026-11-19, later): stage 3 and the rates part of stage 4 are done
+
+**Done in this branch.**
+- Backtest: `fa backtest TICKER` (`rust/src/dcf/backtest.rs`). The text is the same as the
+  Python text, character for character, on the real IBM store and on synthetic companies
+  (`rust/tests/fixtures/backtest/`). `scripts/backtest.py` and its tests are deleted.
+- Rates and bonds: `fa rates`, `fa bonds` (`rust/src/rates.rs`, `bonds.rs`) with the same
+  JSON fields; `fa verdict` with `--rf-date`, `--rf-base-date` and `--rating` in Rust
+  (`verdict_rates.rs`). Deleted: `rates.py`, `bonds.py`, `verdict.py`, `scripts/verdict.py`,
+  `scripts/run_dcf.py` and their tests. FRED does not answer the cloud container
+  (HIDDEN-ASSUMPTIONS #128).
+- Runners: the four Python runners are deleted. `fa dcf drivers` has the options for each of
+  their numbers (`--keep-year1-margin`, `--path`, `--fade`, `--commitments`,
+  `--ev-fixed-point`, `--reinvestment-check`); `fa dcf classic` has `--margin-mean`,
+  `--margin-std`, `--net-debt`, `--shares`. The commands: `analysis/ANT/COMMANDS.md`,
+  `analysis/JNJ/COMMANDS.md`, `analysis/IBM/README.md`.
+
+**Still open (stage 4).** `scripts/visualize_dcf.py` imports `driver_dcf.py`, `dcf.py`,
+`scenarios.py` and `backtest.py`, and reads `analysis/<TICKER>/driver_model.py`. These
+files, `analysis/*/driver_model.py` and their tests stay until the report is Rust
+(HIDDEN-ASSUMPTIONS #135).

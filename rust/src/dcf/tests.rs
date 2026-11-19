@@ -863,7 +863,7 @@ fn classic_and_scenarios_commands_read_the_company_file() {
 }
 
 #[test]
-fn fa_verdict_runs_in_rust_for_a_model_file_and_needs_python_for_rates() {
+fn fa_verdict_runs_in_rust_for_a_model_file() {
     let fa = crate::Fa::new("python-that-does-not-exist", repo());
     let v = fa.verdict("ibm", 228.53, &crate::VerdictOptions::default()).unwrap();
     let want = &fixture("verdict.json")["cases"].as_array().unwrap().iter().find(|c| c["ticker"] == "IBM" && c["price"] == 228.53).unwrap().clone();
@@ -879,9 +879,10 @@ fn fa_verdict_runs_in_rust_for_a_model_file_and_needs_python_for_rates() {
     for k in ["ticker", "simulations", "seed", "price", "p10", "p25", "p50", "p75", "p90", "chance_price_too_high", "verdict", "rates", "credit"] {
         assert!(j.get(k).is_some(), "{k}");
     }
-    // with market rates the Python path is used: here it cannot start
-    let with_rates = crate::VerdictOptions { rf_date: Some("today".into()), ..Default::default() };
-    assert!(matches!(fa.verdict("IBM", 228.53, &with_rates), Err(crate::FaError::Spawn { .. })));
+    // a rating or a base date without --rf-date is an error before any request; so is an unknown ticker
+    let rating_only = crate::VerdictOptions { rating: Some("A-".into()), ..Default::default() };
+    assert!(matches!(fa.verdict("IBM", 228.53, &rating_only), Err(crate::FaError::Data(m)) if m.contains("--rf-date")));
+    assert!(matches!(fa.verdict("ZZZ", 228.53, &crate::VerdictOptions::default()), Err(crate::FaError::Data(m)) if m.contains("No driver model")));
     // a bad price or seed is an error, not a panic
     assert!(fa.verdict("IBM", -1.0, &crate::VerdictOptions::default()).is_err());
     assert!(fa.verdict("IBM", 10.0, &crate::VerdictOptions { seed: Some(-1), ..Default::default() }).is_err());
@@ -894,4 +895,261 @@ fn money_format_is_the_format_of_run_dcf() {
     assert_eq!(m(443.1e9), "$443.1B");
     assert_eq!(m(-230.677e9), "$-230.7B");
     assert_eq!(m(0.0), "$0.0B");
+}
+
+// ---------------------------------------------------------------------------
+// Backtest: the expected values come from `financial_analysis/backtest.py` (recorded
+// before the Rust code was written) on three synthetic companies.
+// ---------------------------------------------------------------------------
+
+mod backtest_parity {
+    use super::super::backtest::*;
+    use super::super::classic::Company;
+    use super::{close, hex};
+    use serde_json::Value;
+
+    fn bt_fixture(name: &str) -> String {
+        let path = format!("{}/tests/fixtures/backtest/{name}", env!("CARGO_MANIFEST_DIR"));
+        std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path}: {e}"))
+    }
+
+    fn company(t: &str) -> Company {
+        serde_json::from_str(&bt_fixture(&format!("{t}.json"))).unwrap()
+    }
+
+    fn hexo(v: &Value) -> Option<f64> {
+        v.as_str().map(|_| hex(v))
+    }
+
+    #[test]
+    fn every_recorded_run_matches_python() {
+        let exp: Value = serde_json::from_str(&bt_fixture("expected.json")).unwrap();
+        let mut checked = 0;
+        for run in exp["runs"].as_array().unwrap() {
+            let t = run["ticker"].as_str().unwrap();
+            let (h, n, seed) = (run["horizon"].as_u64().unwrap() as usize, run["n"].as_u64().unwrap() as usize, run["seed"].as_u64().unwrap());
+            let c = company(t);
+            let r = run_backtest(&c, h, n, seed);
+            let what = format!("{t} h{h} n{n} s{seed}");
+            let vs = run["vintages"].as_array().unwrap();
+            assert_eq!(r.vintages.len(), vs.len(), "{what}: vintages");
+            for (v, e) in r.vintages.iter().zip(vs) {
+                let w = format!("{what} {}", e["as_of"]);
+                assert_eq!(v.params.as_of.as_deref(), e["as_of"].as_str(), "{w}");
+                assert_eq!(v.params.base_fiscal_year as i64, e["base_fy"].as_i64().unwrap(), "{w}");
+                close(v.params.base_revenue, hex(&e["base_revenue"]), 1e-9, &format!("{w} base"));
+                close(v.params.growth, hex(&e["growth"]), 1e-9, &format!("{w} growth"));
+                close(v.params.growth_std, hex(&e["growth_std"]), 1e-9, &format!("{w} growth_std"));
+                close(v.params.fcf_margin_mean, hex(&e["m_mean"]), 1e-9, &format!("{w} m_mean"));
+                close(v.params.fcf_margin_std, hex(&e["m_std"]), 1e-9, &format!("{w} m_std"));
+                let window: Vec<i32> = e["window"].as_array().unwrap().iter().map(|y| y.as_i64().unwrap() as i32).collect();
+                assert_eq!(v.params.window_years, window, "{w}");
+                let flags: Vec<&str> = e["flags"].as_array().unwrap().iter().map(|f| f.as_str().unwrap()).collect();
+                assert_eq!(v.params.data_flags, flags, "{w}");
+                for band in 0..3 {
+                    for (y, (a, b)) in v.projection.rev[band].iter().zip(e["rev"][band].as_array().unwrap()).enumerate() {
+                        close(*a, hex(b), 1e-9, &format!("{w} rev band {band} year {y}"));
+                    }
+                    for (y, (a, b)) in v.projection.fcf[band].iter().zip(e["fcf"][band].as_array().unwrap()).enumerate() {
+                        close(*a, hex(b), 1e-9, &format!("{w} fcf band {band} year {y}"));
+                    }
+                }
+                let outs = e["outcomes"].as_array().unwrap();
+                assert_eq!(v.outcomes.len(), outs.len(), "{w}");
+                for (o, eo) in v.outcomes.iter().zip(outs) {
+                    assert_eq!(o.target_fiscal_year as i64, eo["fy"].as_i64().unwrap());
+                    assert_eq!(o.metric, eo["metric"].as_str().unwrap());
+                    assert_eq!(o.in_band, eo["in_band"].as_bool(), "{w} in_band");
+                    match (o.actual, hexo(&eo["actual"])) {
+                        (Some(a), Some(b)) => close(a, b, 1e-12, &format!("{w} actual")),
+                        (None, None) => {}
+                        other => panic!("{w}: actual {other:?}"),
+                    }
+                    match (o.error_pct, hexo(&eo["error_pct"])) {
+                        (Some(a), Some(b)) => close(a, b, 1e-9, &format!("{w} error")),
+                        (None, None) => {}
+                        other => panic!("{w}: error {other:?}"),
+                    }
+                    checked += 1;
+                }
+            }
+            let skipped: Vec<(String, String)> =
+                run["skipped"].as_array().unwrap().iter().map(|s| (s[0].as_str().unwrap().to_string(), s[1].as_str().unwrap().to_string())).collect();
+            assert_eq!(r.skipped, skipped, "{what}: skipped");
+            let cov = run["coverage"].as_array().unwrap();
+            assert_eq!(r.coverage(), (cov[0].as_u64().unwrap() as usize, cov[1].as_u64().unwrap() as usize), "{what}: coverage");
+            let bias = r.bias_by_horizon();
+            for (h_, d) in run["bias"].as_object().unwrap() {
+                for (m, pair) in d.as_object().unwrap() {
+                    let (mean, k) = bias[&h_.parse::<i32>().unwrap()][m.as_str()];
+                    close(mean, hex(&pair[0]), 1e-9, &format!("{what} bias {h_} {m}"));
+                    assert_eq!(k as u64, pair[1].as_u64().unwrap());
+                }
+            }
+            // the text output is the same as the output of scripts/backtest.py, byte for byte
+            let text = if r.vintages.is_empty() { render_no_vintages(t, &r) } else { render(&c.company_name, &c.ticker, &r, n, seed) };
+            assert_eq!(text, run["cli_stdout"].as_str().unwrap_or(""), "{what}: text");
+        }
+        assert!(checked > 200, "too few rows compared: {checked}");
+    }
+}
+
+mod backtest_behavior {
+    //! The tests of `tests/test_backtest.py`, moved to Rust: a synthetic company with exact 5%
+    //! growth and an exact 20% FCF margin.
+    use super::super::backtest::*;
+    use super::super::classic::{Company, Period};
+
+    const GROWTH: f64 = 0.05;
+    const MARGIN: f64 = 0.20;
+    const BASE: f64 = 100e9;
+
+    fn annual(year: i32, revenue: Option<f64>, ocf: Option<f64>, capex: Option<f64>, filed: Option<&str>, form: &str) -> Period {
+        Period {
+            form: form.into(),
+            period_end: format!("{year}-12-31"),
+            filed_date: filed.map_or(format!("{}-02-15", year + 1), str::to_string),
+            revenue,
+            operating_cash_flow: ocf,
+            capex,
+            ..Period::default()
+        }
+    }
+
+    fn clean(year: i32) -> Period {
+        let r = BASE * (1.0 + GROWTH).powi(year - 2018);
+        annual(year, Some(r), Some(r * (MARGIN + 0.02)), Some(-r * 0.02), None, "10-K")
+    }
+
+    fn company(n_years: i32, ticker: &str) -> Company {
+        Company { ticker: ticker.into(), company_name: "Synthetic Co".into(), periods: (0..n_years).map(|i| clean(2018 + i)).collect() }
+    }
+
+    fn as_of(fy: i32) -> String {
+        add_days(&format!("{fy}-12-31"), FILING_LAG_DAYS)
+    }
+
+    fn years(v: &[&Period]) -> Vec<i32> {
+        v.iter().map(|p| p.period_end[..4].parse().unwrap()).collect()
+    }
+
+    #[test]
+    fn add_days_crosses_month_and_year_ends() {
+        assert_eq!(add_days("2020-12-31", 90), "2021-03-31");
+        assert_eq!(add_days("2023-12-31", 90), "2024-03-30");
+        assert_eq!(add_days("2019-01-31", 1), "2019-02-01");
+    }
+
+    #[test]
+    fn vintage_uses_filed_date_not_period_end() {
+        let mut c = company(4, "SYN");
+        c.periods[3].filed_date = "2022-09-01".into();
+        assert_eq!(years(&vintage_periods(&c, "2022-03-31")), vec![2018, 2019, 2020]);
+        assert_eq!(years(&vintage_periods(&c, "2022-09-01")), vec![2018, 2019, 2020, 2021]);
+    }
+
+    #[test]
+    fn phantom_rows_and_quarterly_forms_are_not_used() {
+        let mut c = company(4, "SYN");
+        c.periods.push(annual(2016, Some(1e9), None, None, Some("2016-06-30"), "10-K"));
+        c.periods.push(annual(2015, None, Some(1e9), None, Some("2015-06-30"), "10-K"));
+        c.periods.push(annual(2014, None, None, None, Some("2014-06-30"), "10-K"));
+        c.periods.push(annual(2021, Some(30e9), Some(8e9), Some(-1e9), Some("2021-05-01"), "10-Q"));
+        assert_eq!(years(&vintage_periods(&c, "2030-01-01")), vec![2018, 2019, 2020, 2021]);
+    }
+
+    #[test]
+    fn a_10ka_replaces_the_10k_of_the_same_year() {
+        let mut c = company(4, "SYN");
+        c.periods.push(annual(2020, Some(1.0e9), Some(1.0e8), Some(-1.0e7), Some("2021-09-01"), "10-K/A"));
+        let v = vintage_periods(&c, "2030-01-01");
+        assert_eq!(v.len(), 4);
+        assert_eq!(v[2].revenue, Some(1.0e9));
+    }
+
+    #[test]
+    fn params_recover_growth_and_margin_and_floor_the_stds() {
+        let c = company(8, "SYN");
+        let p = mechanical_params(&vintage_periods(&c, "2030-01-01"), "SYN", Some("2030-01-01")).unwrap();
+        assert!((p.growth - GROWTH).abs() < 1e-9);
+        assert!((p.fcf_margin_mean - MARGIN).abs() < 1e-9);
+        assert_eq!(p.growth_std, 0.01);
+        assert_eq!(p.fcf_margin_std, 0.01);
+        assert_eq!(p.base_fiscal_year, 2025);
+        assert_eq!(p.window_years, vec![2021, 2022, 2023, 2024, 2025]);
+    }
+
+    #[test]
+    fn params_need_three_periods() {
+        let c = company(2, "SYN");
+        let e = mechanical_params(&vintage_periods(&c, "2030-01-01"), "SYN", None).unwrap_err();
+        assert!(e.0.contains("usable annual period"), "{e}");
+    }
+
+    #[test]
+    fn params_have_no_forward_information() {
+        let (full, cut) = (company(8, "SYN"), company(4, "SYN"));
+        let d = as_of(2021);
+        let a = mechanical_params(&vintage_periods(&full, &d), "SYN", Some(&d)).unwrap();
+        let b = mechanical_params(&vintage_periods(&cut, &d), "SYN", Some(&d)).unwrap();
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn the_ibm_flag_shows_only_when_the_window_has_a_flagged_year() {
+        let c = company(8, "IBM");
+        let flagged = mechanical_params(&vintage_periods(&c, &as_of(2020)), "IBM", None).unwrap();
+        assert_eq!(flagged.data_flags.len(), 1);
+        let clear = mechanical_params(&vintage_periods(&c, "2030-01-01"), "IBM", None).unwrap();
+        assert!(clear.data_flags.is_empty());
+    }
+
+    #[test]
+    fn projection_median_is_near_the_deterministic_path() {
+        let c = company(8, "SYN");
+        let p = mechanical_params(&vintage_periods(&c, "2030-01-01"), "SYN", None).unwrap();
+        let pr = project(&p, 3, 20_000, 7);
+        assert_eq!(pr.target_fiscal_years, vec![2026, 2027, 2028]);
+        for t in 1..=3usize {
+            let det = p.base_revenue * (1.0 + GROWTH).powi(t as i32);
+            assert!((pr.rev[1][t - 1] / det - 1.0).abs() < 0.01);
+            assert!((pr.fcf[1][t - 1] / (det * MARGIN) - 1.0).abs() < 0.01);
+            assert!(pr.rev[0][t - 1] < pr.rev[1][t - 1] && pr.rev[1][t - 1] < pr.rev[2][t - 1]);
+        }
+        assert_eq!(pr, project(&p, 3, 20_000, 7), "same seed, same result");
+    }
+
+    #[test]
+    fn backtest_joins_actuals_and_scores_them() {
+        let r = run_backtest(&company(8, "SYN"), 3, 20_000, 7);
+        let v = r.vintages.iter().find(|v| v.params.as_of.as_deref() == Some(as_of(2020).as_str())).unwrap();
+        let o = v.outcomes.iter().find(|o| o.target_fiscal_year == 2021 && o.metric == "revenue").unwrap();
+        assert!((o.actual.unwrap() / (BASE * 1.05f64.powi(3)) - 1.0).abs() < 1e-12);
+        assert!((o.error_pct.unwrap() - (o.actual.unwrap() / o.p50 - 1.0) * 100.0).abs() < 1e-12);
+        assert!(o.error_pct.unwrap().abs() < 2.0);
+        assert_eq!(o.in_band, Some(true));
+        // the last vintage has nothing reported
+        let last = r.vintages.last().unwrap();
+        assert!(last.outcomes.iter().all(|o| o.actual.is_none() && o.error_pct.is_none() && o.in_band.is_none()));
+        // skipped vintages have a reason, and the others are in order
+        assert_eq!(r.skipped.iter().map(|s| s.0.clone()).collect::<Vec<_>>(), vec![as_of(2018), as_of(2019)]);
+        assert_eq!(r.vintages.iter().map(|v| v.params.as_of.clone().unwrap()).collect::<Vec<_>>(), (2020..=2025).map(as_of).collect::<Vec<_>>());
+        // a deterministic history is covered everywhere
+        let (inside, total) = r.coverage();
+        assert!(total > 0 && inside == total);
+        let bias = r.bias_by_horizon();
+        assert_eq!(bias.keys().copied().collect::<Vec<_>>(), vec![1, 2, 3]);
+        assert_eq!(r.vintages.len() * 3 * 2, r.vintages.iter().map(|v| v.outcomes.len()).sum::<usize>());
+    }
+
+    #[test]
+    fn a_shock_outside_the_band_is_found() {
+        let mut c = company(8, "SYN");
+        c.periods[6].revenue = c.periods[6].revenue.map(|r| r * 1.6);
+        let r = run_backtest(&c, 3, 5_000, 7);
+        let v = r.vintages.iter().find(|v| v.params.as_of.as_deref() == Some(as_of(2021).as_str())).unwrap();
+        let o = v.outcomes.iter().find(|o| o.target_fiscal_year == 2024 && o.metric == "revenue").unwrap();
+        assert_eq!(o.in_band, Some(false));
+        assert!(o.error_pct.unwrap() > 0.0);
+    }
 }

@@ -1,6 +1,6 @@
 //! `fa dcf ...` commands: driver model runs, classic runs, scenarios, and the verdict.
 
-use super::analysis::{implied_mean, sensitivity};
+use super::analysis::{commitment_check, path_at_means, ev_fixed_point_lines, fade_check, implied_mean, reinvestment_lines, sensitivity, Commitments};
 use super::classic::{run_classic, Company, DcfAssumptions};
 use super::driver::Ramp;
 use super::model::{available_models, hand_dcf_at_means, ModelSpec, Overrides};
@@ -19,6 +19,8 @@ USAGE:
   fa dcf drivers TICKER [OPTIONS]                 driver model: value per share, attribution
   fa dcf classic TICKER [OPTIONS]                 classic model on data/processed/<TICKER>.json
   fa dcf scenarios TICKER [--data-dir D] [--json] bear/base/bull of the classic model, value per share
+  fa backtest TICKER [--horizon Y (3)] [--simulations N (10000)] [--seed S (7)] [--data-dir D]
+                                                  point-in-time vintage backtest of revenue and FCF projections
 
 DRIVERS OPTIONS:
   --seed S (7)   --sims N (10000)   --json
@@ -27,12 +29,25 @@ DRIVERS OPTIONS:
   --flat NAME=V        a scheduled driver becomes flat          --ramp NAME=START:END:YEARS
   --corr A,B=RHO       new correlation of a pair
   --net-debt X  --shares X  --years N  --year1-revenue SEGMENT=X
+  --keep-year1-margin  a new core_margin mean keeps the margin of year 1 (the ramp of margin_mix_drift moves)
   --sensitivity NAME=V1,V2,..   P50 for each value of one driver mean (repeat for more drivers)
   --implied-price P --implied-driver NAME [--range LO,HI]
                        the mean of the driver for which the P50 is P (bisection)
+  --ev-fixed-point W   price-value fixed point of the equity weight at the means, start W (for example 0.765)
+  --reinvestment-check terminal M&A reinvestment at the means and the return on it that supports the terminal growth
+  --path               year-by-year revenue, margin and FCFF at the means; year-N revenue P10/P50/P90 (one-segment models)
+  --fade               check at the driver means: growth falls from a high value in year 2 to the terminal
+                       growth in the last year, with the same last-year revenue (one-segment models)
+  --commitments FIRST:TOTAL:YEARS:OTHER
+                       committed spend (dollars) against revenue; FIRST = spend of year 1, TOTAL = spend
+                       to the end of YEARS model years (for example 4.25), OTHER = share of revenue for
+                       all other cash costs (for example 70.7e9:451.6e9:4.25:0.31)
 
 CLASSIC OPTIONS:
   --sims N (10000)  --years N (10)  --growth G (0.15)  --wacc W (0.10)  --terminal-growth T (0.03)
+  --growth-std (0.05)  --wacc-std (0.01)  --terminal-std (0.005)
+  --margin-mean M --margin-std S   FCF margin of the draws (default: from the annual history)
+  --net-debt X --shares Y          also print the value per share, (EV - X) / Y
   --seed S  --data-dir D (default <repo>/data/processed)  --json
 
 VERDICT:
@@ -128,6 +143,7 @@ fn overrides_from(a: &Args) -> R<Overrides> {
     for t in a.all("--year1-revenue") {
         o.year1_revenue.push(pair(t, "--year1-revenue")?);
     }
+    o.keep_year1_margin = a.flag("--keep-year1-margin");
     o.net_debt = a.num("--net-debt")?;
     o.shares = a.num("--shares")?;
     o.years = a.num("--years")?;
@@ -164,9 +180,9 @@ pub(crate) fn money(v: f64) -> String {
 fn drivers(repo: &Path, rest: &[String]) -> R<()> {
     let a = Args { rest };
     a.check(
-        &["--json", "--shift-bounds"],
+        &["--json", "--shift-bounds", "--keep-year1-margin", "--fade", "--reinvestment-check", "--path"],
         &[
-            "--seed", "--sims", "--price", "--set", "--flat", "--ramp", "--corr", "--net-debt", "--shares", "--years",
+            "--ev-fixed-point", "--commitments", "--seed", "--sims", "--price", "--set", "--flat", "--ramp", "--corr", "--net-debt", "--shares", "--years",
             "--year1-revenue", "--sensitivity", "--implied-price", "--implied-driver", "--range",
         ],
     )?;
@@ -216,6 +232,21 @@ fn drivers(repo: &Path, rest: &[String]) -> R<()> {
         implied = Some((name.to_string(), price, implied_mean(&base, &o, name, lo, hi, price, n, seed)?));
     }
 
+    let fixed_point = match a.num::<f64>("--ev-fixed-point")? {
+        Some(w) => Some(ev_fixed_point_lines(&spec, w)?),
+        None => None,
+    };
+    let reinvestment = if a.flag("--reinvestment-check") { Some(reinvestment_lines(&spec)?) } else { None };
+    let fade = if a.flag("--fade") { Some(fade_check(&spec)?) } else { None };
+    let commitments = match a.one("--commitments") {
+        Some(t) => {
+            let g_name = &spec.segments.first().ok_or_else(|| DcfError("the model has no segment".into()))?.growth_driver;
+            let g = &r.driver_draws.iter().find(|(k, _)| k == g_name).ok_or_else(|| DcfError("no draws of the growth driver".into()))?.1;
+            Some(commitment_check(&spec, &Commitments::parse(t)?, g)?)
+        }
+        None => None,
+    };
+
     if a.flag("--json") {
         let attribution: Vec<Value> =
             ranked.iter().map(|x| json!({"driver": x.driver, "p50_minus_1sd": x.p50_minus_1sd, "p50_plus_1sd": x.p50_plus_1sd})).collect();
@@ -230,6 +261,10 @@ fn drivers(repo: &Path, rest: &[String]) -> R<()> {
             "share_below_price": below.iter().map(|(p, s)| json!({"price": p, "share": s})).collect::<Vec<_>>(),
             "sensitivity": sens.iter().map(|(n, v)| json!({"driver": n, "p50": v.iter().map(|(x, y)| json!({"mean": x, "p50": y})).collect::<Vec<_>>()})).collect::<Vec<_>>(),
             "implied": implied.as_ref().map(|(d, p, v)| json!({"driver": d, "price": p, "mean": v})),
+            "ev_fixed_point": fixed_point,
+            "reinvestment_check": reinvestment,
+            "fade": fade,
+            "commitments": commitments,
             "notes": spec.notes,
         });
         println!("{}", serde_json::to_string_pretty(&out).expect("json"));
@@ -245,6 +280,41 @@ fn drivers(repo: &Path, rest: &[String]) -> R<()> {
         println!("  paths with value below ${p:.2}: {:.1}%", s * 100.0);
     }
     println!("  terminal value share of EV at means {:.1}%; terminal growth pinned on {:.2}% of paths", r.tv_ev_share_at_means * 100.0, r.tg_pinned_fraction * 100.0);
+    // equity value and enterprise value at the P50 and at each price, against the trailing revenue
+    let base_revenue: f64 = spec.segments.iter().map(|x| x.base_revenue).sum();
+    let equity_p50 = q[2] * spec.shares;
+    println!(
+        "  equity value at P50 {} on {:.1}M shares; net debt {} ({:+.2} a share); EV at P50 {} = {:.1} x trailing revenue",
+        money(equity_p50),
+        spec.shares / 1e6,
+        money(spec.net_debt),
+        spec.net_debt / spec.shares,
+        money(equity_p50 + spec.net_debt),
+        (equity_p50 + spec.net_debt) / base_revenue
+    );
+    for (p, _) in &below {
+        println!("  market value at ${p:.2}: {}; EV {:.1} x trailing revenue", money(p * spec.shares), (p * spec.shares + spec.net_debt) / base_revenue);
+    }
+    if a.flag("--path") {
+        let (rev, margin) = path_at_means(&spec, None)?;
+        println!("\nPATH AT THE MEANS (revenue, margin after SBC and M&A charge, FCFF)");
+        let last = rev.len();
+        for t in [1usize, 3, 5, last].into_iter().filter(|t| *t <= last) {
+            println!(
+                "  year {t:>2}: revenue {}, margin {:+.1}%, FCFF {}",
+                money(rev[t - 1]),
+                margin[t - 1] * 100.0,
+                money(rev[t - 1] * margin[t - 1])
+            );
+        }
+        let g_name = &spec.segments[0].growth_driver;
+        if let Some((_, g)) = r.driver_draws.iter().find(|(k, _)| k == g_name) {
+            let gp = percentiles(g, &[10.0, 50.0, 90.0]);
+            let y1 = rev[0];
+            let yn = |g: f64| y1 * (1.0 + g).powi(last as i32 - 1);
+            println!("  year-{last} revenue: P10 {} | P50 {} | P90 {}", money(yn(gp[0])), money(yn(gp[1])), money(yn(gp[2])));
+        }
+    }
     println!("\nENGINE CHECK (each driver at its mean)");
     println!(
         "  engine ${:.4} | hand DCF ${:.4} | EV {}, of which terminal value {}",
@@ -262,6 +332,54 @@ fn drivers(repo: &Path, rest: &[String]) -> R<()> {
         for (x, y) in v {
             println!("  mean {x}: {y:.2}");
         }
+    }
+    if let Some(lines) = &fixed_point {
+        println!("\nEQUITY WEIGHT FIXED POINT (price-value iteration at the means)");
+        for l in lines {
+            println!("{l}");
+        }
+    }
+    if let Some(lines) = &reinvestment {
+        println!("\nTERMINAL REINVESTMENT CHECK (at the means)");
+        for l in lines {
+            println!("{l}");
+        }
+    }
+    if let Some(f) = &fade {
+        println!("\nGROWTH FADE (hand calculation at the means, same margins, same last-year revenue)");
+        println!("  constant {:.0}% from year 2: ${:.2}; year-5 revenue ${:.0}B", f.constant_growth * 100.0, f.constant_value, f.constant_revenue_year5 / 1e9);
+        println!(
+            "  fade from {:.1}% in year 2 to {:.2}% in year {}: ${:.2}; year-5 revenue ${:.0}B; difference ${:+.2}",
+            f.growth[0] * 100.0,
+            f.growth[f.growth.len() - 1] * 100.0,
+            spec.projection_years,
+            f.value,
+            f.revenue_year5 / 1e9,
+            f.value - f.constant_value
+        );
+    }
+    if let (Some(c), Some(t)) = (&commitments, a.one("--commitments")) {
+        let spec_c = Commitments::parse(t)?;
+        let years = c.margin_before_sbc_model.len();
+        let fmt = |v: &[f64]| v.iter().map(|x| format!("{:+.0}%", x * 100.0)).collect::<Vec<_>>().join(" / ");
+        println!("\nCOMMITMENT CHECK (revenue at the means)");
+        println!("  next 12 months: committed {} = {:.0}% of year-1 revenue", money(spec_c.first), c.first_share_of_year1_revenue * 100.0);
+        println!(
+            "  to the end of year {}: committed {} = {:.0}% of revenue at mean growth ({}), {:.0}% at P10 growth {:.1}% ({})",
+            spec_c.years,
+            money(spec_c.total),
+            c.total_share_at_mean_growth * 100.0,
+            money(c.cumulative_revenue_at_mean),
+            c.total_share_at_p10_growth * 100.0,
+            c.p10_growth * 100.0,
+            money(c.cumulative_revenue_at_p10)
+        );
+        println!(
+            "  FCFF margin before SBC, years 1 to {years}: model {}; from the committed spend {}",
+            fmt(&c.margin_before_sbc_model),
+            fmt(&c.margin_before_sbc_committed)
+        );
+        println!("  where the committed spend gives a lower margin, the effect at the means is ${:+.2} a share (not in the base)", c.gap_per_share);
     }
     if let Some((d, p, v)) = &implied {
         println!("\nWHAT A PRICE IMPLIES (bisection on the engine P50)");
@@ -293,7 +411,13 @@ fn load_company(repo: &Path, a: &Args, ticker: &str) -> R<Company> {
 
 fn classic(repo: &Path, rest: &[String]) -> R<()> {
     let a = Args { rest };
-    a.check(&["--json"], &["--sims", "--years", "--growth", "--wacc", "--terminal-growth", "--seed", "--data-dir"])?;
+    a.check(
+        &["--json"],
+        &[
+            "--sims", "--years", "--growth", "--wacc", "--terminal-growth", "--growth-std", "--wacc-std", "--terminal-std", "--margin-mean",
+            "--margin-std", "--net-debt", "--shares", "--seed", "--data-dir",
+        ],
+    )?;
     let ticker = rest.first().filter(|t| !t.starts_with("--")).ok_or_else(|| DcfError("classic needs a ticker".into()))?;
     let company = load_company(repo, &a, ticker)?;
     let d = DcfAssumptions::default();
@@ -303,10 +427,27 @@ fn classic(repo: &Path, rest: &[String]) -> R<()> {
         growth_rate_mean: a.num("--growth")?.unwrap_or(d.growth_rate_mean),
         wacc_mean: a.num("--wacc")?.unwrap_or(d.wacc_mean),
         terminal_growth_mean: a.num("--terminal-growth")?.unwrap_or(d.terminal_growth_mean),
+        growth_rate_std: a.num("--growth-std")?.unwrap_or(d.growth_rate_std),
+        wacc_std: a.num("--wacc-std")?.unwrap_or(d.wacc_std),
+        terminal_growth_std: a.num("--terminal-std")?.unwrap_or(d.terminal_growth_std),
+        fcf_margin_mean: a.num("--margin-mean")?,
+        fcf_margin_std: a.num("--margin-std")?,
         seed: a.num("--seed")?,
-        ..d
+    };
+    if asm.fcf_margin_mean.is_some() != asm.fcf_margin_std.is_some() {
+        return e("--margin-mean and --margin-std go together");
+    }
+    let capital: Option<(f64, f64)> = match (a.num::<f64>("--net-debt")?, a.num::<f64>("--shares")?) {
+        (Some(n), Some(s)) if s > 0.0 => Some((n, s)),
+        (None, None) => None,
+        _ => return e("--net-debt and --shares go together (shares above 0)"),
     };
     let r = run_classic(&company, &asm).map_err(|x| DcfError(format!("Cannot value {}: {x}", ticker.to_uppercase())))?;
+    let per_share = capital.map(|(nd, sh)| {
+        let ps: Vec<f64> = r.simulations.iter().map(|v| (v - nd) / sh).collect();
+        let sorted = sorted_copy(&ps);
+        [10.0, 50.0, 90.0].map(|q| percentile(&sorted, q))
+    });
     if a.flag("--json") {
         println!(
             "{}",
@@ -314,6 +455,7 @@ fn classic(repo: &Path, rest: &[String]) -> R<()> {
                 "ticker": company.ticker, "simulations": asm.n_simulations, "years": asm.projection_years, "seed": r.seed,
                 "p10_value": r.p10_value, "median_value": r.median_value, "p90_value": r.p90_value,
                 "mean_value": r.mean_value, "std_value": r.std_value, "median_per_share": r.median_per_share,
+                "net_debt_per_share": per_share.map(|q| json!({"p10": q[0], "p50": q[1], "p90": q[2]})),
             }))
             .expect("json")
         );
@@ -329,6 +471,9 @@ fn classic(repo: &Path, rest: &[String]) -> R<()> {
     match r.median_per_share {
         Some(v) => println!("\n  P50 enterprise value per share (net debt is not subtracted): ${v:.2}"),
         None => println!("\n  Per-share: N/A (no shares outstanding in annual data)"),
+    }
+    if let (Some(q), Some((nd, sh))) = (per_share, capital) {
+        println!("\n  Value per share, (EV - net debt {}) / {:.1}M shares: P10 {:.2} | P50 {:.2} | P90 {:.2}", money(nd), sh / 1e6, q[0], q[1], q[2]);
     }
     Ok(())
 }
@@ -367,20 +512,65 @@ fn scenarios(repo: &Path, rest: &[String]) -> R<()> {
     Ok(())
 }
 
-/// The verdict of a ticker with a model file and no market-rate input. `Ok(None)` when the
-/// ticker has no model file (the caller can use the Python path then).
+/// `fa backtest TICKER`: the point-in-time vintage backtest of `data/processed/<TICKER>.json`.
+/// Returns the exit code. No network.
+pub fn backtest(repo: &Path, rest: &[String]) -> u8 {
+    let result = (|| -> R<u8> {
+        let a = Args { rest };
+        a.check(&[], &["--horizon", "--simulations", "--seed", "--data-dir"])?;
+        let ticker = rest.first().filter(|t| !t.starts_with("--")).ok_or_else(|| DcfError("backtest needs a ticker".into()))?;
+        let horizon: usize = a.num("--horizon")?.unwrap_or(3);
+        let n: usize = a.num("--simulations")?.unwrap_or(10_000);
+        let seed: u64 = a.num("--seed")?.unwrap_or(7);
+        if horizon == 0 || n == 0 {
+            return e("--horizon and --simulations must be positive");
+        }
+        let ticker = ticker.to_uppercase();
+        let company = load_company(repo, &a, &ticker)?;
+        let r = super::backtest::run_backtest(&company, horizon, n, seed);
+        if r.vintages.is_empty() {
+            print!("{}", super::backtest::render_no_vintages(&ticker, &r));
+            return Ok(1);
+        }
+        print!("{}", super::backtest::render(&company.company_name, &ticker, &r, n, seed));
+        Ok(0)
+    })();
+    match result {
+        Ok(code) => code,
+        Err(x) => {
+            eprintln!("fa: {x}");
+            1
+        }
+    }
+}
+
+/// The verdict of a ticker with a model file. `Ok(None)` when the ticker has no model file.
 pub fn verdict(repo: &Path, ticker: &str, price: f64, simulations: u32, seed: i64) -> R<Option<crate::Verdict>> {
+    let Some(spec) = ModelSpec::load(repo, ticker)? else { return Ok(None) };
+    verdict_for_spec(&spec, ticker, price, simulations, seed, None, None).map(Some)
+}
+
+/// The verdict of a model (with market rates in it, when the caller changed the drivers).
+/// `rates` and `credit` only go into the output.
+pub fn verdict_for_spec(
+    spec: &ModelSpec,
+    ticker: &str,
+    price: f64,
+    simulations: u32,
+    seed: i64,
+    rates: Option<crate::RatesContext>,
+    credit: Option<crate::CreditContext>,
+) -> R<crate::Verdict> {
     if !(price.is_finite() && price > 0.0) {
         return e(format!("--price must be a positive number, got {price}"));
     }
     if seed < 0 {
         return e(format!("seed must be 0 or more, got {seed}"));
     }
-    let Some(spec) = ModelSpec::load(repo, ticker)? else { return Ok(None) };
     let r = spec.engine()?.run_paths(simulations as usize, seed as u64, &[])?;
     let p = percentiles(&r.per_share, &[10.0, 25.0, 50.0, 75.0, 90.0]);
     let too_high = chance_price_too_high(&r.per_share, price);
-    Ok(Some(crate::Verdict {
+    Ok(crate::Verdict {
         ticker: ticker.to_uppercase(),
         simulations,
         seed,
@@ -392,9 +582,9 @@ pub fn verdict(repo: &Path, ticker: &str, price: f64, simulations: u32, seed: i6
         p90: p[4],
         chance_price_too_high: too_high,
         verdict: verdict_band(too_high).to_string(),
-        rates: None,
-        credit: None,
-    }))
+        rates,
+        credit,
+    })
 }
 
 /// Run `fa dcf <args>`. Returns the exit code.
