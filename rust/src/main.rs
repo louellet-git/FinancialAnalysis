@@ -8,6 +8,8 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use std::process::ExitCode;
 
+mod serve;
+
 const USAGE: &str = "\
 fa - Rust interface to the FinancialAnalysis Python pipeline
 
@@ -43,12 +45,14 @@ USAGE:
   fa trade backtest [--bot ID]... [--max-risk N] [--out FILE] [-v]   backtest the option bots (fa trade backtest --help)
   fa trade paper [BOT]... [--no-refresh] [--no-live]   forward paper trading, live Cboe option chain (fa trade paper --help)
   fa run MODULE [ARGS...]                         any entry point, e.g. fa run scripts.analyze IBM
+  fa serve [--port N] [--no-open]                 local viewer in the browser (http://127.0.0.1:8765/)
 
 D is YYYY-MM-DD or 'today'. Rates are decimals (0.0507 = 5.07%).
 
 ENVIRONMENT:
   FA_REPO    repository root (default: the repository that holds this crate)
-  FA_PYTHON  Python interpreter (default: <repo>/.venv/bin/python, else python3)";
+  FA_PYTHON  Python interpreter (default: <repo>/.venv/bin/python, else python3;
+             Windows: <repo>\\.venv\\Scripts\\python.exe, else python)";
 
 const RATES: &str = "financial_analysis.rates";
 const BONDS: &str = "financial_analysis.bonds";
@@ -169,6 +173,13 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
             },
             _ => Ok(usage_error("trade needs a command: backtest, fetch or paper")),
         },
+        Some("serve") => {
+            if args[1..].iter().any(|a| a == "-h" || a == "--help") {
+                println!("{}", serve::USAGE);
+                return Ok(ExitCode::SUCCESS);
+            }
+            Ok(serve::serve(fa.clone(), &args[1..]))
+        }
         Some("run") => match args.get(1) {
             None => Ok(usage_error("run needs a module, e.g. scripts.analyze")),
             Some(module) => {
