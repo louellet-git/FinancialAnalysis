@@ -237,10 +237,69 @@ cargo run --release --bin fa -- models frequencies --model vasicek --method ml  
 cargo run --release --bin fa -- models compare --start 1990-01-01                # vasicek, cir, ckls, holee: log-likelihood, AIC
 cargo run --release --bin fa -- models simulate --model cir --kappa 0.5 --theta 0.05 --sigma 0.1 --years 10 --paths 100000 --seed 1
 cargo run --bin fa -- run scripts.analyze IBM     # any Python entry point
+cargo run --release --bin fa -- serve             # local viewer in the browser
 cargo run --example dcf_rates -- IBM 231.09 A-    # library example
 ```
 
 Set `FA_PYTHON` to select the Python interpreter and `FA_REPO` to select the repository.
+
+## Local viewer
+
+`fa serve` starts a local web server and opens a page in the default browser. The page
+shows the stock data, the Monte Carlo DCF, the rates and the bonds in one place.
+
+You must have Rust (`cargo`), Python 3 and the Python packages. Install them one time.
+Then build the two Rust programs.
+
+Windows PowerShell, from the repo root:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+cargo build --release --manifest-path rust/mapcheck/Cargo.toml
+cargo build --release --manifest-path rust/Cargo.toml
+rust\target\release\fa.exe serve
+```
+
+macOS or Linux, from the repo root:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+cargo build --release --manifest-path rust/mapcheck/Cargo.toml
+cargo build --release --manifest-path rust/Cargo.toml
+rust/target/release/fa serve
+```
+
+The program prints the address (`http://127.0.0.1:8765/`). If the port is in use, the
+program tries the next port. Options: `--port N` sets the port. `--no-open` does not
+open the browser. Push Ctrl+C to stop the server.
+
+The program finds Python in this sequence: `FA_PYTHON`, then `.venv` in the repo
+(`.venv\Scripts\python.exe` on Windows, `.venv/bin/python` on macOS and Linux), then
+`python` (Windows) or `python3` (macOS and Linux).
+
+| View | What it shows | Source |
+|---|---|---|
+| Stock | The standard variables of the latest fiscal years with value and source, the status (PASS, WARN, FAIL, N/A), the company type and the findings. | `mapcheck` library, cache `data/raw/` |
+| Monte Carlo DCF | P10 to P90 of the value for each share, the chance that the price is too high, and the verdict. Optional: the market rates of today and a credit rating. | `scripts.verdict` |
+| Rates | The nominal and real Treasury curves, SOFR, EFFR, breakevens, the 5y5y forward and CPI. | `financial_analysis.rates` |
+| Bonds | The ICE BofA yield and spread for each rating, Moody's Aaa and Baa, the HQM corporate curve. | `financial_analysis.bonds` |
+| Option bots | The text of `trading/research/LEADERBOARD.md`. | file |
+
+Limits:
+
+- The server accepts connections from this computer only (127.0.0.1).
+- The Monte Carlo DCF runs only for a ticker with `analysis/<TICKER>/driver_model.py`.
+  The page shows the percentiles as a range chart. It does not show a histogram.
+- A ticker that is not in `data/raw/` needs the SEC. Set `SEC_USER_AGENT` before you
+  start the server (see `rust/mapcheck/README.md`). A fresh clone has no `data/raw/`,
+  thus the first look-up of each ticker needs the SEC.
+- The rates and the bonds need a network connection to the public data sites. If a site
+  does not answer, the page shows the error text. A call that waits for a site can take
+  more than one minute.
+- The program finds the repo from the folder where you built it. If you move the repo,
+  build again or set `FA_REPO`.
 
 ## The two DCF engines
 

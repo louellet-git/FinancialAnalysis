@@ -304,15 +304,14 @@ impl Fa {
     }
 
     /// `FA_REPO` (default: the repository that holds this crate) and `FA_PYTHON`
-    /// (default: `<repo>/.venv/bin/python` if it exists, else `python3`).
+    /// (default: see [`default_python`]).
     pub fn from_env() -> Self {
         let repo = std::env::var_os("FA_REPO")
             .map(PathBuf::from)
             .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join(".."));
-        let python = std::env::var_os("FA_PYTHON").map(PathBuf::from).unwrap_or_else(|| {
-            let venv = repo.join(".venv/bin/python");
-            if venv.exists() { venv } else { PathBuf::from("python3") }
-        });
+        let python = std::env::var_os("FA_PYTHON")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| default_python(&repo, cfg!(windows), |p| p.exists()));
         Fa { python, repo }
     }
 
@@ -468,6 +467,18 @@ impl Fa {
     pub fn check_bonds(&self, days: u32) -> Result<Vec<CheckResult>> {
         self.bonds(vec!["check".into(), "--days".into(), days.to_string()])
     }
+}
+
+/// The interpreter to use when `FA_PYTHON` is not set. Linux and macOS:
+/// `<repo>/.venv/bin/python` if it exists, else `python3`. Windows:
+/// `<repo>\.venv\Scripts\python.exe` if it exists, else `python`.
+pub fn default_python(repo: &Path, windows: bool, exists: impl Fn(&Path) -> bool) -> PathBuf {
+    let (venv, fallback) = if windows {
+        (repo.join(".venv").join("Scripts").join("python.exe"), "python")
+    } else {
+        (repo.join(".venv").join("bin").join("python"), "python3")
+    };
+    if exists(&venv) { venv } else { PathBuf::from(fallback) }
 }
 
 fn push_date(a: &mut Vec<String>, date: Option<&str>) {
@@ -643,6 +654,15 @@ mod tests {
         let v: Verdict = parse_output(&format!("{{{base}, \"credit\": {credit}}}")).unwrap();
         let c = v.credit.unwrap();
         assert_eq!((c.index.as_str(), c.kd_spread.value), ("A", 0.0067));
+    }
+
+    #[test]
+    fn default_python_for_each_platform() {
+        let repo = Path::new("repo");
+        assert_eq!(default_python(repo, false, |_| false), PathBuf::from("python3"));
+        assert_eq!(default_python(repo, true, |_| false), PathBuf::from("python"));
+        assert_eq!(default_python(repo, false, |_| true), repo.join(".venv").join("bin").join("python"));
+        assert_eq!(default_python(repo, true, |_| true), repo.join(".venv").join("Scripts").join("python.exe"));
     }
 
     #[test]

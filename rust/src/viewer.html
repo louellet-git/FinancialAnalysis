@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FinancialAnalysis Viewer</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f6f6f4;
+  --surface: #fcfcfb;
+  --border: #dddcd7;
+  --text: #0b0b0b;
+  --text-2: #52514e;
+  --muted: #7a7974;
+  --accent: #2a78d6;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --band-outer: #c9dcf5;
+  --band-inner: #7fb0ea;
+  --good: #0a7d32; --good-bg: #e3f4e8;
+  --warn: #8a5a00; --warn-bg: #fdf0d2;
+  --bad: #b3261e;  --bad-bg: #fbe4e2;
+  --na: #52514e;   --na-bg: #ecebe7;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #111110; --surface: #1a1a19; --border: #383835;
+    --text: #f0efec; --text-2: #c3c2b7; --muted: #95948c;
+    --accent: #3987e5; --series-1: #3987e5; --series-2: #d95926;
+    --band-outer: #23466f; --band-inner: #3a6fae;
+    --good: #6fd08c; --good-bg: #183323; --warn: #f0c060; --warn-bg: #3a2e12;
+    --bad: #ff8a80; --bad-bg: #3d1d1b; --na: #c3c2b7; --na-bg: #2a2a28;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111110; --surface: #1a1a19; --border: #383835;
+  --text: #f0efec; --text-2: #c3c2b7; --muted: #95948c;
+  --accent: #3987e5; --series-1: #3987e5; --series-2: #d95926;
+  --band-outer: #23466f; --band-inner: #3a6fae;
+  --good: #6fd08c; --good-bg: #183323; --warn: #f0c060; --warn-bg: #3a2e12;
+  --bad: #ff8a80; --bad-bg: #3d1d1b; --na: #c3c2b7; --na-bg: #2a2a28;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { padding: 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
+header h1 { margin: 0 0 4px; font-size: 20px; }
+header p { margin: 0; color: var(--text-2); font-size: 13px; }
+nav { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 16px; background: var(--surface);
+  border-bottom: 1px solid var(--border); }
+nav button { border: 1px solid transparent; background: none; color: var(--text-2); padding: 6px 12px;
+  border-radius: 6px; font: inherit; cursor: pointer; }
+nav button[aria-selected="true"] { background: var(--bg); color: var(--text); border-color: var(--border); font-weight: 600; }
+main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+section.view { display: none; }
+section.view.active { display: block; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; min-width: 0; }
+.card h2 { margin: 0 0 8px; font-size: 17px; }
+.card h3 { margin: 16px 0 8px; font-size: 15px; }
+.help { color: var(--text-2); font-size: 13px; margin: 0 0 12px; }
+form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--text-2); }
+label.check { flex-direction: row; align-items: center; gap: 6px; }
+input, select { font: inherit; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg); color: var(--text); min-width: 0; }
+input[type="text"], input[type="number"] { width: 140px; }
+button.go { font: inherit; padding: 7px 16px; border-radius: 6px; border: 1px solid var(--accent);
+  background: var(--accent); color: #fff; cursor: pointer; }
+button.go:disabled { opacity: .6; cursor: progress; }
+.status { margin-top: 12px; font-size: 14px; }
+.working { color: var(--text-2); }
+.error { background: var(--bad-bg); color: var(--bad); border-radius: 6px; padding: 10px 12px; }
+.error .hint { color: var(--text); margin-top: 4px; font-size: 13px; }
+.error details { margin-top: 6px; color: var(--text); font-size: 12px; }
+.scroll { overflow-x: auto; max-width: 100%; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--text-2); font-weight: 600; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.src { color: var(--muted); font-size: 12px; word-break: break-word; }
+tr.group td { background: var(--bg); font-weight: 600; color: var(--text-2); }
+.badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-weight: 600; font-size: 12px; }
+.b-PASS { color: var(--good); background: var(--good-bg); }
+.b-WARN { color: var(--warn); background: var(--warn-bg); }
+.b-FAIL, .b-ERROR { color: var(--bad); background: var(--bad-bg); }
+.b-NA, .b-INFO { color: var(--na); background: var(--na-bg); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 12px 0; }
+.tile { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+.tile .k { color: var(--text-2); font-size: 12px; }
+.tile .v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tile .s { color: var(--muted); font-size: 12px; }
+svg { display: block; width: 100%; height: auto; }
+svg text { fill: var(--text-2); font-size: 11px; }
+svg .grid { stroke: var(--border); stroke-width: 1; }
+.legend { display: flex; gap: 16px; font-size: 12px; color: var(--text-2); margin: 4px 0; flex-wrap: wrap; }
+.legend span::before { content: ""; display: inline-block; width: 14px; height: 3px; margin-right: 6px; vertical-align: middle; background: var(--c); }
+pre.text { white-space: pre-wrap; word-break: break-word; font-size: 12px; background: var(--bg);
+  padding: 12px; border-radius: 6px; max-height: 70vh; overflow: auto; }
+.note { color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>FinancialAnalysis Viewer</h1>
+  <p>This page runs on your computer. It shows analysis only. It does not send orders to a broker.</p>
+</header>
+<nav role="tablist">
+  <button role="tab" data-view="stock" aria-selected="true">Stock</button>
+  <button role="tab" data-view="mc">Monte Carlo DCF</button>
+  <button role="tab" data-view="rates">Rates</button>
+  <button role="tab" data-view="bonds">Bonds</button>
+  <button role="tab" data-view="bots">Option bots</button>
+</nav>
+<main>
+
+<section class="view active" id="view-stock">
+  <div class="card">
+    <h2>Stock look-up</h2>
+    <p class="help">Type a ticker. The page shows the standard input variables from the SEC data, the check status and the findings.
+      A ticker that is not in the cache needs the SEC and the variable SEC_USER_AGENT.</p>
+    <form id="stock-form">
+      <label>Ticker <input type="text" id="stock-ticker" list="ticker-list" value="IBM" autocomplete="off" required></label>
+      <label>Fiscal years
+        <select id="stock-years"><option>3</option><option selected>5</option><option>10</option></select></label>
+      <label class="check"><input type="checkbox" id="stock-filled" checked> Show only variables with a value</label>
+      <button class="go" type="submit">Look up</button>
+    </form>
+    <datalist id="ticker-list"></datalist>
+    <div class="status" id="stock-status"></div>
+  </div>
+  <div id="stock-out"></div>
+</section>
+
+<section class="view" id="view-mc">
+  <div class="card">
+    <h2>Monte Carlo DCF</h2>
+    <p class="help">Select a ticker with a driver model and type the market price. The engine runs the simulations and gives the value range for each share.
+      The result is a model result. Do not use it alone for a trade.</p>
+    <form id="mc-form">
+      <label>Ticker <select id="mc-ticker"></select></label>
+      <label>Price (USD) <input type="number" id="mc-price" value="228.53" step="0.01" min="0.01" required></label>
+      <label>Simulations <input type="number" id="mc-sims" value="10000" min="100" max="200000" step="100"></label>
+      <label>Seed <input type="number" id="mc-seed" value="7" step="1"></label>
+      <label class="check"><input type="checkbox" id="mc-rf"> Use the market rates of today</label>
+      <label>Credit rating (optional) <input type="text" id="mc-rating" placeholder="A-" maxlength="5"></label>
+      <button class="go" type="submit">Run</button>
+    </form>
+    <div class="status" id="mc-status"></div>
+  </div>
+  <div id="mc-out"></div>
+</section>
+
+<section class="view" id="view-rates">
+  <div class="card">
+    <h2>Treasury curves</h2>
+    <p class="help">Par yields of the latest day. The real curve is the TIPS curve.</p>
+    <button class="go" id="rates-refresh">Refresh all rates</button>
+    <div class="status" id="curve-status"></div>
+    <div class="status" id="curve-real-status"></div>
+    <div id="curve-out"></div>
+  </div>
+  <div class="card">
+    <h2>Overnight rates</h2>
+    <p class="help">NY Fed reference rates.</p>
+    <div class="status" id="nyfed-status"></div>
+    <div class="status" id="effr-status"></div>
+    <div id="nyfed-out"></div>
+  </div>
+  <div class="card">
+    <h2>Inflation</h2>
+    <p class="help">Breakeven inflation, the 5y5y forward, the real 10Y yield and CPI. CPI comes from the BLS.</p>
+    <div class="status" id="infl-status"></div>
+    <div id="infl-out"></div>
+  </div>
+</section>
+
+<section class="view" id="view-bonds">
+  <div class="card">
+    <h2>Corporate bonds</h2>
+    <p class="help">ICE BofA index for each rating, Moody's seasoned yields and the Treasury HQM corporate spot curve. The data comes from FRED.</p>
+    <button class="go" id="bonds-refresh">Refresh</button>
+    <div class="status" id="bonds-status"></div>
+    <div id="bonds-out"></div>
+  </div>
+</section>
+
+<section class="view" id="view-bots">
+  <div class="card">
+    <h2>Option bots: leaderboard</h2>
+    <p class="help">The text of trading/research/LEADERBOARD.md. All option prices in the backtest are model prices.
+      To make the file again, run python -m scripts.trade_backtest.</p>
+    <div class="status" id="bots-status"></div>
+    <pre class="text" id="bots-out" hidden></pre>
+  </div>
+</section>
+
+</main>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const pct = (x, d = 2) => (x == null || isNaN(x)) ? "-" : (x * 100).toFixed(d) + "%";
+const usd = (x) => (x == null || isNaN(x)) ? "-" : "$" + Number(x).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+// Call an endpoint. An error has the server text and a hint.
+async function api(path) {
+  let res;
+  try { res = await fetch(path); }
+  catch (e) { throw {error: "The server does not answer.", hint: "Make sure that 'fa serve' runs in the terminal."}; }
+  let body;
+  try { body = await res.json(); }
+  catch (e) { throw {error: "The server sent a reply that is not JSON (HTTP " + res.status + ")."}; }
+  if (!res.ok) throw body;
+  return body;
+}
+
+// Show a working state with the time, then the result or the error.
+async function run(statusId, button, path, render) {
+  const box = $(statusId);
+  const t0 = Date.now();
+  const tick = () => { box.innerHTML = '<span class="working">Working... ' + Math.round((Date.now() - t0) / 1000) + ' s</span>'; };
+  tick();
+  const timer = setInterval(tick, 1000);
+  if (button) button.disabled = true;
+  try {
+    const data = await api(path);
+    box.innerHTML = "";
+    render(data);
+    return data;
+  } catch (e) {
+    box.innerHTML = '<div class="error" role="alert"><div>' + esc(e.error || e.message || e) + '</div>' +
+      (e.hint ? '<div class="hint">' + esc(e.hint) + '</div>' : '') +
+      (e.detail ? '<details><summary>Full error text</summary><pre class="text">' + esc(e.detail) + '</pre></details>' : '') + '</div>';
+  } finally {
+    clearInterval(timer);
+    if (button) button.disabled = false;
+  }
+}
+
+// Line chart with text labels on the x axis and percent values. series: [{name, color, points: [[label, value]]}]
+function lineChart(labels, series) {
+  const W = 640, H = 240, L = 48, R = 12, T = 10, B = 28;
+  const vals = series.flatMap((s) => s.points.map((p) => p[1]));
+  if (!vals.length) return "";
+  let lo = Math.min(0, ...vals), hi = Math.max(...vals);
+  const pad = (hi - lo) * 0.08 || 0.005; hi += pad; if (lo < 0) lo -= pad;
+  const x = (i) => L + (labels.length < 2 ? 0 : i * (W - L - R) / (labels.length - 1));
+  const y = (v) => T + (hi - v) * (H - T - B) / (hi - lo);
+  let g = "";
+  for (let k = 0; k <= 4; k++) {
+    const v = lo + k * (hi - lo) / 4;
+    g += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${pct(v, 1)}</text>`;
+  }
+  labels.forEach((t, i) => { g += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">${esc(t)}</text>`; });
+  for (const s of series) {
+    const pts = s.points.map((p) => [labels.indexOf(p[0]), p[1]]).filter((p) => p[0] >= 0);
+    g += `<polyline fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" points="${pts.map((p) => x(p[0]) + "," + y(p[1])).join(" ")}"/>`;
+    for (const p of pts) {
+      g += `<circle cx="${x(p[0])}" cy="${y(p[1])}" r="4" fill="${s.color}" stroke="var(--surface)" stroke-width="2"><title>${esc(s.name)} ${esc(labels[p[0]])}: ${pct(p[1])}</title></circle>`;
+    }
+  }
+  const legend = series.length > 1 ? '<div class="legend">' + series.map((s) => `<span style="--c:${s.color}">${esc(s.name)}</span>`).join("") + '</div>' : "";
+  return legend + `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(series.map((s) => s.name).join(", "))}">${g}</svg>`;
+}
+
+// ---------------------------------------------------------------- Stock
+const STATEMENTS = {income_statement: "Income statement", balance_sheet: "Balance sheet", cash_flow: "Cash flow", disclosure: "Disclosure"};
+function fmtValue(v, unit) {
+  if (v == null) return "";
+  if (unit === "shares") return (v / 1e6).toLocaleString("en-US", {maximumFractionDigits: 1}) + " M";
+  if (unit === "USD") {
+    const a = Math.abs(v);
+    if (a >= 1e9) return (v / 1e9).toFixed(3) + " B";
+    if (a >= 1e6) return (v / 1e6).toFixed(1) + " M";
+    return v.toLocaleString("en-US");
+  }
+  return Number(v).toFixed(2);
+}
+const badge = (s) => `<span class="badge b-${esc(s === "N/A" ? "NA" : s)}">${esc(s)}</span>`;
+let lastStock = null;
+
+function renderStock(d) {
+  lastStock = d;
+  const onlyFilled = $("stock-filled").checked;
+  const years = d.periods.map((p) => p.period_end);
+  let h = `<div class="card"><h2>${esc(d.ticker)} ${esc(d.name)} ${badge(d.status)}</h2>`;
+  if (d.error) h += `<div class="error">${esc(d.error)}</div>`;
+  h += `<div class="tiles">
+    <div class="tile"><div class="k">Status (latest fiscal year)</div><div class="v">${badge(d.status)}</div></div>
+    <div class="tile"><div class="k">Company type</div><div class="v">${esc(d.template || "-")}</div></div>
+    <div class="tile"><div class="k">Fiscal year end</div><div class="v">${esc(d.fiscal_year_end || "-")}</div></div>
+    <div class="tile"><div class="k">Core inputs with a value</div><div class="v">${d.core_filled} of ${d.core_total}</div></div>
+  </div>`;
+  h += `<h3>Findings (${d.findings.length})</h3>`;
+  if (!d.findings.length) h += `<p class="note">No findings.</p>`;
+  else h += `<div class="scroll"><table><thead><tr><th>Level</th><th>Code</th><th>Detail</th></tr></thead><tbody>` +
+    d.findings.map((f) => `<tr><td>${badge(f.severity)}</td><td>${esc(f.code)}</td><td>${esc(f.detail)}</td></tr>`).join("") +
+    `</tbody></table></div>`;
+  h += `</div><div class="card"><h2>Standard variables</h2>
+    <p class="help">* is a core DCF input. Values are for each fiscal year. Move the pointer on a value to see its source.
+      The source column is for the latest fiscal year. "=" is a formula. "filing" is a value from the 10-K.</p>`;
+  if (!years.length) h += `<p class="note">No annual period.</p>`;
+  else {
+    h += `<div class="scroll"><table><thead><tr><th>Variable</th>` + years.map((y) => `<th class="num">${esc(y)}</th>`).join("") +
+      `<th>Source (${esc(years[years.length - 1])})</th></tr></thead><tbody>`;
+    let group = "";
+    for (const v of d.variables) {
+      const has = v.values.some((x) => x != null);
+      if (onlyFilled && !has && !v.core) continue;
+      if (v.statement !== group) { group = v.statement; h += `<tr class="group"><td colspan="${years.length + 2}">${esc(STATEMENTS[group] || group)}</td></tr>`; }
+      h += `<tr><td>${v.core ? "* " : ""}${esc(v.name)}</td>` +
+        v.values.map((x, i) => `<td class="num" title="${esc(v.sources[i] || "")}">${x == null ? (v.core ? '<span class="badge b-FAIL">no value</span>' : "") : esc(fmtValue(x, v.unit))}</td>`).join("") +
+        `<td class="src">${esc(v.sources[v.sources.length - 1] || "")}</td></tr>`;
+    }
+    h += `</tbody></table></div>`;
+  }
+  $("stock-out").innerHTML = h + `</div>`;
+}
+
+$("stock-form").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const t = $("stock-ticker").value.trim();
+  $("stock-out").innerHTML = "";
+  run("stock-status", ev.submitter, `/api/stock?ticker=${encodeURIComponent(t)}&years=${$("stock-years").value}`, renderStock);
+});
+$("stock-filled").addEventListener("change", () => { if (lastStock) renderStock(lastStock); });
+
+// ---------------------------------------------------------------- Monte Carlo
+function rangeChart(v) {
+  const W = 640, H = 120, L = 16, R = 16;
+  const lo = Math.min(v.p10, v.price) * 0.9, hi = Math.max(v.p90, v.price) * 1.1;
+  const x = (u) => L + (u - lo) * (W - L - R) / (hi - lo);
+  const yb = 34, hb = 34;
+  let g = `<rect x="${x(v.p10)}" y="${yb}" width="${x(v.p90) - x(v.p10)}" height="${hb}" rx="4" fill="var(--band-outer)"><title>P10 to P90: ${usd(v.p10)} to ${usd(v.p90)}</title></rect>`;
+  g += `<rect x="${x(v.p25)}" y="${yb}" width="${x(v.p75) - x(v.p25)}" height="${hb}" rx="4" fill="var(--band-inner)"><title>P25 to P75: ${usd(v.p25)} to ${usd(v.p75)}</title></rect>`;
+  g += `<line x1="${x(v.p50)}" x2="${x(v.p50)}" y1="${yb - 4}" y2="${yb + hb + 4}" stroke="var(--text)" stroke-width="2"><title>P50: ${usd(v.p50)}</title></line>`;
+  for (const [k, u] of [["P10", v.p10], ["P50", v.p50], ["P90", v.p90]]) {
+    g += `<text x="${x(u)}" y="${yb + hb + 18}" text-anchor="middle">${k} ${usd(u)}</text>`;
+  }
+  g += `<line x1="${x(v.price)}" x2="${x(v.price)}" y1="12" y2="${yb + hb + 4}" stroke="var(--series-2)" stroke-width="2" stroke-dasharray="4 3"/>`;
+  const anchor = x(v.price) > W * 0.8 ? "end" : x(v.price) < W * 0.2 ? "start" : "middle";
+  g += `<text x="${x(v.price)}" y="10" text-anchor="${anchor}" style="fill:var(--text)">Price ${usd(v.price)}</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Value range for each share against the price">${g}</svg>`;
+}
+
+function renderVerdict(v) {
+  let h = `<div class="card"><h2>${esc(v.ticker)}: ${esc(v.verdict)}</h2>
+    <p class="help">${v.simulations.toLocaleString("en-US")} simulations, seed ${v.seed}. Value for each share.</p>
+    <div class="tiles">
+      <div class="tile"><div class="k">Median value (P50)</div><div class="v">${usd(v.p50)}</div></div>
+      <div class="tile"><div class="k">Market price</div><div class="v">${usd(v.price)}</div></div>
+      <div class="tile"><div class="k">Chance that the price is too high</div><div class="v">${pct(v.chance_price_too_high, 1)}</div></div>
+    </div>
+    <div class="legend"><span style="--c:var(--band-outer)">P10 to P90</span><span style="--c:var(--band-inner)">P25 to P75</span><span style="--c:var(--text)">P50</span><span style="--c:var(--series-2)">Price</span></div>
+    ${rangeChart(v)}
+    <div class="scroll"><table><thead><tr><th>Percentile</th><th class="num">Value for each share</th></tr></thead><tbody>
+    ${[["P10", v.p10], ["P25", v.p25], ["P50", v.p50], ["P75", v.p75], ["P90", v.p90]].map(([k, u]) => `<tr><td>${k}</td><td class="num">${usd(u)}</td></tr>`).join("")}
+    </tbody></table></div>`;
+  if (v.rates) {
+    const r = v.rates;
+    h += `<h3>Market rates</h3><div class="scroll"><table><tbody>
+      <tr><td>Risk-free rate (${esc(r.rf.series)}, ${esc(r.rf.date)})</td><td class="num">${pct(r.rf.value)}</td></tr>
+      <tr><td>Risk-free rate of the model (mean)</td><td class="num">${pct(r.model_rf_mean)}</td></tr>
+      <tr><td>Real 10Y yield</td><td class="num">${pct(r.real_10y)}</td></tr>
+      <tr><td>Breakeven 10Y</td><td class="num">${pct(r.breakeven_10y)}</td></tr>
+      <tr><td>5y5y forward inflation</td><td class="num">${pct(r.forward_5y5y)}</td></tr>
+      <tr><td>Terminal growth (mean)</td><td class="num">${pct(r.terminal_growth_mean)}</td></tr>
+      </tbody></table></div>`;
+  }
+  if (v.credit) {
+    const c = v.credit;
+    h += `<h3>Cost of debt (rating ${esc(c.rating)}, index ${esc(c.index)})</h3><div class="scroll"><table><tbody>
+      <tr><td>Spread over the 10Y (market)</td><td class="num">${pct(c.kd_spread.value)}</td></tr>
+      <tr><td>Spread over the 10Y (model)</td><td class="num">${pct(c.model_kd_spread)}</td></tr>
+      <tr><td>Cost of debt before tax</td><td class="num">${pct(c.kd_pretax)}</td></tr>
+      <tr><td>Cost of debt after tax</td><td class="num">${pct(c.kd_after_tax)}</td></tr>
+      </tbody></table></div>`;
+  }
+  $("mc-out").innerHTML = h + `</div>`;
+}
+
+$("mc-form").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const p = new URLSearchParams({ticker: $("mc-ticker").value, price: $("mc-price").value,
+    simulations: $("mc-sims").value, seed: $("mc-seed").value});
+  if ($("mc-rf").checked) p.set("rf_date", "today");
+  if ($("mc-rating").value.trim()) p.set("rating", $("mc-rating").value.trim());
+  $("mc-out").innerHTML = "";
+  run("mc-status", ev.submitter, "/api/verdict?" + p, renderVerdict);
+});
+
+// ---------------------------------------------------------------- Rates
+const obsRow = (label, o) => `<tr><td>${esc(label)}</td><td class="num">${pct(o.value)}</td><td>${esc(o.date)}</td><td class="src">${esc(o.source)}${o.note ? " - " + esc(o.note) : ""}</td></tr>`;
+
+async function loadRates() {
+  const btn = $("rates-refresh");
+  btn.disabled = true;
+  $("curve-out").innerHTML = $("nyfed-out").innerHTML = $("infl-out").innerHTML = "";
+  const curves = [];
+  const drawCurves = () => {
+    if (!curves.length) return;
+    const labels = ["1M", "1.5M", "2M", "3M", "4M", "6M", "1Y", "2Y", "3Y", "5Y", "7Y", "10Y", "20Y", "30Y"]
+      .filter((t) => curves.some((c) => c.d.ordered.some((p) => p[0] === t)));
+    curves.sort((a, b) => a.real - b.real);
+    const series = curves.map((c) => ({name: c.real ? "Real (TIPS)" : "Nominal", color: c.real ? "var(--series-2)" : "var(--series-1)", points: c.d.ordered}));
+    let t = `<div class="scroll"><table><thead><tr><th>Curve</th>` + labels.map((l) => `<th class="num">${l}</th>`).join("") + `</tr></thead><tbody>`;
+    for (const c of curves) {
+      const m = Object.fromEntries(c.d.ordered);
+      t += `<tr><td>${c.real ? "Real" : "Nominal"} (${esc(c.d.curve.date)})</td>` + labels.map((l) => `<td class="num">${m[l] == null ? "" : pct(m[l])}</td>`).join("") + `</tr>`;
+    }
+    $("curve-out").innerHTML = lineChart(labels, series) + t + `</tbody></table></div><p class="note">Source: ${esc(curves[0].d.curve.source)}.</p>`;
+  };
+  const sofr = {};
+  const drawNyfed = () => {
+    $("nyfed-out").innerHTML = `<div class="tiles">` + Object.values(sofr).map((o) =>
+      `<div class="tile"><div class="k">${esc(o.series)}</div><div class="v">${pct(o.value)}</div><div class="s">${esc(o.date)} - ${esc(o.source)}</div></div>`).join("") + `</div>`;
+  };
+  await Promise.all([
+    run("curve-status", null, "/api/rates/curve", (d) => { curves.push({real: 0, d}); drawCurves(); }),
+    run("curve-real-status", null, "/api/rates/curve?real=1", (d) => { curves.push({real: 1, d}); drawCurves(); }),
+    run("nyfed-status", null, "/api/rates/nyfed?rate=SOFR", (o) => { sofr.a = o; drawNyfed(); }),
+    run("effr-status", null, "/api/rates/nyfed?rate=EFFR", (o) => { sofr.b = o; drawNyfed(); }),
+    run("infl-status", null, "/api/rates/inflation", (i) => {
+      const rows = [["Breakeven 5Y", i.breakeven_5y], ["Breakeven 10Y", i.breakeven_10y], ["5y5y forward inflation", i.forward_5y5y],
+        ["Real 10Y yield", i.real_10y], ["CPI, 12 months", i.cpi_12m], ["Core CPI, 12 months", i.core_cpi_12m]];
+      Object.keys(i).filter((k) => k.startsWith("breakeven_") && !["breakeven_5y", "breakeven_10y"].includes(k))
+        .sort((a, b) => parseInt(a.slice(10)) - parseInt(b.slice(10)))
+        .forEach((k) => rows.push(["Breakeven " + k.slice(10).toUpperCase(), i[k]]));
+      $("infl-out").innerHTML = `<div class="scroll"><table><thead><tr><th>Item</th><th class="num">Value</th><th>Date</th><th>Source</th></tr></thead><tbody>` +
+        rows.map(([k, o]) => obsRow(k, o)).join("") + `</tbody></table></div>`;
+    }),
+  ]);
+  btn.disabled = false;
+}
+$("rates-refresh").addEventListener("click", loadRates);
+
+// ---------------------------------------------------------------- Bonds
+function renderBonds(d) {
+  const s = d.snapshot;
+  const order = ["AAA", "AA", "A", "BBB", "BB", "B", "CCC"].filter((r) => s.ratings[r]);
+  let h = `<h3>ICE BofA index for each rating</h3><div class="scroll"><table><thead><tr><th>Rating</th><th class="num">Yield</th><th class="num">OAS</th><th class="num">Yield minus UST 10Y</th><th>Date</th></tr></thead><tbody>` +
+    order.map((r) => { const q = s.ratings[r]; return `<tr><td>${r}</td><td class="num">${pct(q.yield.value)}</td><td class="num">${pct(q.oas.value)}</td><td class="num">${pct(q.spread_over_10y.value)}</td><td>${esc(q.yield.date)}</td></tr>`; }).join("") +
+    `</tbody></table></div>`;
+  h += `<h3>Moody's seasoned corporate yields</h3><div class="tiles">` + Object.values(s.moodys).map((o) =>
+    `<div class="tile"><div class="k">${esc(o.series)}</div><div class="v">${pct(o.value)}</div><div class="s">${esc(o.date)}</div></div>`).join("") + `</div>`;
+  const hq = d.hqm_ordered;
+  h += `<h3>HQM corporate spot curve (${esc(s.hqm_curve.date)})</h3>` +
+    lineChart(hq.map((p) => p[0]), [{name: "HQM spot", color: "var(--series-1)", points: hq}]) +
+    `<div class="scroll"><table><thead><tr>${hq.map((p) => `<th class="num">${esc(p[0])}</th>`).join("")}</tr></thead><tbody><tr>${hq.map((p) => `<td class="num">${pct(p[1])}</td>`).join("")}</tr></tbody></table></div>
+    <p class="note">Source: ${esc(s.hqm_curve.source)}.</p>`;
+  $("bonds-out").innerHTML = h;
+}
+const loadBonds = () => { $("bonds-out").innerHTML = ""; return run("bonds-status", $("bonds-refresh"), "/api/bonds", renderBonds); };
+$("bonds-refresh").addEventListener("click", loadBonds);
+
+// ---------------------------------------------------------------- Option bots
+const loadBots = () => run("bots-status", null, "/api/leaderboard", (d) => { $("bots-out").hidden = false; $("bots-out").textContent = d.text; });
+
+// ---------------------------------------------------------------- Tabs and start
+const loaded = {};
+const loaders = {rates: loadRates, bonds: loadBonds, bots: loadBots};
+function show(view) {
+  document.querySelectorAll("nav button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.view === view)));
+  document.querySelectorAll("section.view").forEach((s) => s.classList.toggle("active", s.id === "view-" + view));
+  if (loaders[view] && !loaded[view]) { loaded[view] = true; loaders[view](); }
+  try { localStorage.setItem("fa-view", view); } catch (e) {}
+}
+document.querySelectorAll("nav button").forEach((b) => b.addEventListener("click", () => show(b.dataset.view)));
+
+api("/api/tickers").then((list) => {
+  $("ticker-list").innerHTML = list.map((t) => `<option value="${esc(t)}">`).join("");
+}).catch(() => {});
+api("/api/models").then((list) => {
+  $("mc-ticker").innerHTML = list.map((t) => `<option>${esc(t)}</option>`).join("");
+  if (!list.length) $("mc-status").innerHTML = '<div class="error">No ticker has a driver model (analysis/&lt;TICKER&gt;/driver_model.py).</div>';
+}).catch((e) => { $("mc-status").innerHTML = '<div class="error">' + esc(e.error) + '</div>'; });
+
+let start = "stock";
+try { start = localStorage.getItem("fa-view") || "stock"; } catch (e) {}
+show(document.querySelector(`nav button[data-view="${start}"]`) ? start : "stock");
+</script>
+</body>
+</html>
