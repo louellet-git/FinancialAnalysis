@@ -16,6 +16,8 @@ pub struct Client {
     user_agent: String,
     delay: Duration,
     last: Option<Instant>,
+    /// Session cookies (name, value). `None` for a client without a session.
+    cookies: Option<Vec<(String, String)>>,
 }
 
 #[derive(Debug)]
@@ -46,7 +48,23 @@ impl Client {
             user_agent: user_agent.to_string(),
             delay: Duration::from_secs_f64(delay_seconds.max(0.0)),
             last: None,
+            cookies: None,
         }
+    }
+
+    /// A client for a web form that needs a session. It keeps the cookies, sends
+    /// them again, and does not follow redirects (the caller reads each step).
+    pub fn session(user_agent: &str, delay_seconds: f64) -> Client {
+        let mut client = Client::new(user_agent, delay_seconds);
+        let mut builder = ureq::AgentBuilder::new().timeout(Duration::from_secs(60)).redirects(0);
+        if let Ok(proxy) = std::env::var("HTTPS_PROXY").or_else(|_| std::env::var("https_proxy")) {
+            if let Ok(proxy) = ureq::Proxy::new(&proxy) {
+                builder = builder.proxy(proxy);
+            }
+        }
+        client.agent = builder.build();
+        client.cookies = Some(Vec::new());
+        client
     }
 
     /// A client for SEC EDGAR. The SEC permits 10 requests in one second; the delay
@@ -65,21 +83,58 @@ impl Client {
     }
 
     pub fn get(&mut self, url: &str) -> Result<Vec<u8>, HttpError> {
+        self.wait();
+        let request = self.prepare(self.agent.get(url));
+        let result = request.call();
+        self.finish(result, url)
+    }
+
+    /// POST a form (`application/x-www-form-urlencoded`). Use it with `Client::session`.
+    pub fn post_form(&mut self, url: &str, fields: &[(&str, &str)]) -> Result<Vec<u8>, HttpError> {
+        self.wait();
+        let request = self.prepare(self.agent.post(url));
+        let result = request.send_form(fields);
+        self.finish(result, url)
+    }
+
+    fn wait(&mut self) {
         if let Some(last) = self.last {
             let elapsed = last.elapsed();
             if elapsed < self.delay {
                 std::thread::sleep(self.delay - elapsed);
             }
         }
-        let result = self
-            .agent
-            .get(url)
+    }
+
+    fn prepare(&self, request: ureq::Request) -> ureq::Request {
+        let request = request
             .set("User-Agent", &self.user_agent)
-            .set("Accept", "application/json, text/plain, */*")
-            .call();
+            .set("Accept", "application/json, text/plain, */*");
+        match &self.cookies {
+            Some(jar) if !jar.is_empty() => {
+                let header: Vec<String> = jar.iter().map(|(k, v)| format!("{k}={v}")).collect();
+                request.set("Cookie", &header.join("; "))
+            }
+            _ => request,
+        }
+    }
+
+    fn remember(&mut self, response: &ureq::Response) {
+        if let Some(jar) = self.cookies.as_mut() {
+            for line in response.all("set-cookie") {
+                if let Some((name, value)) = line.split(';').next().and_then(|p| p.split_once('=')) {
+                    jar.retain(|(k, _)| k != name.trim());
+                    jar.push((name.trim().to_string(), value.trim().to_string()));
+                }
+            }
+        }
+    }
+
+    fn finish(&mut self, result: Result<ureq::Response, ureq::Error>, url: &str) -> Result<Vec<u8>, HttpError> {
         self.last = Some(Instant::now());
         match result {
             Ok(response) => {
+                self.remember(&response);
                 let mut body = Vec::new();
                 response
                     .into_reader()

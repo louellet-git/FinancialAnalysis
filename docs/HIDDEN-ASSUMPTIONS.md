@@ -443,6 +443,69 @@ agree (306 values, no difference). The repo has no `.xls` reader, thus this chec
 not automatic.
 *Evidence:* `financial_analysis/bonds.py` module docstring.
 
+## Bond reconciliation (added 2026-11-19, branch `claude/bond-recon`)
+
+**48. The price source is not a market quote feed.** The prices are the end-of-day prices
+of the Federal Investments Program (TreasuryDirect FedInvest). The page says that they
+apply to "market-based Treasury special securities". The CUSIPs are the CUSIPs of the
+public bills, notes and bonds. The time of day, and whether the price is bid, ask or mid,
+are not stated on the page. Our curve is built from bid-side prices at about 3:30 PM New
+York time. Thus a difference can come from the price type or the time. The BUY and SELL
+columns are in the CSV file, but the BUY column is often 0.
+*Evidence:* `fa recon bonds` output; <https://www.treasurydirect.gov/GA-FI/FedInvest/selectSecurityPriceDate>.
+
+**49. The latest day has no end-of-day price.** On 2026-11-18 the file had 0 in the END OF DAY column for each row. The
+column is filled later. The command steps back to the last day that has prices.
+*Evidence:* the file of 2026-11-18, downloaded on 2026-11-19.
+
+**50. The Treasury curve is made from on-the-run securities only.** The inputs are the
+most recently auctioned bills, notes and bonds. An older (off-the-run) security can trade
+above or below the curve. This is a cause of differences that is not a data error. Our
+curve is also not the exact curve of the Treasury (the program is not published).
+*Evidence:* <https://home.treasury.gov/policy-issues/financing-the-government/interest-rate-statistics/treasury-yield-curve-methodology>.
+
+**51. Notes and bonds are priced in 64ths.** A price step of 1/64 is 0.0156 per 100. For an
+instrument with 13 days to maturity, this step is 47 bp of yield. The summary by maturity
+shows large yield differences for short instruments because of this. Read the price
+difference and the column `resolution_bp` first.
+*Evidence:* the column `step bp` of the output; `recon.rs`.
+
+**52. The first run shows bills above the curve.** On 2026-10-30, 2026-11-10 and
+2026-11-17 the mean bill yield difference was about -6 bp (observed yield below theoretical
+yield). The sign is the same on each date. We do not know the cause. Possible causes (open
+questions): the price type (bid for the curve against another price type in the file);
+the time of day; the way the Treasury converts a bill discount rate; our 365-day basis;
+the settlement day (T+1 here); real bill demand. Do not use the curve to price a bill
+without this check.
+*Evidence:* `fa recon bonds --date 2026-11-17` (47 bills).
+
+**53. No corporate bond prices.** We know no free official source of prices of single
+corporate bonds. FINRA TRACE has terms of use (the owner request says so); we did not read
+them in this work and we did not use TRACE. The Treasury and Fiscal Service files have no
+corporate bond prices. Thus the corporate comparison is at
+curve level only. The HQM curve is a monthly average (the date is the first day of the
+month; on 2026-11-17 the latest value was for 2026-10-01). Our Treasury zero curve is for
+one day. The ICE OAS is one number for the whole index (duration of about 6 to 7 years),
+and not a number for each maturity. The HQM blend of AAA, AA and A has unknown weights, so
+the mean of the three OAS is an arbitrary choice. We assume that the HQM spot rates are
+semi-annual (the Treasury slides say so; we did not read the full paper).
+*Evidence:* `fa recon bonds` output, section CORPORATE CURVE.
+
+**54. STRIPS have no free official price source in the repo.** The FedInvest file has no STRIPS. The
+only zero-coupon instruments in the set are bills (up to 52 weeks). The Federal Reserve
+zero-coupon curve of Gurkaynak, Sack and Wright is a useful second reference for long
+zero rates. The branch `claude/futures-forwards-data` loads it. This branch does not.
+
+**55. Download of the price file.** The download needs a session (cookie, a CSRF token and a POST).
+In the container of 2026-11-19, `curl` got the file, and the Rust client `mapcheck::http::Client` got
+"HTTP 400 InvalidUri" from `www.treasurydirect.gov` for the same request bytes. We did not find the
+cause. The Rust download code is thus not tested against the real site. Download the
+file with `curl` into `data/raw/prices/fedinvest_<date>.csv`; the command uses this cache file.
+The Fiscal Service terms say "Government works generally cannot be copyrighted" and ask for
+credit; they also say that content may be used for non-commercial personal use. They do not forbid an
+automated request. Ask the owner to confirm before a heavy use.
+*Evidence:* <https://www.treasurydirect.gov/legal-information/terms/>.
+
 ## Could not verify
 
 - (none of the named traps failed verification — all located in current code/docs; the

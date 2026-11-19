@@ -215,6 +215,45 @@ Results, the list of checks and the limits: `rust/mapcheck/README.md`.
 The crate `rust/` (the `fa` command) is a different program: it calls the Python code
 and gives typed results. It does not move a part to Rust.
 
+## `fa recon bonds`: bond values from our rates against market prices (2026-11-19, branch `claude/bond-recon`)
+
+The command `fa recon bonds [--date D] [--out FILE]` (crate `rust/`) finds the
+difference between the value that our rates give and the market value of simple
+bonds. It lists differences. It does not explain them. Open questions are in
+`docs/HIDDEN-ASSUMPTIONS.md` (#48 to #55).
+
+Steps for one date:
+
+1. Get the Treasury par curve of the date (`Fa::curve`, Python code).
+2. Bootstrap the par yields to zero rates (`rust/src/curve.rs`).
+3. Get the end-of-day prices of Treasury bills, notes and bonds (`rust/src/prices.rs`).
+4. Price each instrument on the curve (`rust/src/recon.rs`).
+5. Print the summary and write one CSV row for each instrument. A second file
+   `<name>_curve.csv` has the curve nodes.
+6. Compare the HQM corporate spot curve with our zero curve plus the ICE spread.
+
+| Module (`rust/src/`) | Function |
+|---|---|
+| `curve.rs` | The only code for curve mathematics: dates, business days, par to zero, monotone convex interpolation, discount factors, prices and yields of bills and coupon bonds. |
+| `prices.rs` | The FedInvest end-of-day prices: a session with the web form of TreasuryDirect, the CSV parser, the cache `data/raw/prices/`. |
+| `recon.rs` | The filter, the pricing of each instrument, the summary, the files, the corporate curve rows. |
+
+Conventions (each one is in the header of `curve.rs`):
+
+- **Par yields.** Semi-annual bond-equivalent yields. A par yield is the coupon rate of a bond that prices to 100 on the curve date.
+- **Nodes.** The tenors up to 6 months are bills with simple interest: 28, 42, 56, 91, 119 and 182 days (the 4, 6, 8, 13, 17 and 26 week bills that the Treasury uses as inputs). The tenors of 1 year and more are par coupon bonds with coupons at 6, 12, 18, ... calendar months from the curve date.
+- **Time.** Actual days divided by 365. A zero rate is continuously compounded.
+- **Interpolation.** Monotone convex on the forward rates (Hagan and West, 2006). The Treasury says that it uses this method since 2021-12-06. The Treasury does not publish its program. Our curve is a re-creation. After 30 years the forward rate is flat. The coupon nodes are solved by sweeps until each par bond prices to 100 (error below 1e-13).
+- **Settlement.** T+1 business day. Saturday, Sunday and the Federal Reserve holidays are not business days.
+- **Price.** The FedInvest END OF DAY column: a clean price per 100. A bill has no accrued interest. A note or a bond has accrued interest of actual/actual (days between the two coupon dates). The coupon dates come from the maturity date, backward in steps of 6 months. A maturity at the end of a month gives coupon dates at the end of the month.
+- **Yield.** For a note or a bond: semi-annual, with a fractional first period; simple interest when one coupon is left. For a bill: bond-equivalent yield, actual/365, quadratic formula above 182 days.
+- **Difference.** Observed minus theoretical. A positive price difference means that the market price is above the price from our curve.
+- **Filter.** The set has market-based bills, notes and bonds that have a price, have 7 days or more to maturity and have no call date. TIPS and floating-rate notes are not in the set.
+- **Resolution.** The source gives notes and bonds in 64ths of a point. The column `resolution_bp` is the yield change of one such step. A yield difference that is smaller than this column has no information. This is large for instruments with a short life.
+- **Corporate curve.** No free official source of prices of single corporate bonds is known (see #53). Thus the comparison is at curve level: the HQM spot rate (semi-annual) against our Treasury zero rate (semi-annual) plus the mean ICE OAS of AAA, AA and A. It shows how our spread data relate to the Treasury HQM curve. It does not show a bond price difference.
+
+The tests (`cargo test --manifest-path rust/Cargo.toml --locked`) use small samples and hand calculations: a par bond prices to 100 on a coupon date, a bill, a bond between coupon dates, the reprice of each par node, a flat curve. They do not use the network.
+
 ## `trading/` (added 2026-11-19 from branch `claude/trading-bot-spy-qqq-xl1o2o`)
 
 A research package for SPY/QQQ option strategies. It is independent of

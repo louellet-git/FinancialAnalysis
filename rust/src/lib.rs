@@ -16,6 +16,10 @@
 //! # Ok::<(), financial_analysis::FaError>(())
 //! ```
 
+pub mod curve;
+pub mod prices;
+pub mod recon;
+
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

@@ -222,6 +222,7 @@ cargo run --bin fa -- rates yield --tenor 10Y
 cargo run --bin fa -- verdict IBM --price 231.09 --rf-date today --rating A-
 cargo run --bin fa -- bonds over10y --rating A-
 cargo run --bin fa -- run scripts.analyze IBM     # any Python entry point
+cargo run --release --bin fa -- recon bonds --date 2026-11-17   # bond values from our rates vs market prices
 cargo run --example dcf_rates -- IBM 231.09 A-    # library example
 ```
 
