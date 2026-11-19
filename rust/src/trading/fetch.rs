@@ -141,6 +141,15 @@ fn volume(x: f64) -> String {
     }
 }
 
+/// The cache line of one intraday bar that starts at the UTC second `utc`: the New York time with its offset,
+/// then open, high, low, close, volume (the same text as a row of the Yahoo reader). Other sources use it (Alpaca).
+pub(crate) fn cache_line(utc: i64, o: f64, h: f64, l: f64, c: f64, v: f64) -> String {
+    let off = ny_offset(utc);
+    let local = utc + off;
+    let (day, secs) = (local.div_euclid(86_400), local.rem_euclid(86_400));
+    format!("{} {:02}:{:02}:{:02}{},{},{},{},{},{}", iso(day as i32), secs / 3600, secs % 3600 / 60, secs % 60, offset_text(off), price(o), price(h), price(l), price(c), volume(v))
+}
+
 /// The cache rows of a chart reply (same rules as `_normalize` of the Python code).
 pub fn rows_from_chart(chart: &RawChart, interval: Interval, now_utc: i64) -> Vec<Row> {
     // Time stamp of each bar in New York time, then the rule "one row for each time, the last one stays".

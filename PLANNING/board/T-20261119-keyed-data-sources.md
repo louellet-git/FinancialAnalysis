@@ -2,7 +2,7 @@
 id: T-20261119-keyed-data-sources
 title: Add data sources with a published API that give the past on request
 area: engine
-status: in-progress
+status: review
 owner: louellet-git
 branch: claude/keyed-data-sources
 created: 2026-11-19
@@ -29,3 +29,25 @@ Research result (official pages, read 2026-11-19; file in the session scratchpad
 The site sources with no key (Nasdaq, Yahoo, Cboe delayed quotes) stay as the sources
 that need no account. They are not published APIs, and two of them blocked the cloud
 container on 2026-11-19.
+
+State 2026-11-19 (code written, no loader tested against the real server: no key in the container):
+
+- Built: Alpaca daily prices (`fa prices get --source alpaca`, many tickers in one request), Alpaca intraday bars
+  (`fa prices intraday`), Alpaca option chain snapshot (`fa options snapshot --source alpaca`), the option surface of past
+  dates from daily closes (`fa options history`), the FRED API with a key (`FRED_API_KEY`, first source of the FRED loaders),
+  and `docs/DATA-SOURCES.md` (the table that `fa sync` will read).
+- Facts that the documentation confirms and does not confirm: `docs/ARCHITECTURE.md`, section "Keyed data sources"; traps #230 to #244.
+- The owner must create: an Alpaca paper account (free) and its two keys `APCA_API_KEY_ID` and `APCA_API_SECRET_KEY`; a FRED key (`FRED_API_KEY`);
+  optionally a Tiingo key (`TIINGO_API_KEY`). Put them in the environment or in `.env` (names in `.env.example`; `.env` is not in git).
+- First run with keys (acceptance test of this ticket): `fa prices get IBM --source alpaca`; `fa prices intraday SPY --interval 5m --from 2024-06-03 --to 2024-06-07`;
+  `fa options history SPY --date 2024-06-07 --plan`, then without `--plan`; `fa rates fred --series DGS10`.
+
+Massive (paid), for the decision of the owner. Nothing is built. Documentation read on 2026-11-19 (URLs in `docs/ARCHITECTURE.md`):
+
+- Confirmed: option aggregates `GET /v2/aggs/ticker/{optionsTicker}/range/1/day/{from}/{to}` (one contract in each request; depth Basic and Starter 2 years, Developer 4 years,
+  Advanced all; records from 2014-06-02); contract list `GET /v3/reference/options/contracts` with `as_of` and `expired=true` (limit 1,000); index aggregates `GET /v2/aggs/ticker/I:SPX/range/...`;
+  flat files (S3, `https://files.massive.com`, bucket `flatfiles`, prefix `us_options_opra`, one gzip CSV for each day; Starter and higher); no request limit on a subscribed asset class.
+- Not confirmed: SPX and VIX options in any of these endpoints (the pages show equity examples only); VIX options by name; the exact key of the day file; the terms for stored data.
+- Cheap test before a payment: with the free Basic key, ask the contract list for `underlying_ticker=SPX`, `SPXW`, `VIX`, `VIXW` and ask the aggregates of one `O:SPXW...` contract.
+- Plan for one year of SPX surfaces: flat files, 252 day files and 1 request for `I:SPX`: 253 requests. The REST way needs about 1,000 list requests and at least 100,000 aggregate requests (an estimate).
+  The builder `option_history::build_range` takes a source through the trait `OptionHistorySource`; the Massive source is one `impl` (about 150 lines) after the decision.
