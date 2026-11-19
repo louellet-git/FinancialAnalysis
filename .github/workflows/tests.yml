@@ -17,3 +17,8 @@ jobs:
       - run: cargo test --manifest-path rust/mapcheck/Cargo.toml
       - run: cargo build --release --manifest-path rust/mapcheck/Cargo.toml
       - run: python -m pytest -q
+  cargo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo test --manifest-path rust/Cargo.toml --locked

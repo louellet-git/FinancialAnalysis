@@ -8,6 +8,9 @@ It uses no network.
 Speed on 4 processors: 472 companies in 2.8 seconds (166 companies in one second).
 2,000 companies need approximately 12 seconds.
 
+The repo has a second Rust crate, `rust/` (the `fa` command), which calls the Python
+pipeline. The two crates are independent.
+
 ## One registry, two programs
 
 The registry of standard variables is one file:
@@ -143,5 +146,5 @@ variables and 17 aliases from the 50 and the 472 runs (131 variables now).
 - The checks use the companyfacts source: no segment data and no company-specific
   tags. These need filing-level XBRL (PLANNING/tickets.md, Ticket 7).
 - A `PASS` shows that the mapped data is consistent. It does not show that each value
-  is the number that an analyst wants (see `docs/HIDDEN-ASSUMPTIONS.md` #32).
+  is the number that an analyst wants (see `docs/HIDDEN-ASSUMPTIONS.md` #36).
 - The income statement has no rollup. Cost lines overlap too much between filers.

@@ -60,8 +60,6 @@ The validators, the red-team corpus and the coverage validator are on the board
   IBM pairing possibly undercounts what M&A buys. A sector rule is necessary.
 - **Beta method rule.** Regression betas for JNJ are 0.22 and approximately 0; the model
   uses 0.65 by judgment. A method rule is necessary.
-- **Refresh the risk-free rate on each run.** The rate moved from 4.6% to 5.1% between
-  July and October 2026.
 
 ## Ideas without a scope (source: `THOUGHTS`)
 
