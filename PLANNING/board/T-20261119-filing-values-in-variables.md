@@ -8,7 +8,7 @@ branch:
 created: 2026-11-19
 acceptance: For the 50 tickers of `rust/mapcheck/universe/batch50.txt`, the standard variables for capex, depreciation and amortization, and total debt agree with Yahoo Finance for 90% or more, and each value records the filing lines that it contains.
 ---
-The first part is in `main`: `financial_analysis/filing.py` and `python -m scripts.filing_tree` read the statements of the latest 10-K (calculation tree, company tags, values).
+The first part is done in Rust: `rust/mapcheck/src/filing.rs` and `mapcheck filing` read the statements of the latest 10-K (calculation tree, company tags, values). `mapcheck crosscheck` compares the standard variables with the filing lines (50 tickers, 2026-11-19: capex 94%, total debt 83%, depreciation and amortization 69% agree).
 
 Measured on 2026-11-19 against Yahoo Finance, 50 tickers: capex 73% with the standard variables and 92% with the filing lines; total debt 80% and 90%; depreciation and amortization 73% and 81%.
 
@@ -19,4 +19,4 @@ Next steps:
 2. Give the three standard variables the filing value when the filing has one, with the filing lines as the source. Keep the companyfacts value as a second variable.
 3. Use the calculation tree to decide `nested` and `overlap` in `mapcheck` (now a guess from the sums).
 4. Read the facts with a segment (60% to 70% of the facts): segment revenue is Ticket 7 in the backlog.
-5. Scale: 2,000 filings are 3 requests each and approximately 10 GB as files. Keep only the parsed values, or compress the files. Move the parser to Rust when the rules are stable.
+5. Scale: 2,000 filings are 3 requests each and approximately 10 GB as files. Keep only the parsed values, or compress the files.

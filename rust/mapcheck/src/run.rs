@@ -68,15 +68,20 @@ pub fn facts_path(cache: &Path, ticker: &str) -> Option<PathBuf> {
     None
 }
 
-pub fn read_facts(path: &Path) -> Result<CompanyFacts, String> {
+/// The bytes of a cache file (a `.gz` file is decompressed).
+pub fn read_bytes(path: &Path) -> Result<Vec<u8>, String> {
     let file = File::open(path).map_err(|e| format!("{}: {e}", path.display()))?;
-    let mut text = Vec::new();
+    let mut bytes = Vec::new();
     if path.extension().map(|e| e == "gz").unwrap_or(false) {
-        GzDecoder::new(BufReader::new(file)).read_to_end(&mut text).map_err(|e| format!("{}: {e}", path.display()))?;
+        GzDecoder::new(BufReader::new(file)).read_to_end(&mut bytes).map_err(|e| format!("{}: {e}", path.display()))?;
     } else {
-        BufReader::new(file).read_to_end(&mut text).map_err(|e| format!("{}: {e}", path.display()))?;
+        BufReader::new(file).read_to_end(&mut bytes).map_err(|e| format!("{}: {e}", path.display()))?;
     }
-    serde_json::from_slice(&text).map_err(|e| format!("{}: {e}", path.display()))
+    Ok(bytes)
+}
+
+pub fn read_facts(path: &Path) -> Result<CompanyFacts, String> {
+    serde_json::from_slice(&read_bytes(path)?).map_err(|e| format!("{}: {e}", path.display()))
 }
 
 fn error_report(ticker: &str, message: String, seconds: f64) -> TickerReport {
@@ -233,8 +238,8 @@ pub fn report_json(report: &TickerReport) -> Value {
     })
 }
 
-/// The mapped values of all periods, one JSON line for each period (for the parity
-/// test with the Python importer).
+/// The mapped values of all periods, one JSON line for each period (for a comparison
+/// of two runs).
 pub fn values_json(registry: &Registry, report: &TickerReport) -> Vec<Value> {
     let Some(company) = &report.company else { return Vec::new() };
     let mut lines = Vec::new();

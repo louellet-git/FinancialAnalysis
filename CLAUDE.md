@@ -8,9 +8,10 @@ map) and `docs/HIDDEN-ASSUMPTIONS.md` (known traps).
 Two persons use this repo (GitHub logins `louellet-git` and `merlan1996`) to make
 investment decisions and to trade options. The repo has two parts:
 
-1. **Valuation** (`financial_analysis/`, `analysis/<TICKER>/`). The pipeline imports
-   SEC EDGAR data, runs two Monte Carlo DCF engines, and compares the value range with
-   the market price.
+1. **Valuation** (`rust/mapcheck/`, `financial_analysis/`, `analysis/<TICKER>/`). The
+   Rust program `mapcheck` gets SEC EDGAR data and makes the standard input variables.
+   The Python code (legacy) runs two Monte Carlo DCF engines and compares the value
+   range with the market price.
 2. **Options trading research** (`trading/`). A backtester and a paper trader for
    SPY/QQQ option strategies. All backtest option prices are model prices.
 
@@ -35,9 +36,9 @@ The repo gives analysis. It does not send orders to a broker.
    review of the same weight as the review that made the rule.
 5. **`financial_analysis/standard_variables.toml` defines the input variables.** Models
    read the standard variable names only, not XBRL tag names and not `raw_extras`. To
-   add a tag, add it to this file, with the same scope as its variable. Python and Rust
-   read the same file. After a change: build `rust/mapcheck`, run `cargo test`,
-   `python -m pytest` and `python -m scripts.mapping_parity`.
+   add a tag, add it to this file, with the same scope as its variable. The Rust program
+   `rust/mapcheck` is the only code that makes the variables. After a change: build
+   `rust/mapcheck`, run `cargo test` and `python -m pytest`.
 6. **The IBM entries in `financial_analysis/scenarios.py` are version 3 on purpose**
    (`docs/HIDDEN-ASSUMPTIONS.md` #13). The version 4 headline numbers come only from
    `python -m analysis.IBM.dcf_drivers_run`.
@@ -60,8 +61,13 @@ The repo gives analysis. It does not send orders to a broker.
 - **Smoke test.** A ticket is complete only after the real command runs and the next
   step can use the output.
 - **No bloat.** Add one small part, show that it gives value, then add the next part.
-- **New code for speed is in Rust** (`rust/`). The valuation code stays in Python until
-  a part is moved. A part that exists in two languages has a parity test.
+- **The language is Rust** (owner decision, 2026-11-19). Write all new code in Rust.
+  Do not write new Python code. One part has one implementation: do not keep a Python
+  copy and a Rust copy of the same part. The Python code that stays (engines, backtest,
+  report, market data, trading) is legacy code. Before you change the function of a
+  legacy part, move it to Rust and delete the Python part. The sequence is in the board
+  ticket `python-to-rust`. A Rust program that only calls Python code does not move a
+  part to Rust.
 - **Do not commit** `data/`, `__pycache__/`, `.env`, or private review-framework files
   (`.claude/agents/`, `vendor/`). This repo is public.
 - **Token ledger.** Add a row to `PLANNING/token-ledger.md` for each run.
@@ -88,13 +94,14 @@ Do not use a first pass alone for a trade.
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest                              # 469 tests, no network
-cargo test --manifest-path rust/mapcheck/Cargo.toml   # 45 Rust tests
+python -m pytest                              # 361 tests, no network
+cargo test --manifest-path rust/mapcheck/Cargo.toml   # 66 Rust tests
 python -m scripts.analyze IBM                 # import + market data -> xlsx
 python -m scripts.verdict IBM --price 228.53  # value range against a price
-python -m scripts.mapping_audit IBM           # each input value with its source
-python -m scripts.filing_tree IBM --focus     # capex, depreciation and debt lines of the 10-K
-rust/mapcheck/target/release/mapcheck IBM --detail    # mapping checks (build first)
+cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
+rust/mapcheck/target/release/mapcheck values IBM          # each input value with its source
+rust/mapcheck/target/release/mapcheck IBM --detail        # mapping checks
+rust/mapcheck/target/release/mapcheck filing IBM --focus  # capex, depreciation and debt lines of the 10-K
 python -m scripts.trade_backtest              # option bots, leaderboard
 ```
 

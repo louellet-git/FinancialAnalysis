@@ -1,7 +1,7 @@
 //! From company facts to the standard variables of one period.
 //!
-//! This is the same logic as financial_analysis/importer.py (`resolve_period`,
-//! `_apply_formulas`, `_collect_raw_extras`). The parity test compares the two.
+//! This is the only implementation of the mapping. The Python valuation code reads
+//! the result from the store file (rust/mapcheck/src/store.rs).
 
 use crate::facts::{period_ends, select, CompanyFacts, Forms};
 use crate::registry::{Period, Registry};
@@ -132,7 +132,7 @@ pub fn implied_share_count(registry: &Registry, values: &[Option<f64>], eps_name
 
 /// Correct a share count that the filer reports in thousands or in millions (for
 /// example 716.4 for 716.4 million shares). Net income divided by EPS gives the real
-/// size. The same rule is in financial_analysis/importer.py (`_correct_share_scale`).
+/// size.
 fn correct_share_scale(registry: &Registry, values: &mut [Option<f64>], sources: &mut [Option<String>]) {
     let mut applied: Option<(f64, &str)> = None;
     for (shares_name, eps_name) in [("shares_diluted", "eps_diluted"), ("shares_basic", "eps_basic")] {
@@ -365,6 +365,43 @@ mod tests {
         assert_eq!(p.source(&r, "shares_diluted"), "us-gaap/WeightedAverageNumberOfDilutedSharesOutstanding");
         let (r, p) = shares_company(179_100_000.0, 11.95, 8_563_000_000.0);   // a factor of 4
         assert_eq!(p.get(&r, "shares_diluted"), Some(179_100_000.0));
+    }
+
+    #[test]
+    fn alias_sequence_decides_when_a_filer_has_two_tags() {
+        // Dividends: total cash paid > common only > declared.
+        let (r, p) = resolve(vec![("Revenues", flow(100.0)), ("PaymentsOfDividendsCommonStock", flow(6.0)), ("PaymentsOfDividends", flow(7.0)), ("DividendsCommonStockCash", flow(8.0))]);
+        assert_eq!(p.get(&r, "dividends_paid"), Some(-7.0));
+        let (r, p) = resolve(vec![("Revenues", flow(100.0)), ("DividendsCommonStockCash", flow(8.0))]);
+        assert_eq!(p.get(&r, "dividends_paid"), Some(-8.0));
+        // Interest income: the specific tag before the catch-all tag.
+        let (r, p) = resolve(vec![("Revenues", flow(100.0)), ("InterestIncomeOther", flow(1.0)), ("InvestmentIncomeInterest", flow(2.0))]);
+        assert_eq!(p.get(&r, "interest_income"), Some(2.0));
+        assert_eq!(p.source(&r, "interest_income"), "us-gaap/InvestmentIncomeInterest");
+    }
+
+    #[test]
+    fn negate_changes_the_sign_and_keeps_a_receipt_positive() {
+        // The tag is positive for a payment; the variable is a cash flow.
+        let (r, p) = resolve(vec![("Revenues", flow(100.0)), ("PaymentsForProceedsFromOtherInvestingActivities", flow(7.0))]);
+        assert_eq!(p.get(&r, "other_investing"), Some(-7.0));
+        let (r, p) = resolve(vec![("Revenues", flow(100.0)), ("PaymentsForProceedsFromOtherInvestingActivities", flow(-3.0))]);
+        assert_eq!(p.get(&r, "other_investing"), Some(3.0));
+    }
+
+    #[test]
+    fn capex_total_is_equipment_and_capitalized_software() {
+        // PLANNING/RULES.md R2. Purchased intangibles are not in capex_total.
+        let (r, p) = resolve(vec![
+            ("Revenues", flow(1000.0)),
+            ("PaymentsToAcquirePropertyPlantAndEquipment", flow(50.0)),
+            ("PaymentsToDevelopSoftware", flow(30.0)),
+            ("PaymentsToAcquireIntangibleAssets", flow(10.0)),
+        ]);
+        assert_eq!(p.get(&r, "capex"), Some(-50.0));
+        assert_eq!(p.get(&r, "capex_total"), Some(-80.0));
+        assert_eq!(p.get(&r, "purchases_of_intangibles"), Some(-10.0));
+        assert_eq!(p.source(&r, "capex_total"), "= capex + capitalized_software");
     }
 
     #[test]

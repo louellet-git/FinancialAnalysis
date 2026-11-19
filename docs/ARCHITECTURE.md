@@ -9,10 +9,10 @@ the code disagree, the code governs.
 ```
 SEC EDGAR (companyfacts JSON API)          yfinance
         │                                     │
-   edgar.py (CIK) ──► xbrl_api.py        market_data.py (prices, surprises)
-        │                  │             estimates.py   (forward consensus snapshots)
-        ▼                  ▼             options.py     (option-chain snapshots)
-   cache.py ──► importer.py + xbrl_tags.py    │
+   rust/mapcheck (Rust: fetch, map,      market_data.py (prices, surprises)
+   check, store file)                    estimates.py   (forward consensus snapshots)
+        ▼                                options.py     (option-chain snapshots)
+   importer.py (runs mapcheck, reads the store file)
                      │                        │
                      ▼                        │
               schema.py (PeriodFinancials)    │
@@ -132,17 +132,12 @@ decorative until a driver build exists.
 |---|---|---|
 | `__init__.py` | 3 | Re-exports `EdgarClient`. |
 | `backtest.py` | 407 | Point-in-time vintage backtest of *operating* projections (revenue, FCF — no WACC, no TV, no price). One vintage per clean fiscal-year-end + 90-day filing lag; `vintage_periods` filters on `filed_date <= as_of` (true point-in-time); mechanical parameters (trailing CAGR, margin mean/std over ≤ 5 clean annuals, std floored 0.01, ≥ 3 periods required); projects +1..+horizon with StochasticDCF-style one-draw-per-path sampling; scores vs actuals as currently reported (asymmetry disclosed); `DATA_FLAGS` surfaces (never fixes) known input defects, e.g. IBM's FY2019–20 recast mismatch; skipped vintages are recorded with reasons. |
-| `cache.py` | 28 | Disk cache for SEC companyfacts JSON at `data/raw/TICKER/company_facts.json`; re-fetches on `refresh` or corrupt cache. |
 | `dcf.py` | 157 | Classic engine (above): `DCFAssumptions`, `DCFResult`, `StochasticDCF`, `derive_fcf_margin`. Annual (10-K/10-K/A) periods only. |
 | `driver_dcf.py` | 713 | Driver-based engine (above): `Driver`, `Item`, `DriverModel`, `SegmentSpec`, `DriverDCF`, `DriverDCFResult` (incl. `driver_draws` per-path values for the path explorer), vetted item formulas `revenue_paths`, `fcff_margin`, `wacc_capm`, `terminal_value`, registered in `ITEMS`. |
 | `edgar.py` | 272 | SEC HTTP client (User-Agent, 0.15s rate limit), CIK lookup from company_tickers.json, full-index filing downloads (`EdgarClient.download_for_ticker`), `EdgarClientError`. |
 | `estimates.py` | 193 | yfinance **forward** consensus (revenue/EPS estimates, price targets) → `ConsensusEstimates`; persisted as dated snapshots `data/raw/TICKER/estimates/YYYY-MM-DD.json` (yfinance has no history — history accumulates from first pull; empty snapshots saved so absence is dated evidence). `fetch_estimates`, `list_snapshots`, `load_snapshot`. |
 | `fmp.py` | 120 | Optional FMP API client (`FMP_API_KEY` in `.env`): analyst estimates/surprises, IFRS statements stub (`NotImplementedError`). Free-plan v3 endpoints unavailable since Aug 2025 — pipeline degrades to yfinance. |
-| `filing.py` | 420 | Filing-level XBRL, first part: gets `MetaLinks.json` and the instance document of the latest 10-K (`data/raw/<TICKER>/filings/`), reads the consolidated values of the fiscal year (company tags included), and builds the income statement, balance sheet and cash-flow statement as trees from the calculation data of the filer. `estimates` gives capex, depreciation and amortization, and total debt from the filing lines. Facts with a segment are counted, not used. |
-| `importer.py` | 224 | companyfacts → `PeriodFinancials`. For each fiscal year and each quarter (`facts.py`), it gets each standard variable from the first alias tag that has a fact (`xbrl_tags.py`), then from a formula. It records the source of each value in `sources`, puts the tags with no standard variable in `raw_extras`, and raises `UnsupportedFilingError` for non-us-gaap filers. `segment_revenue` is always None from this source (Ticket 7). |
-| `facts.py` | 146 | Selection of facts by period length: an annual value covers a full fiscal year (350 to 380 days), a quarterly value covers one quarter (or is a year-to-date difference), a balance is selected by its date. The latest filing wins. |
-| `crosscheck.py` | 150 | The comparison of the standard variables with an independent source: the list of comparisons (with alternative definitions for capex and total debt), the match of fiscal years (a 52/53-week year end against a month end), and the summary. No network code. |
-| `mapping_audit.py` | 196 | Audit of the mapping for one period: core inputs with no value, accounting identities that do not agree, estimates of total debt that disagree, material tags with no standard variable, and the filer template (standard / bank / insurer / reit). |
+| `importer.py` | 100 | No mapping logic. Runs the Rust program `mapcheck import` (it gets the SEC data if it is not in the cache) and reads the store file. Raises `UnsupportedFilingError` for non-us-gaap filers and `MapcheckError` if the Rust program is not built. |
 | `market_data.py` | 136 | yfinance daily OHLCV (`load_prices`, cached at `data/raw/TICKER/prices.json`) and earnings surprises (`load_earnings_surprises`). |
 | `options.py` | 375 | yfinance option-chain snapshots (dated, one per day, `data/raw/TICKER/options/YYYY-MM-DD.json`) + derived per-expiry metrics: ATM IV, straddle-mid implied move, 90/110 skew, put/call volume & OI ratios (`fetch_option_chain`, `compute_chain_metrics`, `list_snapshots`, `load_snapshot`). |
 | `rates.py` | 677 | US rates and inflation from the publishers, with no API key. U.S. Treasury par yield curves: nominal 1M to 30Y from 1990, real (TIPS) 5Y to 30Y from 2003. New York Fed SOFR, EFFR, OBFR, TGCR, BGCR and the FOMC target range. BLS CPI-U, headline and core. Breakeven inflation and 5y5y forward inflation use the FRED formulas. `cross_check` and `cross_check_inflation` compare each value with FRED. `with_risk_free` sets the `rf` driver mean of a `DriverModel`. Values are decimals. Cache: `data/raw/rates/`. CLI with `--json`: `python -m financial_analysis.rates`. |
@@ -150,9 +145,8 @@ decorative until a driver build exists.
 | `scenarios.py` | 125 | Bear/base/bull presets (`DEFAULT_SCENARIOS` generic mature-large-cap; `_SCENARIO_OVERRIDES["IBM"]` = v3 framework), `CAPITAL_OVERRIDES` (IBM: net debt $54.0B, 948,675,228 diluted shares), `capital_structure_for` (derives net debt from the latest 10-K: standard variable `total_debt` − cash; shares_outstanding falling back to diluted). |
 | `schema.py` | 187 | Dataclasses: `PeriodFinancials` (132 standard variables with the same names as the registry, `sources` = the tag or formula behind each value, reserved `segment_revenue`, `raw_extras`; derived `free_cash_flow = OCF − abs(capex_total)` (rule R2: equipment and capitalized software) and `fcf_margin`), `CompanyFinancials`, `PricePoint`, `EarningsEstimate`, `EarningsSurprise`, `OptionQuote`, `OptionChainSnapshot`, `ConsensusEstimates`. |
 | `store.py` | 105 | JSON persistence `data/processed/TICKER.json` (**periods only** — no market data), in-memory session cache, `get_series`/`compare` query helpers with metric-name validation. |
-| `xbrl_api.py` | 74 | companyfacts fetch + series extraction: filters by form type/unit, deduplicates by end date keeping the **latest-filed** entry, returns last `n` entries. |
-| `standard_variables.toml` | 1,376 | The registry of standard variables (data): for each variable its alias tags in a fixed sequence, fallback formulas, unit, sign, core flag and memo flag; the rollups; the containment rules; the excluded tags with reasons. Python and Rust read this one file. |
-| `xbrl_tags.py` | 130 | Loads the registry file and gives the Python names: `ALL_TAGS` and the four statement dicts (`TagSpec`), `CORE_FIELDS`, `ANCHOR_CONCEPTS`, `EXCLUDED_CONCEPTS`, `ROLLUPS`, `WITHIN`, `STATEMENT_MAP`, `UNIT_MAP`. |
+| `standard_variables.toml` | 1,385 | The registry of standard variables (data): for each variable its alias tags in a fixed sequence, fallback formulas, unit, sign, core flag and memo flag; the rollups; the containment rules; the excluded tags with reasons. The Rust program `rust/mapcheck` uses it to make the variables. |
+| `xbrl_tags.py` | 135 | Loads the registry file for the Python code that stays (schema fields, xlsx writer): `ALL_TAGS`, the four statement dicts, `CORE_FIELDS`, `ROLLUPS`, `WITHIN`, `STATEMENT_MAP`, `UNIT_MAP`. It does no mapping. |
 | `verdict.py` | 31 | Investor verdict, read-only over driver-engine paths: chance the price is too high (share of paths valued below the price) and a five-band verdict (25%/75% outer cutoffs, Morningstar-style; 40%/60% middle cutoffs are judgment). Plan: PLANNING/proposals/2026-10-15-investor-verdict-layer.md. |
 
 ## `scripts/` (verified 2026-07-17)
@@ -166,11 +160,6 @@ decorative until a driver build exists.
 | `backtest.py` | `python -m scripts.backtest TICKER [--horizon 3] [--simulations 10000] [--seed 7]` | Vintage backtest console report: per-vintage P10/P50/P90 vs actuals, band coverage vs nominal 80%, signed bias by horizon, data flags, skipped vintages. No network. |
 | `visualize_dcf.py` | `python -m scripts.visualize_dcf TICKER [--price X] [--out PATH]` | Single-page self-contained HTML report (plotly.js inlined, ~5.9k lines of output): header chips, price & valuation, fundamentals, the four aggregate-DCF panels (fan / distribution / waterfall / tornado), the driver-model section (segment history, driver table, correlation heatmap, driver-vs-aggregate compare, attribution tornado, **MC path explorer**: stratified 301-path spaghetti, 2,000-path parallel coordinates, bottom/top-10 outlier table with \|z\|≥1.5 drivers bolded), options section (IV term structure, implied move, skew, OI heatmap). Driver section renders only if `analysis/<TICKER>/driver_model.py` exposes `build()`; every section degrades to a labeled "not available" note. Styling follows docs/design-specs/2026-07-16-ratings-desk-blueprint.md. The sixth section "Backtest — mechanical vintages" (vintage table + hedgehog charts from `financial_analysis/backtest.py`, honesty labels, merged PR #9) makes SECTION_TITLES six entries. The skew panel excludes expiries under 2 days from the snapshot (`_SKEW_MIN_DTE`, PR #14) — near-expiry wing IVs are solver noise. |
 | `verdict.py` | `python -m scripts.verdict TICKER --price X [--simulations 10000] [--seed 7] [--rf-date D] [--rf-base-date D] [--rating R] [--json]` | Console verdict for a ticker with `analysis/<TICKER>/driver_model.py`: P10/P25/P50/P75/P90, chance the price is too high, verdict band. It writes nothing. Without `--rf-date` it uses no network. `--rf-date` sets the `rf` mean to the Treasury 10Y of that date and prints the real and inflation parts of the rate. `--rating` (with `--rf-date`) sets the `kd_spread` mean to the market spread for the rating. `--json` gives machine output for `rust/`. |
-| `mapping_audit.py` | `python -m scripts.mapping_audit [TICKER ...] [--panel] [--field NAME] [--refresh]` | Audit of the standard-variable mapping: each value with its source, identity failures, material tags with no variable. `--panel` gives the summary for 32 tickers. Writes no files in `data/processed/`. |
-| `fetch_facts.py` | `python -m scripts.fetch_facts [TICKER ...] [--tickers-file FILE] [--top N] [--write-list FILE] [--delay S] [--refresh]` | Gets SEC company facts for many tickers into `data/raw/<TICKER>/company_facts.json.gz` (0.15 s between requests). `--top N` takes the first N companies of the SEC ticker list. |
-| `mapping_crosscheck.py` | `python -m scripts.mapping_crosscheck [TICKER ...] [--tickers-file FILE] [--out FILE] [--examples N]` | Compares the core inputs of the latest fiscal year with Yahoo Finance (an independent source): agree, agree with a different definition, differ, no value. Network: Yahoo Finance. |
-| `filing_tree.py` | `python -m scripts.filing_tree TICKER [...] [--statement income\|balance\|cash] [--focus] [--refresh]` | Prints the statements of the latest 10-K as the filer structures them (parent, sign, value, tag, standard variable or company tag), and the capex, depreciation and debt lines with a value from these lines. Network: www.sec.gov (3 requests for a new filing). |
-| `mapping_parity.py` | `python -m scripts.mapping_parity [TICKER ...] [--tickers-file FILE] [--sample N]` | Compares the Rust mapper with the Python importer: periods, filing dates, each variable, each source, and the tags with no variable. Exit code 1 on a difference. |
 | `trade_backtest.py` | `python -m scripts.trade_backtest [BOT ...] [--fetch] [--max-risk DOLLARS] [-v]` | Backtest of the SPY/QQQ option bots in `trading/`; prints a leaderboard. Option prices are model prices. |
 | `trade_paper.py` | `python -m scripts.trade_paper [BOT ...] [--no-refresh] [--no-live] [--equity X] [--max-risk DOLLARS]` | One forward paper-trade step for each bot, with live-chain prices when available. It sends no broker orders. |
 
@@ -182,52 +171,48 @@ decorative until a driver build exists.
 | `python -m analysis.IBM.dcf_drivers_run` | v4 driver-engine runner: headline P10/P50/P90 + attribution, E/V fixed-point iteration, f-locus (g_software mean moves WITH f), SBC-drift locus, beta locus, supply-shock correlation and τ=0 disclosure runs, implied-reinvestment check. Seed 7, 10k sims, 10y. |
 | `python -m analysis.JNJ.first_pass_run` | JNJ first pass (unreviewed register): headline, engine-vs-hand-DCF cross-check at means, f / beta / rf loci and one stacked case. Seed 7, 10k sims. |
 
-## Standard variables (2026-11-19)
+## Standard variables and `rust/mapcheck/` (2026-11-19)
 
 Filers use different XBRL tags for the same line. The registry
-`financial_analysis/xbrl_tags.py` gives each line one standard variable name; the
-engines and the analysis code read only these names.
+`financial_analysis/standard_variables.toml` gives each line one standard variable name;
+the engines and the analysis code read only these names.
 
-1. **Period.** `facts.py` finds the fiscal years and quarters and selects the fact of
-   the correct length.
+The Rust program `rust/mapcheck` is the only implementation of this work (owner
+decision of 2026-11-19: the language of the repo is Rust). The Python importer has no
+mapping logic; it runs `mapcheck import` and reads the store file
+`data/processed/<TICKER>.json`.
+
+1. **Period.** A row exists for each real fiscal year and quarter, and each value is the
+   fact of the correct length.
 2. **Alias.** For each variable, the first tag in its list that has a fact gives the
    value. A tag is in a list only if its scope is the same as the variable.
 3. **Formula.** If no tag has a fact, a formula over other variables gives the value
    (for example `total_debt = debt_current + long_term_debt`). In a sum, two terms with
    the same value count one time.
-4. **Source.** `PeriodFinancials.sources[variable]` records the tag or the formula. The
-   xlsx file has a `source` column.
-5. **Audit.** `python -m scripts.mapping_audit TICKER` prints each value with its
-   source, the identities that do not agree, and the material tags with no variable.
-   `--panel` prints the summary for 32 tickers.
+4. **Source.** Each value records its tag or its formula (`PeriodFinancials.sources`, the
+   `source` column of the xlsx file, `mapcheck values TICKER`).
+5. **Checks.** `mapcheck [TICKER ...]` does the checks for one ticker or for all tickers
+   in the cache, in parallel.
+6. **Filing statements.** `mapcheck filing TICKER` reads the latest 10-K and prints the
+   statements as the filer structures them, company tags included.
 
-Result (2026-11-19, 343 companies with the standard template from the 500 largest SEC
-registrants, latest fiscal year): 11 of the 14 core inputs have a value for 97% or more;
-`interest_expense` 96%, `capex` 95%, `sbc_total` 94%, `total_debt` 90% (most of the
-companies with no value have no debt tags).
-
-Limits: no segment data and no company-specific tags (Ticket 7); banks, insurers and
-REITs have a different statement structure and the audit only marks them.
-
-## `rust/mapcheck/` (2026-11-19)
-
-The test framework for the mapping, in Rust. It reads the registry file
-(`financial_analysis/standard_variables.toml`, put into the program at build time) and
-the cached SEC files. It has no network code.
-
-| Module | Function |
+| Module (`rust/mapcheck/src/`) | Function |
 |---|---|
-| `registry.rs` | Loads the registry file and checks its rules (one tag in one variable; no formula that mixes memo and line variables; no memo variable in a rollup). |
-| `facts.rs` | The companyfacts data and the selection of facts by period length (the same logic as `financial_analysis/facts.py`). |
-| `mapper.rs` | The standard variables of one period: alias tags, formulas, sources, tags with no variable (the same logic as `financial_analysis/importer.py`). |
-| `checks.rs` | The checks: core inputs, signs, identities, rollups (overlap, nested details, lines with no variable), total-debt estimates, period sequence. |
-| `run.rs` | One ticker, and all tickers in parallel (rayon); the JSON report and the values for the parity test. |
-| `summary.rs` | The text summary, the ticker list and the detail for one ticker. |
-| `main.rs` | The command line (`mapcheck --help`). |
+| `registry.rs` | Loads the registry file (put into the program at build time) and checks its rules: one tag in one variable; no formula that mixes memo and line variables; no memo variable in a rollup. |
+| `facts.rs` | The companyfacts data and the selection of facts by period length: an annual value covers a full fiscal year, a quarterly value one quarter (or a year-to-date difference); the latest filing wins; end dates of one period that differ by some days become one period. |
+| `mapper.rs` | The standard variables of one period: alias tags, formulas, sources, the share-count scale rule, tags with no variable. |
+| `checks.rs` | The checks: core inputs, signs, identities, rollups (overlap, nested details, lines with no variable), total-debt estimates, share count, capex and software, period sequence. |
+| `run.rs`, `summary.rs` | One ticker, and all tickers in parallel (rayon); the JSON report; the text summary, the ticker list, the detail and the values listing. |
+| `http.rs`, `sec.rs` | HTTP with a delay between requests; the SEC ticker list, company facts and filing files, and the cache folders. The contact text for the SEC comes from the environment variable `SEC_USER_AGENT`. |
+| `store.rs` | Writes `data/processed/<TICKER>.json` for the Python valuation code. |
+| `filing.rs` | Filing-level XBRL, first part: reads `MetaLinks.json` and the instance document of the latest 10-K, builds the three statements as trees from the calculation data of the filer, and gives capex, depreciation and amortization, and total debt from the filing lines. Facts with a segment are counted, not used. |
+| `crosscheck.rs` | Compares the standard variable with the value from the filing lines for capex, depreciation and amortization, and total debt. No outside data source. |
+| `cli.rs`, `main.rs` | The command line: `check` (default), `fetch`, `import`, `values`, `filing`, `crosscheck`. |
 
-Python and Rust are two independent programs for one registry. `scripts.mapping_parity`
-and `tests/test_mapcheck_parity.py` compare them. Results and the list of checks:
-`rust/mapcheck/README.md`.
+Results, the list of checks and the limits: `rust/mapcheck/README.md`.
+
+The crate `rust/` (the `fa` command) is a different program: it calls the Python code
+and gives typed results. It does not move a part to Rust.
 
 ## `trading/` (added 2026-11-19 from branch `claude/trading-bot-spy-qqq-xl1o2o`)
 
@@ -252,6 +237,7 @@ model result.
 
 ## Tests
 
-`python -m pytest` from the repo root: 469 tests, all pass on 2026-11-19 (4 s).
-27 test modules are in `tests/`. The suite makes no network calls; HTTP is mocked and
+`python -m pytest` from the repo root: 361 tests, all pass on 2026-11-19 (4 s).
+20 test modules are in `tests/`. `cargo test --manifest-path rust/mapcheck/Cargo.toml`: 66 Rust
+tests. The suites make no network calls; HTTP is mocked and
 files use `tmp_path`. Install `pytest` with `pip install -r requirements-dev.txt`.

@@ -13,7 +13,7 @@ pipeline or an audit gate; regenerate, don't hand-edit).
 | `README.md` | Overview for persons: commands, engines, trading research, xlsx tabs, layout | informative |
 | `THOUGHTS` | Raw idea scratchpad (2 items, consolidated into tickets.md OPEN TICKETS) | live |
 | `docs/ARCHITECTURE.md` | Code-verified module map, data flow, the two engines' mechanics | informative (code governs) |
-| `docs/HIDDEN-ASSUMPTIONS.md` | Trap registry: 47 non-obvious assumptions/landmines with evidence pointers | informative (code governs) |
+| `docs/HIDDEN-ASSUMPTIONS.md` | Trap registry: 49 non-obvious assumptions/landmines with evidence pointers | informative (code governs) |
 | `docs/INDEX.md` | This file | informative |
 | `docs/visualizer-design-brief.md` | Contract for cosmetic restyles of the HTML report (structure + hard constraints) | binding (for visualizer restyles) |
 | `docs/design-specs/2026-07-16-ratings-desk-blueprint.md` | Accepted visual design spec applied to `visualize_dcf.py` (tokens, chart chrome) | binding (visualizer styling) |
@@ -40,5 +40,5 @@ pipeline or an audit gate; regenerate, don't hand-edit).
 | `analysis/IBM/report/SOURCE-AUDIT.md` | Final audit gate record: claim→source table, engine re-run verification | generated/audited (frozen) |
 | `trading/research/LEADERBOARD.md` | Results and limits of the 22 option bots (model prices) | informative (research record) |
 | `trading/research/s*.md` | One research note for each option bot | informative (research record) |
-| `financial_analysis/standard_variables.toml` | The registry of standard variables: tags, formulas, rollups, exclusions (data; Python and Rust read it) | binding (defines the model inputs) |
-| `rust/mapcheck/README.md` | The Rust test framework for the mapping: commands, checks, results, how to expand | informative (the code governs) |
+| `financial_analysis/standard_variables.toml` | The registry of standard variables: tags, formulas, rollups, exclusions (data; the Rust program `rust/mapcheck` uses it) | binding (defines the model inputs) |
+| `rust/mapcheck/README.md` | The Rust program for SEC data and the standard variables: commands, checks, filing statements, results | informative (the code governs) |

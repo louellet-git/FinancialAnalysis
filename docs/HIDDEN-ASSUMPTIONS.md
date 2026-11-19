@@ -19,8 +19,8 @@ by the recast).
 rows were not fiscal years (on a 29-ticker panel: 338 of 672). A 10-K also contains
 quarter values, and the old importer made a row for each end date. Now a row exists
 only if an anchor tag (revenue, net income, operating cash flow, tax expense) has a
-fact of the correct length for that end date. Evidence: `financial_analysis/facts.py`
-(`period_ends`); `tests/test_facts.py`.
+fact of the correct length for that end date. Evidence: `rust/mapcheck/src/facts.rs`
+(`period_ends` and its tests).
 
 **3. (Closed 2026-11-19.) `n_periods` counts fiscal years.** `import_company(n_periods=12)`
 gives the latest 12 fiscal years and the latest 12 quarters. Each row has all the
@@ -35,8 +35,8 @@ filters vintages on `filed_date <= as_of`, so vintages are **conservative** (see
 periods than a real-time observer), never optimistic — the safe leakage direction, but
 do not read `filed_date` as "when this became public." Evidence:
 `financial_analysis/backtest.py:1-37` (module docstring, caveat #1);
-`financial_analysis/facts.py` (`_latest`: the latest filing wins);
-`financial_analysis/importer.py` (`resolve_period`).
+`rust/mapcheck/src/facts.rs` (`latest`: the latest filing wins);
+`rust/mapcheck/src/mapper.rs` (`resolve_period`).
 
 **5. Segment data is hand-entered; companyfacts has no segment axis.** The SEC
 companyfacts API strips dimensional facts (verified across every us-gaap concept in
@@ -123,14 +123,15 @@ Finance for 50 companies (2026-11-19) gives agreement of 98% or more for eight c
 inputs, but 75% for `capex`, 74% for `da_total` and 83% for `total_debt`. Causes: the
 standard capex is equipment only (capitalized software and company tags are not in it);
 the depreciation tags have a different scope for each filer; debt tags overlap. Before
-you use these three inputs for a ticker, run `python -m scripts.filing_tree TICKER
---focus` and compare. Free cash flow is too high when capex is too low. Since rule R2
+you use these three inputs for a ticker, run `mapcheck filing TICKER --focus` and
+compare. Free cash flow is too high when capex is too low. Since rule R2
 (`PLANNING/RULES.md`), free cash flow uses `capex_total` (equipment and capitalized
 software). This corrects only the companies that use a standard tag for software (14 of
 324); a company tag for software (IBM) is not in the standard source.
-*Evidence:* `python -m scripts.mapping_crosscheck`; `rust/mapcheck/README.md`.
+*Evidence:* `rust/mapcheck/README.md` (the record of the Yahoo comparison, and
+`mapcheck crosscheck`).
 
-**43. The filing-level values come from tag-name patterns.** `financial_analysis/filing.py`
+**43. The filing-level values come from tag-name patterns.** `rust/mapcheck/src/filing.rs`
 finds the capex, depreciation and debt lines by words in the tag name. A line can be
 missing (NEE: two of the capex lines are found, the total is 6% too low) or incorrect
 (FDX and DUK: debt is counted two times; V and MA: a line that is not depreciation).
@@ -140,6 +141,17 @@ The printed lines show what the value contains.
 The importer and the Rust mapper correct a factor of 1,000 or 1,000,000 when net income
 divided by EPS shows it, and the source records the correction. A stock split after the
 period is not corrected: the value is the count that the filer reported.
+
+**48. The Python commands need the Rust program.** The Python importer has no mapping
+logic. `scripts.analyze`, `scripts.import_financials` and each command that imports a
+ticker run `rust/mapcheck/target/release/mapcheck`. If the program is not built, they
+stop with `MapcheckError` and the build command. Build it again after a change of
+`financial_analysis/standard_variables.toml` (the program contains the file).
+
+**49. A request to the SEC needs `SEC_USER_AGENT`.** The Rust program reads the contact
+text from this environment variable. `www.sec.gov` (ticker list, filing files) refuses
+a request with no contact. The Python importer gives the Rust program the contact text
+of the legacy Python SEC client when the variable is not set.
 
 ## Model layer (IBM v4 / driver engine)
 
@@ -269,7 +281,7 @@ without a `CAPITAL_OVERRIDES` entry, net debt = the standard variable `total_deb
 cash — **no pension, no marketable securities, no stock-vs-flow review**. `total_debt`
 is a first estimate: filers tag debt in different ways and the tags can overlap (on the
 2026-11-19 panel the two formulas disagree for IBM, JNJ, HD, CVX and CSCO; see
-`python -m scripts.mapping_audit`). The IBM
+`mapcheck --detail`). The IBM
 override embeds the F15-reviewed bridge (debt + after-tax pension − cash&securities);
 the DUOL override includes HTM securities + LT investments on the cash side. A
 cross-ticker comparison (the ORCL/basket runs) that mixes overridden and derived capital

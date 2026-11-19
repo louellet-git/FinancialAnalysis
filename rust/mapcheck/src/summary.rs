@@ -170,3 +170,54 @@ pub fn detail(registry: &Registry, r: &TickerReport) -> String {
     let _ = registry;
     out
 }
+
+/// Each standard variable of the latest fiscal year with its value and its source.
+/// `*` marks a core DCF input.
+pub fn values_listing(registry: &Registry, r: &TickerReport) -> String {
+    let mut out = String::new();
+    let _ = writeln!(out, "\n{}", "=".repeat(100));
+    let _ = writeln!(out, "{}  {}  |  fiscal year end {}  |  template: {}  |  {} annual rows, {} quarterly rows",
+        r.ticker, r.name, r.fiscal_year_end.as_deref().unwrap_or("-"), r.template, r.annual_rows, r.quarterly_rows);
+    if let Some(e) = &r.error {
+        let _ = writeln!(out, "  ERROR {e}");
+        return out;
+    }
+    let Some(period) = r.company.as_ref().and_then(|c| c.annual.last()) else {
+        let _ = writeln!(out, "  no annual period");
+        return out;
+    };
+    let mut statement = "";
+    let mut filled = 0;
+    let mut from_formula = 0;
+    for (i, variable) in registry.variables.iter().enumerate() {
+        if variable.statement != statement {
+            statement = &variable.statement;
+            let _ = writeln!(out, "\n  --- {statement} ---");
+        }
+        let mark = if variable.core { "*" } else { " " };
+        let Some(value) = period.values[i] else {
+            if variable.core {
+                let _ = writeln!(out, "  {mark} {:40} {:>14}", variable.name, "NO VALUE");
+            }
+            continue;
+        };
+        filled += 1;
+        let source = period.sources[i].as_deref().unwrap_or("");
+        if source.starts_with('=') {
+            from_formula += 1;
+        }
+        let shown = match variable.unit.as_str() {
+            "USD" => format!("{:>12.3} B", value / 1e9),
+            "shares" => format!("{:>12.1} M", value / 1e6),
+            _ => format!("{:>12.2}  ", value),
+        };
+        let _ = writeln!(out, "  {mark} {:40} {shown}  {source}", variable.name);
+    }
+    let core = registry.core().len();
+    let _ = writeln!(out, "\n  Variables with a value: {filled} of {} ({from_formula} from a formula).  Core inputs (*): {} of {core}.",
+        registry.variables.len(), r.core_filled);
+    for f in &r.findings {
+        let _ = writeln!(out, "  {:4} {:36} {}", f.severity.label(), f.code, f.detail);
+    }
+    out
+}

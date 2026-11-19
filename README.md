@@ -19,8 +19,9 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest                       # 469 tests, no network
-cargo test --manifest-path rust/mapcheck/Cargo.toml   # 45 Rust tests
+python -m pytest                       # 361 tests, no network
+cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
+cargo test --manifest-path rust/mapcheck/Cargo.toml    # 66 Rust tests
 ```
 
 Run all commands from the repo root.
@@ -74,8 +75,6 @@ python -m scripts.visualize_dcf IBM [--price 195.40] [--out report.html]
 python -m scripts.verdict IBM --price 228.53 [--simulations 10000] [--seed 7] [--rf-date today] [--rf-base-date 2026-07-16] [--rating A-] [--json]
 python -m financial_analysis.bonds [snapshot|spread|yield|over10y|moodys|hqm|check] [--rating A-] [--json]
 python -m financial_analysis.rates [snapshot|yield|curve|history|nyfed|inflation|fred|check] [--json]
-python -m scripts.mapping_audit IBM JNJ    # each input value with its source
-python -m scripts.mapping_audit --panel    # mapping summary for 32 tickers
 python -m analysis.IBM.dcf_drivers_run     # IBM version 4 headline numbers (seed 7)
 python -m analysis.IBM.dcf_scenarios       # IBM version 3 (historical)
 python -m analysis.JNJ.first_pass_run      # JNJ first pass
@@ -92,103 +91,68 @@ on the same day reads the disk; `--refresh` gets new data.
 
 Companies use different XBRL tag names for the same line. For example, interest expense
 is `InterestExpense` for IBM, `InterestExpenseNonoperating` for Microsoft and
-`InterestExpenseDebt` for Chevron. The registry `financial_analysis/xbrl_tags.py` gives
-each line one standard variable name (132 variables). The models read only these names.
-The registry data is in `financial_analysis/standard_variables.toml`; Python and Rust
-read this one file.
+`InterestExpenseDebt` for Chevron. The registry `financial_analysis/standard_variables.toml`
+gives each line one standard variable name (132 variables). The models read only these
+names.
+
+The Rust program `rust/mapcheck` makes the standard variables. It is the only
+implementation: no Python code does this work. `scripts.analyze` and the other Python
+commands get their data from it.
 
 - Each variable has a list of tags with the same meaning. The first tag that has a
   value is used.
 - If no tag has a value, a formula over other variables is used (for example
   `total_debt = debt_current + long_term_debt`).
 - Each value has a recorded source: the tag, or the formula. The xlsx file shows it in
-  the `source` column. `python -m scripts.mapping_audit TICKER` prints it.
+  the `source` column. `mapcheck values TICKER` prints it.
 - An annual row is always a full fiscal year. A quarterly row is always one quarter.
 - Free cash flow is operating cash flow less `capex_total`. `capex_total` is equipment
   (`capex`) and capitalized software. Purchased intangibles are not included. This is
   rule R2 in `PLANNING/RULES.md`, with the reasons.
+- A share count with no scale (McDonald's reports 716.4 for 716.4 million shares) is
+  corrected with net income divided by EPS, and the source records the correction.
 - Tags with no standard variable stay in the `Raw` tab.
 
-Before you use a variable in a model, run the audit for the ticker and read the source
-of the value. The audit also shows where the data does not agree. Total debt is the
-most frequent problem: on the 32-ticker panel the two estimates of total debt disagree
-for 5 companies, because companies tag debt in ways that overlap.
-
-Limits: the SEC data source has no segment data and no company-specific tags. Banks,
-insurers and REITs have a different statement structure; the audit marks them.
-
-### Test of the mapping on many tickers (Rust)
-
-`rust/mapcheck` is a Rust program that maps and checks many companies in parallel:
-472 companies in 2.8 seconds. It answers four questions for each company: can the DCF
-use the inputs, was a value lost, was a value counted two times, and do the statements
-agree. A second command compares the Rust result with the Python result.
-
 ```bash
-cargo build --release --manifest-path rust/mapcheck/Cargo.toml
-python -m scripts.fetch_facts --tickers-file rust/mapcheck/universe/batch50.txt   # get the data
-rust/mapcheck/target/release/mapcheck --tickers-file rust/mapcheck/universe/top500.txt
-rust/mapcheck/target/release/mapcheck IBM --detail
-python -m scripts.mapping_parity --sample 120                                     # Rust against Python
-python -m scripts.mapping_crosscheck --tickers-file rust/mapcheck/universe/batch50.txt   # against Yahoo Finance
+cargo build --release --manifest-path rust/mapcheck/Cargo.toml    # one time, and after a registry change
+
+M=rust/mapcheck/target/release/mapcheck
+$M values IBM                      # each variable with its value and its source
+$M IBM --detail                    # the checks for one ticker
+$M --tickers-file rust/mapcheck/universe/top500.txt     # the checks for many tickers
+$M filing IBM --focus              # the capex, depreciation and debt lines of the latest 10-K
+$M filing VZ --statement cash      # one statement of the 10-K as the company structures it
+$M crosscheck --tickers-file rust/mapcheck/universe/batch50.txt   # standard variables against the filing
+$M fetch --top 2000 --write-list rust/mapcheck/universe/top2000.txt   # get data (set SEC_USER_AGENT)
 ```
 
-Result on 2026-11-19, 472 of the 500 largest SEC registrants: 312 are US companies
+On Windows the program is `rust\mapcheck\target\release\mapcheck.exe`.
+
+The checks answer four questions for each company: can the DCF use the inputs, was a
+value lost, was a value counted two times, and do the statements agree. Result on
+2026-11-19 for 472 of the 500 largest SEC registrants (2.8 seconds): 312 are US companies
 with a standard statement structure. Of these, 48 pass, 240 have a warning that a
 person must examine, and 24 fail (15 of these have no standard tag for capital
 expenditure). Read `rust/mapcheck/README.md` for the checks and the results.
 
-Two results that you must know before you add variables in a model:
+Before you use a variable in a model, read these three results:
 
-- For 166 of the 312 companies, a variable is a detail inside a different line (for
-  example income taxes payable inside accrued liabilities). If you add the two, you
-  count the amount two times. `mapcheck TICKER --detail` shows these as `nested`.
-- For 47 of the 312 companies, the estimates of total debt disagree.
+- **Details inside lines.** For 166 of the 312 companies, a variable is a detail inside
+  a different line (for example income taxes payable inside accrued liabilities). If you
+  add the two, you count the amount two times. `mapcheck TICKER --detail` shows these as
+  `nested`.
+- **Total debt.** For 47 of the 312 companies, the estimates of total debt disagree.
+- **Three weak inputs.** Capital expenditure, depreciation and amortization, and total
+  debt are less reliable than the other core inputs. `mapcheck filing TICKER --focus`
+  shows the lines of the company's own filing for these three inputs. Examples: IBM
+  capital expenditure is $1.09B in the standard variable and $1.74B in the filing (IBM
+  has a company tag for software); the ConocoPhillips capex has only a company tag
+  ($12.55B). The standard variables do not use the filing values yet (board ticket
+  `filing-values-in-variables`).
 
-A third test compares the core inputs with Yahoo Finance, an independent source
-(`scripts.mapping_crosscheck`). Result for the 50 new tickers on 2026-11-19: eight inputs
-agree for 98% to 100% of the companies (pre-tax income, tax, net income, operating
-cash flow, cash, total assets, total liabilities, equity, share-based compensation),
-revenue for 96%, share count for 94%, total debt for 83%, capital expenditure for 75%
-and depreciation and amortization for 74%. Do not use the last three inputs for a
-ticker before you examine them.
-
-The share count of some filers has no scale (McDonald's reports 716.4 for 716.4 million
-shares). The importer corrects a factor of 1,000 or 1,000,000 with net income divided
-by EPS, and records the correction in the source.
-
-### The statements of a filing (filing-level data)
-
-The SEC source that the importer uses has standard tags only, and it does not say which
-line is a part of which line. Each 10-K has this information. `scripts.filing_tree` gets
-the latest 10-K of a ticker and prints the three statements as the company structures
-them: each line with its parent, its sign, its value, and its tag. Company-specific
-tags are included.
-
-```bash
-python -m scripts.filing_tree VZ                    # the three statements
-python -m scripts.filing_tree VZ --statement cash   # one statement
-python -m scripts.filing_tree IBM COP --focus       # only the capex, depreciation and debt lines
-```
-
-Use `--focus` before you trust capital expenditure, depreciation and amortization, or
-total debt for a ticker. It shows the lines of the filing and a value from these lines.
-Examples: IBM capital expenditure is $1.09B in the standard variable and $1.74B in the
-filing (IBM has a company tag for software); the ConocoPhillips capex has only a company
-tag ($12.55B).
-
-Comparison with Yahoo Finance for the 50 new tickers (2026-11-19):
-
-| Input | Standard variables agree | Filing lines agree |
-|---|---|---|
-| Capital expenditure | 73% | 92% (78% and 14% more with purchased intangibles) |
-| Total debt | 80% | 90% |
-| Depreciation and amortization | 73% | 81% |
-
-Limits: the standard variables do not use the filing values yet (board ticket
-`filing-values-in-variables`). The command finds the lines by their tag names, thus a
-line can be missing or incorrect; read the printed lines. Facts with a segment (60% to
-70% of the facts in a filing) are counted but not used.
+Limits: the SEC data source of the standard variables has no segment data and no
+company-specific tags. Banks, insurers and REITs have a different statement structure;
+the checks mark them. Foreign filers (form 20-F) and IFRS filers are out of scope.
 
 ## Interest rates and inflation
 
@@ -352,7 +316,7 @@ CLAUDE.md                 rules for agents (read first)
 README.md                 this file
 requirements.txt          runtime packages
 requirements-dev.txt      pytest
-rust/mapcheck/            Rust test framework for the mapping (cargo)
+rust/mapcheck/            Rust: SEC data to standard variables, checks, filing statements
 .env.example              names of the optional API keys
 .github/workflows/        CI: runs pytest and the Rust tests on each pull request
 
@@ -362,7 +326,7 @@ analysis/JNJ/             JNJ first pass (not reviewed)
 trading/                  option strategy backtester, paper trader, 22 bots, research notes
 scripts/                  command-line entry points
 rust/                     Rust interface: library and `fa` command (calls the Python code)
-tests/                    469 tests
+tests/                    361 Python tests (legacy code)
 
 docs/                     ARCHITECTURE.md, HIDDEN-ASSUMPTIONS.md, INDEX.md, design documents
 PLANNING/board/           open work, one file for each ticket
