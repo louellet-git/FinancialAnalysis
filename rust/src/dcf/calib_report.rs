@@ -2,7 +2,7 @@
 //! (ticket `T-20261119-dcf-process-calibration`).
 
 use super::calib_bands::{coverage_report, render_coverage};
-use super::calibrate::{estimate_table, GROWTH_LIMITS, Ar1Params, ProcessPriors, ProcessTable, TableMeta};
+use super::calibrate::{estimate_table, Ar1Params, FadeCell, FadeFile, FadeStep, ProcessPriors, ProcessTable, TableMeta, GROWTH_LIMITS};
 use super::panel::{build_panel, bucket, CompanyPanel, Panel, BUCKET_LABELS};
 use super::stats::{percentile, sorted_copy};
 use super::DcfError;
@@ -108,7 +108,9 @@ pub fn command(repo: &Path, args: &[String]) -> Result<u8, DcfError> {
             },
             cell: cells,
         };
-        std::fs::write(path, table.to_toml()?).map_err(|x| DcfError(format!("{path}: {x}")))?;
+        let fade = FadeFile { fade: fade_cells(&panel.companies, &table.cell) };
+        let text = format!("{}\n{}", table.to_toml()?, fade.to_toml()?);
+        std::fs::write(path, text).map_err(|x| DcfError(format!("{path}: {x}")))?;
         println!("\nTable written to {path}");
     }
     Ok(0)
@@ -441,4 +443,25 @@ fn render_fade(out: &mut String, companies: &[CompanyPanel], cells: &[ProcessPri
         let next = b.next.map_or("      .".to_string(), pct);
         let _ = writeln!(out, "    {:<7} {} {:<8} {:7.1}B (before {:6.1}B)  growth {}  next {next}", b.ticker, b.end, b.template, b.revenue / 1e9, b.before / 1e9, pct(b.growth));
     }
+}
+
+/// The fade groups as table cells (written after the cells of the AR(1) table, as `[[fade]]`). `group_mean`
+/// is the pooled mean growth of the size bucket, from the cell of the size and all templates.
+pub fn fade_cells(companies: &[CompanyPanel], cells: &[ProcessPriors]) -> Vec<FadeCell> {
+    let r6 = |x: f64| (x * 1e6).round() / 1e6;
+    fade_groups(companies)
+        .into_iter()
+        .filter_map(|g| {
+            let mean = cells.iter().find(|c| c.size == g.size && c.template == "all").and_then(|c| c.growth.as_ref())?.mean_pooled;
+            Some(FadeCell {
+                size: g.size,
+                threshold: g.threshold,
+                n_start: g.n_start,
+                start_mean: r6(g.start_mean),
+                start_median: r6(g.start_median),
+                group_mean: r6(mean),
+                step: g.horizons.iter().map(|h| FadeStep { k: h.k, n: h.n, p10: r6(h.p10), p50: r6(h.p50), p90: r6(h.p90) }).collect(),
+            })
+        })
+        .collect()
 }

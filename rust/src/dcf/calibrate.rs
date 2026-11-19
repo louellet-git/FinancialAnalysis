@@ -627,3 +627,91 @@ pub fn estimate_table(companies: &[CompanyPanel], reps: usize) -> Vec<ProcessPri
     let cells: Vec<ProcessPriors> = jobs.par_iter().map(|(sz, t)| estimate_cell(&s, *sz, *t, reps)).collect();
     cells.into_iter().filter(|c| c.growth.is_some() || c.operating_margin.is_some() || c.fcf_margin.is_some()).collect()
 }
+
+// ---------------------------------------------------------------------------------------------
+// The fade table (ticket `T-20261119-dcf-auto-model`): growth k years after a year of high growth
+// ---------------------------------------------------------------------------------------------
+
+/// The growth `k` years after the start years of one group: P10, P50 and P90.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FadeStep {
+    pub k: usize,
+    pub n: usize,
+    pub p10: f64,
+    pub p50: f64,
+    pub p90: f64,
+}
+
+/// One group of start years: a size bucket (`all` or a label of `BUCKET_LABELS`) and a growth threshold.
+/// `group_mean` is the pooled mean growth of the size bucket (the mean that `fa dcf calibrate` prints
+/// in the fade text).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FadeCell {
+    pub size: String,
+    pub threshold: f64,
+    pub n_start: usize,
+    pub start_mean: f64,
+    pub start_median: f64,
+    pub group_mean: f64,
+    pub step: Vec<FadeStep>,
+}
+
+/// The `[[fade]]` part of a table file. A table file that has no such part gives an empty list.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct FadeFile {
+    #[serde(default)]
+    pub fade: Vec<FadeCell>,
+}
+
+impl FadeFile {
+    pub fn from_toml(text: &str) -> Result<FadeFile, DcfError> {
+        toml::from_str(text).map_err(|x| DcfError(format!("fade table: {x}")))
+    }
+
+    pub fn to_toml(&self) -> Result<String, DcfError> {
+        toml::to_string_pretty(self).map_err(|x| DcfError(format!("fade table: {x}")))
+    }
+}
+
+/// The half-life, in years, of the slow fade of the growth of a fast grower toward the group mean. The rule:
+/// for each threshold of the cells of all sizes, the median growth `k = 3` years after the start and `k = 10`
+/// years after it give the share of the gap to the group mean that is left, `r = (p50_10 - m) / (p50_3 - m)`;
+/// the yearly factor is `r^(1/7)` and the half-life is `ln 2 / -ln(factor)`. The result is the median over
+/// the thresholds that have both steps, a gap above 2 points and `r` in (0, 1). Years 1 and 2 are not used:
+/// the fast part of the process (the AR(1) shock) gives them.
+pub fn slow_half_life(cells: &[FadeCell]) -> Option<f64> {
+    let mut hl: Vec<f64> = Vec::new();
+    for c in cells.iter().filter(|c| c.size == "all") {
+        let at = |k: usize| c.step.iter().find(|s| s.k == k).map(|s| s.p50);
+        let (Some(g3), Some(g10)) = (at(3), at(10)) else { continue };
+        let gap = g3 - c.group_mean;
+        if gap < 0.02 {
+            continue;
+        }
+        let r = (g10 - c.group_mean) / gap;
+        if r > 0.0 && r < 1.0 {
+            hl.push(std::f64::consts::LN_2 / -(r.powf(1.0 / 7.0)).ln());
+        }
+    }
+    if hl.is_empty() {
+        return None;
+    }
+    hl.sort_by(|a, b| a.total_cmp(b));
+    Some(hl[hl.len() / 2])
+}
+
+/// The spread of the growth one year after a year of high growth, over the growth of the start year: for each
+/// threshold of the cells of all sizes, `(P90 - P10) / (2 * 1.2816) / start_mean` at `k = 1`; the result is the median
+/// over the thresholds. A company in a high-growth state has a next-year spread of this share of its growth.
+pub fn level_spread_ratio(cells: &[FadeCell]) -> Option<f64> {
+    let mut v: Vec<f64> = cells
+        .iter()
+        .filter(|c| c.size == "all" && c.start_mean > 0.0)
+        .filter_map(|c| c.step.iter().find(|s| s.k == 1).map(|s| (s.p90 - s.p10) / (2.0 * 1.2815515655446004) / c.start_mean))
+        .collect();
+    if v.is_empty() {
+        return None;
+    }
+    v.sort_by(|a, b| a.total_cmp(b));
+    Some(v[v.len() / 2])
+}
