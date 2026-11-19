@@ -38,3 +38,8 @@ Decisions for the owner before the start:
   the site. Yahoo and Nasdaq have no published API; a published API with a key (for
   example Tiingo) is the better base for a continuous process.
 - The repo gives analysis only. A stream does not change this rule: no orders.
+
+Owner decision, 2026-11-19: hold this ticket. A process that runs all the time is not
+necessary now. The data must come from sources that give the past on request
+(`T-20261119-keyed-data-sources`), and the person starts a sync when they want
+(`T-20261119-data-sync`).
