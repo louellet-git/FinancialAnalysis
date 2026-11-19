@@ -2,9 +2,9 @@
 id: T-20261119-bond-recon
 title: Compare theoretical bond values with the values from the rates that the repo gets
 area: engine
-status: in-progress
+status: review
 owner: louellet-git
-branch: claude/bond-recon
+branch: claude/bond-arb
 created: 2026-11-19
 acceptance: One command prints, for a date, the difference between the theoretical value and the value from our rates for each zero-coupon bond and each plain coupon bond in the comparison set, and writes the differences to a file.
 ---

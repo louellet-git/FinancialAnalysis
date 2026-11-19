@@ -2,7 +2,7 @@
 id: T-20261119-bond-arbitrage-research
 title: Find the cause of each bond price difference and list rich and cheap Treasury securities
 area: engine
-status: in-progress
+status: review
 owner: louellet-git
 branch: claude/bond-arb
 created: 2026-11-19
