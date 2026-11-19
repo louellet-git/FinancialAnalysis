@@ -176,6 +176,7 @@ mod tests {
             utc: (0..n as i64).map(|d| (20_000 + d) * 86_400).collect(),
             trades,
             open_positions: vec![],
+            pending: vec![],
             rejections: vec![("too_risky_for_account", 2), ("max_total_risk", 1)],
             pdt_blocks: 4,
             risk: RiskConfig::default(),

@@ -39,7 +39,9 @@ USAGE:
                                                   stochastic rate models (Rust); see below
   fa verdict TICKER --price P [--rf-date D|today] [--rf-base-date D] [--rating A-]
              [--simulations N] [--seed S]
+  fa trade fetch [--symbol S]... [--interval I]...  download the bars of the option bots (Yahoo) into the CSV cache
   fa trade backtest [--bot ID]... [--max-risk N] [--out FILE] [-v]   backtest the option bots (fa trade backtest --help)
+  fa trade paper [BOT]... [--no-refresh] [--no-live]   forward paper trading, live Cboe option chain (fa trade paper --help)
   fa run MODULE [ARGS...]                         any entry point, e.g. fa run scripts.analyze IBM
 
 D is YYYY-MM-DD or 'today'. Rates are decimals (0.0507 = 5.07%).
@@ -157,7 +159,15 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
                 Ok(code) => Ok(ExitCode::from(code as u8)),
                 Err(e) => Ok(usage_error(&e)),
             },
-            _ => Ok(usage_error("trade needs a command: backtest")),
+            Some("fetch") => match financial_analysis::trading::fetch::command(financial_analysis::trading::data::Store::from_env(&fa.repo).dir(), &args[2..]) {
+                Ok(code) => Ok(ExitCode::from(code as u8)),
+                Err(e) => Ok(usage_error(&e)),
+            },
+            Some("paper") => match financial_analysis::trading::paper::command(&fa.repo, &args[2..]) {
+                Ok(code) => Ok(ExitCode::from(code as u8)),
+                Err(e) => Ok(usage_error(&e)),
+            },
+            _ => Ok(usage_error("trade needs a command: backtest, fetch or paper")),
         },
         Some("run") => match args.get(1) {
             None => Ok(usage_error("run needs a module, e.g. scripts.analyze")),

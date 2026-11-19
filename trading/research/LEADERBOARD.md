@@ -5,7 +5,7 @@ run on the same harness after the pricing fixes below. **Every option price is
 MODEL-PRICED** (Black-Scholes on VIX/VXN/VIX1D + skew + spread); no free historical
 option quotes exist. OOS = the last 30% of each bot's bars, never used for tuning by the
 bot itself (several bots admit to peeking or to running more than the ~6 allowed variants;
-see their notes). Reproduce: `python -m scripts.trade_backtest [--max-risk 250]`.
+see their notes). Reproduce: `fa trade backtest [--max-risk 250]`.
 
 ## Account A — $2,000, max loss 3% of equity per trade (~$60)
 

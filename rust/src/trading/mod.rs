@@ -1,7 +1,8 @@
-//! Backtester for the SPY/QQQ option bots (moved from the Python package `trading/`).
+//! Backtester and paper trader for the SPY/QQQ option bots (moved from the Python package `trading/`).
 //!
-//! It reads the CSV cache of market data, runs each bot on its own account, and prints a
-//! leaderboard. All option prices are MODEL prices (see `pricing`). The code sends no order
+//! `fetch` downloads the bars into a CSV cache (Yahoo chart endpoint). The backtester reads the
+//! cache, runs each bot on its own account, and prints a leaderboard. `paper` runs the bots forward
+//! on fresh data and prices the new signals on a live option chain (`chain`, Cboe delayed quotes). All option prices are MODEL prices (see `pricing`). The code sends no order
 //! to a broker.
 
 // The code keeps the shape of the Python expressions (float operation order, NaN behavior), so a
@@ -16,10 +17,13 @@
 
 pub mod bots;
 pub mod calendar;
+pub mod chain;
 pub mod cli;
 pub mod data;
 pub mod engine;
+pub mod fetch;
 pub mod metrics;
+pub mod paper;
 pub mod pricing;
 pub mod stats;
 pub mod strategy;

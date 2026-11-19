@@ -160,8 +160,6 @@ decorative until a driver build exists.
 | `backtest.py` | `python -m scripts.backtest TICKER [--horizon 3] [--simulations 10000] [--seed 7]` | Vintage backtest console report: per-vintage P10/P50/P90 vs actuals, band coverage vs nominal 80%, signed bias by horizon, data flags, skipped vintages. No network. |
 | `visualize_dcf.py` | `python -m scripts.visualize_dcf TICKER [--price X] [--out PATH]` | Single-page self-contained HTML report (plotly.js inlined, ~5.9k lines of output): header chips, price & valuation, fundamentals, the four aggregate-DCF panels (fan / distribution / waterfall / tornado), the driver-model section (segment history, driver table, correlation heatmap, driver-vs-aggregate compare, attribution tornado, **MC path explorer**: stratified 301-path spaghetti, 2,000-path parallel coordinates, bottom/top-10 outlier table with \|z\|≥1.5 drivers bolded), options section (IV term structure, implied move, skew, OI heatmap). Driver section renders only if `analysis/<TICKER>/driver_model.py` exposes `build()`; every section degrades to a labeled "not available" note. Styling follows docs/design-specs/2026-07-16-ratings-desk-blueprint.md. The sixth section "Backtest — mechanical vintages" (vintage table + hedgehog charts from `financial_analysis/backtest.py`, honesty labels, merged PR #9) makes SECTION_TITLES six entries. The skew panel excludes expiries under 2 days from the snapshot (`_SKEW_MIN_DTE`, PR #14) — near-expiry wing IVs are solver noise. |
 | `verdict.py` | `python -m scripts.verdict TICKER --price X [--simulations 10000] [--seed 7] [--rf-date D] [--rf-base-date D] [--rating R] [--json]` | Console verdict for a ticker with `analysis/<TICKER>/driver_model.py`: P10/P25/P50/P75/P90, chance the price is too high, verdict band. It writes nothing. Without `--rf-date` it uses no network. `--rf-date` sets the `rf` mean to the Treasury 10Y of that date and prints the real and inflation parts of the rate. `--rating` (with `--rf-date`) sets the `kd_spread` mean to the market spread for the rating. `--json` gives machine output for `rust/`. |
-| `trade_backtest.py` | `python -m scripts.trade_backtest [BOT ...] [--fetch] [--max-risk DOLLARS] [-v]` | Backtest of the SPY/QQQ option bots in `trading/`; prints a leaderboard. Option prices are model prices. |
-| `trade_paper.py` | `python -m scripts.trade_paper [BOT ...] [--no-refresh] [--no-live] [--equity X] [--max-risk DOLLARS]` | One forward paper-trade step for each bot, with live-chain prices when available. It sends no broker orders. |
 
 ## Root-level analysis entry points
 
@@ -331,54 +329,57 @@ is a table (JSON, or CSV with `--out`); a window that fails has the error in its
 **Commands.** See `fa help` and the README. The tests are in `tests.rs`; they run with
 `cargo test --manifest-path rust/Cargo.toml --locked`.
 
-## `trading/` (added 2026-11-19 from branch `claude/trading-bot-spy-qqq-xl1o2o`)
+## Options trading (`rust/src/trading/`, `fa trade ...`)
 
-A research package for SPY/QQQ option strategies. It is independent of
-`financial_analysis/`; no module imports across the two packages.
+A research tool for SPY/QQQ option strategies. It is Rust code only. It does not use
+`financial_analysis/`. The Python package `trading/` and the scripts `trade_backtest.py` and
+`trade_paper.py` are deleted (2026-11-19). The folder `trading/research/` stays: it has the
+notes of the bots and `LEADERBOARD.md`.
+
+Commands:
+
+| Command | Function |
+|---|---|
+| `fa trade fetch` | Downloads the bars and merges them into the CSV cache. |
+| `fa trade backtest` | Runs the 22 bots on the cache and prints a leaderboard. |
+| `fa trade paper` | One forward paper-trade step for each bot. It sends no broker orders. |
 
 | Module | Function |
 |---|---|
-| `data.py` | Loads bars, volatility indexes and rates from yfinance into a CSV cache that keeps history. |
-| `pricing.py` | Option pricer. The default is a model price: Black-Scholes on VIX/VXN/VIX1D with skew and spread. `LiveChainPricer` uses live bid/ask for new signals. |
-| `structures.py` | Option structures with a known maximum loss at entry. |
-| `strategy.py` | The `Strategy` and `Context` interface that each bot implements. |
-| `engine.py` | Event-driven backtester with account risk rules (size, pattern-day-trader limit). |
-| `metrics.py` | Performance statistics and the in-sample / out-of-sample split. |
-| `registry.py` | Finds the bots in `trading/strategies/`. |
-| `paper.py` | Forward paper trading. It sends no broker orders. |
-| `strategies/` | 22 bots (s01 to s21 and s14b) and a template. |
-| `research/` | One note for each bot, and `LEADERBOARD.md` with the results and limits. |
-
-Limit: no free source of historical option quotes exists, thus each backtest result is a
-model result.
-
-### Rust backtester (`rust/src/trading/`, command `fa trade backtest`)
-
-The backtester is Rust code. It gives the same trades and the same numbers as the Python
-engine (the numbers differ by less than 1e-9). It reads the CSV cache of `data.py` and
-calls no Python code. One run of all 22 bots takes about 1 second. The Python run takes
-about 90 seconds.
-
-| Module | Function |
-|---|---|
+| `fetch.rs` | The bars of SPY, QQQ, ^VIX, ^VXN, ^VIX1D (1d, 1h, 5m) and ^IRX (1d) from the Yahoo chart endpoint. It merges each reply into the CSV file of the cache (see below). It reuses the HTTP client and the reply reader of `rust/src/futures/` (`futures::download`, `yahoo::parse_raw`). |
+| `chain.rs` | The live option chain of one underlying: the Cboe delayed quotes (JSON). It gives bid and ask for the options that the chain lists. |
+| `paper.rs` | The paper trader. It refreshes the data, runs each bot again with entries blocked before the paper start, and prices the new signals on the live chain. State: `data/processed/trading/paper/<bot>.json`. |
 | `data.rs` | Reads the CSV files one time. Aligns the bars of all symbols, the vol indexes (VIX, VXN, VIX1D) and the rate on one bar index. A timestamp is an integer. |
-| `pricing.rs` | The model pricer: Black-Scholes, skew, spread and the variance clock. Each float operation has the order of the Python code. `erf` comes from the `libm` crate. |
+| `calendar.rs` | Dates, business days, and the New York time offset with the daylight saving rules (checked against every date of the cache, from 1960). |
+| `pricing.rs` | The model pricer: Black-Scholes, skew, spread and the variance clock. `erf` comes from the `libm` crate. |
 | `structures.rs` | Vertical, iron condor and butterfly. A structure that is not defined-risk is an error. |
-| `engine.rs` | The bar loop, the account (`Ctx`), the risk rules, the pattern-day-trader rule, the exit rules and the settlement at expiry. A bot sees data up to the current bar only. |
+| `engine.rs` | The bar loop, the account (`Ctx`), the risk rules, the pattern-day-trader rule, the exit rules and the settlement at expiry. A bot sees data up to the current bar only. `run_from` blocks entries before a start time (paper trading) and returns the entries that the bot queued on the last bar. |
 | `metrics.rs` | Statistics, and the split into in-sample and out-of-sample data. |
 | `strategy.rs` | `Strategy` (the trait of a bot) and `ExitRules`. |
 | `bots/` | One file for each bot (s01 to s21, s14b is in the s14 file) and the template `baseline`. `bots/mod.rs` is the registry. |
-| `cli.rs` | The command. It loads each market one time and runs the bots in parallel (rayon). |
+| `cli.rs` | The backtest command. It loads each market one time and runs the bots in parallel (rayon). |
 
-Use `--trades-dir DIR` to write the trades and the equity curve of each bot as CSV files.
+The cache is `$TRADING_DATA_DIR`, else `data/raw/trading/` (not in git). One file for each
+symbol and interval, for example `SPY_1h.csv` and `_VIX_1d.csv` (`^` is `_`). Each row has the
+New York time with its offset (`2026-11-18 15:30:00-05:00`; a daily bar is at 00:00), and open,
+high, low, close and volume. The merge rule: a fresh row replaces the cached row with the same
+time, and the file never loses a row. Yahoo gives 730 days of hourly bars and 60 days of
+5-minute bars, so the cache keeps history that the source has dropped. A bar that has not
+ended is not written. A row with seconds is the live price row of Yahoo, not a bar, and the
+program drops it.
 
-The Python engine, the Python bots and `scripts/trade_backtest.py` are not deleted yet.
-Paper trading (`paper.py`) needs them, and it needs the live option chain of yfinance.
-See the ticket `option-backtest-rust`.
+All backtest option prices are model prices. No free source of historical option quotes
+exists. A live chain exists for the present only, thus only the paper trader uses it.
+
+Parity with the earlier Python code (checked 2026-11-19 before the Python code was deleted):
+the trades are the same for the 22 bots and the template, with the 3% risk account and with
+`--max-risk 250`; each price and each profit and loss differs by less than 2e-10 dollars.
+A Rust refresh of the cache gives the same text as the Python cache for each old row (see the
+ticket `option-backtest-rust`).
 
 ## Tests
 
-`python -m pytest` from the repo root: 361 tests, all pass on 2026-11-19 (4 s).
-20 test modules are in `tests/`. `cargo test --manifest-path rust/mapcheck/Cargo.toml`: 82 Rust
+`python -m pytest` from the repo root: 349 tests, all pass on 2026-11-19 (4 s).
+19 test modules are in `tests/`. `cargo test --manifest-path rust/mapcheck/Cargo.toml`: 82 Rust
 tests. The suites make no network calls; HTTP is mocked and
 files use `tmp_path`. Install `pytest` with `pip install -r requirements-dev.txt`.

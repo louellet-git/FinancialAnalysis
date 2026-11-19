@@ -31,7 +31,7 @@ USAGE:
   -v                print the last trades of each bot
 
 The data are the CSV files in $TRADING_DATA_DIR, else in data/raw/trading/ of the repository.
-`python -m scripts.trade_backtest --fetch` downloads them. All option prices are model prices.";
+`fa trade fetch` downloads them. All option prices are model prices.";
 
 #[derive(Debug, Default)]
 struct Args {
@@ -277,7 +277,7 @@ fn leaderboard_table(rows: &[Summary]) -> String {
 
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::trading::calendar::{busday_offset, days_from_civil, iso};
     use crate::trading::data::Interval;
@@ -289,7 +289,7 @@ mod tests {
     /// 150 daily bars from 2024-03-11 (all in daylight saving time, offset -04:00) of a smooth price path,
     /// with the vol indexes and the short rate. The expected numbers in the tests below come from the
     /// Python backtester on the same files.
-    fn write_fixture(dir: &Path) {
+    pub(crate) fn write_fixture(dir: &Path) {
         std::fs::create_dir_all(dir).unwrap();
         let first = days_from_civil(2024, 3, 11);
         let dates: Vec<String> = (0..150).map(|k| iso(busday_offset(first, k, true))).collect();

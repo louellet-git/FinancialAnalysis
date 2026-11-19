@@ -1,8 +1,8 @@
 ---
 id: T-20261119-option-backtest-rust
-title: Move the option backtester to Rust (the Python command takes 94 seconds)
+title: Move the option trading code to Rust and delete the Python copy
 area: trading
-status: in-progress
+status: review
 owner: louellet-git
 branch: claude/option-backtest-rust
 created: 2026-11-19
@@ -16,21 +16,35 @@ Where the time goes (profile): the engine loop `trading/engine.py` (`run`), the 
 
 This is step 8 of `T-20261119-python-to-rust` (3,535 Python lines: engine, pricer, structures, metrics, 22 bots).
 
-## State, 2026-11-19
+## State, 2026-11-19 (second part: data, live chain, paper trading, deletion)
+
+Owner decision, 2026-11-19: the free Yahoo source is allowed for stock prices and option chains, in Rust ("everything code wise should be rust"). The block of the first part is removed.
 
 Done:
 
-- The Rust backtester is in `rust/src/trading/`. Run it with `fa trade backtest [--bot ID] [--out FILE]` (`fa trade backtest --help` shows the options). Rayon runs the bots in parallel.
-- Parity with the Python engine holds for the 22 bots and the template bot, for the two accounts (default 3% risk, and `--max-risk 250`). The trades are the same (entry and exit times, structures, strikes, units, exit reasons, tags). Each price and each profit and loss differs by less than 2e-10 dollars. The equity curve of each bot differs by less than 5e-10 dollars, and each summary number by less than 4e-12 (relative).
-- Time of all 22 bots on the cached data: 0.9 seconds in Rust (4 processors, and also on 1 processor). The Python command takes 94 seconds. The slowest bot is s20 (0.8 seconds, the model fit).
-- Rust tests: pricer, variance clock, structures, risk rules of the engine (size, rejection reasons, position limit, pattern-day-trader rule, exit rules, no lookahead), metrics, data alignment, and one end-to-end run. The expected numbers of the end-to-end test come from the Python backtester on the same files.
+- The Rust backtester (`rust/src/trading/`, `fa trade backtest`): parity with the Python engine for the 22 bots and the template, with the 3% risk account and with `--max-risk 250`. Same trades; each price and each profit and loss differs by less than 2e-10 dollars; each summary number by less than 4e-12 (relative). Checked again on 2026-11-19 after the data and engine changes, and before the Python code was deleted. All 22 bots take 1.0 second (4 processors).
+- Bars in Rust: `fa trade fetch` (`fetch.rs`). Yahoo chart endpoint, the client of `rust/src/futures/` (the reply reader `parse_raw` is shared with `yahoo.rs`). It writes the same CSV files as the Python code, with the same merge rule. Comparison with the Python files: see "Comparison" below.
+- Live option chains in Rust: Yahoo refuses the honest client (the crumb request answers HTTP 429), so the source is the Cboe delayed quotes (`chain.rs`). It gives bid and ask, about 15 minutes late. Not a published API.
+- Paper trading in Rust: `fa trade paper` (`paper.rs`). Same options and the same state file format as `scripts/trade_paper.py`.
+- The Python copy is deleted: `scripts/trade_backtest.py`, `scripts/trade_paper.py`, `tests/test_trading.py` and in `trading/`: `engine.py`, `pricing.py`, `structures.py`, `strategy.py`, `metrics.py`, `registry.py`, `data.py`, `paper.py`, `strategies/`, `__init__.py`. `trading/research/` stays (notes and `LEADERBOARD.md`). No remaining Python file imports a deleted module. `python -m pytest`: 349 passed (the 12 trading tests are deleted). `cargo test --manifest-path rust/Cargo.toml --locked`: 136 passed.
 
-Not done on purpose: the Python backtester is NOT deleted. This branch has two copies of the same part. Do not merge it as it is (CLAUDE.md, "One part has one implementation").
+Comparison of `fa trade fetch` with the Python cache files (into a copy of the cache, 2026-11-19):
 
-What blocks the deletion:
+- The runs reached 14 of the 16 files at least one time (not reached: ^VIX1D 1h and ^VXN 5m; Yahoo answered HTTP 429). Each old row of each file that was reached has the same text as the Python file: all of SPY 1d from 1993 (8,509 of 8,510 rows), ^IRX from 1960 (16,705 of 16,706), ^VIX 1d, ^VXN 1d, ^VIX1D 1d and QQQ 1d, and the intraday files. The row sets (the times with their offsets) are the same, over the changes of daylight saving time from 1960. The only rows that differ are the rows of 2026-11-18, where Yahoo had corrected the volume (and, for ^VIX and ^VXN hourly, some high and low values). The Python cache had a volume of 59.6 million for one hourly SPY bar; Yahoo gives 5.6 million now. See `docs/HIDDEN-ASSUMPTIONS.md` #91.
+- The code changed during the test (the float reading, the filters for a bar that has not ended, and for the early-close row). The last version was checked on the saved real replies of Yahoo for SPY 1h, SPY 5m and ^VIX 1h: the same number of rows as the Python files, with no new row, and only the rows of 2026-11-18 differ. It was not run again against the live endpoint for the other files, because Yahoo gave HTTP 429 to all requests after 15:00 UTC.
+- Backtest on the original cache and on the cache with the Rust refresh of SPY 1h, SPY 5m and ^VIX 1h: the leaderboard, the trades and the equity curves of all bots are byte for byte the same with `--end 2026-11-16`. On the full range, no bot differs from the Python reference.
+- Yahoo answered HTTP 429 to about half of the requests from the cloud container. The refresh of all 16 files did not finish in one run. See `docs/HIDDEN-ASSUMPTIONS.md` #90.
 
-1. Paper trading (`trading/paper.py`, `scripts/trade_paper.py`) uses the Python engine, the Python bots and `LiveChainPricer`. It needs live option chains from yfinance. A Rust source for live chains does not exist, and the data source for Rust is an open owner decision (ticket `python-to-rust`, step 6, decision 1).
-2. `python -m scripts.trade_backtest --fetch` is the only command that downloads the market data (`trading/data.py`, yfinance). The download is part of step 6. It must stay until the data source is decided.
-3. Decision for the owner: (a) move paper trading to Rust too, with a data source for Rust (direct Yahoo calls or a keyed API), and then delete all Python copies in one change; or (b) move paper trading to Rust first in the cache-only mode (no live chain, no refresh), and keep a small Python program only for the download and the live chain. The deletion list is: `scripts/trade_backtest.py`, `trading/engine.py`, `pricing.py`, `structures.py`, `strategy.py`, `metrics.py`, `registry.py`, `strategies/`, `paper.py`, `scripts/trade_paper.py`, `tests/test_trading.py`.
+Differences from the Python code (on purpose):
 
-Doubtful rules in the Python code (kept in Rust, not changed): see the report of this ticket. `trading/research/LEADERBOARD.md` is older than the data cache (dated 2026-10-11): the Python backtester and the Rust backtester both give other numbers today (for example s14b: 519 trades, +312%; the file says 516 trades, +358%). Both new numbers agree. The file was not changed.
+- A bar that has not ended is not written to the cache (Python wrote the partial bar of the running session; the paper trader used it as a closed bar). The live price row of Yahoo and the closing row of an early-close day are dropped.
+- The paper report says where each signal price comes from: the live chain, the model, or a mix. The Python report always said "live chain".
+- The state file has the same fields, but the keys are in alphabetical order.
+
+Kept on purpose (not changed, the owner decides): the three doubtful rules of the Python bots (the VIX hourly file has bars on the hour and SPY on the half hour, so seven SPY hourly bots use the VIX close of the day before; `--end` keeps one more day; `LEADERBOARD.md` is older than the cache and its numbers were not changed).
+
+Open:
+
+- The bots assume an expiry on each trading day. The live chain has daily expiries for about two weeks only. A signal with another expiry gets the model price (`docs/HIDDEN-ASSUMPTIONS.md` #92). The owner decides whether a bot should choose the nearest listed expiry.
+- `fa trade fetch` can need more than one run when Yahoo limits the rate.
+- Research notes in `trading/research/s*.md` still name the Python command in their text (they are records and keep their text).

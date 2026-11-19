@@ -1,7 +1,7 @@
-//! Market data for the backtest, read from the CSV cache that `trading/data.py` writes.
+//! Market data for the backtest, read from the CSV cache (`fetch` writes it).
 //!
 //! The cache directory is `$TRADING_DATA_DIR`, else `<repo>/data/raw/trading/`. This module
-//! never downloads data. Each CSV file is read one time into arrays, and every timestamp is
+//! never downloads data (`fetch` does). Each CSV file is read one time into arrays, and every timestamp is
 //! turned into integers one time, so the engine indexes by position only.
 //!
 //! Time rules (same as the Python code): all times are New York wall time. A daily bar is at
@@ -118,7 +118,7 @@ fn key(date: Date, minute: i32) -> i64 {
 }
 
 /// Parse `YYYY-MM-DD HH:MM:SS-05:00` into (date, minute of the day, UTC seconds).
-fn parse_stamp(s: &str) -> Result<(Date, i32, i64), String> {
+pub(super) fn parse_stamp(s: &str) -> Result<(Date, i32, i64), String> {
     let bad = || format!("bad timestamp '{s}'");
     let b = s.as_bytes();
     if b.len() < 25 || b[4] != b'-' || b[7] != b'-' || b[13] != b':' {
@@ -166,6 +166,11 @@ pub fn read_series(path: &Path) -> Result<Series, String> {
     Ok(s)
 }
 
+/// The name of the cache file of one symbol and interval, for example `_VIX_1h.csv`.
+pub fn file_name(symbol: &str, interval: &str) -> String {
+    format!("{}_{}.csv", symbol.replace('^', "_"), interval)
+}
+
 /// The CSV cache. Each file is read one time and shared between threads.
 pub struct Store {
     dir: PathBuf,
@@ -189,7 +194,7 @@ impl Store {
 
     /// `None` when the file does not exist.
     pub fn get(&self, symbol: &str, interval: &str) -> Result<Option<Arc<Series>>, String> {
-        let name = format!("{}_{}.csv", symbol.replace('^', "_"), interval);
+        let name = file_name(symbol, interval);
         if let Some(hit) = self.files.lock().expect("cache lock").get(&name) {
             return Ok(hit.clone());
         }
@@ -201,7 +206,7 @@ impl Store {
 
     fn need(&self, symbol: &str, interval: &str) -> Result<Arc<Series>, String> {
         self.get(symbol, interval)?
-            .ok_or_else(|| format!("no cache file for {symbol} {interval} in {} (run `python -m scripts.trade_backtest --fetch`)", self.dir.display()))
+            .ok_or_else(|| format!("no cache file for {symbol} {interval} in {} (run `fa trade fetch`)", self.dir.display()))
     }
 }
 

@@ -198,6 +198,8 @@ pub struct Ctx<'a> {
     cash: f64,
     positions: Vec<Position>,
     pending: Vec<Pending>,
+    /// Entries before this time are not filled (the paper trader).
+    trade_start: Option<Time>,
     trades: Vec<Trade>,
     equity_curve: Vec<f64>,
     rejections: Vec<(&'static str, u32)>,
@@ -233,6 +235,7 @@ impl<'a> Ctx<'a> {
             risk,
             positions: Vec::new(),
             pending: Vec::new(),
+            trade_start: None,
             trades: Vec::new(),
             equity_curve: Vec::with_capacity(n),
             rejections: Vec::new(),
@@ -516,6 +519,9 @@ impl<'a> Ctx<'a> {
 
     fn fill_pending(&mut self) {
         let orders = std::mem::take(&mut self.pending);
+        if self.trade_start.is_some_and(|t| Time { date: self.md.date[self.i], minute: self.md.minute[self.i] } < t) {
+            return;
+        }
         if self.i < self.warmup {
             return;
         }
@@ -665,6 +671,8 @@ pub struct BacktestResult {
     pub utc: Vec<i64>,
     pub trades: Vec<Trade>,
     pub open_positions: Vec<Position>,
+    /// The entries that the bot queued on the last bar (they would fill at the next bar open).
+    pub pending: Vec<(Structure, String)>,
     /// Reason and count, in the order of the first rejection.
     pub rejections: Vec<(&'static str, u32)>,
     pub pdt_blocks: u32,
@@ -673,7 +681,14 @@ pub struct BacktestResult {
 
 /// Run one bot on the market data.
 pub fn run(strategy: &mut dyn Strategy, md: &MarketData, risk: RiskConfig) -> Result<BacktestResult, String> {
+    run_from(strategy, md, risk, None)
+}
+
+/// Run one bot. An entry that would fill on a bar before `trade_start` is dropped (the bot has
+/// the data before it, but its account starts at `trade_start`).
+pub fn run_from(strategy: &mut dyn Strategy, md: &MarketData, risk: RiskConfig, trade_start: Option<Time>) -> Result<BacktestResult, String> {
     let mut ctx = Ctx::new(strategy.name(), strategy.warmup_bars(), md, risk);
+    ctx.trade_start = trade_start;
     for i in 0..md.len() {
         ctx.i = i;
         if ctx.first_of_day[i] {
@@ -696,6 +711,7 @@ pub fn run(strategy: &mut dyn Strategy, md: &MarketData, risk: RiskConfig) -> Re
         utc: md.utc.clone(),
         trades: ctx.trades,
         open_positions: ctx.positions,
+        pending: ctx.pending.into_iter().map(|p| (p.structure, p.tag)).collect(),
         rejections: ctx.rejections,
         pdt_blocks: ctx.pdt_blocks,
         risk: ctx.risk,

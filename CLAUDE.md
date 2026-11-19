@@ -94,7 +94,7 @@ Do not use a first pass alone for a trade.
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest                              # 361 tests, no network
+python -m pytest                              # 349 tests, no network
 cargo test --manifest-path rust/mapcheck/Cargo.toml   # 82 Rust tests
 python -m scripts.analyze IBM                 # import + market data -> xlsx
 python -m scripts.verdict IBM --price 228.53  # value range against a price
@@ -103,7 +103,9 @@ rust/mapcheck/target/release/mapcheck values IBM          # each input value wit
 rust/mapcheck/target/release/mapcheck IBM --detail        # mapping checks
 rust/mapcheck/target/release/mapcheck filing IBM --focus  # capex, depreciation and debt lines of the 10-K
 cargo build --release --manifest-path rust/Cargo.toml             # the fa command
+rust/target/release/fa trade fetch            # option bots: download the bars (Yahoo) into the cache
 rust/target/release/fa trade backtest         # option bots, leaderboard
+rust/target/release/fa trade paper            # option bots: one paper-trade step (live Cboe chain)
 ```
 
 All commands: `README.md`.
