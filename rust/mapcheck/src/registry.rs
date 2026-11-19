@@ -194,8 +194,9 @@ impl Registry {
                 "balance_sheet" | "disclosure" => Period::Instant,
                 other => return Err(format!("{}: statement '{other}' is not known", v.name)),
             };
-            if v.tags.is_empty() {
-                return Err(format!("{}: no tags", v.name));
+            // A variable with no tag gets its value from a formula only.
+            if v.tags.is_empty() && v.formulas.is_empty() {
+                return Err(format!("{}: no tags and no formula", v.name));
             }
             let mut tags = Vec::new();
             for full in &v.tags {
@@ -369,6 +370,14 @@ tags = ["us-gaap/C"]
         let text = MINI.replace("name = \"c\"\nstatement = \"income_statement\"", "name = \"c\"\nmemo = true\nstatement = \"income_statement\"");
         let error = Registry::load(&text).unwrap_err();
         assert!(error.contains("mixes memo and line"), "{error}");
+    }
+
+    #[test]
+    fn variable_with_no_tag_needs_a_formula() {
+        let text = MINI.replace("tags = [\"us-gaap/B\"]", "tags = []");
+        assert!(Registry::load(&text).is_ok());
+        let text = MINI.replace("tags = [\"us-gaap/C\"]", "tags = []");
+        assert!(Registry::load(&text).unwrap_err().contains("no tags and no formula"));
     }
 
     #[test]

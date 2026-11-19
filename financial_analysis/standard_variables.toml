@@ -8,6 +8,7 @@
 #              (income_statement and cash_flow values are flows over the period;
 #              balance_sheet and disclosure values are balances on the end date)
 #   tags       XBRL tags with the SAME scope as the variable, in a fixed sequence.
+#              The list can be empty if the variable has a formula.
 #              For each period the first tag that has a fact gives the value. A tag
 #              with a different scope (a part, or a larger total) gets its own
 #              variable. One tag is in one variable only.
@@ -64,14 +65,59 @@ anchors = [
 name = "revenue"
 statement = "income_statement"
 core = true
-note = "Top line of the income statement. Revenues is the total; the contract-revenue tags are used when the filer has no Revenues tag for the period."
+note = "Top line of the income statement. The tags are the tags of a total. A filer with none of them gets the value from a formula, in this sequence. (1) A bank: net interest income and noninterest income. A bank uses the contract-revenue tag only for a small part of its income, thus this formula comes before it. (2) The contract-revenue tag (most companies after 2018) or the sales tag (before 2018). (3) A landlord with only a lease-income tag. (4) An investment company."
 tags = [
     "us-gaap/Revenues",
+    "us-gaap/RegulatedAndUnregulatedOperatingRevenue",
+    "us-gaap/RevenuesNetOfInterestExpense",
+]
+formulas = [
+    "net_interest_income + noninterest_income",
+    "revenue_from_contracts",
+    "lease_income",
+    "investment_income_operating",
+]
+
+[[variable]]
+name = "revenue_from_contracts"
+statement = "income_statement"
+note = "Revenue from contracts with customers (ASC 606). For most companies it is the full revenue. For a bank, a utility or a lessor it is a part of revenue. SalesRevenueNet is the tag for the same line before 2018; it is last, because a later filing gives the earlier years again with the contract tag."
+tags = [
     "us-gaap/RevenueFromContractWithCustomerExcludingAssessedTax",
     "us-gaap/RevenueFromContractWithCustomerIncludingAssessedTax",
     "us-gaap/SalesRevenueNet",
-    "us-gaap/RegulatedAndUnregulatedOperatingRevenue",
-    "us-gaap/RevenuesNetOfInterestExpense",
+]
+
+[[variable]]
+name = "lease_income"
+statement = "income_statement"
+note = "Income of a lessor from operating leases. For a landlord (a residential REIT) it is the top line. For other companies it is a part of revenue."
+tags = [
+    "us-gaap/OperatingLeaseLeaseIncome",
+]
+
+[[variable]]
+name = "investment_income_operating"
+statement = "income_statement"
+note = "Top line of an investment company: total investment income."
+tags = [
+    "us-gaap/GrossInvestmentIncomeOperating",
+]
+
+[[variable]]
+name = "net_interest_income"
+statement = "income_statement"
+note = "Banks: interest income less interest expense."
+tags = [
+    "us-gaap/InterestIncomeExpenseNet",
+]
+
+[[variable]]
+name = "noninterest_income"
+statement = "income_statement"
+note = "Banks: fees and other income that is not interest."
+tags = [
+    "us-gaap/NoninterestIncome",
 ]
 
 [[variable]]
@@ -219,7 +265,6 @@ statement = "income_statement"
 note = "Interest income less interest expense. Some filers give only this net number."
 tags = [
     "us-gaap/InterestIncomeExpenseNonoperatingNet",
-    "us-gaap/InterestIncomeExpenseNet",
 ]
 formulas = ["interest_income - interest_expense"]
 
@@ -394,7 +439,9 @@ memo = true
 tags = [
     "us-gaap/WeightedAverageNumberOfDilutedSharesOutstanding",
     "us-gaap/WeightedAverageLimitedPartnershipUnitsOutstandingDiluted",
+    "us-gaap/WeightedAverageNumberOfLimitedPartnershipAndGeneralPartnershipUnitOutstandingBasicAndDiluted",
 ]
+formulas = ["shares_basic"]
 
 # ============================================================================
 # BALANCE SHEET
@@ -590,9 +637,11 @@ tags = [
 name = "total_assets"
 statement = "balance_sheet"
 core = true
+note = "A filer with no Assets tag: the total of liabilities and equity is the same amount."
 tags = [
     "us-gaap/Assets",
 ]
+formulas = ["total_liabilities_and_equity"]
 
 [[variable]]
 name = "accounts_payable"
@@ -976,6 +1025,10 @@ tags = [
     "us-gaap/PaymentsToAcquireOtherProductiveAssets",
     "us-gaap/PaymentsForCapitalImprovements",
     "us-gaap/PaymentsForProceedsFromProductiveAssets",
+    "us-gaap/PaymentsForConstructionInProcess",
+    "us-gaap/PaymentsToAcquireMachineryAndEquipment",
+    "us-gaap/PaymentsToAcquireFurnitureAndFixtures",
+    "us-gaap/PaymentsToExploreAndDevelopOilAndGasProperties",
 ]
 
 [[variable]]
@@ -986,6 +1039,13 @@ tags = [
     "us-gaap/PaymentsToDevelopSoftware",
     "us-gaap/PaymentsForSoftware",
 ]
+
+[[variable]]
+name = "capex_total"
+statement = "cash_flow"
+note = "Capital expenditure for free cash flow: equipment (capex) and capitalized software. Purchased intangibles are not included. Owner decision of 2026-11-19, PLANNING/RULES.md R2. It has no tag: the value comes from the formula."
+tags = []
+formulas = ["capex + capitalized_software?"]
 
 [[variable]]
 name = "purchases_of_intangibles"
