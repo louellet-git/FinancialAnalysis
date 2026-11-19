@@ -19,7 +19,7 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest                       # 331 tests, no network
+python -m pytest                       # 360 tests, no network
 ```
 
 Run all commands from the repo root.
@@ -70,7 +70,8 @@ python -m scripts.import_edgar IBM 2026-07-01 [--output-dir data/raw] [--lookbac
 python -m scripts.run_dcf PANW [--simulations 10000] [--years 10] [--growth 0.15] [--wacc 0.10] [--terminal-growth 0.03] [--seed 7]
 python -m scripts.backtest IBM [--horizon 3] [--simulations 10000] [--seed 7]
 python -m scripts.visualize_dcf IBM [--price 195.40] [--out report.html]
-python -m scripts.verdict IBM --price 228.53 [--simulations 10000] [--seed 7]
+python -m scripts.verdict IBM --price 228.53 [--simulations 10000] [--seed 7] [--rf-date today] [--rf-base-date 2026-07-16] [--json]
+python -m financial_analysis.rates [snapshot|yield|curve|history|nyfed|inflation|fred|check] [--json]
 python -m analysis.IBM.dcf_drivers_run     # IBM version 4 headline numbers (seed 7)
 python -m analysis.IBM.dcf_scenarios       # IBM version 3 (historical)
 python -m analysis.JNJ.first_pass_run      # JNJ first pass
@@ -82,6 +83,50 @@ debt. Do not compare this number with a share price.
 Remote data has a disk cache in `data/raw/TICKER/`. Option chains and consensus
 estimates are saved as dated snapshots, because yfinance gives only current data. A run
 on the same day reads the disk; `--refresh` gets new data.
+
+## Interest rates and inflation
+
+`financial_analysis/rates.py` gets US rates from the publishers. All values are
+decimals (0.0507 is 5.07%). Each value has the date of its observation.
+
+```bash
+python -m financial_analysis.rates                 # snapshot and a cross-check against FRED
+python -m financial_analysis.rates yield --tenor 10Y --date 2026-07-16 --json
+python -m financial_analysis.rates inflation
+```
+
+The driver models keep their own `rf`. To use the Treasury 10-year rate of a date, add
+`--rf-date` to `scripts.verdict`:
+
+```bash
+python -m scripts.verdict IBM --price 231.09 --rf-date today --rf-base-date 2026-07-16
+```
+
+The output shows these items:
+
+- The Treasury 10-year rate and the model rate.
+- The rate as real rate plus breakeven inflation (nominal yield minus TIPS yield).
+- With `--rf-base-date`, the change since that date as real change plus inflation change.
+- The 5y5y forward inflation and the 12-month CPI change.
+- The terminal growth as 5y5y inflation plus real growth.
+
+Only `rf` changes. The growth drivers are nominal and keep the model values. If the
+inflation part of a rate change is large, examine the growth drivers too.
+
+### Rust interface
+
+The `rust/` crate calls the Python code and gives typed results. Python stays the only
+implementation.
+
+```bash
+cd rust
+cargo run --bin fa -- rates yield --tenor 10Y
+cargo run --bin fa -- verdict IBM --price 231.09 --rf-date today
+cargo run --bin fa -- run scripts.analyze IBM     # any Python entry point
+cargo run --example dcf_rates -- IBM 231.09       # library example
+```
+
+Set `FA_PYTHON` to select the Python interpreter and `FA_REPO` to select the repository.
 
 ## The two DCF engines
 
@@ -156,6 +201,10 @@ The financial tabs have one row for each `(period, metric)`. The JSON store
 | Financial statements | SEC EDGAR companyfacts XBRL API | None |
 | Prices, earnings surprises, consensus, option chains | yfinance | None |
 | Analyst estimates (optional) | FMP | `FMP_API_KEY` in `.env` |
+| Treasury par yield curves, nominal and real (TIPS) | U.S. Treasury | None |
+| SOFR, EFFR, FOMC target range | Federal Reserve Bank of New York | None |
+| CPI-U, headline and core | Bureau of Labor Statistics, API v1 | None |
+| Cross-check of the rates and CPI | FRED (St. Louis Fed) | None |
 
 The pipeline supports US-GAAP filers on EDGAR. ETFs and IFRS filers cause an
 `UnsupportedFilingError`. Segment revenue is not available from companyfacts
@@ -169,14 +218,15 @@ README.md                 this file
 requirements.txt          runtime packages
 requirements-dev.txt      pytest
 .env.example              names of the optional API keys
-.github/workflows/        CI: runs pytest on each pull request
+.github/workflows/        CI: runs pytest and the Rust tests on each pull request
 
 financial_analysis/       valuation package (import, store, engines, backtest, verdict)
 analysis/IBM/             IBM model (version 4), reviews, published report
 analysis/JNJ/             JNJ first pass (not reviewed)
 trading/                  option strategy backtester, paper trader, 22 bots, research notes
 scripts/                  command-line entry points
-tests/                    331 tests
+rust/                     Rust interface: library and `fa` command (calls the Python code)
+tests/                    360 tests
 
 docs/                     ARCHITECTURE.md, HIDDEN-ASSUMPTIONS.md, INDEX.md, design documents
 PLANNING/board/           open work, one file for each ticket

@@ -260,6 +260,37 @@ backtest default `seed=7`. A test that needs the network or a floating seed is a
 Run `pytest -q` for the current count rather than trusting any doc.
 *Evidence:* `pytest -q` runs of 2026-07-17; grep "no network" in tests/.
 
+## Rates and inflation (added 2026-11-18)
+
+**32. The `rf` of a driver model is a fixed number from the model date.** IBM uses 4.6%
+(July 2026). JNJ uses 5.10% (^TNX, 2026-10-16). The Treasury 10Y was 5.07% on
+2026-11-18. To use the rate of a date, run `scripts.verdict` with `--rf-date`. Do not
+change `rf` in the IBM model: it is part of the reviewed version 4.
+*Evidence:* `analysis/IBM/driver_model.py` (`rf` driver), `analysis/JNJ/driver_model.py`;
+`python -m financial_analysis.rates yield --tenor 10Y`.
+
+**33. `--rf-date` changes only `rf`.** The growth drivers and terminal growth are nominal
+and do not change. If expected inflation causes a rate change, nominal growth usually
+changes too, and a change of `rf` alone gives too low a value. Use `--rf-base-date` to
+split the change. From 2026-07-16 to 2026-11-18 the 10Y went up 0.50 pp: the real rate
+went up 0.53 pp and breakeven inflation went down 0.03 pp. Thus, for IBM, a change of
+`rf` alone was correct.
+*Evidence:* `python -m scripts.verdict IBM --price 231.09 --rf-date 2026-11-18 --rf-base-date 2026-07-16`.
+
+**34. Breakeven inflation is not pure expected inflation.** Nominal minus TIPS yield
+contains an inflation risk premium and a TIPS liquidity premium. Use it as an
+approximation. The 5y5y forward rate (years 6 to 10) is the better reference for
+terminal growth, because it excludes near-term changes.
+*Evidence:* `financial_analysis/rates.py` module docstring.
+
+**35. CPI has a gap and a publication delay.** BLS has no CPI for October 2025 (2025
+lapse in appropriations). Thus no 12-month change exists for October 2026, and
+`cpi_inflation` gives September 2026 with a note. The date of a CPI value is the
+reference month. BLS publishes it approximately two weeks after the month. For a past
+date, `cpi_inflation` can use a value that was not yet public on that date. Do not use
+it in a point-in-time backtest without a release-date check.
+*Evidence:* BLS series CUUR0000SA0, 2025 M10 value `-`; `tests/test_rates.py`.
+
 ## Could not verify
 
 - (none of the named traps failed verification — all located in current code/docs; the
