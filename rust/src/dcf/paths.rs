@@ -1060,7 +1060,7 @@ impl PathEngine {
     }
 
     /// The same as `simulate` without a thread pool (for use inside a parallel job).
-    fn simulate_serial(&self, n: usize, seed: u64, mods: &Mods) -> Result<Sim, DcfError> {
+    pub fn simulate_serial(&self, n: usize, seed: u64, mods: &Mods) -> Result<Sim, DcfError> {
         let (frozen, shift) = self.mods_arrays(mods);
         let mut sc = self.scratch();
         let outs: Vec<PathOut> = (0..n).map(|j| self.eval(j, seed, None, &frozen, &shift, false, false, &mut sc)).collect::<Result<_, _>>()?;
@@ -1080,5 +1080,19 @@ impl PathEngine {
                 Ok(GroupShare { group: self.groups[g].clone(), alone: variance(&alone.per_share) / full, removed: 1.0 - variance(&without.per_share) / full })
             })
             .collect()
+    }
+}
+
+impl PathEngine {
+    /// The simulation of `n` paths on the calling thread, with the detail of each year if asked. The same paths as
+    /// `simulate` (a path depends on `(seed, j)` only), without a thread pool: for use inside a parallel job.
+    pub fn simulate_one_thread(&self, n: usize, seed: u64, mods: &Mods, detail: bool) -> Result<Sim, DcfError> {
+        if n == 0 {
+            return err("n must be positive, got 0.");
+        }
+        let (frozen, shift) = self.mods_arrays(mods);
+        let mut sc = self.scratch();
+        let outs: Vec<PathOut> = (0..n).map(|j| self.eval(j, seed, None, &frozen, &shift, false, detail, &mut sc)).collect::<Result<_, _>>()?;
+        Ok(self.collect(outs, n, detail))
     }
 }

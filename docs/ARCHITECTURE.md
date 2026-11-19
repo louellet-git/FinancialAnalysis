@@ -579,6 +579,75 @@ fade of fast growers is too slow. The command prints this text with each run. Th
 replaces it. A company with fewer than three growth values has no weight in the within estimates. The traps are #170 to #184
 of `docs/HIDDEN-ASSUMPTIONS.md`.
 
+### `rust/src/dcf/` — the automatic model (2026-11-19, branch `claude/dcf-auto`)
+
+Ticket `T-20261119-dcf-auto-model`. The commands `fa dcf auto`, `fa dcf screen` and `fa dcf pit` make a path model for a ticker from
+data, run it, and test it. No hand input and no network. An automatic model is a screen, not a reviewed valuation. Traps: `docs/HIDDEN-ASSUMPTIONS.md` #185 to #199.
+
+| File (`rust/src/dcf/`) | Function |
+|---|---|
+| `auto.rs` | The builder `build`. Input: the standard variables of the company (`AutoInputs`, `YearData`), the parameter table with its fade cells, the market (`Market`: GSW curve, price, beta). Output: the model file (TOML, `engine = "paths"`), one row for each number with source and rule (`ExplainRow`), the warnings. It refuses (`Refusal`) with a reason. The helpers (`ar1_fit`, `own_sigma`, `tax_rate`, `regression_beta`, `load_curve`) are public and tested with a hand calculation. |
+| `auto_cli.rs` | `fa dcf auto TICKER` (map from the cache, build, print, run with `paths_cli::run`, price-implied values) and `fa dcf screen` (one row for each ticker; rayon over tickers). |
+| `auto_pit.rs` | `fa dcf pit`: the point-in-time test. `model_at` makes the model from the fiscal years up to the base year only. |
+| `auto_tests.rs` | Unit tests: each rule on small data with a fixed answer, the refusals, the point-in-time property, the screen on 1 and on 4 threads. |
+| `calibrate.rs` (added) | `FadeCell`, `FadeFile`, `slow_half_life`, `level_spread_ratio`: the fade table as data. |
+| `calib_report.rs` (added) | `fade_cells`: `fa dcf calibrate --out FILE` now writes the `[[fade]]` cells after the AR(1) cells. |
+| `paths.rs` (added) | `simulate_one_thread` (a run on the calling thread, with detail), `simulate_serial` is public. The results are the same as `simulate`. |
+
+**The rules** (`auto.rs`; each number is printed by `fa dcf auto TICKER --explain`):
+
+| Input | Source (standard variables, files) | Rule |
+|---|---|---|
+| Base revenue | `revenue` of the latest fiscal year | The trailing four quarters are not used (see #194). |
+| Growth: company mean | `revenue` of 5 fiscal years in sequence; the table cell of the size bucket (`priors_for`) | Mean of the last 4 growth values, shrunk to the cell mean with `w = tau^2 / (tau^2 + sigma^2 mvf)`. A jump with cash for businesses, or one that reverses, is left out. |
+| Growth: year 1 | the same | AR(1): `mean + phi (last - mean)`; standard deviation `sqrt((1 - phi)^2 var_mean + sigma^2)`. The value and the long-run mean are correlated. |
+| Growth: long run | 10-year zero yield of the GSW curve (`data/raw/rates`); fade cells of the table | The company mean fades linearly to the yield by year 10 if it is above it. The ramp equals an exponential fade with the half-life of the fade table (k = 3 to 10). |
+| Growth: shocks | table cell, own history, fade cells | `phi` and `sigma` of the cell; `sigma` of the company from its own residuals (weight 4 years); at least `kappa` times the level (`kappa` from the fade table). |
+| Margin | `operating_cash_flow`, `capex_total` (else `capex`), `interest_paid` (else `interest_expense`), `revenue` | FCFF before SBC and before interest `= (OCF - capex + (1 - t) interest) / revenue`. The history is shrunk as the table margin (after interest); the mean after-tax interest ratio is added. A `phi` with a standard error above 0.08 is replaced by the `phi` of all sizes. |
+| SBC | `sbc_total` / `revenue`, last 3 years | Constant, a cost of the model. |
+| Tax | `income_tax_expense`, `income_before_tax` | The median effective rate of 5 years if there are 3 values, each between 5% and 40%, in a range of 10 points; else 21%. |
+| Net debt | `total_debt`, `cash_and_short_term_investments` (else `cash_and_equivalents` + `short_term_investments`), latest balance sheet | Simple bridge. Pensions, leases and minority interests are in a memo line. |
+| Shares | `shares_diluted`, latest period | Weighted average. |
+| Beta | `<cache>/<T>/prices.json`, `<cache>/trading/SPY_1d.csv` | Weekly returns of 5 years, `2/3 raw + 1/3`; else 1.0 with a warning. |
+| Equity risk premium | repo convention | 4.41%, standard deviation 0.75%, lower bound 2%. |
+| Risk-free rate | GSW file of the cache | Hull-White (`a` 0.14, `sigma` 0.0075), `long_flat`, 10-year zero yield; else a fixed 4.2% with a warning. |
+| Equity weight | `--price`, else the last close of the price cache | `E / (E + debt)`; else 1.0 with a warning. |
+| Terminal growth, horizon | repo convention | 2.25% (standard deviation 0.75%), the caps of the engine; 10 years. |
+
+**Templates and data quality.** Only `standard` has a model. `bank`, `insurer`, `reit`, `fund`, `foreign`, `new`, `non-usd` and `no-revenue` give "no model for this template". A mapping
+status of FAIL, a necessary variable with no value, or fewer than 3 fiscal years in sequence give no value and name the reason. A mapping status of WARN runs, and the warnings that touch a model input are printed.
+
+**`fa dcf auto TICKER [--price P] [--explain] [--write FILE] [--cache DIR] [--table FILE] [--as-of D] [--seed S] [--sims N]`.** It prints the banner "Automatic model: a screen, not a reviewed valuation.",
+the numbers of the model, the warnings, then the output of `fa dcf drivers TICKER --model FILE` (headline, value at the means, attribution, mean path), and with a price what the price implies: the long-run
+growth, the target margin and the half-life of the fade. `--write FILE` writes the model; `fa dcf drivers TICKER --model FILE` runs it again with the same numbers. Exit code: 0 a value, 3 no value, 2 an error.
+
+**`fa dcf screen [--tickers-file FILE | TICKER ...] [--cache DIR] [--out FILE] [--jobs N] [--prices FILE] [--sims N]`.** One row for each ticker. Stage 1 maps the company facts (parallel over tickers), stage 2 builds
+the models, stage 3 simulates them. Each ticker runs on one thread, so the result does not depend on `--jobs` (a test compares 1 and 4 threads). The default is 4,000 paths. No price is downloaded.
+`--prices FILE` has lines `ticker,price`.
+
+**`fa dcf pit [--cut YEAR] [--rules K=V,..] [--paths N] [--out FILE]`.** The point-in-time test (see #199 for its limits).
+
+**Results of the run of 2026-11-19** (cache of 1,249 tickers; the full cache is not in git).
+
+- Screen of the 1,003 tickers of `rust/mapcheck/universe/sp500.txt` and `next500.txt`: 844 have a value and 159 have none (bank 48, REIT 40, insurer 38,
+  new registrant 12, history too short 7, mapping status FAIL 7, no revenue 5, fund 1, currency other than USD 1). On 4 threads: mapping 8.5 to 10.6 s,
+  models 0.05 s, simulation of 4,000 paths for each ticker 1.4 to 2.0 s. On 1 thread: 32 s, 0.15 s and 3.9 s. The rows are the same on 1 and on 4 threads.
+- Point-in-time test (`fa dcf pit`, 6,128 company-years of 725 companies, 2,000 paths for each model). Share of the real values inside the P10 to P90 band (target 80%):
+
+| Rule set | Revenue T+1 / T+2 / T+3 | Revenue, growth above 50% (270 company-years) | Free cash flow T+1 / T+2 / T+3 | Free cash flow, margin range above 10 points |
+|---|---|---|---|---|
+| Table values only (`own_sigma_nu=0,level_kappa=0`) | 82.0 / 80.0 / 83.0 | 47.8 / 44.1 / 50.7 | 86.3 / 85.9 / 85.1 | 74.7 / 74.4 / 73.4 |
+| With the shock size of the company | 84.4 / 82.5 / 86.0 | 76.7 / 75.2 / 80.7 | 86.9 / 86.2 / 85.6 | 79.5 / 78.5 / 78.1 |
+| With the level rule from the fade table | 87.5 / 85.1 / 87.3 | 81.1 / 79.3 / 80.7 | 86.9 / 86.6 / 85.4 | 76.3 / 75.7 / 74.0 |
+| Both (the rules of the model) | 86.1 / 83.8 / 86.9 | 83.7 / 82.2 / 84.4 | 87.1 / 86.2 / 85.6 | 79.8 / 78.7 / 78.3 |
+| Both, table from the years up to 2015, base years 2015 and later (4,713 company-years) | 84.8 / 83.3 / 86.8 | 82.5 / 85.1 / 87.3 | 82.7 / 80.8 / 78.9 | 75.5 / 73.3 / 71.5 |
+
+  The result files are `analysis/priors/auto_pit_2026-11-19.txt` and `analysis/priors/auto_pit_cut2015_2026-11-19.txt`. Systematic errors that stay (#199): the bands are a little too wide
+  for companies with a stable margin (free cash flow coverage 95%); a decline in the base year is followed by more growth than the model gives (the real revenue at T+3 is 11% above the P50);
+  the table from before 2016 gives revenue that is 6% too low at T+3 for the years after 2015.
+- Efficiency: the standard error of the P50 of the screen is 3.3%, 2.6%, 1.8%, 0.9% and 0.6% of the P50 for 1,000, 2,000, 4,000, 10,000 and 40,000 paths (the mean of 5 tickers over 20 seeds). The screen uses 4,000 paths.
+  The search of an implied value uses the same random numbers for each step. Antithetic numbers are not made.
+
 ## Company data, market data and the xlsx file (`rust/src/company.rs`, `market/`, `analyze.rs`, 2026-11-19)
 
 These parts are Rust code only. The Python files `scripts/analyze.py`, `scripts/import_financials.py`,
@@ -686,7 +755,7 @@ ticket `option-backtest-rust`).
 
 ## Tests
 
-`cargo test --manifest-path rust/Cargo.toml --locked`: 387 Rust tests (369 + 17 + 1) (the `fa` crate).
+`cargo test --manifest-path rust/Cargo.toml --locked`: 412 Rust tests (394 + 17 + 1; 2 more are ignored) (the `fa` crate).
 `cargo test --manifest-path rust/mapcheck/Cargo.toml`: 89 Rust tests. The suites make no network calls and start no
 Python program; HTTP is replaced by a function that the test gives, and files are in a temp folder.
 No Python test remains (the last 211 Python tests were deleted on 2026-11-19 after each case had a Rust test).

@@ -21,6 +21,9 @@ USAGE:
   fa dcf classic TICKER [OPTIONS]                 classic model on data/processed/<TICKER>.json
   fa dcf scenarios TICKER [--data-dir D] [--json] bear/base/bull of the classic model, value per share
   fa dcf calibrate [--cache DIR] [--out FILE]   AR(1) parameters of growth and margins from the company cache (fa dcf calibrate --help)
+  fa dcf auto TICKER [OPTIONS]               automatic path model of a ticker from the cache (a screen, not a reviewed valuation); fa dcf auto --help
+  fa dcf screen [--tickers-file FILE | TICKER ...] [OPTIONS]   one row for each ticker, parallel; fa dcf screen --help
+  fa dcf pit [OPTIONS]                            point-in-time test of the automatic model; fa dcf pit --help
   fa backtest TICKER [--horizon Y (3)] [--simulations N (10000)] [--seed S (7)] [--data-dir D]
                                                   point-in-time vintage backtest of revenue and FCF projections
 
@@ -627,6 +630,9 @@ pub fn run(repo: &Path, args: &[String]) -> u8 {
         Some("classic") => classic(repo, &args[1..]),
         Some("scenarios") => scenarios(repo, &args[1..]),
         Some("calibrate") => super::calib_report::command(repo, &args[1..]).map(|_| ()),
+        Some("auto") => return super::auto_cli::auto(repo, &args[1..]),
+        Some("screen") => return super::auto_cli::screen(repo, &args[1..]),
+        Some("pit") => return super::auto_pit::command(repo, &args[1..]),
         Some(other) => {
             eprintln!("fa: unknown dcf command '{other}'\n\n{USAGE}");
             return 64;
