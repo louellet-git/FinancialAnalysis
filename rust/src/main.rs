@@ -51,7 +51,10 @@ USAGE:
   fa trade fetch [--symbol S]... [--interval I]...  download the bars of the option bots (Yahoo) into the CSV cache
   fa trade backtest [--bot ID]... [--max-risk N] [--out FILE] [-v]   backtest the option bots (fa trade backtest --help)
   fa trade paper [BOT]... [--no-refresh] [--no-live]   forward paper trading, live Cboe option chain (fa trade paper --help)
-  fa run MODULE [ARGS...]                         any entry point, e.g. fa run scripts.analyze IBM
+  fa import TICKER... [--refresh] [--periods N]   SEC data to the standard variables: data/processed/<TICKER>.json
+  fa analyze TICKER [--refresh] [--out FILE] [--no-market] [--no-options] [--no-estimates]
+                                                  import, market data, and the nine-sheet xlsx file (fa analyze --help)
+  fa run MODULE [ARGS...]                         any entry point of the Python code, e.g. fa run scripts.visualize_dcf IBM
   fa serve [--port N] [--no-open]                 local viewer in the browser (http://127.0.0.1:8765/)
 
 D is YYYY-MM-DD or 'today'. Rates are decimals (0.0507 = 5.07%).
@@ -243,6 +246,14 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
                 Err(e) => Ok(usage_error(&e)),
             },
             _ => Ok(usage_error("trade needs a command: backtest, fetch or paper")),
+        },
+        Some("import") => match financial_analysis::company::import_command(&fa.repo, &args[1..]) {
+            Ok(code) => Ok(ExitCode::from(code as u8)),
+            Err(e) => Ok(usage_error(&e)),
+        },
+        Some("analyze") => match financial_analysis::analyze::command(&fa.repo, &args[1..]) {
+            Ok(code) => Ok(ExitCode::from(code as u8)),
+            Err(e) => Ok(usage_error(&e)),
         },
         Some("serve") => {
             if args[1..].iter().any(|a| a == "-h" || a == "--help") {

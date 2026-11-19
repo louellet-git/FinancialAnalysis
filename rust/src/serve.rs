@@ -456,7 +456,7 @@ fn report_error(e: FaError) -> Reply {
         );
     }
     if lower.contains("no saved data") {
-        return Reply::error_with_detail(502, &text, "Import the company data first: python -m scripts.import_financials TICKER");
+        return Reply::error_with_detail(502, &text, "Import the company data first: fa import TICKER");
     }
     fa_error(e)
 }
@@ -471,7 +471,7 @@ fn report_make(ctx: &Ctx, q: &HashMap<String, String>) -> Answer {
         return Err(Reply::error(
             404,
             &format!("There is no saved company data for {ticker}."),
-            &format!("Run: python -m scripts.import_financials {ticker}"),
+            &format!("Run: fa import {ticker}"),
         ));
     }
     let force = q.get("force").map(|v| v == "1" || v == "true").unwrap_or(false);
@@ -926,7 +926,7 @@ mod tests {
         // No saved company data: a clear error, and Python does not start.
         let r = route(&c, "GET", "/api/report/make?ticker=TEST&price=10");
         assert_eq!(r.status, 404);
-        assert!(body(&r)["hint"].as_str().unwrap().contains("import_financials"));
+        assert!(body(&r)["hint"].as_str().unwrap().contains("fa import"));
         // Data exists, but Python does not: the error has the Python hint, and no file stays.
         fs::create_dir_all(root.join("data/processed")).unwrap();
         fs::write(root.join("data/processed/TEST.json"), "{}").unwrap();
@@ -950,7 +950,7 @@ mod tests {
         let plotly = FaError::Python { code: Some(1), kind: None, message: "ModuleNotFoundError: No module named 'plotly'".into() };
         assert!(body(&report_error(plotly))["hint"].as_str().unwrap().contains("pip install -r requirements.txt"));
         let nodata = FaError::Python { code: Some(1), kind: None, message: "No saved data for ZZZ. Run: python -m scripts.import_financials ZZZ".into() };
-        assert!(body(&report_error(nodata))["hint"].as_str().unwrap().contains("import_financials"));
+        assert!(body(&report_error(nodata))["hint"].as_str().unwrap().contains("fa import"));
     }
 
     #[test]

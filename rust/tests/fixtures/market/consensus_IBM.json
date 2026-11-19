@@ -1,0 +1,91 @@
+{
+  "ticker": "IBM",
+  "snapshot_date": "2026-11-19",
+  "revenue_estimate": {
+    "0q": {
+      "avg": 20382528670.0,
+      "low": 20130000000.0,
+      "high": 20728103870.0,
+      "numberOfAnalysts": 17.0,
+      "yearAgoRevenue": 19686000000.0,
+      "growth": 0.0354,
+      "currency": null
+    },
+    "+1q": {
+      "avg": 16547732460.0,
+      "low": 16319189530.0,
+      "high": 16842000000.0,
+      "numberOfAnalysts": 12.0,
+      "yearAgoRevenue": 15917000000.0,
+      "growth": 0.0396,
+      "currency": null
+    },
+    "0y": {
+      "avg": 70566875410.0,
+      "low": 70024671520.0,
+      "high": 70930000000.0,
+      "numberOfAnalysts": 23.0,
+      "yearAgoRevenue": 67535000000.0,
+      "growth": 0.0449,
+      "currency": null
+    },
+    "+1y": {
+      "avg": 73238437120.0,
+      "low": 71325270790.0,
+      "high": 74446000000.0,
+      "numberOfAnalysts": 23.0,
+      "yearAgoRevenue": 70566875410.0,
+      "growth": 0.0379,
+      "currency": null
+    }
+  },
+  "earnings_estimate": {
+    "0q": {
+      "avg": 4.62568,
+      "low": 4.5,
+      "high": 4.778,
+      "yearAgoEps": 4.52,
+      "numberOfAnalysts": 19.0,
+      "growth": 0.0234,
+      "currency": null,
+      "methodology": null
+    },
+    "+1q": {
+      "avg": 2.14728,
+      "low": 1.87,
+      "high": 2.47,
+      "yearAgoEps": 1.91,
+      "numberOfAnalysts": 15.0,
+      "growth": 0.1242,
+      "currency": null,
+      "methodology": null
+    },
+    "0y": {
+      "avg": 12.42378,
+      "low": 12.3,
+      "high": 12.568,
+      "yearAgoEps": 11.59,
+      "numberOfAnalysts": 23.0,
+      "growth": 0.0719,
+      "currency": null,
+      "methodology": null
+    },
+    "+1y": {
+      "avg": 13.23863,
+      "low": 12.30183,
+      "high": 13.67325,
+      "yearAgoEps": 12.42378,
+      "numberOfAnalysts": 24.0,
+      "growth": 0.0656,
+      "currency": null,
+      "methodology": null
+    }
+  },
+  "analyst_price_targets": {
+    "current": 228.53,
+    "high": 300.0,
+    "low": 174.0,
+    "mean": 259.84738,
+    "median": 265.0
+  }
+}

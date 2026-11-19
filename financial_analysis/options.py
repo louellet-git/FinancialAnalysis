@@ -1,10 +1,10 @@
-"""Option-chain snapshots and derived metrics via yfinance.
+"""Option-chain snapshots (read side) and derived metrics.
 
-yfinance only exposes the CURRENT option chain — there is no free historical
-endpoint. Every pull is therefore persisted as a dated snapshot under
-``data/raw/TICKER/options/YYYY-MM-DD.json`` (one per calendar day; re-pulling
-on the same day overwrites). History accumulates from first use. Paid
-providers (FMP, Polygon) are the upgrade path if backfilled history is needed.
+Legacy reader of the dated snapshots under ``data/raw/TICKER/options/YYYY-MM-DD.json``.
+The snapshots are made by the Rust program (``fa analyze``, from the Cboe delayed
+quotes); the Rust form of this module is ``rust/src/market/options.rs``. This file stays
+only because ``scripts/visualize_dcf.py`` (the HTML report, not yet in Rust) reads
+snapshots and the metrics through it. Delete it when that report moves to Rust.
 """
 from __future__ import annotations
 import json
@@ -14,8 +14,6 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 from typing import List, Optional
-
-import yfinance as yf
 
 from financial_analysis.schema import OptionChainSnapshot, OptionQuote
 
@@ -126,113 +124,6 @@ def load_snapshot(
     if not path.exists():
         raise FileNotFoundError(f"No option-chain snapshot for {key} on {snapshot_date} at {path}")
     return _snapshot_from_dict(json.loads(path.read_text(encoding="utf-8")))
-
-
-# ---------------------------------------------------------------------------
-# Fetching
-# ---------------------------------------------------------------------------
-
-def _clean_float(v) -> Optional[float]:
-    if v is None:
-        return None
-    try:
-        f = float(v)
-    except (TypeError, ValueError):
-        return None
-    if math.isnan(f) or math.isinf(f):
-        return None
-    return round(f, 6)
-
-
-def _clean_int(v) -> Optional[int]:
-    f = _clean_float(v)
-    return None if f is None else int(f)
-
-
-def _parse_chain_df(df, option_type: str, expiry: date) -> List[OptionQuote]:
-    if df is None or df.empty:
-        return []
-    quotes = []
-    for _, row in df.iterrows():
-        strike = _clean_float(row.get("strike"))
-        if strike is None:
-            logger.warning("Skipping %s %s contract with no strike", expiry, option_type)
-            continue
-        itm = row.get("inTheMoney")
-        quotes.append(OptionQuote(
-            contract_symbol=str(row.get("contractSymbol") or ""),
-            option_type=option_type,
-            expiry=expiry,
-            strike=strike,
-            last_price=_clean_float(row.get("lastPrice")),
-            bid=_clean_float(row.get("bid")),
-            ask=_clean_float(row.get("ask")),
-            volume=_clean_int(row.get("volume")),
-            open_interest=_clean_int(row.get("openInterest")),
-            implied_volatility=_clean_float(row.get("impliedVolatility")),
-            in_the_money=None if itm is None else bool(itm),
-        ))
-    return quotes
-
-
-def fetch_option_chain(
-    ticker: str,
-    cache_dir: Path,
-    refresh: bool = False,
-) -> OptionChainSnapshot:
-    """Pull the full option chain via yfinance and persist a dated snapshot.
-
-    One snapshot per calendar day: a same-day re-run loads from disk unless
-    refresh=True, in which case the day's snapshot is overwritten.
-    """
-    key = ticker.upper()
-    today = date.today()
-
-    if not refresh:
-        path = _options_dir(key, cache_dir) / f"{today.isoformat()}.json"
-        if path.exists():
-            try:
-                return load_snapshot(key, cache_dir, snapshot_date=today)
-            except (json.JSONDecodeError, KeyError, ValueError):
-                logger.warning("Corrupt options snapshot for %s — re-fetching", key)
-
-    t = yf.Ticker(key)
-
-    spot = None
-    hist = t.history(period="5d")
-    if hist is None or hist.empty:
-        logger.warning("yfinance returned no recent prices for %s — spot unavailable", key)
-    else:
-        spot = _clean_float(hist["Close"].iloc[-1])
-
-    try:
-        expiries = tuple(t.options or ())
-    except Exception as e:
-        logger.warning("yfinance options listing failed for %s: %s", key, e)
-        expiries = ()
-
-    quotes: List[OptionQuote] = []
-    for exp_str in expiries:
-        try:
-            expiry = date.fromisoformat(exp_str)
-        except ValueError:
-            logger.warning("Skipping unparseable expiry %r for %s", exp_str, key)
-            continue
-        try:
-            chain = t.option_chain(exp_str)
-        except Exception as e:
-            logger.warning("option_chain(%s) failed for %s: %s", exp_str, key, e)
-            continue
-        quotes.extend(_parse_chain_df(getattr(chain, "calls", None), "call", expiry))
-        quotes.extend(_parse_chain_df(getattr(chain, "puts", None), "put", expiry))
-
-    if not quotes:
-        logger.warning("No listed options found for %s — saving empty snapshot", key)
-
-    quotes.sort(key=lambda q: (q.expiry, q.option_type, q.strike))
-    snapshot = OptionChainSnapshot(ticker=key, snapshot_date=today, spot_price=spot, quotes=quotes)
-    save_snapshot(snapshot, cache_dir)
-    return snapshot
 
 
 # ---------------------------------------------------------------------------

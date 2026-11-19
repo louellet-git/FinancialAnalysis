@@ -50,7 +50,7 @@ Filing-level instance-document extraction is Ticket 7. Evidence:
 
 **6. The JSON store holds statements only — no prices, options, or estimates.**
 `store.save()` serializes `periods` exclusively; market data attached by
-`scripts/analyze.py` lives only in the xlsx and in dated snapshots under
+`fa analyze` (earlier `scripts/analyze.py`) lives only in the xlsx and in dated snapshots under
 `data/raw/TICKER/` (options/, estimates/, prices.json). IBM's JSON `prices` array is
 empty; the report's price/dividend/analyst-target figures were **hand-entered** from
 cited sources, not pipeline outputs (disclosed). Evidence:
@@ -144,8 +144,9 @@ divided by EPS shows it, and the source records the correction. A stock split af
 period is not corrected: the value is the count that the filer reported.
 
 **48. The Python commands need the Rust program.** The Python importer has no mapping
-logic. `scripts.analyze`, `scripts.import_financials` and each command that imports a
-ticker run `rust/mapcheck/target/release/mapcheck`. If the program is not built, they
+logic. (Update 2026-11-19: `scripts.analyze` and `scripts.import_financials` are deleted; `fa import` and
+`fa analyze` call the Rust import in the same process.) Each Python command that imports a
+ticker runs `rust/mapcheck/target/release/mapcheck`. If the program is not built, they
 stop with `MapcheckError` and the build command. Build it again after a change of
 `financial_analysis/standard_variables.toml` (the program contains the file).
 
@@ -282,7 +283,8 @@ usable periods per vintage and records skips. Evidence:
 **17. The xlsx always has nine sheets; the console tab count lies by omission.**
 `write_xlsx` creates every sheet regardless of flags; `--no-market` etc. just leave
 header-only sheets, while the "Done: ... across N tabs" message counts populated groups.
-Evidence: `scripts/analyze.py:70-81, 279-284, 370-379`.
+(Closed 2026-11-19: `fa analyze` prints the number of sheets, 9, and the number of data rows.)
+Evidence: `rust/src/analyze.rs` (`command`).
 
 **18. (Closed 2026-11-19.) Generated files were tracked.** Two xlsx files and four
 .pyc files were in git although `.gitignore` excludes them. They are removed from the
@@ -291,8 +293,8 @@ index. `data/` and `__pycache__/` are not in git; do not add them.
 **19. RPO rows hide on the Balance Sheet tab.** `remaining_performance_obligation` is a
 disclosure fact but is written to the Balance Sheet tab with `statement="disclosure"`
 (no dedicated tab). Its current/noncurrent duration split is text-only in filings and
-is not extracted. Evidence: `scripts/analyze.py:51-58` (`_TAB_FOR`);
-`financial_analysis/xbrl_tags.py:147-155`.
+is not extracted. Evidence: `rust/src/analyze.rs` (`sheet_for`);
+`financial_analysis/standard_variables.toml` (`remaining_performance_obligation`).
 
 **20. Default scenario presets are generic mature-large-cap.** `DEFAULT_SCENARIOS`
 (bear 1%/base 4%/bull 6% growth) applies to ANY ticker without an override — running
@@ -1013,6 +1015,76 @@ paper step during the session sees the bars that have ended. The live price row 
 with seconds, for example 09:35:26) is not a bar and the program drops it. On an early-close day
 Yahoo adds a row at 13:00 with no volume; the program drops it with `meta.tradingPeriods`.
 *Evidence:* `rust/src/trading/fetch.rs` (`rows_from_chart`).
+
+## Report, market data and company data in Rust (added 2026-11-19, branch `claude/report-rust`)
+
+**140. Prices are adjusted for splits and dividends.** The Python code used `yfinance` with
+`auto_adjust=True`: open, high and low are multiplied by `adjclose / close`, and the close is the adjusted
+close. The Rust code does the same with the `adjclose` array of the Yahoo chart reply (`includeAdjustedClose=true`).
+Thus an old close in `data/raw/<T>/prices.json` is not the price of that day. Each new dividend changes
+all older rows, and a cache file that is old has rows that differ from a new download. The last row is the
+live row of the running session, as in the Python code. A row with no open, high, low or close is dropped
+(the Python code wrote `NaN`, which is not JSON); a row with all prices and the volume empty or zero is dropped.
+The date of a row is the New York date (`America/New_York` is the time zone of all U.S. stocks; for another
+zone the program uses the offset of `meta.gmtoffset`).
+*Evidence:* `rust/src/market/prices.rs`; the fixture `rust/tests/fixtures/market/yahoo_prices.json` is made with the
+functions of yfinance (`parse_quotes`, `fix_Yahoo_returning_live_separate`, `auto_adjust`).
+
+**141. Yahoo answers HTTP 429 to the prices request from the container.** Tested 2026-11-19: two requests,
+some minutes apart, both HTTP 429. The program does not get around this and does not imitate a browser. It
+says "Yahoo answered HTTP 429 (too many requests)". A cache file stays as it is: with `--refresh` and an
+answer of 429, the old file is used and the message says so. With no cache file, the prices are empty and
+the other sheets are still written. The price loader was tested with a fixture reply and with the cache of the
+Python code, not with a live reply.
+*Evidence:* `rust/src/market/prices.rs` (`load_prices`), test `a_cache_file_is_used_and_a_refresh_that_fails_keeps_it`.
+
+**142. The forward consensus and the earnings dates have no source in Rust.** `estimates.py` and
+`load_earnings_surprises` used `yfinance`. Its endpoints need a cookie and a crumb, and Yahoo refuses them for a
+program that gives its real name (#93). The program does not imitate a browser. So `fa analyze` reads the files that
+exist (`data/raw/<T>/estimates/<date>.json` and `yf_earnings.json`, made by the earlier Python code) and says
+"no source" when they do not exist. For the snapshot, today's file is used; else the latest older file is used and the
+console says its date (each row of the sheet has the `snapshot_date`). Nothing makes new files of these two kinds.
+**Open decision of the owner:** which free source gives estimates and earnings dates (Financial Modeling Prep
+with a key, a data source with a published API, or another).
+*Evidence:* `rust/src/market/consensus.rs`.
+
+**143. The option chain is from Cboe, not Yahoo.** Four differences from the Python snapshots: (a) the implied
+volatility is the value of Cboe (a fraction, 0.31); Yahoo solved its own values, so a history that has both
+kinds of snapshot is not one series; (b) the spot price is `current_price` of the Cboe file (about 15 minutes
+late), not the last daily close; (c) `in_the_money` is computed from that spot price (call: strike below spot, put:
+strike above); (d) only the options of the root of the ticker are in the snapshot (the adjusted options, for
+example `B1IBM`, are not). Cboe gives IV 0.0 to an option with no solved value; the metrics treat an IV
+below 0.0001 as missing, as before. The metrics (`compute_chain_metrics`) are the same calculation as in Python
+(tested on 7 chains with the expected values from the Python functions, 533 quotes). A ticker with no listed
+options gets an HTTP 404 from Cboe: no snapshot file is written.
+*Evidence:* `rust/src/market/options.rs`; `curl` of the IBM file 2026-11-19 (2,208 options, 20 expiries).
+
+**144. FMP: key handling, legacy endpoints, error objects.** The key is read from `FMP_API_KEY` (environment, else
+the `.env` file in the repository folder). The key is in the URL, so the program takes it out of every
+error text. The endpoints are the v3 endpoints of the Python code (`api/v3/analyst-estimates`,
+`api/v3/earnings-surprises`); FMP closed the v3 endpoints for new keys in August 2025, and the new program
+was not tested with a live key (there is none in the container). An answer with HTTP 200 and an error object
+(`{"Error Message": ...}`) is an error now. The Python code wrote that object into the cache and failed later. A
+surprise record with a missing number is skipped; the Python code stopped with `TypeError`.
+*Evidence:* `rust/src/market/fmp.rs`; tests with fixture text only.
+
+**145. The xlsx file of Rust differs from the file of Python in three small ways.** Compared on 2026-11-19 for IBM and
+JNJ (203,004 and 179,351 cells): no difference in a value, a sheet name, a sheet size or a number format
+(all "General"). The differences: (a) a source text that starts with `=` (a registry formula such as
+`= revenue - cogs_total`, 199 and 203 cells) is a text cell; openpyxl wrote a formula, and Excel shows `#NAME?`;
+(b) the source text of the derived rows `free_cash_flow` and `fcf_margin` does not name `schema.py`; (c) openpyxl
+writes 16 significant digits, and Rust writes the exact value, so 16 and 13 cells differ in the last digit
+(relative difference 3e-16 or less). A NaN is an empty cell in both files (the future dates of `yf_earnings.json`).
+*Evidence:* `rust/src/analyze.rs`; the proof is the comparison script of the ticket `report-rust`.
+
+**146. The company data has one list of variable names: the registry.** The Python dataclass
+`PeriodFinancials` repeated the names, and `store.load` dropped each field that the dataclass did not have. The Rust
+type (`rust/src/company.rs`) reads each value by the name from the registry, so a new variable cannot be lost
+and the test "the field order of `schema.py` equals the registry" is not necessary in Rust. While `schema.py`
+stays for the Python engines, `tests/test_schema.py` checks that the dataclass has each registry variable.
+The unit text of the xlsx (`USD/share`, `shares`, `ratio`) is a fixed rule in `analyze.rs` (`unit_of`); the registry says
+`USD/shares` for the EPS lines, and the xlsx keeps the old text.
+*Evidence:* `rust/src/company.rs`, `rust/src/analyze.rs`.
 
 ## Could not verify
 

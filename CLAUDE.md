@@ -97,15 +97,16 @@ Do not use a first pass alone for a trade.
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest                              # 278 tests (4 skipped), no network
-cargo test --manifest-path rust/mapcheck/Cargo.toml   # 86 Rust tests
-cargo test --manifest-path rust/Cargo.toml            # 266 + 17 + 1 Rust tests, no network
-python -m scripts.analyze IBM                 # import + market data -> xlsx
+python -m pytest                              # 211 tests, no network
+cargo test --manifest-path rust/mapcheck/Cargo.toml   # 89 Rust tests
+cargo test --manifest-path rust/Cargo.toml --locked   # 317 Rust tests (299 + 17 + 1), no network
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
 rust/mapcheck/target/release/mapcheck values IBM          # each input value with its source
 rust/mapcheck/target/release/mapcheck IBM --detail        # mapping checks
 rust/mapcheck/target/release/mapcheck filing IBM --focus  # capex, depreciation and debt lines of the 10-K
 cargo build --release --manifest-path rust/Cargo.toml             # the fa command
+rust/target/release/fa import IBM             # SEC data -> data/processed/IBM.json
+rust/target/release/fa analyze IBM            # import + market data -> xlsx (nine tabs)
 rust/target/release/fa verdict IBM --price 228.53   # value range against a price (add --rf-date today --rating A-)
 rust/target/release/fa dcf drivers IBM        # version 4 headline numbers; options for each analysis (fa dcf --help)
 rust/target/release/fa dcf scenarios IBM      # classic engine, bear/base/bull (version 3 inputs)

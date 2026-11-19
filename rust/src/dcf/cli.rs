@@ -399,7 +399,7 @@ fn load_company(repo: &Path, a: &Args, ticker: &str) -> R<Company> {
     let dir = a.one("--data-dir").map(PathBuf::from).unwrap_or_else(|| default_data_dir(repo));
     let path = dir.join(format!("{}.json", ticker.to_uppercase()));
     if !path.is_file() {
-        return e(format!("No saved data for {} at {}. Run: fa run scripts.analyze {}", ticker.to_uppercase(), path.display(), ticker.to_uppercase()));
+        return e(format!("No saved data for {} at {}. Run: fa import {}", ticker.to_uppercase(), path.display(), ticker.to_uppercase()));
     }
     let text = std::fs::read_to_string(&path).map_err(|x| DcfError(format!("{}: {x}", path.display())))?;
     let mut c: Company = serde_json::from_str(&text).map_err(|x| DcfError(format!("{}: {x}", path.display())))?;

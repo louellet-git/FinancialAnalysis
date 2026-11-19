@@ -1,0 +1,147 @@
+{
+ "estimates_raw": [
+  {
+   "date": "2026-12-31",
+   "period": "annual",
+   "estimatedEpsAvg": 10.5,
+   "estimatedRevenueAvg": 70566875410,
+   "numberAnalystEstimatedEps": 23
+  },
+  {
+   "date": "2027-03-31",
+   "period": "quarter",
+   "estimatedEpsAvg": 2.1,
+   "estimatedRevenueAvg": 16547732460,
+   "numberAnalystEstimatedEps": 12
+  },
+  {
+   "date": "2027-06-30",
+   "estimatedEpsAvg": null,
+   "estimatedRevenueAvg": 15000000000.0
+  },
+  {
+   "date": "not-a-date",
+   "period": "annual",
+   "estimatedEpsAvg": 1.0
+  },
+  {
+   "period": "annual",
+   "estimatedEpsAvg": 1.0
+  },
+  {
+   "date": "2028-12-31",
+   "period": "annual",
+   "estimatedEpsAvg": 12.25,
+   "estimatedRevenueAvg": null,
+   "numberAnalystEstimatedEps": 3
+  }
+ ],
+ "estimates": [
+  {
+   "period_end": "2026-12-31",
+   "period_type": "annual",
+   "estimated_eps": 10.5,
+   "estimated_revenue": 70566875410,
+   "number_of_analysts": 23
+  },
+  {
+   "period_end": "2027-03-31",
+   "period_type": "quarterly",
+   "estimated_eps": 2.1,
+   "estimated_revenue": 16547732460,
+   "number_of_analysts": 12
+  },
+  {
+   "period_end": "2027-06-30",
+   "period_type": "annual",
+   "estimated_eps": null,
+   "estimated_revenue": 15000000000.0,
+   "number_of_analysts": null
+  },
+  {
+   "period_end": "2028-12-31",
+   "period_type": "annual",
+   "estimated_eps": 12.25,
+   "estimated_revenue": null,
+   "number_of_analysts": 3
+  }
+ ],
+ "surprises_raw": [
+  {
+   "date": "2026-10-21",
+   "actualEarningResult": 2.95,
+   "estimatedEarning": 2.87
+  },
+  {
+   "date": "2026-07-22",
+   "actualEarningResult": "2.93",
+   "estimatedEarning": "2.93"
+  },
+  {
+   "date": "2026-04-22",
+   "actualEarningResult": 1.91,
+   "estimatedEarning": 0
+  },
+  {
+   "date": "2026-01-28",
+   "actualEarningResult": -0.5,
+   "estimatedEarning": -0.4
+  },
+  {
+   "date": "2025-10-22",
+   "actualEarningResult": 1.0
+  },
+  {
+   "date": "bad",
+   "actualEarningResult": 1.0,
+   "estimatedEarning": 1.0
+  },
+  {
+   "date": "2025-07-22",
+   "actualEarningResult": "abc",
+   "estimatedEarning": 1.0
+  },
+  {
+   "date": "2025-04-22",
+   "actualEarningResult": 3.3333333333,
+   "estimatedEarning": 3.1234567891
+  }
+ ],
+ "surprises": [
+  {
+   "date": "2026-10-21",
+   "actual_eps": 2.95,
+   "estimated_eps": 2.87,
+   "surprise": 0.08,
+   "surprise_pct": 0.027875
+  },
+  {
+   "date": "2026-07-22",
+   "actual_eps": 2.93,
+   "estimated_eps": 2.93,
+   "surprise": 0.0,
+   "surprise_pct": 0.0
+  },
+  {
+   "date": "2026-04-22",
+   "actual_eps": 1.91,
+   "estimated_eps": 0.0,
+   "surprise": 1.91,
+   "surprise_pct": 0.0
+  },
+  {
+   "date": "2026-01-28",
+   "actual_eps": -0.5,
+   "estimated_eps": -0.4,
+   "surprise": -0.1,
+   "surprise_pct": -0.25
+  },
+  {
+   "date": "2025-04-22",
+   "actual_eps": 3.3333333333,
+   "estimated_eps": 3.1234567891,
+   "surprise": 0.209877,
+   "surprise_pct": 0.067194
+  }
+ ]
+}
