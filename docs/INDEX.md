@@ -13,7 +13,7 @@ pipeline or an audit gate; regenerate, don't hand-edit).
 | `README.md` | Overview for persons: commands, engines, trading research, xlsx tabs, layout | informative |
 | `THOUGHTS` | Raw idea scratchpad (2 items, consolidated into tickets.md OPEN TICKETS) | live |
 | `docs/ARCHITECTURE.md` | Code-verified module map, data flow, the two engines' mechanics | informative (code governs) |
-| `docs/HIDDEN-ASSUMPTIONS.md` | Trap registry: 41 non-obvious assumptions/landmines with evidence pointers | informative (code governs) |
+| `docs/HIDDEN-ASSUMPTIONS.md` | Trap registry: 44 non-obvious assumptions/landmines with evidence pointers | informative (code governs) |
 | `docs/INDEX.md` | This file | informative |
 | `docs/visualizer-design-brief.md` | Contract for cosmetic restyles of the HTML report (structure + hard constraints) | binding (for visualizer restyles) |
 | `docs/design-specs/2026-07-16-ratings-desk-blueprint.md` | Accepted visual design spec applied to `visualize_dcf.py` (tokens, chart chrome) | binding (visualizer styling) |

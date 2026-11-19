@@ -138,6 +138,7 @@ decorative until a driver build exists.
 | `edgar.py` | 272 | SEC HTTP client (User-Agent, 0.15s rate limit), CIK lookup from company_tickers.json, full-index filing downloads (`EdgarClient.download_for_ticker`), `EdgarClientError`. |
 | `estimates.py` | 193 | yfinance **forward** consensus (revenue/EPS estimates, price targets) → `ConsensusEstimates`; persisted as dated snapshots `data/raw/TICKER/estimates/YYYY-MM-DD.json` (yfinance has no history — history accumulates from first pull; empty snapshots saved so absence is dated evidence). `fetch_estimates`, `list_snapshots`, `load_snapshot`. |
 | `fmp.py` | 120 | Optional FMP API client (`FMP_API_KEY` in `.env`): analyst estimates/surprises, IFRS statements stub (`NotImplementedError`). Free-plan v3 endpoints unavailable since Aug 2025 — pipeline degrades to yfinance. |
+| `filing.py` | 420 | Filing-level XBRL, first part: gets `MetaLinks.json` and the instance document of the latest 10-K (`data/raw/<TICKER>/filings/`), reads the consolidated values of the fiscal year (company tags included), and builds the income statement, balance sheet and cash-flow statement as trees from the calculation data of the filer. `estimates` gives capex, depreciation and amortization, and total debt from the filing lines. Facts with a segment are counted, not used. |
 | `importer.py` | 224 | companyfacts → `PeriodFinancials`. For each fiscal year and each quarter (`facts.py`), it gets each standard variable from the first alias tag that has a fact (`xbrl_tags.py`), then from a formula. It records the source of each value in `sources`, puts the tags with no standard variable in `raw_extras`, and raises `UnsupportedFilingError` for non-us-gaap filers. `segment_revenue` is always None from this source (Ticket 7). |
 | `facts.py` | 146 | Selection of facts by period length: an annual value covers a full fiscal year (350 to 380 days), a quarterly value covers one quarter (or is a year-to-date difference), a balance is selected by its date. The latest filing wins. |
 | `crosscheck.py` | 150 | The comparison of the standard variables with an independent source: the list of comparisons (with alternative definitions for capex and total debt), the match of fiscal years (a 52/53-week year end against a month end), and the summary. No network code. |
@@ -167,6 +168,7 @@ decorative until a driver build exists.
 | `mapping_audit.py` | `python -m scripts.mapping_audit [TICKER ...] [--panel] [--field NAME] [--refresh]` | Audit of the standard-variable mapping: each value with its source, identity failures, material tags with no variable. `--panel` gives the summary for 32 tickers. Writes no files in `data/processed/`. |
 | `fetch_facts.py` | `python -m scripts.fetch_facts [TICKER ...] [--tickers-file FILE] [--top N] [--write-list FILE] [--delay S] [--refresh]` | Gets SEC company facts for many tickers into `data/raw/<TICKER>/company_facts.json.gz` (0.15 s between requests). `--top N` takes the first N companies of the SEC ticker list. |
 | `mapping_crosscheck.py` | `python -m scripts.mapping_crosscheck [TICKER ...] [--tickers-file FILE] [--out FILE] [--examples N]` | Compares the core inputs of the latest fiscal year with Yahoo Finance (an independent source): agree, agree with a different definition, differ, no value. Network: Yahoo Finance. |
+| `filing_tree.py` | `python -m scripts.filing_tree TICKER [...] [--statement income\|balance\|cash] [--focus] [--refresh]` | Prints the statements of the latest 10-K as the filer structures them (parent, sign, value, tag, standard variable or company tag), and the capex, depreciation and debt lines with a value from these lines. Network: www.sec.gov (3 requests for a new filing). |
 | `mapping_parity.py` | `python -m scripts.mapping_parity [TICKER ...] [--tickers-file FILE] [--sample N]` | Compares the Rust mapper with the Python importer: periods, filing dates, each variable, each source, and the tags with no variable. Exit code 1 on a difference. |
 | `trade_backtest.py` | `python -m scripts.trade_backtest [BOT ...] [--fetch] [--max-risk DOLLARS] [-v]` | Backtest of the SPY/QQQ option bots in `trading/`; prints a leaderboard. Option prices are model prices. |
 | `trade_paper.py` | `python -m scripts.trade_paper [BOT ...] [--no-refresh] [--no-live] [--equity X] [--max-risk DOLLARS]` | One forward paper-trade step for each bot, with live-chain prices when available. It sends no broker orders. |
@@ -249,6 +251,6 @@ model result.
 
 ## Tests
 
-`python -m pytest` from the repo root: 424 tests, all pass on 2026-11-19 (4 s).
-25 test modules are in `tests/`. The suite makes no network calls; HTTP is mocked and
+`python -m pytest` from the repo root: 435 tests, all pass on 2026-11-19 (4 s).
+26 test modules are in `tests/`. The suite makes no network calls; HTTP is mocked and
 files use `tmp_path`. Install `pytest` with `pip install -r requirements-dev.txt`.

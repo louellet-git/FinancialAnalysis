@@ -19,7 +19,7 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest                       # 424 tests, no network
+python -m pytest                       # 435 tests, no network
 cargo test --manifest-path rust/mapcheck/Cargo.toml   # 43 Rust tests
 ```
 
@@ -152,6 +152,39 @@ ticker before you examine them.
 The share count of some filers has no scale (McDonald's reports 716.4 for 716.4 million
 shares). The importer corrects a factor of 1,000 or 1,000,000 with net income divided
 by EPS, and records the correction in the source.
+
+### The statements of a filing (filing-level data)
+
+The SEC source that the importer uses has standard tags only, and it does not say which
+line is a part of which line. Each 10-K has this information. `scripts.filing_tree` gets
+the latest 10-K of a ticker and prints the three statements as the company structures
+them: each line with its parent, its sign, its value, and its tag. Company-specific
+tags are included.
+
+```bash
+python -m scripts.filing_tree VZ                    # the three statements
+python -m scripts.filing_tree VZ --statement cash   # one statement
+python -m scripts.filing_tree IBM COP --focus       # only the capex, depreciation and debt lines
+```
+
+Use `--focus` before you trust capital expenditure, depreciation and amortization, or
+total debt for a ticker. It shows the lines of the filing and a value from these lines.
+Examples: IBM capital expenditure is $1.09B in the standard variable and $1.74B in the
+filing (IBM has a company tag for software); the ConocoPhillips capex has only a company
+tag ($12.55B).
+
+Comparison with Yahoo Finance for the 50 new tickers (2026-11-19):
+
+| Input | Standard variables agree | Filing lines agree |
+|---|---|---|
+| Capital expenditure | 73% | 92% (78% and 14% more with purchased intangibles) |
+| Total debt | 80% | 90% |
+| Depreciation and amortization | 73% | 81% |
+
+Limits: the standard variables do not use the filing values yet (board ticket
+`filing-values-in-variables`). The command finds the lines by their tag names, thus a
+line can be missing or incorrect; read the printed lines. Facts with a segment (60% to
+70% of the facts in a filing) are counted but not used.
 
 ## Interest rates and inflation
 
@@ -296,7 +329,7 @@ analysis/JNJ/             JNJ first pass (not reviewed)
 trading/                  option strategy backtester, paper trader, 22 bots, research notes
 scripts/                  command-line entry points
 rust/                     Rust interface: library and `fa` command (calls the Python code)
-tests/                    424 tests
+tests/                    435 tests
 
 docs/                     ARCHITECTURE.md, HIDDEN-ASSUMPTIONS.md, INDEX.md, design documents
 PLANNING/board/           open work, one file for each ticket

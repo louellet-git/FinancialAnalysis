@@ -16,6 +16,7 @@ constant per run).
 | Standard input mapping | 2026-11-19 | registry of 109 standard variables, period selection, source record, mapping audit on a 32-ticker panel | ~0 (inline) | orchestrator only, no subagents; not a valuation run |
 | Mapping test framework (Rust) | 2026-11-19 | registry as one TOML file; `rust/mapcheck` (mapper, 22 checks, parallel run); bulk fetch; Rust-Python parity; runs on 32, 50 and 472 tickers | ~0 (inline) | orchestrator only, no subagents; not a valuation run |
 | Share-count rule and external cross-check | 2026-11-19 | share-count scale rule and check (Python and Rust); `scripts.mapping_crosscheck` against Yahoo Finance on 50 tickers | ~0 (inline) | orchestrator only, no subagents; not a valuation run |
+| Filing-level XBRL, first part | 2026-11-19 | `filing.py` and `scripts.filing_tree`: statements of the latest 10-K as trees, company tags, estimates of capex, D&A and debt; measured on 50 tickers | ~0 (inline) | orchestrator only, no subagents; not a valuation run |
 
 Targets: frontier ticker ≤500k · repeat run ≤50k · ORCL (ticker #2) is the first measured
 frontier run under the cheapened pipeline.

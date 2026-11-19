@@ -88,11 +88,12 @@ Do not use a first pass alone for a trade.
 
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
-python -m pytest                              # 424 tests, no network
+python -m pytest                              # 435 tests, no network
 cargo test --manifest-path rust/mapcheck/Cargo.toml   # 43 Rust tests
 python -m scripts.analyze IBM                 # import + market data -> xlsx
 python -m scripts.verdict IBM --price 228.53  # value range against a price
 python -m scripts.mapping_audit IBM           # each input value with its source
+python -m scripts.filing_tree IBM --focus     # capex, depreciation and debt lines of the 10-K
 rust/mapcheck/target/release/mapcheck IBM --detail    # mapping checks (build first)
 python -m scripts.trade_backtest              # option bots, leaderboard
 ```

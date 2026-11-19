@@ -118,6 +118,27 @@ necessary.
 reports on form 20-F or 40-F has no 10-K (51 of the 500 largest registrants), and an
 IFRS filer has no us-gaap facts (59 of 500). `mapcheck` gives them `N/A` and `ERROR`.
 
+**42. Three core inputs are weak in the standard variables.** A comparison with Yahoo
+Finance for 50 companies (2026-11-19) gives agreement of 98% or more for eight core
+inputs, but 75% for `capex`, 74% for `da_total` and 83% for `total_debt`. Causes: the
+standard capex is equipment only (capitalized software and company tags are not in it);
+the depreciation tags have a different scope for each filer; debt tags overlap. Before
+you use these three inputs for a ticker, run `python -m scripts.filing_tree TICKER
+--focus` and compare. Free cash flow (`operating_cash_flow` less `capex`) is too high
+when capex is too low.
+*Evidence:* `python -m scripts.mapping_crosscheck`; `rust/mapcheck/README.md`.
+
+**43. The filing-level values come from tag-name patterns.** `financial_analysis/filing.py`
+finds the capex, depreciation and debt lines by words in the tag name. A line can be
+missing (NEE: two of the capex lines are found, the total is 6% too low) or incorrect
+(FDX and DUK: debt is counted two times; V and MA: a line that is not depreciation).
+The printed lines show what the value contains.
+
+**44. A share count can have no scale.** McDonald's tags 716.4 for 716.4 million shares.
+The importer and the Rust mapper correct a factor of 1,000 or 1,000,000 when net income
+divided by EPS shows it, and the source records the correction. A stock split after the
+period is not corrected: the value is the count that the filer reported.
+
 ## Model layer (IBM v4 / driver engine)
 
 **10. Buybacks are genuinely absent from the model — not an omission bug.** IBM's
