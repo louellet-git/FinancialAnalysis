@@ -168,6 +168,8 @@ CLAUDE.md                 rules for agents (read first)
 README.md                 this file
 requirements.txt          runtime packages
 requirements-dev.txt      pytest
+.env.example              names of the optional API keys
+.github/workflows/        CI: runs pytest on each pull request
 
 financial_analysis/       valuation package (import, store, engines, backtest, verdict)
 analysis/IBM/             IBM model (version 4), reviews, published report
