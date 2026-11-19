@@ -28,3 +28,23 @@ Steps:
    data cannot show (financing rates, on-the-run premium, tax effects).
 
 The repo gives analysis only. It sends no orders.
+
+## State (2026-11-19)
+
+Built (crate `rust/`; modules `fit.rs`, `richcheap.rs`, `history.rs`, `billdiag.rs`; method in `docs/ARCHITECTURE.md`):
+
+1. `fa recon bills`: tests each cause of the bill difference. Result: no convention error. The
+   Treasury par curve has bill nodes (1M to 3M) that are 8 to 11 bp above the Treasury's own bill-rate
+   table. With the nodes from that table, the mean bill difference goes from about -6 bp to about -2 bp
+   (#100, #101).
+2. `fa recon rich-cheap`: a Nelson-Siegel-Svensson curve fitted to the notes and bonds of a date
+   (fit error 1.5 to 2.5 bp; within 1 bp of the GSW curve from 1 to 20 years). It lists each security
+   with residual, z-score, cost and group, and the candidates after the cost.
+3. `fa recon history`: 50 business days (2026-09-08 to 2026-11-18). The residual of a security is
+   persistent; its deviation from its own mean has a half-life of 1 to 2 days (#105).
+
+Open:
+- The Rust download of the price file. The cause is known (#69); the fix is not made. The cache is filled with `curl`.
+- Cause of the difference between the Treasury par curve bill nodes and the Treasury bill-rate table (#100).
+- The cost has no repo rate, no short-sale cost and no balance-sheet cost (#106). Nothing is called arbitrage.
+- Owner to confirm the use of the FedInvest data for 50 dates (#67).

@@ -649,7 +649,7 @@ yield). The sign is the same on each date. We do not know the cause. Possible ca
 questions): the price type (bid for the curve against another price type in the file);
 the time of day; the way the Treasury converts a bill discount rate; our 365-day basis;
 the settlement day (T+1 here); real bill demand. Do not use the curve to price a bill
-without this check.
+without this check. Update 2026-11-19: see #100 and #101 for the tests and the cause.
 *Evidence:* `fa recon bonds --date 2026-11-17` (47 bills).
 
 **65. No corporate bond prices.** We know no free official source of prices of single
@@ -676,8 +676,77 @@ cause. The Rust download code is thus not tested against the real site. Download
 file with `curl` into `data/raw/prices/fedinvest_<date>.csv`; the command uses this cache file.
 The Fiscal Service terms say "Government works generally cannot be copyrighted" and ask for
 credit; they also say that content may be used for non-commercial personal use. They do not forbid an
-automated request. Ask the owner to confirm before a heavy use.
+automated request. Ask the owner to confirm before a heavy use. Update 2026-11-19: the cause of the Rust defect is in #69.
 *Evidence:* <https://www.treasurydirect.gov/legal-information/terms/>.
+
+## Bond research (added 2026-11-19, branch `claude/bond-arb`)
+
+**69. Cause of the price-download defect (replaces the open question in #67).** The Rust client
+`mapcheck::http::Client` uses `ureq` 2.12.1. With an HTTP proxy, `ureq` puts the full URL in the request
+line, also for HTTPS inside the CONNECT tunnel: `GET https://www.treasurydirect.gov/GA-FI/... HTTP/1.1`.
+TreasuryDirect (Windows-Azure, HTTP.sys) refuses this form with "400 InvalidUri". `curl` sends
+`GET /GA-FI/... HTTP/1.1` and works. We saw the bytes with a local TLS server. Other sites (Yahoo, the
+Treasury, the Federal Reserve) accept the full URL. Fix choices: a newer `ureq` (3.x), or a small relay that makes the
+CONNECT tunnel and lets `ureq` send the short form. The defect is open. The cache `data/raw/prices/` is
+filled with `curl` (a script in the scratch folder of the run: 4 requests for each date, 2.2 s between
+requests, the client name `FinancialAnalysis fa (personal research)`).
+*Evidence:* the request seen by a local TLS server; `ureq-2.12.1/src/unit.rs` (function `send_prelude`).
+
+**100. The bill difference is not a convention error. It is the bill nodes of the par curve.** On
+2026-10-30, 2026-11-10 and 2026-11-17, the Treasury par curve has bill nodes 1M, 1.5M, 2M and 3M that are
+8 to 11 bp above the coupon-equivalent rates of the Treasury's own "Daily Treasury Bill Rates" of the
+same day. The nodes 4M and 6M agree (0 to -4 bp). The FedInvest bill prices agree with the bill-rate
+table. If the bill nodes come from that table, the mean bill difference falls from -5.6, -7.1 and -6.8 bp to -1.0,
+-2.3 and -1.9 bp (`fa recon bills`). We do not know why the two Treasury series differ. Bills of 6 to 12
+months stay 3 to 6 bp below the curve (6 bills; the 6M to 1Y interpolation, and the 1Y par node is 3 bp
+above the 52-week bill). Do not call the 1M to 3M bill difference a market effect: the same source says
+that bills are where our bills are.
+*Evidence:* `fa recon bills --date 2026-11-17`; the bill-rate file of the Treasury.
+
+**101. Bill conventions that were tested and are right.** (1) Settlement is T+1 business day: for
+2375 of 2375 bills in 50 files, the END OF DAY price is a bank discount rate that is a multiple of
+0.01 % at T+1 settlement. With T+0 this is true for 3.8 %, with T+2 for 3.1 %. (2) The yield is
+the bond-equivalent yield, actual/365: a discount rate of 3.92 % for 28 days is 3.99 %, the number
+in the Treasury table. A test of this is in `billdiag.rs`. (3) Other bases make the difference worse
+(actual/360: 5.6 bp more; bank discount: 10 bp more) or are wrong (semi-annual gives 2 bp less and is
+not the Treasury convention). A change to T+2 gives about 0 bp by chance: it contradicts (1).
+(4) The price field changes the mean by less than 1 bp.
+
+**102. SELL is the bid side, BUY is above it.** In the FedInvest file the SELL column is equal to END OF DAY for
+most notes and bonds, and BUY is 1/64 to 1/32 above it. So END OF DAY is a bid-side price and BUY - SELL is the
+bid-ask of the file. The BUY column is 0 for 25 notes and 1 bond of 463 rows on 2026-11-17. For bills, BUY and SELL are
+discount rates of the price date (T+0) that differ by less than 1 bp, and END OF DAY is the T+1 value. We do not know if
+BUY and SELL are quotes that a person can trade. The spread is the step of the 64ths in many rows, so it may be
+a minimum and not a measured spread.
+*Evidence:* the files of 2026-10-30, 2026-11-10, 2026-11-17.
+
+**103. The fitted curve has a model error and some group effects look like outliers.** The 6-parameter curve
+has a fit error (RMSE) of 1.5 to 2.5 bp a day (about 1 bp at 3 to 7 years, 2 to 3 bp at 3 to 6 months and
+10 to 20 years). A residual below this has no information; the candidate rule uses it. The Treasury has no
+note between 10 and about 13 years, so the sector between 2036 and 2039 holds only the old 30-year
+bonds. They are 5 to 14 bp rich as a group, so the fit leaves most of them out as outliers and the curve
+interpolates around them. The z-score against the 20 nearest securities cannot find a group effect,
+because the neighbours are in the group. Read the group table and `fa recon history` before you read one security.
+Our curve agrees with the GSW zero curve within 1 bp on average from 1 to 20 years (47 dates); at 25 and 30 years the
+mean is -2 and -8 bp and one date is 33 bp away (the end of the curve has few securities).
+
+**104. GSW has a delay.** On 2026-11-19 the last GSW row was 2026-11-13. The comparison with GSW uses
+the GSW date and our fit of the same day, and prints the GSW date.
+
+**105. A residual that stays is not a convergence.** Over 50 business days (2026-09-08 to 2026-11-18, 16289
+security-days), the raw autocorrelation of the residual is 0.95 (lag 1) and 0.92 (lag 10): a security keeps
+its place. After the mean of each security is removed, it is 0.37 (lag 1), 0.15 (lag 5), 0.01 (lag 10): the
+deviation from its own mean has a half-life of under 2 days. The 10 percent most cheap and most rich of a date keep 84 to 96 % of their
+residual after 10 days; after the mean is removed, 4 to 7 %. So the large residuals are mostly permanent
+(group, coupon, issue-type effects), and the temporary part is small and can be noise of the price source (price steps).
+There is no evidence in these 50 days that a rich or cheap security goes back to the curve. A trade on the
+permanent part needs a financing view that the data does not have.
+
+**106. The cost is one leg and a lower bound.** The cost of a candidate is its bid-ask (file, else the median
+of the file in the same maturity bucket; at least one 1/64 step). It is not a trade cost: a pair needs a
+hedge leg and an exit, and the repo rate, the short-sale cost, the balance-sheet cost, the tax and the size of a trade
+are not in the data. Of 400 securities on 2026-11-18, 14 pass (3 cheap, 11 rich); they are
+mostly old 30-year bonds and low-coupon notes. Call them candidates.
 
 ## Could not verify
 

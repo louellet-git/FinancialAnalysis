@@ -42,6 +42,9 @@ USAGE:
   fa verdict TICKER --price P [--rf-date D|today] [--rf-base-date D] [--rating A-]
              [--simulations N] [--seed S]
   fa recon bonds [--date D] [--out FILE]          bond values from our rates vs market prices (see: fa recon help)
+  fa recon bills [--date D]                       tests of each cause of the bill difference of recon bonds
+  fa recon rich-cheap [--date D] [--out FILE]     fitted NSS curve, difference of each security, rich and cheap candidates
+  fa recon history [--from D] [--to D] [--out F]  the same difference over the cached dates: how long it lasts
   fa run MODULE [ARGS...]                         any entry point, e.g. fa run scripts.analyze IBM
   fa serve [--port N] [--no-open]                 local viewer in the browser (http://127.0.0.1:8765/)
 

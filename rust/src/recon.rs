@@ -337,7 +337,19 @@ It also compares the HQM corporate spot curve with our zero curve plus the ICE s
 
   --date  A business day. Default: the latest day that has curve and end-of-day prices.
   --out   The CSV file. Default: data/recon/bonds_<date>.csv in the repository.
-          A second file <name>_curve.csv has the curve nodes.";
+          A second file <name>_curve.csv has the curve nodes.
+
+fa recon bills [--date YYYY-MM-DD]
+  Tests each candidate cause of the bill difference (yield basis, settlement, price field,
+  curve input) and compares the par curve with the Treasury bill-rate table.
+
+fa recon rich-cheap [--date YYYY-MM-DD] [--out FILE]
+  Fits a curve to the notes and bonds of the date and lists rich and cheap candidates.
+  See: fa recon rich-cheap --help
+
+fa recon history [--from D] [--to D] [--out FILE]
+  The difference from the fitted curve over the cached dates; persistence and half-life.
+  See: fa recon history --help";
 
 fn parse_args(args: &[String]) -> Result<(Option<String>, Option<PathBuf>), String> {
     let (mut date, mut out) = (None, None);
@@ -358,7 +370,7 @@ fn parse_args(args: &[String]) -> Result<(Option<String>, Option<PathBuf>), Stri
 }
 
 /// The par curve and the prices of one date. Without `date`, step back from the latest curve.
-fn gather(fa: &Fa, date: Option<&str>, cache: &std::path::Path) -> Result<(crate::Curve, Vec<Quote>), String> {
+pub(crate) fn gather(fa: &Fa, date: Option<&str>, cache: &std::path::Path) -> Result<(crate::Curve, Vec<Quote>), String> {
     let e = |x: FaError| x.to_string();
     let mut curve = fa.curve(date, false).map_err(e)?;
     for _ in 0..6 {
@@ -386,11 +398,25 @@ pub fn run(fa: &Fa, args: &[String]) -> ExitCode {
         println!("{HELP}");
         return ExitCode::SUCCESS;
     }
-    if args[0] != "bonds" {
-        eprintln!("fa: unknown recon command '{}'\n\n{HELP}", args[0]);
-        return ExitCode::from(64);
+    if args.len() > 1 && matches!(args[1].as_str(), "--help" | "-h") {
+        match args[0].as_str() {
+            "rich-cheap" => println!("{}", crate::richcheap::HELP),
+            "history" => println!("{}", crate::history::HELP),
+            _ => println!("{HELP}"),
+        }
+        return ExitCode::SUCCESS;
     }
-    match run_bonds(fa, &args[1..]) {
+    let result = match args[0].as_str() {
+        "bonds" => run_bonds(fa, &args[1..]),
+        "rich-cheap" => crate::richcheap::run_rich_cheap(fa, &args[1..]),
+        "history" => crate::history::run_history(fa, &args[1..]),
+        "bills" => crate::billdiag::run_bills(fa, &args[1..]),
+        _ => {
+            eprintln!("fa: unknown recon command '{}'\n\n{HELP}", args[0]);
+            return ExitCode::from(64);
+        }
+    };
+    match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(m) => {
             eprintln!("fa recon: {m}");

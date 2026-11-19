@@ -19,6 +19,10 @@
 pub mod curve;
 pub mod prices;
 pub mod recon;
+pub mod fit;
+pub mod richcheap;
+pub mod history;
+pub mod billdiag;
 pub mod forwards;
 pub mod futures;
 pub mod ratemodels;

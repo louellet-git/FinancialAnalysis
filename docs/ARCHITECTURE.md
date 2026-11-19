@@ -253,6 +253,62 @@ Conventions (each one is in the header of `curve.rs`):
 - **Corporate curve.** No free official source of prices of single corporate bonds is known (see #65). Thus the comparison is at curve level: the HQM spot rate (semi-annual) against our Treasury zero rate (semi-annual) plus the mean ICE OAS of AAA, AA and A. It shows how our spread data relate to the Treasury HQM curve. It does not show a bond price difference.
 
 The tests (`cargo test --manifest-path rust/Cargo.toml --locked`) use small samples and hand calculations: a par bond prices to 100 on a coupon date, a bill, a bond between coupon dates, the reprice of each par node, a flat curve. They do not use the network.
+## Bond research: bill tests, fitted curve, rich and cheap, history (2026-11-19, branch `claude/bond-arb`)
+
+Three commands continue `fa recon bonds` (crate `rust/`). They give candidates for study.
+They do not give arbitrage and they send no order. Traps: `docs/HIDDEN-ASSUMPTIONS.md` #69 and #100 to #106.
+
+| Command | Question | Module (`rust/src/`) |
+|---|---|---|
+| `fa recon bills [--date D]` | Which change makes the bill difference of `recon bonds` go to 0? | `billdiag.rs` |
+| `fa recon rich-cheap [--date D] [--out F]` | Which securities are far from a curve that is fitted to the securities? | `fit.rs`, `richcheap.rs` |
+| `fa recon history [--from D] [--to D] [--out F]` | Does a difference last? | `history.rs` |
+
+**Bill tests.** The command changes one thing at a time: the basis of the bill nodes, the
+settlement day, the price field, the curve input. It prints the mean bill difference (bp)
+for each change. The Treasury publishes "Daily Treasury Bill Rates" (coupon equivalent of
+the on-the-run bills). The command compares them with the bill nodes of the par curve.
+`curve.rs` has `bootstrap_with` and `BillBasis` for the test; `bootstrap` is unchanged.
+
+**Fitted curve (`fit.rs`).** Nelson-Siegel-Svensson curve (6 parameters), fitted to the clean
+prices of the notes and bonds of one date. Weight of a security: 1 / (dirty price x modified
+duration), so each security is one yield observation. Levenberg-Marquardt with a numeric
+Jacobian; the start is a grid of tau1 and tau2 with least-squares betas. Three passes leave out
+the securities that are more than 4 robust sigma from the curve (MAD). The fit set is: notes and
+bonds with a life of 3 months or more, no call date, a price, a coupon. Left out: bills, TIPS,
+FRN, callable securities, securities under 3 months, and the outliers. We chose NSS because
+the Federal Reserve Board (GSW) uses the same family: its curve is an independent check. A
+spline would follow the local errors that we want to see.
+
+**Residual (`richcheap.rs`).** `res_bp` = observed yield - fitted yield. Positive = cheap.
+`z` = the residual against the median of the 20 securities nearest in maturity, in robust
+sigma (MAD, floor 0.3 bp). The cost is the larger of: the bid-ask of the file (BUY - SELL, in
+yield), else the median of the file in the same maturity bucket; and one price step of the
+source (1/64). A candidate has |res_bp| larger than the cost and larger than the fit RMSE of the
+day, |z| of 2 or more, and a life of 3 months or more. Groups (first rule that fits):
+bill; under 3 months; recent issue (life within 0.35 year below 2, 3, 5, 7, 10, 20 or 30 years and
+a coupon within 0.5 point of the yield); old 30-year bond (a bond that matures before 2040);
+high or low coupon (1.25 points or more from the median coupon of the 20 neighbours); near a
+coupon date (next coupon in 10 days or less); other. The output says, for each group, what the
+data cannot show.
+
+**History (`history.rs`).** Fits each cached date (parallel with rayon) and keeps the residual of
+each note and bond of 6 months or more. It measures: pooled autocorrelation at 1, 5 and 10
+business days (raw, and within = mean of the security removed); the half-life from the lag
+coefficient; the residual k days after a large value (the 10 percent most cheap and most rich of a
+date). It compares our curve with the GSW curve on each date that has a GSW row.
+
+**Data.** The price files are `data/raw/prices/fedinvest_<date>.csv`. The Rust download fails in some
+networks (hidden assumption 69). Fill the cache with `curl`. The bill-rate file is
+`data/raw/rates/treasury_bill_rates_<year>.csv` (downloaded once). The outputs go to `data/recon/`
+(not committed).
+
+**Tests.** Fixed answers: the bill price from a discount rate and the coupon equivalent (against the
+Treasury table); the NSS curve by hand; recovery of known NSS parameters from synthetic prices
+(to 0.01 bp); one planted bad price is left out; the weight turns a price error into a yield
+error; planted rich and cheap securities are found with the right sign; autocorrelation,
+half-life and reversal of a series with a known decay; a date gap is not a lag.
+
 ### `rust/src/forwards.rs` (2026-11-19)
 
 This module is Rust only. It does not call Python. It uses `mapcheck::http::Client`.

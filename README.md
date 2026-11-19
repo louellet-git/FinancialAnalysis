@@ -238,6 +238,9 @@ cargo run --release --bin fa -- models compare --start 1990-01-01               
 cargo run --release --bin fa -- models simulate --model cir --kappa 0.5 --theta 0.05 --sigma 0.1 --years 10 --paths 100000 --seed 1
 cargo run --bin fa -- run scripts.analyze IBM     # any Python entry point
 cargo run --release --bin fa -- recon bonds --date 2026-11-17   # bond values from our rates vs market prices
+cargo run --release --bin fa -- recon bills --date 2026-11-17   # test each cause of the bill difference
+cargo run --release --bin fa -- recon rich-cheap --date 2026-11-17   # fitted curve, rich and cheap candidates after cost
+cargo run --release --bin fa -- recon history                   # the difference over the cached dates: persistence, half-life
 cargo run --release --bin fa -- serve             # local viewer in the browser
 cargo run --example dcf_rates -- IBM 231.09 A-    # library example
 ```

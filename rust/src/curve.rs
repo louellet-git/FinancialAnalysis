@@ -366,11 +366,45 @@ fn par_error(curve: &ZeroCurve, par: f64, months: i64) -> f64 {
     pv - 1.0
 }
 
+/// How the yield of a bill node (1M to 6M) turns into a discount factor. The default is
+/// `Bey365`. The other values exist to test the effect of a wrong basis (`fa recon bills`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum BillBasis {
+    /// Bond-equivalent yield: `D = 1 / (1 + y days/365)`.
+    Bey365,
+    /// Money-market yield: `D = 1 / (1 + y days/360)`.
+    Mm360,
+    /// Bank discount rate: `D = 1 - y days/360`.
+    Discount360,
+    /// Semi-annual compounding: `D = (1 + y/2)^(-2 t)`, `t = days/365`.
+    SemiAnnual,
+}
+
+/// The continuous zero rate of a bill node.
+pub fn bill_node_zero(y: f64, days: i64, basis: BillBasis) -> f64 {
+    let t = days as f64 / 365.0;
+    match basis {
+        BillBasis::Bey365 => (1.0 + y * t).ln() / t,
+        BillBasis::Mm360 => (1.0 + y * days as f64 / 360.0).ln() / t,
+        BillBasis::Discount360 => -(1.0 - y * days as f64 / 360.0).ln() / t,
+        BillBasis::SemiAnnual => 2.0 * (1.0 + y / 2.0).ln(),
+    }
+}
+
+/// Price per 100 of a bill from a bank discount rate (actual/360, as the Treasury quotes it).
+pub fn bill_price_from_discount(rate: f64, days: i64) -> f64 {
+    100.0 * (1.0 - rate * days as f64 / 360.0)
+}
+
+pub fn bootstrap(date: Day, par: &[(String, f64)]) -> Result<Bootstrapped, CurveError> {
+    bootstrap_with(date, par, BillBasis::Bey365)
+}
+
 /// Bootstrap par yields to zero rates. `par` has (label, decimal par yield) in
 /// increasing tenor order. Bill nodes are exact. Coupon nodes are solved one at a
 /// time (bisection) and the sweep repeats until all par bonds price to 100: the
 /// interpolation of a coupon date depends on its neighbour nodes.
-pub fn bootstrap(date: Day, par: &[(String, f64)]) -> Result<Bootstrapped, CurveError> {
+pub fn bootstrap_with(date: Day, par: &[(String, f64)], basis: BillBasis) -> Result<Bootstrapped, CurveError> {
     if par.is_empty() {
         return Err(CurveError::NoNodes);
     }
@@ -379,7 +413,7 @@ pub fn bootstrap(date: Day, par: &[(String, f64)]) -> Result<Bootstrapped, Curve
         let spec = tenor_spec(label).ok_or_else(|| CurveError::UnknownTenor(label.clone()))?;
         let t = node_time(date, spec);
         let zero = match spec {
-            Tenor::Bill { .. } => (1.0 + y * t).ln() / t,
+            Tenor::Bill { days } => bill_node_zero(*y, days, basis),
             Tenor::Coupon { .. } => (1.0 + y / 2.0).ln() * 2.0, // first guess
         };
         nodes.push(Node { label: label.clone(), spec, par: *y, t, zero });
