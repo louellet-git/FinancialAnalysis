@@ -6,7 +6,7 @@
 //!
 //! | Data | Source | Module |
 //! |---|---|---|
-//! | Daily prices | Yahoo chart endpoint | `prices` |
+//! | Daily prices | Tiingo (key), Yahoo chart endpoint, Nasdaq site API | `price_source`, `price_cache` (`fa prices`); `prices` is the older Yahoo loader |
 //! | Option chain | Cboe delayed quotes | `options` |
 //! | Estimates, earnings surprises | Financial Modeling Prep (key in `FMP_API_KEY`) | `fmp` |
 //! | Forward consensus snapshot | no source (cache only) | `consensus` |
@@ -18,6 +18,10 @@
 pub mod consensus;
 pub mod fmp;
 pub mod options;
+pub mod price_cache;
+pub mod price_check;
+pub mod price_cli;
+pub mod price_source;
 pub mod prices;
 
 use serde::de::{MapAccess, Visitor};
@@ -41,6 +45,13 @@ pub fn download(url: &str) -> Result<Vec<u8>, String> {
     static CLIENT: OnceLock<Mutex<mapcheck::http::Client>> = OnceLock::new();
     let client = CLIENT.get_or_init(|| Mutex::new(mapcheck::http::Client::new(USER_AGENT, REQUEST_PAUSE_SECONDS)));
     client.lock().map_err(|_| "HTTP client lock failed".to_string())?.get(url).map_err(|e| e.to_string())
+}
+
+/// The same as `download`, with more request headers (the Tiingo key is a header). The error text has no header value.
+pub fn download_with_headers(url: &str, headers: &[(&str, &str)]) -> Result<Vec<u8>, String> {
+    static CLIENT: OnceLock<Mutex<mapcheck::http::Client>> = OnceLock::new();
+    let client = CLIENT.get_or_init(|| Mutex::new(mapcheck::http::Client::new(USER_AGENT, REQUEST_PAUSE_SECONDS)));
+    client.lock().map_err(|_| "HTTP client lock failed".to_string())?.get_with_headers(url, headers).map_err(|e| e.to_string())
 }
 
 /// Python `round(x, 6)`: the exact decimal value of the number, rounded to 6 places.

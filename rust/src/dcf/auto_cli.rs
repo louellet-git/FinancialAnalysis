@@ -33,7 +33,7 @@ fa dcf auto TICKER [OPTIONS]
   the output of `fa dcf drivers TICKER --model FILE`, then, with a price, what the price implies.
   A template other than `standard` (bank, insurer, reit, fund) and a mapping status FAIL give no value.
   --cache DIR     company facts (default <repo>/data/raw): <TICKER>/company_facts.json[.gz], rates/gsw_feds200628.csv,
-                  <TICKER>/prices.json and trading/SPY_1d.csv for the beta
+                  <TICKER>/prices.json and SPY/prices.json (else trading/SPY_1d.csv) for the beta
   --price P       market price (else the last close of the price cache, else none)
   --explain       print each number of the model with its source and rule
   --write FILE    write the model as a TOML file (`fa dcf drivers TICKER --model FILE` runs it)
@@ -48,7 +48,7 @@ fa dcf screen [--tickers-file FILE | TICKER ...] [OPTIONS]
   --cache DIR     as for `fa dcf auto`
   --out FILE      write all rows as CSV
   --jobs N        threads (default: all)
-  --prices FILE   CSV `ticker,price` (a header line is allowed); no price is downloaded
+  --prices FILE   CSV `ticker,price` (a header line is allowed); else the last close of the price cache (fa prices get)
   --sims N (4000) paths for each ticker       --seed S (7)
   --table FILE    parameter table             --as-of DATE";
 

@@ -46,7 +46,10 @@ struct CachedPrice {
 }
 
 pub fn url(ticker: &str) -> String {
-    format!("{BASE}{}?range=max&interval=1d&includeAdjustedClose=true", ticker.to_uppercase())
+    // `period1` and `period2` give daily rows for the whole history; `range=max` can give a coarser interval
+    // (164 rows for MSFT in a test on 2026-11-19).
+    let end = (mapcheck::dates::today() + 2) * 86_400;
+    format!("{BASE}{}?period1=0&period2={end}&interval=1d&includeAdjustedClose=true", ticker.to_uppercase())
 }
 
 /// The price points of a chart reply.
@@ -267,7 +270,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("fa-prices-fetch-{}", std::process::id()));
         let reply = fixture()["chart"].to_string().into_bytes();
         let fetch = |u: &str| -> Result<Vec<u8>, String> {
-            assert!(u.contains("/TEST?range=max&interval=1d"), "{u}");
+            assert!(u.contains("/TEST?period1=0&period2="), "{u}");
             Ok(reply.clone())
         };
         let (got, source) = load_prices(&dir, "test", false, &fetch).unwrap();

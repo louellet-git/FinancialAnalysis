@@ -39,10 +39,14 @@ USAGE:
   fa dcf drivers|classic|scenarios|models ...     Monte Carlo DCF in Rust (fa dcf --help)
   fa backtest TICKER [--horizon Y] [--simulations N] [--seed S]
                                                   point-in-time vintage backtest of revenue and FCF projections (Rust)
-  fa verdict TICKER --price P [--rf-date D|today] [--rf-base-date D] [--rating A-]
+  fa verdict TICKER [--price P] [--rf-date D|today] [--rf-base-date D] [--rating A-]
              [--simulations N] [--seed S]
-                                                  Monte Carlo verdict; --rf-date takes the Treasury 10Y as rf,
+                                                  Monte Carlo verdict; without --price: the last close of the price cache;
+                                                  --rf-date takes the Treasury 10Y as rf,
                                                   --rating takes the market kd spread of the rating (network)
+  fa prices get TICKER... [--tickers-file F] [--source S] [--full]   daily price history into data/raw (fa prices --help)
+  fa prices show TICKER [--from D] [--to D] | last TICKER... | check TICKER... [--sources A,B]
+                                                  rows of the cache, last close, or a cross-check of two sources
   fa recon bonds [--date D] [--out FILE]          bond values from our rates vs market prices (see: fa recon help)
   fa recon bills [--date D]                       tests of each cause of the bill difference of recon bonds
   fa recon rich-cheap [--date D] [--out FILE]     fitted NSS curve, difference of each security, rich and cheap candidates
@@ -191,8 +195,18 @@ fn verdict_cmd(fa: &Fa, rest: &[String]) -> financial_analysis::Result<ExitCode>
     let Some(ticker) = rest.first().filter(|t| !t.starts_with('-')) else {
         return Ok(usage_error("verdict needs a ticker"));
     };
-    let Some(price) = flag("--price").and_then(|p| p.parse::<f64>().ok()) else {
-        return Ok(usage_error("verdict needs --price P (a number)"));
+    let price = match flag("--price") {
+        Some(p) => match p.parse::<f64>() {
+            Ok(p) => p,
+            Err(_) => return Ok(usage_error("verdict needs --price P (a number)")),
+        },
+        None => match financial_analysis::market::price_cli::cached_price(&fa.repo, ticker) {
+            Ok((p, note)) => {
+                eprintln!("fa: {note}");
+                p
+            }
+            Err(e) => return Ok(usage_error(&e)),
+        },
     };
     let parse = |name: &str| -> Result<Option<i64>, String> {
         flag(name).map_or(Ok(None), |v| v.parse::<i64>().map(Some).map_err(|_| format!("bad {name} '{v}'")))
@@ -229,6 +243,10 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
         Some("futures") => Ok(financial_analysis::futures::cli::run(&fa.repo, &args[1..])),
         Some("backtest") => Ok(ExitCode::from(financial_analysis::dcf::cli::backtest(&fa.repo, &args[1..]))),
         Some("dcf") => Ok(ExitCode::from(financial_analysis::dcf::cli::run(&fa.repo, &args[1..]))),
+        Some("prices") => match financial_analysis::market::price_cli::run(&fa.repo, &args[1..]) {
+            Ok(code) => Ok(ExitCode::from(code as u8)),
+            Err(e) => Ok(usage_error(&e)),
+        },
         Some("verdict") => verdict_cmd(fa, &args[1..]),
         Some("trade") => match args.get(1).map(String::as_str) {
             Some("backtest") => match financial_analysis::trading::cli::backtest(&fa.repo, &args[2..]) {

@@ -1456,6 +1456,95 @@ later stock returns needs prices, and the cache has two price files. A model wit
 and the free cash flow at T+3 (the real value is 1.6% of revenue above the P50, 60% of the real values above the P50).
 *Evidence:* `fa dcf pit` and `fa dcf pit --cut 2015`; the result files in `analysis/priors/`.
 
+## Price layer (added 2026-11-19, branch `claude/price-history`)
+
+**200. The Nasdaq site API and the Yahoo chart endpoint are not published APIs.** Their use is not covered by a contract. The
+reply format, the limits and the access can change or stop without a notice. The program does not imitate a browser: it sends the
+client name `FinancialAnalysis fa (personal research)`. It does not get around a block, a login, a captcha or a rate limit. Tiingo is the
+only source with a published API and a published limit. For a decision that needs the price, read the source in `prices.meta.json`.
+*Evidence:* `rust/src/market/price_source.rs`.
+
+**201. The three sources do not adjust in the same way.** Tiingo and Yahoo give a close that is adjusted for splits and dividends. Nasdaq
+gives a close that is adjusted for splits only. For a company that pays a dividend, the two closes of one old date are not the same
+number. Example, 2026-11-19 test: the Yahoo cache of IBM (adjusted) divided by the Nasdaq close of the same date is 0.65 in November
+2016, and it steps up by 0.5% to 0.9% at each ex-dividend date to 1.0 at the last date (41 steps over 10 years, all on the dividend dates). The cache
+records `adjusted` in `prices.meta.json`. Never compare or splice two price files with a different `adjusted` value. A return series
+(beta) that uses the closes of one file is correct for the price return (Nasdaq) or the total return (Tiingo, Yahoo).
+*Evidence:* `price_cache.rs` (`to_point`), the test `second_source_does_not_shorten_or_mix_the_cache`.
+
+**202. A Nasdaq request with an end date in the past gave no rows.** `todate=2024-06-20` for NVDA gave `totalRecords: 0`; `todate` equal to
+today gave the rows. The program always asks to today and the cache keeps the rows. The latest row of the Nasdaq source on 2026-11-19 was
+the session of 2026-11-18. A row of the running session is not given.
+*Evidence:* `Nasdaq::url` and its comment.
+
+**203. Nasdaq gives about 10 years.** MSFT, IBM and the other 11 tickers of the test: 2,513 rows from 2016-11-18. A company that is newer has
+fewer rows (DUOL 1,335 rows). A source with a short history cannot replace a cache with a long history: a full history replaces the file only if
+it has 90% of the cached rows or more.
+*Evidence:* `price_cache.rs` (`attempt`).
+
+**204. Symbols differ by source.** The S&P 500 file has `BRK-B` and `BF-B`. Yahoo and Tiingo (documentation: see #206) use the dash. Nasdaq: `BRK.B`
+works (the program changes the dash to a dot); `BF.B` gave an empty `tradesTable` with HTTP 200 in the class `stocks` and "Symbol not exists" in the class `etf` (so BF-B has no price from Nasdaq on 2026-11-19, and it is the one failure of the S&P 500 run);
+`BRK-B` gave "Symbol not exists". ETFs (SPY, QQQ) need `assetclass=etf`: the program has a list of known ETFs and asks the class `etf` after an
+empty reply from `stocks`. `SPY` works with Nasdaq, so the market index for the beta is available.
+*Evidence:* `Nasdaq::symbol`, `KNOWN_ETFS`, the tests `nasdaq_symbols_and_etf_retry`.
+
+**205. Yahoo answered HTTP 429 to all requests of the cloud container on 2026-11-19 (later in the day too).** The program waited 60 seconds
+one time, then stopped the source for the run and kept the cache, as the rules say. The old URL `range=max&interval=1d` gave
+164 rows for MSFT in one test (a coarse interval). The program now sends `period1=0&period2=<end>&interval=1d`. This change was not
+verified against the real site, because Yahoo did not answer.
+*Evidence:* `Yahoo::url`, `prices::url`.
+
+**206. The Tiingo loader was not run against the real site.** There was no key. It follows `tiingo.com/documentation/end-of-day` (read on 2026-11-19): the endpoint
+`https://api.tiingo.com/tiingo/daily/<ticker>/prices?startDate=...&endDate=...`, the fields `date, close, high, low, open, volume, adjClose,
+adjHigh, adjLow, adjOpen, adjVolume, divCash, splitFactor`. The token goes in the header `Authorization: Token <key>` (page `general/connecting`; the page also allows `?token=`,
+which the program does not use). The documentation does not say how a share class is written (`BRK-B` is assumed) and gives no example reply: the
+parser is tested on a fixture that follows the field list only. The documentation says that `close` is the price of the day and that the split factor and the dividend are separate fields; the parser divides
+the old days by the later split factors to get a split adjusted close. If the real reply is not like this, the numbers are wrong. Run
+`fa prices check TICKER --sources tiingo,nasdaq` first (the split adjusted closes must agree).
+*Evidence:* `parse_tiingo` and its tests.
+
+**207. The free Tiingo plan is small.** Page `tiingo.com/about/pricing`, read on 2026-11-19, plan Starter ($0): 50 requests each hour, 1,000 requests each day, 500 unique symbols
+each month, 1 GB bandwidth each month, "Internal Use Only" (personal use; the data may not be shown to or shared with another person or organization). The S&P 500 list has 503 tickers: more than the
+symbols of one month, and a first download of 503 tickers at 50 requests each hour takes about 10 hours. The program does not count the Tiingo requests: it stops at HTTP 429.
+*Evidence:* the pricing page; `price_cache.rs` (rule 5).
+
+**208. The cache has one series from one source.** `prices.json` has the old form (the older readers still work). `prices.meta.json` has `source`, `adjusted`, `updated`.
+A cache file with no record (written by the older loader) is taken as Yahoo, `splits+dividends`. A record that does not agree with the file (rows, first and last date) is ignored.
+An update uses the source of the cache first. A different source replaces the whole file (forced with `--source`, or when the cache source fails) or does not touch it.
+*Evidence:* `price_cache.rs`, the tests `legacy_cache_without_record...`, `second_source_does_not_shorten_or_mix_the_cache`.
+
+**209. The overlap check does not see a very small dividend.** An update gets the days from 10 calendar days before the last row. If the closes of these days
+differ by more than 0.02% from the cache, the program gets the full history again (a split or a dividend changed the adjusted history). A dividend of
+a yield below 0.02% is not seen: the older history is then too high by that amount until the next full download (`--full`). The effect on a return is smaller than the rounding of a price.
+*Evidence:* `OVERLAP_TOLERANCE`, the test `split_or_dividend_in_the_overlap_gets_the_full_history`.
+
+**210. The last close is a close of the cache, and the cache can be old.** `fa prices last` and a command without `--price` print the date and the source. They warn when the last row is
+more than 5 weekdays old (exchange holidays are not taken out, so the real age in trading days is smaller). The last row of a Tiingo or Yahoo cache is an adjusted close. It is the real close
+until the next ex-dividend date; the next update then changes it by the dividend.
+*Evidence:* `weekdays_between`, `cached_price`.
+
+**211. One 2-second pause for all hosts.** The client of `market` is one object for all sites: two requests are at least 2 seconds apart, even for two different sites. This is slower than
+necessary and safe. In the test, a Nasdaq request took about 4 seconds for each ticker including the pause and the write of the cache.
+*Evidence:* `market/mod.rs` (`download`, `download_with_headers`).
+
+**212. Times of the price download (measured on 2026-11-19).** Nasdaq, one request for each ticker, 2-second pause: 503 tickers of the S&P 500 file in
+2,271 seconds (38 minutes, 4.5 seconds each; 502 got 2,513 rows or less, BF-B failed, no HTTP 429). A daily update is one request for each ticker (10 days of rows):
+about 3 to 4 seconds each, so about 30 minutes for 500 tickers and about 1 hour for 1,000. A first full download is the same size (the source gives 10 years in one reply). Yahoo (one reply
+with the whole history) and Tiingo (one reply) would take the same number of requests: 2 seconds each at least, so about 17 minutes for 500 tickers. Tiingo free: see #207. Parsing and the cache update of
+1,000 tickers without the network take about 1 second (the test `a_thousand_tickers_update_in_seconds_without_network`).
+*Evidence:* the run output of the ticket.
+
+**213. The cross-check of two sources was not run against the real sites.** Yahoo answered HTTP 429 all day, and Tiingo has no key here. The check against a second source was
+done in one way only: the Nasdaq cache of IBM and JNJ (10 years) against the older Yahoo cache of the same tickers (2,513 common dates each). The ratio is exactly 1.0 at the last date,
+steps only on the 41 ex-dividend dates, and is constant between them (so the closes agree within 0.02% except for the dividend adjustment). A split was checked on Nasdaq alone: NVDA 2024-06-07
+close 120.888 (the real close 1,208.88 before the 10-for-1 split) and AAPL 2020-08-28 close 124.8075 (499.23 before the 4-for-1 split). The dividend adjustment of Yahoo and Tiingo against
+their own events is checked by `check_events` in unit tests only.
+*Evidence:* `price_check.rs`.
+
+**214. `fa verdict` without `--price` and the older readers.** `fa verdict` uses the last close of the cache and prints the price, the date and the source on the line `fa: price ...`. `fa dcf drivers`
+`--price` and `fa report` were not changed to use `last_close` of the price layer (`fa report` reads the cache file with the older loader; the file form is the same). A person
+who gets the cache with `--source nasdaq` has a split adjusted close without the dividend adjustment: this is the price paid, and it is the right price for a verdict.
+*Evidence:* `main.rs` (`verdict_cmd`), `price_cli::cached_price`.
 
 ## Could not verify
 

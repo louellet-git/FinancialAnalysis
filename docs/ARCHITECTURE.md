@@ -662,7 +662,7 @@ These parts are Rust code only. The Python files `scripts/analyze.py`, `scripts/
 |---|---|
 | `company.rs` | Typed company: periods with one value for each registry variable, the source texts and the unmapped tags. `Company::from_store` reads the content of the store file in memory, `Company::load` reads the file. Free cash flow and its margin. `series` gives the values of one metric, oldest first (a variable, `free_cash_flow` or `fcf_margin`). |
 | `market/mod.rs` | Rounding as Python `round(x, 6)`, JSON with `NaN` (written by Python), key order of a JSON object, the HTTP client with 2 seconds between requests. |
-| `market/prices.rs` | Yahoo chart endpoint to daily prices (adjusted, as `yfinance`); cache `data/raw/<T>/prices.json`; HTTP 429 keeps the cache. |
+| `market/prices.rs` | The older Yahoo loader (adjusted, as `yfinance`); cache `data/raw/<T>/prices.json`; HTTP 429 keeps the cache. `fa analyze` and `fa report` use it. New code uses the price layer below. |
 | `market/options.rs` | Cboe delayed quotes to a snapshot `data/raw/<T>/options/<date>.json`; snapshot files; `compute_chain_metrics`. |
 | `market/fmp.rs` | FMP estimates and surprises; key from `FMP_API_KEY`; caches `estimates.json`, `surprises.json`. |
 | `market/consensus.rs` | The consensus snapshot files and `yf_earnings.json` of the Python code (read only: no source). |
@@ -671,6 +671,30 @@ These parts are Rust code only. The Python files `scripts/analyze.py`, `scripts/
 `rust_xlsxwriter` is the Rust port of the library `XlsxWriter`; it writes xlsx files only and has no network code.
 Fixtures from the Python functions are in `rust/tests/fixtures/market/` and `rust/tests/fixtures/analyze/`.
 The traps are #140 to #146 of `docs/HIDDEN-ASSUMPTIONS.md`.
+
+## The price layer (`market/price_*.rs`, `fa prices`, 2026-11-19, branch `claude/price-history`)
+
+The person does not give the price. The program gets the daily price history of a ticker from
+more than one source, keeps it in the cache, and each command that needs a price reads the cache.
+
+| Module (`rust/src/market/`) | Function |
+|---|---|
+| `price_source.rs` | The trait `PriceSource` (`name`, `adjusts_dividends`, `fetch(ticker, from, to)`), the row type `Row` (open, high, low, close, volume, and where the source has them: adjusted close, dividend, split) and three sources: Tiingo (key in `TIINGO_API_KEY` or `.env`, in the header `Authorization: Token`), the Yahoo chart endpoint, the Nasdaq site API. Each parser is a function of the reply bytes. `sources()` gives the order: Tiingo (with a key), Yahoo, Nasdaq. |
+| `price_cache.rs` | `data/raw/<T>/prices.json` (the form that the older readers use) and `prices.meta.json` (source, adjusted, updated, first and last date, rows). `update_ticker` (incremental update, overlap check, full history again, no mixing of two sources, HTTP 429 rule). `last_close(cache, ticker)` and `history(cache, ticker)` for other modules. |
+| `price_check.rs` | The cross-check of two sources on the common dates, and the check of the adjusted series against the dividend and split events of one source. |
+| `price_cli.rs` | `fa prices get`, `show`, `last`, `check`; `cached_price` (the price of a command that has no `--price`). |
+
+Commands: `fa prices get TICKER... [--tickers-file F] [--source S] [--full]`, `fa prices show TICKER [--from D] [--to D]`,
+`fa prices last TICKER...`, `fa prices check TICKER... [--sources A,B] [--tolerance T]`. `fa verdict TICKER` without `--price`
+uses the last close of the cache and prints which price and date it used.
+
+Rules. One request each 2 seconds (one client for all sites). On HTTP 429 the program waits 60 seconds one time, then stops that source for
+the run and keeps the cache. A failed source never changes or shortens a cache file (a full history replaces the file only if it has
+90% of the cached rows or more). The cache keeps one series from one source: the record says if the closes are adjusted for splits
+and dividends (Tiingo, Yahoo) or for splits only (Nasdaq). A different source replaces the whole file or does not change it. An
+incremental update gets the days from 10 calendar days before the last row, replaces the cached rows of these days, and gets the full
+history again if the overlap differs by more than 0.02% (a split or a dividend changed the adjusted history).
+The mapping of the sources is in `docs/HIDDEN-ASSUMPTIONS.md`, #200 to #214. `mapcheck/src/http.rs` has `get_with_headers`.
 
 ## The company report (`rust/src/report/`, `fa report`, 2026-11-19)
 

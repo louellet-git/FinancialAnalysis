@@ -358,6 +358,11 @@ fn price_series(cache: &std::path::Path, ticker: &str) -> Option<Vec<(String, f6
 }
 
 pub fn index_from_cache(cache: &std::path::Path) -> Option<Vec<(String, f64)>> {
+    // The price cache of SPY first: it has the same source and the same adjustment as the price files of
+    // the tickers (`fa prices get SPY`). Then the daily file of the trading cache.
+    if let Some(series) = price_series(cache, "SPY").filter(|s| s.len() >= 520) {
+        return Some(series);
+    }
     let text = std::fs::read_to_string(cache.join("trading").join("SPY_1d.csv")).ok()?;
     let mut out = Vec::new();
     for line in text.lines().skip(1) {
@@ -381,7 +386,7 @@ pub fn market_from_cache(cache: &std::path::Path, ticker: &str, as_of: &str, pri
         _ => (None, String::new()),
     };
     let beta = match (&stock, index) {
-        (Some(s), Some(m)) => regression_beta(s, m, as_of, 260, rules.beta_weight, "SPY (trading cache, daily close)"),
+        (Some(s), Some(m)) => regression_beta(s, m, as_of, 260, rules.beta_weight, "SPY (price cache, else trading cache; daily close)"),
         _ => None,
     };
     Market { as_of: as_of.to_string(), curve: curve.cloned(), price, price_source: source, beta }

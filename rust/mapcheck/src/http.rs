@@ -86,8 +86,16 @@ impl Client {
     }
 
     pub fn get(&mut self, url: &str) -> Result<Vec<u8>, HttpError> {
+        self.get_with_headers(url, &[])
+    }
+
+    /// GET with more request headers (for example `Authorization`). The error text never has a header value.
+    pub fn get_with_headers(&mut self, url: &str, headers: &[(&str, &str)]) -> Result<Vec<u8>, HttpError> {
         self.wait();
-        let request = self.prepare(self.agent.get(url));
+        let mut request = self.prepare(self.agent.get(url));
+        for (name, value) in headers {
+            request = request.header(*name, *value);
+        }
         let result = request.call();
         self.finish(result, url)
     }
