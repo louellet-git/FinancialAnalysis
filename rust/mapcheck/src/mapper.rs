@@ -5,6 +5,7 @@
 
 use crate::facts::{period_ends, select, CompanyFacts, Forms};
 use crate::registry::{Period, Registry};
+use crate::supplement::{FILLED, TRIGGERS};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone)]
@@ -33,6 +34,16 @@ impl PeriodData {
     pub fn from_tag(&self, i: usize) -> bool {
         matches!(&self.sources[i], Some(s) if !s.starts_with('='))
     }
+
+    /// The variables whose value came from the 10-K, not from the company facts.
+    pub fn from_filing<'a>(&'a self, registry: &'a Registry) -> Vec<(&'a str, &'a str)> {
+        registry
+            .variables
+            .iter()
+            .zip(&self.sources)
+            .filter_map(|(v, s)| s.as_deref().filter(|s| crate::supplement::from_filing(s)).map(|s| (v.name.as_str(), s)))
+            .collect()
+    }
 }
 
 struct FormulaRun<'a> {
@@ -40,6 +51,8 @@ struct FormulaRun<'a> {
     values: &'a mut Vec<Option<f64>>,
     sources: &'a mut Vec<Option<String>>,
     in_work: Vec<bool>,
+    /// Variables whose formula value is not used (it is larger than its total).
+    blocked: &'a [bool],
 }
 
 impl FormulaRun<'_> {
@@ -49,7 +62,7 @@ impl FormulaRun<'_> {
         }
         let registry = self.registry;
         let variable = &registry.variables[i];
-        if variable.formulas.is_empty() || self.in_work[i] {
+        if variable.formulas.is_empty() || self.in_work[i] || self.blocked[i] {
             return None;
         }
         self.in_work[i] = true;
@@ -151,6 +164,15 @@ fn correct_share_scale(registry: &Registry, values: &mut [Option<f64>], sources:
             }
         }
     }
+    // A filer with no share-count tag (for example VTRS): net income / EPS gives the count.
+    if let Some(i) = registry.try_var("shares_diluted") {
+        if values[i].is_none() {
+            if let Some(implied) = implied_share_count(registry, values, "eps_diluted") {
+                values[i] = Some(implied);
+                sources[i] = Some("= net income / eps_diluted (the filer has no share-count tag)".to_string());
+            }
+        }
+    }
     // The balance-sheet share count has the same scale if it is near the weighted count.
     let Some((factor, text)) = applied else { return };
     let value = |name: &str, values: &[Option<f64>]| registry.try_var(name).and_then(|i| values[i]);
@@ -170,8 +192,74 @@ fn correct_share_scale(registry: &Registry, values: &mut [Option<f64>], sources:
     }
 }
 
+/// A source of values for a critical input that the company facts do not have:
+/// (period end, variable) -> (value, source text). See supplement.rs.
+pub type Fill<'a> = &'a dyn Fn(&str, &str) -> Option<(f64, String)>;
+
+/// A formula value can be larger than its total by this share (rounding).
+pub const FORMULA_OVER_TOTAL: f64 = 0.02;
+/// In the source text of a variable whose formula value is not used.
+pub const NOT_USED: &str = ": not used,";
+
+/// The values that come from formulas, and the share-count corrections.
+///
+/// A formula value that is larger than its total (the `[[within]]` rules of the
+/// registry) counts an amount two times: the filer gave two tags to one amount, or one
+/// term is a part of a different term. Such a value is not used: the variable has no
+/// value, and the formulas run again without it.
+fn finish(registry: &Registry, tag_values: Vec<Option<f64>>, tag_sources: Vec<Option<String>>) -> (Vec<Option<f64>>, Vec<Option<String>>) {
+    let n = registry.variables.len();
+    let mut blocked = vec![false; n];
+    let mut notes: Vec<Option<String>> = vec![None; n];
+    loop {
+        let (mut values, mut sources) = (tag_values.clone(), tag_sources.clone());
+        let mut run = FormulaRun { registry, values: &mut values, sources: &mut sources, in_work: vec![false; n], blocked: &blocked };
+        for i in 0..n {
+            run.resolve(i);
+        }
+        correct_share_scale(registry, &mut values, &mut sources);
+        let over: Vec<usize> = registry
+            .within
+            .iter()
+            .filter_map(|&(part, total)| match (values[part], values[total]) {
+                (Some(p), Some(t)) if t != 0.0 && p.abs() > t.abs() * (1.0 + FORMULA_OVER_TOTAL) => Some((part, total, p, t)),
+                _ => None,
+            })
+            .filter(|&(part, ..)| !blocked[part] && matches!(&sources[part], Some(s) if s.starts_with('=')))
+            .map(|(part, total, p, t)| {
+                notes[part] = Some(format!(
+                    "{}{NOT_USED} {} is more than {} {}",
+                    sources[part].as_deref().unwrap_or("="),
+                    p,
+                    registry.variables[total].name,
+                    t
+                ));
+                part
+            })
+            .collect();
+        if over.is_empty() {
+            // The source text of a variable with no value says why it has no value.
+            for i in 0..n {
+                if values[i].is_none() && notes[i].is_some() {
+                    sources[i] = notes[i].take();
+                }
+            }
+            return (values, sources);
+        }
+        for part in over {
+            blocked[part] = true;
+        }
+    }
+}
+
 /// The standard variables for one period.
 pub fn resolve_period(registry: &Registry, facts: &CompanyFacts, end: &str, forms: Forms) -> PeriodData {
+    resolve_period_with(registry, facts, end, forms, None)
+}
+
+/// The standard variables for one period. `fill` gives a value for a critical input
+/// of a fiscal year that has no value in the company facts.
+pub fn resolve_period_with(registry: &Registry, facts: &CompanyFacts, end: &str, forms: Forms, fill: Option<Fill>) -> PeriodData {
     let n = registry.variables.len();
     let mut values: Vec<Option<f64>> = vec![None; n];
     let mut sources: Vec<Option<String>> = vec![None; n];
@@ -197,14 +285,11 @@ pub fn resolve_period(registry: &Registry, facts: &CompanyFacts, end: &str, form
         }
     }
 
-    let mut run = FormulaRun { registry, values: &mut values, sources: &mut sources, in_work: vec![false; n] };
-    for i in 0..n {
-        run.resolve(i);
-    }
+    let (tag_values, tag_sources) = (values, sources);
+    let (values, sources) = finish(registry, tag_values.clone(), tag_sources.clone());
 
-    correct_share_scale(registry, &mut values, &mut sources);
-
-    let revenue_filed = registry.try_var("revenue").and_then(|i| filed_dates[i].clone());
+    // The revenue fact (most companies have it as contract revenue).
+    let revenue_filed = ["revenue", "revenue_from_contracts"].iter().find_map(|name| registry.try_var(name).and_then(|i| filed_dates[i].clone()));
     let filed = revenue_filed.or_else(|| filed_dates.iter().flatten().max().cloned());
 
     let mut raw_extras = BTreeMap::new();
@@ -225,7 +310,28 @@ pub fn resolve_period(registry: &Registry, facts: &CompanyFacts, end: &str, form
         }
     }
 
-    PeriodData { end: end.to_string(), forms, filed, values, sources, raw_extras }
+    let mut period = PeriodData { end: end.to_string(), forms, filed, values, sources, raw_extras };
+    if let (Forms::Annual, Some(fill)) = (forms, fill) {
+        let critical = crate::checks::critical_for(crate::checks::filer_template(registry, &period));
+        if TRIGGERS.iter().any(|name| critical.contains(name) && period.get(registry, name).is_none()) {
+            let (mut values, mut sources, mut changed) = (tag_values, tag_sources, false);
+            for name in FILLED {
+                let Some(i) = registry.try_var(name) else { continue };
+                if period.values[i].is_none() {
+                    if let Some((value, source)) = fill(end, name) {
+                        values[i] = Some(value);
+                        sources[i] = Some(source);
+                        changed = true;
+                    }
+                }
+            }
+            if changed {
+                // The formulas run again: a filled value is a term of other variables.
+                (period.values, period.sources) = finish(registry, values, sources);
+            }
+        }
+    }
+    period
 }
 
 #[derive(Debug, Clone)]
@@ -237,6 +343,10 @@ pub struct Company {
 
 /// The latest `n_periods` fiscal years and `n_periods` quarters.
 pub fn map_company(registry: &Registry, facts: &CompanyFacts, n_periods: usize) -> Company {
+    map_company_with(registry, facts, n_periods, None)
+}
+
+pub fn map_company_with(registry: &Registry, facts: &CompanyFacts, n_periods: usize, fill: Option<Fill>) -> Company {
     let mut out = Company {
         name: facts.entity_name.clone().unwrap_or_default(),
         annual: Vec::new(),
@@ -244,7 +354,7 @@ pub fn map_company(registry: &Registry, facts: &CompanyFacts, n_periods: usize) 
     };
     for forms in [Forms::Annual, Forms::Quarterly] {
         for end in period_ends(facts, &registry.anchors, forms, Some(n_periods)) {
-            let period = resolve_period(registry, facts, &end, forms);
+            let period = resolve_period_with(registry, facts, &end, forms, fill);
             match forms {
                 Forms::Annual => out.annual.push(period),
                 Forms::Quarterly => out.quarterly.push(period),
@@ -359,6 +469,18 @@ mod tests {
     }
 
     #[test]
+    fn share_count_from_net_income_and_eps_when_the_filer_has_no_tag() {
+        let registry = Registry::embedded().unwrap();
+        let mut facts = company(vec![("Revenues", flow(100.0)), ("NetIncomeLoss", flow(-3_510_000_000.0))]);
+        let mut units = std::collections::HashMap::new();
+        units.insert("USD/shares".to_string(), flow(-3.0));
+        facts.facts.get_mut("us-gaap").unwrap().insert("EarningsPerShareDiluted".to_string(), crate::facts::Concept { units });
+        let p = resolve_period(&registry, &facts, FY.1, Forms::Annual);
+        assert!((p.get(&registry, "shares_diluted").unwrap() - 1_170_000_000.0).abs() < 1.0);
+        assert!(p.source(&registry, "shares_diluted").contains("net income / eps_diluted"));
+    }
+
+    #[test]
     fn correct_share_count_and_a_stock_split_do_not_change() {
         let (r, p) = shares_company(716_400_000.0, 11.95, 8_563_000_000.0);
         assert_eq!(p.get(&r, "shares_diluted"), Some(716_400_000.0));
@@ -402,6 +524,82 @@ mod tests {
         assert_eq!(p.get(&r, "capex_total"), Some(-80.0));
         assert_eq!(p.get(&r, "purchases_of_intangibles"), Some(-10.0));
         assert_eq!(p.source(&r, "capex_total"), "= capex + capitalized_software");
+    }
+
+    #[test]
+    fn revenue_of_a_bank_a_landlord_and_an_investment_company() {
+        // A bank: the contract-revenue tag is a small part of its income.
+        let (r, p) = resolve(vec![
+            ("InterestIncomeExpenseNet", flow(600.0)),
+            ("NoninterestIncome", flow(140.0)),
+            ("RevenueFromContractWithCustomerExcludingAssessedTax", flow(90.0)),
+        ]);
+        assert_eq!(p.get(&r, "revenue"), Some(740.0));
+        assert_eq!(p.source(&r, "revenue"), "= net_interest_income + noninterest_income");
+        // A total tag wins.
+        let (r, p) = resolve(vec![("Revenues", flow(750.0)), ("InterestIncomeExpenseNet", flow(600.0)), ("NoninterestIncome", flow(140.0))]);
+        assert_eq!(p.get(&r, "revenue"), Some(750.0));
+        // Most companies: contract revenue. The sales tag (before 2018) comes after it.
+        let (r, p) = resolve(vec![("RevenueFromContractWithCustomerExcludingAssessedTax", flow(90.0)), ("SalesRevenueNet", flow(95.0)), ("OperatingLeaseLeaseIncome", flow(4.0))]);
+        assert_eq!(p.get(&r, "revenue"), Some(90.0));
+        assert_eq!(p.source(&r, "revenue"), "= revenue_from_contracts");
+        // A landlord and an investment company.
+        let (r, p) = resolve(vec![("OperatingLeaseLeaseIncome", flow(3094.0))]);
+        assert_eq!(p.source(&r, "revenue"), "= lease_income");
+        let (r, p) = resolve(vec![("GrossInvestmentIncomeOperating", flow(3052.0))]);
+        assert_eq!((p.get(&r, "revenue"), p.source(&r, "revenue")), (Some(3052.0), "= investment_income_operating"));
+    }
+
+    #[test]
+    fn total_assets_from_liabilities_and_equity_when_the_filer_has_no_assets_tag() {
+        let (r, p) = resolve(vec![("Revenues", flow(100.0)), ("LiabilitiesAndStockholdersEquity", balance(3260.0))]);
+        assert_eq!(p.get(&r, "total_assets"), Some(3260.0));
+        assert_eq!(p.source(&r, "total_assets"), "= total_liabilities_and_equity");
+    }
+
+    #[test]
+    fn formula_value_larger_than_its_total_is_not_used() {
+        // The short-term investments are inside the cash line of this filer: the sum
+        // counts them two times and is larger than the current assets.
+        let (r, p) = resolve(vec![
+            ("Revenues", flow(100.0)),
+            ("CashAndCashEquivalentsAtCarryingValue", balance(2336.0)),
+            ("ShortTermInvestments", balance(2000.0)),
+            ("AssetsCurrent", balance(2459.0)),
+        ]);
+        assert_eq!(p.get(&r, "cash_and_short_term_investments"), None);
+        assert!(p.source(&r, "cash_and_short_term_investments").contains(NOT_USED));
+        assert_eq!(p.get(&r, "cash_and_equivalents"), Some(2336.0));
+        // The usual case: the sum is smaller than the total, and it is used.
+        let (r, p) = resolve(vec![
+            ("Revenues", flow(100.0)),
+            ("CashAndCashEquivalentsAtCarryingValue", balance(300.0)),
+            ("ShortTermInvestments", balance(200.0)),
+            ("AssetsCurrent", balance(2459.0)),
+        ]);
+        assert_eq!(p.get(&r, "cash_and_short_term_investments"), Some(500.0));
+    }
+
+    #[test]
+    fn filing_value_fills_a_critical_input_and_the_formulas_use_it() {
+        let registry = Registry::embedded().unwrap();
+        let facts = company(vec![("Revenues", flow(1000.0)), ("PaymentsToDevelopSoftware", flow(30.0))]);
+        let fill = |end: &str, name: &str| {
+            assert_eq!(end, FY.1);
+            if name == "capex" { Some((-50.0, "filing 0000000001-25-000001: acme_Capex".to_string())) } else { None }
+        };
+        let p = resolve_period_with(&registry, &facts, FY.1, Forms::Annual, Some(&fill));
+        assert_eq!(p.get(&registry, "capex"), Some(-50.0));
+        assert_eq!(p.get(&registry, "capex_total"), Some(-80.0));
+        assert_eq!(p.from_filing(&registry), vec![("capex", "filing 0000000001-25-000001: acme_Capex")]);
+        // A quarter, and a year with all critical inputs: the filing is not used.
+        let never = |_: &str, _: &str| -> Option<(f64, String)> { panic!("the filing must not be read") };
+        let mut full = company(vec![("Revenues", flow(1000.0)), ("PaymentsToAcquirePropertyPlantAndEquipment", flow(50.0))]);
+        let mut units = std::collections::HashMap::new();
+        units.insert("shares".to_string(), flow(10.0));
+        full.facts.get_mut("us-gaap").unwrap().insert("WeightedAverageNumberOfDilutedSharesOutstanding".to_string(), crate::facts::Concept { units });
+        resolve_period_with(&registry, &full, FY.1, Forms::Annual, Some(&never));
+        resolve_period_with(&registry, &facts, FY.1, Forms::Quarterly, Some(&never));
     }
 
     #[test]

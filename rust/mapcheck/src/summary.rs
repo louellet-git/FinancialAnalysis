@@ -23,7 +23,7 @@ pub fn summary(registry: &Registry, reports: &[TickerReport], seconds: f64, thre
     let count = |s: Status| reports.iter().filter(|r| r.status == s).count();
     let _ = writeln!(
         out,
-        "status: PASS {} | WARN {} | FAIL {} | N/A (bank, insurer, REIT, foreign) {} | ERROR (not us-gaap) {}",
+        "status: PASS {} | WARN {} | FAIL {} | N/A (foreign filer, not USD, no 10-K yet, or no revenue) {} | ERROR (not us-gaap) {}",
         count(Status::Pass), count(Status::Warn), count(Status::Fail), count(Status::Template), count(Status::Error)
     );
 
@@ -32,9 +32,25 @@ pub fn summary(registry: &Registry, reports: &[TickerReport], seconds: f64, thre
         return out;
     }
 
+    // Company types.
+    let mut types: BTreeMap<&str, [usize; 3]> = BTreeMap::new();
+    for r in &judged {
+        let entry = types.entry(r.template.as_str()).or_default();
+        match r.status {
+            Status::Pass => entry[0] += 1,
+            Status::Warn => entry[1] += 1,
+            _ => entry[2] += 1,
+        }
+    }
+    let _ = writeln!(out, "by company type (PASS / WARN / FAIL):");
+    for (name, c) in &types {
+        let _ = writeln!(out, "  {name:10}{:>5} /{:>5} /{:>5}", c[0], c[1], c[2]);
+    }
+
     // Core inputs.
-    let _ = writeln!(out, "\nCore DCF inputs with a value, latest fiscal year, {} companies with the standard template:", judged.len());
-    let with_year: Vec<&&TickerReport> = judged.iter().filter(|r| r.fiscal_year_end.is_some()).collect();
+    let standard: Vec<&&TickerReport> = judged.iter().filter(|r| r.template == "standard").collect();
+    let _ = writeln!(out, "\nCore DCF inputs with a value, latest fiscal year, {} companies with the standard template:", standard.len());
+    let with_year: Vec<&&TickerReport> = standard.iter().copied().filter(|r| r.fiscal_year_end.is_some()).collect();
     let mut line = String::new();
     for i in registry.core() {
         let name = &registry.variables[i].name;

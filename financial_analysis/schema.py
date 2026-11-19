@@ -85,6 +85,11 @@ class PeriodFinancials:
 
     # --- Income Statement ---
     revenue: Optional[float] = None
+    revenue_from_contracts: Optional[float] = None
+    lease_income: Optional[float] = None
+    investment_income_operating: Optional[float] = None
+    net_interest_income: Optional[float] = None
+    noninterest_income: Optional[float] = None
     cogs_total: Optional[float] = None
     gross_profit: Optional[float] = None
     rd_expense: Optional[float] = None

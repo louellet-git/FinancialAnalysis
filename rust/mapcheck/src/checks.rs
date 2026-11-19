@@ -2,20 +2,19 @@
 //!
 //! Each check answers one question about the mapping:
 //! - Did a value get lost?            core_missing, unmapped_lines, material_unmapped
-//! - Was a value counted two times?   exceeds_total, overlap, nested, equal_parts,
+//! - Was a value counted two times?   exceeds_total, formula_not_used, overlap, nested, equal_parts,
 //!                                    total_debt_estimates, capex_software_overlap
 //! - Do the statements agree?         balance_sheet_identity, rollup_mismatch,
 //!                                    change_in_cash, net_income_identity
 //! - Are the periods correct?         fiscal_year_spacing, quarters_exceed_year, stale_annual
-//! - Can the DCF use the inputs?      core_missing_critical, sign, short_history,
-//!                                    core_approximate, source_switch,
+//! - Can the DCF use the inputs?      core_missing_critical, filled_from_filing, sign, short_history,
+//!                                    core_approximate, source_switch, revenue_small,
 //!                                    share_count_identity, share_count_scaled
 //!
 //! Severity: Fail = the mapping is incorrect or the DCF cannot use it. Warn = a person
 //! must examine it. Info = a record with no decision.
 
 use crate::dates;
-use crate::facts::CompanyFacts;
 use crate::mapper::{Company, PeriodData};
 use crate::registry::Registry;
 
@@ -30,7 +29,7 @@ pub const SOURCE_SWITCH_CHANGE: f64 = 0.30;
 pub const MIN_FCF_YEARS: usize = 4;
 pub const SHARE_COUNT_TOLERANCE: f64 = 0.10; // EPS is a rounded number
 
-/// Without these inputs the DCF does not run.
+/// Without these inputs the DCF does not run (a company with the standard template).
 pub const CRITICAL: [&str; 6] = [
     "revenue",
     "operating_cash_flow",
@@ -39,6 +38,26 @@ pub const CRITICAL: [&str; 6] = [
     "total_assets",
     "shares_diluted",
 ];
+/// A bank or an insurer has no capital expenditure and no operating cash flow of the
+/// usual meaning; a free-cash-flow DCF does not fit. These inputs must have a value.
+pub const CRITICAL_FINANCIAL: [&str; 5] = ["revenue", "net_income", "total_assets", "equity", "shares_diluted"];
+/// A REIT buys properties; the capex tags of other companies do not fit.
+pub const CRITICAL_REIT: [&str; 5] = ["revenue", "net_income", "operating_cash_flow", "total_assets", "shares_diluted"];
+
+pub fn critical_for(template: &str) -> &'static [&'static str] {
+    match template {
+        "bank" | "insurer" | "fund" => &CRITICAL_FINANCIAL,
+        "reit" => &CRITICAL_REIT,
+        _ => &CRITICAL,
+    }
+}
+
+// A company type is decided from the size of its special lines, not from the
+// presence of a tag (a car-parts maker can have a small "deposits" line).
+pub const BANK_DEPOSITS_SHARE: f64 = 0.20; // deposits / total assets
+pub const INSURER_PREMIUMS_SHARE: f64 = 0.20; // premiums / revenue
+pub const INSURER_POLICY_SHARE: f64 = 0.30; // policyholder liabilities / total assets
+pub const REIT_PROPERTY_SHARE: f64 = 0.30; // investment property / total assets
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Severity {
@@ -88,28 +107,46 @@ pub struct PeriodChecks {
     pub unmapped: Vec<(String, f64)>,
 }
 
-const BANK: [&str; 3] = ["Deposits", "InterestExpenseDeposits", "InterestAndDividendIncomeOperating"];
-const INSURER: [&str; 2] = ["PremiumsEarnedNet", "PolicyholderBenefitsAndClaimsIncurredNet"];
-const REIT: [&str; 2] = ["RealEstateInvestmentPropertyNet", "RealEstateInvestmentPropertyAtCost"];
-
-/// "standard", or "bank" / "insurer" / "reit": a business with a different statement
-/// structure. Only tags that have a fact on the given fiscal year end count.
-pub fn filer_template(facts: &CompanyFacts, end: &str) -> &'static str {
-    let Some(gaap) = facts.facts.get("us-gaap") else { return "standard" };
-    let in_use = |marker: &str| {
-        gaap.get(marker)
-            .map(|c| c.units.values().any(|entries| entries.iter().any(|e| e.end == end)))
-            .unwrap_or(false)
+/// "standard", or "bank" / "insurer" / "fund" / "reit": a business with a different statement
+/// structure. The decision uses the values of the fiscal year:
+/// - bank: deposits are 20% or more of total assets;
+/// - insurer: premiums are 20% or more of revenue, or the policyholder liabilities
+///   are 30% or more of total assets; and the balance sheet has no current-assets
+///   total (a health insurer has one, and is "standard");
+/// - fund: revenue is the total investment income of an investment company, and the
+///   balance sheet has no current-assets total;
+/// - reit: investment property is 30% or more of total assets.
+pub fn filer_template(registry: &Registry, p: &PeriodData) -> &'static str {
+    let raw = |name: &str| p.raw_extras.get(&format!("us-gaap/{name}")).copied();
+    let share = |part: Option<f64>, total: Option<f64>| match (part, total) {
+        (Some(part), Some(total)) if total > 0.0 => part / total,
+        _ => 0.0,
     };
-    if BANK.iter().any(|m| in_use(m)) {
-        "bank"
-    } else if INSURER.iter().any(|m| in_use(m)) {
-        "insurer"
-    } else if REIT.iter().any(|m| in_use(m)) {
-        "reit"
-    } else {
-        "standard"
+    let assets = p.get(registry, "total_assets");
+    let revenue = p.get(registry, "revenue");
+    if share(raw("Deposits"), assets) >= BANK_DEPOSITS_SHARE {
+        return "bank";
     }
+    let unclassified = p.get(registry, "total_current_assets").is_none();
+    if share(raw("PremiumsEarnedNet"), revenue) >= INSURER_PREMIUMS_SHARE && unclassified {
+        return "insurer";
+    }
+    // A life or annuity insurer: its income is fees and investment income, and its
+    // liabilities are the accounts of the policyholders.
+    let policies: f64 = ["PolicyholderAccountBalance", "LiabilityForFuturePolicyBenefits", "SeparateAccountsLiability"].iter().filter_map(|t| raw(t)).sum();
+    if share(Some(policies), assets) >= INSURER_POLICY_SHARE && unclassified {
+        return "insurer";
+    }
+    // An investment company (a business development company): its top line is the
+    // total investment income, and it has no capital expenditure.
+    if p.source(registry, "revenue") == "= investment_income_operating" && unclassified {
+        return "fund";
+    }
+    let property = raw("RealEstateInvestmentPropertyNet").or_else(|| raw("RealEstateInvestmentPropertyAtCost"));
+    if share(property, assets) >= REIT_PROPERTY_SHARE {
+        return "reit";
+    }
+    "standard"
 }
 
 fn billions(value: f64) -> String {
@@ -152,18 +189,40 @@ fn rollup_parts(p: &PeriodData, rollup: &crate::registry::Rollup) -> Vec<usize> 
     parts
 }
 
-/// All checks on one annual period.
+/// All checks on one annual period of a company with the standard template.
 pub fn check_period(registry: &Registry, p: &PeriodData) -> PeriodChecks {
+    check_period_as(registry, p, "standard")
+}
+
+/// All checks on one annual period. `template` selects the inputs that must have a value.
+pub fn check_period_as(registry: &Registry, p: &PeriodData, template: &str) -> PeriodChecks {
     let mut out = PeriodChecks::default();
     let get = |name: &str| p.get(registry, name);
+    let critical = critical_for(template);
 
     // --- Can the DCF use the inputs? ---
-    let mut critical_missing: Vec<&str> = CRITICAL.iter().copied().filter(|n| get(n).is_none()).collect();
+    let mut critical_missing: Vec<&str> = critical.iter().copied().filter(|n| get(n).is_none()).collect();
     if get("shares_diluted").is_none() && get("shares_outstanding").is_some() {
         critical_missing.retain(|n| *n != "shares_diluted");
     }
     if !critical_missing.is_empty() {
         out.findings.push(finding(Severity::Fail, "core_missing_critical", critical_missing.join(", ")));
+    }
+    // A formula value that is larger than its total is not used (mapper.rs).
+    for (variable, source) in registry.variables.iter().zip(&p.sources) {
+        if let Some(source) = source.as_deref().filter(|s| s.contains(crate::mapper::NOT_USED)) {
+            out.findings.push(finding(Severity::Warn, "formula_not_used", format!("{} has no value [{}]", variable.name, source)));
+        }
+    }
+    // A value from the 10-K is an estimate from the lines or the segments of the filing.
+    for (name, source) in p.from_filing(registry) {
+        let value = get(name).unwrap_or(0.0);
+        let shown = if registry.try_var(name).map(|i| registry.variables[i].unit == "shares").unwrap_or(false) {
+            format!("{:.1}M", value / 1e6)
+        } else {
+            billions(value)
+        };
+        out.findings.push(finding(Severity::Warn, "filled_from_filing", format!("{name} {shown} [{source}]")));
     }
     for i in registry.core() {
         if p.values[i].is_none() {
@@ -174,9 +233,10 @@ pub fn check_period(registry: &Registry, p: &PeriodData) -> PeriodChecks {
         .core_missing
         .iter()
         .map(String::as_str)
-        .filter(|n| !CRITICAL.contains(n))
+        .filter(|n| !critical.contains(n))
         .collect();
-    if !other_missing.is_empty() {
+    // The other core inputs are those of a free-cash-flow DCF: only for the standard template.
+    if template == "standard" && !other_missing.is_empty() {
         out.findings.push(finding(Severity::Warn, "core_missing", other_missing.join(", ")));
     }
     let approximate: Vec<String> = registry
@@ -185,13 +245,27 @@ pub fn check_period(registry: &Registry, p: &PeriodData) -> PeriodChecks {
         .filter(|&i| match &p.sources[i] {
             // A formula with one term is a fallback to a different number; a formula
             // with an optional term that has no value can be too small.
-            Some(s) => s.starts_with('=') && (s.contains("no value:") || !(s.contains(" + ") || s.contains(" - "))),
+            // Contract revenue is the full revenue of most companies: not a fallback.
+            Some(s) => s.starts_with('=') && s != "= revenue_from_contracts" && (s.contains("no value:") || !(s.contains(" + ") || s.contains(" - "))),
             None => false,
         })
         .map(|i| format!("{} [{}]", registry.variables[i].name, p.sources[i].as_deref().unwrap_or("")))
         .collect();
     if !approximate.is_empty() {
         out.findings.push(finding(Severity::Info, "core_approximate", approximate.join("; ")));
+    }
+
+    // Revenue from the lease-income tag or the investment-income tag is correct only
+    // for a landlord or an investment company. For other companies it is a small part.
+    if let (Some(revenue), Some(income)) = (get("revenue"), get("net_income")) {
+        let source = p.source(registry, "revenue");
+        if (source == "= lease_income" || source == "= investment_income_operating") && revenue.abs() < income.abs() {
+            out.findings.push(finding(
+                Severity::Warn,
+                "revenue_small",
+                format!("revenue {} [{}] is smaller than net income {}: it can be a part of the revenue", billions(revenue), source, billions(income)),
+            ));
+        }
     }
 
     let mut bad_signs = Vec::new();
@@ -209,11 +283,22 @@ pub fn check_period(registry: &Registry, p: &PeriodData) -> PeriodChecks {
             out.findings.push(finding(Severity::Warn, "no_revenue", "revenue = 0 (a company with no sales: the DCF has no revenue base)"));
         }
     }
-    for name in ["cash_and_equivalents", "total_debt", "da_total", "sbc_total"] {
+    for name in ["cash_and_equivalents", "total_debt", "sbc_total"] {
         if let Some(v) = get(name) {
             if v < 0.0 {
                 bad_signs.push(format!("{name} = {}", billions(v)));
             }
+        }
+    }
+    // For a financial company the depreciation tag can be a net number that includes
+    // the accretion of discounts on investments, and it can be negative.
+    if let Some(v) = get("da_total") {
+        if v < 0.0 {
+            out.findings.push(finding(
+                Severity::Warn,
+                "sign_unusual",
+                format!("da_total = {} [{}]: not depreciation of equipment only", billions(v), p.source(registry, "da_total")),
+            ));
         }
     }
     if !bad_signs.is_empty() {
@@ -473,6 +558,10 @@ pub fn check_period(registry: &Registry, p: &PeriodData) -> PeriodChecks {
 
 /// Checks on the company as a whole (period sequence, history, freshness).
 pub fn check_company(registry: &Registry, company: &Company, as_of: i64) -> Vec<Finding> {
+    check_company_as(registry, company, as_of, "standard")
+}
+
+pub fn check_company_as(registry: &Registry, company: &Company, as_of: i64, template: &str) -> Vec<Finding> {
     let mut out = Vec::new();
     let Some(latest) = company.annual.last() else {
         out.push(finding(Severity::Fail, "no_annual_period", "no fiscal year with an anchor fact in a 10-K"));
@@ -506,7 +595,7 @@ pub fn check_company(registry: &Registry, company: &Company, as_of: i64) -> Vec<
         .iter()
         .filter(|p| p.get(registry, "revenue").is_some() && p.get(registry, "operating_cash_flow").is_some() && p.get(registry, "capex").is_some())
         .count();
-    if fcf_years < MIN_FCF_YEARS {
+    if template == "standard" && fcf_years < MIN_FCF_YEARS {
         out.push(finding(
             Severity::Warn,
             "short_history",
@@ -698,6 +787,31 @@ mod tests {
     }
 
     #[test]
+    fn value_from_the_filing_and_formula_not_used_give_warnings() {
+        let registry = Registry::embedded().unwrap();
+        let facts = company(vec![
+            ("Revenues", flow(1000.0)),
+            ("CashAndCashEquivalentsAtCarryingValue", balance(2336.0)),
+            ("ShortTermInvestments", balance(2000.0)),
+            ("AssetsCurrent", balance(2459.0)),
+        ]);
+        let fill = |_: &str, name: &str| if name == "capex" { Some((0.0, "= 0 (filing 0000000001-25-000001: no line)".to_string())) } else { None };
+        let p = crate::mapper::resolve_period_with(&registry, &facts, "2024-12-31", crate::facts::Forms::Annual, Some(&fill));
+        let warnings = codes(&check_period(&registry, &p), Severity::Warn);
+        assert!(warnings.contains(&"filled_from_filing".to_string()), "{warnings:?}");
+        assert!(warnings.contains(&"formula_not_used".to_string()), "{warnings:?}");
+        assert!(!codes(&check_period(&registry, &p), Severity::Fail).contains(&"exceeds_total".to_string()));
+    }
+
+    #[test]
+    fn investment_company_is_a_fund_and_capex_is_not_critical() {
+        let registry = Registry::embedded().unwrap();
+        let p = resolve_period(&registry, &company(vec![("GrossInvestmentIncomeOperating", flow(3052.0)), ("Assets", balance(30000.0))]), "2024-12-31", crate::facts::Forms::Annual);
+        assert_eq!(filer_template(&registry, &p), "fund");
+        assert!(!critical_for("fund").contains(&"capex"));
+    }
+
+    #[test]
     fn capex_total_adds_software_and_a_broad_capex_tag_gives_a_warning() {
         let registry = Registry::embedded().unwrap();
         let facts = with_shares(company(with(vec![("PaymentsToDevelopSoftware", flow(30.0))])));
@@ -759,10 +873,40 @@ mod tests {
     }
 
     #[test]
-    fn template_uses_only_tags_of_the_fiscal_year() {
-        let mut facts = company(vec![("Deposits", vec![fact(None, "2015-12-31", 1.0, "10-K", "2016-02-01")])]);
-        assert_eq!(filer_template(&facts, END), "standard");
-        facts = company(vec![("Deposits", balance(1.0))]);
-        assert_eq!(filer_template(&facts, END), "bank");
+    fn company_type_comes_from_the_size_of_the_special_lines() {
+        let registry = Registry::embedded().unwrap();
+        let template = |concepts: Vec<(&'static str, Vec<crate::facts::Fact>)>| {
+            let facts = with_shares(company(concepts));
+            filer_template(&registry, &resolve_period(&registry, &facts, END, Forms::Annual))
+        };
+        // A small deposits line (a car-parts maker): standard.
+        assert_eq!(template(with(vec![("Deposits", balance(30.0))])), "standard");
+        // Deposits are 60% of total assets: a bank.
+        assert_eq!(template(with(vec![("Deposits", balance(900.0))])), "bank");
+        // Premiums are most of revenue, but the balance sheet has current assets (a health insurer): standard.
+        assert_eq!(template(with(vec![("PremiumsEarnedNet", flow(800.0))])), "standard");
+        // The same with no current-assets total: an insurer.
+        let unclassified: Vec<_> = with(vec![("PremiumsEarnedNet", flow(800.0))]).into_iter().filter(|(n, _)| *n != "AssetsCurrent").collect();
+        assert_eq!(template(unclassified), "insurer");
+        assert_eq!(template(with(vec![("RealEstateInvestmentPropertyNet", balance(900.0))])), "reit");
+    }
+
+    #[test]
+    fn a_bank_is_judged_on_its_own_inputs() {
+        let registry = Registry::embedded().unwrap();
+        // No capex and no operating cash flow, but revenue, net income, assets, equity and shares.
+        let facts = with_shares(company(vec![
+            ("InterestIncomeExpenseNet", flow(60.0)),
+            ("NoninterestIncome", flow(40.0)),
+            ("NetIncomeLoss", flow(20.0)),
+            ("Assets", balance(1500.0)),
+            ("StockholdersEquity", balance(150.0)),
+            ("Deposits", balance(1000.0)),
+        ]));
+        let p = resolve_period(&registry, &facts, END, Forms::Annual);
+        assert_eq!(p.get(&registry, "revenue"), Some(100.0)); // net interest income + noninterest income
+        assert_eq!(filer_template(&registry, &p), "bank");
+        assert!(codes(&check_period_as(&registry, &p, "bank"), Severity::Fail).is_empty());
+        assert!(codes(&check_period_as(&registry, &p, "standard"), Severity::Fail).contains(&"core_missing_critical".to_string()));
     }
 }

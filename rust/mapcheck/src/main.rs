@@ -4,7 +4,7 @@ use mapcheck::cli::Args;
 use mapcheck::dates;
 use mapcheck::http::Client;
 use mapcheck::registry::Registry;
-use mapcheck::run::{check_all, check_facts, facts_path, report_json, values_json, Status};
+use mapcheck::run::{check_all, check_cached, facts_path, map_ticker, report_json, values_json, Status};
 use mapcheck::summary::{detail, listing, summary, values_listing};
 use mapcheck::{sec, store};
 use std::fs;
@@ -46,6 +46,11 @@ fetch (network: SEC EDGAR; set the environment variable SEC_USER_AGENT)
     --write-list FILE    write the tickers that are in the cache after the run
     --delay S            seconds between requests (default 0.15, minimum 0.1)
     --refresh            get a ticker again if it is in the cache
+    --filings            get the files of the latest 10-K of each ticker (not the
+                         company facts); the checks use them for inputs that the
+                         company facts do not have
+    --gaps               with --filings: only the tickers that have a critical
+                         input with no value
 
 import (gets the company facts if they are not in the cache)
     --store DIR          output directory (default: data/processed)
@@ -141,12 +146,56 @@ fn cmd_check(raw: &[String]) -> Result<bool, String> {
 fn cmd_fetch(raw: &[String]) -> Result<bool, String> {
     let mut with_value = COMMON_VALUES.to_vec();
     with_value.extend(["--top", "--write-list", "--delay"]);
-    let args = Args::parse(raw, &with_value, &["--refresh"])?;
+    let args = Args::parse(raw, &with_value, &["--refresh", "--filings", "--gaps"])?;
     let cache = cache_of(&args);
     let delay: f64 = args.number("--delay", 0.15)?;
+    if args.flag("--gaps") && !args.flag("--filings") {
+        return Err("--gaps is an option of --filings".to_string());
+    }
+    if args.flag("--filings") {
+        // The files of the latest 10-K of each ticker (the company facts must be in the cache).
+        let mut tickers = args.tickers()?;
+        if args.flag("--gaps") {
+            // Only the tickers that have a critical input with no value.
+            let registry = Registry::embedded()?;
+            let reports = check_all(&registry, &cache, &tickers, args.number("--periods", 12)?, dates::today(), false);
+            tickers = reports
+                .into_iter()
+                .filter(|r| r.findings.iter().any(|f| f.code == "core_missing_critical"))
+                .map(|r| r.ticker)
+                .collect();
+        }
+        let (mut done, mut failed) = (0usize, Vec::new());
+        for ticker in &tickers {
+            match sec::fetch_filing(&cache, ticker, delay, args.flag("--refresh")) {
+                Ok(_) => done += 1,
+                Err(e) => failed.push((ticker.clone(), e)),
+            }
+        }
+        println!("Filings: {} tickers | in the cache now {done} | failed {}", tickers.len(), failed.len());
+        for (ticker, reason) in &failed {
+            println!("  {ticker:8} {reason}");
+        }
+        return Ok(true);
+    }
     let mut client = Client::sec(delay)?;
-    let list = sec::ticker_list(&mut client, &cache, args.flag("--refresh"))?;
     let mut tickers = args.tickers()?;
+    // A ticker file can give the CIK of each ticker; then the SEC ticker list is not necessary.
+    let mut known: Vec<(String, String)> = Vec::new();
+    if let Some(path) = args.value("--tickers-file") {
+        for (ticker, cik) in mapcheck::cli::read_ticker_ciks(path)? {
+            if let Some(cik) = cik {
+                known.push((ticker, cik));
+            }
+        }
+    }
+    let all_known = !tickers.is_empty() && tickers.iter().all(|t| known.iter().any(|(k, _)| k == t));
+    let mut list = if all_known && args.value("--top").is_none() {
+        Vec::new()
+    } else {
+        sec::ticker_list(&mut client, &cache, args.flag("--refresh"))?
+    };
+    list.splice(0..0, known);
     if let Some(top) = args.value("--top") {
         let top: usize = top.parse().map_err(|_| "--top needs a number".to_string())?;
         for t in sec::top_tickers(&list, top) {
@@ -233,7 +282,7 @@ fn cmd_import(raw: &[String]) -> Result<bool, String> {
             ok = false;
             continue;
         }
-        let company = mapcheck::mapper::map_company(&registry, &facts, periods);
+        let company = map_ticker(&registry, &cache, ticker, &facts, periods);
         let cik = match &facts.cik {
             serde_json::Value::Number(n) => n.to_string(),
             serde_json::Value::String(s) => s.clone(),
@@ -262,7 +311,7 @@ fn cmd_values(raw: &[String]) -> Result<bool, String> {
     for ticker in &tickers {
         match sec::load_or_fetch_facts(&cache, ticker, 0.15) {
             Ok(facts) => {
-                let report = check_facts(&registry, ticker, &facts, args.number("--periods", 12)?, dates::today(), true);
+                let report = check_cached(&registry, &cache, ticker, &facts, args.number("--periods", 12)?, dates::today(), true);
                 print!("{}", values_listing(&registry, &report));
             }
             Err(e) => println!("\n{ticker}: {e}"),

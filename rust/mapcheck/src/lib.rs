@@ -13,4 +13,5 @@ pub mod registry;
 pub mod run;
 pub mod sec;
 pub mod store;
+pub mod supplement;
 pub mod summary;

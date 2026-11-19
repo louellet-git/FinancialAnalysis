@@ -20,6 +20,7 @@ constant per run).
 | Filing-level XBRL, first part | 2026-11-19 | `filing.py` and `scripts.filing_tree`: statements of the latest 10-K as trees, company tags, estimates of capex, D&A and debt; measured on 50 tickers | ~0 (inline) | orchestrator only, no subagents; not a valuation run |
 | Capex rule R2 | 2026-11-19 | `capex_total` (equipment and capitalized software) in free cash flow; rule R2; overlap check; effect measured on 324 companies | ~0 (inline) | orchestrator only, no subagents; not a valuation run |
 | Mapping in Rust only | 2026-11-19 | Python mapping, audit, fetch, filing and cross-check code deleted; `mapcheck` commands fetch, import, values, filing, crosscheck; the Python importer runs the Rust program | ~0 (inline) | orchestrator only, no subagents; not a valuation run |
+| S&P 500 and next 500 mapping | 2026-11-19 | `mapcheck` on 1,003 tickers: S&P 500 0 FAIL, next 500 7 FAIL with known causes; critical inputs from the 10-K; company types; revenue rule; 82 Rust tests | ~0 (inline) | orchestrator only, no subagents; not a valuation run |
 
 Targets: frontier ticker ≤500k · repeat run ≤50k · ORCL (ticker #2) is the first measured
 frontier run under the cheapened pipeline.

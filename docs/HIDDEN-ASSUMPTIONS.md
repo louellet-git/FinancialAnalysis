@@ -117,6 +117,7 @@ necessary.
 **41. Foreign filers and IFRS filers are out of scope.** A foreign filer with annual
 reports on form 20-F or 40-F has no 10-K (51 of the 500 largest registrants), and an
 IFRS filer has no us-gaap facts (59 of 500). `mapcheck` gives them `N/A` and `ERROR`.
+A filer that reports in a currency that is not USD (IMO, Canadian dollars) is `N/A`.
 
 **42. Three core inputs are weak in the standard variables.** A comparison with Yahoo
 Finance for 50 companies (2026-11-19) gives agreement of 98% or more for eight core
@@ -133,7 +134,7 @@ software). This corrects only the companies that use a standard tag for software
 
 **43. The filing-level values come from tag-name patterns.** `rust/mapcheck/src/filing.rs`
 finds the capex, depreciation and debt lines by words in the tag name. A line can be
-missing (NEE: two of the capex lines are found, the total is 6% too low) or incorrect
+missing (a capex line with an unusual name) or incorrect
 (FDX and DUK: debt is counted two times; V and MA: a line that is not depreciation).
 The printed lines show what the value contains.
 
@@ -152,6 +153,58 @@ stop with `MapcheckError` and the build command. Build it again after a change o
 text from this environment variable. `www.sec.gov` (ticker list, filing files) refuses
 a request with no contact. The Python importer gives the Rust program the contact text
 of the legacy Python SEC client when the variable is not set.
+
+**50. A critical input can come from the 10-K, and it is an estimate.** When revenue,
+capex or the share count has no value in the company facts, and the 10-K is in the
+cache, `mapcheck` reads the value from the filing (`rust/mapcheck/src/supplement.rs`;
+rules in `rust/mapcheck/README.md`, "Values from the 10-K"). 24 of the S&P 500 members
+and 37 of the next 500 companies get a value in this way. The source text starts with
+`filing`, and the finding `filled_from_filing` is a warning. Read the source before you
+use the value: a capex value is a sum of lines that are found by words in the tag name
+or the label (NEE: four lines, 25B; URI: rental equipment and other equipment).
+If the 10-K is not in the cache, the input has no value and the status is `FAIL`; run
+`mapcheck fetch --filings --gaps`.
+
+**51. Capex is 0 when the 10-K has no capex line.** Some companies do not show capital
+expenditure in the cash-flow statement (ABNB, APP, COIN, TPL, royalty companies, asset
+managers). The amount is small for them and it is inside a different investing line.
+`mapcheck` then gives `capex` = 0 with a source text that says so (5 of the S&P 500,
+9 of the next 500). Free cash flow is then equal to operating cash flow, which is some
+percent too high. The purchase of royalty interests or of mineral rights (RGLD, VNOM,
+TPL) is not capex under rule R2; for these companies it is the main investment, and a
+valuation must treat it separately.
+
+**52. The share count of a company with share classes is a selection.** The 10-K gives
+a count for each class. `mapcheck` uses the largest class (V, BRK-B, ERIE: the count of
+this class includes the other classes after conversion), or the sum of the classes when
+the sum agrees with net income divided by EPS. For a company with an operating
+partnership (HESM, PAGP) or a tracking stock (FWONA: no value), examine the count.
+
+**53. A 10-K gives three fiscal years.** A company that gets capex from the 10-K has
+capex for the three years of the latest 10-K only. Earlier years have no value, and
+the finding `short_history` says that the classic engine does not have its four years.
+An oil company: `capex` is the payments to explore and develop; the purchase of
+properties from other companies is not in it (FANG: 5.9B in 2025).
+
+**54. Revenue has four sources, in a fixed sequence.** (1) A total tag (`Revenues`, the
+utility tag, the tag for revenue net of interest expense). (2) A bank: net interest
+income and noninterest income. (3) Contract revenue. (4) Lease income (a landlord),
+then total investment income (an investment company). A bank uses the contract-revenue
+tag only for a part of its fee income; before this rule, MTB had 1.5B of revenue, not
+9.3B. A mortgage REIT (NLY, AGNC) has no revenue total and stays `FAIL`. The filing
+date of a period comes from the revenue fact or the contract-revenue fact.
+
+**55. A formula value that is larger than its total is not used.** If a formula gives
+a value that is more than 2% larger than a total that must contain it (the `[[within]]`
+rules of the registry), two terms contain the same amount. The variable then has no
+value, the source text says why, and the finding is `formula_not_used` (ASTS: the
+short-term investments are inside the cash line; INCY 2018 and VMRK 2022: total debt).
+A value from a tag is not removed: it stays, with the finding `exceeds_total` (`FAIL`).
+
+**56. `mapcheck` judges a bank, an insurer and a REIT, but the DCF engines do not fit
+them.** The status of these company types says that revenue, net income, total assets,
+equity and the share count are there. It does not say that a free-cash-flow DCF gives
+a correct value. A company with no revenue in the latest three fiscal years is `N/A`.
 
 ## Model layer (IBM v4 / driver engine)
 

@@ -7,8 +7,10 @@
 //! - the instance document (`*_htm.xml`): the value of each tag, company-specific
 //!   tags included, for each context (period, and segment if the fact has one).
 //!
-//! This module reads the consolidated values of the fiscal year only. Facts with a
-//! segment are counted but not used (PLANNING/tickets.md, Ticket 7).
+//! This module reads the consolidated values of each fiscal year in the filing (the
+//! cash-flow statement has three years). A fact with one segment member is kept for
+//! one use: a tag that has no consolidated value (`member_value`). Facts with two or
+//! more segment members are counted but not used (PLANNING/tickets.md, Ticket 7).
 
 use crate::dates;
 use crate::registry::Registry;
@@ -19,7 +21,9 @@ use std::path::Path;
 use std::sync::OnceLock;
 
 pub const SUM_TOLERANCE: f64 = 0.005;
+pub const NEAR_DAYS: i64 = 14; // two period ends this near are one period
 const XBRLI: &str = "http://www.xbrl.org/2003/instance";
+const XBRLDI: &str = "http://xbrl.org/2006/xbrldi";
 const STANDARD_PREFIXES: [&str; 11] =
     ["us-gaap", "srt", "dei", "ecd", "cyd", "country", "currency", "exch", "naics", "sic", "stpr"];
 
@@ -35,6 +39,7 @@ pub const LIABILITY_TOTALS: [&str; 2] = ["us-gaap_Liabilities", "us-gaap_Liabili
 
 struct Patterns {
     capex: Regex,
+    capex_label: Regex,
     intangibles: Regex,
     not_a_payment: Regex,
     da: Regex,
@@ -50,7 +55,13 @@ fn patterns() -> &'static Patterns {
         Patterns {
             // Payments for long-life assets of the business: equipment and software
             // (PLANNING/RULES.md R2). Purchased intangibles are a separate pattern.
-            capex: re("PropertyPlantAndEquipment|ProductiveAssets|CapitalExpenditure|CapitalImprovements|OilAndGasProperty|Software|Construction|PropertyAndEquipment"),
+            // An oil company: the payments to explore and develop, not the purchase of
+            // properties from other companies. A rental company: the rental equipment.
+            // A utility: nuclear fuel and power-plant investments.
+            capex: re("Equipment|ProductiveAssets|CapitalExpenditure|CapitalImprovements|ExploreAndDevelop|ToDevelop|DevelopRealEstate|Redevelop|Software|Construction|FixedAssets|FurnitureAndFixtures|AvailableForOperatingLease|NuclearFuel|IndependentPower"),
+            // A filer can use a tag with a different name for its capex line. The label
+            // of the line in the statement says what the line is.
+            capex_label: re("capital expenditure|purchases? of property|additions to property"),
             intangibles: re("IntangibleAssets|Spectrum|Licenses"),
             not_a_payment: re("^Proceeds|Businesses|Acquisitions?Net"),
             da: re("Depreciation|Amortization|Depletion"),
@@ -132,13 +143,45 @@ impl Statement {
     }
 }
 
+/// A fact that has one segment member, for example the capex of one business segment.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MemberFact {
+    pub axis: String,
+    pub member: String,
+    pub value: f64,
+}
+
+/// Tag -> the facts of the tag that have one segment member.
+pub type Members = HashMap<String, Vec<MemberFact>>;
+
+/// An earlier fiscal year in the filing (the comparison columns).
+#[derive(Debug, Clone)]
+pub struct FilingYear {
+    pub end: String,
+    pub statements: Vec<Statement>,
+    /// Consolidated values: tag -> value.
+    pub values: HashMap<String, f64>,
+    pub members: Members,
+}
+
+/// One fiscal year of a filing.
+pub struct YearView<'a> {
+    pub statements: &'a [Statement],
+    pub values: &'a HashMap<String, f64>,
+    pub members: &'a Members,
+}
+
 #[derive(Debug, Clone)]
 pub struct Filing {
     pub ticker: String,
     pub accession: String,
     pub fiscal_year_end: Option<String>,
+    /// The statements with the values of the fiscal year of the filing.
     pub statements: Vec<Statement>,
-    /// Numeric facts in the instance document, and those with a segment (not used yet).
+    pub values: HashMap<String, f64>,
+    pub members: Members,
+    pub earlier: Vec<FilingYear>,
+    /// Numeric facts in the instance document, and those with a segment.
     pub facts_total: usize,
     pub facts_with_segment: usize,
 }
@@ -147,6 +190,63 @@ impl Filing {
     pub fn statement(&self, kind: &str) -> Option<&Statement> {
         self.statements.iter().find(|s| s.kind == kind)
     }
+
+    /// The statements and the member facts of the fiscal year that ends on `end`
+    /// (or not more than 14 days from it).
+    pub fn year(&self, end: &str) -> Option<YearView<'_>> {
+        let near = |other: &str| match (dates::parse(end), dates::parse(other)) {
+            (Some(a), Some(b)) => (a - b).abs() <= NEAR_DAYS,
+            _ => end == other,
+        };
+        if self.fiscal_year_end.as_deref().map(near).unwrap_or(false) {
+            return Some(YearView { statements: &self.statements, values: &self.values, members: &self.members });
+        }
+        self.earlier.iter().find(|y| near(&y.end)).map(|y| YearView { statements: &y.statements, values: &y.values, members: &y.members })
+    }
+}
+
+/// The value of a tag that has no consolidated fact, from its facts with one segment
+/// member. The result has a text that says how the value was made.
+/// - `largest_only` (share counts): the largest member. A company with two share
+///   classes gives the count of each class; the largest class is the count that
+///   agrees with the earnings per share of the ticker.
+/// - A member of the legal-entity axis is not used.
+/// - Other tags: the sum of the members of one axis. If one member is equal to the sum
+///   of the other members, it is their total, and it is the value.
+/// - Two or more axes: the axis with the largest result (the full breakdown).
+pub fn member_value(facts: &[MemberFact], largest_only: bool) -> Option<(f64, String)> {
+    let mut axes: Vec<(&str, Vec<&MemberFact>)> = Vec::new();
+    // A member of the legal-entity axis is a subsidiary that files in the same
+    // document (a utility and its parent). Its value is not the group value.
+    for fact in facts.iter().filter(|f| f.axis != "dei:LegalEntityAxis") {
+        match axes.iter_mut().find(|(axis, _)| *axis == fact.axis) {
+            Some((_, list)) => {
+                if !list.iter().any(|f| f.member == fact.member) {
+                    list.push(fact);
+                }
+            }
+            None => axes.push((&fact.axis, vec![fact])),
+        }
+    }
+    axes.sort_by(|a, b| a.0.cmp(b.0));
+    let mut best: Option<(f64, String)> = None;
+    for (axis, list) in axes {
+        let largest = list.iter().copied().max_by(|a, b| a.value.abs().total_cmp(&b.value.abs()))?;
+        let rest: f64 = list.iter().filter(|f| f.member != largest.member).map(|f| f.value).sum();
+        let result = if largest_only {
+            (largest.value, format!("the largest member {} of {axis}", largest.member))
+        } else if list.len() == 1 {
+            (largest.value, format!("the member {} of {axis}", largest.member))
+        } else if (largest.value - rest).abs() <= SUM_TOLERANCE * largest.value.abs() {
+            (largest.value, format!("the member {} of {axis}, the total of the other members", largest.member))
+        } else {
+            (largest.value + rest, format!("sum of {} members of {axis}", list.len()))
+        };
+        if best.as_ref().map(|b| result.0.abs() > b.0.abs()).unwrap_or(true) {
+            best = Some(result);
+        }
+    }
+    best
 }
 
 /// "us-gaap_Assets" -> "total_assets", for each tag in the registry.
@@ -177,12 +277,43 @@ fn statement_kind(long_name: &str) -> Option<&'static str> {
     }
 }
 
-pub struct InstanceValues {
-    /// Consolidated values of the fiscal year: tag -> value.
+/// The values of one fiscal year in the instance document.
+#[derive(Debug, Clone, Default)]
+pub struct YearValues {
+    pub end: String,
+    /// Consolidated values (facts with no segment): tag -> value.
     pub values: HashMap<String, f64>,
+    pub members: Members,
+}
+
+pub struct InstanceValues {
+    /// The fiscal year of the filing first, then the earlier fiscal years (latest first).
+    pub years: Vec<YearValues>,
     pub fiscal_year_end: Option<String>,
     pub facts_total: usize,
     pub facts_with_segment: usize,
+}
+
+struct Context {
+    start: Option<String>,
+    end: String,
+    /// Number of segment members.
+    segments: usize,
+    /// (axis, member) if the context has one explicit segment member.
+    member: Option<(String, String)>,
+}
+
+impl Context {
+    /// True for a balance date, and for a flow that covers a full fiscal year.
+    fn annual_or_instant(&self) -> bool {
+        match &self.start {
+            None => true,
+            Some(start) => match (dates::parse(&self.end), dates::parse(start)) {
+                (Some(e), Some(s)) => (350..=380).contains(&(e - s)),
+                _ => false,
+            },
+        }
+    }
 }
 
 /// Read the instance document. `tag_of` maps (namespace URI, local name) to the tag
@@ -193,8 +324,7 @@ pub fn parse_instance(xml: &str, tag_of: &HashMap<(String, String), String>) -> 
     let doc = roxmltree::Document::parse_with_options(xml, options).map_err(|e| format!("instance document: {e}"))?;
     let root = doc.root_element();
 
-    // context id -> (start, end, has segment)
-    let mut contexts: HashMap<&str, (Option<String>, String, bool)> = HashMap::new();
+    let mut contexts: HashMap<&str, Context> = HashMap::new();
     for ctx in root.children().filter(|n| n.has_tag_name((XBRLI, "context"))) {
         let Some(id) = ctx.attribute("id") else { continue };
         let Some(period) = ctx.children().find(|n| n.has_tag_name((XBRLI, "period"))) else { continue };
@@ -208,15 +338,24 @@ pub fn parse_instance(xml: &str, tag_of: &HashMap<(String, String), String>) -> 
         let instant = text_of("instant");
         let start = text_of("startDate");
         let Some(end) = instant.clone().or_else(|| text_of("endDate")) else { continue };
-        let has_segment = ctx
+        let members: Vec<roxmltree::Node> = ctx
             .children()
             .filter(|n| n.has_tag_name((XBRLI, "entity")))
-            .any(|entity| entity.children().any(|n| n.has_tag_name((XBRLI, "segment"))));
-        contexts.insert(id, (if instant.is_some() { None } else { start }, end, has_segment));
+            .flat_map(|entity| entity.children().filter(|n| n.has_tag_name((XBRLI, "segment"))))
+            .flat_map(|segment| segment.children().filter(|n| n.is_element()))
+            .collect();
+        let member = match members.as_slice() {
+            [one] if one.has_tag_name((XBRLDI, "explicitMember")) => match (one.attribute("dimension"), one.text()) {
+                (Some(axis), Some(member)) => Some((axis.trim().to_string(), member.trim().to_string())),
+                _ => None,
+            },
+            _ => None,
+        };
+        contexts.insert(id, Context { start: if instant.is_some() { None } else { start }, end, segments: members.len(), member });
     }
 
     let mut fiscal_year_end: Option<String> = None;
-    let mut raw: Vec<(&String, &str, f64)> = Vec::new();
+    let mut raw: Vec<(&String, &Context, f64)> = Vec::new();
     let (mut total, mut with_segment) = (0usize, 0usize);
     for element in root.children().filter(|n| n.is_element()) {
         let Some(reference) = element.attribute("contextRef") else { continue };
@@ -235,39 +374,52 @@ pub fn parse_instance(xml: &str, tag_of: &HashMap<(String, String), String>) -> 
         }
         let Ok(value) = text.parse::<f64>() else { continue };
         total += 1;
-        if context.2 {
+        if context.segments > 0 {
             with_segment += 1;
+        }
+        if context.segments > 0 && context.member.is_none() {
+            continue;
+        }
+        if !context.annual_or_instant() {
             continue;
         }
         if let Some(tag) = tag_of.get(&(uri.to_string(), name.to_string())) {
-            raw.push((tag, reference, value));
+            raw.push((tag, context, value));
         }
     }
 
     if fiscal_year_end.is_none() {
-        fiscal_year_end = contexts.values().filter(|c| !c.2).map(|c| c.1.clone()).max();
+        fiscal_year_end = contexts.values().filter(|c| c.segments == 0).map(|c| c.end.clone()).max();
     }
-    let mut values = HashMap::new();
+    let mut years: Vec<YearValues> = Vec::new();
     if let Some(end) = &fiscal_year_end {
-        let end_day = dates::parse(end);
-        for (tag, reference, value) in raw {
-            let (start, context_end, _) = &contexts[reference];
-            if context_end != end {
-                continue;
-            }
-            if let Some(start) = start {
-                let days = match (end_day, dates::parse(start)) {
-                    (Some(e), Some(s)) => e - s,
-                    _ => continue,
-                };
-                if !(350..=380).contains(&days) {
-                    continue;
+        // The fiscal years in the filing: the ends of the flows with no segment.
+        let mut ends: Vec<&String> = contexts
+            .values()
+            .filter(|c| c.segments == 0 && c.start.is_some() && c.annual_or_instant() && c.end < *end)
+            .map(|c| &c.end)
+            .collect();
+        ends.sort();
+        ends.dedup();
+        ends.reverse();
+        years.push(YearValues { end: end.clone(), ..Default::default() });
+        years.extend(ends.into_iter().map(|e| YearValues { end: e.clone(), ..Default::default() }));
+        for (tag, context, value) in raw {
+            let Some(year) = years.iter_mut().find(|y| y.end == context.end) else { continue };
+            match &context.member {
+                None => {
+                    year.values.entry(tag.clone()).or_insert(value);
+                }
+                Some((axis, member)) => {
+                    let list = year.members.entry(tag.clone()).or_default();
+                    if !list.iter().any(|f| f.axis == *axis && f.member == *member) {
+                        list.push(MemberFact { axis: axis.clone(), member: member.clone(), value });
+                    }
                 }
             }
-            values.entry(tag.clone()).or_insert(value);
         }
     }
-    Ok(InstanceValues { values, fiscal_year_end, facts_total: total, facts_with_segment: with_segment })
+    Ok(InstanceValues { years, fiscal_year_end, facts_total: total, facts_with_segment: with_segment })
 }
 
 /// The income statement, the balance sheet and the cash-flow statement as trees.
@@ -296,7 +448,8 @@ pub fn build_statements(meta: &Value, values: &HashMap<String, f64>) -> Vec<Stat
 
     let mut statements = Vec::new();
     let mut seen: HashSet<&str> = HashSet::new();
-    for (_, report) in ordered {
+    // Second pass: a filer with one statement for income and comprehensive income.
+    for (_, report, combined) in ordered.iter().map(|(n, r)| (n, *r, false)).chain(ordered.iter().map(|(n, r)| (n, *r, true))) {
         if report.get("groupType").and_then(Value::as_str) != Some("statement") {
             continue;
         }
@@ -304,7 +457,13 @@ pub fn build_statements(meta: &Value, values: &HashMap<String, f64>) -> Vec<Stat
             continue;
         }
         let long_name = report.get("longName").and_then(Value::as_str).unwrap_or("");
-        let Some(kind) = statement_kind(long_name) else { continue };
+        let kind = if combined {
+            let text = long_name.to_lowercase();
+            if text.contains("comprehensive") && !text.contains("parenthetical") { Some("income") } else { None }
+        } else {
+            statement_kind(long_name)
+        };
+        let Some(kind) = kind else { continue };
         if seen.contains(kind) {
             continue;
         }
@@ -373,24 +532,43 @@ pub fn load_filing(ticker: &str, folder: &Path) -> Result<Filing, String> {
     }
     let xml = std::fs::read_to_string(&instance_path).map_err(|e| format!("{}: {e}", instance_path.display()))?;
     let instance = parse_instance(&xml, &tag_of)?;
-    Ok(Filing {
+    let accession = folder.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+    Ok(make_filing(ticker, accession, &meta, instance))
+}
+
+pub fn make_filing(ticker: &str, accession: String, meta: &Value, instance: InstanceValues) -> Filing {
+    let mut years = instance.years.into_iter();
+    let first = years.next().unwrap_or_default();
+    Filing {
         ticker: ticker.to_uppercase(),
-        accession: folder.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default(),
+        accession,
         fiscal_year_end: instance.fiscal_year_end,
-        statements: build_statements(&meta, &instance.values),
+        statements: build_statements(meta, &first.values),
+        values: first.values,
+        members: first.members,
+        earlier: years
+            .map(|y| FilingYear { statements: build_statements(meta, &y.values), end: y.end, values: y.values, members: y.members })
+            .collect(),
         facts_total: instance.facts_total,
         facts_with_segment: instance.facts_with_segment,
-    })
+    }
 }
 
 /// The top lines with a value whose tag matches the pattern. `under`: only lines
 /// below one of these tags. A line below a line that matches is not in the result:
 /// the parent already contains it, and a sum of the two counts the amount two times.
 pub fn lines_matching<'a>(statement: Option<&'a Statement>, pattern: &Regex, under: &[&str], exclude: Option<&Regex>) -> Vec<&'a Line> {
+    lines_matching_label(statement, pattern, None, under, exclude)
+}
+
+/// The same, and a line whose label matches `label` is also in the result.
+pub fn lines_matching_label<'a>(statement: Option<&'a Statement>, pattern: &Regex, label: Option<&Regex>, under: &[&str], exclude: Option<&Regex>) -> Vec<&'a Line> {
     let Some(statement) = statement else { return Vec::new() };
-    fn visit<'a>(line: &'a Line, pattern: &Regex, exclude: Option<&Regex>, seen: &mut HashSet<&'a str>, out: &mut Vec<&'a Line>) {
+    let pattern = &(pattern, label);
+    fn visit<'a>(line: &'a Line, pattern: &(&Regex, Option<&Regex>), exclude: Option<&Regex>, seen: &mut HashSet<&'a str>, out: &mut Vec<&'a Line>) {
         let name = local(&line.tag);
-        if line.value.is_some() && pattern.is_match(name) && !exclude.map(|e| e.is_match(name)).unwrap_or(false) {
+        let matches = pattern.0.is_match(name) || pattern.1.map(|l| l.is_match(&line.label)).unwrap_or(false);
+        if line.value.is_some() && matches && !exclude.map(|e| e.is_match(name)).unwrap_or(false) {
             if seen.insert(line.tag.as_str()) {
                 out.push(line);
             }
@@ -417,8 +595,22 @@ pub fn lines_matching<'a>(statement: Option<&'a Statement>, pattern: &Regex, und
 }
 
 pub fn capex_lines(filing: &Filing) -> Vec<&Line> {
+    capex_lines_in(filing.statement("cash"))
+}
+
+/// The capital expenditure lines in the investing section of a cash-flow statement.
+pub fn capex_lines_in(cash: Option<&Statement>) -> Vec<&Line> {
     let p = patterns();
-    lines_matching(filing.statement("cash"), &p.capex, &INVESTING_TOTALS, Some(&p.not_a_payment))
+    lines_matching_label(cash, &p.capex, Some(&p.capex_label), &INVESTING_TOTALS, Some(&p.not_a_payment))
+}
+
+/// True if the cash-flow statement has an investing section with lines that have values.
+pub fn has_investing_lines(cash: Option<&Statement>) -> bool {
+    let Some(cash) = cash else { return false };
+    cash.lines()
+        .into_iter()
+        .filter(|l| INVESTING_TOTALS.contains(&l.tag.as_str()))
+        .any(|total| total.children.iter().any(|c| c.value.is_some()))
 }
 
 pub fn intangible_purchase_lines(filing: &Filing) -> Vec<&Line> {
@@ -495,7 +687,7 @@ pub fn report(registry: &Registry, filing: &Filing, statement: Option<&str>, foc
     let _ = writeln!(out, "\n{}", "=".repeat(110));
     let _ = writeln!(
         out,
-        "{}  10-K {}  fiscal year end {}  |  {} numeric facts, {:.0}% with a segment (not used yet)  |  values in $B",
+        "{}  10-K {}  fiscal year end {}  |  {} numeric facts, {:.0}% with a segment  |  values in $B",
         filing.ticker,
         filing.accession,
         filing.fiscal_year_end.as_deref().unwrap_or("-"),
@@ -658,17 +850,24 @@ mod tests {
             fact("us-gaap", "Revenues", "fy", 1000.0),
             fact("us-gaap", "Revenues", "q4", 270.0),
             fact("us-gaap", "Revenues", "segment", 600.0),
+            fact("us-gaap", "CostOfRevenue", "two", 300.0),
+            fact("us-gaap", "Revenues", "prior", 900.0),
+            fact("us-gaap", "PaymentsToAcquirePropertyPlantAndEquipment", "prior", 45.0),
+            fact("us-gaap", "NetCashProvidedByUsedInInvestingActivities", "prior", -45.0),
             fact("us-gaap", "CostOfRevenue", "fy", 560.0),
             fact("us-gaap", "GrossProfit", "fy", 440.0),
         ]
         .concat();
         let entity = "<entity><identifier scheme=\"http://www.sec.gov/CIK\">1</identifier></entity>";
         let segment = "<entity><identifier scheme=\"http://www.sec.gov/CIK\">1</identifier><segment><xbrldi:explicitMember dimension=\"us-gaap:StatementBusinessSegmentsAxis\">acme:CloudMember</xbrldi:explicitMember></segment></entity>";
+        let two = segment.replace("</segment>", "<xbrldi:explicitMember dimension=\"srt:StatementGeographicalAxis\">country:US</xbrldi:explicitMember></segment>");
         format!(
             "<?xml version=\"1.0\" encoding=\"utf-8\"?><xbrl xmlns=\"http://www.xbrl.org/2003/instance\" xmlns:us-gaap=\"{GAAP}\" xmlns:acme=\"{ACME}\" xmlns:dei=\"http://xbrl.sec.gov/dei/2025\" xmlns:xbrldi=\"http://xbrl.org/2006/xbrldi\">\
              <context id=\"fy\">{entity}<period><startDate>2024-01-01</startDate><endDate>2024-12-31</endDate></period></context>\
              <context id=\"q4\">{entity}<period><startDate>2024-10-01</startDate><endDate>2024-12-31</endDate></period></context>\
              <context id=\"segment\">{segment}<period><startDate>2024-01-01</startDate><endDate>2024-12-31</endDate></period></context>\
+             <context id=\"two\">{two}<period><startDate>2024-01-01</startDate><endDate>2024-12-31</endDate></period></context>\
+             <context id=\"prior\">{entity}<period><startDate>2023-01-01</startDate><endDate>2023-12-31</endDate></period></context>\
              <context id=\"now\">{entity}<period><instant>2024-12-31</instant></period></context>\
              <context id=\"before\">{entity}<period><instant>2023-12-31</instant></period></context>\
              <dei:DocumentPeriodEndDate contextRef=\"fy\">2024-12-31</dei:DocumentPeriodEndDate>{facts}</xbrl>"
@@ -683,18 +882,54 @@ mod tests {
         }
         let instance = parse_instance(&instance(), &tag_of).unwrap();
         assert_eq!(instance.fiscal_year_end.as_deref(), Some("2024-12-31"));
-        assert_eq!(instance.values["us-gaap_Revenues"], 1000.0); // not the quarter, not the segment
-        assert_eq!(instance.values["us-gaap_LongTermDebtNoncurrent"], 400.0); // not the prior year
-        assert_eq!(instance.values["acme_PaymentsToAcquireAndDevelopSoftware"], 30.0);
-        assert_eq!((instance.facts_total, instance.facts_with_segment), (24, 1));
-        Filing {
-            ticker: "ACME".into(),
-            accession: "0000000001-25-000001".into(),
-            fiscal_year_end: instance.fiscal_year_end,
-            statements: build_statements(&meta, &instance.values),
-            facts_total: instance.facts_total,
-            facts_with_segment: instance.facts_with_segment,
-        }
+        let year = &instance.years[0];
+        assert_eq!(year.values["us-gaap_Revenues"], 1000.0); // not the quarter, not the segment
+        assert_eq!(year.values["us-gaap_LongTermDebtNoncurrent"], 400.0); // not the prior year
+        assert_eq!(year.values["acme_PaymentsToAcquireAndDevelopSoftware"], 30.0);
+        assert_eq!((instance.facts_total, instance.facts_with_segment), (28, 2));
+        make_filing("ACME", "0000000001-25-000001".into(), &meta, instance)
+    }
+
+    #[test]
+    fn earlier_fiscal_year_and_member_facts_are_kept() {
+        let f = filing();
+        assert_eq!(f.earlier.len(), 1);
+        assert_eq!(f.earlier[0].end, "2023-12-31");
+        let year = f.year("2023-12-31").unwrap();
+        let cash = year.statements.iter().find(|s| s.kind == "cash").unwrap();
+        assert_eq!(cash.find("us-gaap_PaymentsToAcquirePropertyPlantAndEquipment").unwrap().value, Some(45.0));
+        // The fiscal year end of the company facts can be some days from the filing date.
+        assert!(f.year("2024-12-28").is_some() && f.year("2022-12-31").is_none());
+        let members = f.year("2024-12-31").unwrap().members;
+        assert_eq!(members["us-gaap_Revenues"], vec![MemberFact { axis: "us-gaap:StatementBusinessSegmentsAxis".into(), member: "acme:CloudMember".into(), value: 600.0 }]);
+        // A fact with two segment members is not kept.
+        assert!(!members.contains_key("us-gaap_CostOfRevenue"));
+    }
+
+    fn member(axis: &str, name: &str, value: f64) -> MemberFact {
+        MemberFact { axis: axis.into(), member: name.into(), value }
+    }
+
+    #[test]
+    fn member_value_is_a_sum_a_total_member_or_the_largest_member() {
+        // The members of one axis are the parts: the value is the sum.
+        let parts = [member("a:TypeAxis", "x:Ongoing", 3824.0), member("a:TypeAxis", "x:Plant", 812.0)];
+        assert_eq!(member_value(&parts, false).unwrap().0, 4636.0);
+        // One member is the total of the other members: it is counted one time.
+        let nested = [member("a:ProductAxis", "x:All", 8920.0), member("a:ProductAxis", "x:Made", 7229.0), member("a:ProductAxis", "x:Bought", 1691.0)];
+        let (value, text) = member_value(&nested, false).unwrap();
+        assert_eq!(value, 8920.0);
+        assert!(text.contains("x:All") && text.contains("total of the other members"));
+        // Share classes: the largest class, not the sum.
+        let classes = [member("a:ClassAxis", "x:A", 1907.0), member("a:ClassAxis", "x:B", 73.0)];
+        assert_eq!(member_value(&classes, true).unwrap().0, 1907.0);
+        // A subsidiary that files in the same document is not the group.
+        let entities = [member("dei:LegalEntityAxis", "x:Subsidiary", 90.0)];
+        assert!(member_value(&entities, false).is_none());
+        // Two axes: the axis with the full breakdown.
+        let two = [member("a:ProductAxis", "x:P1", 60.0), member("a:ProductAxis", "x:P2", 40.0), member("a:PartnerAxis", "x:K", 5.0)];
+        assert_eq!(member_value(&two, false).unwrap().0, 100.0);
+        assert!(member_value(&[], false).is_none());
     }
 
     fn tags(lines: Vec<&Line>) -> Vec<&str> {

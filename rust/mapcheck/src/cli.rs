@@ -55,14 +55,28 @@ impl Args {
     }
 }
 
-/// One ticker for each line; `#` starts a comment.
+/// One ticker for each line; `#` starts a comment. A line can have the SEC company
+/// number (CIK) after the ticker: `IBM 51143`.
 pub fn read_ticker_file(path: &str) -> Result<Vec<String>, String> {
+    Ok(read_ticker_ciks(path)?.into_iter().map(|(ticker, _)| ticker).collect())
+}
+
+/// (ticker, CIK if the line has one) for each line of a ticker file.
+pub fn read_ticker_ciks(path: &str) -> Result<Vec<(String, Option<String>)>, String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
-    Ok(text
-        .lines()
-        .map(|l| l.split('#').next().unwrap_or("").trim().to_uppercase())
-        .filter(|l| !l.is_empty())
-        .collect())
+    let mut out = Vec::new();
+    for line in text.lines() {
+        let mut words = line.split('#').next().unwrap_or("").split_whitespace();
+        let Some(ticker) = words.next() else { continue };
+        let cik = words.next().map(|c| c.trim_start_matches('0').to_string()).filter(|c| !c.is_empty());
+        if let Some(cik) = &cik {
+            if !cik.chars().all(|c| c.is_ascii_digit()) {
+                return Err(format!("{path}: '{cik}' after {ticker} is not a CIK number"));
+            }
+        }
+        out.push((ticker.to_uppercase(), cik));
+    }
+    Ok(out)
 }
 
 #[cfg(test)]
@@ -80,6 +94,18 @@ mod tests {
         assert!(args.flag("--list") && !args.flag("--detail"));
         assert_eq!(args.tickers().unwrap(), vec!["IBM", "JNJ"]);
         assert_eq!(args.number("--top", 25usize).unwrap(), 25);
+    }
+
+    #[test]
+    fn ticker_file_can_have_a_cik_after_the_ticker() {
+        let path = std::env::temp_dir().join(format!("mapcheck-cli-test-{}.txt", std::process::id()));
+        std::fs::write(&path, "# list\nibm 0000051143  # Information Technology\nBRK-B 1067983\n\nmcd\n").unwrap();
+        let path_text = path.to_string_lossy().to_string();
+        assert_eq!(read_ticker_file(&path_text).unwrap(), vec!["IBM", "BRK-B", "MCD"]);
+        let ciks = read_ticker_ciks(&path_text).unwrap();
+        assert_eq!(ciks[0], ("IBM".to_string(), Some("51143".to_string())));
+        assert_eq!(ciks[2], ("MCD".to_string(), None));
+        std::fs::remove_file(&path).ok();
     }
 
     #[test]

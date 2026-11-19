@@ -21,7 +21,7 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 pip install -r requirements.txt -r requirements-dev.txt
 python -m pytest                       # 361 tests, no network
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
-cargo test --manifest-path rust/mapcheck/Cargo.toml    # 66 Rust tests
+cargo test --manifest-path rust/mapcheck/Cargo.toml    # 82 Rust tests
 ```
 
 Run all commands from the repo root.
@@ -119,7 +119,8 @@ cargo build --release --manifest-path rust/mapcheck/Cargo.toml    # one time, an
 M=rust/mapcheck/target/release/mapcheck
 $M values IBM                      # each variable with its value and its source
 $M IBM --detail                    # the checks for one ticker
-$M --tickers-file rust/mapcheck/universe/top500.txt     # the checks for many tickers
+$M --tickers-file rust/mapcheck/universe/sp500.txt      # the checks for many tickers (S&P 500)
+$M fetch --filings --gaps --tickers-file rust/mapcheck/universe/sp500.txt   # the 10-K of each company with a missing critical input
 $M filing IBM --focus              # the capex, depreciation and debt lines of the latest 10-K
 $M filing VZ --statement cash      # one statement of the 10-K as the company structures it
 $M crosscheck --tickers-file rust/mapcheck/universe/batch50.txt   # standard variables against the filing
@@ -130,25 +131,27 @@ On Windows the program is `rust\mapcheck\target\release\mapcheck.exe`.
 
 The checks answer four questions for each company: can the DCF use the inputs, was a
 value lost, was a value counted two times, and do the statements agree. Result on
-2026-11-19 for 472 of the 500 largest SEC registrants (2.8 seconds): 312 are US companies
-with a standard statement structure. Of these, 48 pass, 240 have a warning that a
-person must examine, and 24 fail (15 of these have no standard tag for capital
-expenditure). Read `rust/mapcheck/README.md` for the checks and the results.
+2026-11-19 for the S&P 500 (503 tickers, 5 seconds): 68 pass, 433 have a warning that a
+person must examine, 0 fail, and 2 are new companies with no annual report. The next 500
+companies of the SEC list: 20 pass, 457 have a warning, 7 fail with a known cause, 16
+are not judged. 24 of the S&P 500 companies get capital expenditure, revenue or the
+share count from their 10-K, because the standard SEC data has no value for them. Read
+`rust/mapcheck/README.md` for the checks and the results.
 
 Before you use a variable in a model, read these three results:
 
-- **Details inside lines.** For 166 of the 312 companies, a variable is a detail inside
-  a different line (for example income taxes payable inside accrued liabilities). If you
-  add the two, you count the amount two times. `mapcheck TICKER --detail` shows these as
-  `nested`.
-- **Total debt.** For 47 of the 312 companies, the estimates of total debt disagree.
+- **Details inside lines.** For 245 of the 501 S&P 500 companies, a variable is a detail
+  inside a different line (for example income taxes payable inside accrued liabilities).
+  If you add the two, you count the amount two times. `mapcheck TICKER --detail` shows
+  these as `nested`.
+- **Total debt.** For 61 of the 501 companies, the estimates of total debt disagree.
 - **Three weak inputs.** Capital expenditure, depreciation and amortization, and total
   debt are less reliable than the other core inputs. `mapcheck filing TICKER --focus`
   shows the lines of the company's own filing for these three inputs. Examples: IBM
   capital expenditure is $1.09B in the standard variable and $1.74B in the filing (IBM
   has a company tag for software); the ConocoPhillips capex has only a company tag
-  ($12.55B). The standard variables do not use the filing values yet (board ticket
-  `filing-values-in-variables`).
+  ($12.55B). The standard variables use the filing value only when the standard SEC
+  data has no value for a critical input (ConocoPhillips: yes; IBM: no).
 
 Limits: the SEC data source of the standard variables has no segment data and no
 company-specific tags. Banks, insurers and REITs have a different statement structure;

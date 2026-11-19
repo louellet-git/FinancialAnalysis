@@ -205,7 +205,8 @@ mapping logic; it runs `mapcheck import` and reads the store file
 | `run.rs`, `summary.rs` | One ticker, and all tickers in parallel (rayon); the JSON report; the text summary, the ticker list, the detail and the values listing. |
 | `http.rs`, `sec.rs` | HTTP with a delay between requests; the SEC ticker list, company facts and filing files, and the cache folders. The contact text for the SEC comes from the environment variable `SEC_USER_AGENT`. |
 | `store.rs` | Writes `data/processed/<TICKER>.json` for the Python valuation code. |
-| `filing.rs` | Filing-level XBRL, first part: reads `MetaLinks.json` and the instance document of the latest 10-K, builds the three statements as trees from the calculation data of the filer, and gives capex, depreciation and amortization, and total debt from the filing lines. Facts with a segment are counted, not used. |
+| `filing.rs` | Filing-level XBRL, first part: reads `MetaLinks.json` and the instance document of the latest 10-K, builds the three statements as trees from the calculation data of the filer, and gives capex, depreciation and amortization, and total debt from the filing lines. It keeps the three fiscal years of the 10-K and the facts with one segment member. |
+| `supplement.rs` | Gives a value from the 10-K for a critical input (revenue, capex, share count) that the company facts do not have: company-tag capex lines, a standard tag with segment members, share classes. The source text of the value starts with `filing`. |
 | `crosscheck.rs` | Compares the standard variable with the value from the filing lines for capex, depreciation and amortization, and total debt. No outside data source. |
 | `cli.rs`, `main.rs` | The command line: `check` (default), `fetch`, `import`, `values`, `filing`, `crosscheck`. |
 
@@ -238,6 +239,6 @@ model result.
 ## Tests
 
 `python -m pytest` from the repo root: 361 tests, all pass on 2026-11-19 (4 s).
-20 test modules are in `tests/`. `cargo test --manifest-path rust/mapcheck/Cargo.toml`: 66 Rust
+20 test modules are in `tests/`. `cargo test --manifest-path rust/mapcheck/Cargo.toml`: 82 Rust
 tests. The suites make no network calls; HTTP is mocked and
 files use `tmp_path`. Install `pytest` with `pip install -r requirements-dev.txt`.

@@ -14,6 +14,8 @@ Measured on 2026-11-19 against Yahoo Finance, 50 tickers: capex 73% with the sta
 
 Decision of the owner, 2026-11-19: capital expenditure in free cash flow is equipment and capitalized software, without purchased intangibles (`PLANNING/RULES.md` R2). The filing values must use the same definition; a company tag for software (IBM) is then included.
 
+Done on 2026-11-19 (branch `claude/admiring-allen-f5aaeq`): a critical input (revenue, capex, share count) that has no value in the company facts comes from the 10-K (`rust/mapcheck/src/supplement.rs`): company-tag capex lines, a standard tag with segment members, share classes. The filing reader keeps the three fiscal years of a 10-K and the facts with one segment member. A value that the company facts have is not replaced.
+
 Next steps:
 1. Replace the tag-name patterns with rules on the calculation tree (the lines under the investing total and the liabilities total), and correct the known errors (trap #43).
 2. Give the three standard variables the filing value when the filing has one, with the filing lines as the source. Keep the companyfacts value as a second variable.

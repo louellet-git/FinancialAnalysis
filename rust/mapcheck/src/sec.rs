@@ -16,6 +16,46 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 pub const TICKERS_URL: &str = "https://www.sec.gov/files/company_tickers.json";
+const EARLIER_REGISTRANTS: &str = include_str!("../universe/earlier_registrants.txt");
+
+/// The earlier SEC registrants of a ticker (universe/earlier_registrants.txt).
+pub fn earlier_registrants(ticker: &str) -> Vec<String> {
+    for line in EARLIER_REGISTRANTS.lines() {
+        let mut words = line.split('#').next().unwrap_or("").split_whitespace();
+        if words.next().map(|t| t.eq_ignore_ascii_case(ticker)).unwrap_or(false) {
+            return words.map(str::to_string).collect();
+        }
+    }
+    Vec::new()
+}
+
+/// Add the facts of an earlier registrant to the facts of the current registrant.
+/// The mapper selects the latest filing for each period, thus a fact that the two
+/// registrants have is not counted two times.
+pub fn merge_facts(current: &mut Value, earlier: &Value) {
+    let Some(namespaces) = earlier.get("facts").and_then(Value::as_object) else { return };
+    if !current.get("facts").map(Value::is_object).unwrap_or(false) {
+        current["facts"] = Value::Object(Default::default());
+    }
+    for (namespace, concepts) in namespaces {
+        let Some(concepts) = concepts.as_object() else { continue };
+        for (tag, concept) in concepts {
+            let target = &mut current["facts"][namespace][tag];
+            if target.is_null() {
+                *target = concept.clone();
+                continue;
+            }
+            let Some(units) = concept.get("units").and_then(Value::as_object) else { continue };
+            for (unit, entries) in units {
+                let Some(entries) = entries.as_array() else { continue };
+                match target["units"][unit].as_array_mut() {
+                    Some(list) => list.extend(entries.iter().cloned()),
+                    None => target["units"][unit] = Value::Array(entries.clone()),
+                }
+            }
+        }
+    }
+}
 
 fn facts_url(cik: &str) -> String {
     format!("https://data.sec.gov/api/xbrl/companyfacts/CIK{:0>10}.json", cik)
@@ -76,9 +116,20 @@ pub fn top_tickers(list: &[(String, String)], n: usize) -> Vec<String> {
 
 /// Get the company facts of one company and save them compressed. Returns the file size.
 pub fn fetch_facts(client: &mut Client, cache: &Path, ticker: &str, cik: &str) -> Result<u64, String> {
-    let body = client.get(&facts_url(cik)).map_err(|e| e.to_string())?;
-    // Make sure that the body is JSON before it goes into the cache.
-    let _: serde::de::IgnoredAny = serde_json::from_slice(&body).map_err(|e| format!("{ticker}: not JSON: {e}"))?;
+    let mut body = client.get(&facts_url(cik)).map_err(|e| e.to_string())?;
+    let earlier = earlier_registrants(ticker);
+    if earlier.is_empty() {
+        // Make sure that the body is JSON before it goes into the cache.
+        let _: serde::de::IgnoredAny = serde_json::from_slice(&body).map_err(|e| format!("{ticker}: not JSON: {e}"))?;
+    } else {
+        let mut facts: Value = serde_json::from_slice(&body).map_err(|e| format!("{ticker}: not JSON: {e}"))?;
+        for earlier_cik in earlier.iter().filter(|c| c.trim_start_matches('0') != cik.trim_start_matches('0')) {
+            let earlier_body = client.get(&facts_url(earlier_cik)).map_err(|e| e.to_string())?;
+            let earlier_facts: Value = serde_json::from_slice(&earlier_body).map_err(|e| format!("{ticker}: CIK {earlier_cik}: not JSON: {e}"))?;
+            merge_facts(&mut facts, &earlier_facts);
+        }
+        body = serde_json::to_vec(&facts).map_err(|e| e.to_string())?;
+    }
     let folder = cache.join(ticker);
     fs::create_dir_all(&folder).map_err(|e| e.to_string())?;
     let path = folder.join("company_facts.json.gz");
@@ -210,6 +261,19 @@ mod tests {
             archive_url("51143", "0000051143-26-000010", "MetaLinks.json"),
             "https://www.sec.gov/Archives/edgar/data/51143/000005114326000010/MetaLinks.json"
         );
+    }
+
+    #[test]
+    fn facts_of_an_earlier_registrant_are_added() {
+        assert_eq!(earlier_registrants("xom"), vec!["34088"]);
+        assert!(earlier_registrants("IBM").is_empty());
+        let mut current: Value = serde_json::from_str(r#"{"cik":2,"facts":{"us-gaap":{"Assets":{"label":"Assets","units":{"USD":[{"end":"2026-03-31","val":3}]}}}}}"#).unwrap();
+        let earlier: Value = serde_json::from_str(r#"{"cik":1,"facts":{"us-gaap":{"Assets":{"units":{"USD":[{"end":"2025-12-31","val":2}]}},"Revenues":{"units":{"USD":[{"end":"2025-12-31","val":9}]}}},"dei":{"X":{"units":{"shares":[{"end":"2025-12-31","val":1}]}}}}}"#).unwrap();
+        merge_facts(&mut current, &earlier);
+        assert_eq!(current["cik"], 2);
+        assert_eq!(current["facts"]["us-gaap"]["Assets"]["units"]["USD"].as_array().unwrap().len(), 2);
+        assert_eq!(current["facts"]["us-gaap"]["Revenues"]["units"]["USD"][0]["val"], 9);
+        assert_eq!(current["facts"]["dei"]["X"]["units"]["shares"][0]["val"], 1);
     }
 
     #[test]
