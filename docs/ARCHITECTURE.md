@@ -829,6 +829,40 @@ Plan for one year of SPX surfaces (the trait `OptionHistorySource` fits both for
 `cargo test --manifest-path rust/Cargo.toml --locked`: 473 Rust tests (455 + 17 + 1; 2 more are ignored). 36 tests are new (alpaca 10, intraday 3, option_iv 3, option_history 5, options_cli 4, fred_api 6,
 keys 3, price_cache 2). The traps are #230 to #244 of `docs/HIDDEN-ASSUMPTIONS.md`.
 
+## `fa sync`: one command for all cached data sets (`rust/src/sync/`, `rust/src/hostnet.rs`, 2026-11-20, branch `claude/data-sync`)
+
+`fa sync [TICKER...] [--tickers-file F] [--only A,B] [--skip A,B] [--force] [--dry-run] [--max-minutes N]` and `fa sync --status [TICKER...]`.
+The sync runs on request only. It brings the old data sets up to date and leaves the current ones. It calls the functions of the existing data commands; it has no copy of their logic and changes no cache rule.
+The table of the data sets, with their names, maximum ages and hosts, is in `docs/DATA-SOURCES.md`. The traps are #245 to #259 in `docs/HIDDEN-ASSUMPTIONS.md`.
+
+| Module | Function |
+|---|---|
+| `sync/dataset.rs` | The 13 data sets (`sec`, `filings`, `prices`, `intraday`, `estimates`, `earnings`, `options`, `rates`, `gsw`, `fred`, `futures`, `vix`, `bonds`), their maximum ages (one table), hosts and the request pauses of the hosts (`HOSTS`). |
+| `sync/config.rs` | The optional file `sync.toml`: ages, the default list of tickers, the option symbols, the intraday symbols. A wrong key is an error. |
+| `sync/calendar.rs` | Market days: weekends and the holidays of the New York Stock Exchange. A maximum age of 1 day counts market days. |
+| `sync/ledger.rs` | `data/raw/_sync/checked.json`: the date of the last good check of each item (for an item that has no record in its own cache). Not data; it can be deleted. |
+| `sync/fresh.rs` | Old or current, from the cache files and the ledger. No request. `old_data_warning` is the one function of the age check that the value commands use. |
+| `sync/plan.rs` | The plan: the items to run, the counts (current, old, no data), the requests for each host, the estimate of the time (the longest queue), the hints for missing keys. |
+| `sync/exec.rs` | The executor: one thread and one queue for each host, all hosts at the same time; a stable order; the stop flag and the time limit; the summary of each data set. It does not know the network (a test gives a fake runner). |
+| `sync/runner.rs` | The real runner: one job for each data set. |
+| `sync/interrupt.rs` | Ctrl+C (Unix signal, Windows console handler). |
+| `hostnet.rs` | One request slot for each host group: the pause of the host, never two requests to one host at the same time, the counts, the stop of a host for the run. |
+
+Flow. `fa sync` reads the config, the ticker list, the keys and `SEC_USER_AGENT`. It makes the plan from the cache files (no request). `--status` and `--dry-run` print the plan and end. Otherwise the executor starts
+one thread for each host. A thread runs the items of its host one after the other. At the end the summary has one line for each data set and one line for each host, the list of what stays old, and the command to run again.
+
+Rules.
+
+- Source order and fallbacks are the order of the existing code. The price cache keeps its source. A missing key is not an error; the summary says which key adds which source (the value of a key is never printed).
+- A block (HTTP 429, HTTP 403, a block page) stops that host for the run. Two connection failures in a row (timeout, closed connection) stop it too. The cache stays; the other hosts go on. A failure of one ticker does not stop the others.
+- The time limit of one request is 30 seconds, 60 seconds for the hosts with large files, and 90 seconds for the Atlanta Fed (`hostnet::timeout_of`). The sync has no wait after a block: the old 60-second waits of the price and the estimates clients are 0 in the sync.
+- Exit code 0 when no data set failed as a whole. A block of a fallback source alone, a data set that is "not available yet" (FedInvest at the end of the day), a skipped data set, and a stop by Ctrl+C or `--max-minutes` do not set the code 1.
+- Without `SEC_USER_AGENT`, `sec`, `filings` and the SEC part of `earnings` are skipped with one line.
+- The value commands do not start a sync: `fa dcf auto`, `fa verdict` and `fa estimates show` print one line `warning: old data for TICKER: ...; run: fa sync TICKER` when their data is older than its maximum age.
+
+Tests. They use a fake runner and temp folders (no network): the plan from a cache state (old, current, weekend, holiday), `--only`, `--skip`, `--force`, a blocked host, a failed ticker, the stop after N failures, the pause of each host,
+that two hosts overlap in time, the summary counts and the exit code, "not available yet", the config file, the continue after a stop, keys, a missing `SEC_USER_AGENT`, and that `--status` makes no request.
+
 ## The company report (`rust/src/report/`, `fa report`, 2026-11-19)
 
 `fa report TICKER [--price P] [--out FILE]` writes one HTML page. It is the Rust form of
@@ -912,7 +946,7 @@ ticket `option-backtest-rust`).
 
 ## Tests
 
-`cargo test --manifest-path rust/Cargo.toml --locked`: 473 Rust tests (455 + 17 + 1; 2 more are ignored) (the `fa` crate).
-`cargo test --manifest-path rust/mapcheck/Cargo.toml`: 89 Rust tests. The suites make no network calls and start no
+`cargo test --manifest-path rust/Cargo.toml --locked`: 552 Rust tests (534 + 17 + 1; 2 more are ignored) (the `fa` crate).
+`cargo test --manifest-path rust/mapcheck/Cargo.toml`: 91 Rust tests. The suites make no network calls and start no
 Python program; HTTP is replaced by a function that the test gives, and files are in a temp folder.
 No Python test remains (the last 211 Python tests were deleted on 2026-11-19 after each case had a Rust test).

@@ -23,6 +23,9 @@ struct CachingFake {
     stop: &'static AtomicBool,
     fail: Vec<(DataSet, String, String)>,
     block: Option<(String, DataSet)>,
+    not_yet: Vec<(DataSet, String)>,
+    /// (data set, N): the Nth call of the data set fails and stops its host, as the gate of `hostnet` does.
+    unreachable: Option<(DataSet, usize)>,
 }
 
 struct Shared(Arc<CachingFake>);
@@ -38,6 +41,17 @@ impl Runner for Shared {
         if let Some((host, set)) = &f.block {
             if item.set == *set {
                 return JobOutcome::new(Status::Blocked, "HTTP 429").blocked_host(host, "HTTP 429 for https://x");
+            }
+        }
+        if f.not_yet.iter().any(|(s, k)| *s == item.set && *k == item.key) {
+            return JobOutcome::new(Status::NotYet, "FedInvest has no end-of-day prices yet").requests(4);
+        }
+        if let Some((set, n)) = &f.unreachable {
+            if item.set == *set {
+                let seen = f.calls.lock().unwrap().iter().filter(|(s, _)| s == set).count();
+                let host = item.hosts[0].clone();
+                let why = "unreachable: 2 connection failures in a row (connection closed)";
+                return if seen >= *n { JobOutcome::new(Status::Blocked, "fred: unreachable").blocked_host(&host, why) } else { JobOutcome::new(Status::Failed, "connection closed") };
             }
         }
         if let Some((_, _, why)) = f.fail.iter().find(|(s, k, _)| *s == item.set && *k == item.key) {
@@ -76,7 +90,7 @@ impl Bench {
     }
 
     fn fake(&self) -> CachingFake {
-        CachingFake { cache: self.ctx.cache.clone(), today: self.ctx.today_text(), calls: Mutex::new(vec![]), count: AtomicUsize::new(0), stop_after: None, stop: self.stop, fail: vec![], block: None }
+        CachingFake { cache: self.ctx.cache.clone(), today: self.ctx.today_text(), calls: Mutex::new(vec![]), count: AtomicUsize::new(0), stop_after: None, stop: self.stop, fail: vec![], block: None, not_yet: vec![], unreachable: None }
     }
 
     /// Run one command line with a fake. Gives the text, the exit code and the fake.
@@ -297,4 +311,32 @@ fn the_rates_data_set_of_a_weekend_is_current_after_a_friday_run() {
     ledger.save().unwrap();
     let (_, _, fake) = b.run(&["--only", "gsw"], env(true, false), b.fake());
     assert!(fake.calls.lock().unwrap().is_empty(), "Friday data is current on a Saturday");
+}
+
+#[test]
+fn a_not_available_yet_item_is_no_failure_and_does_not_set_the_exit_code() {
+    let b = Bench::new("notyet", "2026-11-19");
+    let mut fake = b.fake();
+    fake.not_yet.push((DataSet::Bonds, "2026-11-18".into()));
+    let (text, code, _) = b.run(&["--only", "bonds"], env(true, false), fake);
+    assert_eq!(code, 0, "{text}");
+    assert!(text.contains("bonds 0 updated, 0 current, 0 no data, 0 failed, 0 blocked, 0 not tried, 1 not available yet"), "{text}");
+    assert!(text.contains("stays old:\nbonds 2026-11-18"), "{text}");
+    assert!(!text.contains("failed data set"), "{text}");
+}
+
+#[test]
+fn a_host_that_fails_in_the_same_way_in_sequence_is_reported_one_time_and_its_items_are_blocked() {
+    let b = Bench::new("unreach", "2026-11-19");
+    let mut fake = b.fake();
+    // The fake answers like the real runner: the second failure of the host stops it; the later items are blocked.
+    fake.unreachable = Some((DataSet::Fred, 2));
+    let (text, code, fake) = b.run(&["--only", "fred,gsw"], env(true, false), fake);
+    assert_eq!(code, 1, "{text}");
+    let fred_calls = fake.calls.lock().unwrap().iter().filter(|(s, _)| *s == DataSet::Fred).count();
+    assert_eq!(fred_calls, 2, "no request after the second failure");
+    assert!(text.contains("gsw 1 updated"), "the other host finishes: {text}");
+    assert!(text.contains("fred 0 updated") && text.contains("failed data set(s): fred"), "{text}");
+    assert!(text.contains("BLOCKED for this run (unreachable") , "{text}");
+    assert!(!text.contains("https://"), "the summary has no URL: {text}");
 }

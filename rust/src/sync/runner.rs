@@ -77,11 +77,10 @@ impl RealRunner {
         }
         let stopped: Vec<&String> = item.hosts.iter().filter(|h| hostnet::blocked(h).is_some()).collect();
         if stopped.len() == item.hosts.len() {
-            let (code, why) = hostnet::blocked(&item.hosts[0]).unwrap_or((0, String::new()));
-            let _ = code;
-            return JobOutcome::new(Status::Blocked, short(&why));
+            let (_, why) = hostnet::blocked(&item.hosts[0]).unwrap_or((0, String::new()));
+            return JobOutcome::new(Status::Blocked, format!("{}: {}", item.hosts[0], short(&why)));
         }
-        JobOutcome::new(Status::Failed, text)
+        JobOutcome::new(Status::Failed, short(&text))
     }
 
     /// The item is current: the answer when a cache file that the function would use is young.
@@ -294,7 +293,7 @@ impl RealRunner {
             estimates_cache::Status::Failed(w) => self.fail(item, &w).requests(requests),
             estimates_cache::Status::Blocked(w) => {
                 hostnet::block("nasdaq", 429, &w);
-                JobOutcome::new(Status::Blocked, short(&w)).requests(requests)
+                JobOutcome::new(Status::Blocked, format!("nasdaq: {}", short(&w))).requests(requests)
             }
         }
     }
@@ -345,7 +344,7 @@ impl RealRunner {
                 }
                 if self.keys.alpaca {
                     match options_cli::snapshot_alpaca(&self.ctx.repo, &self.ctx.cache, s, &today, self.force) {
-                        Ok(line) => return self.done(item, Status::Updated, format!("alpaca indicative feed (Cboe: {}); {}", short(&e), short(&line)), 1),
+                        Ok(line) => return self.done(item, Status::Updated, format!("alpaca indicative feed (Cboe: {}); {}", short(&e), hostnet::plain(&line)), 1),
                         Err(e2) => return self.fail(item, &format!("{e}; alpaca: {e2}")),
                     }
                 }
@@ -364,10 +363,10 @@ impl RealRunner {
         }
         let host = &item.hosts[0];
         if let Some((_, why)) = hostnet::blocked(host) {
-            return JobOutcome::new(Status::Blocked, short(&why));
+            return JobOutcome::new(Status::Blocked, format!("{host}: {}", short(&why)));
         }
         let why = hostnet::stats().get(host).and_then(|s| s.last_error.clone()).unwrap_or_else(|| "the download did not give a new file".into());
-        JobOutcome::new(Status::Failed, format!("{why}; the old file stays"))
+        JobOutcome::new(Status::Failed, format!("{}; the old file stays", short(&why)))
     }
 
     fn job_rates(&self, item: &PlanItem) -> JobOutcome {
@@ -418,6 +417,7 @@ impl RealRunner {
 
     fn job_futures(&self, item: &PlanItem) -> JobOutcome {
         crate::futures::ignore_cache_age(true);
+        let errors_before = hostnet::stats().get(&item.hosts[0]).map_or(0, |s| s.errors);
         let repo = &self.ctx.repo;
         let k = item.key.as_str();
         let result: Result<String, String> = if k == "vx" {
@@ -439,6 +439,12 @@ impl RealRunner {
                 // A function that uses the old file after a failed download says Ok: a stopped host shows it.
                 if let Some((_, why)) = hostnet::blocked(&item.hosts[0]) {
                     return JobOutcome::new(Status::Blocked, format!("{}; the old file stays", short(&why)));
+                }
+                // The function uses the old file when a download fails: an error of the host during the job shows it.
+                let after = hostnet::stats().get(&item.hosts[0]).cloned().unwrap_or_default();
+                if after.errors > errors_before {
+                    let why = after.last_error.map_or_else(|| "the download failed".to_string(), |e| short(&e));
+                    return JobOutcome::new(Status::Failed, format!("{why}; the old file stays")).requests(1);
                 }
                 self.done(item, Status::Updated, note, 1)
             }
@@ -472,18 +478,18 @@ impl RealRunner {
                 if file.is_file() {
                     self.done(item, Status::Updated, format!("FedInvest {date}, {} securities", q.len()), 4)
                 } else {
-                    JobOutcome::new(Status::Failed, format!("FedInvest has no end-of-day prices for {date} yet (the file is not kept)")).requests(4)
+                    JobOutcome::new(Status::NotYet, format!("FedInvest has no end-of-day prices for {date} yet")).requests(4)
                 }
             }
+            Err(e) if e.contains("gave no price rows") => JobOutcome::new(Status::NotYet, format!("FedInvest has no price rows for {date} yet")).requests(4),
             Err(e) => self.fail(item, &e),
         }
     }
 }
 
-/// The first 100 characters of a text, for a line of the summary.
+/// The short reason of a text, for a line of the summary: the HTTP code or the kind of error, with no URL.
 fn short(text: &str) -> String {
-    let t = text.trim();
-    t.chars().take(100).collect()
+    hostnet::reason(text)
 }
 
 impl Runner for RealRunner {

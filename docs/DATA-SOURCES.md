@@ -64,6 +64,9 @@ Data sets with no source for the past, with no payment:
 6. The SEC data sets (`sec`, `filings`, and the SEC part of `earnings`) need `SEC_USER_AGENT`. Without it the sync skips them and says so.
 7. One queue for each host (Nasdaq, Alpaca, Tiingo, Yahoo, Cboe, Treasury, New York Fed, FRED, Federal Reserve, BLS, TreasuryDirect, Fiscal Data, SEC, CFTC, Atlanta Fed). The hosts run at the same time. Two requests to one host never run at the same time.
 8. The age of a data set with a maximum age of 1 day is counted in market days: a weekend or a market holiday does not make the data old. `sync.toml` (optional) changes the ages.
+9. Two connection failures in a row (a timeout, a closed connection) stop a host for the run, as a block does. The summary says it one time. The time limit of one request is 30 seconds (60 seconds for the hosts with large files, 90 for the Atlanta Fed).
+10. A data set that the source has not published yet (FedInvest at the end of the day) is "not available yet". It is not a failure and does not set the exit code.
+11. The exit code is 0 when no data set failed as a whole. A block of a fallback source alone is not a failure.
 
 ## Facts not confirmed
 

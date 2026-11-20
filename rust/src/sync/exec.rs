@@ -26,6 +26,8 @@ pub enum Status {
     /// The source has no data for this key (an ETF has no SEC facts; the symbol is unknown).
     NoData,
     Failed,
+    /// The source has not published the data yet (a normal state, not a failure; for example FedInvest at the end of the day).
+    NotYet,
     /// All sources of the item are stopped by a block.
     Blocked,
     /// The item did not run (stop, time limit).
@@ -162,7 +164,7 @@ pub fn execute(plan: &Plan, runner: &dyn Runner, opts: &ExecOptions, stop: &Atom
                         Some((Status::NotTried, "time limit".into()))
                     } else {
                         let b = blocked.lock().unwrap_or_else(|e| e.into_inner());
-                        all_blocked(&item.hosts, &b).map(|(h, why)| (Status::Blocked, format!("{h} is stopped for this run ({why})")))
+                        all_blocked(&item.hosts, &b).map(|(h, why)| (Status::Blocked, format!("{h}: {}", crate::hostnet::reason(&why))))
                     };
                     if let Some((status, note)) = skip {
                         let mut r = not_tried(&note);
@@ -236,6 +238,7 @@ pub fn status_word(s: Status) -> &'static str {
         Status::Current => "current",
         Status::NoData => "no data",
         Status::Failed => "FAILED",
+        Status::NotYet => "not available yet",
         Status::Blocked => "BLOCKED",
         Status::NotTried => "not tried",
     }
@@ -251,8 +254,12 @@ pub struct SetSummary {
     pub failed: usize,
     pub blocked: usize,
     pub not_tried: usize,
-    /// The main reason of the failures and blocks, with the count.
+    /// Items that the source has not published yet. They are not failures and not counted for the exit code.
+    pub not_yet: usize,
+    /// The main reason of the failures, with the count.
     pub reason: Option<(String, usize)>,
+    /// The main reason of the blocks, with the count.
+    pub blocked_reason: Option<(String, usize)>,
 }
 
 impl SetSummary {
@@ -269,6 +276,7 @@ pub fn summarize(plan: &Plan, report: &RunReport) -> BTreeMap<DataSet, SetSummar
         out.entry(*set).or_default().current_before = c.current;
     }
     let mut reasons: BTreeMap<DataSet, BTreeMap<String, usize>> = BTreeMap::new();
+    let mut block_reasons: BTreeMap<DataSet, BTreeMap<String, usize>> = BTreeMap::new();
     for r in &report.results {
         let s = out.entry(r.item.set).or_default();
         match r.outcome.status {
@@ -281,15 +289,18 @@ pub fn summarize(plan: &Plan, report: &RunReport) -> BTreeMap<DataSet, SetSummar
             }
             Status::Blocked => {
                 s.blocked += 1;
-                *reasons.entry(r.item.set).or_default().entry(short_reason(&r.outcome.note)).or_default() += 1;
+                *block_reasons.entry(r.item.set).or_default().entry(short_reason(&r.outcome.note)).or_default() += 1;
             }
             Status::NotTried => s.not_tried += 1,
+            Status::NotYet => s.not_yet += 1,
         }
     }
+    let main = |map: BTreeMap<String, usize>| map.into_iter().max_by(|a, b| a.1.cmp(&b.1).then(b.0.cmp(&a.0)));
     for (set, map) in reasons {
-        if let Some((why, n)) = map.into_iter().max_by(|a, b| a.1.cmp(&b.1).then(b.0.cmp(&a.0))) {
-            out.entry(set).or_default().reason = Some((why, n));
-        }
+        out.entry(set).or_default().reason = main(map);
+    }
+    for (set, map) in block_reasons {
+        out.entry(set).or_default().blocked_reason = main(map);
     }
     out
 }
@@ -297,12 +308,11 @@ pub fn summarize(plan: &Plan, report: &RunReport) -> BTreeMap<DataSet, SetSummar
 /// A failure text without the parts that differ between items (the URL and the ticker), for the count of the main reason.
 pub fn short_reason(note: &str) -> String {
     let first: Vec<&str> = note.split_whitespace().collect();
-    // `HTTP 404 for https://...` becomes `HTTP 404`; other texts are cut at 80 characters.
+    // `HTTP 404 for https://...` becomes `HTTP 404`; a text of the form `host: reason` keeps the host; the URLs are cut out.
     if first.len() >= 2 && first[0] == "HTTP" && first[1].chars().all(|c| c.is_ascii_digit()) {
         return format!("HTTP {}", first[1]);
     }
-    let text = note.trim();
-    text.chars().take(80).collect()
+    crate::hostnet::plain(note)
 }
 
 #[cfg(test)]
@@ -441,6 +451,27 @@ pub(crate) mod tests {
         let rep = execute(&plan_of(vec![d, e]), &fake, &ExecOptions::default(), &AtomicBool::new(false), &quiet);
         assert_eq!(rep.results[1].outcome.status, Status::Blocked);
         assert_eq!(fake.calls.lock().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn a_stopped_host_does_not_delay_the_other_hosts_and_a_not_yet_item_is_no_failure() {
+        // The yahoo queue stops at its first item; the nasdaq queue of 4 items of 30 ms goes on at the same time.
+        let mut items: Vec<PlanItem> = ["A", "B", "C"].iter().map(|t| item(DataSet::Prices, t, "yahoo")).collect();
+        items.extend(["A", "B", "C", "D"].iter().map(|t| item(DataSet::Estimates, t, "nasdaq")));
+        items.push(item(DataSet::Bonds, "2026-11-19", "treasurydirect"));
+        let fake = Fake::new(30)
+            .answer(DataSet::Prices, "A", JobOutcome::new(Status::Blocked, "yahoo: HTTP 429").blocked_host("yahoo", "HTTP 429 for https://x"))
+            .answer(DataSet::Bonds, "2026-11-19", JobOutcome::new(Status::NotYet, "FedInvest has no end-of-day prices for 2026-11-19 yet"));
+        let rep = execute(&plan_of(items.clone()), &fake, &ExecOptions::default(), &AtomicBool::new(false), &quiet);
+        assert!(rep.elapsed < Duration::from_millis(250), "{:?}", rep.elapsed);
+        assert_eq!(fake.calls_of("nasdaq").len(), 4);
+        assert_eq!(fake.calls_of("yahoo").len(), 1);
+        let sum = summarize(&plan_of(items), &rep);
+        let bonds = &sum[&DataSet::Bonds];
+        assert_eq!((bonds.not_yet, bonds.failed, bonds.blocked), (1, 0, 0));
+        assert!(!bonds.failed_fully(), "not available yet is not a failure");
+        assert!(sum[&DataSet::Prices].failed_fully());
+        assert_eq!(status_word(Status::NotYet), "not available yet");
     }
 
     #[test]

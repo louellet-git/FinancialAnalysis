@@ -1706,6 +1706,71 @@ terms page names "Individual Use" and "Business Use" and refers to other documen
 pages. The flat-file path of the day file and the form of the index option ticker are not confirmed. The trait `OptionHistorySource` has no Massive implementation; a person must decide first (see the ticket).
 *Evidence:* `PLANNING/board/T-20261119-keyed-data-sources.md`.
 
+**245. `fa sync` does not run between two commands.** Owner decision of 2026-11-19: the sync runs on request only. Nobody copies a site that gives only the present (option chains, estimates) on a day
+when no person runs `fa sync`. That day is lost. The value commands (`fa dcf auto`, `fa verdict`, `fa estimates show`) never start a sync. They print one line when their data is old.
+*Evidence:* `rust/src/sync/mod.rs` (`command`); `PLANNING/board/T-20261119-data-sync.md`.
+
+**246. The age of a data set is the age of the newest of two records.** The records are the date in the cache file and the date in the ledger `data/raw/_sync/checked.json`. An item that the source does not know
+(an ETF has no SEC facts) or that a run did not change (no new bar on a weekend) has no new date in its cache. The ledger keeps the date of the check, so the next run does not ask again. The ledger is not data: delete it
+and the sync reads the cache dates only (more requests, no wrong data). A hand edit of a cache file does not change its age in the ledger.
+*Evidence:* `rust/src/sync/ledger.rs`, `rust/src/sync/fresh.rs`.
+
+**247. A maximum age of 1 day is counted in market days.** A weekend or a market holiday of the New York Stock Exchange does not make the data old. The holiday table is in the code (`rust/src/sync/calendar.rs`).
+A special closing day (a day of national mourning) is not in it: the age is then one day too high and the sync asks the source one more time. This error is safe. The estimates (7 days) are counted in calendar days.
+A data set of a source that publishes on the calendar day, not on the market day (the Treasury curves on a day with no auction), is also treated as a market-day data set: a weekend is not old.
+*Evidence:* `rust/src/sync/calendar.rs` (tests `holidays_of_2026_and_2027`, `the_age_does_not_grow_on_a_weekend_or_a_holiday`).
+
+**248. A block stops a host for the run, in `fa sync` only.** HTTP 429, HTTP 403 or a block page (HTML with a protection text instead of data) stops the host. The next request to that host makes no network call.
+The gate is off in all other commands, so their behavior is as before. A block of a fallback source is not a failure of the data set: the next source answers. A data set where no item gave data and some items
+were blocked or failed is a failure and sets the exit code 1.
+*Evidence:* `rust/src/hostnet.rs` (`paced`, test `the_gate_stops_a_host_after_a_block_and_not_before`); `rust/src/sync/exec.rs`.
+
+**249. Two connection failures in a row stop a host for the run.** A timeout, a closed connection, a DNS error or a TLS error is not an answer of the host. After 2 such errors in a row (`FAIL_LIMIT`) the sync stops the host and reports it
+one time, as for a block (code 0, text `unreachable`). An answer of the host (even HTTP 404) or a good request sets the count to 0. In the first real run (2026-11-20) 26 FRED series failed one after the other with
+the closed connection of the cloud container and took 13 minutes 50 seconds of the run of 14 minutes 25 seconds. A host that fails by chance two times in a row is also stopped: run the command again.
+*Evidence:* `rust/src/hostnet.rs` (`FAIL_LIMIT`, `is_connection_error`, test `the_gate_stops_a_host_after_a_block_and_not_before`).
+
+**250. The time limit of one request is a limit for each host.** The shared client had 60 seconds for all hosts. Now a host with small JSON answers has 30 seconds. A host with a large file (Federal Reserve, CFTC,
+Treasury, TreasuryDirect, Cboe) keeps 60 seconds. The Atlanta Fed spreadsheet has 90 seconds (it took 67 seconds in the cloud container). The SEC client of `mapcheck` keeps its own 60 seconds. A slow connection can need more than the limit for a large file: the item then fails and the old file stays.
+*Evidence:* `rust/src/hostnet.rs` (`timeout_of`), `rust/mapcheck/src/http.rs` (`Client::with_timeout`).
+
+**251. A function that falls back to an old file says "good".** `futures::load`, `forwards::load_with` and the loaders of the rates use the old cache file when the download fails, and return it with no error. A sync that
+trusts the return value would write "updated" for an old file. The runner checks the modification time of the file (rates, GSW, FRED) and the error count of the host (futures). Both checks are indirect: a download that
+fails and a second download that works in the same item can still look like a good item.
+*Evidence:* `rust/src/sync/runner.rs` (`refreshed`, `job_futures`); `rust/src/hostnet.rs` (`HostStat::errors`).
+
+**252. One queue for each host group, not for each address.** `api.nasdaq.com` is `nasdaq`; `query1` and `query2` of Yahoo are `yahoo`; the SEC has three names. The groups are in `hostnet::GROUPS`. A new site that is not in the
+table is its own group by host name. Two names of one real host in two groups would break the pause rule. The SEC client of `mapcheck` has its own pause (0.15 s) and is one thread; the sync adds a gap between two SEC items.
+*Evidence:* `rust/src/hostnet.rs` (`GROUPS`, `group_of`), `rust/src/sync/exec.rs` (`job_gap`).
+
+**253. The time estimate of `--dry-run` is the longest queue, with the request times of a good connection.** The table `HOSTS` in `rust/src/sync/dataset.rs` has 0.6 to 3 seconds for each request. In the cloud container the real time was
+up to 8 seconds for a Nasdaq request and 60 seconds for a large file. The estimate is a lower bound there. Use `--max-minutes N` to limit a run.
+*Evidence:* `rust/src/sync/dataset.rs` (`HOSTS`); the notes of the first real run in `PLANNING/board/T-20261119-data-sync.md`.
+
+**254. "Not available yet" is not a failure.** FedInvest does not publish the end-of-day prices of a market day until some time after the close. The item `bonds` for that day then stays old and is shown as "not available yet".
+It does not set the exit code. The next run asks again. The same rule holds for an empty FedInvest file.
+*Evidence:* `rust/src/sync/runner.rs` (`job_bonds`), `rust/src/sync/exec.rs` (`Status::NotYet`).
+
+**255. The SEC data sets need `SEC_USER_AGENT` in the environment.** `fa sync` reads it from the environment of its own process, not from `.env` (the keys of the other sources come from the environment or `.env`).
+Without it `sec`, `filings` and the SEC part of `earnings` are skipped with one line, and the exit code is not changed by the skip. A run without it leaves the SEC data old.
+*Evidence:* `rust/src/sync/mod.rs` (`EnvInfo::read`), `rust/src/sync/plan.rs`.
+
+**256. The sync does not change a cache rule.** Each job calls the function of the existing data command: the price cache keeps its source (no mixing of two price sources), the estimates cache keeps its files of one day, the
+option chain of today is not asked again. The sync adds the decision "old or current" and the order of the requests. A fix of a cache rule belongs to that data command.
+*Evidence:* `rust/src/sync/runner.rs` (module text).
+
+**257. Ctrl+C and `--max-minutes` end the run at the next request.** A running item stops at its next request. Each cache file is written in one step (a temp file, then a rename), so a stopped run leaves the old file or a
+complete new file. A very long single request (a large file) ends first. The items that did not run are "not tried" and stay old; the next run does them. A second Ctrl+C does the same as the first one (the program does not end at once).
+*Evidence:* `rust/src/sync/interrupt.rs`, `rust/src/hostnet.rs` (`request_stop`).
+
+**258. The age warning of the value commands is for the standard cache only.** `fa dcf auto` prints it only when it reads `data/raw` and has no `--as-of`; `fa verdict` only when it reads the price from the cache; `fa estimates show`
+always. A missing cache gives no warning (the command says that itself). The warning goes to stderr, so a pipe of the output is not changed. The text has the form `warning: old data for TICKER: ...; run: fa sync TICKER`.
+*Evidence:* `rust/src/sync/fresh.rs` (`old_data_warning`), `rust/src/dcf/auto_cli.rs`, `rust/src/main.rs`, `rust/src/market/estimates_cli.rs`.
+
+**259. Windows (PowerShell) is a goal of the code, not a tested fact.** The code uses `PathBuf` for all paths, starts no shell command, and has a console handler for Ctrl+C (`SetConsoleCtrlHandler`). No test ran on Windows
+(the development container is Linux), and the Windows part of `interrupt.rs` was never compiled. The progress line of each item is plain text on stderr (no cursor control). A person on Windows must set `SEC_USER_AGENT` with `$env:SEC_USER_AGENT = "..."`.
+*Evidence:* `rust/src/sync/interrupt.rs`; `README.md`, part "First run on your computer".
+
 ## Could not verify
 
 - (none of the named traps failed verification — all located in current code/docs; the

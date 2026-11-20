@@ -30,7 +30,7 @@ pub const GROUPS: [(&str, &[&str]); 14] = [
     ("alpaca", &["data.alpaca.markets", "paper-api.alpaca.markets", "api.alpaca.markets"]),
     ("tiingo", &["api.tiingo.com"]),
     ("yahoo", &["query1.finance.yahoo.com", "query2.finance.yahoo.com"]),
-    ("cboe", &["cdn.cboe.com", "www.cboe.com", "ww2.cboe.com"]),
+    ("cboe", &["cdn.cboe.com", "cdn-api.cboe.com", "www.cboe.com", "ww2.cboe.com"]),
     ("treasury", &["home.treasury.gov"]),
     ("nyfed", &["markets.newyorkfed.org"]),
     ("fred", &["api.stlouisfed.org", "fred.stlouisfed.org"]),
@@ -76,6 +76,8 @@ pub struct HostStat {
     pub blocked: Option<(u16, String)>,
     /// The text of the last error of a request to the host (the keys are taken out).
     pub last_error: Option<String>,
+    /// The number of requests that ended with an error.
+    pub errors: usize,
 }
 
 #[derive(Default)]
@@ -83,6 +85,65 @@ struct SlotState {
     client: Option<Client>,
     last: Option<Instant>,
     stat: HostStat,
+    /// The connection failures (timeout, closed connection, DNS) in a row since the last answer of the host.
+    fail_run: usize,
+}
+
+/// With the gate on, a host that fails in this way this many times in a row is stopped for the run, like a block.
+pub const FAIL_LIMIT: usize = 2;
+
+/// The time limit of one request, in seconds, for each host group. A host that sends small JSON answers has a short limit;
+/// a host that sends a large file (a spreadsheet, a ZIP, a full history) has the old limit of 60 seconds.
+pub fn timeout_of(group: &str) -> u64 {
+    match group {
+        // The Atlanta Fed spreadsheet took 67 seconds in the cloud container (2026-11-20).
+        "atlantafed" => 90,
+        "federalreserve" | "cftc" | "treasury" | "treasurydirect" | "cboe" => 60,
+        _ => 30,
+    }
+}
+
+/// Is the error text a failure of the connection (not an answer of the host)? A timeout, a closed connection, a DNS or a TLS error.
+pub fn is_connection_error(error: &str) -> bool {
+    if error.starts_with("HTTP ") {
+        return false;
+    }
+    let e = error.to_lowercase();
+    ["timeout", "timed out", "connection", "peer closed", "dns", "tls", "unexpected-eof", "refused", "reset", "unreachable", "io:", "proxy"].iter().any(|w| e.contains(w))
+}
+
+/// A short reason for a line of the summary: the HTTP code, or the kind of the connection error, with no URL.
+pub fn reason(text: &str) -> String {
+    let t = text.trim();
+    if let Some(i) = t.find("HTTP ") {
+        let code: String = t[i + 5..].chars().take_while(|c| c.is_ascii_digit()).collect();
+        if !code.is_empty() {
+            return format!("HTTP {code}");
+        }
+    }
+    let low = t.to_lowercase();
+    let kinds: [(&[&str], &str); 6] = [
+        (&["unreachable"], "unreachable"),
+        (&["timeout", "timed out"], "timeout"),
+        (&["peer closed", "connection reset", "unexpected-eof"], "connection closed"),
+        (&["refused"], "connection refused"),
+        (&["dns", "resolve"], "DNS failure"),
+        (&["tls", "certificate"], "TLS error"),
+    ];
+    for (words, name) in kinds {
+        if words.iter().any(|w| low.contains(w)) {
+            return name.to_string();
+        }
+    }
+    plain(t)
+}
+
+/// A text with no URL, at most 80 characters (for a note of a progress line).
+pub fn plain(text: &str) -> String {
+    let words: Vec<&str> = text.split_whitespace().filter(|w| !w.starts_with("http://") && !w.starts_with("https://")).collect();
+    let joined = words.join(" ");
+    let cut: String = joined.chars().take(80).collect();
+    if joined.chars().count() > 80 { format!("{cut}...") } else { cut }
 }
 
 #[derive(Default)]
@@ -139,6 +200,7 @@ pub fn reset() {
     for s in all.values() {
         let mut st = lock(s);
         st.stat = HostStat::default();
+        st.fail_run = 0;
     }
 }
 
@@ -189,6 +251,9 @@ pub fn paced<R>(group: &str, pause: f64, url_for_errors: &str, f: impl FnOnce(&m
     let gate = GATE.load(Ordering::SeqCst);
     if gate {
         if let Some((code, why)) = &st.stat.blocked {
+            if *code == 0 {
+                return Err(format!("{why} (the host {group} is stopped for this run; {url_for_errors} not asked)"));
+            }
             return Err(format!("HTTP {code} for {url_for_errors} (the host {group} is stopped for this run: {why})"));
         }
     }
@@ -199,18 +264,27 @@ pub fn paced<R>(group: &str, pause: f64, url_for_errors: &str, f: impl FnOnce(&m
             std::thread::sleep(wait);
         }
     }
-    let client = st.client.get_or_insert_with(|| Client::new(USER_AGENT, 0.0));
+    let client = st.client.get_or_insert_with(|| Client::with_timeout(USER_AGENT, 0.0, timeout_of(group)));
     let result = f(client);
     st.last = Some(Instant::now());
     st.stat.requests += 1;
     st.stat.busy += started.elapsed();
     if let Err(e) = &result {
         st.stat.last_error = Some(crate::market::keys::scrub_api_key_param(e));
+        st.stat.errors += 1;
+    }
+    match &result {
+        Ok(_) => st.fail_run = 0,
+        Err(e) if is_connection_error(e) => st.fail_run += 1,
+        // An answer of the host (HTTP 404 and so on) shows that the host is reachable.
+        Err(_) => st.fail_run = 0,
     }
     if gate {
         if let Err(e) = &result {
             if let Some(code) = block_code(e) {
                 st.stat.blocked = Some((code, crate::market::keys::scrub_api_key_param(e)));
+            } else if st.fail_run >= FAIL_LIMIT && st.stat.blocked.is_none() {
+                st.stat.blocked = Some((0, format!("unreachable: {} connection failures in a row ({})", st.fail_run, reason(e))));
             }
         }
     }
@@ -265,6 +339,31 @@ mod tests {
         assert!(looks_like_block_page(b"<!DOCTYPE html><html><title>Just a moment...</title>Cloudflare"));
         assert!(!looks_like_block_page(b"{\"data\":1}"));
         assert!(!looks_like_block_page(b"<html><body>a normal page</body></html>"));
+    }
+
+    #[test]
+    fn short_reasons_have_no_url() {
+        assert_eq!(reason("HTTP 403 for https://cdn-api.cboe.com/api/global/delayed_quotes/options/SPY.json"), "HTTP 403");
+        assert_eq!(reason("Cboe: HTTP 429 for https://x"), "HTTP 429");
+        assert_eq!(reason("https://fred.stlouisfed.org/graph/fredgraph.csv?id=AAA10Y: io: peer closed connection without sending TLS close_notify: https://docs.rs/rustls/x#unexpected-eof"), "connection closed");
+        assert_eq!(reason("https://x/y: timeout: global"), "timeout");
+        assert_eq!(reason("https://x/y: Dns Failed: resolve dns name 'x'"), "DNS failure");
+        assert_eq!(reason("unreachable: 2 connection failures in a row (timeout)"), "unreachable");
+        assert_eq!(reason("the file has no header DATE https://x/y"), "the file has no header DATE");
+        assert!(reason(&"word ".repeat(40)).chars().count() <= 83);
+        assert!(is_connection_error("https://x: timeout: global"));
+        assert!(!is_connection_error("HTTP 404 for https://x"));
+        assert!(!is_connection_error("no CSRF token on the page"));
+    }
+
+    #[test]
+    fn each_host_has_a_time_limit_and_a_big_file_host_has_more() {
+        assert_eq!(timeout_of("fred"), 30);
+        assert_eq!(timeout_of("nasdaq"), 30);
+        assert!(timeout_of("cftc") >= 60 && timeout_of("federalreserve") >= 60);
+        assert!(["fred", "nasdaq", "yahoo", "cftc", "other"].iter().all(|h| timeout_of(h) <= 60));
+        assert_eq!(timeout_of("atlantafed"), 90);
+        assert_eq!(group_of_url("https://cdn-api.cboe.com/api/global/delayed_quotes/options/SPY.json"), "cboe");
     }
 
     #[test]
@@ -356,6 +455,38 @@ mod tests {
         // A failure that is not a block does not stop the host.
         let _ = paced("test-gate-404", 0.0, "u", |_| Err::<(), _>("HTTP 404 for u".to_string()));
         assert!(paced("test-gate-404", 0.0, "u", |_| Ok(1)).is_ok());
+        // N connection failures in a row stop the host for the run (a block of the same kind).
+        let conn = "https://x/s?id=1: io: peer closed connection without sending TLS close_notify";
+        let calls = std::cell::Cell::new(0);
+        let ask = |host: &str, r: Result<(), String>| {
+            let out = paced(host, 0.0, "https://x/s", |_| {
+                calls.set(calls.get() + 1);
+                r
+            });
+            out.unwrap_err()
+        };
+        ask("test-unreach", Err(conn.into()));
+        assert!(blocked("test-unreach").is_none(), "one failure does not stop the host");
+        ask("test-unreach", Err(conn.into()));
+        let (code, why) = blocked("test-unreach").expect("two failures in a row stop the host");
+        assert_eq!(code, 0);
+        assert!(why.starts_with("unreachable: 2 connection failures in a row"), "{why}");
+        let third = ask("test-unreach", Err("never".into()));
+        assert!(third.contains("stopped for this run"), "{third}");
+        assert_eq!(calls.get(), 2, "the third request made no call");
+        assert_eq!(stats()["test-unreach"].errors, 2, "the errors are counted for the check of a function that falls back to an old file");
+        // An answer of the host between two failures resets the count; so does a success.
+        ask("test-reset", Err(conn.into()));
+        ask("test-reset", Err("HTTP 404 for https://x/s".into()));
+        ask("test-reset", Err(conn.into()));
+        assert!(blocked("test-reset").is_none());
+        assert!(paced("test-reset", 0.0, "u", |_| Ok(1)).is_ok());
+        ask("test-reset", Err(conn.into()));
+        assert!(blocked("test-reset").is_none());
+        // An error that is not about the connection (a parse text) does not count.
+        ask("test-text", Err("no CSRF token on the page".into()));
+        ask("test-text", Err("no CSRF token on the page".into()));
+        assert!(blocked("test-text").is_none());
         enable_gate(false);
         // With the gate off the slot does not keep a block (the old behavior of all other commands).
         let _ = paced("test-nogate", 0.0, "u", |_| Err::<(), _>("HTTP 429 for u".to_string()));

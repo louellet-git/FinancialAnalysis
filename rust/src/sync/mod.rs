@@ -313,14 +313,15 @@ pub fn render_summary(plan: &Plan, report: &RunReport, args: &Args, ctx: &Ctx) -
     let mut failed_sets = Vec::new();
     for (set, _) in &plan.counts {
         let s = summary.get(set).cloned().unwrap_or_default();
-        let reason = match &s.reason {
+        let fmt_reason = |r: &Option<(String, usize)>| match r {
             Some((why, n)) => format!(" ({why}{})", if *n > 1 { format!(" x{n}") } else { String::new() }),
             None => String::new(),
         };
         let current = s.current_before + s.current_run;
-        let (failed_reason, blocked_reason) = if s.failed > 0 { (reason.clone(), String::new()) } else { (String::new(), reason.clone()) };
+        let not_yet = if s.not_yet > 0 { format!(", {} not available yet", s.not_yet) } else { String::new() };
+        let (failed_reason, blocked_reason) = (fmt_reason(&s.reason), fmt_reason(&s.blocked_reason));
         out += &format!(
-            "  {:<10} {} updated, {} current, {} no data, {} failed{failed_reason}, {} blocked{blocked_reason}, {} not tried\n",
+            "  {:<10} {} updated, {} current, {} no data, {} failed{failed_reason}, {} blocked{blocked_reason}, {} not tried{not_yet}\n",
             set.name(),
             s.updated,
             current,
@@ -347,7 +348,7 @@ pub fn render_summary(plan: &Plan, report: &RunReport, args: &Args, ctx: &Ctx) -
     // What stays old.
     let mut stays: BTreeMap<DataSet, Vec<String>> = BTreeMap::new();
     for r in &report.results {
-        if matches!(r.outcome.status, Status::Failed | Status::Blocked | Status::NotTried) {
+        if matches!(r.outcome.status, Status::Failed | Status::Blocked | Status::NotTried | Status::NotYet) {
             stays.entry(r.item.set).or_default().push(r.item.key.clone());
         }
     }
