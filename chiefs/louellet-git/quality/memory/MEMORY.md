@@ -36,6 +36,8 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
 - 2026-11-20 accuracy review: a record defended a default with numbers for the rejected alternatives,
   and those numbers did not reproduce (-2.9% stated, -0.4% run). Ask the validator to run each
   rejected alternative of a record.
+- 2026-11-20 portfolio review: a poison test on the SEC facts (not only on the prices) found a
+  look-ahead (restated values of old years). Ask for a poison test of each data source that a backtest reads.
 - Precedent, 2026-11-20: in cycle 2, a remaining limit that is measured and written in the record
   passes, with a ticket as a condition (no third cycle). The automatic model is a screen.
 
