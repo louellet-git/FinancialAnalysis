@@ -32,7 +32,9 @@ risks.
 4. Tests with fixed answers (a closed formula or a recorded old output); a defect has a
    test that fails before and passes after.
 5. A change of an assumption value changes its record in `docs/assumptions/` and the
-   model document in `docs/models/` in the same change.
+   model document in `docs/models/` in the same change. Each number in a record comes
+   from a run that you made, with its command; a paired rule stays paired in each year;
+   an in-sample error is checked out of sample (`fa dcf pit --half`, `--cut`) first.
 
 **Never.** Never commit, push, or open a pull request. The orchestrator does this. Change a closed decision (`REVIEW.md`, `DRIVER-REVIEW.md`) or a
 rule of `PLANNING/RULES.md`. Keep two implementations of one part.

@@ -1,57 +1,55 @@
 # Dashboard: fundamental (louellet-git)
 For the next session of this head: the judgments about value that are not in the code, and what the
-person decided. Keep this file below 60 lines. Started 2026-11-20.
+person decided. Keep this file below 60 lines. Started 2026-11-20. Dream pass: 2026-11-20 23:25 UTC.
 
 ## Goal now and subsequent steps
-The person wants (2026-11-20, `RECORD.md`): an engine with assumptions that are studied, decided and
-written in the assumption records, and a fixed procedure that shows what the market price implies for
-each stock, industry and sector. The person does not choose each assumption: this head decides.
-Work started again on 2026-11-20 21:19 UTC ("Proceed with your work"). Each ticket file has its state.
-1. `T-20261120-dcf-conventions-decision` (branch `claude/magical-planck-41ip3i`): built and tested; the
-   full runs on the data store run now; then the gate (Head of Quality and Risk), then the pull request.
-2. `T-20261120-dcf-engine-accuracy` (branch `claude/dcf-engine-accuracy`): A recovery after a decline
-   year, B bands too wide for a stable margin, C the mean of the value with its standard error.
-3. `T-20261120-dcf-market-implied` (branch `claude/dcf-market-implied`): parts 1 to 3 built; waits for
-   the SIC codes, the findings file and the gate. Merge the conventions branch into it first.
-4. `T-20261120-dcf-assumption-register` (not started): build it after the conventions merge.
+2026-11-20 (`RECORD.md`): (1) explain why the market fell in the week of 2026-11-16 and where the value
+went, one stock at a time, then a general model; (2) what NVDA is worth; (3) an engine with studied
+assumptions, and the price-implied values by stock, sector and industry. The person does not choose
+each assumption: this head decides, with a reason that does not use the price.
+1. `T-20261120-nvda-valuation` (branch `claude/nvda-valuation`): driver model on the path engine;
+   four-step review; the owner approves. Waits for the new NVDA filing and prices (Technology).
+2. `T-20261120-valuation-move-attribution`: split a price change into rates, implied premium and
+   implied growth; NVDA first, then the sectors. Needs price and curve of a past date in `fa dcf implied`.
+3. In review at Quality: the register (`claude/dcf-assumption-register`; after the verdict move the
+   conventions ticket to `done/`) and the market-implied command (`claude/dcf-market-implied`).
+4. Backlog: `T-20261120-dcf-acq-charge-limits`; the five records of Quality (premium, rf, horizon,
+   beta, SBC) wait for the owner's word to that head.
 
-## Decisions of this head (the reasons are in the records; no reason uses the price)
-- 2026-11-20, long-run growth: one number `L` = lower of the 10-year zero yield and `G`. `G` = FOMC
-  longer-run real growth + longer-run PCE inflation (SEP of 2026-09-16: 2.0% + 2.0% = 4.0%). Why FOMC
-  and not CBO (3.8%): we can read the page, and ALFRED keeps each vintage for a point-in-time test.
-- 2026-11-20, acquisitions: charge `w` x mean spend (`acq_w`), `w` = weight of the history in the growth
-  mean, and the charge fades to zero along the same ramp as the credited growth above L (review cycle 1,
-  F1: a constant charge made ROP -$91). Lesson: a paired rule must stay paired in EACH year, not only in
-  year 1. Heavy buyers are still over-charged a little (point-in-time T+3 +2.4% of revenue).
-- 2026-11-20, growth after a decline year: floor of 0% on the base-year growth in the company mean
-  (A-003). A recovery term was refused: the rest of the error is one episode (base years 2019, 2020).
-- 2026-11-20, margin bands: not narrowed. In sample they look too wide (95%), out of sample (`--cut
-  2015`) they are right. Lesson: check an in-sample band error out of sample before a correction.
-- 2026-11-20, market-implied values use the value at the means, not the P50: a risk-adjusted DCF values
-  EXPECTED cash flows, so a price compares with an expected value. The P50 is lower by construction
-  (IBM $159.72 at the means against P50 $132.87). So the screen ratio P50 / price is conservative by
-  construction: a part of the gap to the market is the statistic, not the model.
-- A market-implied value is a measurement, never an input.
+## Decisions of this head (records A-001 to A-003; no reason uses the price)
+- One long-run growth L = min(10-year zero yield, 4.0%): FOMC longer-run real growth + PCE inflation
+  (SEP 2026-09-16). FOMC and not CBO: we can read it; ALFRED keeps each vintage. Pull request 77.
+- Acquisition charge = w x mean spend, fading with the credited growth above L. Pull request 77.
+- A base-year decline enters the growth mean as 0% (no fitted number). Pull request 81.
+- Market-implied search uses the value at the means: a risk-adjusted DCF values expected cash flows.
+  The screen P50 / price is lower by construction (IBM $159.72 at the means, P50 $132.87).
+- First market result (data of 2026-11-18): the S&P 500 list implies a premium of 2.32%, the next 500
+  list 3.12% (model 4.41%). Energy, Telecom, NoDur above the price; BusEq far below; Utils negative.
+
+## Lessons (tested)
+- A paired rule must stay paired in EACH year, not only in year 1 (F1 of pull request 77: ROP -$91).
+- Check an in-sample band error out of sample before a correction (margin bands: 95% in, 80% out).
+- Write no claim in an output text or a brief before a run supports it (V1 of pull request 81: I wrote
+  "compare the mean with a price"). An agent can write numbers that no run made (V2): the record gets
+  the command of each number, and I rerun two of them before the gate.
+- Two branches that change `auto.rs` conflict in `Rules::default`: check each field after a merge.
 
 ## Standing words of the person
-- 2026-11-20: the immediate goal is to improve the stochastic DCF engine, for stocks only ("stick to
-  underlyings"); no option work in this area.
-- 2026-11-20: "the agents should not be overly sophisticated just overall lean and of quality, not
-  obsessive and tight fisted".
-- 2026-11-19 or 2026-11-20, on the GitHub Actions use: "this is too much usage". Effect: few pull
-  requests. A pull request with documents only has no check run.
-- The computer of the person is a Windows laptop. Give commands for PowerShell.
+- Immediate goal: the stochastic DCF engine, for stocks only; no option work in this area.
+- Merge rule: the head merges its own pull request after a gate pass and a green check
+  (`chiefs/ORIENTATION.md`, section 6), with no new question.
+- A merged ticket moves to `PLANNING/board/done/` (`status: done`, `merged:`); never delete a ticket.
+- Agents lean and of quality. Few pull requests (CI cost). Windows laptop: commands for PowerShell.
+- Merge `origin/main` once before a review request; a change of the output of a command of a
+  different head: say it in the pull request title and send that head one message.
 
 ## Tested rules
-- The cache is the data store: `git clone --depth 1 https://github.com/louellet-git/fa-data data/raw`
-  (public, read with no attach; 28 s). Do not start a bulk download (`chiefs/ORIENTATION.md`, section 2).
-  Check after a clone: `fa dcf auto IBM --as-of 2026-11-19 --rules long_run=off,acq_w=0` gives P50 $132.87.
-- The quant agent can build and test while data is missing; send the data runs as a second message.
-- Parallel agents: one worktree each (`../wt-<name>`), the cache path with `--cache`, read only.
-- cbo.gov refuses a request from the cloud machine (HTTP 403). federalreserve.gov answers.
+- Cache = data store (`git clone --depth 1 https://github.com/louellet-git/fa-data data/raw`). No bulk
+  download. Check: `fa dcf auto IBM --as-of 2026-11-19 --rules long_run=off,acq_w=0` gives P50 $132.87.
+- Parallel agents: one worktree each (`../wt-<name>`), `--cache` to the store, read only.
+- A reviewer asks: no push to a branch under review until the verdict. Send all corrections in one push.
+- cbo.gov refuses the cloud machine (HTTP 403); federalreserve.gov answers.
 
 ## Pages
-- No page.
-
-## Dream pass
-On the word of the person ("clean up memory" or "dream"). Last pass: none.
+- `responsibilities.md`: the area of this head and its boundary with the Head of Quant Research
+  (on branch `claude/dcf-market-implied` until it merges).
