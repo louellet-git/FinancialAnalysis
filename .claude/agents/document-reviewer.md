@@ -2,7 +2,7 @@
 name: document-reviewer
 description: Use for step 3 of the review of a valuation report, and for each new or changed document (reports, investigations, standards, agent and skill files, model documents and assumption records). It grades content and format and checks ASD-STE100. Start it in a fresh context. Do not use it to check numbers against sources (auditor) or to attack a model (model-validator).
 tools: Read, Grep, Glob, Bash
-model: haiku
+model: sonnet
 color: red
 skills:
   - ste-writing

@@ -2,7 +2,7 @@
 name: data-quality-analyst
 description: Use to check data after a source, mapping or sync change, and before a model run on a new ticker or panel: cross-source checks, freshness, mapping status, coverage, double counts. It reads and reports. Do not use it to fix data or code (data-engineer) or to judge a model (model-validator).
 tools: Read, Grep, Glob, Bash
-model: haiku
+model: sonnet
 color: cyan
 skills:
   - number-audit

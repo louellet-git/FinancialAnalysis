@@ -15,3 +15,7 @@ Done: a rule of proportion in `docs/QUALITY-STANDARDS.md`, section 3, and in the
 ## 2026-11-20 23:07 UTC (chat)
 Words: "I approve you changing your reviewer agents becoming haiku agents Unless you feel it should otherwise be sonnet"
 Done: Haiku for `document-reviewer`, `data-quality-analyst` and `test-engineer` (their reviews of today found MIN items: format, data checks, test plans). Sonnet stays for `model-validator`, `auditor`, `code-reviewer` (they found each MAJ of today) and `risk-compliance-officer` (judgement, seldom run). `docs/TEAMS.md` line 4 says it.
+
+## 2026-11-20 23:22 UTC (chat)
+Words: "Don't over commit to one model, since the scope of the job will change is what I meant. Tell the tech that. Keep the rule lean and not a need but permission to."
+Done: the three agent files are Sonnet again; `docs/TEAMS.md` line 4 gives the permission to choose a different model for one run. A message to the Head of Technology for `chiefs/ORIENTATION.md`, section 3.

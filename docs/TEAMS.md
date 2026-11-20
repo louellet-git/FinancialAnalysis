@@ -1,7 +1,7 @@
 # The teams of the firm
 
 The agents are files in `.claude/agents/<name>.md`. The shared procedures are skills in
-`.claude/skills/<name>/SKILL.md`. Most agents use the Sonnet model; `document-reviewer`, `data-quality-analyst` and `test-engineer` use Haiku (owner word, 2026-11-20). The standards are in
+`.claude/skills/<name>/SKILL.md`. The agent files give the Sonnet model. For one run, the orchestrator can choose a different model that fits the job (owner word, 2026-11-20). The standards are in
 `docs/QUALITY-STANDARDS.md`; the rules of the repo are in `CLAUDE.md`.
 Status: new, 2026-11-20 (ticket `T-20261120-agent-teams`).
 
