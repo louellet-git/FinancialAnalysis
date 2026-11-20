@@ -28,7 +28,7 @@ person decided. Keep this file below 60 lines. Started 2026-11-20.
 - 2026-11-20, on the language: "we don't need everything in Rust, mainly trading and stuff". Effect: Rust
   for the engines, the trading code and the data loaders; SQL or a small script is permitted.
 - 2026-11-20, on the data: "we shouldn't have all that data spread across 4 sessions". Effect: one data
-  store that this head owns. The place of the store waits for the decision of the person.
+  store, the repo `louellet-git/fa-data`, that only this head writes. Push to it in parts of less than 40 MB.
 
 ## Tested rules
 - The cloud machine can restart. A restart stops the background agents; the files and the worktrees

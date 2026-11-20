@@ -30,3 +30,7 @@ Done: the rule in `CLAUDE.md` ("Work rules") now includes one-time analysis prog
 ## 2026-11-20 19:45 UTC (chat)
 Words: "The head of fundamental is trying to download a bunch of data that I think you probably already have. So I think we shouldn't have all that data spread across 4 sessions. Can you think of a good solution? And let it know to stop that if you can think of a better solution. Also, we don't need everything in Rust, mainly trading and stuff. Like if we need some work in SQL or whatever, like yeah, that's different."
 Done: the Rust rule has its new scope (`CLAUDE.md`, `chiefs/ORIENTATION.md` section 9, `docs/QUALITY-STANDARDS.md`). A message went to the Head of Fundamental Research about the data. The one data store waits for a decision of the person on its place.
+
+## 2026-11-20 19:52 UTC (chat)
+Words: "Okay, I made the repo."
+Done: the data store `louellet-git/fa-data` has the SEC company facts, the SEC earnings lists and the GSW file (8 pushes of less than 40 MB). The repo is public, so the prices are not in it. The rule and the copy command are in `chiefs/ORIENTATION.md` (section 2) and `docs/DATA-SOURCES.md`.
