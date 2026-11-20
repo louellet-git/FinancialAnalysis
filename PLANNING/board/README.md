@@ -13,6 +13,7 @@ title: Short title that starts with a verb
 area: engine
 status: backlog
 owner: louellet-git
+requested_by: louellet-git
 head: technology
 order: 3
 branch:
@@ -30,6 +31,7 @@ Free text.
 | `owner` | A GitHub login. |
 | `head` | The head that is responsible for the ticket: `quant`, `fundamental`, `technology` or `quality` (`chiefs/ORIENTATION.md`). `owner` means that only a person can do the work. Each ticket has this field. |
 | `order` | The position of the ticket in the queue of its head. The lowest number is first. A person can change it. |
+| `requested_by` | The GitHub login of the person who asked for the work. A head offers only the tickets of its own person (`chiefs/ORIENTATION.md`, section 4). No field means `louellet-git`. |
 | `branch` | The git branch. Necessary when the status is `in-progress` or `review`. |
 | `acceptance` | One sentence that a person can check. |
 
@@ -46,5 +48,5 @@ Free text.
    Push this change first. Then the other person can see that the ticket is yours.
 2. Use one branch for one ticket. Start the branch from `origin/main`.
 3. Merge to `main` only through a pull request.
-4. A new ticket has a `head` and an `order`. If the work is in the areas of two heads, make two tickets.
+4. A new ticket has a `head`, an `order` and a `requested_by`. If the work is in the areas of two heads, make two tickets.
 5. No tool enforces these rules. Each person and each agent obeys them.
