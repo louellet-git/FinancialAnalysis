@@ -66,3 +66,7 @@ Done: `chiefs/MEMORY-HOWTO.md` (section 4) and `chiefs/ORIENTATION.md` (section 
 ## 2026-11-20 21:42 UTC (chat)
 Words: "Maybe it should be beforehand?"
 Done: the dream pass comes before a compaction (context use above about 75% of the threshold, or the person says "dream" first); after a compaction only a short check.
+
+## 2026-11-20 21:54 UTC (chat)
+Words: "For all heads, if they find their requests expanding the pre-existing teams/skills they currently have, they are able to improve. Not a need, but they are allowed to add more teams/skills and should consider refinement whenever they deem it a good effort. Not a need so make this a one-liner where relevant, not a stand-alone initiative but permission."
+Done: one permission sentence in `chiefs/ORIENTATION.md` (section 3) and in `lean/ORIENTATION.md` of the `chiefs` repo.

@@ -109,6 +109,9 @@ is not mandatory. Good reasons for a change:
 - your team does a procedure again and again that has no skill;
 - an agent or a skill is not used: remove it.
 
+If your work grows past what your team and skills cover, you may add an agent or a skill,
+or refine one, when you judge it worth the effort. This is a permission, not a duty.
+
 Rules for a change:
 
 1. Keep the files lean: an agent file has about 40 lines, one purpose and 5 checks or
