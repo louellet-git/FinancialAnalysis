@@ -17,3 +17,11 @@ Done: Took the queue ticket with order 1, `T-20261120-option-history-root-defect
 ## 2026-11-20 21:39 UTC (chat)
 Words: "Speak w Head of tech about this"
 Done: Sent the question about the missing Alpaca key id (HTTP 401 in the smoke test) to the Head of Technology.
+
+## 2026-11-20 22:05 UTC (chat)
+Words: "I think since you're the head of quant research, that arbitrage is going to be something of particular interest. So I think from our data, start taking over the responsibilities that are yours and beginning reconciliation / identification of arbitrage given our data. And just add stuff to the board based off of that."
+Done: Started a survey of the arbitrage and reconciliation code and data of this area; tickets follow on the board.
+
+## 2026-11-20 22:06 UTC (chat, with a screenshot of a search result: fundamental research studies the value of one company in depth with human judgment; quantitative research uses formulas, statistics and models to score or trade large sets of assets on numerical factors, with systematic rules and broad coverage)
+Words: "Make sure to outline this for you and fundamental head separately for individual responsibilities"
+Done: Wrote `memory/responsibilities.md` (the two areas and the boundary) and sent the outline to the Head of Fundamental Research.
