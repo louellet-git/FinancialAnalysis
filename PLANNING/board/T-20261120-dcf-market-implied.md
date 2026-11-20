@@ -50,7 +50,7 @@ IBM $159.72 against $132.87; KO $35.09 against $29.76). Effect: the P50 / price 
 conservative measure and is not the same as the value / price of `fa dcf implied`. The findings file must say
 this. Follow-up for the engine ticket: report the mean of the simulated value with its standard error.
 
-**State, 2026-11-20 22:15 UTC.** Part 3b done: sector (Fama-French 12) and industry (SIC) groups from the cache
+**State, 2026-11-20 22:10 UTC.** Part 3b done: sector (Fama-French 12) and industry (SIC) groups from the cache
 (`mapcheck::sec::company_sic`), a `*` on a group cell with more than 20% bounds. Check run on `sp500.txt` and
 `next500.txt` (data store 08361bd, data of 2026-11-19, OLD defaults: a check of the code, not the result):
 two runs give the same bytes; 6 s for each list. Open: merge `main` after the conventions merge, run again,
