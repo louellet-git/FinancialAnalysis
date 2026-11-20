@@ -221,7 +221,9 @@ pub fn parse_tiingo(bytes: &[u8]) -> Result<Vec<Row>, String> {
             close: round6(d.c / later),
             volume: d.v,
             adj_close: d.adj.map(round6),
-            dividend: (d.div != 0.0).then_some(d.div),
+            // `divCash` is in the share count of its own day (checked 2026-11-20 with NVDA: the check of the adjustment gave an error
+            // of 25% of the price when the dividend was not divided). Like the prices, it is divided by the later split factors.
+            dividend: (d.div != 0.0).then_some(round6(d.div / later)),
             split: (d.split != 1.0).then_some(d.split),
         });
         later *= d.split;
@@ -448,7 +450,7 @@ impl PriceSource for Nasdaq {
     }
 }
 
-/// The sources in the order of use: Tiingo and Alpaca (when their keys exist), Yahoo, Nasdaq. `only` forces one.
+/// The sources in the order of use: Tiingo (when its key exists), Yahoo, Nasdaq, Alpaca (when its keys exist; last, see below). `only` forces one.
 pub fn sources(repo: &Path, only: Option<&str>) -> Result<Vec<Box<dyn PriceSource>>, String> {
     let mut all: Vec<Box<dyn PriceSource>> = Vec::new();
     match tiingo_key(repo) {
@@ -456,13 +458,15 @@ pub fn sources(repo: &Path, only: Option<&str>) -> Result<Vec<Box<dyn PriceSourc
         None if only == Some("tiingo") => return Err(format!("{TIINGO_KEY_ENV} is not set in the environment or in .env")),
         None => {}
     }
+    all.push(Box::new(Yahoo::live()));
+    all.push(Box::new(Nasdaq::live()));
+    // Alpaca is last: its free feed is IEX (the close is the IEX close, not the official close; the volume is the IEX volume;
+    // the history starts 2020-07-27). It is the check source and the fallback, not the first choice (#241).
     match super::alpaca::Keys::read(repo) {
         Some(keys) => all.push(Box::new(super::alpaca::Alpaca::live(keys))),
         None if only == Some("alpaca") => return Err(format!("{} and {} are not both set in the environment or in .env", super::alpaca::KEY_ID_ENV, super::alpaca::SECRET_ENV)),
         None => {}
     }
-    all.push(Box::new(Yahoo::live()));
-    all.push(Box::new(Nasdaq::live()));
     match only {
         None => Ok(all),
         Some(name) => {
@@ -567,6 +571,21 @@ mod tests {
     }
 
     #[test]
+    fn tiingo_dividend_before_a_split_is_split_adjusted_and_passes_the_event_check() {
+        // Day 2 pays a dividend of 10 in the old share count (close 990); day 3 is a 10:1 split day (close 99). Per new share the
+        // dividend is 1 on a close of 100: 1%. The adjusted closes are in the current share count.
+        let text = r#"[
+          {"date":"2024-06-03T00:00:00.000Z","close":1000.0,"high":1000.0,"low":1000.0,"open":1000.0,"volume":1,"adjClose":99.0,"divCash":0.0,"splitFactor":1.0},
+          {"date":"2024-06-04T00:00:00.000Z","close":990.0,"high":990.0,"low":990.0,"open":990.0,"volume":1,"adjClose":99.0,"divCash":10.0,"splitFactor":1.0},
+          {"date":"2024-06-05T00:00:00.000Z","close":99.0,"high":99.0,"low":99.0,"open":99.0,"volume":1,"adjClose":99.0,"divCash":0.0,"splitFactor":10.0}]"#;
+        let rows = parse_tiingo(text.as_bytes()).unwrap();
+        assert_eq!(rows[1].dividend, Some(1.0), "10 / 10");
+        let e = super::super::price_check::check_events(&rows);
+        assert_eq!(e.dividends_checked, 1);
+        assert!(e.dividend_max_error < 1e-9, "{}", e.dividend_max_error);
+    }
+
+    #[test]
     fn tiingo_error_object_and_empty() {
         assert!(parse_tiingo(br#"{"detail":"Error: Ticker 'ZZZ' not found"}"#).unwrap_err().contains("not found"));
         assert!(parse_tiingo(b"[]").unwrap().is_empty());
@@ -636,8 +655,9 @@ mod tests {
         std::fs::write(dir.join(".env"), "TIINGO_API_KEY=k\n").unwrap();
         if std::env::var(TIINGO_KEY_ENV).is_err() {
             // With Alpaca keys in the environment of the person, `alpaca` is in the list too.
-            let names: Vec<&str> = names(None).unwrap().into_iter().filter(|n| *n != "alpaca").collect();
-            assert_eq!(names, ["tiingo", "yahoo", "nasdaq"]);
+            let all = names(None).unwrap();
+            assert_eq!(all.iter().copied().filter(|n| *n != "alpaca").collect::<Vec<_>>(), ["tiingo", "yahoo", "nasdaq"]);
+            assert!(all.iter().position(|n| *n == "alpaca").is_none_or(|i| i == all.len() - 1), "Alpaca (IEX close, short history) is last: {all:?}");
         }
         assert!(sources(&dir, Some("alpaca")).is_err() || std::env::var(super::super::alpaca::KEY_ID_ENV).is_ok());
         let _ = std::fs::remove_dir_all(&dir);

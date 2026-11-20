@@ -1501,7 +1501,7 @@ one time, then stopped the source for the run and kept the cache, as the rules s
 verified against the real site, because Yahoo did not answer.
 *Evidence:* `Yahoo::url`, `prices::url`.
 
-**206. The Tiingo loader was not run against the real site.** There was no key. It follows `tiingo.com/documentation/end-of-day` (read on 2026-11-19): the endpoint
+**206. The Tiingo loader was written without a key (it ran on 2026-11-20, see #284).** It follows `tiingo.com/documentation/end-of-day` (read on 2026-11-19): the endpoint
 `https://api.tiingo.com/tiingo/daily/<ticker>/prices?startDate=...&endDate=...`, the fields `date, close, high, low, open, volume, adjClose,
 adjHigh, adjLow, adjOpen, adjVolume, divCash, splitFactor`. The token goes in the header `Authorization: Token <key>` (page `general/connecting`; the page also allows `?token=`,
 which the program does not use). The documentation does not say how a share class is written (`BRK-B` is assumed) and gives no example reply: the
@@ -1630,21 +1630,21 @@ The sheet `Estimates` has the surprises from the Nasdaq file first (then the Pyt
 ticker changed has the past dates under the old symbol in the vendor data and is not joined.
 *Evidence:* `nasdaq_est::same_symbol`; the calendar fixture.
 
-**230. No keyed loader ran against the real server.** The loaders for Alpaca (stock bars, option contracts, option bars, chain snapshots), the FRED API and the Tiingo source follow the official
-documentation, read on 2026-11-19. No key was in the container. Each parser has a test on text that follows the documented reply. The first run with a real key can fail on a detail that the
-documentation does not show (a field name, a status code, the form of a missing value). Do this at the first run: `fa prices get IBM --source alpaca`, `fa prices intraday SPY --from 2024-06-03 --to 2024-06-07`,
-`fa options history SPY --date 2024-06-07 --plan`, `fa rates fred --series DGS10`. A failure prints the HTTP code and no key.
+**230. Which keyed loaders ran against the real server.** The loaders were written from the official documentation (read on 2026-11-19) with no key. On 2026-11-20 they ran with real keys: Alpaca stock bars
+(`fa prices get MSFT SPY --source alpaca`), intraday bars, chain snapshots (SPY, SPX, VIX, SPXW, VIXW), the contract list, option bars and `fa options history` (SPY, SPX, VIX; 2024-06-07), and Tiingo (`fa prices get`,
+`fa prices check`). Not run: the FRED API (`fa rates fred --series DGS10`). The first run found three faults that the fixtures could not show: the HTTP client did not trust the certificate of the proxy (it now uses
+the certificate store of the operating system); the history of an index had no level (#280); the estimate of the request count was wrong (#239). A failure prints the HTTP code and no key.
 *Evidence:* `rust/src/market/alpaca.rs`, `fred_api.rs` (tests); `docs/ARCHITECTURE.md`, section "Keyed data sources".
 
 **231. The depth of the list of expired option contracts is not in the documentation.** The option surface of a past date needs the contracts that existed on that date. The program gets them from
 `GET /v2/options/contracts` of the trading API (`status=inactive`). The page says only that a request returns active contracts by default. It does not say how far back the inactive contracts go.
-The history of the option bars starts in February 2024 (confirmed), but the contract list could be shorter. The list is on `paper-api.alpaca.markets`, not on the data address: it needs the keys of the
+The history of the option bars starts in February 2024 (confirmed). MEASURED 2026-11-20: for SPY the list holds expired contracts back to 2024 (June 2024 tested). For SPX and VIX it does not: see #281. The list is on `paper-api.alpaca.markets`, not on the data address: it needs the keys of the
 paper account (a key of a live account is refused there; `APCA_API_BASE_URL` changes the address). `fa options history ... --plan` shows the contract count of a date before any close is requested.
 *Evidence:* `https://docs.alpaca.markets/reference/get-options-contracts`; `alpaca.rs` (`Client::contracts`).
 
 **232. The free Alpaca plan gives the IEX exchange only.** The daily close of a stock is the last IEX trade, not the consolidated close, so it can differ from the official close by some cents. The volume
 is the IEX volume (a small part of the market volume). A minute or 5-minute bar exists only if a trade happened on IEX in that interval. For the volume of the whole market, the SIP feed needs a paid plan.
-The documentation names two history depths: "Since 2016" (docs) and "7+ years" (pricing page). The program asks from 2016-01-01. The paper account can call the data API (confirmed); a funded account
+The documentation names two history depths: "Since 2016" (docs) and "7+ years" (pricing page). The program asks from 2016-01-01. MEASURED 2026-11-20: the free plan gives the daily history from 2020-07-27 only (1,589 rows), and the intraday history from about the same date (a week of 2016: 0 bars; a week of August 2020: 390 bars). The close is the IEX close: MSFT on 2026-11-18 is 508.505 at Alpaca and 508.29 at Nasdaq (the official close). For this reason Alpaca is the last source of the daily prices (#284). The paper account can call the data API (confirmed); a funded account
 is not named as a condition (not stated either way).
 *Evidence:* `https://docs.alpaca.markets/docs/about-market-data-api`, `https://alpaca.markets/data`.
 
@@ -1682,10 +1682,12 @@ the selection (strike range), the moneyness filter and the check of the parity f
 contracts with another root (for example `SPY1...`): the program leaves them out.
 *Evidence:* `option_history.rs` (`contract_from_info`).
 
-**239. The request counts for the option surface are estimates.** The fixture tests measure the structure: one request for each group of 100 contracts for a whole month, and the same set of requests for each single date.
-The number of SPY contracts (12,000 live; 700 new each day; the selection keeps half) is an assumption from the Cboe file of the live chain, not a measurement. Run `--plan` with a key. The result
-of the estimate: one date is 65 to 125 requests; a year, date by date, is 16,000 to 31,000 requests (80 to 155 minutes at the free limit of 200 each minute); a year, month by month, is about 1,700 requests.
-*Evidence:* `docs/ARCHITECTURE.md`, request counts; `option_history.rs` (test `a_range_of_dates_costs_one_set_of_requests_and_not_one_for_each_date`).
+**239. The request counts for the option surface.** The first estimate (65 to 125 requests for one date of SPY) was wrong by a factor of 5 to 10. MEASURED 2026-11-20: with the old default (365 days, 0.8 to 1.2) the plan for SPY on 2024-06-07 is
+63,498 contracts and 635 requests of closes with groups of 100. The list of expired contracts is filtered by expiry and strike only; most listed contracts have no trade on the date (1,196 of 2,952 had a close). The fields of the list
+(`close_price`, `close_price_date`, `open_interest`) do not tell which contracts traded, and the list has no date of listing, so the list cannot remove contracts. The program now asks for 500 contracts in a request (1,000 and
+2,160 symbols worked in a test; the documentation page for the bars gives no limit that was found) and the default selection is 120 days and 0.9 to 1.1: SPY on one date is 35 requests (31 of closes), SPX with 45 days and
+0.95 to 1.05 is 15, VIX is 2. The old selection is 136 requests. Each run prints the plan before it asks for closes. A year date by date is about 8,800 requests (an estimate); the fixture tests still show that a month costs the same as one date.
+*Evidence:* `docs/ARCHITECTURE.md`, request counts; `option_history.rs` (test `a_range_of_dates_costs_one_set_of_requests_and_not_one_for_each_date`, `the_plan_line_comes_before_the_closes`).
 
 **240. A snapshot of closes never replaces a snapshot with a real bid and ask.** The files of the live chain and of the history have the same path (`data/raw/<T>/options/<date>.json`). `fa options history` skips a date
 that has a file with no `quote_kind` (Cboe) or with another kind. A file of closes is replaced only with `--refresh`. A person who wants the live quotes of a date must save them on that date: a past date has no
@@ -1699,9 +1701,8 @@ The limit is 120 requests each minute; a loader of many series does not count it
 `api.stlouisfed.org` is another host and could answer. If the API fails, the program tries the keyless address.
 *Evidence:* `fred_api.rs` (tests `the_key_is_not_in_any_error_or_log_line`); `rates.rs` (`fred_text`); `https://fred.stlouisfed.org/docs/api/fred/errors.html`.
 
-**242. Index options (SPX, VIX) have no confirmed free source.** Alpaca: not confirmed (one `SPXW` symbol in a quote sample; the trading overview names equity options only). Massive: the pages read do not
-say it for the snapshot, the contract list or the aggregates; VIX options are not named. The data set "option surface history of SPX and VIX" is therefore open. The cheap test is the free Massive key (see
-`docs/ARCHITECTURE.md`). The builder works for any underlying that the source lists; for an index the forward must come from the parity (the index has no tradable spot).
+**242. Index options (SPX, VIX) are on the free Alpaca plan.** MEASURED 2026-11-20 (the pages do not say it): chains, contract list (recent contracts) and option bars exist for SPX, SPXW, VIX and VIXW. Massive: the pages read do not
+say it; VIX options are not named; Massive is not built and not needed for this set. The index needs a level and a volatility that Alpaca does not give: see #280 and #281. Not tested: NDX, RUT, XSP and their weekly roots.
 *Evidence:* `docs/ARCHITECTURE.md`, section "Massive".
 
 **243. The terms for stored data are not confirmed for Alpaca and Massive.** No data page of Alpaca states a rule for stored or automated use, and the two exchange agreements on the disclosure page were not read. The Massive
@@ -1777,6 +1778,37 @@ always. A missing cache gives no warning (the command says that itself). The war
 **259. Windows (PowerShell) is a goal of the code, not a tested fact.** The code uses `PathBuf` for all paths, starts no shell command, and has a console handler for Ctrl+C (`SetConsoleCtrlHandler`). No test ran on Windows
 (the development container is Linux), and the Windows part of `interrupt.rs` was never compiled. The progress line of each item is plain text on stderr (no cursor control). A person on Windows must set `SEC_USER_AGENT` with `$env:SEC_USER_AGENT = "..."`.
 *Evidence:* `rust/src/sync/interrupt.rs`; `README.md`, part "First run on your computer".
+
+**280. An index has no price and no implied volatility at Alpaca.** The chain of SPX or VIX has bid, ask and last trade, but no implied volatility, and no level of the index. The program takes the forward of each
+expiry from put-call parity of the mids (`forward_from_parity_blind`: the strike where call and put have the same price is near the forward; the median of three strikes gives the forward) and sets the implied volatility with
+Black-76 (right for European options). The level of the snapshot is the forward of the nearest expiry (1 to 10 days), so it is about 0.05% above the index and not the index. The VIX options are on the VIX future of their
+expiry: the "level" of a VIX snapshot is a future (12.95 on 2024-06-07 for an expiry 5 days away; the index was 12.22). The bid and ask of the indicative feed are modified quotes and wide for deep in-the-money options
+(SPX 400 call: bid 6,669, ask 6,788, last 6,948); the volatility is set for out-of-the-money and near-the-money quotes only. Check 2024-06-07: SPX at-the-money volatility 10.0 to 10.4% (expiries 2024-06-24 to 06-28), SPY 10.7 to 11.4%,
+VIX index 12.22 (a 30-day measure of the whole smile, so it is higher than the at-the-money value). The history of an index uses the SPY close times 10 as a level to pick the strike range: it is 0.1% to 0.3% from the index
+and the ratio changes with the dividends of SPY. The VIX level of the history is the Cboe file (`fa sync --only vix` first). A missing level is an error text. NDX and RUT have no proxy in the code (`--level SYMBOL:RATIO`; not tested).
+*Evidence:* `option_history.rs` (`fill_from_mids`, `level_for`, tests), `option_iv.rs` (`forward_from_parity_blind`).
+
+**281. The list of expired index contracts holds the last six months only.** MEASURED 2026-11-20: `GET /v2/options/contracts?underlying_symbols=SPX&status=inactive` gives contracts with an expiry from about March 2026; an expiry in 2024, 2025
+or January 2026 gives an empty list (SPY gives 2024). The list of an underlying `SPX` includes the roots `SPX` and `SPXW` (and a root `SPXO` that the program leaves out). The bars of an expired contract of 2024 exist, so the program makes
+the symbols from the rules for the expiries before 180 days ago (`index_candidates`): SPXW on each weekday and SPX on the third Friday, strikes every 5 points; VIX on Wednesdays (monthly root VIX when the Wednesday is 30 days before a third
+Friday, else VIXW), strikes every 0.5 point. Errors: the rules are not the real list. Before 2022 SPXW had no expiry on Tuesday and Thursday (the program asks for them anyway: they cost requests and give no bar); a strike on a
+grid of 25 or 50 points far from the money is found only if it is on the 5-point grid; the monthly root of a holiday expiry is not handled. The cut of 180 days is a margin on a measured depth between 207 and 297 days.
+*Evidence:* `option_history.rs` (`index_candidates`, `AlpacaHistory::contracts`).
+
+**282. Weekly roots.** MEASURED 2026-11-20: the data address has chains for the roots `SPXW` and `VIXW` (`/v1beta1/options/snapshots/SPXW`). The contract list does not accept `underlying_symbols=SPXW` (empty); `SPXW` contracts are in the list of
+`SPX`. `fa options snapshot SPX --source alpaca` takes both roots by default (SPX 10,412 + SPXW 21,634 quotes); `--roots SPX` gives the monthly root only.
+*Evidence:* `options_cli.rs` (`snapshot_alpaca_with`).
+
+**283. Contracts in one request of option bars.** MEASURED 2026-11-20: 250, 600, 1,000 and 2,160 symbols (with repeats) in one request of `/v1beta1/options/bars` all gave HTTP 200 and all bars. No limit is in the pages that were read. The program
+uses 500 (`ALPACA_BARS_PER_REQUEST`). A change of the API can make this number wrong: a failure shows as an HTTP error of a request of closes.
+*Evidence:* `option_history.rs` (`ALPACA_BARS_PER_REQUEST`).
+
+**284. Tiingo and the order of the daily price sources.** MEASURED 2026-11-20 (the owner's key): `fa prices get IBM KO --source tiingo` gives 14,342 rows from 1970-01-02 for IBM, `adjusted: splits+dividends`; the IBM close of 2026-11-18 is 228.53,
+the official close of Nasdaq. `fa prices check IBM NVDA --sources tiingo,nasdaq`: NVDA 2,513 common dates, largest relative difference of the split adjusted closes 0.0232% (2020-01-22), no date above 0.10%. FAULT found and corrected: `divCash`
+is the dividend in the share count of its own day, and the check of the adjustment compared it with split adjusted prices (NVDA: "largest error 0.249966 on 2012-11-20", a false alarm). `parse_tiingo` now divides the dividend by the later
+split factors, like the prices. The order of the sources with no forced source is now Tiingo, Yahoo, Nasdaq, Alpaca (before: Tiingo, Alpaca, Yahoo, Nasdaq), because the Alpaca close is the IEX close and its history is short (#232). A cache
+of one source keeps that source (the rule of #234): a cache of Alpaca stays with Alpaca until the person asks for another source.
+*Evidence:* `price_source.rs` (`parse_tiingo`, `sources`; test `tiingo_dividend_before_a_split_is_split_adjusted_and_passes_the_event_check`, `source_choice`), `sync/plan.rs` (`price_hosts`).
 
 ## The investigation of the automatic DCF (added 2026-11-20, branch `claude/dcf-investigation`)
 

@@ -741,7 +741,7 @@ Read-only functions for other modules: `consensus::forward_pe(price, eps)` and `
 
 Owner request: solid data sources that a person syncs whenever the person wants. No process runs all the time. So each data set needs a source
 that gives the PAST on request through a published API. All loaders of this section follow the official documentation (read on 2026-11-19).
-No key was available, so NO loader ran against the real server. Each test uses text that follows the documentation. The table of all data sets is
+No key was available when the loaders were written. On 2026-11-20 the owner made a free Alpaca paper key and the loaders of Alpaca ran against the real server (results below; the facts of the table are corrected). Tiingo ran on the same day (#206, #284). The FRED API has not run. The tests use text that follows the documentation and, for Alpaca, real reply text. The table of all data sets is
 `docs/DATA-SOURCES.md`.
 
 ### Alpaca Market Data API (free plan)
@@ -750,9 +750,9 @@ Facts from the documentation. "Confirmed" means that a page states it.
 
 | Fact | State | URL |
 |---|---|---|
-| (a) The free plan has the feed IEX for stocks and the feed "indicative" for options. 200 requests each minute. Stock history "Since 2016" (the pricing page says "7+ years"). The history limit of the free plan is "latest 15 minutes": the page does not say that a request for this window fails. The reference says that without real-time access `end` defaults to 15 minutes ago. The program never asks for the latest 15 minutes (it leaves `end` out when the window reaches today) | confirmed, except the exact failure | `https://docs.alpaca.markets/docs/about-market-data-api`, `https://docs.alpaca.markets/reference/stockbars`, `https://alpaca.markets/data` |
+| (a) The free plan has the feed IEX for stocks and the feed "indicative" for options. 200 requests each minute. Stock history: the pages say "Since 2016" and "7+ years"; MEASURED 2026-11-20: the daily history starts 2020-07-27 (1,589 rows), the intraday history starts at the same time (a week of 2016: 0 bars; a week of August 2020: 390 bars). The close is the IEX close (MSFT 2026-11-18: 508.505 at Alpaca, 508.29 official at Nasdaq) and the volume is the IEX volume. The history limit of the free plan is "latest 15 minutes": the page does not say that a request for this window fails. The reference says that without real-time access `end` defaults to 15 minutes ago. The program never asks for the latest 15 minutes (it leaves `end` out when the window reaches today) | confirmed, except the exact failure | `https://docs.alpaca.markets/docs/about-market-data-api`, `https://docs.alpaca.markets/reference/stockbars`, `https://alpaca.markets/data` |
 | (b) Indicative option feed: free; "quotes are not actual OPRA quotes", trades delayed 15 minutes. The chain snapshot has bid, ask, last trade, implied volatility and the greeks. Historical option bars exist "since February 2024" (`GET /v1beta1/options/bars`, up to 100 contracts in a request, 10,000 points in a page). Historical option quotes: no page found | bars and snapshots confirmed; quotes not confirmed | `https://docs.alpaca.markets/docs/historical-option-data`, `https://docs.alpaca.markets/reference/optionbars`, `https://docs.alpaca.markets/reference/optionchain` |
-| (c) Index options (SPX, VIX). One quote sample has the symbol `SPXW240327P04925000`, but no page says that index options are covered. The trading overview names "US listed equities options" only | not confirmed | `https://docs.alpaca.markets/docs/real-time-option-data`, `https://docs.alpaca.markets/docs/options-trading-overview` |
+| (c) Index options (SPX, VIX). No page says that they are covered | MEASURED 2026-11-20: they ARE on the free plan. Chain `SPX`: 10,412 quotes, 20 expiries to 2031-12-19; chain `SPXW` (weekly root): 21,634 quotes; `VIX`: 1,010 quotes; `VIXW`: 500 quotes. Bars of `SPX`, `SPXW` and `VIX` contracts of 2024-06-07 exist. No index level, and no implied volatility in the chain (#280). The list of expired index contracts is short (#281) | `https://docs.alpaca.markets/docs/real-time-option-data`, `https://docs.alpaca.markets/docs/options-trading-overview` |
 | (d) Account. Paper accounts can call the Market Data API with their own keys. No page says that the free data needs a funded account. Whether Alpaca asks for a document when a person opens a paper account is not in the pages read | paper keys confirmed; funding rule not stated | `https://docs.alpaca.markets/docs/authentication` |
 | (e) Headers `APCA-API-KEY-ID` and `APCA-API-SECRET-KEY` (or HTTP Basic). Data address `https://data.alpaca.markets` (`/v2/stocks/bars`, `/v1beta1/options/bars`, `/v1beta1/options/snapshots/{underlying}`). The list of option contracts is on the trading address `https://paper-api.alpaca.markets/v2/options/contracts` | confirmed | `https://docs.alpaca.markets/docs/authentication`, `https://docs.alpaca.markets/reference/get-options-contracts` |
 | (f) Terms for stored data and automated use. The data pages do not state them. The disclosure page lists the agreements "NASDAQ OMX Global Subscriber Agreement" and "NYSE Market Data Display Services Agreement" by title only; they were not read | not confirmed | `https://alpaca.markets/disclosures` |
@@ -765,43 +765,60 @@ Modules:
 | `alpaca.rs` | The client (keys in headers, 0.4 s between requests, request counter, paging by `next_page_token`), the parsers (bars, contracts, chain snapshots), the daily rows, the intraday rows, and the price source `Alpaca`. |
 | `price_source.rs`, `price_cache.rs` | The trait `PriceSource` got `batch_size`, `fetch_many` and `detail`. `price_cache::update_many` updates many tickers with one request for each group of tickers (the overlap rule, the "no mixing" rule and the 90% rule stay). `prices.meta.json` has the new field `detail` (`feed=iex adjustment=split`). |
 | `intraday.rs` | `fa prices intraday`: the range goes in calendar months; each month is one request; the file is written after each month. |
-| `option_iv.rs` | Black-76 price, the implied volatility (bisection), the forward from put-call parity. |
-| `option_history.rs` | The trait `OptionHistorySource`, the builder `build_range` (selection, forward, implied volatility, snapshot of each date) and the Alpaca source. |
+| `option_iv.rs` | Black-76 price, the implied volatility (bisection), the forward from put-call parity (with a spot, or without one: `forward_from_parity_blind`). |
+| `option_history.rs` | The trait `OptionHistorySource`, the builder `build_range` (selection, forward, implied volatility, snapshot of each date), the Alpaca source, the index functions (roots, level, symbols from the rules, the VIX history file) and `fill_from_mids` (forward, level and volatility of a live index chain). |
 | `options_cli.rs` | `fa options snapshot` and `fa options history`. |
 | `fred_api.rs` | The FRED API loader (see below). |
 
 Commands and rules:
 
-1. **Daily prices.** `fa prices get TICKER... --source alpaca`. The call is `GET /v2/stocks/bars` with `timeframe=1Day`, `adjustment=split`, `feed=iex`,
+1. **Daily prices.** `fa prices get TICKER... --source alpaca`. Alpaca is the LAST source when no source is forced (order: Tiingo, Yahoo, Nasdaq, Alpaca; #284): its close is the IEX close and its history starts 2020-07-27. It is the check source and the fallback. The call is `GET /v2/stocks/bars` with `timeframe=1Day`, `adjustment=split`, `feed=iex`,
    100 symbols in a request, `limit=10000`, and paging. The series is split adjusted and not dividend adjusted (the same series as the Nasdaq source). The cache record says
    `adjusted: splits` and `detail: feed=iex adjustment=split`. The bar of today stays out until 16:20 New York time.
 2. **Intraday bars.** `fa prices intraday SYMBOL --interval 5m|1m --from D [--to D] [--feed iex|sip]` writes `data/raw/trading/<SYMBOL>_5m.csv` (or `_1m.csv`) in the form of
    `fa trade fetch`. The file keeps the regular session and complete bars. A stopped run continues from the last cached day when the cache starts at `--from`.
-3. **Option chain now.** `fa options snapshot SYMBOL --source alpaca` writes `data/raw/<T>/options/<date>.json` with `source: alpaca`, `feed: indicative`, `quote_kind: indicative`.
-4. **Option surface of past dates.** `fa options history SYMBOL --date D` (or `--from D --to D`). Steps for each month of the range: (1) the closes of the underlying (`raw`); (2) the contract
-   list with an expiry from the first day to the last day plus `--max-days`, and a strike in the moneyness range of the lowest and the highest close (status `active` and `inactive`);
-   (3) the daily bars of the contracts in groups of 100 for the whole month; (4) for each date: the filter (a close, a volume above zero, the expiry after the date, the selection), the forward of each
-   expiry from put-call parity, the implied volatility, and the snapshot file. The file has `quote_kind: close`. `fa options history ... --plan` lists the contracts and the number of requests and gets no closes.
-   Default selection: expiry up to 365 days, strike 0.8 to 1.2 times the spot. The rate is the Treasury par curve of the date (linear in the time to expiry); `--rate R` gives one flat rate.
+3. **Option chain now.** `fa options snapshot SYMBOL --source alpaca` writes `data/raw/<T>/options/<date>.json` with `source: alpaca`, `feed: indicative`, `quote_kind: indicative`. For SPX and VIX
+   the chain has two roots, the monthly and the weekly root (`SPX,SPXW`, `VIX,VIXW`); the roots are the default because a person who asks for the SPX chain expects the weekly options too (`--roots A,B` sets
+   them). An index has no price at Alpaca and the chain has no implied volatility. The program takes the forward of each expiry from put-call parity of the mids of bid and ask, sets the level of the
+   underlying to the forward of the nearest expiry (1 to 10 days; 7,085.49 for SPX on 2026-11-20, SPY 706.8 times 10 is 7,068), and sets the implied volatility (Black-76; index options are European) of each
+   out-of-the-money or near-the-money quote that has none. The rate is the Treasury par curve (`--rate R` for a flat rate). Measured 2026-11-20: SPX 32,046 quotes, 33 requests, 15,605 volatilities;
+   VIX 1,510 quotes, 3 requests, 629 volatilities. The SPX volatility of the 2026-12-18 expiry near the money is 24.7 to 25.5%; the SPY one is 24.6 to 26.0%.
+4. **Option surface of past dates.** `fa options history SYMBOL --date D` (or `--from D --to D`). Steps for each month of the range: (1) the level of the underlying (the close for a stock; for an index see below);
+   (2) the contract list with an expiry from the first day to the last day plus `--max-days`, and a strike in the moneyness range of the lowest and the highest level (status `active` and `inactive`);
+   (3) the daily bars of the contracts in groups of 500 (1,000 worked on 2026-11-20) for the whole month; (4) for each date: the filter (a close, a volume above zero, the expiry after the date, the selection), the forward of each
+   expiry from put-call parity, the implied volatility, and the snapshot file. The file has `quote_kind: close`. The plan (contracts, requests) is printed to stderr before the closes are asked for; `fa options history ... --plan` prints it and gets no closes.
+   Default selection: expiry up to 120 days, strike 0.9 to 1.1 times the level. The rate is the Treasury par curve of the date (linear in the time to expiry); `--rate R` gives one flat rate.
+   **Index (SPX, VIX).** Level of SPX: the SPY close times 10 (a proxy: it picks the strike range only; the forward of each expiry comes from parity, and the level of the snapshot is the parity forward of the nearest expiry).
+   Level of VIX: the close of the Cboe file `data/raw/vix/VIX_History.csv` (`fa sync --only vix`); the options of the VIX are on the VIX future of their expiry, so the parity forward is the future (12.95 for the
+   expiry 5 days away on 2024-06-07, the index was 12.22). `--level SYMBOL:RATIO` gives another proxy (not tested for NDX and RUT). A missing level is an error text. The list of expired index contracts holds the last
+   six months only (#281), so for an older expiry the program makes the symbols from the rules (SPXW on each weekday, SPX on the third Friday, strikes every 5 points; VIX on Wednesdays, every 0.5 point) and asks for
+   their bars; a symbol that does not exist has no bar.
 5. **Rules for the files.** A snapshot with real bid and ask is never replaced by closes. A file of closes is replaced only with `--refresh`. The new fields `source`, `feed`, `quote_kind` and `note` are
    optional: a file of the older form (Cboe) has none of them, and the older readers read both forms.
 6. **Keys.** `APCA_API_KEY_ID` and `APCA_API_SECRET_KEY` from the environment, else `<repo>/.env`. They go in headers only. Each error text has them taken out (tests).
 
-Request counts. The first two lines are measured with fixtures (a fake server with the paging rule of the documentation). The lines about SPY are estimates, not measurements.
+Request counts. The first two lines are measured with fixtures (a fake server with the paging rule of the documentation). The other lines are MEASURED with the real server on 2026-11-20 unless the text says "estimate".
 
-| Job | Requests | Time at 0.4 s for each request |
+| Job | Requests | Time |
 |---|---|---|
 | 1,000 tickers, daily update (7 rows each) | 10 (fixture test) | 4 s |
-| 1,000 tickers, full history since 2016 (about 2,700 rows each) | about 280: 10 groups of 100 symbols, 28 pages each (fixture: 2,520 rows give 26 pages for each group, 260 in all) | about 2 minutes |
-| One year of 5-minute bars of one symbol | 12 (one for each month); 19,656 rows at most; about 1.2 MB (59 bytes for each row) | 5 s |
-| One year of 1-minute bars of one symbol | 12; 98,280 rows at most; about 5.8 MB | 5 s |
-| One past date of SPY | 1 (underlying) + 2 or more (contract list, active and inactive, 10,000 for each page) + about 60 to 120 (closes: 6,000 to 12,000 contracts in groups of 100). The Cboe file lists about 12,000 live SPY options; the selection removes about half | about 30 to 50 s |
-| One year of dates, one date at a time | 252 x (65 to 125) = about 16,000 to 31,000 | 1.8 to 3.5 hours (the limit of 200 each minute gives 80 to 155 minutes at best) |
-| One year of dates, month by month (the builder) | each month asks for each contract one time, whatever the number of dates: about 14,000 contracts after the selection for a month (12,000 live + 21 days x 700 new contracts, half kept) = about 140 + 4 requests; about 1,700 for the year | about 12 minutes |
+| 1,000 tickers, full history (about 1,590 rows each since 2020-07-27) | about 160 (fixture rule: 10 groups of 100 symbols, about 16 pages each; estimate) | about 1 minute |
+| One year of 5-minute bars of one symbol | 12 (one for each month); 19,656 rows at most (estimate) | 5 s |
+| SPY chain now | 14 (12,500 quotes) | 6 s |
+| SPX chain now (roots SPX and SPXW) | 33 (32,046 quotes) | 18 s |
+| VIX chain now (roots VIX and VIXW) | 3 (1,510 quotes) | 2 s |
+| One past date of SPY, default selection (120 days, 0.9 to 1.1) | 35: 1 (closes of the underlying) + 3 (contract list: 15,220 contracts) + 31 (bars, 500 contracts in a request); 2,038 contracts had a close | 17 s |
+| The same, selection 45 days and 0.95 to 1.05 | 3 + 6 = about 9 (2,952 contracts; 1,196 had a close) | 15 s with groups of 100 (33 requests) |
+| The same, selection 365 days and 0.8 to 1.2 | 136 (63,498 contracts: 9 + 127) | about 1 minute |
+| One past date of SPX, 45 days and 0.95 to 1.05 | 15 (6,848 symbols from the rules; 2,724 had a close) | 8 s |
+| One past date of SPX, default selection | about 75 (36,808 symbols) | |
+| One past date of VIX, 0.7 to 1.5 | 2 (782 symbols; 139 had a close) | 2 s |
+| One year of dates, one date at a time (SPY, default) | about 252 x 35 = 8,800 (estimate) | 45 minutes at 200 each minute |
 
-The assumptions behind the SPY lines are 12,000 live contracts, 700 new contracts for each day and a selection that keeps half. They are not measured. Run `fa options history SPY --date D --plan`
-with a key to get the real contract count. A thin contract that traded on one day only gives one point, so the pages of closes are never the limit: the number of contracts is.
-The depth of the INACTIVE contract list is not in the documentation (hidden assumption 231): if it is short, an old date has no contracts, and the command says so.
+The first estimate of the first version (65 to 125 requests for one date) was wrong by a factor of 5 to 10 for the selection with 365 days and 0.8 to 1.2 (136 requests with groups of 500, 635 with groups of 100). The list of
+expired contracts is filtered by expiry and strike only: most listed contracts had no trade on the date (SPY: 1,196 of 2,952; 2,038 of 15,220). The list gives `close_price`, `close_price_date` and `open_interest`, but
+they do not tell which contracts traded on a date (1,076 of 1,080 contracts with a bar had a `close_price`, and 2,990 of 3,148 contracts had one), so the list cannot reduce the number of closes to ask for. What reduces the
+requests: groups of 500 contracts in a request, and a narrower selection. The contract count for a date is not the limit of the pages of closes: a request returns up to 10,000 bars.
 
 ### FRED API with a key
 
@@ -842,7 +859,7 @@ Plan for one year of SPX surfaces (the trait `OptionHistorySource` fits both for
 
 ### Tests and counts
 
-`cargo test --manifest-path rust/Cargo.toml --locked`: 473 Rust tests (455 + 17 + 1; 2 more are ignored). 36 tests are new (alpaca 10, intraday 3, option_iv 3, option_history 5, options_cli 4, fred_api 6,
+`cargo test --manifest-path rust/Cargo.toml --locked`: 473 Rust tests (455 + 17 + 1; 2 more are ignored) when this section was written; the later count is in the next section. 36 tests were new (alpaca 10, intraday 3, option_iv 3, option_history 5, options_cli 4, fred_api 6,
 keys 3, price_cache 2). The traps are #230 to #244 of `docs/HIDDEN-ASSUMPTIONS.md`.
 
 ## `fa sync`: one command for all cached data sets (`rust/src/sync/`, `rust/src/hostnet.rs`, 2026-11-20, branch `claude/data-sync`)
@@ -962,7 +979,7 @@ ticket `option-backtest-rust`).
 
 ## Tests
 
-`cargo test --manifest-path rust/Cargo.toml --locked`: 559 Rust tests (541 + 17 + 1; 2 more are ignored) (the `fa` crate).
+`cargo test --manifest-path rust/Cargo.toml --locked`: 568 Rust tests (550 + 17 + 1; 2 more are ignored) (the `fa` crate).
 `cargo test --manifest-path rust/mapcheck/Cargo.toml`: 92 Rust tests. The suites make no network calls and start no
 Python program; HTTP is replaced by a function that the test gives, and files are in a temp folder.
 No Python test remains (the last 211 Python tests were deleted on 2026-11-19 after each case had a Rust test).

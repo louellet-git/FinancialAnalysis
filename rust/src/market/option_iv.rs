@@ -88,6 +88,14 @@ pub fn forward_from_parity(pairs: &[(f64, f64, f64)], spot: f64, df: f64) -> Opt
     (median > 0.5 * spot && median < 2.0 * spot).then_some(median)
 }
 
+/// The forward of one expiry when the level of the underlying is not known (an index with no price): the strike where the call
+/// and the put have the same price is near the forward, and the median of `K + (C - P) / df` over the three strikes nearest to
+/// it is the forward. `pairs` are `(strike, call price, put price)`; the prices of a live chain are mids of bid and ask.
+pub fn forward_from_parity_blind(pairs: &[(f64, f64, f64)], df: f64) -> Option<f64> {
+    let guess = pairs.iter().filter(|p| p.0 > 0.0 && p.1 > 0.0 && p.2 > 0.0).min_by(|a, b| (a.1 - a.2).abs().total_cmp(&(b.1 - b.2).abs()))?.0;
+    forward_from_parity(pairs, guess, df)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -132,5 +140,15 @@ mod tests {
         bad[0].1 += 0.8;
         let got = forward_from_parity(&bad, spot, df).unwrap();
         assert!((got - f).abs() < 1e-9, "median of three: {got}");
+    }
+
+    #[test]
+    fn blind_forward_needs_no_spot() {
+        let (f, t, df) = (7050.0, 0.1, (-0.04f64 * 0.1).exp());
+        let pairs: Vec<(f64, f64, f64)> = (6900..=7200).step_by(25).map(|k| k as f64).map(|k| (k, black76(true, f, k, t, df, 0.15), black76(false, f, k, t, df, 0.15))).collect();
+        let got = forward_from_parity_blind(&pairs, df).unwrap();
+        assert!((got - f).abs() < 1e-6, "{got}");
+        assert_eq!(forward_from_parity_blind(&[], df), None);
+        assert_eq!(forward_from_parity_blind(&[(100.0, 1.0, 0.0)], df), None);
     }
 }

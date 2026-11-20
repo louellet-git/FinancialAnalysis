@@ -106,7 +106,7 @@ impl DataSet {
     pub fn hosts(self) -> &'static [&'static str] {
         match self {
             DataSet::Sec | DataSet::Filings => &["sec"],
-            DataSet::Prices => &["tiingo", "alpaca", "yahoo", "nasdaq"],
+            DataSet::Prices => &["tiingo", "yahoo", "nasdaq", "alpaca"],
             DataSet::Intraday => &["alpaca", "yahoo"],
             DataSet::Estimates => &["nasdaq"],
             DataSet::Earnings => &["nasdaq", "sec"],
