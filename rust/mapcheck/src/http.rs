@@ -59,8 +59,14 @@ impl Client {
     fn build(user_agent: &str, delay_seconds: f64, redirects: Option<u32>, timeout_seconds: u64) -> Client {
         // `http_status_as_error(false)`: the code reads the status itself (a 3xx answer
         // is a normal step in a form session).
+        // Certificates: the store of the operating system (on Linux this follows the standard
+        // variable SSL_CERT_FILE), not the list that is built into the library. A network
+        // with its own certificate authority (a company proxy, the proxy of a cloud session
+        // that adds a secret to a request) then works with no change of the program.
+        let tls = ureq::tls::TlsConfig::builder().root_certs(ureq::tls::RootCerts::PlatformVerifier).build();
         let mut config = ureq::Agent::config_builder()
             .timeout_global(Some(Duration::from_secs(timeout_seconds)))
+            .tls_config(tls)
             .http_status_as_error(false);
         // Version 2 followed 5 redirects; keep that rule.
         config = config.max_redirects(redirects.unwrap_or(5));
