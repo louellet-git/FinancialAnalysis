@@ -603,11 +603,12 @@ data, run it, and test it. No hand input and no network. An automatic model is a
 | Growth: year 1 | the same | AR(1): `mean + phi (last - mean)`; standard deviation `sqrt((1 - phi)^2 var_mean + sigma^2)`. The value and the long-run mean are correlated. |
 | Growth: long run | 10-year zero yield of the GSW curve (`data/raw/rates`); fade cells of the table | The company mean fades linearly to the yield by year 10 if it is above it. The ramp equals an exponential fade with the half-life of the fade table (k = 3 to 10). |
 | Growth: shocks | table cell, own history, fade cells | `phi` and `sigma` of the cell; `sigma` of the company from its own residuals (weight 4 years); at least `kappa` times the level (`kappa` from the fade table). |
-| Margin | `operating_cash_flow`, `capex_total` (else `capex`), `interest_paid` (else `interest_expense`), `revenue` | FCFF before SBC and before interest `= (OCF - capex + (1 - t) interest) / revenue`. The history is shrunk as the table margin (after interest); the mean after-tax interest ratio is added. A `phi` with a standard error above 0.08 is replaced by the `phi` of all sizes. |
+| Margin | `operating_cash_flow`, `capex_total` (else `capex`), `interest_paid` (else `interest_expense`), `interest_income`, `revenue` | FCFF before SBC and before interest `= (OCF - capex + (1 - t) (interest - interest income)) / revenue` (the interest income is out since 2026-11-20: the cash that earns it is in the bridge). The history is shrunk as the table margin (after interest); the mean after-tax interest ratio is added. A `phi` with a standard error above 0.08 is replaced by the `phi` of all sizes. |
 | SBC | `sbc_total` / `revenue`, last 3 years | Constant, a cost of the model. |
 | Tax | `income_tax_expense`, `income_before_tax` | The median effective rate of 5 years if there are 3 values, each between 5% and 40%, in a range of 10 points; else 21%. |
-| Net debt | `total_debt`, `cash_and_short_term_investments` (else `cash_and_equivalents` + `short_term_investments`), latest balance sheet | Simple bridge. Pensions, leases and minority interests are in a memo line. |
-| Shares | `shares_diluted`, latest period | Weighted average. |
+| Net debt | `total_debt`, `cash_and_short_term_investments` (else `cash_and_equivalents` + `short_term_investments`), `long_term_investments`, latest balance sheet | Stock-and-flow rule of the IBM review F15 (2026-11-20). Pensions, leases and minority interests are in a memo line. |
+| Shares | `shares_outstanding`, `shares_diluted`, `shares_basic`, latest period | The count at the end plus the dilution of the period (2026-11-20); the weighted diluted count if the end count is not within 85% to 110% of it. |
+| Timing | model date (`--as-of`), end of the base fiscal year, date of the balance sheet | The discount starts on the model date (`[discount] stub_years`); the part of year 1 before the balance sheet date is out (`year1_share`) (2026-11-20). |
 | Beta | `<cache>/<T>/prices.json`, `<cache>/trading/SPY_1d.csv` | Weekly returns of 5 years, `2/3 raw + 1/3`; else 1.0 with a warning. |
 | Equity risk premium | repo convention | 4.41%, standard deviation 0.75%, lower bound 2%. |
 | Risk-free rate | GSW file of the cache | Hull-White (`a` 0.14, `sigma` 0.0075), `long_flat`, 10-year zero yield; else a fixed 4.2% with a warning. |
@@ -626,6 +627,21 @@ the models, stage 3 simulates them. Each ticker runs on one thread, so the resul
 `--prices FILE` has lines `ticker,price`.
 
 **`fa dcf pit [--cut YEAR] [--rules K=V,..] [--paths N] [--out FILE]`.** The point-in-time test (see #199 for its limits).
+
+**The investigation of 2026-11-20** (ticket `T-20261120-dcf-investigation`; findings `analysis/priors/dcf_investigation_2026-11-20.md`;
+traps #260 to #270).
+
+| Part | Function |
+|---|---|
+| `Rules` (`auto.rs`) | Alternatives for measurement and for the owner: `rf`, `erp`, `beta_weight`, `equity_weight_one`, `terminal_growth`, `terminal_rf`, `years`, `long_cap`, `fade_years`, `growth_w`, `growth_phi`, `margin_w`, `margin_last`, `sbc_cost`, `acq_charge`, `bridge_lti`, `bridge_leases`, `no_interest_income`, `shares_latest`, `stub`, `mid_year`. `--rules K=V,..` of `fa dcf auto`, `screen`, `pit` and `returns` sets them (`auto_pit::parse_rules`). |
+| `[discount]` (`process.rs`, `paths.rs`) | `stub_years`, `year1_share`, `mid_year`. Not set: the end-of-year rule of before (the hand models do not change). |
+| `fa dcf screen --implied` (`auto_cli.rs`) | `implied_discount_rate`: the cost of capital of year 1 that gives the price (a search on the premium). New CSV columns: `model_rate`, `implied_rate`, `sbc_ratio`, `net_debt`, `shares`, `beta`, `equity_weight`. |
+| `fa dcf returns` (`auto_returns.rs`) | The P50 / price of the point-in-time model (date: end of the fiscal year + 100 days) against the later 1-year and 3-year price returns: rank correlations by year and pooled, quintiles inside each year, size buckets, the years as clusters. About 10 s for 420 companies. Result: `analysis/priors/auto_returns_2026-11-20.txt`. |
+| `filer_template` (`rust/mapcheck/src/checks.rs`) | Also domestic and split deposit lines, deposit-taking lenders, lenders with no current-assets total, real estate at gross less depreciation, sales-type leases of real estate (#264). |
+
+Screen of `sp500.txt` before and after the four corrections (2026-11-19 data, 4,000 paths): median P50 / price 0.480 and 0.489; P50 at or
+below 0: 10% and 9%; median P90 / P10 10.6 and 10.7; 438 and 430 values with a price (8 REITs are now refused). The point-in-time
+bands change by less than 0.2 points (`analysis/priors/auto_pit_2026-11-20.txt`).
 
 **Results of the run of 2026-11-19** (cache of 1,249 tickers; the full cache is not in git).
 
@@ -963,7 +979,7 @@ ticket `option-backtest-rust`).
 
 ## Tests
 
-`cargo test --manifest-path rust/Cargo.toml --locked`: 561 Rust tests (543 + 17 + 1; 2 more are ignored) (the `fa` crate).
-`cargo test --manifest-path rust/mapcheck/Cargo.toml`: 91 Rust tests. The suites make no network calls and start no
+`cargo test --manifest-path rust/Cargo.toml --locked`: 568 Rust tests (550 + 17 + 1; 2 more are ignored) (the `fa` crate).
+`cargo test --manifest-path rust/mapcheck/Cargo.toml`: 92 Rust tests. The suites make no network calls and start no
 Python program; HTTP is replaced by a function that the test gives, and files are in a temp folder.
 No Python test remains (the last 211 Python tests were deleted on 2026-11-19 after each case had a Rust test).

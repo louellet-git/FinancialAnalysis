@@ -20,8 +20,8 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 ```bash
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program that makes the standard variables (necessary)
 cargo build --release --manifest-path rust/Cargo.toml            # the `fa` program
-cargo test --manifest-path rust/mapcheck/Cargo.toml    # 91 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked    # 561 Rust tests (543 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research, data sync)
+cargo test --manifest-path rust/mapcheck/Cargo.toml    # 92 Rust tests, no network
+cargo test --manifest-path rust/Cargo.toml --locked    # 568 Rust tests (550 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research, data sync)
 ```
 
 No Python test remains. The only Python code that remains is the legacy SEC client with its
@@ -130,6 +130,8 @@ fa dcf calibrate [--cache DIR] [--out FILE] [--no-bands]   # AR(1) parameters of
 fa dcf auto IBM [--cache DIR] [--price P] [--explain] [--write FILE]   # automatic path model of a ticker from the cache and the parameter table: a screen, not a reviewed valuation; no network
 fa dcf screen --tickers-file rust/mapcheck/universe/sp500.txt [--cache DIR] [--out FILE] [--jobs N] [--prices FILE]   # one row for each ticker (value range, refusals), parallel over tickers
 fa dcf pit [--cache DIR] [--cut YEAR] [--rules K=V,..] [--out FILE]   # point-in-time test of the automatic model: real revenue and free cash flow against the bands
+fa dcf returns [--cache DIR] [--rules K=V,..] [--lag DAYS] [--out FILE]   # the point-in-time model value (P50 / price) against the later 1-year and 3-year returns
+fa dcf screen ... --implied [--rules K=V,..]      # also the cost of capital that gives the price; --rules: an alternative rule (list: fa dcf auto --help)
 fa prices get IBM MSFT [--tickers-file rust/mapcheck/universe/sp500.txt] [--source tiingo|yahoo|nasdaq] [--full]   # price history into data/raw (network)
 fa prices show IBM [--from D] [--to D]            # rows of the cache
 fa prices last IBM JNJ                            # last close, date, source; warns when older than 5 weekdays

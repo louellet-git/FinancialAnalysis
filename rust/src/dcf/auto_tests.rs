@@ -589,7 +589,7 @@ fn synthetic(n: usize) -> Vec<AutoInputs> {
 fn the_screen_gives_the_same_rows_on_one_and_on_four_threads() {
     let inputs = synthetic(24);
     let t = table();
-    let cfg = ScreenConfig { table: &t, fade: &[], rules: Rules::default(), sims: 500, seed: 7 };
+    let cfg = ScreenConfig { table: &t, fade: &[], rules: Rules::default(), sims: 500, seed: 7, implied_rate: false };
     let market_of = |tk: &str| Market { price: if tk == "T01" { Some(30.0) } else { None }, price_source: "test".into(), ..market() };
     let (a, _) = screen_models(&inputs, &market_of, &cfg, Some(1)).unwrap();
     let (b, _) = screen_models(&inputs, &market_of, &cfg, Some(4)).unwrap();
@@ -611,9 +611,10 @@ fn the_screen_gives_the_same_rows_on_one_and_on_four_threads() {
     assert_eq!(a, c);
     // a CSV line for a row with a value and for a refusal
     let line = csv_line(&a[0]);
-    assert_eq!(line.split(',').count(), 20, "{line}");
+    assert_eq!(line.split(',').count(), CSV_HEADER.split(',').count(), "{line}");
     let bank = a.iter().find(|r| r.ticker == "T03").unwrap();
-    assert!(csv_line(bank).ends_with("template bank: no model"));
+    assert_eq!(csv_line(bank).split(',').count(), CSV_HEADER.split(',').count());
+    assert!(csv_line(bank).contains(",template bank: no model,"));
 }
 
 #[test]
@@ -628,4 +629,136 @@ fn a_price_file_gives_prices_and_refuses_a_bad_line() {
     std::fs::write(&bad, "IBM,228.5\nJNJ,abc\n").unwrap();
     assert!(read_prices(bad.to_str().unwrap()).is_err());
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+// ---- Tests of the investigation of 2026-11-20 (`analysis/priors/dcf_investigation_2026-11-20.md`)
+
+fn ev_at_means(m: &AutoModel) -> f64 {
+    let sim = PathEngine::new(&spec_of(m)).unwrap().deterministic().unwrap();
+    sim.pv_explicit[0] + sim.pv_terminal[0]
+}
+
+#[test]
+fn the_timing_of_the_discount_follows_the_model_date_and_the_balance_sheet() {
+    // base year 2025-12-31, so year 1 ends 2026-12-31; the 10-Q of 2026-09-30; the model date 2026-11-19
+    let (stub, share) = stub_and_share("2025-12-31", "2026-09-30", "2026-11-19").unwrap();
+    assert!((stub - 42.0 / 365.0).abs() < 1e-12 && (share - 92.0 / 365.0).abs() < 1e-12, "{stub} {share}");
+    // year 1 is already over (its 10-K is not filed yet): no discount for it; a balance sheet of the base year: all of year 1
+    assert_eq!(stub_and_share("2025-06-30", "2025-06-30", "2026-11-19").unwrap(), (0.0, 1.0));
+    // the engine at a fixed rate (4.2% + 1.0 x 4.41%): a stub of half a year moves every flow half a year nearer
+    let rules = Rules { stub: false, ..plain_rules() };
+    let base = build(&inputs(), &table(), &[], &market(), &rules, BuildOptions::default()).unwrap();
+    let k: f64 = 0.042 + 0.0441;
+    let with = |stub: f64, share: f64, mid: bool| {
+        let mut t = base.toml.replace("equity_weight = 1.0\n", &format!("equity_weight = 1.0\nstub_years = {stub:?}\nyear1_share = {share:?}\n"));
+        if mid {
+            t = t.replace("equity_weight = 1.0\n", "equity_weight = 1.0\nmid_year = true\n");
+        }
+        let sim = PathEngine::new(&PathsSpec::from_toml(&t).unwrap()).unwrap().deterministic().unwrap();
+        (sim.pv_explicit[0] + sim.pv_terminal[0], sim)
+    };
+    let ev0 = ev_at_means(&base);
+    let (ev1, _) = with(1.0, 1.0, false);
+    assert_eq!(ev1, ev0, "stub 1 and share 1 are the old rule");
+    let (ev_half, _) = with(0.5, 1.0, false);
+    assert!((ev_half / ev0 - (1.0 + k).sqrt()).abs() < 1e-9, "{}", ev_half / ev0);
+    // the share of year 1 after the balance sheet: a quarter of the flow of year 1 stays
+    let det = PathEngine::new(&spec_of(&base)).unwrap().deterministic().unwrap();
+    let fcf1 = det.column(0, crate::dcf::paths::F_FCFF)[0];
+    let (ev_q, _) = with(1.0, 0.25, false);
+    assert!((ev0 - ev_q - 0.75 * fcf1 / (1.0 + k)).abs() < 1e-6 * ev0, "{} {}", ev0 - ev_q, 0.75 * fcf1 / (1.0 + k));
+    // the middle of the year: every flow and the terminal value come half a year earlier
+    let (ev_mid, _) = with(1.0, 1.0, true);
+    assert!((ev_mid / ev0 - (1.0 + k).sqrt()).abs() < 1e-9, "{}", ev_mid / ev0);
+    // a bad value is refused
+    assert!(PathEngine::new(&PathsSpec::from_toml(&base.toml.replace("equity_weight = 1.0\n", "equity_weight = 1.0\nstub_years = 1.5\n")).unwrap()).is_err());
+}
+
+#[test]
+fn the_default_model_starts_the_discount_on_the_model_date() {
+    // the balance sheet is a 10-Q of 2026-09-30; the base fiscal year ends 2025-12-31; the model date is 2026-11-19
+    let mut i = inputs();
+    i.balance.as_mut().unwrap().end = "2026-09-30".into();
+    let m = build(&i, &table(), &[], &market(), &Rules::default(), BuildOptions::default()).unwrap();
+    let d = &spec_of(&m).discount;
+    assert!((d.stub_years.unwrap() - 42.0 / 365.0).abs() < 1e-12, "{:?}", d.stub_years);
+    assert!((d.year1_share.unwrap() - 92.0 / 365.0).abs() < 1e-12);
+    assert!(!d.mid_year, "the middle of the year is an option, not the default");
+    // the point-in-time model (no valuation) has no timing
+    let p = build(&i, &table(), &[], &market(), &Rules::default(), BuildOptions { valuation: false }).unwrap();
+    assert!(spec_of(&p).discount.stub_years.is_none());
+}
+
+#[test]
+fn interest_income_leaves_the_margin_and_the_investments_enter_the_bridge() {
+    // interest income 1% of revenue, long-term investments $100M
+    let mut i = inputs();
+    for y in i.years.iter_mut() {
+        y.interest_income = Some(0.01 * y.revenue.unwrap());
+    }
+    i.balance.as_mut().unwrap().long_term_investments = Some(1e8);
+    let m = build(&i, &table(), &[], &market(), &Rules { stub: false, ..plain_rules() }, BuildOptions::default()).unwrap();
+    let s = spec_of(&m);
+    // the margin: the after-tax interest ratio is (1 - 0.21)(2% - 1%) = 0.79%, not 1.58%
+    assert!((s.process["margin"].target.mean() - (0.128556 + 0.0079)).abs() < 1e-5, "{}", s.process["margin"].target.mean());
+    // the bridge: debt 200M - cash 50M - investments 100M
+    assert_eq!(s.net_debt, 5e7);
+    // the old rule with both parts off
+    let old = build(&i, &table(), &[], &market(), &Rules { stub: false, no_interest_income: false, bridge_lti: false, ..plain_rules() }, BuildOptions::default()).unwrap();
+    assert_eq!(spec_of(&old).net_debt, 1.5e8);
+    // the point-in-time free cash flow follows the same rule
+    let y = &i.years[5];
+    let a = fcff_of_rules(y, 0.21, &Rules::default()).unwrap();
+    let b = fcff_of(y, 0.21).unwrap();
+    assert!((b - a - 0.79 * y.interest_income.unwrap()).abs() < 1e-3);
+}
+
+#[test]
+fn the_share_count_is_the_count_at_the_end_plus_the_dilution() {
+    // weighted diluted 100M, weighted basic 98M, 95M at the end of the period (buybacks): 95M + 2M
+    let mut i = inputs();
+    let b = i.balance.as_mut().unwrap();
+    b.shares_outstanding = Some(9.5e7);
+    b.shares_basic = Some(9.8e7);
+    let m = build(&i, &table(), &[], &market(), &Rules { stub: false, ..plain_rules() }, BuildOptions::default()).unwrap();
+    assert_eq!(spec_of(&m).shares, 9.7e7);
+    // a count outside 85% to 110% of the weighted count (one class of two, a unit error) is not used, with a warning
+    i.balance.as_mut().unwrap().shares_outstanding = Some(4e7);
+    let m = build(&i, &table(), &[], &market(), &Rules { stub: false, ..plain_rules() }, BuildOptions::default()).unwrap();
+    assert_eq!(spec_of(&m).shares, 1e8);
+    assert!(m.warnings.join("|").contains("shares_outstanding"), "{:?}", m.warnings);
+}
+
+#[test]
+fn the_acquisition_charge_is_an_option_with_the_mean_ratio() {
+    let mut i = inputs();
+    for y in i.years.iter_mut() {
+        y.acquisitions = Some(0.02 * y.revenue.unwrap());
+    }
+    let off = build(&i, &table(), &[], &market(), &plain_rules(), BuildOptions::default()).unwrap();
+    assert!(!spec_of(&off).process.contains_key("charge"));
+    let on = build(&i, &table(), &[], &market(), &Rules { acq_charge: true, ..plain_rules() }, BuildOptions::default()).unwrap();
+    assert!((draw_mean(&spec_of(&on).process["charge"].start) - 0.02).abs() < 1e-12);
+    assert!(ev_at_means(&on) < ev_at_means(&off));
+}
+
+#[test]
+fn the_new_rules_have_names_in_the_rules_text() {
+    let r = parse_rules("rf=0.04,erp=0.05,terminal_rf=1,years=20,long_cap=0.0225,fade_years=15,growth_w=1,margin_last=1,sbc_cost=0,acq_charge=1,stub=0,mid_year=1,shares_latest=0,bridge_lti=0,no_interest_income=0,bridge_leases=1,equity_weight_one=1,beta_weight=1,terminal_growth=0.03,growth_phi=0.5,margin_w=0.5").unwrap();
+    assert_eq!((r.rf_fixed, r.erp.0, r.terminal_rf, r.years, r.long_cap, r.fade_years), (Some(0.04), 0.05, true, 20, Some(0.0225), Some(15)));
+    assert!(r.margin_last && !r.sbc_cost && r.acq_charge && !r.stub && r.mid_year && !r.shares_latest && !r.bridge_lti && !r.no_interest_income && r.bridge_leases && r.equity_weight_one);
+    assert_eq!((r.beta_weight, r.terminal_growth.0, r.growth_phi, r.margin_w, r.growth_w), (1.0, 0.03, Some(0.5), Some(0.5), Some(1.0)));
+}
+
+#[test]
+fn the_return_test_helpers_have_known_answers() {
+    use super::super::auto_returns::*;
+    assert_eq!(ranks(&[3.0, 1.0, 2.0, 2.0]), vec![4.0, 1.0, 2.5, 2.5]);
+    assert!((spearman(&[1.0, 2.0, 3.0, 4.0, 5.0], &[2.0, 4.0, 6.0, 8.0, 10.0]).unwrap() - 1.0).abs() < 1e-12);
+    assert!((spearman(&[1.0, 2.0, 3.0, 4.0, 5.0], &[5.0, 4.0, 3.0, 2.0, 1.0]).unwrap() + 1.0).abs() < 1e-12);
+    let (m, se) = mean_se(&[1.0, 2.0, 3.0]);
+    assert!((m - 2.0).abs() < 1e-12 && (se - (1.0f64 / 3.0).sqrt()).abs() < 1e-12);
+    let p = vec![(10, 1.0), (12, 2.0), (20, 3.0)];
+    assert_eq!(close_on_or_after(&p, 11, 7), Some((12, 2.0)));
+    assert_eq!(close_on_or_after(&p, 13, 5), None);
 }

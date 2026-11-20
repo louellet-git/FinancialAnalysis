@@ -5,7 +5,8 @@
 //! `T` only (`model_at`), and the P10, P50 and P90 of the revenue and of the free cash flow of `T+1` to `T+3` are
 //! compared with the values that the company reported later.
 //!
-//! The free cash flow of the test is the one of the model: `OCF - capex_total + (1 - t) interest - SBC`.
+//! The free cash flow of the test is the one of the model (`fcff_of_rules`): `OCF - capex_total + (1 - t) (interest paid -
+//! interest income) - SBC` with the default rules.
 //!
 //! Limits (they are printed with the result):
 //! - The parameter table of the model was estimated on all years of the cache (also the years after `T`). The
@@ -14,7 +15,7 @@
 //! - The mapping takes, for a fiscal year, the value of the latest filing. A later restatement of a year before `T`
 //!   enters the data of `T`. The effect is not measured.
 //! - The companies are those that exist now (survivorship, see `docs/ARCHITECTURE.md`).
-//! - No prices: a test of the value against later returns is not possible.
+//! - The value is not tested here: `fa dcf returns` (`auto_returns.rs`) tests the P50 against the later returns.
 
 use super::auto::*;
 use super::auto_cli::load_table;
@@ -49,8 +50,7 @@ fa dcf pit [OPTIONS]
   --table FILE     parameter table (default analysis/priors/process_priors_2026-11-19.toml)
   --cut YEAR       estimate the table again from the years up to YEAR; use base years from YEAR on (out of sample)
   --paths N (2000) paths for each model          --seed S (7)
-  --rules K=V,..   change a rule (history_organic, margin_pool_se, fade_to_cap, own_sigma_nu, level_kappa); each is a number
-                   (a flag is 0 or 1)
+  --rules K=V,..   change a rule; each is a number (a flag is 0 or 1). The list: `fa dcf auto --help`
   --out FILE       write the text of the result to FILE
   --limit N        use the first N companies only (a quick check)";
 
@@ -76,6 +76,22 @@ pub struct PitObs {
 /// The free cash flow of a fiscal year as the model defines it.
 pub fn fcff_of(y: &YearData, tax: f64) -> Option<f64> {
     Some(y.operating_cash_flow? - y.capex? + (1.0 - tax) * y.interest.unwrap_or(0.0) - y.sbc.map_or(0.0, f64::abs))
+}
+
+/// The free cash flow of a fiscal year as the model of `rules` defines it: `fcff_of`, less the after-tax interest income
+/// (`no_interest_income`), less the cash paid for businesses (`acq_charge`), with no SBC cost when `sbc_cost` is off.
+pub fn fcff_of_rules(y: &YearData, tax: f64, rules: &Rules) -> Option<f64> {
+    let mut v = fcff_of(y, tax)?;
+    if !rules.sbc_cost {
+        v += y.sbc.map_or(0.0, f64::abs);
+    }
+    if rules.no_interest_income {
+        v -= (1.0 - tax) * y.interest_income.unwrap_or(0.0);
+    }
+    if rules.acq_charge {
+        v -= y.acquisitions.unwrap_or(0.0).abs();
+    }
+    Some(v)
 }
 
 /// The model of a company at the end of a fiscal year, from the years up to and including `years[b]` only. Nothing of
@@ -159,7 +175,7 @@ pub fn company_observations(ticker: &str, years: &[YearData], table: &ProcessTab
                 Some(r) => obs.rev_act[h] = r,
                 None => ok = false,
             }
-            obs.fcff_act[h] = fcff_of(year_h, tax);
+            obs.fcff_act[h] = fcff_of_rules(year_h, tax, p.rules);
         }
         if !ok {
             continue;
@@ -374,10 +390,10 @@ LIMITS
   - Not fully out of sample unless the result says OUT OF SAMPLE: the parameter table was estimated on all years of the cache.
   - Restated years: the mapping takes the value of the latest filing for each year, so a restatement after T enters the data of T.
   - Survivorship: the cache has the companies that exist now.
-  - A test of the value (the P50 against later stock returns) is not possible: the cache has the price history of 2 tickers. Open step.
+  - The value (the P50) is not tested here: `fa dcf returns` tests it against the later stock returns.
   - The model of the test has no failure hazard, no price and a fixed default rate; the revenue and the free cash flow do not depend on them.";
 
-fn load_company_years(registry: &Registry, cache: &Path, ticker: &str) -> Option<(String, Vec<YearData>)> {
+pub fn load_company_years(registry: &Registry, cache: &Path, ticker: &str) -> Option<(String, Vec<YearData>)> {
     let path = mapcheck::run::facts_path(cache, ticker)?;
     let facts = mapcheck::run::read_facts(&path).ok()?;
     if !facts.has_us_gaap() {
@@ -401,6 +417,27 @@ pub fn parse_rules(text: &str) -> R<Rules> {
             "fade_to_cap" => r.fade_to_cap = x != 0.0,
             "own_sigma_nu" => r.own_sigma_nu = x,
             "level_kappa" => r.level_kappa = x,
+            "erp" => r.erp.0 = x,
+            "beta_weight" => r.beta_weight = x,
+            "terminal_growth" => r.terminal_growth.0 = x,
+            "years" => r.years = (x as usize).clamp(3, 40),
+            "rf" => r.rf_fixed = Some(x),
+            "equity_weight_one" => r.equity_weight_one = x != 0.0,
+            "terminal_rf" => r.terminal_rf = x != 0.0,
+            "long_cap" => r.long_cap = Some(x),
+            "fade_years" => r.fade_years = Some(x as usize),
+            "growth_w" => r.growth_w = Some(x),
+            "growth_phi" => r.growth_phi = Some(x),
+            "margin_w" => r.margin_w = Some(x),
+            "margin_last" => r.margin_last = x != 0.0,
+            "sbc_cost" => r.sbc_cost = x != 0.0,
+            "bridge_lti" => r.bridge_lti = x != 0.0,
+            "bridge_leases" => r.bridge_leases = x != 0.0,
+            "no_interest_income" => r.no_interest_income = x != 0.0,
+            "shares_latest" => r.shares_latest = x != 0.0,
+            "stub" => r.stub = x != 0.0,
+            "mid_year" => r.mid_year = x != 0.0,
+            "acq_charge" => r.acq_charge = x != 0.0,
             _ => return Err(DcfError(format!("--rules: unknown rule '{k}'"))),
         }
     }

@@ -18,9 +18,13 @@
 //!   `sigma` of the cell.
 //! - Margin: free cash flow before SBC and before interest: `(OCF - capex_total + (1 - t) interest) / revenue`. The
 //!   history is shrunk in the space of the table (cash flow after interest) and the mean interest ratio of the
-//!   company is added back.
+//!   company (interest paid less interest income, after tax) is added back.
 //! - SBC: a ratio, the mean of the last 3 years, a cost of the model (the repo convention).
-//! - Net debt: `total_debt` less `cash_and_short_term_investments`.
+//! - Net debt: `total_debt` less `cash_and_short_term_investments` and `long_term_investments`; the after-tax interest
+//!   income is out of the margin (stock-and-flow rule of the IBM review F15).
+//! - Shares: the count at the end of the latest period plus the dilution of the period.
+//! - Discount: from the model date; the part of year 1 before the balance sheet date is out (it is in the bridge).
+//! - The other rules of `Rules` are alternatives for measurement and for the owner (`--rules K=V`).
 
 use super::calibrate::{level_spread_ratio, mean_variance_factor, slow_half_life, Ar1Params, FadeCell, ProcessPriors, ProcessTable, GROWTH_LIMITS, MARGIN_LIMIT};
 use super::panel::{bucket, clean_series, RawYear, RuleCounts, BUCKET_LABELS};
@@ -75,6 +79,46 @@ pub struct Rules {
     /// A margin cell whose phi has a standard error above this value gives the phi of the cell of all sizes (the mean,
     /// tau and sigma stay those of the size cell). 0 or less: never.
     pub margin_pool_se: f64,
+    // ---- Alternatives for measurement and for the owner's decision (`--rules K=V`). The defaults keep the model of
+    // 2026-11-19 except where a correction of the investigation of 2026-11-20 changed it (see `docs/ARCHITECTURE.md`).
+    /// A fixed risk-free rate for the discount (the curve still gives the cap of the growth). `None`: the curve.
+    pub rf_fixed: Option<f64>,
+    /// The equity weight is 1 (the cost of equity for the whole company).
+    pub equity_weight_one: bool,
+    /// The mean terminal growth is the 10-year zero yield (the long-run growth of the implied ERP of Damodaran).
+    pub terminal_rf: bool,
+    /// The level that the company growth fades to. `None`: the 10-year zero yield.
+    pub long_cap: Option<f64>,
+    /// The length of the ramp of the fade in years. `None`: from the half-life of the fade table.
+    pub fade_years: Option<usize>,
+    /// The weight of the history in the company mean of the growth (`None`: the shrink rule).
+    pub growth_w: Option<f64>,
+    /// The persistence of the growth shocks (`None`: the table).
+    pub growth_phi: Option<f64>,
+    /// The weight of the history in the company mean of the margin (`None`: the shrink rule).
+    pub margin_w: Option<f64>,
+    /// The target margin is the margin of the base year (a company with a rising margin keeps it).
+    pub margin_last: bool,
+    /// SBC is a cost of the model (the repo convention). Off: SBC is not a cost.
+    pub sbc_cost: bool,
+    /// The bridge subtracts `long_term_investments` (marketable securities outside the current assets).
+    pub bridge_lti: bool,
+    /// The bridge adds `operating_lease_liabilities` as debt.
+    pub bridge_leases: bool,
+    /// The margin has no interest income: the after-tax `interest_income` is taken out of the free cash flow, because the
+    /// bridge already counts the cash and the investments that earn it (IBM review F1a and F15).
+    pub no_interest_income: bool,
+    /// The share count is the count at the end of the latest period (`shares_outstanding`) plus the dilution of the
+    /// period (`shares_diluted - shares_basic`), not the weighted average of the period.
+    pub shares_latest: bool,
+    /// The discount starts at the date of the model and the cash flow of year 1 before the balance sheet date is left
+    /// out (it is already in the bridge).
+    pub stub: bool,
+    /// The cash flows come in the middle of each year.
+    pub mid_year: bool,
+    /// The cash paid for businesses (`acquisitions_net_of_cash` / revenue, mean of the margin history years) is a cost of
+    /// the model: the growth history keeps the growth that the acquisitions bought (IBM review F2 and F16).
+    pub acq_charge: bool,
 }
 
 impl Default for Rules {
@@ -95,6 +139,23 @@ impl Default for Rules {
             min_years: 3,
             history_organic: true,
             margin_pool_se: 0.08,
+            rf_fixed: None,
+            equity_weight_one: false,
+            terminal_rf: false,
+            long_cap: None,
+            fade_years: None,
+            growth_w: None,
+            growth_phi: None,
+            margin_w: None,
+            margin_last: false,
+            sbc_cost: true,
+            bridge_lti: true,
+            bridge_leases: false,
+            no_interest_income: true,
+            shares_latest: true,
+            stub: true,
+            mid_year: false,
+            acq_charge: false,
         }
     }
 }
@@ -123,6 +184,17 @@ pub struct YearData {
     /// `cash_and_short_term_investments`, else `cash_and_equivalents` plus `short_term_investments`.
     pub cash: Option<f64>,
     pub shares: Option<f64>,
+    /// `interest_income` (positive).
+    pub interest_income: Option<f64>,
+    /// `long_term_investments` (balance).
+    pub long_term_investments: Option<f64>,
+    /// `operating_lease_liabilities` (balance).
+    pub operating_leases: Option<f64>,
+    /// `shares_outstanding` (the count at the end of the period) and `shares_basic` (weighted average).
+    pub shares_outstanding: Option<f64>,
+    pub shares_basic: Option<f64>,
+    /// `dividends_paid` (positive).
+    pub dividends: Option<f64>,
 }
 
 impl YearData {
@@ -146,6 +218,12 @@ impl YearData {
             total_debt: p.get(registry, "total_debt"),
             cash,
             shares: p.get(registry, "shares_diluted").or_else(|| p.get(registry, "shares_outstanding")),
+            interest_income: p.get(registry, "interest_income").map(f64::abs),
+            long_term_investments: p.get(registry, "long_term_investments"),
+            operating_leases: p.get(registry, "operating_lease_liabilities"),
+            shares_outstanding: p.get(registry, "shares_outstanding"),
+            shares_basic: p.get(registry, "shares_basic"),
+            dividends: p.get(registry, "dividends_paid").map(f64::abs),
         }
     }
 
@@ -167,6 +245,10 @@ pub struct BalanceData {
     pub pension: Option<f64>,
     pub minority: Option<f64>,
     pub operating_leases: Option<f64>,
+    pub long_term_investments: Option<f64>,
+    /// The count at the end of the period, and the weighted basic count of the period.
+    pub shares_outstanding: Option<f64>,
+    pub shares_basic: Option<f64>,
 }
 
 impl BalanceData {
@@ -180,13 +262,27 @@ impl BalanceData {
             shares: y.shares,
             pension: p.get(registry, "pension_liabilities_noncurrent"),
             minority: p.get(registry, "noncontrolling_interest"),
-            operating_leases: p.get(registry, "operating_lease_liabilities"),
+            operating_leases: y.operating_leases,
+            long_term_investments: y.long_term_investments,
+            shares_outstanding: y.shares_outstanding,
+            shares_basic: y.shares_basic,
         }
     }
 
     /// The balance of a fiscal year of the history (no memo items).
     pub fn from_year(y: &YearData) -> BalanceData {
-        BalanceData { end: y.end.clone(), form: "10-K".into(), total_debt: y.total_debt, cash: y.cash, shares: y.shares, ..Default::default() }
+        BalanceData {
+            end: y.end.clone(),
+            form: "10-K".into(),
+            total_debt: y.total_debt,
+            cash: y.cash,
+            shares: y.shares,
+            operating_leases: y.operating_leases,
+            long_term_investments: y.long_term_investments,
+            shares_outstanding: y.shares_outstanding,
+            shares_basic: y.shares_basic,
+            ..Default::default()
+        }
     }
 }
 
@@ -290,8 +386,13 @@ pub fn load_curve(cache: &std::path::Path, as_of: &str) -> Result<CurveNumbers, 
     let path = cache.join("rates").join("gsw_feds200628.csv");
     let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
     let ds = crate::forwards::parse_gsw(&text)?;
+    curve_on(&ds, as_of)
+}
+
+/// The curve numbers of the last row on or before `as_of` of a parsed GSW file.
+pub fn curve_on(ds: &crate::forwards::Dataset, as_of: &str) -> Result<CurveNumbers, String> {
     let (date, day) = crate::forwards::parse_date_arg(as_of)?;
-    let f = crate::forwards::forwards_on(&ds, &date, day)?;
+    let f = crate::forwards::forwards_on(ds, &date, day)?;
     let p = |n: &str| f.parameters.get(n).copied().ok_or_else(|| format!("GSW row has no {n}"));
     let zero10 = f.zero_yields.iter().find(|z| z.years == 10).map(|z| z.rate).ok_or("GSW row has no 10-year zero yield")?;
     Ok(CurveNumbers { date: f.date, beta0: p("BETA0")?, beta1: p("BETA1")?, beta2: p("BETA2")?, beta3: p("BETA3")?, tau1: p("TAU1")?, tau2: p("TAU2")?, zero10 })
@@ -416,6 +517,8 @@ pub struct Summary {
     pub margin_start: f64,
     pub margin_target: f64,
     pub sbc_ratio: f64,
+    /// The acquisition charge (0 when the rule is off).
+    pub acq_ratio: f64,
     pub net_debt: f64,
     pub shares: f64,
     pub beta: f64,
@@ -424,6 +527,11 @@ pub struct Summary {
     pub size: String,
     pub growth_obs: usize,
     pub margin_obs: usize,
+    /// The risk-free rate of the discount at its mean (the 10-year zero yield, or the fixed rate), the equity risk
+    /// premium and the spread of the cost of debt.
+    pub rf: f64,
+    pub erp: f64,
+    pub kd_spread: f64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -506,11 +614,16 @@ pub struct Ar1Fit {
 /// The shrink and the first step. `hist`: the history values, oldest first; `last`: the value of the base year (if it
 /// is not in `hist`, the first step starts at the company mean).
 pub fn ar1_fit(hist: &[f64], last: Option<f64>, p: &Ar1Params) -> Ar1Fit {
+    ar1_fit_w(hist, last, p, None)
+}
+
+/// `ar1_fit` with a fixed weight of the history (`Some(w)`, cut to [0, 1]; a history with no value keeps 0).
+pub fn ar1_fit_w(hist: &[f64], last: Option<f64>, p: &Ar1Params, weight: Option<f64>) -> Ar1Fit {
     let n = hist.len();
     let phi = p.phi.clamp(-0.9, 0.99);
     let tau2 = p.mean_sd_units * p.mean_sd_units;
     let noise = if n == 0 { f64::INFINITY } else { p.sigma * p.sigma * mean_variance_factor(phi, n as f64) };
-    let w = if n == 0 || tau2 + noise <= 0.0 { 0.0 } else { tau2 / (tau2 + noise) };
+    let w = if n == 0 || tau2 + noise <= 0.0 { 0.0 } else { weight.map_or(tau2 / (tau2 + noise), |w| w.clamp(0.0, 1.0)) };
     let mean_history = if n == 0 { p.mean } else { hist.iter().sum::<f64>() / n as f64 };
     let mu = w * mean_history + (1.0 - w) * p.mean;
     let var_post = (1.0 - w) * tau2;
@@ -535,6 +648,18 @@ pub fn own_sigma(hist: &[f64], p: &Ar1Params, nu0: f64) -> f64 {
     let e2: f64 = hist.windows(2).map(|w| ((w[1] - m) - phi * (w[0] - m)).powi(2)).sum::<f64>() * n as f64 / (n as f64 - 1.0);
     let k = (n - 1) as f64;
     ((nu0 * p.sigma * p.sigma + e2) / (nu0 + k)).sqrt()
+}
+
+/// The timing of the discount of a model made on `as_of`: the years from `as_of` to the end of year 1 (the base fiscal
+/// year end plus one year), cut to [0, 1], and the share of year 1 after the balance sheet date `balance_end`, cut to
+/// [0, 1]. `None` if a date does not parse.
+pub fn stub_and_share(base_end: &str, balance_end: &str, as_of: &str) -> Option<(f64, f64)> {
+    let d = |x: &str| mapcheck::dates::parse(x.get(..10)?);
+    let (e0, b, v) = (d(base_end)?, d(balance_end)?, d(as_of)?);
+    let e1 = e0 + 365;
+    let stub = ((e1 - v) as f64 / 365.0).clamp(0.0, 1.0);
+    let share = ((e1 - b.max(e0)) as f64 / 365.0).clamp(0.0, 1.0);
+    Some((stub, share))
 }
 
 /// Half-life in years of a persistence `phi` (years). `phi` is cut to [0.02, 0.95].
@@ -762,14 +887,15 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
     let sg_own = own_sigma(&growth_hist, &gp, rules.own_sigma_nu);
     let g_level = growth_hist.iter().map(|g| g.abs()).fold(last_growth.map_or(0.0, f64::abs), f64::max);
     let sg_eff = sg_own.max(kappa * g_level);
-    let gfit = ar1_fit(&growth_hist, last_growth, &Ar1Params { sigma: sg_eff, ..gp.clone() });
+    let gfit = ar1_fit_w(&growth_hist, last_growth, &Ar1Params { sigma: sg_eff, phi: rules.growth_phi.unwrap_or(gp.phi), ..gp.clone() }, rules.growth_w);
     // the long-run cap and the company mean
     let rf_long = market.curve.as_ref().map_or(DEFAULT_RF, |c| c.zero10);
     if market.curve.is_none() {
         warnings.push(format!("no GSW yield curve: the risk-free rate is the default {} (a fixed rate)", pct(DEFAULT_RF)));
     }
     let mu = gfit.mu.clamp(-0.5, 1.5);
-    let g_long = if rules.fade_to_cap { mu.min(rf_long) } else { mu };
+    let cap = rules.long_cap.unwrap_or(rf_long);
+    let g_long = if rules.fade_to_cap { mu.min(cap) } else { mu };
     let slow_h = match slow_half_life(fade) {
         Some(h) => h.clamp(1.0, 10.0),
         None => {
@@ -777,7 +903,7 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
             rules.default_slow_half_life
         }
     };
-    let ramp_n = fade_ramp_years(slow_h, rules.years);
+    let ramp_n = rules.fade_years.map_or_else(|| fade_ramp_years(slow_h, rules.years), |n| n.clamp(2, 60));
     let drift_end = (g_long - mu) * 1.0;
     let g_start = gfit.start_mean.clamp(GROWTH_LIMITS.0 + 0.01, GROWTH_LIMITS.1 - 0.01);
     let g_half = half_life_of(gfit.phi);
@@ -790,7 +916,8 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
         .filter_map(|y| {
             let m = y.fcf_margin().filter(|m| m.abs() <= MARGIN_LIMIT)?;
             let rev = y.revenue?;
-            Some((m, (1.0 - tax) * y.interest.unwrap_or(0.0) / rev))
+            let income = if rules.no_interest_income { y.interest_income.unwrap_or(0.0) } else { 0.0 };
+            Some((m, (1.0 - tax) * (y.interest.unwrap_or(0.0) - income) / rev))
         })
         .collect();
     let mhist: Vec<f64> = mhist_all.iter().rev().take(HIST_MARGIN).rev().map(|x| x.0).collect();
@@ -800,9 +927,13 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
     };
     let last_margin = last.fcf_margin().filter(|m| m.abs() <= MARGIN_LIMIT);
     let sm_own = own_sigma(&mhist, &mp, rules.own_sigma_nu);
-    let mfit = ar1_fit(&mhist, last_margin, &Ar1Params { sigma: sm_own, ..mp.clone() });
+    let mfit = ar1_fit_w(&mhist, last_margin, &Ar1Params { sigma: sm_own, ..mp.clone() }, rules.margin_w);
     let m_start = (mfit.start_mean + interest_ratio).clamp(-MARGIN_LIMIT + 0.01, MARGIN_LIMIT - 0.01);
-    let m_target = (mfit.mu + interest_ratio).clamp(-MARGIN_LIMIT + 0.01, MARGIN_LIMIT - 0.01);
+    let m_mu = match (rules.margin_last, last_margin) {
+        (true, Some(l)) => l,
+        _ => mfit.mu,
+    };
+    let m_target = (m_mu + interest_ratio).clamp(-MARGIN_LIMIT + 0.01, MARGIN_LIMIT - 0.01);
     let m_half = half_life_of(mfit.phi);
     if m_target <= 0.0 {
         warnings.push(format!("the long-run free cash flow margin before SBC is {} (not above zero): the value is zero or negative", pct(m_target)));
@@ -816,12 +947,18 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
 
     // ---- SBC
     let sbc_vals: Vec<f64> = hist.iter().rev().take(HIST_RATIO).filter_map(|y| Some(y.sbc?.abs() / y.revenue?)).collect();
-    let sbc_ratio = if sbc_vals.is_empty() {
+    let sbc_ratio = if !rules.sbc_cost {
+        0.0
+    } else if sbc_vals.is_empty() {
         warnings.push("no value of sbc_total in the last 3 years: the SBC ratio is 0".into());
         0.0
     } else {
         sbc_vals.iter().sum::<f64>() / sbc_vals.len() as f64
     };
+
+    // ---- acquisitions: the mean ratio of the years of the margin history (a year with no value counts as 0)
+    let acq_vals: Vec<f64> = hist.iter().rev().take(HIST_MARGIN).filter_map(|y| Some(y.acquisitions.unwrap_or(0.0).abs() / y.revenue.filter(|r| *r > 0.0)?)).collect();
+    let acq_ratio = if rules.acq_charge && !acq_vals.is_empty() { acq_vals.iter().sum::<f64>() / acq_vals.len() as f64 } else { 0.0 };
 
     // ---- bridge and shares
     let debt = balance.total_debt.unwrap_or_else(|| {
@@ -830,9 +967,26 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
         }
         0.0
     });
-    let cash = balance.cash.unwrap_or(0.0);
-    let net_debt = debt - cash;
-    let shares = balance.shares.unwrap_or(1.0);
+    let lti = if rules.bridge_lti { balance.long_term_investments.unwrap_or(0.0).max(0.0) } else { 0.0 };
+    let leases = if rules.bridge_leases { balance.operating_leases.unwrap_or(0.0).max(0.0) } else { 0.0 };
+    let cash = balance.cash.unwrap_or(0.0) + lti;
+    let net_debt = debt + leases - cash;
+    let weighted = balance.shares.unwrap_or(1.0);
+    let shares = match (rules.shares_latest && opts.valuation, balance.shares_outstanding) {
+        (true, Some(o)) if o > 0.0 => {
+            let latest = o + (weighted - balance.shares_basic.unwrap_or(weighted)).max(0.0);
+            if (0.85..=1.10).contains(&(latest / weighted)) {
+                latest
+            } else {
+                warnings.push(format!("shares_outstanding {:.1}M at the end of the period is not within 85% to 110% of the weighted diluted count {:.1}M (one class of several, or a unit error): the weighted count is used", o / 1e6, weighted / 1e6));
+                weighted
+            }
+        }
+        _ => weighted,
+    };
+    // the timing of the discount: from the date of the model to the end of year 1; the part of year 1 before the
+    // balance sheet date is in the bridge
+    let timing = if rules.stub && opts.valuation { stub_and_share(&last.end, &balance.end, &market.as_of) } else { None };
 
     // ---- discount
     let beta = match &market.beta {
@@ -845,6 +999,7 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
         }
     };
     let weight = match market.price {
+        _ if rules.equity_weight_one => 1.0,
         Some(p) if opts.valuation && p > 0.0 => {
             let e = p * shares;
             (e / (e + debt.max(0.0))).clamp(0.2, 1.0)
@@ -899,7 +1054,7 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
         "margin: history",
         format!("{} values, mean {}; last {}; interest ratio (after tax) {}", mhist.len(), pct(mfit.mean_history), last_margin.map_or("none".into(), pct), pct(interest_ratio)),
         "operating_cash_flow, capex_total (else capex), interest_paid (else interest_expense), revenue",
-        &format!("FCFF margin before SBC = (OCF - capex + (1 - t) interest) / revenue, t = {}. The history is shrunk as cash flow after interest (the table definition); the mean interest ratio of the last 3 years is added back", pct(tax)),
+        &format!("FCFF margin before SBC = (OCF - capex + (1 - t) (interest paid - interest income)) / revenue, t = {}; the interest income is out when no_interest_income is on (the cash that earns it is in the bridge). The history is shrunk as cash flow after interest (the table definition); the mean interest ratio of the last 3 years is added back", pct(tax)),
     );
     row(
         "margin: table cell",
@@ -919,12 +1074,15 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
         "sbc_total / revenue, last 3 years",
         "mean ratio, fixed; SBC is a cost of the model (repo convention: a cash-equivalent cost; existing awards are in the share count)",
     );
+    if rules.acq_charge {
+        row("acquisition charge", pct(acq_ratio), "acquisitions_net_of_cash / revenue, the years of the margin history", "mean ratio, fixed; a cost of the model, because the growth history keeps the bought growth (IBM review F2 and F16)");
+    }
     row("tax rate", pct(tax), "income_tax_expense, income_before_tax", &tax_rule);
     row(
         "net debt",
-        format!("{} = debt {} - cash {}", money(net_debt), money(debt), money(cash)),
-        &format!("total_debt less cash_and_short_term_investments (cash_and_equivalents + short_term_investments), balance sheet {} ({})", balance.end, balance.form),
-        "simple bridge. Left out: pension and retiree liabilities, operating leases, minority interests, litigation reserves, investments and equity-method stakes (the hand models of IBM and JNJ add some of them)",
+        format!("{} = debt {} + leases {} - cash and investments {} (of which long-term investments {})", money(net_debt), money(debt), money(leases), money(cash), money(lti)),
+        &format!("total_debt (+ operating_lease_liabilities if bridge_leases) less cash_and_short_term_investments (cash_and_equivalents + short_term_investments) and long_term_investments (if bridge_lti), balance sheet {} ({})", balance.end, balance.form),
+        "stock-and-flow rule (IBM review F15): a stock is in the bridge only if its flow is not in the margin. Left out: pension and retiree liabilities, operating leases (their cost is in the operating cash flow), minority interests, litigation reserves, and equity-method stakes (their dividends are in the operating cash flow)",
     );
     let memo: Vec<String> = [("pension_liabilities_noncurrent", balance.pension), ("noncontrolling_interest", balance.minority), ("operating_lease_liabilities", balance.operating_leases)]
         .iter()
@@ -933,7 +1091,20 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
     if !memo.is_empty() && opts.valuation {
         row("memo: not in the bridge", memo.join("; "), "balance sheet variables", "the value per share would change by the amount shown if the item were a claim in the bridge");
     }
-    row("shares", format!("{:.1}M", shares / 1e6), &format!("shares_diluted (weighted average), period {} ({})", balance.end, balance.form), "latest period");
+    let shares_source = if (shares - weighted).abs() > 0.5 {
+        format!("shares_outstanding at the end of the period plus the dilution (shares_diluted - shares_basic), period {} ({})", balance.end, balance.form)
+    } else {
+        format!("shares_diluted (weighted average), period {} ({})", balance.end, balance.form)
+    };
+    row("shares", format!("{:.1}M (weighted diluted {:.1}M)", shares / 1e6, weighted / 1e6), &shares_source, "the count on the date of the balance sheet; the weighted count when the end count is not known or not plausible");
+    if let Some((stub, share)) = timing {
+        row(
+            "timing of the discount",
+            format!("year 1 ends {:.2} years after the model date; {:.0}% of year 1 is after the balance sheet", stub, share * 100.0),
+            &format!("model date {}, base fiscal year {}, balance sheet {}", market.as_of, last.end, balance.end),
+            "the discount starts on the model date; the part of year 1 before the balance sheet date is in the cash and the debt of the bridge, so it is left out of the flows",
+        );
+    }
     row(
         "beta",
         match &market.beta {
@@ -1014,21 +1185,36 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
     let _ = writeln!(tw, "rationale = {}\n", q(&rationale_m));
     let _ = writeln!(tw, "[process.sbc]\nrole = \"sbc\"\nstart = {}\ntarget = {}\nshape = \"ramp\"\nramp_years = 2", f(sbc_ratio), f(sbc_ratio));
     let _ = writeln!(tw, "rationale = {}\n", q(&format!("SBC ratio: mean of the last {} years, fixed. SBC is a cost of the model (repo convention).", sbc_vals.len())));
-    let _ = writeln!(tw, "[discount]\nbeta = {}\nerp = {{ mean = {}, std = {}, lo = 0.02 }}\nkd_spread = {}\nequity_weight = {}\n", f(beta), f(rules.erp.0), f(rules.erp.1), f(rules.kd_spread), f(weight));
+    if acq_ratio > 0.0 {
+        let _ = writeln!(tw, "[process.charge]\nrole = \"charge\"\nstart = {}\ntarget = {}\nshape = \"ramp\"\nramp_years = 2", f(acq_ratio), f(acq_ratio));
+        let _ = writeln!(tw, "rationale = {}\n", q(&format!("Cash paid for businesses: mean of acquisitions_net_of_cash / revenue of the last {} years, fixed. The growth history keeps the bought growth, so the cost is a cost of the model (IBM review F2, F16).", acq_vals.len())));
+    }
+    let _ = write!(tw, "[discount]\nbeta = {}\nerp = {{ mean = {}, std = {}, lo = 0.02 }}\nkd_spread = {}\nequity_weight = {}\n", f(beta), f(rules.erp.0), f(rules.erp.1), f(rules.kd_spread), f(weight));
+    if let Some((stub, share)) = timing {
+        let _ = write!(tw, "stub_years = {}\nyear1_share = {}\n", f(stub), f(share));
+    }
+    if rules.mid_year {
+        let _ = writeln!(tw, "mid_year = true");
+    }
+    let _ = writeln!(tw);
     let _ = writeln!(tw, "[tax]\nrate = {}\n", f(tax));
-    match &market.curve {
-        Some(c) => {
+    match (&market.curve, rules.rf_fixed) {
+        (_, Some(rf)) => {
+            let _ = writeln!(tw, "[rates]\nmodel = \"fixed\"\nrf = {}\n", f(rf));
+        }
+        (Some(c), None) => {
             let _ = writeln!(
                 tw,
                 "[rates]\nmodel = \"hullwhite\"\ntenor = 10.0\nmode = \"long_flat\"\na = {}\nsigma = {}\ncurve = {{ date = {}, beta0 = {}, beta1 = {}, beta2 = {}, beta3 = {}, tau1 = {}, tau2 = {} }}\n",
                 f(rules.hw_a), f(rules.hw_sigma), q(&c.date), f(c.beta0), f(c.beta1), f(c.beta2), f(c.beta3), f(c.tau1), f(c.tau2)
             );
         }
-        None => {
+        (None, None) => {
             let _ = writeln!(tw, "[rates]\nmodel = \"fixed\"\nrf = {}\n", f(DEFAULT_RF));
         }
     }
-    let _ = writeln!(tw, "[terminal]\ngrowth = {{ mean = {}, std = {} }}\ncap_by_process = \"growth\"\nrf_margin = 0.0\n", f(rules.terminal_growth.0), f(rules.terminal_growth.1));
+    let tg_mean = if rules.terminal_rf { rf_long } else { rules.terminal_growth.0 };
+    let _ = writeln!(tw, "[terminal]\ngrowth = {{ mean = {}, std = {} }}\ncap_by_process = \"growth\"\nrf_margin = 0.0\n", f(tg_mean), f(rules.terminal_growth.1));
     let _ = writeln!(tw, "[reinvestment]\nmode = \"margin\"");
     for (name, fit) in [("growth", &gfit), ("margin", &mfit)] {
         if fit.var_post.sqrt() > 1e-9 && fit.start_sd > 1e-9 {
@@ -1049,6 +1235,7 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
         margin_start: m_start,
         margin_target: m_target,
         sbc_ratio,
+        acq_ratio,
         net_debt,
         shares,
         beta,
@@ -1057,6 +1244,9 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
         size,
         growth_obs: growth_hist.len(),
         margin_obs: mhist.len(),
+        rf: rules.rf_fixed.unwrap_or(rf_long),
+        erp: rules.erp.0,
+        kd_spread: rules.kd_spread,
     };
     // The findings that touch the model inputs
     if opts.valuation && inputs.status == "WARN" {

@@ -39,6 +39,13 @@ fa dcf auto TICKER [OPTIONS]
   --write FILE    write the model as a TOML file (`fa dcf drivers TICKER --model FILE` runs it)
   --table FILE    parameter table (default analysis/priors/process_priors_2026-11-19.toml)
   --as-of DATE    date of the model and of the yield curve (default today)
+  --rules K=V,..  change a rule of the builder (a flag is 0 or 1):
+                  growth and fade: history_organic, own_sigma_nu, level_kappa, fade_to_cap, long_cap (the level of the
+                  fade; default the 10-year zero yield), fade_years, growth_w (weight of the history), growth_phi
+                  margin: margin_pool_se, margin_w, margin_last (the target is the margin of the base year)
+                  discount: rf (a fixed rate), erp, beta_weight, equity_weight_one, terminal_growth, terminal_rf
+                  (terminal growth = the 10-year zero yield), years (horizon), stub, mid_year
+                  cash flow and bridge: sbc_cost, acq_charge, no_interest_income, bridge_lti, bridge_leases, shares_latest
   --seed S (7)  --sims N (10000)  --no-attribution  --json  --time   (as `fa dcf drivers --model`)";
 
 pub const SCREEN_USAGE: &str = "\
@@ -50,7 +57,10 @@ fa dcf screen [--tickers-file FILE | TICKER ...] [OPTIONS]
   --jobs N        threads (default: all)
   --prices FILE   CSV `ticker,price` (a header line is allowed); else the last close of the price cache (fa prices get)
   --sims N (4000) paths for each ticker       --seed S (7)
-  --table FILE    parameter table             --as-of DATE";
+  --table FILE    parameter table             --as-of DATE
+  --rules K=V,..  change a rule of the builder (the list: fa dcf auto --help)
+  --implied       also search the cost of capital of year 1 that gives the price (columns model_rate, implied_rate;
+                  \"<x\": the price needs a rate below x, where the rate of some paths is not positive)";
 
 #[derive(Debug, Clone, Default)]
 struct Opts {
@@ -146,7 +156,7 @@ fn auto_inner(repo: &Path, args: &[String]) -> R<u8> {
         println!("{AUTO_USAGE}");
         return Ok(0);
     }
-    let o = Opts::parse(args, &["--cache", "--price", "--write", "--table", "--as-of", "--seed", "--sims"], &["--explain", "--no-attribution", "--json", "--time"])?;
+    let o = Opts::parse(args, &["--cache", "--price", "--write", "--table", "--as-of", "--seed", "--sims", "--rules"], &["--explain", "--no-attribution", "--json", "--time"])?;
     let ticker = o.positional.first().ok_or_else(|| DcfError("auto needs a ticker".into()))?.to_uppercase();
     if o.positional.len() > 1 {
         return e(format!("auto takes one ticker, got {}", o.positional.len()));
@@ -166,7 +176,7 @@ fn auto_inner(repo: &Path, args: &[String]) -> R<u8> {
     let (table, fade) = load_table(&table_path(repo, &o))?;
     let (as_of, as_of_day) = as_of_of(&o)?;
     let price = o.get("--price").map(parse_price).transpose()?;
-    let rules = Rules::default();
+    let rules = super::auto_pit::parse_rules(o.get("--rules").unwrap_or(""))?;
     let json = o.flag("--json");
     let say = |s: &str| {
         if !json {
@@ -359,6 +369,16 @@ pub struct ScreenValue {
     pub implied_g: Option<f64>,
     /// Enterprise value at the P50 over the base revenue.
     pub ev_revenue: f64,
+    /// The cost of capital of year 1 at the means (`--implied`: also the one that gives the price).
+    pub model_rate: f64,
+    pub implied_rate: Option<f64>,
+    /// The implied rate is only a bound: the price needs a lower rate than the search can reach.
+    pub implied_rate_below: bool,
+    pub sbc_ratio: f64,
+    pub net_debt: f64,
+    pub shares: f64,
+    pub beta: f64,
+    pub equity_weight: f64,
     pub warnings: usize,
     pub n_hist: usize,
 }
@@ -385,6 +405,8 @@ pub struct ScreenConfig<'a> {
     pub rules: Rules,
     pub sims: usize,
     pub seed: u64,
+    /// Search the discount rate that gives the price (`--implied`).
+    pub implied_rate: bool,
 }
 
 /// The rows for a list of company inputs. `market_of` gives the market inputs of a ticker. Stage 1 builds the
@@ -432,10 +454,17 @@ fn simulate_row(m: &AutoModel, spec: &PathsSpec, market: &Market, cfg: &ScreenCo
     let s = sorted_copy(&sim.per_share);
     let (p10, p50, p90) = (percentile(&s, 10.0), percentile(&s, 50.0), percentile(&s, 90.0));
     let sm = &m.summary;
-    let (mut share, mut implied) = (None, None);
+    let (mut share, mut implied, mut implied_rate, mut below) = (None, None, None, false);
+    let model_rate = model_rate_of(sm);
     if let Some(p) = market.price {
         share = Some(share_below(&sim.per_share, p));
         implied = implied_long_run_growth(spec, p, cfg.sims.min(4000), cfg.seed, true)?;
+        if cfg.implied_rate {
+            if let Ok(Some((x, b))) = implied_discount_rate(spec, sm, p, cfg.sims.min(4000), cfg.seed) {
+                implied_rate = Some(x);
+                below = b;
+            }
+        }
     }
     Ok(ScreenValue {
         size: sm.size.clone(),
@@ -451,12 +480,60 @@ fn simulate_row(m: &AutoModel, spec: &PathsSpec, market: &Market, cfg: &ScreenCo
         share_below: share,
         implied_g: implied,
         ev_revenue: (p50 * sm.shares + sm.net_debt) / sm.base_revenue,
+        sbc_ratio: sm.sbc_ratio,
+        net_debt: sm.net_debt,
+        shares: sm.shares,
+        beta: sm.beta,
+        equity_weight: sm.equity_weight,
+        model_rate,
+        implied_rate,
+        implied_rate_below: below,
         warnings: m.warnings.len(),
         n_hist: sm.growth_obs,
     })
 }
 
-const CSV_HEADER: &str = "ticker,status,template,size,base_revenue,growth_start,growth_long_run,margin_start,margin_target,p10,p50,p90,price,p50_over_price,share_below_price,implied_long_run_growth,ev_over_revenue,warnings,growth_values,refusal";
+pub const CSV_HEADER: &str = "ticker,status,template,size,base_revenue,growth_start,growth_long_run,margin_start,margin_target,p10,p50,p90,price,p50_over_price,share_below_price,implied_long_run_growth,ev_over_revenue,warnings,growth_values,refusal,model_rate,implied_rate,sbc_ratio,net_debt,shares,beta,equity_weight";
+
+/// The cost of capital of year 1 at the means of the model (the 10-year zero yield as the risk-free rate).
+pub fn model_rate_of(sm: &Summary) -> f64 {
+    let w = sm.equity_weight;
+    w * (sm.rf + sm.beta * sm.erp) + (1.0 - w) * (sm.rf + sm.kd_spread) * (1.0 - sm.tax)
+}
+
+/// The cost of capital of year 1 that gives a P50 equal to `price`: the mean of the equity risk premium moves (the
+/// risk-free rate, and so the cap of the terminal growth, stay); the cost of capital moves by `w beta` for each point.
+/// The other numbers stay. `None`: no solution for a premium from -4% to +20%. The flag is true when the price needs a
+/// lower rate than the search can reach (a path with a cost of capital that is not positive counts as a value above any
+/// price).
+pub fn implied_discount_rate(spec: &PathsSpec, sm: &Summary, price: f64, n: usize, seed: u64) -> R<Option<(f64, bool)>> {
+    let base = model_rate_of(sm);
+    let slope = sm.equity_weight * sm.beta;
+    if slope <= 0.0 {
+        return Ok(None);
+    }
+    let mut err_max = f64::NEG_INFINITY;
+    let x = bisect(
+        |x| {
+            let mut s = spec.clone();
+            s.discount.erp = match &s.discount.erp {
+                ParamSpec::Draw(d) => ParamSpec::Draw(super::process::DrawSpec { mean: x, lo: d.lo.map(|l| l.min(l + x - sm.erp)), ..d.clone() }),
+                ParamSpec::Fixed(_) => ParamSpec::Fixed(x),
+            };
+            match p50_of(&s, n, seed, true) {
+                Ok(v) => Ok(v),
+                Err(_) => {
+                    err_max = err_max.max(x);
+                    Ok(f64::MAX)
+                }
+            }
+        },
+        -0.04,
+        0.20,
+        price,
+    )?;
+    Ok(x.map(|x| (base + slope * (x - sm.erp), err_max >= x - 1e-6)))
+}
 
 fn num(x: f64, d: usize) -> String {
     format!("{x:.d$}")
@@ -486,8 +563,17 @@ pub fn csv_line(r: &ScreenRow) -> String {
             num(v.ev_revenue, 2),
             v.warnings,
             v.n_hist
+        ) + &format!(
+            ",{},{},{},{},{},{},{}",
+            num(v.model_rate, 4),
+            v.implied_rate.map_or(String::new(), |x| format!("{}{}", if v.implied_rate_below { "<" } else { "" }, num(x, 4))),
+            num(v.sbc_ratio, 4),
+            num(v.net_debt, 0),
+            num(v.shares, 0),
+            num(v.beta, 3),
+            num(v.equity_weight, 3)
         ),
-        Err((key, _)) => format!("{},{},{},,,,,,,,,,,,,,,,,{}", r.ticker, r.status, r.template, key.replace(',', ";")),
+        Err((key, _)) => format!("{},{},{},,,,,,,,,,,,,,,,,{},,,,,,,", r.ticker, r.status, r.template, key.replace(',', ";")),
     }
 }
 
@@ -537,7 +623,7 @@ fn screen_inner(repo: &Path, args: &[String]) -> R<()> {
         println!("{SCREEN_USAGE}");
         return Ok(());
     }
-    let o = Opts::parse(args, &["--cache", "--out", "--jobs", "--prices", "--sims", "--seed", "--table", "--as-of", "--tickers-file"], &[])?;
+    let o = Opts::parse(args, &["--cache", "--out", "--jobs", "--prices", "--sims", "--seed", "--table", "--as-of", "--tickers-file", "--rules"], &["--implied"])?;
     let cache = cache_dir(repo, &o);
     let (table, fade) = load_table(&table_path(repo, &o))?;
     let (as_of, as_of_day) = as_of_of(&o)?;
@@ -563,7 +649,7 @@ fn screen_inner(repo: &Path, args: &[String]) -> R<()> {
         Some(p) => read_prices(p)?,
         None => HashMap::new(),
     };
-    let rules = Rules::default();
+    let rules = super::auto_pit::parse_rules(o.get("--rules").unwrap_or(""))?;
     let registry = Registry::embedded().map_err(DcfError)?;
 
     // stage 1: the mapping (company facts of the cache to the standard variables, with the checks)
@@ -592,7 +678,7 @@ fn screen_inner(repo: &Path, args: &[String]) -> R<()> {
         let price = prices.get(t).copied();
         market_from_cache(&cache, t, &as_of, price, &rules, curve.as_ref(), index.as_deref())
     };
-    let cfg = ScreenConfig { table: &table, fade: &fade, rules: rules.clone(), sims, seed };
+    let cfg = ScreenConfig { table: &table, fade: &fade, rules: rules.clone(), sims, seed, implied_rate: o.flag("--implied") };
     let (rows, timing) = screen_models(&inputs, &market_of, &cfg, jobs)?;
     if let Some(path) = o.get("--out") {
         let mut text = String::from(CSV_HEADER);
