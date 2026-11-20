@@ -6,17 +6,14 @@ person decided. Keep this file below 60 lines. Started 2026-11-20.
 The person wants (2026-11-20, `RECORD.md`): an engine with assumptions that are studied, decided and
 written in the assumption records, and a fixed procedure that shows what the market price implies for
 each stock, industry and sector. The person does not choose each assumption: this head decides.
-**Parked on 2026-11-20** (word of the person: "Park leftover work once you wrap up current jobs"). Start
-again only on the word of the person. The state of each ticket is in its file, section "State, parked".
-1. `T-20261120-dcf-conventions-decision` (branch `claude/magical-planck-41ip3i`): built and tested. Waits
-   for the data store of the Head of Technology (full runs), then the gate, then the pull request.
-2. `T-20261120-dcf-market-implied` (branch `claude/dcf-market-implied`; its ticket file with the state is
-   on that branch): parts 1 to 3 built and tested. First open point: the value at the means is 4% to 22%
-   above the simulated P50; decide if the search must use the P50 with a fixed seed.
-3. `T-20261120-dcf-engine-accuracy` (not started): first the two measured errors of the point-in-time
-   test (recovery after a year of decline; bands too wide for a stable margin).
-4. `T-20261120-dcf-assumption-register` (not started): build it on the conventions branch.
-5. The SIC code: ticket `T-20261120-sic-code` (head: technology; it starts on the word of the person).
+Work started again on 2026-11-20 21:19 UTC ("Proceed with your work"). Each ticket file has its state.
+1. `T-20261120-dcf-conventions-decision` (branch `claude/magical-planck-41ip3i`): built and tested; the
+   full runs on the data store run now; then the gate (Head of Quality and Risk), then the pull request.
+2. `T-20261120-dcf-engine-accuracy` (branch `claude/dcf-engine-accuracy`): A recovery after a decline
+   year, B bands too wide for a stable margin, C the mean of the value with its standard error.
+3. `T-20261120-dcf-market-implied` (branch `claude/dcf-market-implied`): parts 1 to 3 built; waits for
+   the SIC codes, the findings file and the gate. Merge the conventions branch into it first.
+4. `T-20261120-dcf-assumption-register` (not started): build it after the conventions merge.
 
 ## Decisions of this head (the reasons are in the records; no reason uses the price)
 - 2026-11-20, long-run growth: one number `L` = lower of the 10-year zero yield and `G`. `G` = FOMC
@@ -24,8 +21,11 @@ again only on the word of the person. The state of each ticket is in its file, s
   and not CBO (3.8%): we can read the page, and ALFRED keeps each vintage for a point-in-time test.
 - 2026-11-20, acquisitions: charge `w` x mean spend (`acq_w`), `w` = weight of the history in the growth
   mean. Known weak point: heavy buyers are over-charged in the point-in-time test.
-- 2026-11-20, market-implied values: the path at the means (`PathEngine::deterministic`), not the P50,
-  so that the result has no random part. A market-implied value is a measurement, never an input.
+- 2026-11-20, market-implied values use the value at the means, not the P50: a risk-adjusted DCF values
+  EXPECTED cash flows, so a price compares with an expected value. The P50 is lower by construction
+  (IBM $159.72 at the means against P50 $132.87). So the screen ratio P50 / price is conservative by
+  construction: a part of the gap to the market is the statistic, not the model.
+- A market-implied value is a measurement, never an input.
 
 ## Standing words of the person
 - 2026-11-20: the immediate goal is to improve the stochastic DCF engine, for stocks only ("stick to
@@ -37,11 +37,11 @@ again only on the word of the person. The state of each ticket is in its file, s
 - The computer of the person is a Windows laptop. Give commands for PowerShell.
 
 ## Tested rules
-- A new machine has an empty `data/raw`. A full sync of 1,114 tickers (`--only sec,prices,gsw`) takes
-  about 70 minutes; start it first. Prices come from the Nasdaq source (10 years); Yahoo answers 429.
-- This session can push a ticket branch with a different name (`claude/<ticket>`), as the repo rule asks.
-- The quant agent can run code and tests while the cache downloads, but not the screen or the tests on
-  the panel. Send it the data runs as a second message.
+- The cache is the data store: `git clone --depth 1 https://github.com/louellet-git/fa-data data/raw`
+  (public, read with no attach; 28 s). Do not start a bulk download (`chiefs/ORIENTATION.md`, section 2).
+  Check after a clone: `fa dcf auto IBM --as-of 2026-11-19 --rules long_run=off,acq_w=0` gives P50 $132.87.
+- The quant agent can build and test while data is missing; send the data runs as a second message.
+- Parallel agents: one worktree each (`../wt-<name>`), the cache path with `--cache`, read only.
 - cbo.gov refuses a request from the cloud machine (HTTP 403). federalreserve.gov answers.
 
 ## Pages
