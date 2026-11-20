@@ -20,7 +20,7 @@
 use super::auto::*;
 use super::auto_cli::load_table;
 use super::calib_report::fade_cells;
-use super::calibrate::{estimate_table, FadeCell, ProcessTable, TableMeta};
+use super::calibrate::{estimate_table, Ar1Params, FadeCell, ProcessTable, TableMeta, MARGIN_LIMIT};
 use super::paths::{Mods, PathEngine, F_FCFF, F_REV};
 use super::panel::{bucket, build_panel, clean_series, CompanyPanel, RuleCounts, BUCKET_LABELS};
 use super::process::PathsSpec;
@@ -52,7 +52,10 @@ fa dcf pit [OPTIONS]
   --paths N (2000) paths for each model          --seed S (7)
   --rules K=V,..   change a rule; each is a number (a flag is 0 or 1). The list: `fa dcf auto --help`
   --out FILE       write the text of the result to FILE
-  --limit N        use the first N companies only (a quick check)";
+  --limit N        use the first N companies only (a quick check)
+  --half H         use the companies of one half only: H = 0 or 1, the parity of the FNV-1a hash of the ticker (a fixed rule)
+  --diag NAME      add a diagnosis after the table: `decline` (what follows a year of falling revenue), `nu` (the weight of the
+                   table shock in the shock size of the margin, tested on the panel with the margin of the next year)";
 
 /// One base year of one company, with the model band and the real values.
 #[derive(Debug, Clone, PartialEq)]
@@ -66,6 +69,9 @@ pub struct PitObs {
     /// Range of the free cash flow margin over the last 5 years.
     pub margin_range: f64,
     pub has_jump: bool,
+    /// The model year-1 growth mean and the company mean of the growth (the summary of the model).
+    pub g_start: f64,
+    pub g_mu: f64,
     /// Mean of `acquisitions_net_of_cash` / revenue over the last 5 years up to T (a missing value counts as 0).
     pub acq_past: f64,
     /// P10, P50, P90 of the revenue of T+1 to T+3.
@@ -164,6 +170,8 @@ pub fn company_observations(ticker: &str, years: &[YearData], table: &ProcessTab
             g_last: None,
             margin_range: 0.0,
             has_jump,
+            g_start: model.summary.growth_start,
+            g_mu: model.summary.growth_company_mean,
             acq_past: years[..=b].iter().rev().take(5).map(|y| y.acquisitions.unwrap_or(0.0).abs() / y.revenue.filter(|r| *r > 0.0).unwrap_or(f64::INFINITY)).sum::<f64>() / years[..=b].iter().rev().take(5).count() as f64,
             rev_q: [[0.0; 3]; HORIZON],
             rev_act: [0.0; HORIZON],
@@ -425,6 +433,156 @@ pub fn render(obs: &[PitObs], header: &str) -> String {
     out
 }
 
+/// The half (0 or 1) of a ticker: the parity of the FNV-1a 64-bit hash of its bytes. A fixed rule, written before the
+/// results were seen. It splits the companies for a development half and a scoring half.
+pub fn ticker_half(ticker: &str) -> u64 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for b in ticker.bytes() {
+        h ^= b as u64;
+        h = h.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    h & 1
+}
+
+fn median_of(mut v: Vec<f64>) -> Option<f64> {
+    if v.is_empty() {
+        return None;
+    }
+    v.sort_by(|a, b| a.total_cmp(b));
+    Some(percentile(&v, 50.0))
+}
+
+/// Growth of year `T+1+h` as the model (P50 ratio) and as the real revenue: `(model, real)`.
+fn step_growth(o: &PitObs, h: usize) -> (f64, f64) {
+    if h == 0 {
+        (o.rev_q[0][1] / o.base - 1.0, o.rev_act[0] / o.base - 1.0)
+    } else {
+        (o.rev_q[h][1] / o.rev_q[h - 1][1] - 1.0, o.rev_act[h] / o.rev_act[h - 1] - 1.0)
+    }
+}
+
+fn pc(x: Option<f64>) -> String {
+    x.map_or("     -".to_string(), |v| format!("{:>+6.1}", v * 100.0))
+}
+
+/// The diagnosis of the revenue after a year of decline (`--diag decline`): for the base years with organic growth below 0,
+/// the growth of each following year as the model predicts it (the ratio of the P50 values) and as it was (medians, in
+/// percent), by the size of the decline and by the calendar year of the base year.
+pub fn render_decline(obs: &[PitObs]) -> String {
+    let mut out = String::new();
+    let _ = writeln!(out, "\nDIAGNOSIS: revenue growth of T+1, T+2, T+3 after a base year with organic growth below 0 (medians, percent)");
+    let _ = writeln!(out, "  model = ratio of the P50 values; real = ratio of the real revenues; g_mu = company mean of the growth, g_1 = model year-1 mean");
+    let head = format!("  {:<22} {:>5} {:>6} {:>6} {:>6}   {:^20} {:^20} {:^20}", "group", "n", "g_last", "g_mu", "g_1", "T+1 model/real", "T+2 model/real", "T+3 model/real");
+    let line = |label: String, set: &[&PitObs]| -> Option<String> {
+        if set.is_empty() {
+            return None;
+        }
+        let med = |f: &dyn Fn(&PitObs) -> f64| median_of(set.iter().map(|o| f(o)).collect());
+        let mut s = format!("  {:<22} {:>5} {} {} {}  ", label, set.len(), pc(med(&|o| o.g_last.unwrap_or(0.0))), pc(med(&|o| o.g_mu)), pc(med(&|o| o.g_start)));
+        for h in 0..HORIZON {
+            let _ = write!(s, " {} /{}        ", pc(med(&|o| step_growth(o, h).0)), pc(med(&|o| step_growth(o, h).1)));
+        }
+        Some(s)
+    };
+    let dec: Vec<&PitObs> = obs.iter().filter(|o| o.g_last.is_some_and(|g| g < 0.0)).collect();
+    let _ = writeln!(out, "{head}");
+    let buckets: [(&str, f64, f64); 4] = [("decline > 20%", -9.0, -0.20), ("decline 10 to 20%", -0.20, -0.10), ("decline 5 to 10%", -0.10, -0.05), ("decline 0 to 5%", -0.05, 0.0)];
+    for (label, lo, hi) in buckets {
+        let set: Vec<&PitObs> = dec.iter().copied().filter(|o| o.g_last.is_some_and(|g| g >= lo && g < hi)).collect();
+        if let Some(l) = line(label.to_string(), &set) {
+            let _ = writeln!(out, "{l}");
+        }
+    }
+    let rest: Vec<&PitObs> = obs.iter().filter(|o| o.g_last.is_some_and(|g| g >= 0.0)).collect();
+    if let Some(l) = line("growth >= 0 (compare)".to_string(), &rest) {
+        let _ = writeln!(out, "{l}");
+    }
+    let _ = writeln!(out, "\nDIAGNOSIS: the same, by the calendar year of the base year (a common shock shows as a year with many declines)");
+    let _ = writeln!(out, "{head}   share of all base years of the year");
+    let years: std::collections::BTreeSet<i32> = dec.iter().map(|o| o.year).collect();
+    for y in years {
+        let set: Vec<&PitObs> = dec.iter().copied().filter(|o| o.year == y).collect();
+        let all_y = obs.iter().filter(|o| o.year == y).count();
+        if set.len() < 15 {
+            continue;
+        }
+        if let Some(l) = line(format!("base year {y}"), &set) {
+            let _ = writeln!(out, "{l}  {:>3.0}%", set.len() as f64 / all_y.max(1) as f64 * 100.0);
+        }
+    }
+    out
+}
+
+/// The values of the weight `nu` (years) that the diagnosis `--diag nu` tries.
+pub const NU_GRID: [f64; 10] = [0.0, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0];
+
+/// One test of the shock size of the margin on the panel: for each company and each year `t` with 5 margin values in sequence
+/// up to `t` and the margin of `t + 1`, the model of the margin (`ar1_fit_w` with the shock size `own_sigma(.., nu)`) predicts
+/// `t + 1`. Returns, for each `nu` of `grid` and each class of the margin range (0: below 5 points, 1: 5 to 10, 2: above 10,
+/// 3: all): the number of cases, the sum of the log density of the real margin under the normal of the model, and the number
+/// inside the P10 to P90 band of the model. Only target years up to `max_year` are used. No pit run, no price.
+pub fn sigma_nu_scan(companies: &[CompanyPanel], table: &ProcessTable, rules: &Rules, max_year: Option<i32>, grid: &[f64]) -> Vec<[(usize, f64, usize); 4]> {
+    let mut out = vec![[(0usize, 0.0f64, 0usize); 4]; grid.len()];
+    for c in companies.iter().filter(|c| c.template == "standard") {
+        let rows = &c.rows;
+        for j in (HIST_MARGIN - 1)..rows.len().saturating_sub(1) {
+            let t = j + 1;
+            if max_year.is_some_and(|y| rows[t].year > y) {
+                continue;
+            }
+            if !rows[j + 1 - HIST_MARGIN..=t].iter().skip(1).all(|r| r.prev_ok) {
+                continue;
+            }
+            let ms: Vec<Option<f64>> = rows[j + 1 - HIST_MARGIN..=t].iter().map(|r| r.fcf_margin()).collect();
+            if ms.iter().any(|m| m.is_none_or(|v| v.abs() > MARGIN_LIMIT)) {
+                continue;
+            }
+            let ms: Vec<f64> = ms.into_iter().flatten().collect();
+            let (hist, next) = (&ms[..HIST_MARGIN], ms[HIST_MARGIN]);
+            let Some((mp, _)) = margin_params(table, BUCKET_LABELS[bucket(rows[j].revenue)], "standard", rules.margin_pool_se) else { continue };
+            let range = hist.iter().cloned().fold(f64::NEG_INFINITY, f64::max) - hist.iter().cloned().fold(f64::INFINITY, f64::min);
+            let class = if range < 0.05 { 0 } else if range < 0.10 { 1 } else { 2 };
+            for (g, nu) in grid.iter().enumerate() {
+                let sg = own_sigma(hist, &mp, *nu);
+                let fit = ar1_fit_w(hist, Some(hist[HIST_MARGIN - 1]), &Ar1Params { sigma: sg, ..mp.clone() }, None);
+                let z = (next - fit.start_mean) / fit.start_sd;
+                let ll = -0.5 * (2.0 * std::f64::consts::PI * fit.start_sd * fit.start_sd).ln() - 0.5 * z * z;
+                for k in [class, 3] {
+                    out[g][k].0 += 1;
+                    out[g][k].1 += ll;
+                    out[g][k].2 += (z.abs() <= 1.281_551_565_5) as usize;
+                }
+            }
+        }
+    }
+    out
+}
+
+/// The text of `--diag nu`.
+pub fn render_sigma_nu(scan: &[[(usize, f64, usize); 4]], grid: &[f64], label: &str) -> String {
+    let mut out = String::new();
+    let _ = writeln!(out, "\nDIAGNOSIS: weight of the table shock in the shock size of the margin ({label})");
+    let _ = writeln!(out, "  The margin of the next year against the normal of the model: mean log density, and the share inside P10 to P90 (target 80%). nu = 0 is the table value only.");
+    let names = ["range < 5 pt", "5 to 10 pt", "above 10 pt", "all"];
+    let _ = write!(out, "  {:>6}", "nu");
+    for n in names {
+        let _ = write!(out, " | {:^22}", n);
+    }
+    let _ = writeln!(out);
+    for (g, nu) in grid.iter().enumerate() {
+        let _ = write!(out, "  {:>6.3}", nu);
+        for (n, ll, inside) in scan[g].iter().copied() {
+            let _ = write!(out, " | {:>9.4} {:>6.1}% n{:<5}", ll / n.max(1) as f64, inside as f64 / n.max(1) as f64 * 100.0, n);
+        }
+        let _ = writeln!(out);
+    }
+    for k in 0..4 {
+        let best = (0..grid.len()).max_by(|a, b| (scan[*a][k].1).total_cmp(&scan[*b][k].1)).unwrap_or(0);
+        let _ = writeln!(out, "  best nu by mean log density, {}: {}", names[k], grid[best]);
+    }
+    out
+}
+
 pub const LIMITS: &str = "\
 LIMITS
   - Not fully out of sample unless the result says OUT OF SAMPLE: the parameter table was estimated on all years of the cache.
@@ -450,7 +608,19 @@ pub fn parse_rules(text: &str) -> R<Rules> {
     let mut r = Rules::default();
     for part in text.split(',').filter(|p| !p.is_empty()) {
         let (k, v) = part.split_once('=').ok_or_else(|| DcfError(format!("--rules: expected K=V, got '{part}'")))?;
-        let x: f64 = v.parse().map_err(|_| DcfError(format!("--rules: bad number '{v}'")))?;
+        // `off` is 0, only for `long_run` (0 or less is off) and for the flags (0 or 1 rules); any other key is an error
+        const OFF_KEYS: [&str; 16] = [
+            "long_run", "history_organic", "fade_to_cap", "equity_weight_one", "terminal_rf", "margin_last", "sbc_cost", "bridge_lti", "bridge_leases",
+            "no_interest_income", "shares_latest", "stub", "mid_year", "acq_charge", "acq_w", "acq_fade",
+        ];
+        let x: f64 = if v == "off" {
+            if !OFF_KEYS.contains(&k) {
+                return Err(DcfError(format!("--rules: '{k}=off' is not allowed (only long_run and the flags take 'off'); give a number")));
+            }
+            0.0
+        } else {
+            v.parse().map_err(|_| DcfError(format!("--rules: bad number '{v}'")))?
+        };
         match k {
             "history_organic" => r.history_organic = x != 0.0,
             "margin_pool_se" => r.margin_pool_se = x,
@@ -459,13 +629,18 @@ pub fn parse_rules(text: &str) -> R<Rules> {
             "level_kappa" => r.level_kappa = x,
             "erp" => r.erp.0 = x,
             "beta_weight" => r.beta_weight = x,
-            "terminal_growth" => r.terminal_growth.0 = x,
+            // an explicit mean terminal growth is the old model for that number: it turns the one long-run growth off
+            // (a later `long_run=` turns it on again)
+            "terminal_growth" => {
+                r.terminal_growth.0 = x;
+                r.long_run = None;
+            }
             "years" => r.years = (x as usize).clamp(3, 40),
             "rf" => r.rf_fixed = Some(x),
             "equity_weight_one" => r.equity_weight_one = x != 0.0,
             "terminal_rf" => r.terminal_rf = x != 0.0,
             "long_cap" => r.long_cap = Some(x),
-            "long_run" => r.long_run = Some(x),
+            "long_run" => r.long_run = if x > 0.0 { Some(x) } else { None },
             "fade_years" => r.fade_years = Some(x as usize),
             "growth_w" => r.growth_w = Some(x),
             "growth_phi" => r.growth_phi = Some(x),
@@ -482,6 +657,19 @@ pub fn parse_rules(text: &str) -> R<Rules> {
             "acq_f" => r.acq_f = Some(x),
             "acq_mult" => r.acq_mult = x,
             "acq_w" => r.acq_w = x != 0.0,
+            "acq_fade" => r.acq_fade = x != 0.0,
+            "last_floor" => {
+                if !x.is_finite() {
+                    return Err(DcfError(format!("--rules: last_floor must be a finite number, got '{v}'")));
+                }
+                r.last_floor = if x <= -1.0 { None } else { Some(x) }
+            }
+            "margin_sigma_nu" => {
+                if !x.is_finite() || x < 0.0 {
+                    return Err(DcfError(format!("--rules: margin_sigma_nu must be 0 or more, got '{v}'")));
+                }
+                r.margin_sigma_nu = Some(x)
+            }
             _ => return Err(DcfError(format!("--rules: unknown rule '{k}'"))),
         }
     }
@@ -508,7 +696,7 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         println!("{USAGE}");
         return Ok(());
     }
-    let known = ["--cache", "--table", "--cut", "--paths", "--seed", "--rules", "--out", "--limit"];
+    let known = ["--cache", "--table", "--cut", "--paths", "--seed", "--rules", "--out", "--limit", "--half", "--diag"];
     let mut i = 0;
     while i < args.len() {
         if known.contains(&args[i].as_str()) {
@@ -525,6 +713,11 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     let cut: Option<i32> = opt(args, "--cut").map(|v| v.parse().map_err(|_| DcfError(format!("bad --cut '{v}'")))).transpose()?;
     let limit: Option<usize> = opt(args, "--limit").map(|v| v.parse().map_err(|_| DcfError(format!("bad --limit '{v}'")))).transpose()?;
     let rules = parse_rules(opt(args, "--rules").unwrap_or(""))?;
+    let half: Option<u64> = opt(args, "--half").map(|v| match v { "0" => Ok(0), "1" => Ok(1), _ => Err(DcfError(format!("bad --half '{v}': 0 or 1"))) }).transpose()?;
+    let diag = opt(args, "--diag");
+    if diag.is_some_and(|d| d != "decline" && d != "nu") {
+        return Err(DcfError("--diag: the names are decline and nu".into()));
+    }
 
     let t0 = Instant::now();
     let registry = Registry::embedded().map_err(DcfError)?;
@@ -535,6 +728,7 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     let companies: Vec<(String, Vec<YearData>)> = tickers
         .par_iter()
         .filter_map(|t| load_company_years(&registry, &cache, t).filter(|(tpl, _)| tpl == "standard").map(|(_, y)| (t.clone(), y)))
+        .filter(|(t, _)| half.is_none_or(|h| ticker_half(t) == h))
         .collect();
     let load_s = t0.elapsed().as_secs_f64();
 
@@ -567,6 +761,16 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         companies.len()
     );
     let mut text = render(&obs, &header);
+    if diag == Some("decline") {
+        text.push_str(&render_decline(&obs));
+    }
+    if diag == Some("nu") {
+        let panel = build_panel(&cache, None).map_err(DcfError)?;
+        let comps: Vec<CompanyPanel> = panel.companies.into_iter().filter(|c| half.is_none_or(|h| ticker_half(&c.ticker) == h)).collect();
+        let grid = NU_GRID;
+        let scan = sigma_nu_scan(&comps, &table, &rules, cut, &grid);
+        text.push_str(&render_sigma_nu(&scan, &grid, &format!("{} companies, target years up to {}", comps.len(), cut.map_or("all".to_string(), |y| y.to_string()))));
+    }
     text.push('\n');
     text.push_str(LIMITS);
     text.push('\n');

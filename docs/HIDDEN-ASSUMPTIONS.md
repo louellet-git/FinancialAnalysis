@@ -2,7 +2,8 @@
 
 Non-obvious assumptions an agent can trip on. Each entry carries an evidence pointer;
 every entry below was re-verified against the code/docs on 2026-07-17. If you find a new
-one, add it here with a pointer.
+one, add it as a new file in `docs/traps/` (`docs/traps/README.md`): one file for each trap, so that
+parallel branches do not conflict. This file keeps the older traps; correct them here.
 
 **Deleted evidence files (2026-11-19).** The entries 1 to 135 name Python files as evidence. These
 files are deleted: `financial_analysis/{backtest,dcf,driver_dcf,scenarios,schema,store,market_data,options}.py`,
@@ -1415,6 +1416,7 @@ a proxy for the long-run nominal growth of the economy. The fade applies only if
 made with the companies that survive: the real fade is faster (#181). The ramp changes the revenue coverage by less than 1 point at T+3 in the
 test; it matters for the value, which the test does not measure.
 *Evidence:* `fa dcf pit --rules fade_to_cap=0`.
+*Changed 2026-11-20:* the cap is now L = the lower of the yield and 4.0% (see #271); `--rules long_run=off` gives the text above.
 
 **190. The margin of the model is the free cash flow before SBC and before interest.** `(operating cash flow - capex_total + (1 - t) interest paid) / revenue`.
 Operating cash flow already adds back the SBC: a formula with "plus SBC" would count it twice. The SBC is a cost of the model (the ratio is a separate process), as in the IBM
@@ -1787,7 +1789,8 @@ expiry: the "level" of a VIX snapshot is a future (12.95 on 2024-06-07 for an ex
 (SPX 400 call: bid 6,669, ask 6,788, last 6,948); the volatility is set for out-of-the-money and near-the-money quotes only. Check 2024-06-07: SPX at-the-money volatility 10.0 to 10.4% (expiries 2024-06-24 to 06-28), SPY 10.7 to 11.4%,
 VIX index 12.22 (a 30-day measure of the whole smile, so it is higher than the at-the-money value). The history of an index uses the SPY close times 10 as a level to pick the strike range: it is 0.1% to 0.3% from the index
 and the ratio changes with the dividends of SPY. The VIX level of the history is the Cboe file (`fa sync --only vix` first). A missing level is an error text. NDX and RUT have no proxy in the code (`--level SYMBOL:RATIO`; not tested).
-*Evidence:* `option_history.rs` (`fill_from_mids`, `level_for`, tests), `option_iv.rs` (`forward_from_parity_blind`).
+Each series (one root and one expiry) has its own forward. On a third Friday, SPX (AM settlement) and SPXW (PM settlement) of the same date are two series (corrected 2026-11-20; before, the second root replaced the first in the parity pairs). The time to expiry is in whole days for the two roots: the 6.5 hours between the two settlements are not in the model. When two series at the same distance have a forward, the level comes from the first root in alphabetical order (SPX). With no spot, the `in_the_money` flag of each quote uses that one level, so an SPXW quote within about 10 points of the money can have the flag of the SPX level; the volatility does not use the flag.
+*Evidence:* `option_history.rs` (`fill_from_mids`, `day_snapshot`, `level_for`, tests), `option_iv.rs` (`forward_from_parity_blind`).
 
 **281. The list of expired index contracts holds the last six months only.** MEASURED 2026-11-20: `GET /v2/options/contracts?underlying_symbols=SPX&status=inactive` gives contracts with an expiry from about March 2026; an expiry in 2024, 2025
 or January 2026 gives an empty list (SPY gives 2024). The list of an underlying `SPX` includes the roots `SPX` and `SPXW` (and a root `SPXO` that the program leaves out). The bars of an expired contract of 2024 exist, so the program makes
@@ -1866,12 +1869,14 @@ debt. A free-cash-flow DCF with the margin of the history is the wrong tool for 
 ratio by 0.16 (JNJ -67%, IBM -68%). That is too much, because the shrink of the growth already takes out much of the bought
 growth. The correct pair is not known from the data. The default is off; the owner decides.
 *Evidence:* `the_acquisition_charge_is_an_option_with_the_mean_ratio`; the findings file, section 4.6.
+*Changed 2026-11-20:* the default is now the charge `w` x the mean ratio (#271, record A-002).
 
 **267. The model has two numbers for the long-run growth.** The company growth fades to the 10-year zero yield (5.13%, #189), and
 the terminal growth is 2.25%. The premium of 4.41% is the implied premium of Damodaran, which uses a long-run growth equal to the
 risk-free rate. `--rules terminal_rf=1` (terminal growth = the yield) and `--rules long_cap=0.0225` (the fade goes to 2.25%) are the
 two consistent choices. The default did not change.
 *Evidence:* the findings file, section 4.7.
+*Changed 2026-11-20:* the default is now one number L (#271, record A-001).
 
 **268. The rules of the builder accept alternatives.** `fa dcf auto`, `fa dcf screen`, `fa dcf pit` and `fa dcf returns` take
 `--rules K=V,..` (the list: `fa dcf auto --help`). They are for measurement and for the owner's decision. A screen with a rule that
@@ -1891,6 +1896,35 @@ The companies are those of the cache now: a company that grew into the S&P 500 i
 On 2026-11-20: rank correlation of P50 / price with the 3-year return +0.12 (mean of 7 yearly values); no relation for companies with
 revenue above $30B; the lowest quintile (values near or below zero) also had high returns.
 *Evidence:* `analysis/priors/auto_returns_2026-11-20.txt`.
+
+**271. The automatic model has two new defaults: one long-run growth and an acquisition charge (2026-11-20).** (1) `long_run = 0.040`:
+L = the lower of the 10-year zero yield and 4.0% is the fade level and the mean terminal growth. The 4.0% is 2.0% (longer-run real GDP
+growth) + 2.0% (longer-run PCE inflation), medians of the FOMC Summary of Economic Projections of 2026-09-16. It is a typed constant
+(`LONG_RUN_GROWTH` in `auto.rs`): a new SEP does not change it by itself. The reviewed IBM model keeps its 2.25% (closed decision).
+(2) `acq_w = 1`: the model charges `w` x the mean of `acquisitions_net_of_cash / revenue` of 5 years. A year with no value counts as 0,
+so a company that does not report the line has no charge (34.1% of the 431 tickers of the screen: the acquisition tag is missing). The charge falls
+linearly to zero along the drift ramp when the company mean is above L (`acq_fade=1`, same timing as the drift); without drift it is constant.
+`acq_charge` and `acq_f` win over `acq_w` and are not faded. `terminal_rf=1` sets both the fade level and the terminal mean to the yield and wins
+over `long_run`. `off` is allowed for `long_run` and the flags only. The point-in-time test with
+`acq_w` on holds the real free cash flow after acquisitions (`fcff_of_rules`), so its error numbers differ from the old runs.
+A screen, a point-in-time run or a return run made before this change is a different model: run it with `--rules long_run=off,acq_w=0`
+to get it again. An explicit `--rules terminal_growth=X` turns `long_run` off (the old model with that number).
+*Evidence:* `one_long_run_growth_is_the_lower_of_the_yield_and_the_number`, `the_charge_can_follow_the_weight_of_the_growth_history`;
+`docs/assumptions/A-001-terminal-growth.md`, `A-002-acquisition-charge.md`.
+
+**286. Two systematic errors of the automatic model: the year after a decline, and the bands for a stable margin (2026-11-20).**
+(1) *A decline in the base year.* The company mean of the growth is the mean of the last 4 values, so a decline year enters it as a rate that stays.
+The panel shows that the next year is not a decline: the median real growth of T+1 is +2.7% to +7.1%, and the larger the decline, the larger the growth.
+Test with the mean at the cell value (`growth_w=0`): the median error of the P50 at T+2 and T+3 falls from +7.6% and +11.3% to +3.1% and +3.1%, so the company mean is the main part.
+The year-1 step (`growth_phi=0`) only gives +1.5% to 0.0% at T+1. The correction (A-003) floors the growth of the base year at 0% for the company mean and the first step.
+The error that stays (+5.1% and +7.4% at T+2 and T+3 on half 1; +8.5% and +13.6% with `--cut 2015`) is in a few base years with a common shock, not in all: real growth less model growth is +16.3 points at T+2 of 2019, +8.7 at T+2 of 2020 (T+1 of 2020: +12.9), +11.8 at T+3 of 2018 and +6.9 at T+3 of 2019, and it is near 0 or negative for 2012, 2013 and 2017 (table in A-003).
+A recovery term estimated on these years fits those years; it needs a study out of sample and a decision of the owner.
+(2) *A stable margin.* The width comes from the weight of the table shock in the shock size of the margin (`own_sigma_nu` = 4 years). The company mean (`margin_w=1`, no uncertainty of the mean) changes the coverage by 0.2 points only.
+`fa dcf pit --diag nu` tests the weight on the panel with the margin of the next year: the best weight by the mean log density is 1 year (half 0), 2 years (half 1) and 0.5 years (table up to 2015).
+`margin_sigma_nu=1` (chosen on half 0) takes the free cash flow coverage of the stable class (range below 5 points) on half 1 from 94.5% to 89.5% (T+3; 90.2% at T+1 and T+2), but with `--cut 2015` the size bucket 1-10B falls from 78.0% to 74.2% at T+3,
+which is more than 2 points under the target. The rule stays off by default. The panel since 2016 has larger margin shocks than the panel before it (the cut run is below 80% before the change).
+Note of the merge with pull request 77: the numbers of (2) are on the defaults before it. On the merged defaults (`acq_w`, `acq_fade`, `long_run`) the free cash flow of the stable class is inside the band in 83.0 / 83.4 / 83.6% (half 1; `--cut 2015`: 78.5 / 79.2 / 78.2%), so the bands are no longer too wide; `margin_sigma_nu=1` gives 73.8 / 77.4 / 78.0% (half 1). The rule is not needed.
+*Evidence:* `fa dcf pit --half 0|1 --diag decline`, `--diag nu`, `--rules last_floor=-1`, `--rules margin_sigma_nu=1`; the tests `a_decline_in_the_base_year_enters_the_growth_mean_and_the_first_step_as_zero`.
 
 ## Could not verify
 

@@ -10,7 +10,7 @@ runs the git steps. A subagent does the checks and leaves the commit to the orch
 
 ## Steps
 1. Find or write the ticket `PLANNING/board/T-YYYYMMDD-<slug>.md` (fields: id, title,
-   area, status, owner, head, order, branch, created, acceptance). Work without a ticket is in
+   area, status, owner, requested_by, head, order, branch, created, acceptance). Work without a ticket is in
    `PLANNING/tickets.md`: make a ticket and delete the item there.
 2. Set `status: in-progress`, `owner` (your GitHub login) and `branch`. Commit and push
    this change first.
@@ -18,7 +18,7 @@ runs the git steps. A subagent does the checks and leaves the commit to the orch
    `git worktree add ../wt-<name> -b <branch> origin/main`.
 4. Do the work in small parts. Run the real command after each part.
 5. Before the pull request, run the skill `release-checks`.
-6. Add one row to `PLANNING/token-ledger.md`: run name, date, scope, tokens (write "not
+6. Add one row to the ledger of your own folder (`CLAUDE.md`, "Token ledger"): run name, date, scope, tokens (write "not
    measured" if you cannot count), notes.
 7. Set `status: review` and open the pull request. Merge only through it.
 8. After the merge, delete the ticket file in the next change. Add open points to the

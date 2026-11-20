@@ -592,7 +592,7 @@ data, run it, and test it. No hand input and no network. An automatic model is a
 | Base revenue | `revenue` of the latest fiscal year | The trailing four quarters are not used (see #194). |
 | Growth: company mean | `revenue` of 5 fiscal years in sequence; the table cell of the size bucket (`priors_for`) | Mean of the last 4 growth values, shrunk to the cell mean with `w = tau^2 / (tau^2 + sigma^2 mvf)`. A jump with cash for businesses, or one that reverses, is left out. |
 | Growth: year 1 | the same | AR(1): `mean + phi (last - mean)`; standard deviation `sqrt((1 - phi)^2 var_mean + sigma^2)`. The value and the long-run mean are correlated. |
-| Growth: long run | 10-year zero yield of the GSW curve (`data/raw/rates`); fade cells of the table | The company mean fades linearly to the yield by year 10 if it is above it. The ramp equals an exponential fade with the half-life of the fade table (k = 3 to 10). |
+| Growth: long run | L = the lower of the 10-year zero yield of the GSW curve (`data/raw/rates`) and 4.0% (`LONG_RUN_GROWTH`, FOMC SEP 2026-09-16; record A-001, 2026-11-20); fade cells of the table | The company mean fades linearly to L by year 10 if it is above it (a mean below L stays). The ramp equals an exponential fade with the half-life of the fade table (k = 3 to 10). |
 | Growth: shocks | table cell, own history, fade cells | `phi` and `sigma` of the cell; `sigma` of the company from its own residuals (weight 4 years); at least `kappa` times the level (`kappa` from the fade table). |
 | Margin | `operating_cash_flow`, `capex_total` (else `capex`), `interest_paid` (else `interest_expense`), `interest_income`, `revenue` | FCFF before SBC and before interest `= (OCF - capex + (1 - t) (interest - interest income)) / revenue` (the interest income is out since 2026-11-20: the cash that earns it is in the bridge). The history is shrunk as the table margin (after interest); the mean after-tax interest ratio is added. A `phi` with a standard error above 0.08 is replaced by the `phi` of all sizes. |
 | SBC | `sbc_total` / `revenue`, last 3 years | Constant, a cost of the model. |
@@ -604,7 +604,8 @@ data, run it, and test it. No hand input and no network. An automatic model is a
 | Equity risk premium | repo convention | 4.41%, standard deviation 0.75%, lower bound 2%. |
 | Risk-free rate | GSW file of the cache | Hull-White (`a` 0.14, `sigma` 0.0075), `long_flat`, 10-year zero yield; else a fixed 4.2% with a warning. |
 | Equity weight | `--price`, else the last close of the price cache | `E / (E + debt)`; else 1.0 with a warning. |
-| Terminal growth, horizon | repo convention | 2.25% (standard deviation 0.75%), the caps of the engine; 10 years. |
+| Acquisition charge | `acquisitions_net_of_cash` / `revenue`, 5 years (a year with no value is 0), `w` of the growth mean | Cost of the model: `w` x the mean ratio (`acq_w`, record A-002, 2026-11-20). It falls linearly to zero along the drift ramp when the company mean is above L (`acq_fade`); else constant. |
+| Terminal growth, horizon | one long-run growth L (record A-001) | Mean L (the same number as the fade level), standard deviation 0.75%, the caps of the engine; 10 years. `long_run=off` gives the mean 2.25% of the old model. |
 
 **Templates and data quality.** Only `standard` has a model. `bank`, `insurer`, `reit`, `fund`, `foreign`, `new`, `non-usd` and `no-revenue` give "no model for this template". A mapping
 status of FAIL, a necessary variable with no value, or fewer than 3 fiscal years in sequence give no value and name the reason. A mapping status of WARN runs, and the warnings that touch a model input are printed.
@@ -616,6 +617,14 @@ growth, the target margin and the half-life of the fade. `--write FILE` writes t
 **`fa dcf screen [--tickers-file FILE | TICKER ...] [--cache DIR] [--out FILE] [--jobs N] [--prices FILE] [--sims N]`.** One row for each ticker. Stage 1 maps the company facts (parallel over tickers), stage 2 builds
 the models, stage 3 simulates them. Each ticker runs on one thread, so the result does not depend on `--jobs` (a test compares 1 and 4 threads). The default is 4,000 paths. No price is downloaded.
 `--prices FILE` has lines `ticker,price`.
+
+**The two defaults of 2026-11-20** (records A-001 and A-002; #271). `long_run = 0.040`, `acq_w = 1` and `acq_fade = 1` (the charge falls to zero with the fade of the growth when the company mean is above L).
+Data of 2026-11-19 (data store commit 41116d0), `fa dcf screen` of `sp500.txt` (4,000 paths, seed 7), old model `--rules long_run=off,acq_w=0` and new model: median P50 / price 0.4895 to 0.4745
+(430 tickers; the 55 stable names 0.523 to 0.511; L alone 0.5605; charge alone 0.4245; constant charge `acq_fade=0` with L 0.427); P50 at or below 0: 38 to 39 (constant charge: 50).
+Median terminal value share 0.611 to 0.685. `fa dcf pit`: revenue error unchanged; error of the free cash flow after acquisitions, T+1 / T+2 / T+3, -1.7 / -1.4 / -0.6 to -0.4 / -0.1 / +0.6% of
+revenue; its coverage P10 to P90 is 1 point lower (76.3 / 77.4 / 77.8% against 77.3 / 78.0 / 78.4%). `fa dcf returns`: rank correlation of P50 / price with the return, 1 year +0.062 to +0.058, 3 years +0.128 to +0.126
+(means over the years; standard errors 0.036 to 0.045). IBM P50 (`fa dcf auto IBM`, 2026-11-19) $132.87 to $95.84. Files: `analysis/priors/auto_pit_{old,old_afteracq,new,constcharge}_2026-11-20.txt`,
+`auto_returns_{old,new}_2026-11-20.txt`; the screen CSV is not kept (the command makes it again).
 
 **`fa dcf pit [--cut YEAR] [--rules K=V,..] [--paths N] [--out FILE]`.** The point-in-time test (see #199 for its limits).
 
@@ -644,7 +653,7 @@ traps #260 to #270).
 
 | Part | Function |
 |---|---|
-| `Rules` (`auto.rs`) | Alternatives for measurement and for the owner: `rf`, `erp`, `beta_weight`, `equity_weight_one`, `terminal_growth`, `terminal_rf`, `years`, `long_cap`, `long_run`, `fade_years`, `growth_w`, `growth_phi`, `margin_w`, `margin_last`, `sbc_cost`, `acq_charge`, `acq_f`, `acq_mult`, `acq_w`, `bridge_lti`, `bridge_leases`, `no_interest_income`, `shares_latest`, `stub`, `mid_year`. `--rules K=V,..` of `fa dcf auto`, `screen`, `pit` and `returns` sets them (`auto_pit::parse_rules`). |
+| `Rules` (`auto.rs`) | Alternatives for measurement and for the owner: `rf`, `erp`, `beta_weight`, `equity_weight_one`, `terminal_growth`, `terminal_rf`, `years`, `long_cap`, `long_run` (default 0.040; `off` or 0: the old model; `terminal_growth=X` also turns it off), `fade_years`, `growth_w`, `growth_phi`, `margin_w`, `margin_last`, `sbc_cost`, `acq_charge`, `acq_f`, `acq_mult`, `acq_w` (default 1; 0: no charge; `acq_charge` and `acq_f` win), `acq_fade` (default 1; 0: constant charge), `off` for `long_run` and the flags only, `bridge_lti`, `bridge_leases`, `no_interest_income`, `shares_latest`, `stub`, `mid_year`. `--rules K=V,..` of `fa dcf auto`, `screen`, `pit` and `returns` sets them (`auto_pit::parse_rules`). |
 | `[discount]` (`process.rs`, `paths.rs`) | `stub_years`, `year1_share`, `mid_year`. Not set: the end-of-year rule of before (the hand models do not change). |
 | `fa dcf screen --implied` (`auto_cli.rs`) | `implied_discount_rate`: the cost of capital of year 1 that gives the price (a search on the premium). New CSV columns: `model_rate`, `implied_rate`, `sbc_ratio`, `net_debt`, `shares`, `beta`, `equity_weight`. |
 | `fa dcf returns` (`auto_returns.rs`) | The P50 / price of the point-in-time model (date: end of the fiscal year + 100 days) against the later 1-year and 3-year price returns: rank correlations by year and pooled, quintiles inside each year, size buckets, the years as clusters. About 10 s for 420 companies. Result: `analysis/priors/auto_returns_2026-11-20.txt`. |
@@ -990,7 +999,7 @@ ticket `option-backtest-rust`).
 
 ## Tests
 
-`cargo test --manifest-path rust/Cargo.toml --locked`: 585 Rust tests (567 + 17 + 1; 2 more are ignored) (the `fa` crate).
-`cargo test --manifest-path rust/mapcheck/Cargo.toml`: 100 Rust tests. The suites make no network calls and start no
+`cargo test --manifest-path rust/Cargo.toml --locked`: the tests of the `fa` crate (the command prints the counts; no document names them, so that each change does not edit the same line).
+`cargo test --manifest-path rust/mapcheck/Cargo.toml`: the tests of `mapcheck`. The suites make no network calls and start no
 Python program; HTTP is replaced by a function that the test gives, and files are in a temp folder.
 No Python test remains (the last 211 Python tests were deleted on 2026-11-19 after each case had a Rust test).

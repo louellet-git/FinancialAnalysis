@@ -55,3 +55,9 @@ this. Follow-up for the engine ticket: report the mean of the simulated value wi
 `next500.txt` (data store 08361bd, data of 2026-11-19, OLD defaults: a check of the code, not the result):
 two runs give the same bytes; 6 s for each list. Open: merge `main` after the conventions merge, run again,
 the findings file (part 4), the gate.
+
+**State, 2026-11-20 23:00 UTC.** Part 4 done: findings file `analysis/priors/market_implied_2026-11-20.md` (first run on
+`sp500.txt` and `next500.txt`, defaults of `main` with pull requests 77 and 81, data store 08361bd, data of 2026-11-19;
+two runs give the same bytes). `main` merged into the branch (conflicts in `auto.rs` and four documents resolved; the
+growth and margin shifts apply after the floor rule). Code: `rust/src/dcf/auto_implied.rs`,
+`rust/src/dcf/auto_implied_tests.rs`. Open: the gate (skeptic, reviewer, auditor) before a person uses a table.

@@ -5,14 +5,15 @@ person decided. Keep this file below 60 lines. Started 2026-11-20.
 ## Goal now and subsequent steps
 - Data store `louellet-git/fa-data`: complete on 2026-11-20 (prices of 999 tickers; SIC codes of 1,249). Its README has the
   update steps. The Nasdaq site has no prices for CFR, DDS, ET, MOG-A and SUN.
-- `T-20261120-sync-yahoo-429`: waits for the review verdict of the Head of Quality and Risk (branch pushed,
-  no pull request yet). SIC code: done and handed over (pull request 69).
-- Next in the queue: `T-20261120-portfolio-backtest` (the engine; the research heads write the strategies).
+- Next in the queue: `T-20261120-portfolio-backtest` (the engine; the research heads write the strategies),
+  then the data request `T-20261120-store-arb-data` of the Head of Quant Research (FedInvest, bill rates first).
 - The person does the first run on the laptop with the keys (ticket `T-20261120-owner-first-run`).
 
 ## Standing words of the person
 - 2026-11-19 or 2026-11-20 (the day was not recorded): "merge to main the branches when complete".
   Effect: open the pull request and merge it after a green check, with no new question.
+- 2026-11-20: "You don't need me to tell you to continue unless I tell you to stop". After a ticket, report
+  and take the next ticket of the queue with no wait.
 - 2026-11-19 or 2026-11-20: "Go back to using sonnet when possible". Now also `chiefs/ORIENTATION.md`,
   section 3.
 - 2026-11-19 or 2026-11-20, on the GitHub Actions use: "this is too much usage". Effect: put small
@@ -45,11 +46,11 @@ person decided. Keep this file below 60 lines. Started 2026-11-20.
   stay. Commit unfinished work to its branch before a long wait.
 - The disk became full one time. Remedy: delete `rust/target` and `rust/mapcheck/target` in the
   worktrees of merged branches.
+- A cloud session cannot delete a remote branch (the git proxy answers HTTP 403). The repo deletes a
+  branch after its merge; a delete of an old branch is work for the person.
 - From a cloud address, some sources refuse requests: the Cboe delayed quotes (403), the Yahoo chart
   (429), FRED with no key. Do not go around a block. The record is `docs/DATA-SOURCES.md`.
-- The Windows build can be checked from the cloud machine:
-  `cargo check --release --target x86_64-pc-windows-gnu` (the target and `gcc-mingw-w64-x86-64` must be
-  installed in a new machine).
+- Windows build check: `cargo check --release --target x86_64-pc-windows-gnu` (install the target first).
 - The four head sessions of `louellet-git` exist; the heads of `merlan1996` do not yet. Find a head by
   its title with `list_sessions`; do not keep a session id. No pages: the sources are in `docs/DATA-SOURCES.md`.
 

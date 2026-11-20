@@ -69,7 +69,7 @@ Data sets with no source for the past, with no payment:
 
 1. Try the sources in the order of the code (it is the order of the table, except the prices: the source of the cache goes first and no other source replaces it). Stop at the first source that answers.
 2. A key that is missing is not an error. The sync goes to the next source and prints, in the summary, which key would add which source.
-3. A source that answers HTTP 429 or HTTP 403, or gives a block page, stops for the run. The cache stays as it was. The other hosts go on.
+3. A source that answers HTTP 429 or HTTP 403, or gives a block page, stops for the run. The cache stays as it was. The other hosts go on. The price pass keeps this stop from one ticker to the next: the stop is kept in `hostnet` for the whole sync, so a stopped price source gets no request and gives no log line. A 403 for one symbol also stops the source for the rest of the run.
 4. A request of a keyed source never prints the key (`rust/src/market/keys.rs`).
 5. A data set with a "site" source needs a daily copy to keep its past. The sync does not copy it by itself: nothing runs between two commands (owner decision of 2026-11-19). Run `fa sync` on each day that you need the data.
 6. The SEC data sets (`sec`, `filings`, and the SEC part of `earnings`) need a SEC contact. The file `sec_contact.toml` of the repo gives it. The environment variable `SEC_USER_AGENT` is optional and replaces it. Without a contact the sync skips them and says so.

@@ -49,7 +49,7 @@ pub struct Row {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum FetchError {
-    /// HTTP 429. The caller waits one time and then stops the source for the run.
+    /// HTTP 429 or 403. The caller waits one time and then stops the source for the run.
     RateLimited(String),
     Failed(String),
 }
@@ -63,7 +63,7 @@ impl std::fmt::Display for FetchError {
 }
 
 pub(crate) fn classify(error: String) -> FetchError {
-    if error.starts_with("HTTP 429 ") {
+    if crate::hostnet::block_code(&error).is_some() {
         FetchError::RateLimited(error)
     } else {
         FetchError::Failed(error)
@@ -637,6 +637,14 @@ mod tests {
         assert!(parse_yahoo(br#"{"chart":{"result":null,"error":{"code":"Not Found","description":"No data found"}}}"#).unwrap_err().contains("Yahoo error"));
     }
 
+
+    #[test]
+    fn a_403_and_a_429_stop_a_source_and_other_errors_do_not() {
+        assert!(matches!(classify("HTTP 403 for https://x".into()), FetchError::RateLimited(_)));
+        assert!(matches!(classify("HTTP 429 for https://x".into()), FetchError::RateLimited(_)));
+        assert!(matches!(classify("HTTP 404 for https://x".into()), FetchError::Failed(_)));
+        assert!(matches!(classify("connection reset".into()), FetchError::Failed(_)));
+    }
     #[test]
     fn yahoo_429_is_rate_limited() {
         let y = Yahoo::new(Box::new(|u| Err(format!("HTTP 429 for {u}"))));

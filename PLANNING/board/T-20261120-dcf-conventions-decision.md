@@ -2,7 +2,7 @@
 id: T-20261120-dcf-conventions-decision
 title: Decide the long-run growth and the acquisition charge of the automatic model
 area: engine
-status: in-progress
+status: review
 owner: louellet-git
 head: fundamental
 order: 1
@@ -44,3 +44,22 @@ charge in the same pull request.
 **Owner word, 2026-11-20.** The owner does not choose each convention. The Head of Fundamental Research
 decides what is most appropriate, and writes the study and the decision in the assumption records
 (`chiefs/louellet-git/fundamental/RECORD.md`, entry of 2026-11-20 19:27 UTC).
+
+**State, parked on the word of the owner, 2026-11-20.** Decided and built on the branch: `long_run = 0.040`
+(one number L, the lower of the 10-year zero yield and the FOMC longer-run growth of 2.0% + 2.0%) and
+`acq_w = 1`. Records: `docs/assumptions/A-001-terminal-growth.md`, `A-002-acquisition-charge.md`. Checks of
+the orchestrator: 554 + 17 + 1 tests pass; `fa dcf drivers IBM` gives $83.84 / $151.84 / $258.03; AAPL P50
+$128.84 (old) and $140.71 (new), seed 7. Open, in this order:
+1. The full runs with the new defaults (`fa dcf screen` of `sp500.txt`, `fa dcf pit`, `fa dcf returns`), and
+   their numbers in the two records and in `docs/models/auto-path-model.md` (now "not yet run"). They wait for
+   the data store of the Head of Technology: this machine has 215 tickers (A to CME).
+2. The gate: a request to the Head of Quality and Risk (model-validator, code-reviewer). That machine needs
+   the same data.
+3. The pull request, after a pass.
+
+**State, 2026-11-20 21:28 UTC.** The full runs are done (records A-001 and A-002, section "Effect on the
+result"). The gate request went to the Head of Quality and Risk. The pull request opens after a pass.
+
+**Gate, 2026-11-20.** Head of Quality and Risk, review cycle 2 on commit db32019: PASS-WITH-NOTES
+(`model-validator` PASS-WITH-NOTES, `code-reviewer` PASS). The two conditions are done: the ticket
+`T-20261120-dcf-acq-charge-limits` and the class coverage in A-002. Pull request open.

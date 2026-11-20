@@ -74,3 +74,19 @@ Done: one permission sentence in `chiefs/ORIENTATION.md` (section 3) and in `lea
 ## 2026-11-20 21:58 UTC (chat)
 Words: "I think we want to set up a paper trade team once we feel ready, half will be for the fundamental team and half for the quant research team. Also, we need a means of backtesting."
 Done: two backlog tickets, `T-20261120-portfolio-backtest` (head technology) and `T-20261120-paper-desk` (head owner, with the decisions for the owner).
+
+## 2026-11-20 22:05 UTC (chat)
+Words: "whenever a separate contributor wants to begin working, I don't want it to automatically default to the board based on tickets that I've brought up. I think it should default to tickets that the collaborator brought up individually. So when a new session is spawned, don't immediately prompt to start working on tickets that other members have created."
+Done: the field `requested_by` (no field means `louellet-git`); a head offers and takes only the tickets of its own person (`chiefs/ORIENTATION.md`, sections 4 and 7; `PLANNING/board/README.md`; skill `ticket-workflow`; the lean version in `chiefs`).
+
+## 2026-11-20 22:24 UTC (chat of the Head of Quant Research; checked in its transcript)
+Words: "You don't need me to tell you to continue unless I tell you to stop, less tech head know"
+Done: after a ticket, report and take the next ticket of the queue with no wait, until the person says stop. Started `T-20261120-portfolio-backtest`, `T-20261120-store-arb-data` and `T-20261120-delete-merged-branches`.
+
+## 2026-11-20 22:32 UTC (chat)
+Words: "Also, I need every team to have a team that scrutinizes the amount of tests that any given team has, not run all the time but every so often at the discretion of the head"
+Done: a test-audit mode in `.claude/agents/test-engineer.md`; one paragraph in `chiefs/ORIENTATION.md` (section 3): each head starts it from time to time; not a gate. Same line in the lean version of `chiefs`.
+
+## 2026-11-20 23:01 UTC (chat)
+Words: "Think about many heads from many users working, and consider that from a lean perspective to find a solution to this potential future issue. Token cheap, GitHub cost cheap, line of code cheap and time cheap,"
+Done: measured the files that today's merges touched most (CLAUDE.md 7, docs/ARCHITECTURE.md 6, README.md 5, PLANNING/token-ledger.md 4, docs/HIDDEN-ASSUMPTIONS.md 3). Removed the test counts from the documents; new traps are one file each in `docs/traps/`; the shared token ledger takes no new row; four rules in `chiefs/ORIENTATION.md` (section 2, "Many heads at the same time").

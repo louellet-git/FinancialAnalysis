@@ -220,9 +220,10 @@ fn the_model_of_a_small_company_has_the_hand_calculated_numbers() {
     assert!((draw_mean(&s.process["growth"].start) - 0.0906667).abs() < 1e-6);
     assert!((s.process["growth"].target.mean() - 0.0883333).abs() < 1e-6);
     assert!((s.process["growth"].target.std() - (0.0021f64).sqrt()).abs() < 1e-6);
-    // the cap is the default rate 4.2%: the company mean is above it, so the growth fades: drift end = 4.2% - 8.8333%
+    // L = min(default rate 4.2%, 4.0%) = 4.0% (the default long_run): the company mean is above it, so the growth fades:
+    // drift end = 4.0% - 8.8333% (before the decision of 2026-11-20 the level was the rate 4.2%)
     let d = s.process["growth"].drift.as_ref().unwrap();
-    assert!((d.end - (0.042 - 0.0883333)).abs() < 1e-6 && d.start == 0.0);
+    assert!((d.end - (0.040 - 0.0883333)).abs() < 1e-6 && d.start == 0.0);
     assert_eq!(d.ramp_years, 12, "the default half-life 4 years (no fade cells)");
     // margin: shrunk as cash flow after interest, plus 79% of the 2% interest ratio
     // mvf(0.5, 5) = 0.593333, noise = 0.0081 * 0.593333, w = 0.0064 / (0.0064 + noise) = 0.571122, mu = 0.128556
@@ -258,9 +259,11 @@ fn a_price_and_a_beta_set_the_equity_weight_and_the_discount_rate() {
     assert!((s.discount.equity_weight - 2000.0 / 2200.0).abs() < 1e-12);
     assert_eq!(s.discount.beta.mean(), 1.13);
     assert_eq!(s.rates.model, "hullwhite");
-    // the cap of the growth is now the 10-year zero yield of the curve
+    // the level L is min(10-year zero yield of the curve 4.7%, 4.0%) = 4.0%; with long_run off it is the yield 4.7%
     let d = s.process["growth"].drift.as_ref().unwrap();
-    assert!((d.end - (0.047 - 0.0883333)).abs() < 1e-6);
+    assert!((d.end - (0.040 - 0.0883333)).abs() < 1e-6);
+    let old = build(&inputs(), &table(), &[], &mk, &Rules { long_run: None, ..plain_rules() }, BuildOptions::default()).unwrap();
+    assert!((spec_of(&old).process["growth"].drift.as_ref().unwrap().end - (0.047 - 0.0883333)).abs() < 1e-6);
     assert!(!m.warnings.join("|").contains("no price"));
 }
 
@@ -271,8 +274,9 @@ fn a_company_below_the_cap_has_no_fade() {
         v.revenue = Some(1e9 * 0.98f64.powi(k as i32));
     }
     let mut i = inputs();
+    // the test is about the cap, not about the floor: a decline of 2% each year with the floor would raise the company mean above the cap
     i.years = y;
-    let m = build(&i, &table(), &[], &market(), &plain_rules(), BuildOptions::default()).unwrap();
+    let m = build(&i, &table(), &[], &market(), &Rules { last_floor: None, ..plain_rules() }, BuildOptions::default()).unwrap();
     assert!(spec_of(&m).process["growth"].drift.is_none());
 }
 
@@ -499,7 +503,8 @@ fn no_later_value_enters_the_model_of_a_base_year() {
     assert_eq!(o.base, y[5].revenue.unwrap());
     assert_eq!(o.rev_act[0], y[6].revenue.unwrap());
     assert_eq!(o.rev_act[2], y[8].revenue.unwrap());
-    assert!((o.fcff_act[0].unwrap() - (-1e9 - 5e9 + 0.79 * 1e9 - 7e8)).abs() < 1.0);
+    // the default charges the acquisitions (acq_w): the real free cash flow after acquisitions has the spend of 9e9 out
+    assert!((o.fcff_act[0].unwrap() - (-1e9 - 5e9 + 0.79 * 1e9 - 7e8 - 9e9)).abs() < 1.0);
     // the band of the first base year is made from the first five years only: a change of the sixth year does not move it
     let mut y2 = y.clone();
     y2[5].revenue = Some(y2[5].revenue.unwrap() * 2.0);
@@ -532,6 +537,8 @@ fn the_coverage_counts_below_inside_and_above() {
         g_last: Some(0.1),
         margin_range: 0.02,
         has_jump: false,
+        g_start: 0.05,
+        g_mu: 0.05,
         acq_past: 0.0,
         rev_q: [[90.0, 100.0, 110.0]; HORIZON],
         rev_act: [actual; HORIZON],
@@ -613,6 +620,11 @@ fn the_screen_gives_the_same_rows_on_one_and_on_four_threads() {
     // a CSV line for a row with a value and for a refusal
     let line = csv_line(&a[0]);
     assert_eq!(line.split(',').count(), CSV_HEADER.split(',').count(), "{line}");
+    // the column `mean` is the last one (the order of the other columns did not change) and holds the mean of the paths
+    assert!(CSV_HEADER.ends_with(",acq_ratio,mean"));
+    let v0 = a[0].outcome.as_ref().unwrap();
+    assert_eq!(line.rsplit(',').next().unwrap(), format!("{:.2}", v0.mean));
+    assert!(v0.mean.is_finite() && v0.mean > 0.0);
     let bank = a.iter().find(|r| r.ticker == "T03").unwrap();
     assert_eq!(csv_line(bank).split(',').count(), CSV_HEADER.split(',').count());
     assert!(csv_line(bank).contains(",template bank: no model,"));
@@ -736,8 +748,9 @@ fn the_acquisition_charge_is_an_option_with_the_mean_ratio() {
     for y in i.years.iter_mut() {
         y.acquisitions = Some(0.02 * y.revenue.unwrap());
     }
-    let off = build(&i, &table(), &[], &market(), &plain_rules(), BuildOptions::default()).unwrap();
+    let off = build(&i, &table(), &[], &market(), &Rules { acq_w: false, ..plain_rules() }, BuildOptions::default()).unwrap();
     assert!(!spec_of(&off).process.contains_key("charge"));
+    // acq_charge wins over the default acq_w: the full mean ratio
     let on = build(&i, &table(), &[], &market(), &Rules { acq_charge: true, ..plain_rules() }, BuildOptions::default()).unwrap();
     assert!((draw_mean(&spec_of(&on).process["charge"].start) - 0.02).abs() < 1e-12);
     assert!(ev_at_means(&on) < ev_at_means(&off));
@@ -777,8 +790,10 @@ fn the_charge_can_follow_the_weight_of_the_growth_history() {
     for y in i.years.iter_mut() {
         y.acquisitions = Some(0.02 * y.revenue.unwrap());
     }
-    let off = build(&i, &table(), &[], &market(), &plain_rules(), BuildOptions::default()).unwrap();
-    let on = build(&i, &table(), &[], &market(), &Rules { acq_w: true, ..plain_rules() }, BuildOptions::default()).unwrap();
+    let off = build(&i, &table(), &[], &market(), &Rules { acq_w: false, ..plain_rules() }, BuildOptions::default()).unwrap();
+    assert_eq!(off.summary.acq_ratio, 0.0);
+    // the default is on
+    let on = build(&i, &table(), &[], &market(), &plain_rules(), BuildOptions::default()).unwrap();
     // the weight of the history in the growth mean is printed in the rule text of the row "growth: company mean"
     let rule = &on.rows.iter().find(|r| r.input == "growth: company mean").unwrap().rule;
     let w: f64 = rule.split("= ").nth(2).unwrap().split(';').next().unwrap().trim().parse().unwrap();
@@ -786,7 +801,8 @@ fn the_charge_can_follow_the_weight_of_the_growth_history() {
     assert!((on.summary.acq_ratio - 0.02 * w).abs() < 2e-5 /* w is printed with three decimals */, "{} {}", on.summary.acq_ratio, w);
     // the growth history stays as it is
     assert!((on.summary.growth_company_mean - off.summary.growth_company_mean).abs() < 1e-12);
-    assert!(parse_rules("acq_w=1").unwrap().acq_w && !Rules::default().acq_w);
+    assert!(Rules::default().acq_w && parse_rules("").unwrap().acq_w);
+    assert!(!parse_rules("acq_w=0").unwrap().acq_w);
 }
 
 #[test]
@@ -798,15 +814,34 @@ fn one_long_run_growth_is_the_lower_of_the_yield_and_the_number() {
         let t = m.toml.split("[terminal]").nth(1).unwrap().to_string();
         t.split("mean = ").nth(1).unwrap().split(',').next().unwrap().trim().parse::<f64>().unwrap()
     };
+    let off = Rules { long_run: None, ..plain_rules() };
+    // default (decision of 2026-11-20): L = min(yield 4.2%, 4.0%) = 4.0%
+    assert!((tg(plain_rules()) - 0.040).abs() < 1e-12);
     // off: the terminal growth is the rule value
-    assert!((tg(plain_rules()) - 0.0225).abs() < 1e-12);
+    assert!((tg(off.clone()) - 0.0225).abs() < 1e-12);
     // on: the number when it is below the yield, the yield when it is below the number
     assert!((tg(Rules { long_run: Some(0.038), ..plain_rules() }) - 0.038).abs() < 1e-12);
     assert!((tg(Rules { long_run: Some(0.05), ..plain_rules() }) - DEFAULT_RF).abs() < 1e-12);
     // the explicit rule wins
     assert!((tg(Rules { long_run: Some(0.03), terminal_rf: true, ..plain_rules() }) - DEFAULT_RF).abs() < 1e-12);
     assert_eq!(parse_rules("long_run=0.038").unwrap().long_run, Some(0.038));
-    assert!(Rules::default().long_run.is_none());
+    assert_eq!(Rules::default().long_run, Some(0.040));
+    // the old model on request: `off` or 0; an explicit terminal_growth is the old model for that number
+    assert_eq!(parse_rules("long_run=off").unwrap().long_run, None);
+    assert_eq!(parse_rules("long_run=0").unwrap().long_run, None);
+    let r = parse_rules("terminal_growth=0.03").unwrap();
+    assert_eq!(r.long_run, None);
+    assert!((tg(Rules { own_sigma_nu: 0.0, level_kappa: 0.0, ..r }) - 0.03).abs() < 1e-12);
+    // long_cap and terminal_rf keep their priority over the default
+    assert!((tg(Rules { terminal_rf: true, ..plain_rules() }) - DEFAULT_RF).abs() < 1e-12);
+    let cap = |r: Rules| {
+        let m = build(&i, &table(), &[], &market(), &r, BuildOptions::default()).unwrap();
+        spec_of(&m).process["growth"].drift.as_ref().unwrap().end + m.summary.growth_company_mean
+    };
+    // the fade level: L = 4.0% by default (hand: drift end + mean = level), the yield 4.2% when off, long_cap first
+    assert!((cap(plain_rules()) - 0.040).abs() < 1e-9);
+    assert!((cap(off) - 0.042).abs() < 1e-9);
+    assert!((cap(Rules { long_cap: Some(0.03), ..plain_rules() }) - 0.03).abs() < 1e-9);
 }
 
 #[test]
@@ -828,4 +863,232 @@ fn the_return_test_helpers_have_known_answers() {
     let p = vec![(10, 1.0), (12, 2.0), (20, 3.0)];
     assert_eq!(close_on_or_after(&p, 11, 7), Some((12, 2.0)));
     assert_eq!(close_on_or_after(&p, 13, 5), None);
+}
+
+#[test]
+fn a_decline_in_the_base_year_enters_the_growth_mean_and_the_first_step_as_zero() {
+    // revenue +10% in the years 2021 to 2024, then -10% in 2025: the growth history is 10%, 10%, 10%, -10%.
+    let mut i = inputs();
+    let prev = i.years[4].revenue.unwrap();
+    i.years[5].revenue = Some(0.9 * prev);
+    i.balance = Some(BalanceData::from_year(i.years.last().unwrap()));
+    let on = build(&i, &table(), &[], &market(), &plain_rules(), BuildOptions::default()).unwrap();
+    let off = build(&i, &table(), &[], &market(), &Rules { last_floor: None, ..plain_rules() }, BuildOptions::default()).unwrap();
+    // hand calculation, cell phi 0.2, mean 8%, tau 6%, sigma 12%, n = 4:
+    // mean variance factor = (1 + 2 (3/4) 0.2 + 2 (1/2) 0.04 + 2 (1/4) 0.008) / ((1 - 0.04) 4) = 1.344 / 3.84 = 0.35
+    // weight of the history w = 0.0036 / (0.0036 + 0.0144 x 0.35) = 5/12
+    // floor on (-10% -> 0): history mean 7.5%; company mean = 5/12 x 7.5% + 7/12 x 8% = 7.7917%; start = mu + 0.2 (0 - mu) = 0.8 mu
+    let mu_on = 5.0 / 12.0 * 0.075 + 7.0 / 12.0 * 0.08;
+    assert!((on.summary.growth_company_mean - mu_on).abs() < 1e-9, "{}", on.summary.growth_company_mean);
+    assert!((on.summary.growth_start - 0.8 * mu_on).abs() < 1e-9, "{}", on.summary.growth_start);
+    // the old rule: history mean 5%; company mean 6.75%; start = 6.75% + 0.2 (-10% - 6.75%) = 3.4%
+    let mu_off = 5.0 / 12.0 * 0.05 + 7.0 / 12.0 * 0.08;
+    assert!((off.summary.growth_company_mean - mu_off).abs() < 1e-9);
+    assert!((off.summary.growth_start - (mu_off + 0.2 * (-0.10 - mu_off))).abs() < 1e-9);
+    // a base year with growth above the floor is not changed
+    let up = build(&inputs(), &table(), &[], &market(), &plain_rules(), BuildOptions::default()).unwrap();
+    let up_off = build(&inputs(), &table(), &[], &market(), &Rules { last_floor: None, ..plain_rules() }, BuildOptions::default()).unwrap();
+    assert_eq!(up.summary.growth_start, up_off.summary.growth_start);
+    // the rule is reachable: `last_floor=-1` is off, `last_floor=0.02` floors at 2%
+    assert_eq!(parse_rules("last_floor=-1").unwrap().last_floor, None);
+    assert_eq!(parse_rules("last_floor=0.02").unwrap().last_floor, Some(0.02));
+    assert_eq!(Rules::default().last_floor, Some(0.0));
+}
+
+#[test]
+fn the_margin_has_its_own_weight_for_the_table_shock() {
+    // the margin history is constant (5 values, 4 residuals of 0): the shock size is sqrt(nu / (nu + 4)) x the table 9%
+    let sigma_of = |r: Rules| -> f64 {
+        let m = build(&inputs(), &table(), &[], &market(), &r, BuildOptions::default()).unwrap();
+        let sec = m.toml.split("[process.margin]").nth(1).unwrap();
+        let line = sec.lines().find(|l| l.starts_with("sigma = ")).unwrap();
+        line.trim_start_matches("sigma = ").parse().unwrap()
+    };
+    let base = Rules { own_sigma_nu: 4.0, level_kappa: 0.0, ..Rules::default() };
+    // by default the margin follows `own_sigma_nu` = 4: sqrt(4 / 8) x 0.09 = 0.063640
+    assert!((sigma_of(base.clone()) - 0.09 * 0.5f64.sqrt()).abs() < 1e-5);
+    // `margin_sigma_nu` = 1: sqrt(1 / 5) x 0.09 = 0.040249; the growth keeps its own weight
+    assert!((sigma_of(Rules { margin_sigma_nu: Some(1.0), ..base.clone() }) - 0.09 * 0.2f64.sqrt()).abs() < 1e-5);
+    assert_eq!(parse_rules("margin_sigma_nu=1").unwrap().margin_sigma_nu, Some(1.0));
+    assert_eq!(Rules::default().margin_sigma_nu, None);
+}
+
+#[test]
+fn the_halves_of_the_point_in_time_test_split_the_tickers_by_a_fixed_rule() {
+    // FNV-1a 64 bit: each step is `h = (h xor byte) x prime` with an odd prime, so the lowest bit of the result is the xor of
+    // the lowest bit of the offset basis (1) and of the lowest bits of the bytes: A (0x41) -> 0; B (0x42) -> 1; IBM (0x49, 0x42, 0x4d) -> 1 ^ 1 ^ 0 ^ 1 = 1
+    assert_eq!((ticker_half("A"), ticker_half("B"), ticker_half("IBM")), (0, 1, 1));
+}
+
+#[test]
+fn the_floor_of_the_base_year_has_clear_edges() {
+    let run = |i: &AutoInputs, floor: Option<f64>| build(i, &table(), &[], &market(), &Rules { last_floor: floor, ..plain_rules() }, BuildOptions::default());
+    let with_last = |f: &dyn Fn(f64) -> f64| {
+        let mut i = inputs();
+        let prev = i.years[4].revenue.unwrap();
+        i.years[5].revenue = Some(f(prev));
+        i.balance = Some(BalanceData::from_year(i.years.last().unwrap()));
+        i
+    };
+    // growth exactly at the floor (0%): nothing changes
+    let flat = with_last(&|p| p);
+    let (a, b) = (run(&flat, Some(0.0)).unwrap(), run(&flat, None).unwrap());
+    assert_eq!((a.summary.growth_start, a.summary.growth_company_mean), (b.summary.growth_start, b.summary.growth_company_mean));
+    // a base year with no growth value (a jump of +200% with revenue above $1B is left out of the history): nothing changes
+    let jump = with_last(&|p| 3.0 * p);
+    let (a, b) = (run(&jump, Some(0.0)).unwrap(), run(&jump, None).unwrap());
+    assert_eq!((a.summary.growth_start, a.summary.growth_company_mean), (b.summary.growth_start, b.summary.growth_company_mean));
+    // a negative revenue in the base year: the floor does not change the answer (an error or the same numbers)
+    let neg = with_last(&|p| -p);
+    match (run(&neg, Some(0.0)), run(&neg, None)) {
+        (Ok(a), Ok(b)) => assert_eq!(a.summary.growth_start, b.summary.growth_start),
+        (Err(a), Err(b)) => assert_eq!(a.to_string(), b.to_string()),
+        _ => panic!("the floor changes whether a model is made for a negative revenue"),
+    }
+    // the parser: a floor must be a finite number; a weight of the margin shock must be 0 or more
+    assert!(parse_rules("last_floor=nan").is_err() && parse_rules("last_floor=inf").is_err());
+    assert!(parse_rules("margin_sigma_nu=-1").is_err() && parse_rules("margin_sigma_nu=nan").is_err());
+    assert_eq!(parse_rules("margin_sigma_nu=0").unwrap().margin_sigma_nu, Some(0.0));
+}
+
+/// The charge of each year of the model at the means: (FCFF without the charge - FCFF with it) / revenue.
+fn charge_path(with_charge: &AutoModel, without: &AutoModel) -> Vec<f64> {
+    use crate::dcf::paths::{F_FCFF, F_REV};
+    let a = PathEngine::new(&spec_of(with_charge)).unwrap().deterministic().unwrap();
+    let b = PathEngine::new(&spec_of(without)).unwrap().deterministic().unwrap();
+    (0..10).map(|t| (b.at(0, t, F_FCFF) - a.at(0, t, F_FCFF)) / a.at(0, t, F_REV)).collect()
+}
+
+fn inputs_with_spend() -> AutoInputs {
+    let mut i = inputs();
+    for y in i.years.iter_mut() {
+        y.acquisitions = Some(0.02 * y.revenue.unwrap());
+    }
+    i
+}
+
+#[test]
+fn the_charge_fades_with_the_growth_that_it_pays_for() {
+    let i = inputs_with_spend();
+    let run = |r: Rules| build(&i, &table(), &[], &market(), &r, BuildOptions::default()).unwrap();
+    let off = run(Rules { acq_w: false, ..plain_rules() });
+    let on = run(plain_rules());
+    let c0 = on.summary.acq_ratio;
+    assert!(c0 > 0.0 && c0 < 0.02);
+    // the company mean (8.83%) is above L (4.0%): the drift ramps over 12 years (no fade cells: half-life 4 years); the charge
+    // is the process "ramp" from c0 in year 1 to 0 in year 12: c(t) = c0 (1 - (t - 1) / 11), the same timing as the drift
+    let s = spec_of(&on);
+    let d = s.process["growth"].drift.as_ref().unwrap();
+    let ch = &s.process["charge"];
+    assert_eq!((d.ramp_years, ch.ramp_years, ch.shape.as_str()), (12, Some(12), "ramp"));
+    assert!((draw_mean(&ch.start) - c0).abs() < 1e-12 && ch.target.mean() == 0.0);
+    let path = charge_path(&on, &off);
+    for t in [1usize, 6, 10] {
+        let want = c0 * (1.0 - (t as f64 - 1.0) / 11.0);
+        assert!((path[t - 1] - want).abs() < 1e-9, "year {t}: {} {want}", path[t - 1]);
+    }
+    // the same timing as the drift of the growth: the share of the excess left in year t is the same for both
+    let sched = crate::dcf::driver::Ramp { start: d.start, end: d.end, ramp_years: d.ramp_years }.schedule(10);
+    for t in 0..10 {
+        assert!(((1.0 - path[t] / c0) - sched[t] / d.end).abs() < 1e-9, "year {}", t + 1);
+    }
+    // acq_fade=0: the constant charge
+    let flat = run(Rules { acq_fade: false, ..plain_rules() });
+    assert!(charge_path(&flat, &off).iter().all(|c| (c - c0).abs() < 1e-9));
+    assert!(ev_at_means(&on) > ev_at_means(&flat) && ev_at_means(&on) < ev_at_means(&off));
+    // a company mean at or below the level (no drift): the charge is constant
+    let low = run(Rules { long_cap: Some(0.20), ..plain_rules() });
+    let low_off = run(Rules { long_cap: Some(0.20), acq_w: false, ..plain_rules() });
+    assert!(spec_of(&low).process["growth"].drift.is_none());
+    assert!(charge_path(&low, &low_off).iter().all(|c| (c - low.summary.acq_ratio).abs() < 1e-9 && *c > 0.0));
+    // acq_charge and acq_f are never faded
+    let full = run(Rules { acq_charge: true, ..plain_rules() });
+    assert!(charge_path(&full, &off).iter().all(|c| (c - 0.02).abs() < 1e-9));
+    assert!(!parse_rules("acq_fade=0").unwrap().acq_fade && Rules::default().acq_fade);
+}
+
+#[test]
+fn the_explicit_charge_rules_win_over_acq_w_off_and_zero_spend_gives_no_charge() {
+    let i = inputs_with_spend();
+    let run = |r: Rules| build(&i, &table(), &[], &market(), &r, BuildOptions::default()).unwrap();
+    // acq_w=0 does not turn off acq_charge or acq_f
+    let m = run(parse_rules("acq_w=0,acq_charge=1,own_sigma_nu=0,level_kappa=0").unwrap());
+    assert!((m.summary.acq_ratio - 0.02).abs() < 1e-12);
+    let m = run(parse_rules("acq_w=0,acq_f=0.5,acq_mult=2,own_sigma_nu=0,level_kappa=0").unwrap());
+    assert!((m.summary.acq_ratio - 0.01).abs() < 1e-12);
+    // no spend with the default on: no charge, no process
+    let none = build(&inputs(), &table(), &[], &market(), &plain_rules(), BuildOptions::default()).unwrap();
+    assert_eq!(none.summary.acq_ratio, 0.0);
+    assert!(!spec_of(&none).process.contains_key("charge"));
+}
+
+#[test]
+fn off_is_allowed_for_long_run_and_the_flags_only_and_the_old_model_runs_from_the_parser() {
+    assert_eq!(parse_rules("long_run=off").unwrap().long_run, None);
+    assert!(!parse_rules("acq_w=off").unwrap().acq_w && !parse_rules("acq_fade=off").unwrap().acq_fade && !parse_rules("stub=off").unwrap().stub);
+    for bad in ["erp=off", "terminal_growth=off", "rf=off", "years=off", "long_cap=off", "acq_f=off", "growth_w=off"] {
+        assert!(parse_rules(bad).is_err(), "{bad}");
+    }
+    // `long_run=-1` and `long_run=off` give the old model (terminal mean 2.25%, fade to the yield) in a model
+    let i = inputs();
+    for text in ["long_run=-1", "long_run=off", "long_run=0"] {
+        let r = Rules { own_sigma_nu: 0.0, level_kappa: 0.0, ..parse_rules(text).unwrap() };
+        let m = build(&i, &table(), &[], &market(), &r, BuildOptions::default()).unwrap();
+        let t = m.toml.split("[terminal]").nth(1).unwrap().to_string();
+        let tg: f64 = t.split("mean = ").nth(1).unwrap().split(',').next().unwrap().trim().parse().unwrap();
+        assert!((tg - 0.0225).abs() < 1e-12, "{text}");
+        let d = spec_of(&m).process["growth"].drift.clone().unwrap();
+        assert!((d.end - (DEFAULT_RF - 0.0883333)).abs() < 1e-6, "{text}");
+    }
+    // the order of terminal_growth and long_run matters
+    assert_eq!(parse_rules("terminal_growth=0.03,long_run=0.04").unwrap().long_run, Some(0.04));
+    assert_eq!(parse_rules("long_run=0.04,terminal_growth=0.03").unwrap().long_run, None);
+}
+
+#[test]
+fn terminal_rf_sets_the_fade_level_and_the_terminal_mean_to_the_yield() {
+    let i = inputs();
+    let m = build(&i, &table(), &[], &market(), &Rules { terminal_rf: true, ..plain_rules() }, BuildOptions::default()).unwrap();
+    // no curve: the yield is the default 4.2%; it wins over long_run = 4.0% for both numbers
+    let t = m.toml.split("[terminal]").nth(1).unwrap().to_string();
+    let tg: f64 = t.split("mean = ").nth(1).unwrap().split(',').next().unwrap().trim().parse().unwrap();
+    assert!((tg - DEFAULT_RF).abs() < 1e-12);
+    assert!((spec_of(&m).process["growth"].drift.as_ref().unwrap().end - (DEFAULT_RF - 0.0883333)).abs() < 1e-6);
+    // long_cap keeps its priority for the fade level
+    let c = build(&i, &table(), &[], &market(), &Rules { terminal_rf: true, long_cap: Some(0.03), ..plain_rules() }, BuildOptions::default()).unwrap();
+    assert!((spec_of(&c).process["growth"].drift.as_ref().unwrap().end - (0.03 - 0.0883333)).abs() < 1e-6);
+}
+
+#[test]
+fn the_margin_scan_needs_all_five_links_of_the_six_years() {
+    use super::super::panel::{CompanyPanel, PanelRow};
+    // 7 years of one company; the margin of each year is 10% (fcf 100 on revenue 1,000M). The cases are the targets t = 5 and t = 6.
+    // A case needs 5 margins in sequence before the target and the target: the rows t-5 .. t, 5 links (`prev_ok` of the rows t-4 .. t).
+    // Row 1 has `prev_ok = false` (a gap between the row 0 and the row 1). The case t = 5 uses the rows 0 to 5: its first
+    // link is the row 1, so it is out. The case t = 6 uses the rows 1 to 6: its links are the rows 2 to 6, so it is in.
+    // Before the correction the window of the case t = 5 left out the row 1 (4 of 5 links), so the scan had 2 cases.
+    let row = |k: usize| PanelRow {
+        end: format!("{}-12-31", 2015 + k),
+        year: 2015 + k as i32,
+        revenue: 1e9,
+        operating_income: None,
+        operating_cash_flow: None,
+        capex: None,
+        fcf: Some(1e8),
+        sbc: None,
+        acquisitions: None,
+        prev_ok: k != 1,
+        long_year: false,
+        growth: Some(0.0),
+        jump: false,
+        acq_likely: false,
+        glitch: false,
+    };
+    let c = CompanyPanel { ticker: "T".into(), name: "T".into(), template: "standard".into(), rows: (0..7).map(row).collect() };
+    let scan = sigma_nu_scan(&[c.clone()], &table(), &plain_rules(), None, &[4.0]);
+    assert_eq!(scan[0][3].0, 1);
+    // with no gap both cases count
+    let mut full = c;
+    full.rows[1].prev_ok = true;
+    assert_eq!(sigma_nu_scan(&[full], &table(), &plain_rules(), None, &[4.0])[0][3].0, 2);
 }
