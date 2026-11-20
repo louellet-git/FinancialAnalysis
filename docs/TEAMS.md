@@ -49,7 +49,7 @@ use of keys, a valuation with a conflict of interest (ANT), or a first public re
 ## Rules of the orchestrator
 
 The orchestrator is the main Claude Code session. It is not an agent file.
-A head session is the orchestrator of its area: `chiefs/ORIENTATION.md` gives the four
+A head session is an orchestrator agent, the orchestrator of its area: `chiefs/ORIENTATION.md` gives the four
 heads, their areas, their agents and their message channel.
 
 1. Only the orchestrator commits, pushes, opens and merges pull requests.
