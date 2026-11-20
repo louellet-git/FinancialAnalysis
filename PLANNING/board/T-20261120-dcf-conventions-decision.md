@@ -44,3 +44,15 @@ charge in the same pull request.
 **Owner word, 2026-11-20.** The owner does not choose each convention. The Head of Fundamental Research
 decides what is most appropriate, and writes the study and the decision in the assumption records
 (`chiefs/louellet-git/fundamental/RECORD.md`, entry of 2026-11-20 19:27 UTC).
+
+**State, parked on the word of the owner, 2026-11-20.** Decided and built on the branch: `long_run = 0.040`
+(one number L, the lower of the 10-year zero yield and the FOMC longer-run growth of 2.0% + 2.0%) and
+`acq_w = 1`. Records: `docs/assumptions/A-001-terminal-growth.md`, `A-002-acquisition-charge.md`. Checks of
+the orchestrator: 554 + 17 + 1 tests pass; `fa dcf drivers IBM` gives $83.84 / $151.84 / $258.03; AAPL P50
+$128.84 (old) and $140.71 (new), seed 7. Open, in this order:
+1. The full runs with the new defaults (`fa dcf screen` of `sp500.txt`, `fa dcf pit`, `fa dcf returns`), and
+   their numbers in the two records and in `docs/models/auto-path-model.md` (now "not yet run"). They wait for
+   the data store of the Head of Technology: this machine has 215 tickers (A to CME).
+2. The gate: a request to the Head of Quality and Risk (model-validator, code-reviewer). That machine needs
+   the same data.
+3. The pull request, after a pass.

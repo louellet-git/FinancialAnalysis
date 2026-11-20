@@ -11,3 +11,7 @@ Done: the head decides the conventions (ticket `T-20261120-dcf-conventions-decis
 ## 2026-11-20 19:37 UTC (chat)
 Words: "Immediate goal is basically optimizing / improving the DCF engine. It's a stochastic engine for calculating various simulations of what a stock price or asset price should be. We're going to stick to underlyings and not expand into options and other stuff for now."
 Done: new ticket `T-20261120-dcf-engine-accuracy` (order 1.3). The engine work comes before the other tickets of the queue. No option work in this area.
+
+## 2026-11-20 19:52 UTC (chat)
+Words: "Park leftover work once you wrap up current jobs"
+Done: no new work starts. The two jobs in progress are completed and committed (the conventions decision, the market-implied command); the other tickets stay in the backlog with their state on the board.

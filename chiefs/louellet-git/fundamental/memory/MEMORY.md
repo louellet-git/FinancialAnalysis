@@ -6,13 +6,17 @@ person decided. Keep this file below 60 lines. Started 2026-11-20.
 The person wants (2026-11-20, `RECORD.md`): an engine with assumptions that are studied, decided and
 written in the assumption records, and a fixed procedure that shows what the market price implies for
 each stock, industry and sector. The person does not choose each assumption: this head decides.
-1. `T-20261120-dcf-conventions-decision`: apply the two decisions below, pass the gate, merge.
-2. `T-20261120-dcf-market-implied`: `fa dcf implied` (value at the means, three searches, group medians).
-3. `T-20261120-dcf-assumption-register`: one table in the code, `fa dcf assumptions`, a test that ties
-   each default to its record, the missing records, the skill for an assumption study.
-4. `T-20261120-dcf-engine-accuracy`: measure the weak points of the stochastic engine, correct one at a
-   time (precision of the P50, base revenue, bands, sector cells, terminal value).
-5. Sector medians and sector cells need the SIC code: ticket `T-20261120-sic-code` (head: technology).
+**Parked on 2026-11-20** (word of the person: "Park leftover work once you wrap up current jobs"). Start
+again only on the word of the person. The state of each ticket is in its file, section "State, parked".
+1. `T-20261120-dcf-conventions-decision` (branch `claude/magical-planck-41ip3i`): built and tested. Waits
+   for the data store of the Head of Technology (full runs), then the gate, then the pull request.
+2. `T-20261120-dcf-market-implied` (branch `claude/dcf-market-implied`; its ticket file with the state is
+   on that branch): parts 1 to 3 built and tested. First open point: the value at the means is 4% to 22%
+   above the simulated P50; decide if the search must use the P50 with a fixed seed.
+3. `T-20261120-dcf-engine-accuracy` (not started): first the two measured errors of the point-in-time
+   test (recovery after a year of decline; bands too wide for a stable margin).
+4. `T-20261120-dcf-assumption-register` (not started): build it on the conventions branch.
+5. The SIC code: ticket `T-20261120-sic-code` (head: technology; it starts on the word of the person).
 
 ## Decisions of this head (the reasons are in the records; no reason uses the price)
 - 2026-11-20, long-run growth: one number `L` = lower of the 10-year zero yield and `G`. `G` = FOMC
