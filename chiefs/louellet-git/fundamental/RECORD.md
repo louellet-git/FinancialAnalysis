@@ -11,3 +11,6 @@ Done: the head decides the conventions (ticket `T-20261120-dcf-conventions-decis
 ## 2026-11-20 22:27 UTC (chat)
 Words: "Merging rules are those site by head of tech"
 Done: the merge rule is `chiefs/ORIENTATION.md`, section 4: the head merges its own pull request after a gate pass and a green check, with no new question. Applied first to pull request 77.
+
+## 2026-11-20 22:27 UTC (correction)
+The rule of the entry above is in `chiefs/ORIENTATION.md`, section 6 ("Reviews and merges", rule 3), not section 4.
