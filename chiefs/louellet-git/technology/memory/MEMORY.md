@@ -3,9 +3,8 @@ For the next session of this head: how the environment and the data sources beha
 person decided. Keep this file below 60 lines. Started 2026-11-20.
 
 ## Goal now and subsequent steps
-Parked on 2026-11-20 on the word of the person ("park leftover work"). Nothing runs. To continue:
-- Data store `louellet-git/fa-data`: the SEC data is in it. The prices wait until the person makes the
-  repo private (ticket `T-20261120-data-store-prices` has the steps).
+- Data store `louellet-git/fa-data`: it has each data set of the cache. Open: the prices of the rest of
+  `next500.txt`, and the update steps in the store README (ticket `T-20261120-data-store-prices`).
 - Two tickets wait for the "go" of the person: `T-20261120-sync-yahoo-429` (first), then
   `T-20261120-sic-code` (from the Head of Fundamental Research; it comes to `main` with its pull request).
 - The person does the first run on the laptop with the keys (ticket `T-20261120-owner-first-run`).
@@ -33,6 +32,8 @@ Parked on 2026-11-20 on the word of the person ("park leftover work"). Nothing r
   for the engines, the trading code and the data loaders; SQL or a small script is permitted.
 - 2026-11-20, on the data: "we shouldn't have all that data spread across 4 sessions". Effect: one data
   store, the repo `louellet-git/fa-data`, that only this head writes. Push to it in parts of less than 40 MB.
+- 2026-11-20: "The fa-data won't be private, continue, and load all the data to it for now". Effect: the
+  store is public and has prices and estimates too. Scan for keys before each push to it.
 
 ## Tested rules
 - The cloud machine can restart. A restart stops the background agents; the files and the worktrees

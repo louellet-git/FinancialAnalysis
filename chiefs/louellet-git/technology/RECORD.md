@@ -38,3 +38,7 @@ Done: the data store `louellet-git/fa-data` has the SEC company facts, the SEC e
 ## 2026-11-20 19:54 UTC (chat)
 Words: "Great, park leftover work once you wrap up current jobs"
 Done: the open state is in the ticket `T-20261120-data-store-prices` and in the dashboard. The local worktrees of merged branches are removed.
+
+## 2026-11-20 20:01 UTC (chat)
+Words: "The fa-data won't be private, continue, and load all the data to it for now"
+Done: each data set of the cache is in `louellet-git/fa-data` (15 pushes; a scan found no key and no mail address outside the SEC filing files). A new clone takes 28 seconds and `fa dcf auto IBM` gives the same P50 on it. The download of the rest of `next500.txt` runs.

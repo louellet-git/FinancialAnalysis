@@ -14,8 +14,9 @@ The data cache (`data/raw`) is not in this repo. A copy of it is in the repo
 request to the sources. Only the Head of Technology writes the store and starts a bulk
 download (`chiefs/ORIENTATION.md`, section 2). Command:
 `git clone --depth 1 https://github.com/louellet-git/fa-data data/raw`.
-The store has only data whose terms permit a copy in that repo. Its `README.md` lists the
-data sets, and its `SNAPSHOT.md` gives the date of each download.
+The store has each data set of the cache. The owner decided on 2026-11-20 that the store repo
+is public for now. Its `README.md` lists the data sets and their sources, and its `SNAPSHOT.md`
+gives the date of each download.
 
 ## Words in the table
 
