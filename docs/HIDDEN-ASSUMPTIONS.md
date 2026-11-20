@@ -1272,6 +1272,10 @@ share and mean: 3 standard errors.
 template (`standard`, `bank`, `insurer`, `reit`, `fund`). The `standard` template mixes all industries: an oil company, a
 software company and a retailer have one set of parameters. The argument `sector` of `priors_for` is not used.
 *Evidence:* `rust/src/dcf/calibrate.rs` (`priors_for`), `rust/src/dcf/calib_report.rs` (`render_panel`).
+*Update 2026-11-20:* the file `<T>/sec_8k_earnings.json` now has the SIC code (`mapcheck::sec::company_sic`, sector
+table `ff12_sector`), but the priors do not use it yet. The code is the code of the filer TODAY, not at the date of a
+past filing. A point-in-time test that groups by sector thus uses a fact from the future for a company that changed
+its code. A file written before 2026-11-20 has no code: `company_sic` gives `None` until the file is fetched again.
 
 **171. A restated year has the value of the latest filing, and two years can come from two filings.** The mapping takes, for each
 period, the fact of the latest filing. The revenue of year t and the revenue of year t-1 can come from two different filings. A

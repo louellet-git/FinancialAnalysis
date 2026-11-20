@@ -392,6 +392,47 @@ pub fn load_filing_list_check(cache: &Path, ticker: &str) -> Option<FilingListCh
     Some(FilingListCheck { checked, latest_periodic })
 }
 
+/// The SIC code and its description in the SEC submissions data (top-level `sic` and `sicDescription`).
+/// A filer with no code (a missing, empty or non-number `sic`) gives `None`; the description is then `None` too.
+pub fn parse_sic(json: &[u8]) -> Result<(Option<u32>, Option<String>), String> {
+    let value: Value = serde_json::from_slice(json).map_err(|e| format!("submissions: {e}"))?;
+    let sic = value.get("sic").and_then(Value::as_str).and_then(|s| s.trim().parse::<u32>().ok());
+    let description = value.get("sicDescription").and_then(Value::as_str).map(str::trim).filter(|s| sic.is_some() && !s.is_empty()).map(String::from);
+    Ok((sic, description))
+}
+
+/// The SIC code and description of a ticker, read from `sec_8k_earnings.json` in the cache (no network).
+/// `None` when the file is missing, is old (no `sic` field), or the filer has no code. A missing description gives "".
+pub fn company_sic(cache: &Path, ticker: &str) -> Option<(u32, String)> {
+    let value: Value = serde_json::from_slice(&fs::read(earnings_filings_path(cache, ticker)).ok()?).ok()?;
+    let sic = u32::try_from(value.get("sic")?.as_u64()?).ok()?;
+    let description = value.get("sic_description").and_then(Value::as_str).unwrap_or("").to_string();
+    Some((sic, description))
+}
+
+/// The Fama-French 12 industry of a SIC code.
+/// Source: Kenneth French, `Siccodes12.txt` (https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/Data_Library/det_12_ind_port.html,
+/// file `ftp/Siccodes12.zip`), read on 2026-11-20. A code in no range is "Other" (the file says so for group 12).
+pub fn ff12_sector(sic: u32) -> &'static str {
+    const RANGES: &[(u32, u32, &str)] = &[
+        (100, 999, "NoDur"), (2000, 2399, "NoDur"), (2700, 2749, "NoDur"), (2770, 2799, "NoDur"), (3100, 3199, "NoDur"), (3940, 3989, "NoDur"),
+        (2500, 2519, "Durbl"), (2590, 2599, "Durbl"), (3630, 3659, "Durbl"), (3710, 3711, "Durbl"), (3714, 3714, "Durbl"), (3716, 3716, "Durbl"),
+        (3750, 3751, "Durbl"), (3792, 3792, "Durbl"), (3900, 3939, "Durbl"), (3990, 3999, "Durbl"),
+        (2520, 2589, "Manuf"), (2600, 2699, "Manuf"), (2750, 2769, "Manuf"), (3000, 3099, "Manuf"), (3200, 3569, "Manuf"), (3580, 3629, "Manuf"),
+        (3700, 3709, "Manuf"), (3712, 3713, "Manuf"), (3715, 3715, "Manuf"), (3717, 3749, "Manuf"), (3752, 3791, "Manuf"), (3793, 3799, "Manuf"),
+        (3830, 3839, "Manuf"), (3860, 3899, "Manuf"),
+        (1200, 1399, "Enrgy"), (2900, 2999, "Enrgy"),
+        (2800, 2829, "Chems"), (2840, 2899, "Chems"),
+        (3570, 3579, "BusEq"), (3660, 3692, "BusEq"), (3694, 3699, "BusEq"), (3810, 3829, "BusEq"), (7370, 7379, "BusEq"),
+        (4800, 4899, "Telcm"),
+        (4900, 4949, "Utils"),
+        (5000, 5999, "Shops"), (7200, 7299, "Shops"), (7600, 7699, "Shops"),
+        (2830, 2839, "Hlth"), (3693, 3693, "Hlth"), (3840, 3859, "Hlth"), (8000, 8099, "Hlth"),
+        (6000, 6999, "Money"),
+    ];
+    RANGES.iter().find(|(lo, hi, _)| (*lo..=*hi).contains(&sic)).map_or("Other", |r| r.2)
+}
+
 /// The file of the earnings filings of a ticker: `<cache>/<TICKER>/sec_8k_earnings.json`.
 pub fn earnings_filings_path(cache: &Path, ticker: &str) -> PathBuf {
     cache.join(ticker).join("sec_8k_earnings.json")
@@ -423,11 +464,12 @@ pub fn fetch_earnings_filings_with(client: &mut Client, cache: &Path, ticker: &s
     let body = client.get(&submissions_url(&cik)).map_err(|e| format!("{ticker}: {e}"))?;
     let filings = earnings_filings(&body).map_err(|e| format!("{ticker}: {e}"))?;
     let periodic = latest_periodic_filing(&body).map_err(|e| format!("{ticker}: {e}"))?;
+    let (sic, sic_description) = parse_sic(&body).map_err(|e| format!("{ticker}: {e}"))?;
     let rows: Vec<Value> = filings
         .iter()
         .map(|f| serde_json::json!({"filed": f.filed, "report_date": f.report_date, "accession": f.accession, "items": f.items}))
         .collect();
-    let text = serde_json::to_string_pretty(&serde_json::json!({"ticker": ticker, "cik": cik, "source": "sec submissions, form 8-K with item 2.02", "checked": crate::dates::format(crate::dates::today()), "latest_periodic": periodic.map(|(form, filed)| serde_json::json!({"form": form, "filed": filed})), "filings": rows})).map_err(|e| e.to_string())?;
+    let text = serde_json::to_string_pretty(&serde_json::json!({"ticker": ticker, "cik": cik, "source": "sec submissions, form 8-K with item 2.02", "checked": crate::dates::format(crate::dates::today()), "sic": sic, "sic_description": sic_description, "latest_periodic": periodic.map(|(form, filed)| serde_json::json!({"form": form, "filed": filed})), "filings": rows})).map_err(|e| e.to_string())?;
     let path = earnings_filings_path(cache, ticker);
     fs::create_dir_all(path.parent().unwrap_or(cache)).map_err(|e| e.to_string())?;
     let tmp = path.with_extension("tmp");
@@ -459,6 +501,46 @@ mod tests {
         assert!(earnings_filings(&serde_json::to_vec(&no_items).unwrap()).is_err());
         let no_report = serde_json::json!({"filings": {"recent": {"form": ["8-K"], "items": ["2.02"], "filingDate": ["2026-01-01"], "accessionNumber": ["x"]}}});
         assert_eq!(earnings_filings(&serde_json::to_vec(&no_report).unwrap()).unwrap()[0].report_date, "");
+    }
+
+    #[test]
+    fn sic_is_parsed_with_and_without_the_field() {
+        let with = br#"{"cik":"1","sic":"3570","sicDescription":"Computer & Office Equipment","filings":{}}"#;
+        assert_eq!(parse_sic(with).unwrap(), (Some(3570), Some("Computer & Office Equipment".to_string())));
+        for none in [&br#"{"cik":"1"}"#[..], br#"{"sic":"","sicDescription":""}"#, br#"{"sic":null,"sicDescription":"x"}"#] {
+            assert_eq!(parse_sic(none).unwrap(), (None, None));
+        }
+        assert!(parse_sic(b"not json").is_err());
+    }
+
+    #[test]
+    fn company_sic_reads_the_cache_file() {
+        let dir = std::env::temp_dir().join(format!("mapcheck-sic-test-{}", std::process::id()));
+        for (t, body) in [
+            ("AAA", r#"{"sic":3570,"sic_description":"Computer & Office Equipment"}"#),
+            ("OLD", r#"{"ticker":"OLD","filings":[]}"#),
+            ("NUL", r#"{"sic":null,"sic_description":null}"#),
+        ] {
+            fs::create_dir_all(dir.join(t)).unwrap();
+            fs::write(earnings_filings_path(&dir, t), body).unwrap();
+        }
+        assert_eq!(company_sic(&dir, "AAA"), Some((3570, "Computer & Office Equipment".to_string())));
+        assert_eq!(company_sic(&dir, "OLD"), None);
+        assert_eq!(company_sic(&dir, "NUL"), None);
+        assert_eq!(company_sic(&dir, "MISSING"), None);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn ff12_sector_follows_the_french_ranges() {
+        for (sic, want) in [
+            (100, "NoDur"), (999, "NoDur"), (2399, "NoDur"), (2400, "Other"), (2500, "Durbl"), (2520, "Manuf"), (3569, "Manuf"),
+            (3570, "BusEq"), (3579, "BusEq"), (3580, "Manuf"), (3693, "Hlth"), (3694, "BusEq"), (7372, "BusEq"), (7380, "Other"),
+            (1311, "Enrgy"), (2834, "Hlth"), (2860, "Chems"), (4813, "Telcm"), (4911, "Utils"), (4950, "Other"), (5411, "Shops"),
+            (6021, "Money"), (6999, "Money"), (7000, "Other"), (8071, "Hlth"), (8100, "Other"), (0, "Other"), (9999, "Other"),
+        ] {
+            assert_eq!(ff12_sector(sic), want, "sic {sic}");
+        }
     }
 
     #[test]
