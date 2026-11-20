@@ -14,16 +14,14 @@ pub mod mpt;
 pub mod yahoo;
 
 use mapcheck::dates;
-use mapcheck::http::Client;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, SystemTime};
 
 pub type Result<T> = std::result::Result<T, String>;
 
 pub const USER_AGENT: &str = "FinancialAnalysis fa (personal research)";
-/// Seconds between two requests. One client is shared, so the delay holds for all sources.
+/// Seconds between two requests to one host.
 const DELAY_SECONDS: f64 = 0.5;
 
 /// One value of one date.
@@ -123,14 +121,18 @@ pub fn cache_dir(repo: &Path) -> PathBuf {
     repo.join("data").join("raw").join("futures")
 }
 
-fn http() -> &'static Mutex<Client> {
-    static CLIENT: OnceLock<Mutex<Client>> = OnceLock::new();
-    CLIENT.get_or_init(|| Mutex::new(Client::new(USER_AGENT, DELAY_SECONDS)))
+/// One GET request. It goes through the queue of its host (`hostnet`) with a pause of 0.5 seconds.
+pub fn download(url: &str) -> Result<Vec<u8>> {
+    crate::hostnet::get(url, &[], DELAY_SECONDS)
 }
 
-pub fn download(url: &str) -> Result<Vec<u8>> {
-    http().lock().map_err(|_| "HTTP client lock failed".to_string())?.get(url).map_err(|e| e.to_string())
+/// Ignore the age of the cache files for one run: a file that parses is still used when `enough` says that it holds
+/// what the caller needs, but an old-by-the-clock file is asked again (`fa sync` has decided that the data is old).
+pub fn ignore_cache_age(on: bool) {
+    IGNORE_AGE.store(on, std::sync::atomic::Ordering::SeqCst);
 }
+
+static IGNORE_AGE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 fn age(path: &Path) -> Option<Duration> {
     std::fs::metadata(path).and_then(|m| m.modified()).ok().and_then(|t| SystemTime::now().duration_since(t).ok())
@@ -153,7 +155,7 @@ pub fn load<T>(
     let path = cache_dir(repo).join(file);
     let old = std::fs::read(&path).ok().and_then(|bytes| parse(&bytes).ok());
     if let Some(value) = old.as_ref() {
-        if age(&path).is_some_and(|a| a < max_age) || enough(value) {
+        if (age(&path).is_some_and(|a| a < max_age) && !IGNORE_AGE.load(std::sync::atomic::Ordering::SeqCst)) || enough(value) {
             return Ok(old.unwrap());
         }
     }

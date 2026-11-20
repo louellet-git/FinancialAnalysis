@@ -63,6 +63,9 @@ USAGE:
   fa trade fetch [--symbol S]... [--interval I]...  download the bars of the option bots (Yahoo) into the CSV cache
   fa trade backtest [--bot ID]... [--max-risk N] [--out FILE] [-v]   backtest the option bots (fa trade backtest --help)
   fa trade paper [BOT]... [--no-refresh] [--no-live]   forward paper trading, live Cboe option chain (fa trade paper --help)
+  fa sync [TICKER...] [--tickers-file F] [--only A,B] [--skip A,B] [--force] [--dry-run] [--max-minutes N]
+                                                  bring all cached data sets up to date, only the old ones, one queue for each host (fa sync --help)
+  fa sync --status [TICKER...]                    age of each data set from the cache files, no request
   fa import TICKER... [--refresh] [--periods N]   SEC data to the standard variables: data/processed/<TICKER>.json
   fa analyze TICKER [--refresh] [--out FILE] [--no-market] [--no-options] [--no-estimates]
                                                   import, market data, and the nine-sheet xlsx file (fa analyze --help)
@@ -217,6 +220,11 @@ fn verdict_cmd(fa: &Fa, rest: &[String]) -> financial_analysis::Result<ExitCode>
             Err(e) => return Ok(usage_error(&e)),
         },
     };
+    if flag("--price").is_none() {
+        if let Some(w) = financial_analysis::sync::old_data_warning(&fa.repo, ticker, &[financial_analysis::sync::dataset::DataSet::Prices]) {
+            eprintln!("fa: {w}");
+        }
+    }
     let parse = |name: &str| -> Result<Option<i64>, String> {
         flag(name).map_or(Ok(None), |v| v.parse::<i64>().map(Some).map_err(|_| format!("bad {name} '{v}'")))
     };
@@ -283,6 +291,10 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
                 Err(e) => Ok(usage_error(&e)),
             },
             _ => Ok(usage_error("trade needs a command: backtest, fetch or paper")),
+        },
+        Some("sync") => match financial_analysis::sync::command(&fa.repo, &args[1..]) {
+            Ok(code) => Ok(ExitCode::from(code as u8)),
+            Err(e) => Ok(usage_error(&e)),
         },
         Some("import") => match financial_analysis::company::import_command(&fa.repo, &args[1..]) {
             Ok(code) => Ok(ExitCode::from(code as u8)),

@@ -25,7 +25,6 @@
 use crate::curve::{civil_from_days, parse_us};
 use crate::{CheckResult, Curve, FomcTarget, Inflation, RateObservation, Snapshot, TENORS};
 use mapcheck::dates;
-use mapcheck::http::Client;
 use serde_json::Value;
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
@@ -79,14 +78,13 @@ pub trait Net {
     fn post_json(&mut self, url: &str, body: &str) -> Res<String>;
 }
 
-/// The network, with a delay between requests.
-pub struct Live {
-    client: Client,
-}
+/// The network. Each request goes through the queue of its host (`hostnet`): the pause of `DELAY_SECONDS` is a pause
+/// for each host.
+pub struct Live;
 
 impl Live {
     pub fn new() -> Live {
-        Live { client: Client::new(USER_AGENT, DELAY_SECONDS) }
+        Live
     }
 }
 
@@ -102,11 +100,11 @@ fn text(bytes: Vec<u8>, url: &str) -> Res<String> {
 
 impl Net for Live {
     fn get(&mut self, url: &str) -> Res<String> {
-        let b = self.client.get(url).map_err(|e| e.to_string())?;
+        let b = crate::hostnet::get(url, &[], DELAY_SECONDS)?;
         text(b, url)
     }
     fn post_json(&mut self, url: &str, body: &str) -> Res<String> {
-        let b = self.client.post_json(url, body).map_err(|e| e.to_string())?;
+        let b = crate::hostnet::post_json(url, body, DELAY_SECONDS)?;
         text(b, url)
     }
 }

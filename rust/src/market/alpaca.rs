@@ -23,7 +23,6 @@ use serde_json::Value;
 use std::cell::Cell;
 use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
-use std::sync::{Mutex, OnceLock};
 
 pub const KEY_ID_ENV: &str = "APCA_API_KEY_ID";
 pub const SECRET_ENV: &str = "APCA_API_SECRET_KEY";
@@ -80,13 +79,11 @@ impl Client {
 
     /// The real server.
     pub fn live(keys: Keys) -> Client {
-        static HTTP: OnceLock<Mutex<mapcheck::http::Client>> = OnceLock::new();
         let (id, secret) = (keys.id.clone(), keys.secret.clone());
         let scrub_keys = keys.clone();
         let get: Get = Box::new(move |url| {
-            let http = HTTP.get_or_init(|| Mutex::new(mapcheck::http::Client::new(crate::futures::USER_AGENT, PAUSE_SECONDS)));
             let headers = [("APCA-API-KEY-ID", id.as_str()), ("APCA-API-SECRET-KEY", secret.as_str())];
-            http.lock().map_err(|_| "HTTP client lock failed".to_string())?.get_with_headers(url, &headers).map_err(|e| scrub_keys.scrub(&e.to_string()))
+            crate::hostnet::get(url, &headers, PAUSE_SECONDS).map_err(|e| scrub_keys.scrub(&e))
         });
         Client::new(keys, get)
     }

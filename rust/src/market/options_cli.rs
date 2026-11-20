@@ -117,6 +117,24 @@ pub fn may_write(cache: &Path, ticker: &str, date: &str, refresh: bool) -> Resul
     }
 }
 
+/// Today's chain from Alpaca (the free indicative feed) into `<cache>/<TICKER>/options/<today>.json`. Gives the line that
+/// the command prints. A snapshot of today with real quotes stays (`refresh` does not replace it).
+pub fn snapshot_alpaca(repo: &Path, cache: &Path, ticker: &str, today: &str, refresh: bool) -> Result<String, String> {
+    if !may_write(cache, ticker, today, refresh)? {
+        return Ok(format!("options {ticker} {today}: a snapshot of today exists; --refresh replaces it"));
+    }
+    let keys = Keys::read(repo).ok_or_else(|| format!("{} and {} are not both set in the environment or in .env", alpaca::KEY_ID_ENV, alpaca::SECRET_ENV))?;
+    let client = Client::live(keys);
+    let now = alpaca::now_utc();
+    let from = iso((now.div_euclid(86_400) - 10) as i32);
+    let bars = client.stock_bars(&alpaca::StockQuery { symbols: &[alpaca::api_symbol(ticker)], timeframe: "1Day", start: &from, to: today, today, adjustment: "raw", feed: &alpaca::feed_from_env() }).map_err(|e| e.to_string())?;
+    let spot = bars.get(&alpaca::api_symbol(ticker)).and_then(|v| v.last()).map(|b| b.c);
+    let items = client.chain(ticker, "indicative").map_err(|e| e.to_string())?;
+    let snap = chain_snapshot(&items, ticker, today, spot, "indicative");
+    let path = options::save_snapshot(&snap, cache)?;
+    Ok(format!("options {ticker} {today}: {} quotes, spot {:?}, {} requests, feed indicative, written to {}", snap.quotes.len(), snap.spot_price, client.requests(), path.display()))
+}
+
 fn snapshot(repo: &Path, rest: &[String]) -> Result<i32, String> {
     let a = Args::parse(rest, &["--source"], &["--refresh"])?;
     let ticker = a.symbol.clone().ok_or("give a symbol: fa options snapshot SPY")?;
@@ -127,22 +145,7 @@ fn snapshot(repo: &Path, rest: &[String]) -> Result<i32, String> {
             let (snap, source) = options::fetch_option_chain(&cache, &ticker, a.has("--refresh"), &today, &|u| download(u))?;
             println!("options {ticker} {today}: {} quotes, spot {:?}, source {:?} (Cboe delayed quotes)", snap.quotes.len(), snap.spot_price, source);
         }
-        "alpaca" => {
-            if !may_write(&cache, &ticker, &today, a.has("--refresh"))? {
-                println!("options {ticker} {today}: a snapshot of today exists; --refresh replaces it");
-                return Ok(0);
-            }
-            let keys = Keys::read(repo).ok_or_else(|| format!("{} and {} are not both set in the environment or in .env", alpaca::KEY_ID_ENV, alpaca::SECRET_ENV))?;
-            let client = Client::live(keys);
-            let now = alpaca::now_utc();
-            let from = iso((now.div_euclid(86_400) - 10) as i32);
-            let bars = client.stock_bars(&alpaca::StockQuery { symbols: &[alpaca::api_symbol(&ticker)], timeframe: "1Day", start: &from, to: &today, today: &today, adjustment: "raw", feed: &alpaca::feed_from_env() }).map_err(|e| e.to_string())?;
-            let spot = bars.get(&alpaca::api_symbol(&ticker)).and_then(|v| v.last()).map(|b| b.c);
-            let items = client.chain(&ticker, "indicative").map_err(|e| e.to_string())?;
-            let snap = chain_snapshot(&items, &ticker, &today, spot, "indicative");
-            let path = options::save_snapshot(&snap, &cache)?;
-            println!("options {ticker} {today}: {} quotes, spot {:?}, {} requests, feed indicative, written to {}", snap.quotes.len(), snap.spot_price, client.requests(), path.display());
-        }
+        "alpaca" => println!("{}", snapshot_alpaca(repo, &cache, &ticker, &today, a.has("--refresh"))?),
         other => return Err(format!("unknown source '{other}' (use cboe or alpaca)")),
     }
     Ok(0)

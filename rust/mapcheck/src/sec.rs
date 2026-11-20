@@ -355,6 +355,43 @@ pub fn earnings_filings(json: &[u8]) -> Result<Vec<EarningsFiling>, String> {
     Ok(out)
 }
 
+/// The forms of a periodic report. A new one means that the company facts have new data.
+pub const PERIODIC_FORMS: [&str; 4] = ["10-K", "10-K/A", "10-Q", "10-Q/A"];
+
+/// The latest periodic report (form, filing date) in the SEC submissions data (`filings.recent`).
+pub fn latest_periodic_filing(json: &[u8]) -> Result<Option<(String, String)>, String> {
+    let value: Value = serde_json::from_slice(json).map_err(|e| format!("submissions: {e}"))?;
+    let recent = value.pointer("/filings/recent").ok_or("submissions: no filings.recent")?;
+    let column = |name: &str| recent.get(name).and_then(Value::as_array).ok_or_else(|| format!("submissions: no filings.recent.{name}"));
+    let (forms, filed) = (column("form")?, column("filingDate")?);
+    let mut best: Option<(String, String)> = None;
+    for (i, form) in forms.iter().enumerate() {
+        let (Some(form), Some(date)) = (form.as_str(), filed.get(i).and_then(Value::as_str)) else { continue };
+        if PERIODIC_FORMS.contains(&form) && best.as_ref().is_none_or(|(_, d)| date > d.as_str()) {
+            best = Some((form.to_string(), date.to_string()));
+        }
+    }
+    Ok(best)
+}
+
+/// What the last look at the SEC filing list of a ticker found (in `sec_8k_earnings.json`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct FilingListCheck {
+    /// The date of the look (`YYYY-MM-DD`).
+    pub checked: String,
+    /// The filing date of the latest 10-K or 10-Q of that day (`None`: the list has none).
+    pub latest_periodic: Option<String>,
+}
+
+/// The record of the last look at the filing list. `None` when the file is missing, has no `checked` field (an old file),
+/// or cannot be read.
+pub fn load_filing_list_check(cache: &Path, ticker: &str) -> Option<FilingListCheck> {
+    let value: Value = serde_json::from_slice(&fs::read(earnings_filings_path(cache, ticker)).ok()?).ok()?;
+    let checked = value.get("checked")?.as_str()?.to_string();
+    let latest_periodic = value.pointer("/latest_periodic/filed").and_then(Value::as_str).map(String::from);
+    Some(FilingListCheck { checked, latest_periodic })
+}
+
 /// The file of the earnings filings of a ticker: `<cache>/<TICKER>/sec_8k_earnings.json`.
 pub fn earnings_filings_path(cache: &Path, ticker: &str) -> PathBuf {
     cache.join(ticker).join("sec_8k_earnings.json")
@@ -365,13 +402,19 @@ pub fn earnings_filings_path(cache: &Path, ticker: &str) -> PathBuf {
 /// from the SEC ticker list. Network: data.sec.gov, 1 request (and the ticker list, when it is not in the cache).
 pub fn fetch_earnings_filings(cache: &Path, ticker: &str, delay: f64) -> Result<(Vec<EarningsFiling>, PathBuf), String> {
     let mut client = Client::sec(delay)?;
+    fetch_earnings_filings_with(&mut client, cache, ticker)
+}
+
+/// The same with a client that the caller keeps (`fa sync` uses one client for all tickers, so the pause between
+/// two requests holds across tickers).
+pub fn fetch_earnings_filings_with(client: &mut Client, cache: &Path, ticker: &str) -> Result<(Vec<EarningsFiling>, PathBuf), String> {
     let cik = match facts_path(cache, ticker) {
         Some(path) => match read_facts(&path)?.cik {
             Value::Number(n) => n.to_string(),
             Value::String(s) => s.trim_start_matches('0').to_string(),
             _ => return Err(format!("{ticker}: the company facts have no CIK")),
         },
-        None => ticker_list(&mut client, cache, false)?
+        None => ticker_list(client, cache, false)?
             .into_iter()
             .find(|(t, _)| t == ticker)
             .map(|(_, c)| c)
@@ -379,11 +422,12 @@ pub fn fetch_earnings_filings(cache: &Path, ticker: &str, delay: f64) -> Result<
     };
     let body = client.get(&submissions_url(&cik)).map_err(|e| format!("{ticker}: {e}"))?;
     let filings = earnings_filings(&body).map_err(|e| format!("{ticker}: {e}"))?;
+    let periodic = latest_periodic_filing(&body).map_err(|e| format!("{ticker}: {e}"))?;
     let rows: Vec<Value> = filings
         .iter()
         .map(|f| serde_json::json!({"filed": f.filed, "report_date": f.report_date, "accession": f.accession, "items": f.items}))
         .collect();
-    let text = serde_json::to_string_pretty(&serde_json::json!({"ticker": ticker, "cik": cik, "source": "sec submissions, form 8-K with item 2.02", "filings": rows})).map_err(|e| e.to_string())?;
+    let text = serde_json::to_string_pretty(&serde_json::json!({"ticker": ticker, "cik": cik, "source": "sec submissions, form 8-K with item 2.02", "checked": crate::dates::format(crate::dates::today()), "latest_periodic": periodic.map(|(form, filed)| serde_json::json!({"form": form, "filed": filed})), "filings": rows})).map_err(|e| e.to_string())?;
     let path = earnings_filings_path(cache, ticker);
     fs::create_dir_all(path.parent().unwrap_or(cache)).map_err(|e| e.to_string())?;
     let tmp = path.with_extension("tmp");
@@ -489,5 +533,24 @@ mod tests {
         assert_eq!(latest_prospectus(&submissions(&[no_document, s1])).unwrap().form, "S-1");
         assert!(latest_prospectus(&submissions(&[fwp])).is_err());
         assert!(latest_prospectus(br#"{"filings":{}}"#).is_err());
+    }
+
+    #[test]
+    fn the_latest_periodic_filing_and_the_record_of_the_look() {
+        let s = |rows: &[[&str; 4]]| submissions(rows);
+        let q = ["10-Q", "a1", "q.htm", "2026-10-29"];
+        let k = ["10-K", "a2", "k.htm", "2026-02-20"];
+        let e = ["8-K", "a3", "e.htm", "2026-11-05"];
+        assert_eq!(latest_periodic_filing(&s(&[e, q, k])).unwrap(), Some(("10-Q".to_string(), "2026-10-29".to_string())));
+        assert_eq!(latest_periodic_filing(&s(&[e])).unwrap(), None);
+        assert!(latest_periodic_filing(br#"{"filings":{}}"#).is_err());
+        let dir = std::env::temp_dir().join(format!("mapcheck-sec-check-{}", std::process::id()));
+        fs::create_dir_all(dir.join("ACME")).unwrap();
+        assert_eq!(load_filing_list_check(&dir, "ACME"), None, "no file");
+        fs::write(earnings_filings_path(&dir, "ACME"), r#"{"ticker":"ACME","filings":[]}"#).unwrap();
+        assert_eq!(load_filing_list_check(&dir, "ACME"), None, "an old file has no record of a look");
+        fs::write(earnings_filings_path(&dir, "ACME"), r#"{"ticker":"ACME","checked":"2026-11-19","latest_periodic":{"form":"10-Q","filed":"2026-10-29"},"filings":[]}"#).unwrap();
+        assert_eq!(load_filing_list_check(&dir, "ACME"), Some(FilingListCheck { checked: "2026-11-19".into(), latest_periodic: Some("2026-10-29".into()) }));
+        fs::remove_dir_all(&dir).ok();
     }
 }

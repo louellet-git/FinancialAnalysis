@@ -13,7 +13,6 @@
 //! 2 seconds between requests. A refusal is an error; the code does not retry.
 
 use crate::curve::{self, Day};
-use mapcheck::http::Client;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -23,15 +22,14 @@ pub const DELAY_SECONDS: f64 = 2.0;
 const NYFED: &str = "https://markets.newyorkfed.org/api";
 const FISCAL: &str = "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1";
 
-/// A cache directory (`data/raw`) and a client that waits between requests.
+/// A cache directory (`data/raw`). A download goes through the queue of its host (`hostnet`).
 pub struct Fetcher {
     root: PathBuf,
-    client: Client,
 }
 
 impl Fetcher {
     pub fn new(cache_root: &Path) -> Fetcher {
-        Fetcher { root: cache_root.to_path_buf(), client: Client::new(USER_AGENT, DELAY_SECONDS) }
+        Fetcher { root: cache_root.to_path_buf() }
     }
 
     /// The text of `rel` from the cache, else from `url`. A download is cached only when
@@ -43,7 +41,7 @@ impl Fetcher {
                 return Ok(t);
             }
         }
-        let bytes = self.client.get(url).map_err(|e| e.to_string())?;
+        let bytes = crate::hostnet::get(url, &[], DELAY_SECONDS)?;
         let text = String::from_utf8(bytes).map_err(|_| format!("{url}: the answer is not UTF-8 text"))?;
         if !valid(&text) {
             return Err(format!("{url}: the answer did not parse as expected"));

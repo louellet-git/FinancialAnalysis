@@ -112,7 +112,7 @@ fn get(repo: &Path, rest: &[String]) -> Result<i32, String> {
     let mut p = parse(rest, &["--tickers-file", "--source"], &["--full"])?;
     collect_tickers(&mut p)?;
     let sources = price_source::sources(repo, p.flag("--source"))?;
-    let opt = Options { today: today_iso(), full: p.switches.iter().any(|s| s == "--full"), forced: p.flag("--source").is_some(), retry_wait: Duration::from_secs(60) };
+    let opt = Options { today: today_iso(), full: p.switches.iter().any(|s| s == "--full"), forced: p.flag("--source").is_some(), retry_wait: Duration::from_secs(60), again: false };
     let cache = cache_dir(repo);
     let names: Vec<&str> = sources.iter().map(|s| s.name()).collect();
     eprintln!("fa: prices for {} ticker(s) from {} into {}", p.tickers.len(), names.join(", "), cache.display());
