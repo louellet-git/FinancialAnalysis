@@ -49,7 +49,7 @@ pub struct Row {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum FetchError {
-    /// HTTP 429. The caller waits one time and then stops the source for the run.
+    /// HTTP 429 or 403. The caller waits one time and then stops the source for the run.
     RateLimited(String),
     Failed(String),
 }
@@ -63,7 +63,7 @@ impl std::fmt::Display for FetchError {
 }
 
 pub(crate) fn classify(error: String) -> FetchError {
-    if error.starts_with("HTTP 429 ") {
+    if crate::hostnet::block_code(&error).is_some() {
         FetchError::RateLimited(error)
     } else {
         FetchError::Failed(error)
