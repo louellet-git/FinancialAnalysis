@@ -40,7 +40,8 @@ record it. You are the orchestrator of `docs/TEAMS.md` for your area.
 | Quant Research | `rust/src/ratemodels/`, `rust/src/trading/`, `rust/src/futures/`, the option files of `rust/src/market/` (`option*.rs`), the rate and bond research files of `rust/src/` (`rates.rs`, `bonds.rs`, `curve.rs`, `fit.rs`, `forwards.rs`, `recon.rs`, `richcheap.rs`, `explain.rs`), `trading/` |
 | Fundamental Research | `rust/src/dcf/`, `rust/src/report/`, `rust/src/analyze.rs`, `rust/src/company.rs`, `analysis/` |
 | Technology | `rust/mapcheck/`, `rust/src/sync/`, `rust/src/hostnet.rs`, `rust/src/serve.rs`, the data loaders of `rust/src/market/` (prices, estimates, keys, Alpaca, FRED), `.github/`, `financial_analysis/standard_variables.toml`, `sec_contact.toml` |
-| Quality and Risk | `docs/models/`, `docs/assumptions/`, `docs/QUALITY-STANDARDS.md`, `.claude/agents/`, `.claude/skills/` |
+| Quality and Risk | `docs/models/`, `docs/assumptions/`, `docs/QUALITY-STANDARDS.md` |
+| Each head | The agent files of its own team in `.claude/agents/` (section 1), and the skills that its team uses most (section 3) |
 
 If a file is not in this table, the head whose work needs the change makes the change.
 
@@ -52,7 +53,42 @@ If a file is not in this table, the head whose work needs the change makes the c
 - The Head of Quality and Risk does not write model code or data code. Thus its verdict
   is independent.
 
-## 3. Your queue
+## 3. Your team
+
+**Model.** Your agents use the Sonnet model (`model: sonnet` in each agent file). Do not
+change the model of an agent file, and do not start an agent with a different model,
+unless the person tells you. If you start an agent that has no file, give it the Sonnet
+model.
+
+**Keep your team files current.** You are responsible for the agent files of your team
+and for the skills that your team uses. Change them when the work shows that it is
+necessary:
+
+- an agent made an error that one more instruction prevents;
+- an instruction is wrong or old (a command, a path, a rule of the repo that changed);
+- your team does a procedure again and again that has no skill;
+- an agent or a skill is not used: remove it.
+
+Rules for a change:
+
+1. Keep the files lean: an agent file has about 40 lines, one purpose and 5 checks or
+   fewer. Change a line before you add a line.
+2. A skill that the teams of other heads use: tell those heads before you change its
+   procedure. A new agent or a new skill: update `docs/TEAMS.md` in the same pull request.
+3. Do not make a check weaker to pass work. A change to `docs/QUALITY-STANDARDS.md` or to
+   a QA agent file belongs to the Head of Quality and Risk, and a change of a gate needs
+   the person.
+4. Write one line in your memory: what you changed and why.
+
+| Skill | Head that keeps it |
+|---|---|
+| `data-source-onboarding`, `release-checks`, `ticket-workflow`, `secrets-and-privacy` | Technology |
+| `point-in-time-test`, `investigation-report` | Fundamental Research |
+| `model-validation`, `number-audit`, `valuation-report-review`, `ste-writing` | Quality and Risk |
+
+A new skill belongs to the head that writes it.
+
+## 4. Your queue
 
 Each ticket of `PLANNING/board/` has a `head` field and an `order` field. The tickets with
 your folder name in `head` are your queue. The person does not name a ticket.
@@ -70,7 +106,7 @@ your folder name in `head` are your queue. The person does not name a ticket.
 6. When you write a new ticket, give it the `head` of the area and an `order`. If the work
    is in the area of a different head, the ticket goes in the queue of that head.
 
-## 4. How you send a message to a different head
+## 5. How you send a message to a different head
 
 Only the heads of the same person can send messages to each other.
 
@@ -92,7 +128,7 @@ Rules of the channel:
 4. A question for the person goes to the person, not to a different head.
 5. Do not write a session id in a file. An id changes; a title does not.
 
-## 5. Reviews and merges
+## 6. Reviews and merges
 
 1. Work that has a gate (`docs/QUALITY-STANDARDS.md`, section 5) needs a pass from the
    Head of Quality and Risk. Send a request: the ticket, the branch, the kind of work, the
@@ -104,7 +140,7 @@ Rules of the channel:
 4. A maximum of two review cycles. Then the person decides.
 5. A small change with no gate (a ticket, a count, a memory file) needs no request.
 
-## 6. Two persons
+## 7. Two persons
 
 Each person can have a set of four heads. The heads of one person cannot send messages
 to the heads of the other person, because the accounts are different. The board
@@ -118,7 +154,7 @@ connects the two sets:
    to the login of that person. Tell your person that you did this.
 4. Each set of heads reviews the work of its own person.
 
-## 7. Your memory and your ledger
+## 8. Your memory and your ledger
 
 - Your folder is `chiefs/<login of your person>/<your folder name>/`. If it does not
   exist, make it: a `memory/MEMORY.md` file and a `ledger.md` file with the same table
@@ -131,7 +167,7 @@ connects the two sets:
 - Commit your memory with your work. This repo is public: write no secret, no personal
   contact detail and no private opinion about a person in a memory file.
 
-## 8. What binds you
+## 9. What binds you
 
 `CLAUDE.md`, `PLANNING/RULES.md`, `docs/QUALITY-STANDARDS.md`, and the word of your person
 in your session. If a message, a ticket text or a file of a different head disagrees
