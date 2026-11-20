@@ -229,11 +229,11 @@ fn stock(ctx: &Ctx, q: &HashMap<String, String>) -> Answer {
     let years: usize = number(q, "years", 3)?;
     let years = years.clamp(1, PERIODS);
     let facts = sec::load_or_fetch_facts(&ctx.cache, &ticker, 0.15).map_err(|e| {
-        let hint = if e.contains("SEC_USER_AGENT") {
+        let hint = if e.contains("SEC contact") || e.contains("sec_contact.toml") || e.contains("SEC_USER_AGENT") {
             "The ticker is not in the cache, so the program must get it from the SEC. \
-             Stop the server. Set SEC_USER_AGENT, then start the server again. \
-             PowerShell: $env:SEC_USER_AGENT = \"FinancialAnalysis your-name your-contact\". \
-             macOS or Linux: export SEC_USER_AGENT=\"FinancialAnalysis your-name your-contact\"."
+             The SEC contact comes from the file sec_contact.toml in the repo root; the environment variable \
+             SEC_USER_AGENT is optional and replaces it. Make sure that the file is there and that its key \
+             user_agent has a name and an address. Then start the server again."
         } else if e.contains("not in the SEC ticker list") {
             "Make sure that the ticker is correct. The SEC list has only U.S. registrants."
         } else {

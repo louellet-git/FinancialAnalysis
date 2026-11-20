@@ -125,24 +125,16 @@ date: IBM 14/18 realized outcomes in the P10–P90 band (78% vs 80% nominal); DU
 mechanical extrapolation fails on growth-phase tickers, so treat their bands as
 decorative until a driver build exists.
 
-## `financial_analysis/` (the Python files that remain, 2026-11-19)
+## `financial_analysis/` and `sec_contact.toml` (2026-11-20)
 
-The engines, the scenarios, the backtest, the store, the schema, the market-data readers and the report
-are deleted: they are Rust code now (`rust/src/dcf/`, `rust/src/company.rs`, `rust/src/market/`,
-`rust/src/report/`). Three Python files in this folder (two in `scripts/`) and the registry remain.
+The repo has no Python code. The engines, the scenarios, the backtest, the store, the schema,
+the market-data readers and the report are Rust code (`rust/src/dcf/`, `rust/src/company.rs`,
+`rust/src/market/`, `rust/src/report/`). The folder `financial_analysis/` has data only.
 
-| Module | Lines | What it does |
-|---|---|---|
-| `__init__.py` | 3 | Re-exports `EdgarClient`. |
-| `edgar.py` | 272 | SEC HTTP client (User-Agent, 0.15s rate limit), CIK lookup from company_tickers.json, full-index filing downloads (`EdgarClient.download_for_ticker`), `EdgarClientError`. |
-| `importer.py` | 50 | Only `_run`: it starts the Rust program `mapcheck` and gives it the SEC contact (environment variable `SEC_USER_AGENT`, else the legacy SEC client). The import is Rust: `rust/mapcheck/src/import.rs`, `fa import`, `fa analyze`. Stays until the legacy SEC client is deleted. |
-| `standard_variables.toml` | 1,385 | The registry of standard variables (data): for each variable its alias tags in a fixed sequence, fallback formulas, unit, sign, core flag and memo flag; the rollups; the containment rules; the excluded tags with reasons. The Rust program `rust/mapcheck` uses it to make the variables. |
-
-## `scripts/` (the Python file that remains, 2026-11-19)
-
-| Script | CLI (verified against argparse) | What it does |
-|---|---|---|
-| `import_edgar.py` | `python -m scripts.import_edgar TICKER VALUATION_DATE [--output-dir data/raw] [--lookback-months 18] [--lookahead-months 6]` | Bulk full-index filing download (archival fallback path — companyfacts is the primary parse path). |
+| File | What it is |
+|---|---|
+| `financial_analysis/standard_variables.toml` | The registry of standard variables (data, 1,385 lines): for each variable its alias tags in a fixed sequence, fallback formulas, unit, sign, core flag and memo flag; the rollups; the containment rules; the excluded tags with reasons. The Rust program `rust/mapcheck` uses it to make the variables. |
+| `sec_contact.toml` (repo root) | The SEC contact (key `user_agent`): a project address, public on purpose. `mapcheck::http::sec_user_agent` reads it. The environment variable `SEC_USER_AGENT` replaces it. |
 
 ## Standard variables and `rust/mapcheck/` (2026-11-19)
 
@@ -151,8 +143,7 @@ Filers use different XBRL tags for the same line. The registry
 the engines and the analysis code read only these names.
 
 The Rust program `rust/mapcheck` is the only implementation of this work (owner
-decision of 2026-11-19: the language of the repo is Rust). The Python importer has no
-mapping logic; it runs `mapcheck import` and reads the store file
+decision of 2026-11-19: the language of the repo is Rust). `fa import` runs the mapping and writes the store file
 `data/processed/<TICKER>.json`.
 
 1. **Period.** A row exists for each real fiscal year and quarter, and each value is the
@@ -176,7 +167,7 @@ mapping logic; it runs `mapcheck import` and reads the store file
 | `mapper.rs` | The standard variables of one period: alias tags, formulas, sources, the share-count scale rule, tags with no variable. |
 | `checks.rs` | The checks: core inputs, signs, identities, rollups (overlap, nested details, lines with no variable), total-debt estimates, share count, capex and software, period sequence. |
 | `run.rs`, `summary.rs` | One ticker, and all tickers in parallel (rayon); the JSON report; the text summary, the ticker list, the detail and the values listing. |
-| `http.rs`, `sec.rs` | HTTP with a delay between requests; the SEC ticker list, company facts and filing files, and the cache folders. The contact text for the SEC comes from the environment variable `SEC_USER_AGENT`. |
+| `http.rs`, `sec.rs` | HTTP with a delay between requests; the SEC ticker list, company facts and filing files, and the cache folders. The contact text for the SEC comes from `mapcheck::http::sec_user_agent`: the environment variable `SEC_USER_AGENT` if it is set, else the file `sec_contact.toml` (searched in the folder of `FA_REPO`, in the current folder and its parents, and in the repo root known at build time). A missing, empty or bad file is an error that names the file. |
 | `store.rs` | Writes `data/processed/<TICKER>.json` for the valuation code (`fa`). |
 | `filing.rs` | Filing-level XBRL, first part: reads `MetaLinks.json` and the instance document of the latest 10-K, builds the three statements as trees from the calculation data of the filer, and gives capex, depreciation and amortization, and total debt from the filing lines. It keeps the three fiscal years of the 10-K and the facts with one segment member. |
 | `supplement.rs` | Gives a value from the 10-K for a critical input (revenue, capex, share count) that the company facts do not have: company-tag capex lines, a standard tag with segment members, share classes. The source text of the value starts with `filing`. |
@@ -881,7 +872,7 @@ The table of the data sets, with their names, maximum ages and hosts, is in `doc
 | `sync/interrupt.rs` | Ctrl+C (Unix signal, Windows console handler). |
 | `hostnet.rs` | One request slot for each host group: the pause of the host, never two requests to one host at the same time, the counts, the stop of a host for the run. |
 
-Flow. `fa sync` reads the config, the ticker list, the keys and `SEC_USER_AGENT`. It makes the plan from the cache files (no request). `--status` and `--dry-run` print the plan and end. Otherwise the executor starts
+Flow. `fa sync` reads the config, the ticker list, the keys and the SEC contact (`sec_user_agent`). It makes the plan from the cache files (no request). `--status` and `--dry-run` print the plan and end. Otherwise the executor starts
 one thread for each host. A thread runs the items of its host one after the other. At the end the summary has one line for each data set and one line for each host, the list of what stays old, and the command to run again.
 
 Rules.
@@ -890,11 +881,11 @@ Rules.
 - A block (HTTP 429, HTTP 403, a block page) stops that host for the run. Two connection failures in a row (timeout, closed connection) stop it too. The cache stays; the other hosts go on. A failure of one ticker does not stop the others.
 - The time limit of one request is 30 seconds, 60 seconds for the hosts with large files, and 90 seconds for the Atlanta Fed (`hostnet::timeout_of`). The sync has no wait after a block: the old 60-second waits of the price and the estimates clients are 0 in the sync.
 - Exit code 0 when no data set failed as a whole. A block of a fallback source alone, a data set that is "not available yet" (FedInvest at the end of the day), a skipped data set, and a stop by Ctrl+C or `--max-minutes` do not set the code 1.
-- Without `SEC_USER_AGENT`, `sec`, `filings` and the SEC part of `earnings` are skipped with one line.
+- Without a SEC contact (error of `sec_user_agent`: no variable and no good file), `sec`, `filings` and the SEC part of `earnings` are skipped with one line.
 - The value commands do not start a sync: `fa dcf auto`, `fa verdict` and `fa estimates show` print one line `warning: old data for TICKER: ...; run: fa sync TICKER` when their data is older than its maximum age.
 
 Tests. They use a fake runner and temp folders (no network): the plan from a cache state (old, current, weekend, holiday), `--only`, `--skip`, `--force`, a blocked host, a failed ticker, the stop after N failures, the pause of each host,
-that two hosts overlap in time, the summary counts and the exit code, "not available yet", the config file, the continue after a stop, keys, a missing `SEC_USER_AGENT`, and that `--status` makes no request.
+that two hosts overlap in time, the summary counts and the exit code, "not available yet", the config file, the continue after a stop, keys, a missing SEC contact (the status line names the place, never the contact), and that `--status` makes no request.
 
 ## The company report (`rust/src/report/`, `fa report`, 2026-11-19)
 
@@ -979,7 +970,7 @@ ticket `option-backtest-rust`).
 
 ## Tests
 
-`cargo test --manifest-path rust/Cargo.toml --locked`: 568 Rust tests (550 + 17 + 1; 2 more are ignored) (the `fa` crate).
-`cargo test --manifest-path rust/mapcheck/Cargo.toml`: 92 Rust tests. The suites make no network calls and start no
+`cargo test --manifest-path rust/Cargo.toml --locked`: 569 Rust tests (551 + 17 + 1; 2 more are ignored) (the `fa` crate).
+`cargo test --manifest-path rust/mapcheck/Cargo.toml`: 97 Rust tests. The suites make no network calls and start no
 Python program; HTTP is replaced by a function that the test gives, and files are in a temp folder.
 No Python test remains (the last 211 Python tests were deleted on 2026-11-19 after each case had a Rust test).

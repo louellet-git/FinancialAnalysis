@@ -158,17 +158,14 @@ The importer and the Rust mapper correct a factor of 1,000 or 1,000,000 when net
 divided by EPS shows it, and the source records the correction. A stock split after the
 period is not corrected: the value is the count that the filer reported.
 
-**48. The Python commands need the Rust program.** The Python importer has no mapping
-logic. (Update 2026-11-19: `scripts.analyze` and `scripts.import_financials` are deleted; `fa import` and
-`fa analyze` call the Rust import in the same process.) Each Python command that imports a
-ticker runs `rust/mapcheck/target/release/mapcheck`. If the program is not built, they
-stop with `MapcheckError` and the build command. Build it again after a change of
+**48. The import needs the Rust program.** (Update 2026-11-20: no Python code remains; `fa import` and
+`fa analyze` call the Rust import in the same process.) Before this change each Python command that imported a
+ticker ran `rust/mapcheck/target/release/mapcheck` and stopped with `MapcheckError` when it was not built. Build it again after a change of
 `financial_analysis/standard_variables.toml` (the program contains the file).
 
-**49. A request to the SEC needs `SEC_USER_AGENT`.** The Rust program reads the contact
-text from this environment variable. `www.sec.gov` (ticker list, filing files) refuses
-a request with no contact. The Python importer gives the Rust program the contact text
-of the legacy Python SEC client when the variable is not set.
+**49. A request to the SEC needs a contact.** The Rust program reads the contact text from
+the environment variable `SEC_USER_AGENT`, else from the file `sec_contact.toml` (changed 2026-11-20; see #285).
+`www.sec.gov` (ticker list, filing files) refuses a request with no contact.
 
 **50. A critical input can come from the 10-K, and it is an estimate.** When revenue,
 capex or the share count has no value in the company facts, and the 10-K is in the
@@ -226,8 +223,8 @@ a correct value. A company with no revenue in the latest three fiscal years is `
 mapping gives no variables; the values come from the prospectus text by hand until the
 first 10-Q or 10-K. The company facts of such a registrant have only the fee data
 (namespace `ffd`). `mapcheck` gives the status `N/A` with the template `new` and the
-finding `no_xbrl_values`. `mapcheck import` stops, thus the Python importer raises
-`UnsupportedFilingError`. `mapcheck fetch --prospectus TICKER` puts the latest prospectus
+finding `no_xbrl_values`. `mapcheck import` stops (`ImportError::Unsupported`; the old Python importer raised
+`UnsupportedFilingError`). `mapcheck fetch --prospectus TICKER` puts the latest prospectus
 in the cache (424B4; if none, S-1/A; if none, S-1). Example: ANT (Anthropic, PBC), IPO
 of 2026-11-18. A foreign registrant with only fee data (form F-1) stays `ERROR`.
 *Evidence:* `rust/mapcheck/src/run.rs` (`registration_only`); `rust/mapcheck/src/sec.rs`
@@ -771,10 +768,8 @@ error with the option.
 
 **135. Python files that stay, and why (changed 2026-11-19).** The report moved to Rust, and the Python engine
 files, the store, the schema, the market-data readers, the report script, the three `driver_model.py`
-files and all Python tests are deleted (#147 to #153). Five Python files remain: the legacy SEC
-client in `financial_analysis/` (the SEC contact text is in it), `financial_analysis/importer.py` (only `_run`),
-`financial_analysis/__init__.py`, `scripts/import_edgar.py` and `scripts/__init__.py`. They stay until the owner
-decides the new place of the SEC contact text (ticket `T-20261119-python-to-rust`, the one open step).
+files and all Python tests are deleted (#147 to #153). Five Python files remained on that day. The owner decided on 2026-11-20 that the SEC contact is a project address in the
+file `sec_contact.toml` (#285). The five files are deleted (ticket `T-20261119-python-to-rust`).
 
 ## Bond reconciliation (added 2026-11-19, branch `claude/bond-recon`)
 
@@ -1151,10 +1146,9 @@ segment of the model (none of the three models has one): the order of the legend
 
 **153. No `fa` command starts Python (changed 2026-11-19).** `fa run`, `Fa::run_captured`, `default_python`, the
 variable `FA_PYTHON` and the Python error type are deleted. The viewer calls `fa report` in the same process. `FaError`
-has two cases: `Data` and `Json`. The SEC contact text is in the legacy SEC client only. `fa import` and `mapcheck` need the
-environment variable `SEC_USER_AGENT`; the Python function `importer._run` gives it the text of the legacy client when the
-variable is not set. This is the one open step of the move to Rust.
-*Evidence:* `rust/src/lib.rs`, `rust/src/serve.rs`, `financial_analysis/importer.py`.
+has two cases: `Data` and `Json`. `fa import` and `mapcheck` read the SEC contact from the environment variable `SEC_USER_AGENT`, else from the file
+`sec_contact.toml` (changed 2026-11-20; see #285). No Python code remains.
+*Evidence:* `rust/src/lib.rs`, `rust/src/serve.rs`, `rust/mapcheck/src/http.rs`.
 
 **154. The Python tests had cases without a recorded fixture; each has a Rust test now.** Before the deletion, each Python
 test case was mapped to a Rust test or ported (the lists are in the ticket `T-20261119-dcf-engine-rust`). New Rust
@@ -1759,8 +1753,8 @@ up to 8 seconds for a Nasdaq request and 60 seconds for a large file. The estima
 It does not set the exit code. The next run asks again. The same rule holds for an empty FedInvest file.
 *Evidence:* `rust/src/sync/runner.rs` (`job_bonds`), `rust/src/sync/exec.rs` (`Status::NotYet`).
 
-**255. The SEC data sets need `SEC_USER_AGENT` in the environment.** `fa sync` reads it from the environment of its own process, not from `.env` (the keys of the other sources come from the environment or `.env`).
-Without it `sec`, `filings` and the SEC part of `earnings` are skipped with one line, and the exit code is not changed by the skip. A run without it leaves the SEC data old.
+**255. The SEC data sets need a SEC contact (changed 2026-11-20).** `fa sync` reads the contact with `sec_user_agent`: the environment variable `SEC_USER_AGENT` of its own process (not `.env`), else the file `sec_contact.toml`. The file is in the repo, so a normal run has a contact (#285).
+Without a contact (no variable and no good file) `sec`, `filings` and the SEC part of `earnings` are skipped with the error text, and the exit code is not changed by the skip. A run without it leaves the SEC data old.
 *Evidence:* `rust/src/sync/mod.rs` (`EnvInfo::read`), `rust/src/sync/plan.rs`.
 
 **256. The sync does not change a cache rule.** Each job calls the function of the existing data command: the price cache keeps its source (no mixing of two price sources), the estimates cache keeps its files of one day, the
@@ -1776,7 +1770,7 @@ always. A missing cache gives no warning (the command says that itself). The war
 *Evidence:* `rust/src/sync/fresh.rs` (`old_data_warning`), `rust/src/dcf/auto_cli.rs`, `rust/src/main.rs`, `rust/src/market/estimates_cli.rs`.
 
 **259. Windows (PowerShell) is a goal of the code, not a tested fact.** The code uses `PathBuf` for all paths, starts no shell command, and has a console handler for Ctrl+C (`SetConsoleCtrlHandler`). No test ran on Windows
-(the development container is Linux), and the Windows part of `interrupt.rs` was never compiled. The progress line of each item is plain text on stderr (no cursor control). A person on Windows must set `SEC_USER_AGENT` with `$env:SEC_USER_AGENT = "..."`.
+(the development container is Linux), and the Windows part of `interrupt.rs` was never compiled. The progress line of each item is plain text on stderr (no cursor control). A person on Windows who wants their own SEC contact sets `SEC_USER_AGENT` with `$env:SEC_USER_AGENT = "..."`; the file `sec_contact.toml` gives the project contact.
 *Evidence:* `rust/src/sync/interrupt.rs`; `README.md`, part "First run on your computer".
 
 **280. An index has no price and no implied volatility at Alpaca.** The chain of SPX or VIX has bid, ask and last trade, but no implied volatility, and no level of the index. The program takes the forward of each
@@ -1809,6 +1803,9 @@ is the dividend in the share count of its own day, and the check of the adjustme
 split factors, like the prices. The order of the sources with no forced source is now Tiingo, Yahoo, Nasdaq, Alpaca (before: Tiingo, Alpaca, Yahoo, Nasdaq), because the Alpaca close is the IEX close and its history is short (#232). A cache
 of one source keeps that source (the rule of #234): a cache of Alpaca stays with Alpaca until the person asks for another source.
 *Evidence:* `price_source.rs` (`parse_tiingo`, `sources`; test `tiingo_dividend_before_a_split_is_split_adjusted_and_passes_the_event_check`, `source_choice`), `sync/plan.rs` (`price_hosts`).
+
+**285. The SEC contact is a project address in a public file (owner decision, 2026-11-20).** The contact text for the SEC is the key `user_agent` of `sec_contact.toml` in the repo root. The file is public on purpose: the SEC asks for a contact of the administrator of the program, and the address is a project address, not a personal one. `mapcheck::http::sec_user_agent` gives the contact in this order: the environment variable `SEC_USER_AGENT` (if it is set and not empty), then the file (searched in the folder of `FA_REPO`, in the current folder and each parent folder, and in the repo root known at build time). A missing file, an empty key or a text with no `@` is an error that names the file. The old private contact text of the legacy Python client stays in the git history of the repo; deleting the file does not remove it from the history. A person who wants their own contact sets `SEC_USER_AGENT`; a variable value is never printed (the status line of `fa sync --status` says `SEC contact: file sec_contact.toml` or `SEC contact: SEC_USER_AGENT`). A program that is started from another folder and moved away from its source tree can find no file: set `FA_REPO` or the variable.
+*Evidence:* `rust/mapcheck/src/http.rs` (`sec_user_agent`, `find_contact`, the tests of the module), `rust/src/sync/mod.rs` (`EnvInfo`), `sec_contact.toml`.
 
 ## The investigation of the automatic DCF (added 2026-11-20, branch `claude/dcf-investigation`)
 

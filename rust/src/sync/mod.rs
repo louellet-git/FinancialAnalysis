@@ -69,7 +69,8 @@ DATA SETS (name: what; maximum age; hosts):
   A maximum age of 1 day counts market days: a weekend or a market holiday does not make the data old. The ages are in
   sync.toml (optional).
 
-The SEC data sets need the environment variable SEC_USER_AGENT (a name and a contact). Without it they are skipped.
+The SEC data sets need the SEC contact: the file sec_contact.toml of the repo gives it. The environment variable
+SEC_USER_AGENT is optional and replaces the file. Without a contact they are skipped.
 Keys (names in .env.example) add sources; the sync prints which key would add which source. Ctrl+C stops the run with all
 files in a correct state; run the command again to continue.";
 
@@ -244,22 +245,25 @@ fn unit_text(set: DataSet, n: u32) -> String {
 /// What the run knows about the keys and the SEC contact (no value of a key).
 #[derive(Debug, Clone, PartialEq)]
 pub struct EnvInfo {
-    pub sec_contact: bool,
+    /// The place of the SEC contact (a short text, never the contact), or the reason that there is none.
+    pub sec_contact: Result<String, String>,
     pub keys: KeyInfo,
 }
 
 impl EnvInfo {
     pub fn read(repo: &Path) -> EnvInfo {
-        let sec = std::env::var(mapcheck::http::SEC_USER_AGENT_ENV).map(|v| !v.trim().is_empty()).unwrap_or(false);
+        let sec = mapcheck::http::sec_user_agent().map(|c| c.describe_source());
         EnvInfo { sec_contact: sec, keys: KeyInfo::read(repo) }
     }
 
     pub fn describe(&self) -> String {
         let yn = |b: bool| if b { "set" } else { "not set" };
         format!(
-            "SEC contact ({}): {}; keys: tiingo {}, alpaca {}, fred {}, fmp {}\n",
-            mapcheck::http::SEC_USER_AGENT_ENV,
-            yn(self.sec_contact),
+            "SEC contact: {}; keys: tiingo {}, alpaca {}, fred {}, fmp {}\n",
+            match &self.sec_contact {
+                Ok(source) => source.clone(),
+                Err(_) => "none".to_string(),
+            },
             yn(self.keys.tiingo),
             yn(self.keys.alpaca),
             yn(self.keys.fred),
@@ -405,7 +409,8 @@ pub fn run_with(args: &Args, setup: &RunSetup, make_runner: MakeRunner, out: &mu
         focus: args.tickers.clone(),
         sets: selected_sets(args),
         force: args.force,
-        sec_contact: setup.env.sec_contact,
+        sec_contact: setup.env.sec_contact.is_ok(),
+        sec_error: setup.env.sec_contact.as_ref().err().cloned().unwrap_or_default(),
         keys: setup.env.keys,
         intraday_extra: args.intraday_symbols.clone(),
         option_symbols,

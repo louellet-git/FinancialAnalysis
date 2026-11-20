@@ -2,9 +2,9 @@
 id: T-20261119-python-to-rust
 title: Move the remaining Python code to Rust
 area: engine
-status: backlog
+status: review
 owner: louellet-git
-branch:
+branch: claude/sec-contact-file
 created: 2026-11-19
 acceptance: The repo has no Python file, each moved part has Rust tests, and each command of README.md is a Rust command.
 ---
@@ -24,7 +24,7 @@ Python code that stays (lines, 2026-11-19), in the recommended sequence of the m
 | 6 | Market data: prices, estimates, option chains | 824 | These use the Python library yfinance. **Trading part done (2026-11-19):** the bars (Yahoo chart endpoint, `fa trade fetch`) and the live option chain (Cboe delayed quotes, `fa trade paper`) are Rust (`rust/src/trading/fetch.rs`, `chain.rs`). Left: prices, estimates and option chains of the valuation part (`financial_analysis/`). Its option chains can use the Cboe file of `chain.rs`. |
 | 7 | Report: xlsx file and HTML page | 2,254 | **Done (2026-11-19, branch `claude/dcf-engine-rust`):** `fa analyze` (xlsx) and `fa report` (HTML, `rust/src/report/`). The Rust page draws its charts with plotly.js 4.1.1 from the CDN: it needs the network (open point: an offline option). The Python script is deleted. |
 | 8 | Trading backtester and bots | 3,535 | **Done (2026-11-19, branch `claude/option-backtest-rust`, with the merge of that branch):** backtester, 22 bots, bars, live chain and paper trading are Rust. The Python copy and its tests are deleted. Ticket `option-backtest-rust`. |
-| 9 | SEC client (legacy) | 334 | `rust/mapcheck/src/sec.rs` replaces it. It has a contact text in a public repo. |
+| 9 | SEC client (legacy) | 334 | **Done (2026-11-20):** `rust/mapcheck/src/sec.rs` replaces it; the contact is in `sec_contact.toml`. |
 | | Python tests | 4,035 | Each test moves with its part. |
 
 Open decisions of the owner:
@@ -33,26 +33,17 @@ Open decisions of the owner:
 3. **Source of estimates and earnings dates (new, 2026-11-19, ticket `report-rust`).** The Python library yfinance gave the forward consensus (revenue and EPS estimates, price targets) and the earnings dates with the estimate and the actual result. Its endpoints need a cookie and a crumb. Yahoo refuses them for a program that gives its real name, and the program does not imitate a browser. The Rust program (`fa analyze`) reads the cache files of the earlier Python code and says "no source" when there is none. Financial Modeling Prep (key `FMP_API_KEY`) gives estimates and surprises; its v3 endpoints are closed for new keys since August 2025. Options: use FMP with a key (stable endpoints), another data source with a published API, or do without the forward consensus.
    **Answer, 2026-11-19, ticket `estimates-earnings`:** the Nasdaq site API (vendor Zacks, no key, not a published API) gives the consensus EPS, the price targets, the ratings, the surprises with the report dates and an earnings calendar (`fa estimates`, `fa earnings`). The SEC filing list (form 8-K, item 2.02) checks the past dates. There are no revenue estimates in it; FMP with a key stays the source of revenue estimates. Alpha Vantage and Finnhub were read: the free plan is not clearly documented to give revenue estimates. The owner may still choose a paid source. The Python cache files stay readable.
 
-## State (2026-11-19, after the report): one open step
+## State (2026-11-20): the last step is done
 
-Done: steps 1 to 8 (all valuation, report, backtest, rates, bonds, market data, option trading). No `fa` command starts Python
-(`fa run`, `Fa::run_captured`, `default_python` and `FA_PYTHON` are deleted). No Python test remains (the CI job `pytest` is
-removed). The packages that the remaining Python code needs: `requests` and `python-dotenv` (kept because the legacy client
-was not read).
+Done: steps 1 to 9. Owner decision, 2026-11-20: the SEC contact is a project address in the public file `sec_contact.toml`
+(key `user_agent`). The environment variable `SEC_USER_AGENT` replaces it. The function `mapcheck::http::sec_user_agent`
+gives the contact: variable first, then the file (folder of `FA_REPO`, the current folder and its parents, the repo root known
+at build time). `Client::sec`, `fa sync` (skip rule and status line), `fa import`, `fa analyze` and `fa serve` use it. A real
+request to the SEC without the variable worked (`mapcheck fetch --refresh IBM`, then `mapcheck values IBM`). See
+`docs/HIDDEN-ASSUMPTIONS.md` #285. The old private contact text of the legacy client stays in the git history.
 
-**The one open step (step 9): the legacy SEC client.** The SEC contact text is in the legacy client. The owner has not decided
-its new place. These five Python files stay until then (about 390 lines):
+The orchestrator deletes the five Python files (the legacy SEC client in `financial_analysis/`, `importer.py`,
+`financial_analysis/__init__.py`, `scripts/import_edgar.py`, `scripts/__init__.py`) and `requirements.txt`. After that the
+acceptance ("The repo has no Python file ...") is met. The status is `review` until the owner or the reviewer accepts it.
 
-| File | Why it stays |
-|---|---|
-| the legacy SEC client in `financial_analysis/` (272 lines) | The SEC contact text is in it. |
-| `financial_analysis/importer.py` (50 lines, only `_run`) | It gives the contact text of the client to the Rust program when `SEC_USER_AGENT` is not set. |
-| `financial_analysis/__init__.py` (3 lines) | It re-exports the client. |
-| `scripts/import_edgar.py` (62 lines) | The one Python command: it downloads the filing files with the client. |
-| `scripts/__init__.py` (0 lines) | Package marker of `scripts/`. |
-
-After the decision of the owner: set the contact from `SEC_USER_AGENT` only (as `rust/mapcheck/src/sec.rs` does), delete these five
-files and `requirements.txt`, and set the acceptance of this ticket ("no Python file") as met.
-
-Open decisions of the owner, added: the offline report (inline a local copy of plotly.js), and the new place of the SEC
-contact text.
+Open decision of the owner, still open: the offline report (inline a local copy of plotly.js).

@@ -1,0 +1,5 @@
+# The contact that the SEC asks for in each request to its data (the User-Agent text).
+# The SEC uses it to reach the administrator of the program if the requests cause a problem.
+# It is a project address, and it is public on purpose.
+# The environment variable SEC_USER_AGENT replaces this value for one person or one computer.
+user_agent = "FinancialAnalysis financialanalysis.project@proton.me"
