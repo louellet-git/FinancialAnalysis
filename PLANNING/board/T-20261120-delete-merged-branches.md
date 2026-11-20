@@ -20,6 +20,6 @@ State, 2026-11-20 (Head of Technology). The repo deletes a branch after its merg
 git proxy of a cloud session refuses a branch delete (HTTP 403), so this is work for the owner now. On
 GitHub, delete these 6 branches; each one is fully in `main` and no head uses it:
 `claude/agent-teams`, `claude/bank-utility-study`, `claude/bond-recon`, `claude/dcf-conventions-study`,
-`claude/report-rust`, `claude/volatility-study`. Two of them came back on 2026-11-20 because a session pushed
-all its local branches: a head pushes only its own branch (`git push origin <branch>`).
+`claude/report-rust`, `claude/volatility-study`. GitHub did not delete them because they were merged inside a
+different pull request (the batch of 2026-11-20), not through their own pull request.
 The 9 branches that are not merged belong to the work of the heads. Keep them.
