@@ -59,6 +59,12 @@ Do the pass when the person says "clean up memory" or "dream":
 4. Write the date of the pass in the dashboard. Commit and push. Tell the person in a
    few lines what you changed.
 
+**Your agents (optional).** The pass shows what your team does well and where it loses
+time. If you see a way to make an agent of your team a little better, you can change
+its file or a skill, in the way that helps your goal: a clearer instruction, a lesson
+from an error, a better brief form. You can also do this at any other time. It is not
+mandatory. The limits are in `chiefs/ORIENTATION.md`, section 3.
+
 ## 5. Limits
 
 - One writer for each file. A shared file that several heads write loses facts.
