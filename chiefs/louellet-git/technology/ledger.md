@@ -15,3 +15,4 @@
 | SIC code ticket merged | 2026-11-20 | pull request 69 after the review PASS-WITH-NOTES (4 notes applied); ticket removed | 0 (no subagent) | the store fetch of 1,249 SEC files runs after the merge |
 | SIC codes in the store, hand-over | 2026-11-20 | 1,249 SEC 8-K files fetched again (1,247 with a code) and pushed to `louellet-git/fa-data`; message to the Head of Fundamental Research | 0 (no subagent) | `mapcheck values` on the store: IBM, JPM, DUOL, SHOP correct |
 | Yahoo 429 stop merged | 2026-11-20 | pull request 73 after the review PASS-WITH-NOTES (5 notes applied); ticket removed | 0 (no subagent) | also ran 2 one-day option tests (SPX, SPY) for the Head of Quant Research |
+| FedInvest days and the arbitrage data in the store | 2026-11-20 | `fa sync --bond-days N` (agent); 58 FedInvest days, bill rates, futures, VIX history pushed to the store | ~54k (1 Sonnet subagent) | 3 recon commands ran on a store copy with the network blocked |
