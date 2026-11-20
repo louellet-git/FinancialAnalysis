@@ -5,7 +5,7 @@ If your session title starts with `FA-`, you are a head of an area. Read
 to each other.
 
 Read this file first. Then read `README.md` (commands), `docs/ARCHITECTURE.md` (module
-map), `docs/HIDDEN-ASSUMPTIONS.md` (known traps), `docs/TEAMS.md` (the agent teams) and
+map), `docs/HIDDEN-ASSUMPTIONS.md` and `docs/traps/` (known traps), `docs/TEAMS.md` (the agent teams) and
 `docs/QUALITY-STANDARDS.md` (the standards and the gates).
 
 ## Purpose
@@ -89,8 +89,9 @@ The repo gives analysis. It does not send orders to a broker.
   before a pull request with code, put small document changes in one pull request, push to an open
   pull request only to correct it, and do not change the workflow, its path filter or its cache.
   The full rules: `chiefs/ORIENTATION.md`, section 6.
-- **Token ledger.** Add a row to `PLANNING/token-ledger.md` for each run. A head adds the
-  row to the `ledger.md` file of its own folder (`chiefs/ORIENTATION.md`, section 8).
+- **Token ledger.** Add a row for each run to the ledger of your own folder: a head writes
+  `chiefs/<login>/<head>/ledger.md`, a different session writes `chiefs/<login>/ledger.md`.
+  `PLANNING/token-ledger.md` keeps the rows before 2026-11-21 and takes no new row.
 
 ## Review of a valuation report
 
@@ -113,8 +114,8 @@ Do not use a first pass alone for a trade.
 ## Commands
 
 ```bash
-cargo test --manifest-path rust/mapcheck/Cargo.toml   # 100 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked   # 584 Rust tests (566 + 17 + 1), no network
+cargo test --manifest-path rust/mapcheck/Cargo.toml   # all mapcheck tests, no network (it prints the counts)
+cargo test --manifest-path rust/Cargo.toml --locked   # all fa tests, no network (it prints the counts)
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
 rust/mapcheck/target/release/mapcheck fetch --submissions IBM   # SEC 8-K item 2.02 list into data/raw/IBM/sec_8k_earnings.json
 rust/target/release/fa estimates get IBM; rust/target/release/fa estimates show IBM   # consensus, targets, surprises (Nasdaq site, no key)
