@@ -140,7 +140,7 @@ fn as_of_of(o: &Opts) -> R<(String, i64)> {
 
 fn print_rows(rows: &[ExplainRow]) {
     println!("\nTHE NUMBERS OF THE MODEL (value, source, rule)");
-    for r in rows {
+    for r in super::assumptions::tag_rows(rows) {
         println!("  {}: {}\n      source: {}\n      rule:   {}", r.input, r.value, r.source, r.rule);
     }
 }
@@ -366,7 +366,7 @@ fn print_implied(spec: &PathsSpec, price: f64, n: usize, seed: u64, serial: bool
 // The screen
 // ---------------------------------------------------------------------------------------------
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct ScreenValue {
     pub size: String,
     pub base_revenue: f64,
@@ -628,6 +628,42 @@ fn quantile_text(mut v: Vec<f64>, d: usize) -> String {
     format!("P5 {} | P25 {} | P50 {} | P75 {} | P95 {} (n = {})", s(5.0), s(25.0), s(50.0), s(75.0), s(95.0), v.len())
 }
 
+/// Stage 1 of the screen: the mapping (company facts of the cache to the standard variables, with the checks). The
+/// result does not depend on the rules. Returns the inputs and the seconds.
+pub fn map_inputs(cache: &Path, tickers: &[String], as_of_day: i64, jobs: Option<usize>) -> R<(Vec<AutoInputs>, f64)> {
+    let registry = Registry::embedded().map_err(DcfError)?;
+    let t0 = Instant::now();
+    let run_map = || -> Vec<AutoInputs> {
+        tickers
+            .par_iter()
+            .map(|t| {
+                let r = mapcheck::run::check_ticker(&registry, cache, t, MAP_PERIODS, as_of_day, true);
+                inputs_from_report(&registry, &r)
+            })
+            .collect()
+    };
+    let inputs = match jobs {
+        Some(n) => rayon::ThreadPoolBuilder::new().num_threads(n.max(1)).build().map_err(|x| DcfError(x.to_string()))?.install(run_map),
+        None => run_map(),
+    };
+    Ok((inputs, t0.elapsed().as_secs_f64()))
+}
+
+/// Stages 2 and 3 of the screen for mapped inputs: the market inputs from the cache (yield curve, beta, price), the
+/// models and the paths. `prices` replaces the price of the cache for a ticker.
+pub fn screen_rows(inputs: &[AutoInputs], cache: &Path, as_of: &str, prices: &HashMap<String, f64>, cfg: &ScreenConfig, jobs: Option<usize>) -> R<(Vec<ScreenRow>, ScreenTiming)> {
+    let curve = load_curve(cache, as_of).ok();
+    if curve.is_none() {
+        eprintln!("fa: no yield curve in the cache: the rate is the default {:.1}%", DEFAULT_RF * 100.0);
+    }
+    let index = load_index(cache);
+    let market_of = |t: &str| -> Market {
+        let price = prices.get(t).copied();
+        market_from_cache(cache, t, as_of, price, &cfg.rules, curve.as_ref(), index.as_deref())
+    };
+    screen_models(inputs, &market_of, cfg, jobs)
+}
+
 /// `fa dcf screen`. Returns the exit code.
 pub fn screen(repo: &Path, args: &[String]) -> u8 {
     match screen_inner(repo, args) {
@@ -671,36 +707,9 @@ fn screen_inner(repo: &Path, args: &[String]) -> R<()> {
         None => HashMap::new(),
     };
     let rules = super::auto_pit::parse_rules(o.get("--rules").unwrap_or(""))?;
-    let registry = Registry::embedded().map_err(DcfError)?;
-
-    // stage 1: the mapping (company facts of the cache to the standard variables, with the checks)
-    let t0 = Instant::now();
-    let run_map = || -> Vec<AutoInputs> {
-        tickers
-            .par_iter()
-            .map(|t| {
-                let r = mapcheck::run::check_ticker(&registry, &cache, t, MAP_PERIODS, as_of_day, true);
-                inputs_from_report(&registry, &r)
-            })
-            .collect()
-    };
-    let inputs: Vec<AutoInputs> = match jobs {
-        Some(n) => rayon::ThreadPoolBuilder::new().num_threads(n.max(1)).build().map_err(|x| DcfError(x.to_string()))?.install(run_map),
-        None => run_map(),
-    };
-    let map_s = t0.elapsed().as_secs_f64();
-
-    let curve = load_curve(&cache, &as_of).ok();
-    if curve.is_none() {
-        eprintln!("fa: no yield curve in the cache: the rate is the default {:.1}%", DEFAULT_RF * 100.0);
-    }
-    let index = load_index(&cache);
-    let market_of = |t: &str| -> Market {
-        let price = prices.get(t).copied();
-        market_from_cache(&cache, t, &as_of, price, &rules, curve.as_ref(), index.as_deref())
-    };
+    let (inputs, map_s) = map_inputs(&cache, &tickers, as_of_day, jobs)?;
     let cfg = ScreenConfig { table: &table, fade: &fade, rules: rules.clone(), sims, seed, implied_rate: o.flag("--implied") };
-    let (rows, timing) = screen_models(&inputs, &market_of, &cfg, jobs)?;
+    let (rows, timing) = screen_rows(&inputs, &cache, &as_of, &prices, &cfg, jobs)?;
     if let Some(path) = o.get("--out") {
         let mut text = String::from(CSV_HEADER);
         text.push('\n');

@@ -114,7 +114,7 @@ Do not use a first pass alone for a trade.
 
 ```bash
 cargo test --manifest-path rust/mapcheck/Cargo.toml   # 100 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked   # 584 Rust tests (566 + 17 + 1), no network
+cargo test --manifest-path rust/Cargo.toml --locked   # 594 Rust tests (576 + 17 + 1), no network
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
 rust/mapcheck/target/release/mapcheck fetch --submissions IBM   # SEC 8-K item 2.02 list into data/raw/IBM/sec_8k_earnings.json
 rust/target/release/fa estimates get IBM; rust/target/release/fa estimates show IBM   # consensus, targets, surprises (Nasdaq site, no key)
@@ -130,6 +130,7 @@ rust/target/release/fa dcf drivers IBM        # version 4 headline numbers; opti
 rust/target/release/fa dcf auto IBM --cache data/raw --explain   # automatic path model of a ticker (a screen, not a reviewed valuation)
 rust/target/release/fa dcf screen --tickers-file rust/mapcheck/universe/sp500.txt --cache data/raw   # one row for each ticker
 rust/target/release/fa dcf pit --cache data/raw   # point-in-time test of the automatic model
+rust/target/release/fa dcf assumptions           # the register of the assumptions of the automatic model (--md; --effect K=V --tickers-file F: the effect of an alternative)
 rust/target/release/fa dcf returns --cache data/raw   # the automatic model value against the later stock returns (a measurement)
 rust/target/release/fa dcf scenarios IBM      # classic engine, bear/base/bull (version 3 inputs)
 rust/target/release/fa backtest IBM           # point-in-time vintage backtest of revenue and FCF
