@@ -112,6 +112,11 @@ is not mandatory. Good reasons for a change:
 If your work grows past what your team and skills cover, you may add an agent or a skill,
 or refine one, when you judge it worth the effort. This is a permission, not a duty.
 
+**Test audit.** From time to time, when you judge it useful (for example after several
+merges in your area, or when the tests become slow), start `test-engineer` in a fresh
+context for a test audit of your area: too few tests, too many, slow or repeated tests.
+You decide what to change. It does not run on each change and it is not a gate.
+
 Rules for a change:
 
 1. Keep the files lean: an agent file has about 40 lines, one purpose and 5 checks or
