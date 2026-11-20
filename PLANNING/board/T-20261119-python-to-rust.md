@@ -2,9 +2,9 @@
 id: T-20261119-python-to-rust
 title: Move the remaining Python code to Rust
 area: engine
-status: backlog
+status: in-progress
 owner: louellet-git
-branch:
+branch: claude/sec-contact-file
 created: 2026-11-19
 acceptance: The repo has no Python file, each moved part has Rust tests, and each command of README.md is a Rust command.
 ---
