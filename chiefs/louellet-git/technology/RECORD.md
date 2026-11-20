@@ -82,3 +82,7 @@ Done: the field `requested_by` (no field means `louellet-git`); a head offers an
 ## 2026-11-20 22:24 UTC (chat of the Head of Quant Research; checked in its transcript)
 Words: "You don't need me to tell you to continue unless I tell you to stop, less tech head know"
 Done: after a ticket, report and take the next ticket of the queue with no wait, until the person says stop. Started `T-20261120-portfolio-backtest`, `T-20261120-store-arb-data` and `T-20261120-delete-merged-branches`.
+
+## 2026-11-20 22:32 UTC (chat)
+Words: "Also, I need every team to have a team that scrutinizes the amount of tests that any given team has, not run all the time but every so often at the discretion of the head"
+Done: a test-audit mode in `.claude/agents/test-engineer.md`; one paragraph in `chiefs/ORIENTATION.md` (section 3): each head starts it from time to time; not a gate. Same line in the lean version of `chiefs`.
