@@ -1,6 +1,6 @@
 ---
 id: T-20261120-ask-quant-branches
-title: May the Quant session push one branch for each ticket?
+title: Let the Quant head use one branch for each task?
 area: ask
 status: backlog
 owner: louellet-git
@@ -9,17 +9,18 @@ head: owner
 order: 3
 branch:
 created: 2026-11-20
-acceptance: The person answers in the session "FA-L - Head of Quant Research".
+acceptance: The person answers in the session that the ticket names.
 ---
-From the Head of Quant Research, filtered by the Head of Technology (2026-11-20).
+**Question.** May the Head of Quant Research make a separate branch for each task?
 
-The question: `CLAUDE.md` asks for one branch for each ticket, but the rules of the Quant session let
-it push only its own branch (`claude/upbeat-cori-a4ykf5`) unless the person permits. So 3 or 4 tickets
-go in one pull request, which is harder to review.
+**Why it matters.** The repo rule is one branch for each task, so that each change is reviewed alone.
+That session may now use only one branch, so 3 or 4 tasks go into one large review.
 
-Options:
-1. Yes (recommended by both heads): the Quant session may push branches `claude/quant-<ticket>`.
-2. No: it keeps one branch, and puts tickets together in one pull request.
+**Choices.**
+- A. Yes: it may make branches named `claude/quant-<task>`.
+- B. No: it keeps one branch.
 
-Where to answer: tell the session "FA-L - Head of Quant Research" in its chat (the permission must come
-from the person in that session).
+**Recommendation.** A (yes).
+
+**How to answer.** In the session "FA-L - Head of Quant Research", say "A" or "B". The permission
+must come from you in that session.
