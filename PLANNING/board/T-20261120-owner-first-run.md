@@ -4,6 +4,8 @@ title: Do the first run on the owner's computer with the keys
 area: planning
 status: backlog
 owner: louellet-git
+head: owner
+order: 1
 branch:
 created: 2026-11-20
 acceptance: On the owner's Windows computer, `fa sync --status IBM` shows each key as found, one `fa sync IBM` run completes, and `fa dcf drivers IBM` gives $83.84 / $151.84 / $258.03.

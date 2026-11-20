@@ -79,7 +79,7 @@ The repo gives analysis. It does not send orders to a broker.
   assumption has a record (`docs/assumptions/`). A change of an assumption value changes
   its record in the same pull request.
 - **Token ledger.** Add a row to `PLANNING/token-ledger.md` for each run. A head adds the
-  row to the `ledger.md` file of its own folder (`chiefs/ORIENTATION.md`, section 6).
+  row to the `ledger.md` file of its own folder (`chiefs/ORIENTATION.md`, section 7).
 
 ## Review of a valuation report
 

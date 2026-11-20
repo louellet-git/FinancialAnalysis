@@ -4,6 +4,8 @@ title: Build the value model for ETFs and funds
 area: engine
 status: backlog
 owner: louellet-git
+head: fundamental
+order: 6
 branch:
 created: 2026-11-19
 acceptance: One command gives the look-through value of an ETF as the weighted sum of the model values of its holdings, with the share of the holdings that have a model, and the premium or discount of the price to the net asset value.

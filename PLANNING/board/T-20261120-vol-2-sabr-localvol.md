@@ -4,6 +4,8 @@ title: Fit SABR smiles and a local volatility surface
 area: engine
 status: backlog
 owner: louellet-git
+head: quant
+order: 4
 branch:
 created: 2026-11-20
 acceptance: `fa vol fit sabr --symbol SPX` gives the alpha, rho and nu of each expiry of the live chain with the error in vol points, and `fa vol localvol` reprices the quoted options with a PDE to within 0.1 vol point.

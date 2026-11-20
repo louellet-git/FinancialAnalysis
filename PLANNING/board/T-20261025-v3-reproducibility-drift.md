@@ -4,6 +4,8 @@ title: Resolve IBM v3 reproducibility drift
 area: ticker:IBM
 status: backlog
 owner: louellet-git
+head: fundamental
+order: 12
 branch:
 created: 2026-10-25
 acceptance: analysis.IBM.dcf_scenarios prints the signed-off $37/$141/$232 again, or its output carries a reproduces-as-of note.

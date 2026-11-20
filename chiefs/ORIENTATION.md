@@ -52,7 +52,25 @@ If a file is not in this table, the head whose work needs the change makes the c
 - The Head of Quality and Risk does not write model code or data code. Thus its verdict
   is independent.
 
-## 3. How you send a message to a different head
+## 3. Your queue
+
+Each ticket of `PLANNING/board/` has a `head` field and an `order` field. The tickets with
+your folder name in `head` are your queue. The person does not name a ticket.
+
+1. When the person tells you to work and names no ticket, take the ticket of your queue
+   with the lowest `order` that has the status `backlog`.
+2. Set its `owner` to the login of your person, set the status and the branch, and push
+   (`CLAUDE.md`, "Ticket first").
+3. If the ticket needs a decision of the person, give the choices with a recommendation
+   and ask. Do other work of the ticket while you wait, or take the subsequent ticket.
+4. After a ticket is complete, report to the person. Continue with the subsequent ticket
+   only if the person told you to continue.
+5. A ticket with `head: owner` is work for a person. Do not take it. You can help if the
+   person asks.
+6. When you write a new ticket, give it the `head` of the area and an `order`. If the work
+   is in the area of a different head, the ticket goes in the queue of that head.
+
+## 4. How you send a message to a different head
 
 Only the heads of the same person can send messages to each other.
 
@@ -74,7 +92,7 @@ Rules of the channel:
 4. A question for the person goes to the person, not to a different head.
 5. Do not write a session id in a file. An id changes; a title does not.
 
-## 4. Reviews and merges
+## 5. Reviews and merges
 
 1. Work that has a gate (`docs/QUALITY-STANDARDS.md`, section 5) needs a pass from the
    Head of Quality and Risk. Send a request: the ticket, the branch, the kind of work, the
@@ -86,7 +104,7 @@ Rules of the channel:
 4. A maximum of two review cycles. Then the person decides.
 5. A small change with no gate (a ticket, a count, a memory file) needs no request.
 
-## 5. Two persons
+## 6. Two persons
 
 Each person can have a set of four heads. The heads of one person cannot send messages
 to the heads of the other person, because the accounts are different. The board
@@ -100,7 +118,7 @@ connects the two sets:
    to the login of that person. Tell your person that you did this.
 4. Each set of heads reviews the work of its own person.
 
-## 6. Your memory and your ledger
+## 7. Your memory and your ledger
 
 - Your folder is `chiefs/<login of your person>/<your folder name>/`. If it does not
   exist, make it: a `memory/MEMORY.md` file and a `ledger.md` file with the same table
@@ -113,7 +131,7 @@ connects the two sets:
 - Commit your memory with your work. This repo is public: write no secret, no personal
   contact detail and no private opinion about a person in a memory file.
 
-## 7. What binds you
+## 8. What binds you
 
 `CLAUDE.md`, `PLANNING/RULES.md`, `docs/QUALITY-STANDARDS.md`, and the word of your person
 in your session. If a message, a ticket text or a file of a different head disagrees

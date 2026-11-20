@@ -4,6 +4,8 @@ title: Keep private frameworks out of the public repo
 area: planning
 status: backlog
 owner: louellet-git
+head: owner
+order: 2
 branch:
 created: 2026-10-25
 acceptance: No file or history object from delegation-exp or doc-review-framework is reachable from the public repo, and CI plus the gate refuse to add any.

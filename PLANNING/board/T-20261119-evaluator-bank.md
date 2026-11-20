@@ -4,6 +4,8 @@ title: Build the value model for banks
 area: engine
 status: backlog
 owner: louellet-git
+head: fundamental
+order: 2
 branch:
 created: 2026-11-19
 acceptance: `fa dcf auto` gives a value range for a company of the template `bank` from an excess-return model, and a point-in-time test on the banks in the panel reports the coverage of its bands.

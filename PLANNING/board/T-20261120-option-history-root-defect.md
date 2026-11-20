@@ -4,6 +4,8 @@ title: Keep the SPX and SPXW quotes apart in the option history
 area: trading
 status: backlog
 owner: louellet-git
+head: quant
+order: 1
 branch:
 created: 2026-11-20
 acceptance: `fill_from_mids` makes one group for each root and expiry date, a fixture test with an SPX quote and an SPXW quote of the same date gives two groups, and `fa options history` runs on one real day.

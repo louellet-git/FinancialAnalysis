@@ -4,6 +4,8 @@ title: Stop filed_date fabrication in importer
 area: importer
 status: backlog
 owner: louellet-git
+head: technology
+order: 4
 branch:
 created: 2026-10-25
 acceptance: Rows without a matched revenue fact no longer get filed_date = period_end, and a test covers the backtest point-in-time logic on sparse rows.

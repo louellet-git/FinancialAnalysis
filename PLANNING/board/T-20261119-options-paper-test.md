@@ -4,6 +4,8 @@ title: Paper-test the two best option bots against live quotes
 area: trading
 status: backlog
 owner: louellet-git
+head: quant
+order: 9
 branch:
 created: 2026-11-19
 acceptance: For s14b and s05, a minimum of 30 signals have a live-chain price recorded adjacent to the model price, and the paper result is compared with the backtest.

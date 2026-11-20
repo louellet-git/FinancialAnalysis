@@ -4,6 +4,8 @@ title: Run the agent teams on one real ticket and correct what does not work
 area: planning
 status: backlog
 owner: louellet-git
+head: quality
+order: 1
 branch:
 created: 2026-11-20
 acceptance: One code ticket and one document ticket went through their flow of `docs/TEAMS.md` with the agents of `.claude/agents/`, and each defect of an agent or a skill found in the runs is corrected.
