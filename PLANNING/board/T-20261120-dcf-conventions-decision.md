@@ -2,7 +2,7 @@
 id: T-20261120-dcf-conventions-decision
 title: Decide the long-run growth and the acquisition charge of the automatic model
 area: engine
-status: review
+status: in-progress
 owner: louellet-git
 head: fundamental
 order: 1
