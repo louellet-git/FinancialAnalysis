@@ -21,7 +21,7 @@ Status: new, 2026-11-20 (ticket `T-20261120-agent-teams`).
 | QA | `model-validator` | The skeptic; step 2 |
 | QA | `document-reviewer` | Content, format and STE; step 3 |
 | QA | `auditor` | Sources and recalculation; step 4 |
-| QA | `test-engineer` | Test plan, fixed answers, point-in-time, CI (on request) |
+| QA | `test-engineer` | Test plan, fixed answers, point-in-time, CI (on request); test audit of an area (each head, from time to time) |
 | QA | `code-reviewer` | Correctness of a diff and the repo rules |
 | Risk | `risk-compliance-officer` | Model risk, no orders, terms, secrets, conflict of interest, hygiene (on request) |
 

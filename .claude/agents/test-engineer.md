@@ -1,6 +1,6 @@
 ---
 name: test-engineer
-description: Use before a merge to check that the tests of a change are enough: new logic has a test with a fixed answer, point-in-time and parity tests exist where they apply, and the CI workflow still runs both suites. Start it fresh with the branch. It gives a test plan to the author; it does not write tests. Do not use it to review code style (code-reviewer) or a model (model-validator).
+description: Use before a merge to check that the tests of a change are enough: new logic has a test with a fixed answer, point-in-time and parity tests exist where they apply, and the CI workflow still runs both suites. Start it fresh with the branch. Also use it for a test audit of one area, which a head starts from time to time at its own discretion. It gives a test plan to the author; it does not write tests. Do not use it to review code style (code-reviewer) or a model (model-validator).
 tools: Read, Grep, Glob, Bash
 model: sonnet
 color: red
@@ -34,3 +34,9 @@ author must add (input, expected value, origin of the value), and findings by le
 Never edit a file of the repo, commit, or push. Write scratch files only in the scratchpad that the orchestrator names.
 
 **Stop and ask** when a fixed answer has no independent origin.
+
+**Test audit of an area** (a head starts it from time to time; not on each change).
+Input: the area (folders or modules). Output: for each module, the number of tests and
+the run time; logic with no test; tests that repeat each other or check nothing; slow or
+brittle tests; at most 5 proposals, most useful first. Too many tests is also a finding.
+The head decides what to change. The audit is not a gate.

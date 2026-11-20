@@ -2,7 +2,7 @@
 id: T-20261120-portfolio-backtest
 title: Build one portfolio backtester for the strategies of the two research heads
 area: trading
-status: in-progress
+status: review
 owner: louellet-git
 head: technology
 order: 2
@@ -30,3 +30,9 @@ Known limits to state in each result: the ticker lists are today's lists (surviv
 
 Owners: the Head of Technology builds the engine; each research head writes its strategy; the Head of Quality
 and Risk validates (skill `point-in-time-test`).
+
+State, 2026-11-20 (Head of Technology). `fa portfolio backtest --strategy value-rank|momentum`. Real run on the
+store, `sp500.txt`, 2018 to 2026-11-13, monthly, 10 bp (price returns; today's ticker list, so the result is
+too good): value-rank +9.51% a year against SPY +12.64% (new automatic model defaults of 2026-11-20); momentum
++19.82% against +12.35%. Next: each research head writes its own strategy on this engine; an option bot as a
+strategy, a list of past index members, and dividends are not in this version.
