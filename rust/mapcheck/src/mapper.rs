@@ -548,6 +548,12 @@ mod tests {
         assert_eq!(p.source(&r, "revenue"), "= lease_income");
         let (r, p) = resolve(vec![("GrossInvestmentIncomeOperating", flow(3052.0))]);
         assert_eq!((p.get(&r, "revenue"), p.source(&r, "revenue")), (Some(3052.0), "= investment_income_operating"));
+        // A mortgage REIT (DX, NLY, AGNC): the interest income on its loans and securities.
+        let (r, p) = resolve(vec![("InterestIncomeOperating", flow(533.0))]);
+        assert_eq!((p.get(&r, "revenue"), p.source(&r, "revenue")), (Some(533.0), "= investment_income_operating"));
+        // A company with no revenue and only a small interest income on debt securities (BHVN): no revenue.
+        let (r, p) = resolve(vec![("InterestIncomeDebtSecuritiesOperating", flow(5.0))]);
+        assert_eq!(p.get(&r, "revenue"), None);
     }
 
     #[test]
