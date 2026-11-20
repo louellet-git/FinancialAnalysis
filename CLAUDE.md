@@ -85,6 +85,10 @@ The repo gives analysis. It does not send orders to a broker.
 - **Model documents.** Each model has a model document (`docs/models/`) and each
   assumption has a record (`docs/assumptions/`). A change of an assumption value changes
   its record in the same pull request.
+- **Cost of the checks.** The owner pays for the GitHub Actions runs. Run the tests on your machine
+  before a pull request with code, put small document changes in one pull request, push to an open
+  pull request only to correct it, and do not change the workflow, its path filter or its cache.
+  The full rules: `chiefs/ORIENTATION.md`, section 6.
 - **Token ledger.** Add a row to `PLANNING/token-ledger.md` for each run. A head adds the
   row to the `ledger.md` file of its own folder (`chiefs/ORIENTATION.md`, section 8).
 

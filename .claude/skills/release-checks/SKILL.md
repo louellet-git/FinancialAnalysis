@@ -5,7 +5,7 @@ description: Use before a pull request (and before a QA agent starts) to run the
 
 # Release checks
 
-Run from the repo root. The CI runs the two test suites (`.github/workflows/tests.yml`).
+Run from the repo root. The CI runs the two test suites (`.github/workflows/tests.yml`). Run these checks before you open a pull request with code: the owner pays for each check run (`chiefs/ORIENTATION.md`, section 6).
 Run the checks locally first.
 
 ## Steps

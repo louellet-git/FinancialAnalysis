@@ -46,3 +46,7 @@ Done: each data set of the cache is in `louellet-git/fa-data` (15 pushes; a scan
 ## 2026-11-20 20:16 UTC (chat)
 Words: "When merlan1996 gets on and sets up his agent, how will his Claude code session react to this? Should we have a check for sessions that exist/creation of new sessions? He may also want to create sessions, we should potentially distinguish between his heads and ours, + any other contributors"
 Done: `chiefs/ORIENTATION.md`: the person of a head is the GitHub login of its session (`get_me`), a check at the start for a second session with the same title, a rule for new sessions, and section 7 for more than one person. `CLAUDE.md`: the data rule for each session.
+
+## 2026-11-20 21:29 UTC (chat)
+Words: "Btw, this reduction in billing usage is a serious improvement, good work." Then: "Make sure that the rules for billing that make it sustainable are abided by for all heads"
+Done: seven cost rules in `chiefs/ORIENTATION.md` (section 6), a short rule in `CLAUDE.md` for each session, one line in the skill `release-checks`. GitHub Actions cost: $1.19 on 2026-11-19, $0.16 on 2026-11-20, billed $0.
