@@ -70,3 +70,11 @@ Done: the dream pass comes before a compaction (context use above about 75% of t
 ## 2026-11-20 21:54 UTC (chat)
 Words: "For all heads, if they find their requests expanding the pre-existing teams/skills they currently have, they are able to improve. Not a need, but they are allowed to add more teams/skills and should consider refinement whenever they deem it a good effort. Not a need so make this a one-liner where relevant, not a stand-alone initiative but permission."
 Done: one permission sentence in `chiefs/ORIENTATION.md` (section 3) and in `lean/ORIENTATION.md` of the `chiefs` repo.
+
+## 2026-11-20 21:58 UTC (chat)
+Words: "I think we want to set up a paper trade team once we feel ready, half will be for the fundamental team and half for the quant research team. Also, we need a means of backtesting."
+Done: two backlog tickets, `T-20261120-portfolio-backtest` (head technology) and `T-20261120-paper-desk` (head owner, with the decisions for the owner).
+
+## 2026-11-20 22:05 UTC (chat)
+Words: "whenever a separate contributor wants to begin working, I don't want it to automatically default to the board based on tickets that I've brought up. I think it should default to tickets that the collaborator brought up individually. So when a new session is spawned, don't immediately prompt to start working on tickets that other members have created."
+Done: the field `requested_by` (no field means `louellet-git`); a head offers and takes only the tickets of its own person (`chiefs/ORIENTATION.md`, sections 4 and 7; `PLANNING/board/README.md`; skill `ticket-workflow`; the lean version in `chiefs`).
