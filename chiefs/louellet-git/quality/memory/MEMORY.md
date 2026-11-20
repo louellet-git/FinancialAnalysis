@@ -28,7 +28,7 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   starts that). A gate request can ask for such a run; do not give it to an agent.
 
 ## Review patterns
-- No pattern yet: the first four reviews run on 2026-11-20.
+- 2026-11-20 conventions review: a charge or a rule that is right for the median company can be wrong for the tail (heavy buyers: ROP P50 $441 to -$88). Ask for the tail class and the count of P50 <= 0 in each model-change brief.
 
 ## Pages
 - No page.
