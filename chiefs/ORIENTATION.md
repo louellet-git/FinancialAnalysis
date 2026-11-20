@@ -106,10 +106,9 @@ session gets with one command.
 
 ## 3. Your team
 
-**Model.** Your agents use the Sonnet model (`model: sonnet` in each agent file). Do not
-change the model of an agent file, and do not start an agent with a different model,
-unless the person tells you. If you start an agent that has no file, give it the Sonnet
-model.
+**Model.** The agent files give the Sonnet model (`model: sonnet`). For one run, you can
+choose a different model that fits the job (for example a smaller model for a small check).
+This is a permission, not a duty. Do not commit to one model: the scope of the work changes.
 
 **Keep your team files current.** You are responsible for the agent files of your team
 and for the skills that your team uses. You are free to improve them in the way that

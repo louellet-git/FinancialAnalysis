@@ -102,3 +102,7 @@ Done (2026-11-20 23:10 UTC): a merged ticket moves to `PLANNING/board/done/` (`g
 ## 2026-11-20 23:18 UTC (chat)
 Words: "For the lean system, don't include the agents and skills but include the logic/rules that govern having agents and skills being created that I've already stated. We should be transferring over memory preferences, board preferences, everything, just generalized"
 Done: `lean/` of `louellet-git/chiefs` is the general version (8 files, rules only; chiefs pull request 33). It replaces the exact copy of chiefs pull request 32.
+
+## 2026-11-20 23:22 UTC (chat of the Head of Quality and Risk; relayed, not checked in its transcript)
+Words: "Don't over commit to one model, since the scope of the job will change is what I meant. Tell the tech that. Keep the rule lean and not a need but permission to."
+Done (2026-11-20 23:29 UTC): `chiefs/ORIENTATION.md`, section 3 "Model": the agent files give Sonnet; for one run a head can choose a different model that fits the job; a permission, not a duty.
