@@ -43,16 +43,22 @@ fa dcf auto TICKER [OPTIONS]
                   growth and fade: history_organic, own_sigma_nu, level_kappa, fade_to_cap, long_cap (the level of the
                   fade; else L), long_run (default 0.040: one number L for the fade level and the mean terminal
                   growth, the lower of the 10-year zero yield and this number, the growth of the economy of the FOMC
-                  SEP; long_run=off or 0: the old model, the fade to the yield and the mean terminal growth 2.25%), fade_years, growth_w (weight
-                  of the history), growth_phi
+                  SEP; long_run=0, a negative number or `off`: off, the old model: the fade to the yield and the mean
+                  terminal growth = terminal_growth, default 2.25%), fade_years, growth_w (weight of the history),
+                  growth_phi
                   margin: margin_pool_se, margin_w, margin_last (the target is the margin of the base year)
-                  discount: rf (a fixed rate), erp, beta_weight, equity_weight_one, terminal_growth, terminal_rf
-                  (terminal growth = the 10-year zero yield), years (horizon), stub, mid_year
+                  discount: rf (a fixed rate), erp, beta_weight, equity_weight_one, terminal_growth (the mean; it turns
+                  long_run off, and a later long_run= in the same text turns it on again: the order matters), terminal_rf
+                  (the fade level and the terminal mean are both the 10-year zero yield; wins over long_run), years
+                  (horizon), stub, mid_year
+                  `off` is allowed for long_run and for the flags only
                   cash flow and bridge: sbc_cost, acq_charge, no_interest_income, bridge_lti, bridge_leases, shares_latest
                   acquisitions: acq_f (a share f of the spend recurs: charge f times the mean spend ratio, and the
                   growth history loses (1 - f) acq_mult of the revenue that each dollar bought), acq_mult, acq_w (default 1: the
                   charge is w times the mean spend ratio, w = the weight of the history in the growth mean; the
-                  history stays; acq_w=0: no charge; acq_charge and acq_f win over it)
+                  history stays; acq_w=0: no charge; acq_charge and acq_f win over it), acq_fade (default 1: the acq_w
+                  charge falls linearly to zero along the fade of the growth when the company mean is above the fade
+                  level, else it is constant; acq_fade=0: constant charge)
   --seed S (7)  --sims N (10000)  --no-attribution  --json  --time   (as `fa dcf drivers --model`)";
 
 pub const SCREEN_USAGE: &str = "\

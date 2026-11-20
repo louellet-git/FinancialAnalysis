@@ -141,6 +141,12 @@ pub struct Rules {
     /// so it charges `w` of the spend. Needs no `acq_mult`. Default on (decision of 2026-11-20, record A-002); `acq_w=0`
     /// gives the old model. `acq_charge` and `acq_f` win over it.
     pub acq_w: bool,
+    /// With `acq_w`: the charge fades with the growth that it pays for. When the company mean of the growth is above the
+    /// fade level, the credited growth above the level falls linearly to zero along the drift ramp (`ramp_n` years); the
+    /// charge falls from `w` x the mean spend ratio in year 1 to zero in the same years (the same timing as the drift,
+    /// same ramp of the engine). Without such a drift the charge is constant. Default on (record A-002); `acq_fade=0` gives
+    /// the constant charge. `acq_charge` and `acq_f` are never faded.
+    pub acq_fade: bool,
 }
 
 impl Default for Rules {
@@ -182,6 +188,7 @@ impl Default for Rules {
             acq_f: None,
             acq_mult: 0.0,
             acq_w: true,
+            acq_fade: true,
         }
     }
 }
@@ -933,7 +940,8 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
         warnings.push(format!("no GSW yield curve: the risk-free rate is the default {} (a fixed rate)", pct(DEFAULT_RF)));
     }
     let mu = gfit.mu.clamp(-0.5, 1.5);
-    let cap = rules.long_cap.unwrap_or_else(|| rules.long_run.map_or(rf_long, |x| x.min(rf_long)));
+    // terminal_rf sets both the fade level and the terminal mean to the yield (it wins over long_run); long_cap sets the level
+    let cap = rules.long_cap.unwrap_or_else(|| if rules.terminal_rf { rf_long } else { rules.long_run.map_or(rf_long, |x| x.min(rf_long)) });
     // the mean terminal growth: the same number L as the fade level (terminal_rf and long_run), else the rule value
     let tg_mean = if rules.terminal_rf {
         rf_long
@@ -1006,7 +1014,10 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
     // ---- acquisitions: the mean ratio of the years of the margin history (a year with no value counts as 0)
     let acq_vals: Vec<f64> = hist.iter().rev().take(HIST_MARGIN).filter_map(|y| Some(y.acquisitions.unwrap_or(0.0).abs() / y.revenue.filter(|r| *r > 0.0)?)).collect();
     // acq_charge and acq_f are explicit and win over the default acq_w
-    let acq_share = if rules.acq_w && !rules.acq_charge && rules.acq_f.is_none() { gfit.w } else { acq_share };
+    let acq_paired = rules.acq_w && !rules.acq_charge && rules.acq_f.is_none();
+    let acq_share = if acq_paired { gfit.w } else { acq_share };
+    // the paired charge fades with the credited growth above the fade level (the drift ramp), else it is constant
+    let acq_fades = acq_paired && rules.acq_fade && drift_end < -1e-12;
     let acq_ratio = if acq_share > 0.0 && !acq_vals.is_empty() { acq_share * acq_vals.iter().sum::<f64>() / acq_vals.len() as f64 } else { 0.0 };
 
     // ---- bridge and shares
@@ -1091,7 +1102,7 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
         "growth: long run",
         format!("{} (cap {}: 10-year zero yield {}); company mean {}", pct(g_long), pct(cap), pct(rf_long), pct(mu)),
         if market.curve.is_some() { "GSW curve of the cache" } else { "default rate" },
-        &format!("{}the company mean fades linearly to the cap by the horizon: ramp of {ramp_n} years, equal in year {} to an exponential fade with half-life {slow_h:.1} years (fade table, k = 3 and 10)", if rules.long_cap.is_some() { "level set by long_cap. " } else if rules.long_run.is_some() { "one long-run growth L = the lower of the 10-year zero yield and the growth of the economy (record A-001), the same L as the mean terminal growth; a company mean below L keeps its own mean. " } else { "long_run is off: the level is the 10-year zero yield. " }, rules.years),
+        &format!("{}the company mean fades linearly to the cap by the horizon: ramp of {ramp_n} years, equal in year {} to an exponential fade with half-life {slow_h:.1} years (fade table, k = 3 and 10)", if rules.long_cap.is_some() { "level set by long_cap. " } else if rules.terminal_rf { "terminal_rf: the level is the 10-year zero yield, the same as the mean terminal growth. " } else if rules.long_run.is_some() { "one long-run growth L = the lower of the 10-year zero yield and the growth of the economy (record A-001), the same L as the mean terminal growth; a company mean below L keeps its own mean. " } else { "long_run is off: the level is the 10-year zero yield. " }, rules.years),
     );
     row(
         "growth: fast part",
@@ -1124,7 +1135,7 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
         "mean ratio, fixed; SBC is a cost of the model (repo convention: a cash-equivalent cost; existing awards are in the share count)",
     );
     if acq_share > 0.0 {
-        row("acquisition charge", pct(acq_ratio), "acquisitions_net_of_cash / revenue, the years of the margin history", "mean ratio times the share f (default, acq_w: f = w, the weight of the history in the growth mean, because the growth history keeps the bought growth; f = 1 with acq_charge; acq_f gives f), fixed; a cost of the model (record A-002; IBM review F2 and F16)");
+        row("acquisition charge", pct(acq_ratio), "acquisitions_net_of_cash / revenue, the years of the margin history", &format!("mean ratio times the share f (default, acq_w: f = w, the weight of the history in the growth mean, because the growth history keeps the bought growth; f = 1 with acq_charge; acq_f gives f); {}; a cost of the model (record A-002; IBM review F2 and F16)", if acq_fades { format!("year 1 as shown, then it falls linearly to zero in {ramp_n} years like the credited growth above the long-run level (acq_fade)") } else { "constant".to_string() }));
     }
     row("tax rate", pct(tax), "income_tax_expense, income_before_tax", &tax_rule);
     row(
@@ -1242,8 +1253,13 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
     let _ = writeln!(tw, "[process.sbc]\nrole = \"sbc\"\nstart = {}\ntarget = {}\nshape = \"ramp\"\nramp_years = 2", f(sbc_ratio), f(sbc_ratio));
     let _ = writeln!(tw, "rationale = {}\n", q(&format!("SBC ratio: mean of the last {} years, fixed. SBC is a cost of the model (repo convention).", sbc_vals.len())));
     if acq_ratio > 0.0 {
-        let _ = writeln!(tw, "[process.charge]\nrole = \"charge\"\nstart = {}\ntarget = {}\nshape = \"ramp\"\nramp_years = 2", f(acq_ratio), f(acq_ratio));
-        let _ = writeln!(tw, "rationale = {}\n", q(&format!("Cash paid for businesses: mean of acquisitions_net_of_cash / revenue of the last {} years, fixed. The growth history keeps the bought growth, so the cost is a cost of the model (IBM review F2, F16).", acq_vals.len())));
+        if acq_fades {
+            let _ = writeln!(tw, "[process.charge]\nrole = \"charge\"\nstart = {}\ntarget = 0.0\nshape = \"ramp\"\nramp_years = {}", f(acq_ratio), ramp_n);
+        } else {
+            let _ = writeln!(tw, "[process.charge]\nrole = \"charge\"\nstart = {}\ntarget = {}\nshape = \"ramp\"\nramp_years = 2", f(acq_ratio), f(acq_ratio));
+        }
+        let fade_text = if acq_fades { format!(" The charge falls linearly to zero in {ramp_n} years, as the credited growth above the long-run level does (the drift of the growth).") } else { " The charge is constant.".to_string() };
+        let _ = writeln!(tw, "rationale = {}\n", q(&format!("Cash paid for businesses: mean of acquisitions_net_of_cash / revenue of the last {} years, times the share f.{} The growth history keeps the bought growth, so the cost is a cost of the model (IBM review F2, F16; record A-002).", acq_vals.len(), fade_text)));
     }
     let _ = write!(tw, "[discount]\nbeta = {}\nerp = {{ mean = {}, std = {}, lo = 0.02 }}\nkd_spread = {}\nequity_weight = {}\n", f(beta), f(rules.erp.0), f(rules.erp.1), f(rules.kd_spread), f(weight));
     if let Some((stub, share)) = timing {

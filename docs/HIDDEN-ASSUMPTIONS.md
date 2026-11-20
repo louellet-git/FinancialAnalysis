@@ -1893,7 +1893,10 @@ L = the lower of the 10-year zero yield and 4.0% is the fade level and the mean 
 growth) + 2.0% (longer-run PCE inflation), medians of the FOMC Summary of Economic Projections of 2026-09-16. It is a typed constant
 (`LONG_RUN_GROWTH` in `auto.rs`): a new SEP does not change it by itself. The reviewed IBM model keeps its 2.25% (closed decision).
 (2) `acq_w = 1`: the model charges `w` x the mean of `acquisitions_net_of_cash / revenue` of 5 years. A year with no value counts as 0,
-so a company that does not report the line has no charge. `acq_charge` and `acq_f` win over `acq_w`. The point-in-time test with
+so a company that does not report the line has no charge (34.1% of the 431 tickers of the screen: the acquisition tag is missing). The charge falls
+linearly to zero along the drift ramp when the company mean is above L (`acq_fade=1`, same timing as the drift); without drift it is constant.
+`acq_charge` and `acq_f` win over `acq_w` and are not faded. `terminal_rf=1` sets both the fade level and the terminal mean to the yield and wins
+over `long_run`. `off` is allowed for `long_run` and the flags only. The point-in-time test with
 `acq_w` on holds the real free cash flow after acquisitions (`fcff_of_rules`), so its error numbers differ from the old runs.
 A screen, a point-in-time run or a return run made before this change is a different model: run it with `--rules long_run=off,acq_w=0`
 to get it again. An explicit `--rules terminal_growth=X` turns `long_run` off (the old model with that number).

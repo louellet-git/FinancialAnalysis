@@ -20,7 +20,13 @@ Work started again on 2026-11-20 21:19 UTC ("Proceed with your work"). Each tick
   longer-run real growth + longer-run PCE inflation (SEP of 2026-09-16: 2.0% + 2.0% = 4.0%). Why FOMC
   and not CBO (3.8%): we can read the page, and ALFRED keeps each vintage for a point-in-time test.
 - 2026-11-20, acquisitions: charge `w` x mean spend (`acq_w`), `w` = weight of the history in the growth
-  mean. Known weak point: heavy buyers are over-charged in the point-in-time test.
+  mean, and the charge fades to zero along the same ramp as the credited growth above L (review cycle 1,
+  F1: a constant charge made ROP -$91). Lesson: a paired rule must stay paired in EACH year, not only in
+  year 1. Heavy buyers are still over-charged a little (point-in-time T+3 +2.4% of revenue).
+- 2026-11-20, growth after a decline year: floor of 0% on the base-year growth in the company mean
+  (A-003). A recovery term was refused: the rest of the error is one episode (base years 2019, 2020).
+- 2026-11-20, margin bands: not narrowed. In sample they look too wide (95%), out of sample (`--cut
+  2015`) they are right. Lesson: check an in-sample band error out of sample before a correction.
 - 2026-11-20, market-implied values use the value at the means, not the P50: a risk-adjusted DCF values
   EXPECTED cash flows, so a price compares with an expected value. The P50 is lower by construction
   (IBM $159.72 at the means against P50 $132.87). So the screen ratio P50 / price is conservative by

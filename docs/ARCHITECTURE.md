@@ -604,7 +604,7 @@ data, run it, and test it. No hand input and no network. An automatic model is a
 | Equity risk premium | repo convention | 4.41%, standard deviation 0.75%, lower bound 2%. |
 | Risk-free rate | GSW file of the cache | Hull-White (`a` 0.14, `sigma` 0.0075), `long_flat`, 10-year zero yield; else a fixed 4.2% with a warning. |
 | Equity weight | `--price`, else the last close of the price cache | `E / (E + debt)`; else 1.0 with a warning. |
-| Acquisition charge | `acquisitions_net_of_cash` / `revenue`, 5 years (a year with no value is 0), `w` of the growth mean | Cost of the model: `w` x the mean ratio (`acq_w`, record A-002, 2026-11-20). |
+| Acquisition charge | `acquisitions_net_of_cash` / `revenue`, 5 years (a year with no value is 0), `w` of the growth mean | Cost of the model: `w` x the mean ratio (`acq_w`, record A-002, 2026-11-20). It falls linearly to zero along the drift ramp when the company mean is above L (`acq_fade`); else constant. |
 | Terminal growth, horizon | one long-run growth L (record A-001) | Mean L (the same number as the fade level), standard deviation 0.75%, the caps of the engine; 10 years. `long_run=off` gives the mean 2.25% of the old model. |
 
 **Templates and data quality.** Only `standard` has a model. `bank`, `insurer`, `reit`, `fund`, `foreign`, `new`, `non-usd` and `no-revenue` give "no model for this template". A mapping
@@ -618,11 +618,13 @@ growth, the target margin and the half-life of the fade. `--write FILE` writes t
 the models, stage 3 simulates them. Each ticker runs on one thread, so the result does not depend on `--jobs` (a test compares 1 and 4 threads). The default is 4,000 paths. No price is downloaded.
 `--prices FILE` has lines `ticker,price`.
 
-**The two defaults of 2026-11-20** (records A-001 and A-002; #271). `long_run = 0.040` and `acq_w = 1`. Data of 2026-11-19, `fa dcf screen` of `sp500.txt`
-(4,000 paths, seed 7), old model `--rules long_run=off,acq_w=0` and new model: median P50 / price 0.4895 to 0.427 (430 tickers; the 55 stable names 0.523 to 0.504); P50 at or
-below 0: 38 to 50. `fa dcf pit`: revenue error unchanged; error of the free cash flow after acquisitions, T+1 / T+2 / T+3, -1.7 / -1.4 / -0.6 to -0.4 / 0.0 / +0.8% of
-revenue, coverage 1 point lower. `fa dcf returns`: rank correlation of P50 / price with the return, 1 year +0.062 to +0.044, 3 years +0.128 to +0.110 (means over the years).
-IBM P50 (`fa dcf auto IBM`, 2026-11-19) $132.87 to $95.84. Files: `analysis/priors/auto_pit_{old,new}_2026-11-20.txt`, `auto_returns_{old,new}_2026-11-20.txt`; the screen CSV is not kept (the command makes it again).
+**The two defaults of 2026-11-20** (records A-001 and A-002; #271). `long_run = 0.040`, `acq_w = 1` and `acq_fade = 1` (the charge falls to zero with the fade of the growth when the company mean is above L).
+Data of 2026-11-19 (data store commit 41116d0), `fa dcf screen` of `sp500.txt` (4,000 paths, seed 7), old model `--rules long_run=off,acq_w=0` and new model: median P50 / price 0.4895 to 0.4745
+(430 tickers; the 55 stable names 0.523 to 0.511; L alone 0.5605; charge alone 0.4245; constant charge `acq_fade=0` with L 0.427); P50 at or below 0: 38 to 39 (constant charge: 50).
+Median terminal value share 0.611 to 0.685. `fa dcf pit`: revenue error unchanged; error of the free cash flow after acquisitions, T+1 / T+2 / T+3, -1.7 / -1.4 / -0.6 to -0.4 / -0.1 / +0.6% of
+revenue; its coverage P10 to P90 is 1 point lower (76.3 / 77.4 / 77.8% against 77.3 / 78.0 / 78.4%). `fa dcf returns`: rank correlation of P50 / price with the return, 1 year +0.062 to +0.058, 3 years +0.128 to +0.126
+(means over the years; standard errors 0.036 to 0.045). IBM P50 (`fa dcf auto IBM`, 2026-11-19) $132.87 to $95.84. Files: `analysis/priors/auto_pit_{old,old_afteracq,new,constcharge}_2026-11-20.txt`,
+`auto_returns_{old,new}_2026-11-20.txt`; the screen CSV is not kept (the command makes it again).
 
 **`fa dcf pit [--cut YEAR] [--rules K=V,..] [--paths N] [--out FILE]`.** The point-in-time test (see #199 for its limits).
 
@@ -631,7 +633,7 @@ traps #260 to #270).
 
 | Part | Function |
 |---|---|
-| `Rules` (`auto.rs`) | Alternatives for measurement and for the owner: `rf`, `erp`, `beta_weight`, `equity_weight_one`, `terminal_growth`, `terminal_rf`, `years`, `long_cap`, `long_run` (default 0.040; `off` or 0: the old model; `terminal_growth=X` also turns it off), `fade_years`, `growth_w`, `growth_phi`, `margin_w`, `margin_last`, `sbc_cost`, `acq_charge`, `acq_f`, `acq_mult`, `acq_w` (default 1; 0: no charge; `acq_charge` and `acq_f` win), `bridge_lti`, `bridge_leases`, `no_interest_income`, `shares_latest`, `stub`, `mid_year`. `--rules K=V,..` of `fa dcf auto`, `screen`, `pit` and `returns` sets them (`auto_pit::parse_rules`). |
+| `Rules` (`auto.rs`) | Alternatives for measurement and for the owner: `rf`, `erp`, `beta_weight`, `equity_weight_one`, `terminal_growth`, `terminal_rf`, `years`, `long_cap`, `long_run` (default 0.040; `off` or 0: the old model; `terminal_growth=X` also turns it off), `fade_years`, `growth_w`, `growth_phi`, `margin_w`, `margin_last`, `sbc_cost`, `acq_charge`, `acq_f`, `acq_mult`, `acq_w` (default 1; 0: no charge; `acq_charge` and `acq_f` win), `acq_fade` (default 1; 0: constant charge), `off` for `long_run` and the flags only, `bridge_lti`, `bridge_leases`, `no_interest_income`, `shares_latest`, `stub`, `mid_year`. `--rules K=V,..` of `fa dcf auto`, `screen`, `pit` and `returns` sets them (`auto_pit::parse_rules`). |
 | `[discount]` (`process.rs`, `paths.rs`) | `stub_years`, `year1_share`, `mid_year`. Not set: the end-of-year rule of before (the hand models do not change). |
 | `fa dcf screen --implied` (`auto_cli.rs`) | `implied_discount_rate`: the cost of capital of year 1 that gives the price (a search on the premium). New CSV columns: `model_rate`, `implied_rate`, `sbc_ratio`, `net_debt`, `shares`, `beta`, `equity_weight`. |
 | `fa dcf returns` (`auto_returns.rs`) | The P50 / price of the point-in-time model (date: end of the fiscal year + 100 days) against the later 1-year and 3-year price returns: rank correlations by year and pooled, quintiles inside each year, size buckets, the years as clusters. About 10 s for 420 companies. Result: `analysis/priors/auto_returns_2026-11-20.txt`. |
@@ -977,7 +979,7 @@ ticket `option-backtest-rust`).
 
 ## Tests
 
-`cargo test --manifest-path rust/Cargo.toml --locked`: 572 Rust tests (554 + 17 + 1; 2 more are ignored) (the `fa` crate).
+`cargo test --manifest-path rust/Cargo.toml --locked`: 576 Rust tests (558 + 17 + 1; 2 more are ignored) (the `fa` crate).
 `cargo test --manifest-path rust/mapcheck/Cargo.toml`: 97 Rust tests. The suites make no network calls and start no
 Python program; HTTP is replaced by a function that the test gives, and files are in a temp folder.
 No Python test remains (the last 211 Python tests were deleted on 2026-11-19 after each case had a Rust test).

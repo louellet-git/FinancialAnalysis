@@ -1,59 +1,59 @@
 # A-002: acquisition charge of the automatic model
 
 Updated: 2026-11-20.
-
 ## Choice
 The model charges `w` times the mean of `acquisitions_net_of_cash / revenue` of the last
-5 fiscal years. `w` is the weight of the history in the company mean of the growth (the
-shrink weight, printed in the row "growth: company mean"). A year with no reported value
-counts as 0. The charge is a fixed cost for each year of the forecast. The growth history
-stays as it is.
+5 fiscal years. `w` is the weight of the history in the company mean of the growth (row
+"growth: company mean"). A year with no reported value counts as 0. The growth history
+stays. The charge fades with the growth that it pays for (`acq_fade`): if the company mean
+is above the fade level L, the credited growth above L falls linearly to zero along the
+drift ramp, and the charge falls from its year 1 value to zero in the same years (same
+timing). If the mean is at or below L, the charge is constant. `acq_charge` and `acq_f`
+are never faded.
 
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Automatic path model (`docs/models/auto-path-model.md`) | `rust/src/dcf/auto.rs` | `Rules::acq_w` = `true` |
-| Point-in-time test | `rust/src/dcf/auto_pit.rs` (`fcff_of_rules`) | the real free cash flow is after acquisitions when `acq_w` is on |
-| Reviewed IBM model | `analysis/IBM/driver_model.toml` | not used; the IBM review F2 and F16 have `f = 0.5` |
+| Automatic path model (`docs/models/auto-path-model.md`) | `rust/src/dcf/auto.rs` | `acq_w` = true, `acq_fade` = true |
+| Point-in-time test | `rust/src/dcf/auto_pit.rs` (`fcff_of_rules`) | real free cash flow is after acquisitions when `acq_w` is on |
 
 ## Alternatives considered
 | Alternative | Command | Why not chosen |
 |---|---|---|
-| No charge (the old model) | `--rules acq_w=0` | The model overstates the free cash flow after acquisitions: median error 1.7% of revenue in the next year |
-| Full charge | `--rules acq_charge=1` | Too much: the shrink of the growth already takes out much of the bought growth |
+| No charge (old model) | `--rules acq_w=0` | Overstates the free cash flow after acquisitions: -1.7% of revenue in year 1 |
+| Constant charge | `--rules acq_fade=0` | The charge does not fade with the credited growth: the pair holds in year 1 only |
 
 ## Why this choice
-None of the reasons uses the price.
-The study (section 2.6) shows that this is a consistent pair by construction: the model
-credits the share `w` of the growth that the spend bought, so it charges the share `w` of
-the spend. It needs no outside number. It matches the reviewed IBM `f = 0.5`. In the
-point-in-time test, the error of the free cash flow after acquisitions goes from
--1.7 / -1.4 / -0.6 to -0.4 / 0.0 / +0.8 % of revenue (median, 1 / 2 / 3 years after the base year).
-Source: `analysis/priors/dcf_conventions_study_2026-11-20.md`. The run of 2026-11-20 repeats it.
+None of the reasons uses the price. Study 2.6: a consistent pair by construction. The
+model credits the share `w` of the bought growth, so it charges the share `w` of the spend;
+no outside number; it matches the reviewed IBM `f = 0.5`. The fade keeps the pair true in
+each year (decision of the Head of Fundamental Research, review cycle 1). Direction
+from study 2.1: high spenders spend 0.55x (mean) and 0.24x (median) as much in the next 3
+years. The point-in-time test of the free cash flow is in sample and a median test, while
+the charge uses the mean spend: it supports the rule and does not select it.
 
-Known limits:
-- Heavy buyers (spend above 5% of revenue) are over-charged in the point-in-time test:
-  +1.8 / +2.2 / +3.1 % of revenue (1 / 2 / 3 years after the base year).
-- The spend is lumpy. The 5-year mean can hold one large deal.
-- 33% to 48% of company-years have no reported spend and count as 0.
+## Limits
+- Heavy buyers (spend above 5% of revenue, 1,650 company-years) are over-charged: free
+  cash flow error +1.8 / +1.8 / +2.4% of revenue at T+1 / T+2 / T+3 (constant charge:
+  +1.8 / +2.2 / +3.1%; old model -3.3 / -2.9 / -2.4%). A P50 at or below 0 of such a
+  company is an effect of the charge, not a value. The spend is lumpy: the mean can hold one deal.
+- 33% to 48% of company-years have no reported spend and count as 0. The screen has a
+  charge of exactly 0 for 147 of 431 tickers (34.1%): the tag
+  `PaymentsToAcquireBusinessesNetOfCashAcquired` is missing.
 
 ## Effect on the result
-Study, 430 tickers, median P50 / price: no charge 0.489; `acq_w=1` 0.382; full charge
-0.309. Run of 2026-11-20 on the data of 2026-11-19, both new defaults together
-(`fa dcf screen`, `sp500.txt`, 4,000 paths, seed 7): median ratio 0.4895 to 0.427;
-tickers with P50 at or below 0: 38 to 50 of 430. The effects do not add (see A-001).
-Point-in-time test, free cash flow after acquisitions, median error at T+1 / T+2 / T+3
-(`fa dcf pit`; old model with `--rules long_run=off,acq_w=0,acq_f=0,acq_mult=0`, new
-with the defaults; files `analysis/priors/auto_pit_old_afteracq_2026-11-20.txt`, `auto_pit_new_2026-11-20.txt`):
-all -1.7 / -1.4 / -0.6% to -0.4 / 0.0 / +0.8% of revenue. Spend above 5%: -3.3 / -2.9 /
--2.4% to +1.8 / +2.2 / +3.1%. Worse: the coverage P10 to P90 of this free cash flow is
-77.3 / 78.0 / 78.4% (old) and 76.3 / 77.1 / 77.4% (new), about 1 point lower; the share
-above P90 goes from 5.4% to 9.1% at T+1. IBM P50 with both defaults (`fa dcf auto IBM`, 10,000 paths): $132.87 to $95.84.
+Data of 2026-11-19 (data store commit 41116d0). `fa dcf screen`, `sp500.txt`, 4,000 paths,
+seed 7, 430 tickers, median P50 / price: old 0.4895; fading charge alone (`long_run=off`)
+0.4245; constant charge alone 0.382; both defaults 0.4745 (constant: 0.427). P50 at or below
+0: 38 (old), 39 (new), 50 (constant). ROP (price $470.87) P50: $438.34 old, $356.60 new,
+-$90.95 constant. ILMN and WMB stay not positive (no drift: constant charge). `fa dcf pit`
+(`analysis/priors/auto_pit_*_2026-11-20.txt`), free cash flow after acquisitions, error
+T+1 / T+2 / T+3: -1.7 / -1.4 / -0.6% (old, `acq_f=0,acq_mult=0`), -0.4 / -0.1 / +0.6%
+(new). Worse: coverage P10 to P90 77.3 / 78.0 / 78.4% (old), 76.3 / 77.4 / 77.8% (new).
 
 ## Who decided and when
 The Head of Fundamental Research, on the word of the owner of 2026-11-20 (record:
-`chiefs/louellet-git/fundamental/RECORD.md`).
-Review of the same weight as the IBM review (`CLAUDE.md`, source rule 3): review: not done yet.
+`chiefs/louellet-git/fundamental/RECORD.md`). Review (`CLAUDE.md`, source rule 3): not done yet.
 
 ## When to examine it again
 When a study of the persistence of the spend exists (panel: next 3 years =

@@ -110,7 +110,7 @@ Do not use a first pass alone for a trade.
 
 ```bash
 cargo test --manifest-path rust/mapcheck/Cargo.toml   # 97 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked   # 572 Rust tests (554 + 17 + 1), no network
+cargo test --manifest-path rust/Cargo.toml --locked   # 576 Rust tests (558 + 17 + 1), no network
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
 rust/mapcheck/target/release/mapcheck fetch --submissions IBM   # SEC 8-K item 2.02 list into data/raw/IBM/sec_8k_earnings.json
 rust/target/release/fa estimates get IBM; rust/target/release/fa estimates show IBM   # consensus, targets, surprises (Nasdaq site, no key)

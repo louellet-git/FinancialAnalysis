@@ -450,8 +450,19 @@ pub fn parse_rules(text: &str) -> R<Rules> {
     let mut r = Rules::default();
     for part in text.split(',').filter(|p| !p.is_empty()) {
         let (k, v) = part.split_once('=').ok_or_else(|| DcfError(format!("--rules: expected K=V, got '{part}'")))?;
-        // `off` is 0 (a rule that is a number: 0 or less is off for `long_run`)
-        let x: f64 = if v == "off" { 0.0 } else { v.parse().map_err(|_| DcfError(format!("--rules: bad number '{v}'")))? };
+        // `off` is 0, only for `long_run` (0 or less is off) and for the flags (0 or 1 rules); any other key is an error
+        const OFF_KEYS: [&str; 16] = [
+            "long_run", "history_organic", "fade_to_cap", "equity_weight_one", "terminal_rf", "margin_last", "sbc_cost", "bridge_lti", "bridge_leases",
+            "no_interest_income", "shares_latest", "stub", "mid_year", "acq_charge", "acq_w", "acq_fade",
+        ];
+        let x: f64 = if v == "off" {
+            if !OFF_KEYS.contains(&k) {
+                return Err(DcfError(format!("--rules: '{k}=off' is not allowed (only long_run and the flags take 'off'); give a number")));
+            }
+            0.0
+        } else {
+            v.parse().map_err(|_| DcfError(format!("--rules: bad number '{v}'")))?
+        };
         match k {
             "history_organic" => r.history_organic = x != 0.0,
             "margin_pool_se" => r.margin_pool_se = x,
@@ -488,6 +499,7 @@ pub fn parse_rules(text: &str) -> R<Rules> {
             "acq_f" => r.acq_f = Some(x),
             "acq_mult" => r.acq_mult = x,
             "acq_w" => r.acq_w = x != 0.0,
+            "acq_fade" => r.acq_fade = x != 0.0,
             _ => return Err(DcfError(format!("--rules: unknown rule '{k}'"))),
         }
     }
