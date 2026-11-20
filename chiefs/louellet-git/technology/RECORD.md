@@ -94,3 +94,7 @@ Done: measured the files that today's merges touched most (CLAUDE.md 7, docs/ARC
 ## 2026-11-20 23:09 UTC (chat)
 Words: "Please take the recent state of the heads operating system, and merge to the chiefs repo. I want an exact replica of our current system"
 Done: `lean/` of `louellet-git/chiefs` is a byte-for-byte copy of the heads system at commit fd830a9 (chiefs pull request 32). `CLAUDE.md` is `CLAUDE.template.md` and `.claude/` is `dot-claude/` there, so that the copy does not load in the Scan Support sessions. A later change of the system here needs a new copy there.
+
+## 2026-11-20 23:08 UTC (chat of the Head of Fundamental Research; checked in its transcript)
+Words: "I think you might have deleted an old ticket, that's not how we should handle those, speak w tech head"
+Done (2026-11-20 23:10 UTC): a merged ticket moves to `PLANNING/board/done/` (`git mv`, `status: done`, a line `merged:`); never deleted (`PLANNING/board/README.md`, skill `ticket-workflow`, `docs/TEAMS.md`). The 27 tickets that were deleted before are restored from git history into `done/`.
