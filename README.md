@@ -21,7 +21,7 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`. The agent teams: `
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program that makes the standard variables (necessary)
 cargo build --release --manifest-path rust/Cargo.toml            # the `fa` program
 cargo test --manifest-path rust/mapcheck/Cargo.toml    # 100 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked    # 576 Rust tests (558 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research, data sync)
+cargo test --manifest-path rust/Cargo.toml --locked    # 590 Rust tests (572 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research, data sync)
 ```
 
 The repo has no Python code.
@@ -450,6 +450,7 @@ cargo build --release --manifest-path rust/Cargo.toml # one time
 rust/target/release/fa trade fetch                    # download the bars (Yahoo) into data/raw/trading/
 rust/target/release/fa prices intraday SPY --interval 5m --from 2020-01-01   # 5-minute bars since a date (Alpaca, free key)
 rust/target/release/fa options history SPY --from 2024-03-01 --to 2024-03-29 # option surface of past dates from daily closes (Alpaca)
+rust/target/release/fa options check IBM --date 2026-11-19 [--rate R]        # no-arbitrage checks of a stored chain at executable prices (bid and ask), no network
 rust/target/release/fa options snapshot SPY --source alpaca                  # option chain of today (Alpaca, free key); SPX and VIX too (both roots; level and volatility from put-call parity)
 rust/target/release/fa trade backtest                 # all bots, leaderboard (Rust, 1 second)
 rust/target/release/fa trade backtest --bot s14b_spy_trend_calls -v

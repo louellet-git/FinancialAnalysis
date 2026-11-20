@@ -2,7 +2,7 @@
 id: T-20261120-arb-1-chain-check
 title: Find the static arbitrage in a stored option chain with bid and ask
 area: trading
-status: in-progress
+status: review
 owner: louellet-git
 requested_by: louellet-git
 head: quant
