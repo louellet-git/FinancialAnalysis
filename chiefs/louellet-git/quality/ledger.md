@@ -14,3 +14,4 @@
 | bond-days gate | 2026-11-20 | `T-20261120-store-arb-data` (1127d19): code-reviewer; verdict PASS-WITH-NOTES, 4 MIN | about 60k (approx.) | dry runs only; no data-quality-analyst (proportion) |
 | portfolio gate, cycle 1 | 2026-11-20 | `T-20261120-portfolio-backtest` (2162887): model-validator + code-reviewer; verdict REVISE (1 MAJ: SEC restatements enter value-rank; 9 MIN) | about 143k (77k + 66k measured) | poison test on SEC facts failed; price poison tests passed |
 | register gate | 2026-11-20 | `T-20261120-dcf-assumption-register` (d55daf2): code-reviewer + document-reviewer; verdict PASS-WITH-NOTES, 7 MIN | about 105k (65k + 39k measured) | screen and pit byte-identical to main |
+| rates-recon step 2 audit | 2026-11-20 | `T-20261120-arb-2-rates-recon` step 2 (891d6d3): auditor; verdict PASS-WITH-NOTES, 7 MIN (delete one trade-like sentence) | about 60k (approx.) | each table reproduced offline on store cb01202 |
