@@ -637,6 +637,14 @@ mod tests {
         assert!(parse_yahoo(br#"{"chart":{"result":null,"error":{"code":"Not Found","description":"No data found"}}}"#).unwrap_err().contains("Yahoo error"));
     }
 
+
+    #[test]
+    fn a_403_and_a_429_stop_a_source_and_other_errors_do_not() {
+        assert!(matches!(classify("HTTP 403 for https://x".into()), FetchError::RateLimited(_)));
+        assert!(matches!(classify("HTTP 429 for https://x".into()), FetchError::RateLimited(_)));
+        assert!(matches!(classify("HTTP 404 for https://x".into()), FetchError::Failed(_)));
+        assert!(matches!(classify("connection reset".into()), FetchError::Failed(_)));
+    }
     #[test]
     fn yahoo_429_is_rate_limited() {
         let y = Yahoo::new(Box::new(|u| Err(format!("HTTP 429 for {u}"))));

@@ -50,6 +50,9 @@ fn group_in(text: &str, fallback: &str) -> String {
 /// is not asked and gives no log line. A source that answers HTTP 429 or 403 in this call stops the host for the run.
 /// The run does not get around the limit: no other address, no faster try.
 /// The stop of the run is the global list of `hostnet`, so the parallel jobs share it with no lock around the requests.
+/// Limits: the stop is stored with code 429 also after a 403 (the log line of `price_cache::fetch` gives the real code);
+/// the stop is published when `update_ticker` returns, so parallel jobs of one source can each make their 2 requests
+/// first (the thread count bounds this).
 pub(crate) fn update_prices(cache: &std::path::Path, ticker: &str, sources: &[Box<dyn price_source::PriceSource>], opt: &price_cache::Options) -> price_cache::Status {
     let mut run = price_cache::Run::default();
     for s in sources {
@@ -565,7 +568,7 @@ mod tests {
     /// A source with fixed answers: it always answers HTTP 429 (`limited`), or it gives 30 rows. It counts its requests.
     struct Fixed {
         name: &'static str,
-        limited: bool,
+        limited: Option<u16>,
         calls: Arc<AtomicUsize>,
     }
 
@@ -578,8 +581,8 @@ mod tests {
         }
         fn fetch(&self, _t: &str, _from: Option<&str>, _to: &str) -> Result<Vec<Row>, FetchError> {
             self.calls.fetch_add(1, Ordering::SeqCst);
-            if self.limited {
-                return Err(FetchError::RateLimited(format!("HTTP 429 for https://{}.test/x", self.name)));
+            if let Some(code) = self.limited {
+                return Err(FetchError::RateLimited(format!("HTTP {code} for https://{}.test/x", self.name)));
             }
             Ok((0..30).map(|i| Row { date: format!("2024-01-{:02}", i + 1), open: 10.0, high: 11.0, low: 9.0, close: 10.0, volume: 1, adj_close: None, dividend: None, split: None }).collect())
         }
@@ -589,7 +592,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("fa_runner_429_{tag}_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let (a, b) = (Arc::new(AtomicUsize::new(0)), Arc::new(AtomicUsize::new(0)));
-        let sources: Vec<Box<dyn PriceSource>> = vec![Box::new(Fixed { name: limited_name, limited: true, calls: a.clone() }), Box::new(Fixed { name: next_name, limited: false, calls: b.clone() })];
+        let sources: Vec<Box<dyn PriceSource>> = vec![Box::new(Fixed { name: limited_name, limited: Some(429), calls: a.clone() }), Box::new(Fixed { name: next_name, limited: None, calls: b.clone() })];
         (dir, sources, a, b)
     }
 
@@ -612,6 +615,21 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+
+    #[test]
+    fn two_sources_that_answer_403_and_429_stop_after_two_requests_each_and_the_ticker_fails() {
+        let dir = std::env::temp_dir().join(format!("fa_runner_403_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let (a, b) = (Arc::new(AtomicUsize::new(0)), Arc::new(AtomicUsize::new(0)));
+        let sources: Vec<Box<dyn PriceSource>> = vec![Box::new(Fixed { name: "fake403c", limited: Some(403), calls: a.clone() }), Box::new(Fixed { name: "fake429c", limited: Some(429), calls: b.clone() })];
+        for t in ["A", "B", "C"] {
+            let s = update_prices(&dir, t, &sources, &options());
+            assert!(matches!(s, price_cache::Status::Failed(_)), "{t}: {s:?}");
+        }
+        assert_eq!((a.load(Ordering::SeqCst), b.load(Ordering::SeqCst)), (2, 2));
+        assert!(hostnet::blocked("fake403c").is_some() && hostnet::blocked("fake429c").is_some());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
     #[test]
     fn a_host_that_the_run_stopped_is_not_asked_by_the_price_pass() {
         let (dir, sources, limited, next) = setup("pre", "fake429b", "fakeok_b");
