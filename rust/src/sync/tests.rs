@@ -306,6 +306,25 @@ fn the_config_changes_the_age() {
     assert!(text.contains("1 current, 0 old") && text.contains("max age 2 market days"), "{text}");
 }
 
+
+#[test]
+fn the_bond_days_flag_wins_over_the_config_file() {
+    let b = Bench::new("bonddays-flag", "2026-11-23"); // a Monday; no FedInvest file in the cache
+    let status = |extra: &[&str], cfg: SyncConfig| {
+        let mut a = vec!["--status", "--only", "bonds"];
+        a.extend_from_slice(extra);
+        let args = parse_args(&v(&a)).unwrap();
+        let mut text = String::new();
+        run_with(&args, &b.setup(env(true, false), cfg), &|_: &[String], _: &Ledger| -> Box<dyn Runner> { unreachable!() }, &mut |t| text.push_str(t), &|_| {}).unwrap();
+        norm(&text)
+    };
+    let file = || SyncConfig::parse("bond_days = 3").unwrap();
+    assert!(status(&[], SyncConfig::default()).contains("1 no data"));
+    let text = status(&[], file());
+    assert!(text.contains("3 no data"), "the file gives 3 days: {text}");
+    let text = status(&["--bond-days", "5"], file());
+    assert!(text.contains("5 no data"), "the flag wins over the file: {text}");
+}
 #[test]
 fn the_rates_data_set_of_a_weekend_is_current_after_a_friday_run() {
     let b = Bench::new("weekend", "2026-11-21");

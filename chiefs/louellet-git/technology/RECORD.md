@@ -86,3 +86,15 @@ Done: after a ticket, report and take the next ticket of the queue with no wait,
 ## 2026-11-20 22:32 UTC (chat)
 Words: "Also, I need every team to have a team that scrutinizes the amount of tests that any given team has, not run all the time but every so often at the discretion of the head"
 Done: a test-audit mode in `.claude/agents/test-engineer.md`; one paragraph in `chiefs/ORIENTATION.md` (section 3): each head starts it from time to time; not a gate. Same line in the lean version of `chiefs`.
+
+## 2026-11-20 23:01 UTC (chat)
+Words: "Think about many heads from many users working, and consider that from a lean perspective to find a solution to this potential future issue. Token cheap, GitHub cost cheap, line of code cheap and time cheap,"
+Done: measured the files that today's merges touched most (CLAUDE.md 7, docs/ARCHITECTURE.md 6, README.md 5, PLANNING/token-ledger.md 4, docs/HIDDEN-ASSUMPTIONS.md 3). Removed the test counts from the documents; new traps are one file each in `docs/traps/`; the shared token ledger takes no new row; four rules in `chiefs/ORIENTATION.md` (section 2, "Many heads at the same time").
+
+## 2026-11-20 23:09 UTC (chat)
+Words: "Please take the recent state of the heads operating system, and merge to the chiefs repo. I want an exact replica of our current system"
+Done: `lean/` of `louellet-git/chiefs` is a byte-for-byte copy of the heads system at commit fd830a9 (chiefs pull request 32). `CLAUDE.md` is `CLAUDE.template.md` and `.claude/` is `dot-claude/` there, so that the copy does not load in the Scan Support sessions. A later change of the system here needs a new copy there.
+
+## 2026-11-20 23:08 UTC (chat of the Head of Fundamental Research; checked in its transcript)
+Words: "I think you might have deleted an old ticket, that's not how we should handle those, speak w tech head"
+Done (2026-11-20 23:10 UTC): a merged ticket moves to `PLANNING/board/done/` (`git mv`, `status: done`, a line `merged:`); never deleted (`PLANNING/board/README.md`, skill `ticket-workflow`, `docs/TEAMS.md`). The 27 tickets that were deleted before are restored from git history into `done/`.

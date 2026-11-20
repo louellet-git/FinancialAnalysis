@@ -147,6 +147,12 @@ pub struct Rules {
     /// same ramp of the engine). Without such a drift the charge is constant. Default on (record A-002); `acq_fade=0` gives
     /// the constant charge. `acq_charge` and `acq_f` are never faded.
     pub acq_fade: bool,
+    /// The growth of the base year, when it is below this floor, enters the company mean and the first step of the growth
+    /// process at the floor (a year of decline is the start of a recovery, not a rate that stays: A-003). The history
+    /// before the base year and the shock size keep the real values. `None`: off (`--rules last_floor=-1`).
+    pub last_floor: Option<f64>,
+    /// The weight (in years) of the table shock in the shock size of the margin. `None`: `own_sigma_nu`.
+    pub margin_sigma_nu: Option<f64>,
 }
 
 impl Default for Rules {
@@ -189,6 +195,8 @@ impl Default for Rules {
             acq_mult: 0.0,
             acq_w: true,
             acq_fade: true,
+            last_floor: Some(0.0),
+            margin_sigma_nu: None,
         }
     }
 }
@@ -728,7 +736,7 @@ pub fn tax_rate(years: &[YearData], statutory: f64) -> (f64, String) {
 
 /// The cell of the table for a margin: the cell of the size bucket and the template, else the size bucket, else the
 /// template, else all, the first that has the series (`fcf_margin`).
-fn margin_params(table: &ProcessTable, size: &str, template: &str, pool_se: f64) -> Option<(Ar1Params, String)> {
+pub(crate) fn margin_params(table: &ProcessTable, size: &str, template: &str, pool_se: f64) -> Option<(Ar1Params, String)> {
     let enough = |p: &Ar1Params| p.n_obs >= super::calibrate::MIN_OBS && p.n_units >= super::calibrate::MIN_UNITS;
     let find = |s: &str, t: &str| table.cell.iter().find(|c| c.size == s && c.template == t).and_then(|c| c.fcf_margin.as_ref()).filter(|p| enough(p));
     let (p, label) = [(size, template), (size, "all"), ("all", template), ("all", "all")].iter().find_map(|(s, t)| find(s, t).map(|p| (p.clone(), format!("size {s}, template {t}"))))?;
@@ -933,7 +941,14 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
     let sg_own = own_sigma(&growth_hist, &gp, rules.own_sigma_nu);
     let g_level = growth_hist.iter().map(|g| g.abs()).fold(last_growth.map_or(0.0, f64::abs), f64::max);
     let sg_eff = sg_own.max(kappa * g_level);
-    let gfit = ar1_fit_w(&growth_hist, last_growth, &Ar1Params { sigma: sg_eff, phi: rules.growth_phi.unwrap_or(gp.phi), ..gp.clone() }, rules.growth_w);
+    let floor = |g: f64| rules.last_floor.map_or(g, |f| g.max(f));
+    let mut fit_hist = growth_hist.clone();
+    if growth_all.last().is_some_and(|g| g.is_some()) {
+        if let Some(l) = fit_hist.last_mut() {
+            *l = floor(*l);
+        }
+    }
+    let gfit = ar1_fit_w(&fit_hist, last_growth.map(floor), &Ar1Params { sigma: sg_eff, phi: rules.growth_phi.unwrap_or(gp.phi), ..gp.clone() }, rules.growth_w);
     // the long-run cap and the company mean
     let rf_long = market.curve.as_ref().map_or(DEFAULT_RF, |c| c.zero10);
     if market.curve.is_none() {
@@ -981,7 +996,7 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
         if v.is_empty() { 0.0 } else { v.iter().sum::<f64>() / v.len() as f64 }
     };
     let last_margin = last.fcf_margin().filter(|m| m.abs() <= MARGIN_LIMIT);
-    let sm_own = own_sigma(&mhist, &mp, rules.own_sigma_nu);
+    let sm_own = own_sigma(&mhist, &mp, rules.margin_sigma_nu.unwrap_or(rules.own_sigma_nu));
     let mfit = ar1_fit_w(&mhist, last_margin, &Ar1Params { sigma: sm_own, ..mp.clone() }, rules.margin_w);
     let m_start = (mfit.start_mean + interest_ratio).clamp(-MARGIN_LIMIT + 0.01, MARGIN_LIMIT - 0.01);
     let m_mu = match (rules.margin_last, last_margin) {
@@ -1222,8 +1237,10 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
     let _ = writeln!(tw, "shares = {}", f(shares));
     let _ = writeln!(tw, "projection_years = {}\n", rules.years);
     let _ = writeln!(tw, "[[segments]]\nname = \"Total\"\nbase_revenue = {}\nprocess = \"growth\"\n", f(base_revenue));
+    let floored = last_growth.zip(rules.last_floor).is_some_and(|(g, f)| g < f);
+    let floor_note = if floored { format!(" The growth of the base year ({}) is below {}: it enters the company mean and the first step as {} (A-003).", pct(last_growth.unwrap_or(0.0)), pct(rules.last_floor.unwrap_or(0.0)), pct(rules.last_floor.unwrap_or(0.0))) } else { String::new() };
     let rationale_g = format!(
-        "Revenue growth. History {} values, mean {}; cell {size} (phi {:.3}, mean {}, tau {}, sigma {}); company mean {} (weight of the history {:.3}); year 1 mean {} std {}. Slow part: the company mean fades linearly to the long-run cap {} (10-year zero yield) with the half-life {slow_h:.1} years of the fade table (ramp {ramp_n} years). Fast part: phi {:.3}, sigma {}.",
+        "Revenue growth. History {} values, mean {}; cell {size} (phi {:.3}, mean {}, tau {}, sigma {}); company mean {} (weight of the history {:.3}); year 1 mean {} std {}. Slow part: the company mean fades linearly to the long-run cap {} (10-year zero yield) with the half-life {slow_h:.1} years of the fade table (ramp {ramp_n} years). Fast part: phi {:.3}, sigma {}.{floor_note}",
         growth_hist.len(), pct(gfit.mean_history), gp.phi, pct(gp.mean), pct(gp.mean_sd_units), pct(gp.sigma), pct(gfit.mu), gfit.w, pct(g_start), pct(gfit.start_sd), pct(g_long), gfit.phi, pct(gfit.sigma)
     );
     let _ = writeln!(tw, "[process.growth]\nrole = \"growth\"");

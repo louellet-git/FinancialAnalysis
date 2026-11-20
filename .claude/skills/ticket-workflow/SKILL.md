@@ -18,10 +18,10 @@ runs the git steps. A subagent does the checks and leaves the commit to the orch
    `git worktree add ../wt-<name> -b <branch> origin/main`.
 4. Do the work in small parts. Run the real command after each part.
 5. Before the pull request, run the skill `release-checks`.
-6. Add one row to `PLANNING/token-ledger.md`: run name, date, scope, tokens (write "not
+6. Add one row to the ledger of your own folder (`CLAUDE.md`, "Token ledger"): run name, date, scope, tokens (write "not
    measured" if you cannot count), notes.
 7. Set `status: review` and open the pull request. Merge only through it.
-8. After the merge, delete the ticket file in the next change. Add open points to the
+8. After the merge, move the ticket file to `PLANNING/board/done/` in the next change (`git mv`, `status: done`, a line `merged: <pull request>`). Never delete a ticket. Add open points to the
    board as new tickets.
 
 ## Check

@@ -2,7 +2,7 @@
 id: T-20261120-store-arb-data
 title: Add the rate, futures and option data of the arbitrage checks to the data store
 area: importer
-status: in-progress
+status: review
 owner: louellet-git
 requested_by: louellet-git
 head: technology

@@ -41,6 +41,7 @@ value, 3 no value, 2 an error. `fa dcf screen` gives one CSV row for each ticker
 |---|---|---|---|
 | A-001 | One long-run growth L | min(10-year zero yield, 4.0%); terminal std 0.75% | Fade level and terminal mean. 4.0% = FOMC SEP 2026-09-16 (2.0% + 2.0%). Decided 2026-11-20 |
 | A-002 | Acquisition charge | `w` x mean spend / revenue, 5 years | `w` = weight of the history in the growth mean; fades with the growth above L. Decided 2026-11-20 |
+| A-003 | Floor on the growth of the base year | 0% | A base year with growth below 0% enters the company mean and the first step of the growth as 0% (`last_floor`) |
 | not written | Equity risk premium | 4.41% (std 0.75%, lower bound 2%) | Damodaran implied value, 2026-11-19 |
 | not written | Risk-free rate | 10-year zero yield of the GSW curve | Hull-White `a` 0.14, `sigma` 0.0075 |
 | not written | Horizon | 10 years | Repo convention |
@@ -53,6 +54,13 @@ The records "not written" belong to the board ticket
 ## Limits
 - The model is a screen. Its P10 to P90 band covers 84% to 87% of real revenue in the
   point-in-time test, with known errors (`docs/HIDDEN-ASSUMPTIONS.md`, #199).
+- After a year of decline the revenue P50 stays too low (T+2 and T+3), in a few base years with a common shock (2018 to 2021; A-003)
+  (`docs/HIDDEN-ASSUMPTIONS.md`, #286). The bands for a stable margin are too wide; the rule `margin_sigma_nu` is
+  measured and is not on by default (#286).
+- The output gives the mean of the simulated value for each share, its standard error and the share of the sum that the
+  largest 1% of the paths hold. The mean is a measurement of the distribution, not a better estimate than the P50 (the
+  headline stays the P50). It is unstable when one tail holds a large share, and it is not tested against later returns.
+  The screen CSV (last column `mean`), `fa dcf pit` and `fa dcf returns` leave a path with a value that is not finite out of the mean with no count; `fa dcf auto` prints the count.
 - No bank, insurer, REIT or fund. No pension, lease or minority item in the net debt.
 - The two defaults of 2026-11-20 (A-001, A-002) change every value. Data of 2026-11-19
   (data store commit 41116d0), `fa dcf screen` of `sp500.txt`, 4,000 paths, seed 7, 430
