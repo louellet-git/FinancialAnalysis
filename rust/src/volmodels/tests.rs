@@ -249,7 +249,7 @@ fn chain_filters_count_every_dropped_quote() {
     for k in [100.0, 101.0] {
         quotes.push(snapshot_quote("ABC", "2027-02-19", k, true, Some(1.0), Some(1.1)));
     }
-    let snap = OptionChainSnapshot { ticker: "ABC".into(), snapshot_date: "2026-11-20".into(), spot_price: Some(100.0), quotes, source: None, feed: None, quote_kind: None, note: None };
+    let snap = OptionChainSnapshot { ticker: "ABC".into(), snapshot_date: "2026-11-20".into(), spot_price: Some(100.0), quotes, source: None, feed: None, quote_kind: None, note: None, snapshot_time: None };
     let mut rate = |_: &str, _: f64| -> Result<f64, String> { Ok(0.04) };
     let (set, c) = build(&snap, &mut rate, &Filters::for_symbol("ABC", None)).unwrap();
     assert_eq!(c.total, 26 + 4 + 6 + 2);

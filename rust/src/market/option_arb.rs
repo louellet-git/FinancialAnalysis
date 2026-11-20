@@ -636,7 +636,7 @@ mod tests {
         format!("{root}{ymd}{}{:08}", if call { 'C' } else { 'P' }, (strike * 1000.0).round() as i64)
     }
     fn snap(quotes: Vec<OptionQuote>) -> OptionChainSnapshot {
-        OptionChainSnapshot { ticker: "XYZ".into(), snapshot_date: "2026-01-02".into(), spot_price: Some(100.0), quotes, source: None, feed: None, quote_kind: None, note: None }
+        OptionChainSnapshot { ticker: "XYZ".into(), snapshot_date: "2026-01-02".into(), spot_price: Some(100.0), quotes, source: None, feed: None, quote_kind: None, note: None, snapshot_time: None }
     }
     fn add(v: &mut Vec<OptionQuote>, root: &str, ymd: &str, expiry: &str, call: bool, strike: f64, bid: f64, ask: f64) {
         v.push(q(&sym(root, ymd, call, strike), call, expiry, strike, bid, ask));

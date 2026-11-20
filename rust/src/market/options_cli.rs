@@ -1,6 +1,7 @@
 //! `fa options`: option chain snapshots from a second source, and the option surface of past dates.
 //!
-//! - `fa options snapshot SYMBOL [--source cboe|alpaca]`: today's chain, written to `data/raw/<T>/options/<date>.json`.
+//! - `fa options snapshot SYMBOL [--source cboe|alpaca]`: today's chain, written to `data/raw/<T>/options/<date>.json` (cboe) or
+//!   `<date>T<hhmm>.json` (alpaca, with the time in UTC; `fa options archive` copies the chains of the day).
 //!   `cboe` (no key) is the delayed quotes file that `fa analyze` uses; `alpaca` is the indicative feed of the free plan.
 //! - `fa options history SYMBOL --date D | --from D --to D`: the surface of past dates from the daily closes of the contracts
 //!   (`option_history`). The files have the form of the live snapshots and `quote_kind: "close"`. A live snapshot
@@ -27,11 +28,17 @@ USAGE:
                               European options). The roots of the chain: for SPX and VIX the monthly and the weekly root
                               (SPX,SPXW and VIX,VIXW); for another symbol the symbol. --roots A,B sets them.
                               --rate R is one flat rate (decimal) for the index volatility; default: the Treasury curve.
-  fa options check SYMBOL --date D [--rate R] [--top N] [--min-size USD] [--iv-mark POINTS] [--compare D2] [--otm | --all-strikes]
+  fa options check SYMBOL --date D [--time HHMM] [--rate R] [--top N] [--min-size USD] [--iv-mark POINTS] [--compare D2] [--otm | --all-strikes]
                               no-arbitrage checks of a stored chain at executable prices (buy at the ask, sell at the bid):
                               intrinsic value, monotony, slope, butterfly, calendar, upper parity bound only (the lower bound needs the
                               dividends). Without --rate the Treasury curve can be downloaded (one file); give --rate R for no network.
                               A break is not a profit. fa options check --help: more.
+  fa options archive [SYMBOLS] [--keep-days N] [--rate R]
+                              copy the live Alpaca chains with the time: default SPX SPY VIX. Each symbol gives the file
+                              <date>T<hhmm>.json (UTC) and its gzip copy <date>T<hhmm>.json.gz, and the Cboe VX settlement file
+                              is fetched too. A chain with less than 80% of the quotes of the last live file is not written.
+                              --keep-days N removes the JSON of files older than N days when the gzip copy is the same
+                              (the readers read the gzip file). Default: no removal. Needs the Alpaca keys.
   fa options history SYMBOL (--date D | --from D --to D) [--max-days N] [--moneyness LO,HI] [--rate R] [--level S:RATIO] [--refresh] [--plan]
                               the surface of past dates from the daily closes of the contracts (Alpaca option bars,
                               since 2024-02). One snapshot file for each trading day, with quote_kind \"close\":
@@ -49,9 +56,10 @@ USAGE:
                               A stopped run continues when you run it again (a month with its snapshot files is skipped).";
 
 pub const CHECK_USAGE: &str = "\
-fa options check SYMBOL --date D [--rate R] [--top N] [--min-size USD] [--iv-mark POINTS] [--compare D2] [--otm | --all-strikes]
+fa options check SYMBOL --date D [--time HHMM] [--rate R] [--top N] [--min-size USD] [--iv-mark POINTS] [--compare D2] [--otm | --all-strikes]
 
-  Reads data/raw/SYMBOL/options/D.json and finds the quotes that break a no-arbitrage rule at executable prices
+  Reads the last file of the date D in data/raw/SYMBOL/options/ (<D>.json, or <D>T<hhmm>.json of a live snapshot with a time;
+  --time HHMM, UTC, takes the file of that minute) and finds the quotes that break a no-arbitrage rule at executable prices
   (buy at the ask, sell at the bid). A break at mid prices only is not a finding.
   Checks: intrinsic value (ask below it; American options), monotony, slope, butterfly, calendar (American),
   upper parity bound only (American; the lower bound needs the dividends). A quote with an ask below the intrinsic
@@ -139,12 +147,14 @@ pub fn chain_snapshot(items: &[alpaca::ChainItem], ticker: &str, date: &str, spo
         feed: Some(feed.to_string()),
         quote_kind: Some(if feed == "indicative" { "indicative" } else { "bid_ask" }.into()),
         note: Some("Chain snapshot of Alpaca. The spot is the last daily close of the IEX feed. The implied volatility is the one of Alpaca. No open interest.".into()),
+        snapshot_time: None,
     }
 }
 
-/// May the file of this date be written? A file with real quotes is kept. A file of closes is kept unless `refresh`.
+/// May a file `<date>.json` (closes, no time) be written? The LAST file of the date decides. A file with real quotes is kept.
+/// A file of closes is kept unless `refresh`.
 pub fn may_write(cache: &Path, ticker: &str, date: &str, refresh: bool) -> Result<bool, String> {
-    if !options::snapshot_path(cache, ticker, date).is_file() {
+    if options::stems_of_date(cache, ticker, date).is_empty() {
         return Ok(true);
     }
     match options::load_snapshot(cache, ticker, Some(date)) {
@@ -176,17 +186,22 @@ pub fn rate_fn(repo: &Path, flat: Option<f64>) -> impl FnMut(&str, f64) -> Resul
     }
 }
 
-/// Today's chain from Alpaca (the free indicative feed) into `<cache>/<TICKER>/options/<today>.json`. Gives the line that
-/// the command prints. A snapshot of today with real quotes stays (`refresh` does not replace it).
+/// Today's chain from Alpaca (the free indicative feed) into `<cache>/<TICKER>/options/<today>T<hhmm>.json`. Gives the line that
+/// the command prints.
 pub fn snapshot_alpaca(repo: &Path, cache: &Path, ticker: &str, today: &str, refresh: bool) -> Result<String, String> {
     snapshot_alpaca_with(repo, cache, ticker, today, refresh, None, None)
 }
 
-/// `snapshot_alpaca` with the roots (default: the roots of the underlying, see `option_history::roots_of`) and a flat rate.
-pub fn snapshot_alpaca_with(repo: &Path, cache: &Path, ticker: &str, today: &str, refresh: bool, roots: Option<Vec<String>>, flat_rate: Option<f64>) -> Result<String, String> {
-    if !may_write(cache, ticker, today, refresh)? {
-        return Ok(format!("options {ticker} {today}: a snapshot of today exists; --refresh replaces it"));
-    }
+/// The live chain of one underlying, with the time stamp, and what the run cost.
+pub struct Fetched {
+    pub snap: OptionChainSnapshot,
+    pub requests: usize,
+    /// A text for the line to a person (index: the number of volatilities from parity).
+    pub extra: String,
+}
+
+/// Get the live Alpaca chain. `stamp` is the time (`YYYY-MM-DDTHH:MMZ`) that goes into the snapshot. No file is written here.
+pub fn fetch_alpaca(repo: &Path, ticker: &str, today: &str, roots: Option<Vec<String>>, flat_rate: Option<f64>, stamp: &str) -> Result<Fetched, String> {
     let keys = Keys::read(repo).ok_or_else(|| format!("{} and {} are not both set in the environment or in .env", alpaca::KEY_ID_ENV, alpaca::SECRET_ENV))?;
     let client = Client::live(keys);
     let index = option_history::index_info(ticker).is_some();
@@ -205,6 +220,7 @@ pub fn snapshot_alpaca_with(repo: &Path, cache: &Path, ticker: &str, today: &str
         items.extend(client.chain(root, "indicative").map_err(|e| e.to_string())?);
     }
     let mut snap = chain_snapshot(&items, ticker, today, spot, "indicative", &roots);
+    snap.snapshot_time = Some(stamp.to_string());
     let mut extra = String::new();
     if index {
         let mut rate = rate_fn(repo, flat_rate);
@@ -222,8 +238,19 @@ pub fn snapshot_alpaca_with(repo: &Path, cache: &Path, ticker: &str, today: &str
         ));
         extra = format!(", implied volatility for {} quotes from put-call parity", fill.filled);
     }
-    let path = options::save_snapshot(&snap, cache)?;
-    Ok(format!("options {ticker} {today}: {} quotes, spot {}, {} requests, feed indicative{extra}, written to {}", snap.quotes.len(), show_opt(snap.spot_price), client.requests(), path.display()))
+    Ok(Fetched { snap, requests: client.requests(), extra })
+}
+
+/// `snapshot_alpaca` with the roots (default: the roots of the underlying, see `option_history::roots_of`) and a flat rate.
+/// The file has the time (UTC, to the minute) in it and in its name. A file of the same minute stays unless `refresh`.
+pub fn snapshot_alpaca_with(repo: &Path, cache: &Path, ticker: &str, today: &str, refresh: bool, roots: Option<Vec<String>>, flat_rate: Option<f64>) -> Result<String, String> {
+    let (stamp, hhmm) = options::utc_stamp(alpaca::now_utc());
+    if !refresh && options::timed_path(cache, ticker, today, &hhmm).is_file() {
+        return Ok(format!("options {ticker} {today}: a snapshot of {hhmm} UTC exists; --refresh replaces it"));
+    }
+    let f = fetch_alpaca(repo, ticker, today, roots, flat_rate, &stamp)?;
+    let path = options::save_snapshot(&f.snap, cache)?;
+    Ok(format!("options {ticker} {today}: {} quotes, spot {}, {} requests, feed indicative{}, time {stamp}, written to {}", f.snap.quotes.len(), show_opt(f.snap.spot_price), f.requests, f.extra, path.display()))
 }
 
 fn snapshot(repo: &Path, rest: &[String]) -> Result<i32, String> {
@@ -361,13 +388,13 @@ fn history(repo: &Path, rest: &[String]) -> Result<i32, String> {
 
 /// `fa options check T --date D [--rate R]`: the no-arbitrage checks of a stored chain at executable prices (`option_arb`).
 fn check(repo: &Path, rest: &[String]) -> Result<i32, String> {
-    let a = Args::parse(rest, &["--date", "--rate", "--top", "--min-size", "--iv-mark", "--compare"], &["--otm", "--all-strikes"])?;
+    let a = Args::parse(rest, &["--date", "--time", "--rate", "--top", "--min-size", "--iv-mark", "--compare"], &["--otm", "--all-strikes"])?;
     let ticker = a.symbol.clone().ok_or("give a symbol: fa options check IBM --date 2026-11-19")?;
     let date = a.flag("--date").ok_or("give --date D (a stored snapshot)")?;
     let flat = a.flag("--rate").map(|r| r.parse::<f64>().map_err(|_| format!("bad --rate '{r}'"))).transpose()?;
     let top = a.flag("--top").map(|n| n.parse::<usize>().map_err(|_| format!("bad --top '{n}'"))).transpose()?.unwrap_or(10);
     let cache = super::price_cli::cache_dir(repo);
-    let snap = options::load_snapshot(&cache, &ticker, Some(date))?;
+    let snap = options::load_snapshot_at(&cache, &ticker, Some(date), a.flag("--time"))?;
     let american = option_history::index_info(&ticker).is_none() && !super::option_arb::is_european(&ticker);
     let min_size = a.flag("--min-size").map(|n| n.parse::<f64>().map_err(|_| format!("bad --min-size '{n}'"))).transpose()?.unwrap_or(0.0);
     let iv_mark = a.flag("--iv-mark").map(|n| n.parse::<f64>().map_err(|_| format!("bad --iv-mark '{n}'"))).transpose()?.map_or(0.10, |p| p / 100.0);
@@ -391,6 +418,7 @@ pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
             Ok(0)
         }
         Some("snapshot") => snapshot(repo, &args[1..]),
+        Some("archive") => super::options_archive::run(repo, &args[1..]),
         Some("history") => history(repo, &args[1..]),
         Some("check") if matches!(args.get(1).map(String::as_str), Some("-h" | "--help")) => {
             println!("{CHECK_USAGE}");
@@ -432,7 +460,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("fa_oc_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         assert!(may_write(&dir, "SPY", "2024-03-06", false).unwrap(), "no file");
-        let mut s = OptionChainSnapshot { ticker: "SPY".into(), snapshot_date: "2024-03-06".into(), spot_price: Some(1.0), quotes: vec![], source: None, feed: None, quote_kind: None, note: None };
+        let mut s = OptionChainSnapshot { ticker: "SPY".into(), snapshot_date: "2024-03-06".into(), spot_price: Some(1.0), quotes: vec![], source: None, feed: None, quote_kind: None, note: None, snapshot_time: None };
         options::save_snapshot(&s, &dir).unwrap();
         assert!(!may_write(&dir, "SPY", "2024-03-06", true).unwrap(), "a Cboe file stays, even with refresh");
         s.quote_kind = Some("close".into());

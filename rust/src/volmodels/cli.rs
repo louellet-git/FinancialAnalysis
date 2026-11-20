@@ -1,11 +1,11 @@
-//! `fa vol fit heston|bates --symbol T --date D [--rate R] [--expiry-max DAYS] [--max-spread V] [--starts N] [--seed S]`
+//! `fa vol fit heston|bates --symbol T --date D [--time HHMM] [--rate R] [--expiry-max DAYS] [--max-spread V] [--starts N] [--seed S]`
 
 use super::base::{iv_errors, CharModel, QuoteSet};
 use super::calib::{fit, FitOptions};
 use super::chain::{build, Counts, Filters};
 use super::models::{Bates, Heston};
 use crate::market::option_history::index_info;
-use crate::market::options::load_snapshot;
+use crate::market::options::load_snapshot_at;
 use crate::market::options_cli::rate_fn;
 use crate::market::price_cli::cache_dir;
 use std::path::Path;
@@ -15,8 +15,9 @@ pub const USAGE: &str = "\
 fa vol - volatility models (Fourier pricing, calibration)
 
 USAGE:
-  fa vol fit heston|bates --symbol T --date D [--rate R] [--expiry-max DAYS] [--max-spread V] [--starts N] [--seed S]
-                          fit the model to the stored snapshot data/raw/<T>/options/<D>.json (real bid and ask).
+  fa vol fit heston|bates --symbol T --date D [--time HHMM] [--rate R] [--expiry-max DAYS] [--max-spread V] [--starts N] [--seed S]
+                          fit the model to the last stored snapshot of the date (data/raw/<T>/options/<D>.json or <D>T<hhmm>.json;
+                          real bid and ask). --time HHMM (UTC) takes the file of that minute.
                           Series = root and expiry; forward from put-call parity; out-of-the-money quotes with
                           bid > 0, ask > bid and a spread of at most 1 vol point (5 for VIX); loss weight 1 / spread.
                           Prints the parameters, the Feller ratio, the error by expiry in vol points, and the time.
@@ -30,7 +31,7 @@ fn parse_args(rest: &[String]) -> Result<(String, Vec<(String, String)>), String
     let mut i = 1;
     while i < rest.len() {
         let k = &rest[i];
-        if !["--symbol", "--date", "--rate", "--expiry-max", "--max-spread", "--starts", "--seed"].contains(&k.as_str()) {
+        if !["--symbol", "--date", "--time", "--rate", "--expiry-max", "--max-spread", "--starts", "--seed"].contains(&k.as_str()) {
             return Err(format!("unknown argument {k}; see fa vol --help"));
         }
         let v = rest.get(i + 1).ok_or_else(|| format!("{k} needs a value"))?;
@@ -69,7 +70,7 @@ pub fn run(repo: &Path, rest: &[String]) -> Result<i32, String> {
     if let Some(s) = num::<u64>(&flags, "--seed")? {
         opts.seed = s;
     }
-    let snap = load_snapshot(&cache_dir(repo), &symbol, Some(&date))?;
+    let snap = load_snapshot_at(&cache_dir(repo), &symbol, Some(&date), get("--time").as_deref())?;
     let mut rate = rate_fn(repo, flat);
     let (set, counts) = build(&snap, &mut rate, &filters)?;
     println!("fa vol fit {model} {symbol} {date}: snapshot of {} quotes, quote kind {}", snap.quotes.len(), snap.quote_kind.as_deref().unwrap_or("bid and ask"));
