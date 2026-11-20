@@ -1,0 +1,73 @@
+POINT-IN-TIME TEST of the automatic model. IN SAMPLE: parameter table /home/user/wt-accuracy/rust/../analysis/priors/process_priors_2026-11-19.toml (estimated on all years)
+Command: fa dcf pit --cache /home/user/FinancialAnalysis/data/raw --out /tmp/claude-0/s/A_all.txt
+Rules: Rules { years: 10, erp: (0.0441, 0.0075), kd_spread: 0.015, terminal_growth: (0.0225, 0.0075), statutory_tax: 0.21, beta_weight: 0.6666666666666666, hw_a: 0.14, hw_sigma: 0.0075, fade_to_cap: true, default_slow_half_life: 4.0, own_sigma_nu: 4.0, level_kappa: -1.0, min_years: 3, history_organic: true, margin_pool_se: 0.08, rf_fixed: None, equity_weight_one: false, terminal_rf: false, long_cap: None, long_run: None, fade_years: None, growth_w: None, growth_phi: None, margin_w: None, margin_last: false, sbc_cost: true, bridge_lti: true, bridge_leases: false, no_interest_income: true, shares_latest: true, stub: true, mid_year: false, acq_charge: false, acq_f: None, acq_mult: 0.0, acq_w: false, last_floor: Some(0.0) }
+976 companies of the standard template; load 19.6 s, models and paths 2.7 s (2000 paths each, seed 7).
+Observations: 6030 company-years of 712 companies.
+Cells: real value below P10 / inside P10 to P90 / above P90, in percent (target 10 / 80 / 10). n is the number of company-years.
+
+REVENUE by size bucket (revenue of T) and horizon
+  size          n        T+1             T+2             T+3         err T+1 err T+2 err T+3   real below P50: h1 h2 h3 (target 50%)
+  <1B         674   3.0/90.2/ 6.8   3.1/87.7/ 9.2   1.5/88.3/10.2      -2.8%   -0.6%   +4.0%     59%   51%   46%
+  1-10B      3155   5.2/85.5/ 9.3   5.7/83.6/10.6   4.4/86.8/ 8.8      -0.7%   +0.5%   +1.3%     53%   49%   47%
+  10-30B     1415   6.7/85.8/ 7.5   7.8/83.2/ 9.0   5.7/88.2/ 6.1      -0.3%   -0.4%   +0.2%     52%   51%   50%
+  30-100B     543   7.4/87.1/ 5.5   9.4/84.7/ 5.9   6.6/88.0/ 5.3      -0.8%   -0.4%   -0.1%     56%   51%   50%
+  >100B       243   5.8/89.7/ 4.5   7.8/86.4/ 5.8   6.2/90.9/ 2.9      -0.2%   +0.6%   +0.7%     51%   49%   49%
+  all        6030   5.5/86.4/ 8.0   6.3/84.2/ 9.5   4.6/87.5/ 7.8      -0.7%   +0.1%   +1.0%     54%   50%   48%
+  no jump    5278   5.2/88.7/ 6.1   5.9/87.1/ 7.0   4.4/90.7/ 4.9      -0.7%   -0.3%   +0.0%     54%   51%   50%
+  (err = median of the real value over the P50 less 1, for revenue; median of (real - P50) / revenue of T, for the free cash flow)
+
+REVENUE by growth of the base year (organic)
+  growth < 0%        1345   6.8/80.3/12.9   4.8/78.4/16.8   3.9/84.5/11.5      -0.3%   +4.6%   +7.0%
+  0 to 10%           2239   5.8/88.0/ 6.2   6.6/85.9/ 7.5   5.1/88.7/ 6.3      -1.0%   -0.8%   +0.1%
+  10 to 20%          1217   4.8/88.7/ 6.4   7.1/87.1/ 5.8   5.0/89.1/ 5.9      -0.6%   -1.3%   -0.8%
+  20 to 50%           936   3.7/89.7/ 6.5   6.8/85.5/ 7.7   4.3/88.5/ 7.3      -0.1%   -1.3%   -2.2%
+  above 50%           266   6.8/83.5/ 9.8   6.8/82.0/11.3   4.5/84.2/11.3      -4.2%   -2.9%   -2.0%
+  no growth value      27   0.0/70.4/29.6   0.0/77.8/22.2   0.0/77.8/22.2     +19.6%  +11.2%  +34.3%
+
+REVENUE by acquisition spend of the last 5 years (mean of acquisitions_net_of_cash / revenue)
+  spend < 0.5%             2284   6.1/84.8/ 9.1   6.7/83.1/10.1   4.7/86.9/ 8.5      -0.6%   +0.2%   +1.1%   real below P50:  53%  49%  48%
+  0.5% to 2%               1108   5.0/86.5/ 8.6   5.5/83.5/11.0   3.2/87.5/ 9.3      -0.5%   +1.2%   +3.4%   real below P50:  54%  48%  44%
+  2% to 5%                  983   5.1/88.4/ 6.5   6.6/84.2/ 9.2   5.6/87.4/ 7.0      -0.6%   +0.4%   +1.0%   real below P50:  54%  49%  48%
+  above 5%                 1655   5.4/87.5/ 7.1   6.1/86.1/ 7.8   5.0/88.6/ 6.4      -1.1%   -1.0%   -0.6%   real below P50:  55%  52%  51%
+
+REVENUE by range of the free cash flow margin of the last 5 years (a cyclical or unstable margin has a large range)
+  margin range < 5 pt      1540   5.5/88.4/ 6.1   6.3/86.1/ 7.6   4.5/90.3/ 5.2      -0.7%   -0.3%   +0.3%
+  5 to 10 pt               1851   5.6/86.9/ 7.5   6.8/84.7/ 8.5   4.4/88.7/ 7.0      -0.7%   -0.5%   -0.1%
+  above 10 pt              2639   5.5/84.9/ 9.6   6.0/82.7/11.3   4.9/85.1/ 9.9      -0.7%   +1.0%   +2.8%
+
+FREE CASH FLOW (model definition) by size bucket (revenue of T) and horizon
+  size          n        T+1             T+2             T+3         err T+1 err T+2 err T+3   real below P50: h1 h2 h3 (target 50%)
+  <1B         670   9.4/82.8/ 7.8   9.1/83.4/ 7.5   8.1/83.7/ 8.1      -1.4%   +0.1%   +2.9%     54%   50%   43%
+  1-10B      3147   6.4/87.1/ 6.5   6.2/85.5/ 8.3   6.0/84.4/ 9.6      +0.2%   +0.8%   +2.1%     48%   45%   39%
+  10-30B     1413   5.9/88.3/ 5.8   6.2/88.7/ 5.2   5.6/88.3/ 6.1      -0.2%   +0.3%   +0.9%     52%   48%   44%
+  30-100B     542   3.7/91.0/ 5.4   4.4/90.6/ 5.0   4.4/89.8/ 5.7      -0.0%   +0.4%   +0.7%     50%   46%   44%
+  >100B       243   7.4/85.2/ 7.4   6.6/86.0/ 7.4   6.6/86.8/ 6.6      -0.1%   -0.2%   +0.1%     52%   54%   48%
+  all        6015   6.4/87.2/ 6.4   6.4/86.5/ 7.2   6.0/85.8/ 8.1      -0.0%   +0.5%   +1.4%     50%   46%   41%
+  no jump    5266   5.6/89.2/ 5.2   5.8/88.5/ 5.7   5.8/87.5/ 6.7      -0.0%   +0.4%   +1.2%     50%   47%   42%
+  (err = median of the real value over the P50 less 1, for revenue; median of (real - P50) / revenue of T, for the free cash flow)
+
+FREE CASH FLOW (model definition) by growth of the base year (organic)
+  growth < 0%        1344   8.8/82.4/ 8.9   7.7/83.5/ 8.9   7.0/83.6/ 9.4      +0.1%   +0.0%   +1.5%
+  0 to 10%           2234   5.2/90.9/ 3.8   5.8/89.5/ 4.7   6.1/88.6/ 5.2      -0.1%   +0.4%   +1.0%
+  10 to 20%          1211   5.0/89.2/ 5.9   5.5/87.4/ 7.1   4.9/86.7/ 8.4      +0.2%   +0.7%   +1.5%
+  20 to 50%           934   6.5/85.9/ 7.6   6.9/84.0/ 9.1   5.2/83.0/11.9      -0.3%   +1.3%   +2.7%
+  above 50%           265  10.6/78.9/10.6   8.0/80.7/11.4   8.7/79.8/11.4      -0.8%   -0.4%   +1.5%
+  no growth value      27   7.4/59.3/33.3   0.0/80.8/19.2   0.0/84.0/16.0      +4.1%   +5.6%   +7.5%
+
+FREE CASH FLOW (model definition) by acquisition spend of the last 5 years (mean of acquisitions_net_of_cash / revenue)
+  spend < 0.5%             2279   8.5/84.2/ 7.3   8.6/82.8/ 8.6   8.5/82.0/ 9.5      -0.4%   -0.1%   +0.7%   real below P50:  54%  51%  46%
+  0.5% to 2%               1105   5.8/89.9/ 4.3   5.2/89.9/ 4.9   4.8/88.7/ 6.5      -0.3%   +0.2%   +1.3%   real below P50:  54%  48%  41%
+  2% to 5%                  981   4.7/89.7/ 5.6   4.7/89.6/ 5.7   3.9/89.2/ 6.9      +0.3%   +0.6%   +1.5%   real below P50:  47%  45%  39%
+  above 5%                 1650   5.0/88.1/ 6.9   5.1/87.4/ 7.5   4.7/87.2/ 8.1      +0.7%   +1.6%   +2.7%   real below P50:  45%  40%  36%
+
+FREE CASH FLOW (model definition) by range of the free cash flow margin of the last 5 years (a cyclical or unstable margin has a large range)
+  margin range < 5 pt      1539   2.5/95.1/ 2.4   2.3/95.3/ 2.5   2.3/94.7/ 3.0      -0.2%   +0.1%   +0.7%
+  5 to 10 pt               1848   4.9/90.9/ 4.2   5.3/89.8/ 5.0   5.1/88.6/ 6.2      +0.0%   +0.5%   +1.2%
+  above 10 pt              2628   9.7/80.0/10.2   9.6/79.0/11.5   8.8/78.6/12.5      +0.4%   +1.3%   +3.0%
+
+LIMITS
+  - Not fully out of sample unless the result says OUT OF SAMPLE: the parameter table was estimated on all years of the cache.
+  - Restated years: the mapping takes the value of the latest filing for each year, so a restatement after T enters the data of T.
+  - Survivorship: the cache has the companies that exist now.
+  - The value (the P50) is not tested here: `fa dcf returns` tests it against the later stock returns.
+  - The model of the test has no failure hazard, no price and a fixed default rate; the revenue and the free cash flow do not depend on them.

@@ -40,3 +40,20 @@ Method: develop a rule on the companies A to CME (the 215 tickers of the partial
 other companies when the data store has them. A test set does not select the rule that it scores.
 
 Rule: no part is chosen or tuned with the market price (`docs/QUALITY-STANDARDS.md`, section 6).
+
+**State and decisions, 2026-11-20 (Head of Fundamental Research).** Data of 2026-11-19 (data store), seed 7.
+Development half and scoring half: parity of the FNV-1a hash of the ticker (`fa dcf pit --half 0|1`).
+- **A, accepted (default on):** `last_floor = 0`: a base-year organic growth below 0% enters the company mean and
+  the first step as 0% (record A-003). Decline class, scoring half, revenue P50 error T+1 / T+2 / T+3: +2.0 / +7.8 /
+  +11.8% to +0.0 / +5.1 / +7.4%; `--cut 2015`: +3.1 / +12.7 / +17.9% to +1.2 / +8.5 / +13.6%. All company-years:
+  -0.4 / +0.7 / +1.6% to -0.7 / +0.1 / +1.0%. Files: `analysis/priors/auto_pit_floor_{before,after}_2026-11-20.txt`.
+  A recovery term is refused: the rest of the error is mostly the base years 2019 and 2020 (one episode).
+- **B, not accepted (option only, `margin_sigma_nu`):** the band of a stable margin is too wide in sample (95%), but
+  out of sample (`--cut 2015`) the bands are already at or below the target (82.6 / 80.8 / 79.1%), and a narrower
+  band makes the size rows 1-10B and 30-100B worse by more than 2 points. Examine again with a table made from a
+  longer panel.
+- **C, accepted:** the output gives the mean of the value and its standard error; the screen CSV has a `mean`
+  column. The headline stays the P50: the mean is unstable for some tickers (median mean / P50 1.34 over 392
+  tickers, P99 8.97; the top 1% of paths hold 58% of the mean of EXE). No default changed.
+Open: the gate (model-validator, code-reviewer); merge after `T-20261120-dcf-conventions-decision`.
+Candidate parts 1, 2, 4 and 5 of the list above are not started.

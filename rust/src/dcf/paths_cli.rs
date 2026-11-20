@@ -173,6 +173,7 @@ pub fn run(model_text: &str, rest: &[String]) -> R<()> {
             "p10": q[0], "p25": q[1], "p50": q[2], "p75": q[3], "p90": q[4],
             "share_below_price": below.iter().map(|(p, s)| json!({"price": p, "share": s})).collect::<Vec<_>>(),
             "value_at_means": det.per_share[0],
+            "mean": sim.mean(), "mean_se": sim.mean_se(), "top_1pct_share_of_mean": sim.top_percent_share(),
             "tv_share_at_means": det_tv_share,
             "tv_share_paths": sim.tv_share(),
             "terminal_growth_capped": {"by_process": sim.capped_share(CAP_PROCESS), "by_rf": sim.capped_share(CAP_RF), "by_gap_guard": sim.capped_share(CAP_GAP)},
@@ -195,6 +196,7 @@ pub fn run(model_text: &str, rest: &[String]) -> R<()> {
     }
     println!("\nHEADLINE (value for each share)");
     println!("  P10 {:.2} | P25 {:.2} | P50 {:.2} | P75 {:.2} | P90 {:.2}", q[0], q[1], q[2], q[3], q[4]);
+    println!("  mean {:.2} (standard error {:.2} with {n} paths); the mean is the value of the expected cash flows", sim.mean(), sim.mean_se());
     for (p, s) in &below {
         println!("  paths with value below ${p:.2}: {:.1}%", s * 100.0);
     }

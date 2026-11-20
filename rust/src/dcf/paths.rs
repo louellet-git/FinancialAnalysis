@@ -141,6 +141,30 @@ impl Sim {
         let s = sorted_copy(&self.per_share);
         [10.0, 25.0, 50.0, 75.0, 90.0].map(|q| percentile(&s, q))
     }
+    /// The mean of the value for each share over the paths. `DCF` values expected cash flows, so the mean (not the median)
+    /// is the number to compare with a price.
+    pub fn mean(&self) -> f64 {
+        self.per_share.iter().sum::<f64>() / self.n.max(1) as f64
+    }
+    /// The standard error of the mean of the paths: the sample standard deviation over the square root of the number of paths.
+    pub fn mean_se(&self) -> f64 {
+        let n = self.per_share.len();
+        if n < 2 {
+            return 0.0;
+        }
+        let m = self.mean();
+        let var = self.per_share.iter().map(|v| (v - m) * (v - m)).sum::<f64>() / (n as f64 - 1.0);
+        (var / n as f64).sqrt()
+    }
+    /// The share of the sum of the positive values that the largest 1% of the paths hold (a mean that one tail drives has a
+    /// large share; 0.01 for equal values).
+    pub fn top_percent_share(&self) -> f64 {
+        let mut v: Vec<f64> = self.per_share.iter().map(|x| x.max(0.0)).collect();
+        v.sort_by(|a, b| b.total_cmp(a));
+        let k = (v.len() / 100).max(1);
+        let total: f64 = v.iter().sum();
+        if total > 0.0 { v[..k].iter().sum::<f64>() / total } else { 0.0 }
+    }
     pub fn p50(&self) -> f64 {
         percentile(&sorted_copy(&self.per_share), 50.0)
     }

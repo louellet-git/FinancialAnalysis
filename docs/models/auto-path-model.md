@@ -36,6 +36,7 @@ value, 3 no value, 2 an error. `fa dcf screen` gives one CSV row for each ticker
 | Record | Name | Value | One line |
 |---|---|---|---|
 | A-001 | Terminal growth | 2.25% (std 0.75%) | Repo convention from the IBM driver review |
+| A-003 | Floor on the growth of the base year | 0% | A base year with growth below 0% enters the company mean and the first step of the growth as 0% (`last_floor`) |
 | not written | Equity risk premium | 4.41% (std 0.75%, lower bound 2%) | Damodaran implied value, 2026-11-19 |
 | not written | Risk-free rate | 10-year zero yield of the GSW curve | Hull-White `a` 0.14, `sigma` 0.0075 |
 | not written | Horizon | 10 years | Repo convention |
@@ -48,6 +49,12 @@ The records "not written" belong to the board ticket
 ## Limits
 - The model is a screen. Its P10 to P90 band covers about 80% of real revenue in the
   point-in-time test, with known errors (`docs/HIDDEN-ASSUMPTIONS.md`, #199).
+- After a year of decline the revenue P50 stays too low (T+2 and T+3), mostly for the base years 2019 and 2020
+  (`docs/HIDDEN-ASSUMPTIONS.md`, #286). The bands for a stable margin are too wide; the rule `margin_sigma_nu` is
+  measured and is not on by default (#286).
+- The output gives the mean of the simulated value for each share and its standard error. A DCF with a risk-adjusted
+  rate values expected cash flows: compare the mean with a price, not the P50. For a ticker with a small P50 the mean can
+  be driven by a few paths (`top_1pct_share_of_mean` in the `--json` output).
 - No bank, insurer, REIT or fund. No pension, lease or minority item in the net debt.
 - The median value is far below the market price for most tickers (median ratio 0.49 on
   2026-11-19). The investigation shows that no single defect causes this

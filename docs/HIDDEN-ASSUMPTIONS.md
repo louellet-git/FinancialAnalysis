@@ -1885,6 +1885,19 @@ On 2026-11-20: rank correlation of P50 / price with the 3-year return +0.12 (mea
 revenue above $30B; the lowest quintile (values near or below zero) also had high returns.
 *Evidence:* `analysis/priors/auto_returns_2026-11-20.txt`.
 
+**286. Two systematic errors of the automatic model: the year after a decline, and the bands for a stable margin (2026-11-20).**
+(1) *A decline in the base year.* The company mean of the growth is the mean of the last 4 values, so a decline year enters it as a rate that stays.
+The panel shows that the next year is not a decline: the median real growth of T+1 is +2.7% to +7.1%, and the larger the decline, the larger the growth.
+Test with the mean at the cell value (`growth_w=0`): the median error of the P50 at T+2 and T+3 falls from +7.6% and +11.3% to +3.1% and +3.1%, so the company mean is the main part.
+The year-1 step (`growth_phi=0`) only gives +1.5% to 0.0% at T+1. The correction (A-003) floors the growth of the base year at 0% for the company mean and the first step.
+The error that stays (+5.1% and +7.4% at T+2 and T+3 on half 1; +8.5% and +13.6% with `--cut 2015`) is mostly the base years 2019 and 2020: the real growth of 2021 was +13% to +20% for those companies,
+a common shock that no rule of the company history sees at the base date. A recovery term that is estimated on this panel fits that episode: it needs a decision of the owner.
+(2) *A stable margin.* The width comes from the weight of the table shock in the shock size of the margin (`own_sigma_nu` = 4 years). The company mean (`margin_w=1`, no uncertainty of the mean) changes the coverage by 0.2 points only.
+`fa dcf pit --diag nu` tests the weight on the panel with the margin of the next year: the best weight by the mean log density is 1 year (half 0), 2 years (half 1) and 0.5 years (table up to 2015).
+`margin_sigma_nu=1` (chosen on half 0) takes the free cash flow coverage of the stable class (range below 5 points) on half 1 from 94.5% to 90.2% (T+3), but with `--cut 2015` the size bucket 1-10B falls from 78.0% to 74.2% at T+3,
+which is more than 2 points under the target. The rule stays off by default. The panel since 2016 has larger margin shocks than the panel before it (the cut run is below 80% before the change).
+*Evidence:* `fa dcf pit --half 0|1 --diag decline`, `--diag nu`, `--rules last_floor=-1`, `--rules margin_sigma_nu=1`; the tests `a_decline_in_the_base_year_enters_the_growth_mean_and_the_first_step_as_zero`.
+
 ## Could not verify
 
 - (none of the named traps failed verification — all located in current code/docs; the
