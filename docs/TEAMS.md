@@ -61,8 +61,8 @@ heads, their areas, their agents and their message channel.
 5. The orchestrator reads the diff and runs the real command before it commits.
 6. It applies the gates of `docs/QUALITY-STANDARDS.md`. After two review cycles it
    decides.
-7. It adds a row to the ledger of its own folder for each run (`CLAUDE.md`, "Token ledger"). After the merge it deletes
-   the ticket file.
+7. It adds a row to the ledger of its own folder for each run (`CLAUDE.md`, "Token ledger"). After the merge it moves
+   the ticket file to `PLANNING/board/done/` (never deletes it).
 8. A decision for a person (a new ticker, a closed decision, a rule, a paid source) goes
    to the person.
 
