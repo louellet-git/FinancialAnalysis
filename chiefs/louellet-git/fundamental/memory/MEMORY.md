@@ -21,8 +21,8 @@ each assumption: this head decides, with a reason that does not use the price.
   (SEP 2026-09-16). FOMC and not CBO: we can read it; ALFRED keeps each vintage. Pull request 77.
 - Acquisition charge = w x mean spend, fading with the credited growth above L. Pull request 77.
 - A base-year decline enters the growth mean as 0% (no fitted number). Pull request 81.
-- Market-implied search uses the value at the means: a risk-adjusted DCF values expected cash flows.
-  The screen P50 / price is lower by construction (IBM $159.72 at the means, P50 $132.87).
+- Market-implied search uses the value at the means because it is deterministic. It is NOT the expected
+  value: the mean is higher (median value at the means / mean 0.89). Statistic matters: sp500 V/price 0.63, mean/price 0.77, P50/price 0.477.
 - First market result (data of 2026-11-18): the S&P 500 list implies a premium of 2.32%, the next 500
   list 3.12% (model 4.41%). Energy, Telecom, NoDur above the price; BusEq far below; Utils negative.
 
@@ -33,6 +33,8 @@ each assumption: this head decides, with a reason that does not use the price.
   "compare the mean with a price"). An agent can write numbers that no run made (V2): the record gets
   the command of each number, and I rerun two of them before the gate.
 - Two branches that change `auto.rs` conflict in `Rules::default`: check each field after a merge.
+- I made the same kind of error two times (V1 of 81, F1 of the implied file): a claim about the mean or the
+  expected value with no run. Before a claim on a statistic, run `fa dcf auto` and read the mean line.
 
 ## Standing words of the person
 - Immediate goal: the stochastic DCF engine, for stocks only; no option work in this area.
