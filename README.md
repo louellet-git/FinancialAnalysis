@@ -20,12 +20,11 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 ```bash
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program that makes the standard variables (necessary)
 cargo build --release --manifest-path rust/Cargo.toml            # the `fa` program
-cargo test --manifest-path rust/mapcheck/Cargo.toml    # 92 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked    # 568 Rust tests (550 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research, data sync)
+cargo test --manifest-path rust/mapcheck/Cargo.toml    # 97 Rust tests, no network
+cargo test --manifest-path rust/Cargo.toml --locked    # 569 Rust tests (551 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research, data sync)
 ```
 
-No Python test remains. The only Python code that remains is the legacy SEC client with its
-callers; see "Standard input variables".
+The repo has no Python code.
 
 Run all commands from the repo root.
 
@@ -45,7 +44,7 @@ Do these steps one time on a new computer. The commands run from the root of the
    - bash: `cp .env.example .env`
    - PowerShell: `Copy-Item .env.example .env`
 
-3. Set `SEC_USER_AGENT` (a name and a contact, for example `FinancialAnalysis your-name your-email`). The SEC asks for it in each request. It is an environment variable; `fa sync` does not read it from `.env`. Without it, `fa sync` skips the SEC data sets and says so.
+3. Optional: set `SEC_USER_AGENT` (a name and a contact, for example `FinancialAnalysis your-name your-email`) if you want to use your own contact. The SEC asks for a contact in each request. The file `sec_contact.toml` of the repo gives the project contact, and the variable replaces it. It is an environment variable; `fa sync` does not read it from `.env`. If there is no variable and no good file, `fa sync` skips the SEC data sets and says so.
 
    - bash: `export SEC_USER_AGENT="FinancialAnalysis your-name your-email"`
    - PowerShell: `$env:SEC_USER_AGENT = "FinancialAnalysis your-name your-email"`
@@ -174,13 +173,9 @@ The Rust program `rust/mapcheck` makes the standard variables. It is the only
 implementation: no Python code does this work. `fa import`, `fa analyze` and `fa report`
 get their data from it.
 
-One Python command remains: `python -m scripts.import_edgar IBM 2026-07-01 [--output-dir data/raw]
-[--lookback-months 18] [--lookahead-months 6]`. It downloads the filing files with the
-legacy SEC client in `financial_analysis/`. No Rust command makes the same download; the
-Rust program `mapcheck filing` reads the filing statements from the SEC data instead. The
-legacy client stays until the owner decides the new place of the SEC contact text (board
-ticket `python-to-rust`). It needs the packages of
-`requirements.txt` (`pip install -r requirements.txt`).
+The Rust program `mapcheck filing` reads the filing statements from the SEC data. The SEC contact
+is in the file `sec_contact.toml` (a project address, public on purpose); the environment variable
+`SEC_USER_AGENT` replaces it.
 
 - Each variable has a list of tags with the same meaning. The first tag that has a
   value is used.
@@ -208,7 +203,7 @@ $M fetch --prospectus ANT          # the latest prospectus of a new registrant (
 $M filing IBM --focus              # the capex, depreciation and debt lines of the latest 10-K
 $M filing VZ --statement cash      # one statement of the 10-K as the company structures it
 $M crosscheck --tickers-file rust/mapcheck/universe/batch50.txt   # standard variables against the filing
-$M fetch --top 2000 --write-list rust/mapcheck/universe/top2000.txt   # get data (set SEC_USER_AGENT)
+$M fetch --top 2000 --write-list rust/mapcheck/universe/top2000.txt   # get data (the SEC contact: sec_contact.toml)
 ```
 
 On Windows the program is `rust\mapcheck\target\release\mapcheck.exe`.
@@ -394,8 +389,8 @@ Limits:
 - The server accepts connections from this computer only (127.0.0.1).
 - The Monte Carlo DCF runs only for a ticker with `analysis/<TICKER>/driver_model.toml`.
   The page shows the percentiles as a range chart. It does not show a histogram.
-- A ticker that is not in `data/raw/` needs the SEC. Set `SEC_USER_AGENT` before you
-  start the server (see `rust/mapcheck/README.md`). A fresh clone has no `data/raw/`,
+- A ticker that is not in `data/raw/` needs the SEC. The SEC contact comes from `sec_contact.toml` (the variable
+  `SEC_USER_AGENT` replaces it; see `rust/mapcheck/README.md`). A fresh clone has no `data/raw/`,
   thus the first look-up of each ticker needs the SEC.
 - The rates and the bonds need a network connection to the public data sites. If a site
   does not answer, the page shows the error text. A call that waits for a site can take
@@ -540,16 +535,15 @@ The pipeline supports US-GAAP filers on EDGAR. ETFs and IFRS filers cause an
 ```
 CLAUDE.md                 rules for agents (read first)
 README.md                 this file
-requirements.txt          packages of the legacy SEC client (the only Python code)
+sec_contact.toml         the SEC contact (project address; SEC_USER_AGENT replaces it)
 rust/mapcheck/            Rust: SEC data to standard variables, checks, filing statements
 .env.example              names of the optional API keys
 .github/workflows/        CI: runs the Rust tests on a pull request that changes code (not for a change of documents only)
 
-financial_analysis/       the registry standard_variables.toml; the legacy SEC client (Python)
+financial_analysis/       the registry standard_variables.toml (data)
 analysis/IBM/             IBM model (version 4), reviews, published report
 analysis/JNJ/             JNJ first pass (not reviewed)
 trading/                  research notes of the 22 option bots, LEADERBOARD.md (the code is in rust/src/trading/)
-scripts/                  import_edgar.py: the one Python command (legacy SEC client)
 rust/                     Rust: `fa` command (the valuation, the report, the rates, the option trading: fetch, backtest, paper)
 
 docs/                     ARCHITECTURE.md, HIDDEN-ASSUMPTIONS.md, INDEX.md, design documents

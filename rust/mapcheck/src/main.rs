@@ -42,7 +42,8 @@ check (no network; with no ticker it runs all tickers in the cache)
     --strict             exit code 1 if a ticker has status FAIL or ERROR
     --registry FILE      use this registry file, not the built-in one
 
-fetch (network: SEC EDGAR; set the environment variable SEC_USER_AGENT)
+fetch (network: SEC EDGAR; the contact is in the file sec_contact.toml of the repo;
+    the environment variable SEC_USER_AGENT is optional and replaces it)
     --top N              the first N companies of the SEC ticker list
     --write-list FILE    write the tickers that are in the cache after the run
     --delay S            seconds between requests (default 0.15, minimum 0.1)

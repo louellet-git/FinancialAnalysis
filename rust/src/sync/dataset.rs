@@ -120,7 +120,7 @@ impl DataSet {
         }
     }
 
-    /// Does the data set need the SEC contact text (`SEC_USER_AGENT`)?
+    /// Does the data set need the SEC contact text (`sec_contact.toml` or `SEC_USER_AGENT`)?
     pub fn needs_sec_contact(self) -> bool {
         matches!(self, DataSet::Sec | DataSet::Filings)
     }

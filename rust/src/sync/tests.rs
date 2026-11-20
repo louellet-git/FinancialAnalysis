@@ -111,7 +111,7 @@ fn norm(text: &str) -> String {
 }
 
 fn env(sec: bool, keys: bool) -> EnvInfo {
-    EnvInfo { sec_contact: sec, keys: KeyInfo { tiingo: keys, alpaca: keys, fred: keys, fmp: keys } }
+    EnvInfo { sec_contact: if sec { Ok("file sec_contact.toml".to_string()) } else { Err("no SEC contact found (test)".to_string()) }, keys: KeyInfo { tiingo: keys, alpaca: keys, fred: keys, fmp: keys } }
 }
 
 #[test]
@@ -261,8 +261,8 @@ fn without_the_sec_contact_the_sec_sets_are_skipped_with_a_line_and_the_rest_run
     let b = Bench::new("nosec", "2026-11-19");
     let (text, code, fake) = b.run(&["IBM", "--only", "sec,filings,prices"], env(false, false), b.fake());
     assert_eq!(code, 0, "{text}");
-    assert!(text.contains("sec skipped: SEC_USER_AGENT is not set"), "{text}");
-    assert!(text.contains("filings skipped: SEC_USER_AGENT is not set"), "{text}");
+    assert!(text.contains("sec skipped: no SEC contact found (test)"), "{text}");
+    assert!(text.contains("filings skipped: no SEC contact found (test)"), "{text}");
     assert!(text.contains("prices 1 updated"), "{text}");
     let calls = fake.calls.lock().unwrap();
     assert!(calls.iter().all(|(s, _)| *s == DataSet::Prices));
@@ -339,4 +339,14 @@ fn a_host_that_fails_in_the_same_way_in_sequence_is_reported_one_time_and_its_it
     assert!(text.contains("fred 0 updated") && text.contains("failed data set(s): fred"), "{text}");
     assert!(text.contains("BLOCKED for this run (unreachable") , "{text}");
     assert!(!text.contains("https://"), "the summary has no URL: {text}");
+}
+
+#[test]
+fn the_status_line_names_the_place_of_the_sec_contact_and_never_the_contact() {
+    let line = env(true, false).describe();
+    assert!(line.starts_with("SEC contact: file sec_contact.toml;"), "{line}");
+    let variable = EnvInfo { sec_contact: Ok("SEC_USER_AGENT".to_string()), keys: KeyInfo::default() }.describe();
+    assert!(variable.starts_with("SEC contact: SEC_USER_AGENT;"), "{variable}");
+    assert!(!variable.contains('@'));
+    assert!(env(false, false).describe().starts_with("SEC contact: none;"));
 }

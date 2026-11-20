@@ -354,7 +354,7 @@ Sources (one request for each source, 2 seconds apart): prices from the Yahoo ch
 chain from the Cboe delayed quotes, the revenue estimates from Financial Modeling Prep (key: FMP_API_KEY
 in the environment or in .env). The forward consensus (EPS, price targets, ratings), the earnings surprises
 and the earnings dates are read from the cache that `fa estimates get` and `fa earnings calendar` write
-(Nasdaq site API, no key); this command makes no request to that source. SEC requests need SEC_USER_AGENT.";
+(Nasdaq site API, no key); this command makes no request to that source. SEC requests use the contact in the file sec_contact.toml of the repo (the environment variable SEC_USER_AGENT replaces it).";
 
 pub fn parse_args(args: &[String]) -> Result<(String, Options), String> {
     let mut ticker = None;
