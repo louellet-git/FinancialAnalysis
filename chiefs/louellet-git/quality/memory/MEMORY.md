@@ -38,6 +38,8 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   rejected alternative of a record.
 - 2026-11-20 portfolio review: a poison test on the SEC facts (not only on the prices) found a
   look-ahead (restated values of old years). Ask for a poison test of each data source that a backtest reads.
+- 2026-11-20 vol-1 review: a calibration that prints its parameters with no convergence status hid a
+  stop at the iteration cap and parameters on their bounds. Ask each fit review for the status and the bounds.
 - Precedent, 2026-11-20: in cycle 2, a remaining limit that is measured and written in the record
   passes, with a ticket as a condition (no third cycle). The automatic model is a screen.
 
