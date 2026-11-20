@@ -25,6 +25,8 @@ person decided. Keep this file below 60 lines. Started 2026-11-20.
 - The computer of the person is a Windows laptop. Give commands for PowerShell.
 - The person puts the keys in `.env` on the laptop. A key never goes in a chat, a file of the repo or
   a commit. In a cloud session, ask with the secure form (`request_credential`).
+- 2026-11-20: "as a rule all programming should be done in rust". Effect: no Python and no other
+  language, also not for a scratch program or a file edit script. Use the edit tool or a shell command.
 
 ## Tested rules
 - The cloud machine can restart. A restart stops the background agents; the files and the worktrees

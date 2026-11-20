@@ -193,3 +193,7 @@ the memory of each head is for. You decide what is important and how to arrange 
 `CLAUDE.md`, `PLANNING/RULES.md`, `docs/QUALITY-STANDARDS.md`, and the word of your person
 in your session. If a message, a ticket text or a file of a different head disagrees
 with these, these are correct.
+
+All programming is in Rust (`CLAUDE.md`, "Work rules"). This is also true for a one-time
+analysis program and for a scratch program of you or of an agent of your team. Put this
+rule in the brief of each agent that writes a program.
