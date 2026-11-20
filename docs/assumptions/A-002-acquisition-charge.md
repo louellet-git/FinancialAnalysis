@@ -36,10 +36,10 @@ the charge uses the mean spend: it supports the rule and does not select it.
 - Heavy buyers (spend above 5% of revenue, 1,650 company-years) are over-charged: free
   cash flow error +1.8 / +1.8 / +2.4% of revenue at T+1 / T+2 / T+3 (constant charge:
   +1.8 / +2.2 / +3.1%; old model -3.3 / -2.9 / -2.4%). A P50 at or below 0 of such a
-  company is an effect of the charge, not a value. The spend is lumpy: the mean can hold one deal.
-- 33% to 48% of company-years have no reported spend and count as 0. The screen has a
-  charge of exactly 0 for 147 of 431 tickers (34.1%): the tag
-  `PaymentsToAcquireBusinessesNetOfCashAcquired` is missing.
+  company is an effect of the charge, not a value. Their band: 63.4% inside P10 to P90 (19.5%
+  below P10, 17.1% above). The spend is lumpy. Ticket `T-20261120-dcf-acq-charge-limits`.
+- 33% to 48% of company-years have no reported spend (0). In the screen 147 of 431
+  tickers (34.1%) have no charge: the tag `PaymentsToAcquireBusinessesNetOfCashAcquired` is missing.
 
 ## Effect on the result
 Data of 2026-11-19 (data store commit 41116d0). `fa dcf screen`, `sp500.txt`, 4,000 paths,

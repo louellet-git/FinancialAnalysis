@@ -2,7 +2,7 @@
 id: T-20261120-dcf-conventions-decision
 title: Decide the long-run growth and the acquisition charge of the automatic model
 area: engine
-status: in-progress
+status: review
 owner: louellet-git
 head: fundamental
 order: 1
@@ -59,3 +59,7 @@ $128.84 (old) and $140.71 (new), seed 7. Open, in this order:
 
 **State, 2026-11-20 21:28 UTC.** The full runs are done (records A-001 and A-002, section "Effect on the
 result"). The gate request went to the Head of Quality and Risk. The pull request opens after a pass.
+
+**Gate, 2026-11-20.** Head of Quality and Risk, review cycle 2 on commit db32019: PASS-WITH-NOTES
+(`model-validator` PASS-WITH-NOTES, `code-reviewer` PASS). The two conditions are done: the ticket
+`T-20261120-dcf-acq-charge-limits` and the class coverage in A-002. Pull request open.

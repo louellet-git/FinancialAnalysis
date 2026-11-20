@@ -85,6 +85,10 @@ The repo gives analysis. It does not send orders to a broker.
 - **Model documents.** Each model has a model document (`docs/models/`) and each
   assumption has a record (`docs/assumptions/`). A change of an assumption value changes
   its record in the same pull request.
+- **Cost of the checks.** The owner pays for the GitHub Actions runs. Run the tests on your machine
+  before a pull request with code, put small document changes in one pull request, push to an open
+  pull request only to correct it, and do not change the workflow, its path filter or its cache.
+  The full rules: `chiefs/ORIENTATION.md`, section 6.
 - **Token ledger.** Add a row to `PLANNING/token-ledger.md` for each run. A head adds the
   row to the `ledger.md` file of its own folder (`chiefs/ORIENTATION.md`, section 8).
 
@@ -109,8 +113,8 @@ Do not use a first pass alone for a trade.
 ## Commands
 
 ```bash
-cargo test --manifest-path rust/mapcheck/Cargo.toml   # 97 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked   # 576 Rust tests (558 + 17 + 1), no network
+cargo test --manifest-path rust/mapcheck/Cargo.toml   # 100 Rust tests, no network
+cargo test --manifest-path rust/Cargo.toml --locked   # 584 Rust tests (566 + 17 + 1), no network
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
 rust/mapcheck/target/release/mapcheck fetch --submissions IBM   # SEC 8-K item 2.02 list into data/raw/IBM/sec_8k_earnings.json
 rust/target/release/fa estimates get IBM; rust/target/release/fa estimates show IBM   # consensus, targets, surprises (Nasdaq site, no key)

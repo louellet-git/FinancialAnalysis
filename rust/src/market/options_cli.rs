@@ -183,14 +183,14 @@ pub fn snapshot_alpaca_with(repo: &Path, cache: &Path, ticker: &str, today: &str
         let mut rate = rate_fn(repo, flat_rate);
         let fill = option_history::fill_from_mids(&mut snap, &mut rate)?;
         snap.note = Some(format!(
-            "Chain snapshot of Alpaca (roots {}). Index options: Alpaca gives no index level and no implied volatility. The forward of each expiry is from put-call parity of the mids of bid and ask ({} of {} expiries); the implied volatility is Black-76 on that forward for out-of-the-money and near-the-money quotes ({} quotes); the spot is {}. No open interest.",
+            "Chain snapshot of Alpaca (roots {}). Index options: Alpaca gives no index level and no implied volatility. The forward of each expiry is from put-call parity of the mids of bid and ask ({} of {} series, one root and one expiry); the implied volatility is Black-76 on that forward for out-of-the-money and near-the-money quotes ({} quotes); the spot is {}. No open interest.",
             roots.join(","),
             fill.expiries_with_parity,
             fill.expiries,
             fill.filled,
             match &fill.level_from {
-                Some((e, n, f)) => format!("the forward {f:.2} of the expiry {e} ({n} days away)"),
-                None => "not known (no expiry within 10 days has a forward)".to_string(),
+                Some((r, e, n, f)) => format!("the forward {f:.2} of the series {r} {e} ({n} days away)"),
+                None => "not known (no series within 10 days has a forward)".to_string(),
             }
         ));
         extra = format!(", implied volatility for {} quotes from put-call parity", fill.filled);

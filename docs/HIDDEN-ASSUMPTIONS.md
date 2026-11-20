@@ -1272,6 +1272,13 @@ share and mean: 3 standard errors.
 template (`standard`, `bank`, `insurer`, `reit`, `fund`). The `standard` template mixes all industries: an oil company, a
 software company and a retailer have one set of parameters. The argument `sector` of `priors_for` is not used.
 *Evidence:* `rust/src/dcf/calibrate.rs` (`priors_for`), `rust/src/dcf/calib_report.rs` (`render_panel`).
+*Update 2026-11-20:* the file `<T>/sec_8k_earnings.json` now has the SIC code (`mapcheck::sec::company_sic`, sector
+table `ff12_sector`), but the priors do not use it yet. The code is the code of the filer TODAY, not at the date of a
+past filing. A point-in-time test that groups by sector thus uses a fact from the future for a company that changed
+its code. A file written before 2026-11-20 has no code: `company_sic` gives `None` until the file is fetched again.
+On 2026-11-20 the 505 files `sec_8k_earnings.json` of the data store had no code; the store gets the codes when the
+Head of Technology fetches the files again. A code in no range of the table is "Other" (a catch-all class, not an
+industry), and a filer with no code has no sector.
 
 **171. A restated year has the value of the latest filing, and two years can come from two filings.** The mapping takes, for each
 period, the fact of the latest filing. The revenue of year t and the revenue of year t-1 can come from two different filings. A
@@ -1781,7 +1788,8 @@ expiry: the "level" of a VIX snapshot is a future (12.95 on 2024-06-07 for an ex
 (SPX 400 call: bid 6,669, ask 6,788, last 6,948); the volatility is set for out-of-the-money and near-the-money quotes only. Check 2024-06-07: SPX at-the-money volatility 10.0 to 10.4% (expiries 2024-06-24 to 06-28), SPY 10.7 to 11.4%,
 VIX index 12.22 (a 30-day measure of the whole smile, so it is higher than the at-the-money value). The history of an index uses the SPY close times 10 as a level to pick the strike range: it is 0.1% to 0.3% from the index
 and the ratio changes with the dividends of SPY. The VIX level of the history is the Cboe file (`fa sync --only vix` first). A missing level is an error text. NDX and RUT have no proxy in the code (`--level SYMBOL:RATIO`; not tested).
-*Evidence:* `option_history.rs` (`fill_from_mids`, `level_for`, tests), `option_iv.rs` (`forward_from_parity_blind`).
+Each series (one root and one expiry) has its own forward. On a third Friday, SPX (AM settlement) and SPXW (PM settlement) of the same date are two series (corrected 2026-11-20; before, the second root replaced the first in the parity pairs). The time to expiry is in whole days for the two roots: the 6.5 hours between the two settlements are not in the model. When two series at the same distance have a forward, the level comes from the first root in alphabetical order (SPX). With no spot, the `in_the_money` flag of each quote uses that one level, so an SPXW quote within about 10 points of the money can have the flag of the SPX level; the volatility does not use the flag.
+*Evidence:* `option_history.rs` (`fill_from_mids`, `day_snapshot`, `level_for`, tests), `option_iv.rs` (`forward_from_parity_blind`).
 
 **281. The list of expired index contracts holds the last six months only.** MEASURED 2026-11-20: `GET /v2/options/contracts?underlying_symbols=SPX&status=inactive` gives contracts with an expiry from about March 2026; an expiry in 2024, 2025
 or January 2026 gives an empty list (SPY gives 2024). The list of an underlying `SPX` includes the roots `SPX` and `SPXW` (and a root `SPXO` that the program leaves out). The bars of an expired contract of 2024 exist, so the program makes
