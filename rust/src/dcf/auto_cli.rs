@@ -45,8 +45,11 @@ fa dcf auto TICKER [OPTIONS]
                   growth, the lower of the 10-year zero yield and this number, the growth of the economy of the FOMC
                   SEP; long_run=0, a negative number or `off`: off, the old model: the fade to the yield and the mean
                   terminal growth = terminal_growth, default 2.25%), fade_years, growth_w (weight of the history),
-                  growth_phi
-                  margin: margin_pool_se, margin_w, margin_last (the target is the margin of the base year)
+                  growth_phi, last_floor (default 0: a base year with growth below this value enters the company mean
+                  and the first step as this value; -1 is off)
+                  margin: margin_pool_se, margin_w, margin_last (the target is the margin of the base year),
+                  margin_sigma_nu (weight in years of the table shock in the shock size of the margin; 0 or more;
+                  0 = the table value only; default own_sigma_nu)
                   discount: rf (a fixed rate), erp, beta_weight, equity_weight_one, terminal_growth (the mean; it turns
                   long_run off, and a later long_run= in the same text turns it on again: the order matters), terminal_rf
                   (the fade level and the terminal mean are both the 10-year zero yield; wins over long_run), years
@@ -377,6 +380,8 @@ pub struct ScreenValue {
     pub p10: f64,
     pub p50: f64,
     pub p90: f64,
+    /// The mean of the value for each share over the paths.
+    pub mean: f64,
     pub price: Option<f64>,
     pub share_below: Option<f64>,
     pub implied_g: Option<f64>,
@@ -493,6 +498,7 @@ fn simulate_row(m: &AutoModel, spec: &PathsSpec, market: &Market, cfg: &ScreenCo
         p10,
         p50,
         p90,
+        mean: sim.mean(),
         price: market.price,
         share_below: share,
         implied_g: implied,
@@ -512,7 +518,7 @@ fn simulate_row(m: &AutoModel, spec: &PathsSpec, market: &Market, cfg: &ScreenCo
     })
 }
 
-pub const CSV_HEADER: &str = "ticker,status,template,size,base_revenue,growth_start,growth_long_run,margin_start,margin_target,p10,p50,p90,price,p50_over_price,share_below_price,implied_long_run_growth,ev_over_revenue,warnings,growth_values,refusal,model_rate,implied_rate,sbc_ratio,net_debt,shares,beta,equity_weight,tv_share,acq_ratio";
+pub const CSV_HEADER: &str = "ticker,status,template,size,base_revenue,growth_start,growth_long_run,margin_start,margin_target,p10,p50,p90,price,p50_over_price,share_below_price,implied_long_run_growth,ev_over_revenue,warnings,growth_values,refusal,model_rate,implied_rate,sbc_ratio,net_debt,shares,beta,equity_weight,tv_share,acq_ratio,mean";
 
 /// The cost of capital of year 1 at the means of the model (the 10-year zero yield as the risk-free rate).
 pub fn model_rate_of(sm: &Summary) -> f64 {
@@ -583,7 +589,7 @@ pub fn csv_line(r: &ScreenRow) -> String {
             v.warnings,
             v.n_hist
         ) + &format!(
-            ",{},{},{},{},{},{},{},{},{}",
+            ",{},{},{},{},{},{},{},{},{},{}",
             num(v.model_rate, 4),
             v.implied_rate.map_or(String::new(), |x| format!("{}{}", if v.implied_rate_below { "<" } else { "" }, num(x, 4))),
             num(v.sbc_ratio, 4),
@@ -592,9 +598,10 @@ pub fn csv_line(r: &ScreenRow) -> String {
             num(v.beta, 3),
             num(v.equity_weight, 3),
             num(v.tv_share, 3),
-            num(v.acq_ratio, 4)
+            num(v.acq_ratio, 4),
+            num(v.mean, 2)
         ),
-        Err((key, _)) => format!("{},{},{},,,,,,,,,,,,,,,,,{},,,,,,,,,", r.ticker, r.status, r.template, key.replace(',', ";")),
+        Err((key, _)) => format!("{},{},{},,,,,,,,,,,,,,,,,{},,,,,,,,,,", r.ticker, r.status, r.template, key.replace(',', ";")),
     }
 }
 

@@ -141,6 +141,44 @@ impl Sim {
         let s = sorted_copy(&self.per_share);
         [10.0, 25.0, 50.0, 75.0, 90.0].map(|q| percentile(&s, q))
     }
+    /// The number of paths whose value for each share is NaN or infinite. `mean`, `mean_se` and `top_percent_share` leave
+    /// them out; the output of the commands says how many.
+    pub fn non_finite(&self) -> usize {
+        self.per_share.iter().filter(|v| !v.is_finite()).count()
+    }
+    /// The mean of the simulated value for each share over the paths with a finite value (negative values count). NaN if
+    /// there is no such path. A measurement of the distribution, not a better estimate than the P50: it is unstable when one
+    /// tail holds a large share (`top_percent_share`), and it is not tested against later returns.
+    pub fn mean(&self) -> f64 {
+        let v: Vec<f64> = self.per_share.iter().copied().filter(|x| x.is_finite()).collect();
+        if v.is_empty() {
+            return f64::NAN;
+        }
+        v.iter().sum::<f64>() / v.len() as f64
+    }
+    /// The standard error of `mean`: the sample standard deviation over the square root of the number of finite paths.
+    /// NaN if there is no finite path; 0 for one path.
+    pub fn mean_se(&self) -> f64 {
+        let v: Vec<f64> = self.per_share.iter().copied().filter(|x| x.is_finite()).collect();
+        match v.len() {
+            0 => f64::NAN,
+            1 => 0.0,
+            n => {
+                let m = v.iter().sum::<f64>() / n as f64;
+                let var = v.iter().map(|x| (x - m) * (x - m)).sum::<f64>() / (n as f64 - 1.0);
+                (var / n as f64).sqrt()
+            }
+        }
+    }
+    /// The share of the sum of the values above zero that the largest 1% of the finite paths hold (at least one path). A
+    /// negative value counts as 0 in the sum and in the order. 0.01 for equal positive values; 0 if no value is above zero.
+    pub fn top_percent_share(&self) -> f64 {
+        let mut v: Vec<f64> = self.per_share.iter().copied().filter(|x| x.is_finite()).map(|x| x.max(0.0)).collect();
+        v.sort_by(|a, b| b.total_cmp(a));
+        let k = (v.len() / 100).max(1);
+        let total: f64 = v.iter().sum();
+        if total > 0.0 { v[..k].iter().sum::<f64>() / total } else { 0.0 }
+    }
     pub fn p50(&self) -> f64 {
         percentile(&sorted_copy(&self.per_share), 50.0)
     }
