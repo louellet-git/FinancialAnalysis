@@ -180,6 +180,28 @@ Rules of the channel:
 4. A maximum of two review cycles. Then the person decides.
 5. A small change with no gate (a ticket, a count, a memory file) needs no request.
 
+**Cost of the checks (GitHub Actions).** The owner pays for the check runs. The rules
+below keep the cost near zero (owner word, 2026-11-20). They bind each head and each
+agent.
+
+1. A check runs only for a pull request that changes `rust/`, `analysis/`,
+   `financial_analysis/`, `sec_contact.toml` or the workflow, and on `main` only when a
+   lock file or the workflow changes (`.github/workflows/tests.yml`). A pull request with
+   documents only (tickets, memory, records, `docs/`, `chiefs/`) has no check run.
+2. Run both test suites on your machine before you open a pull request with code. The
+   check confirms; it does not find your errors.
+3. Put small changes together. Open one pull request for a set of document changes, not
+   one for each line. Keep code changes and document changes in separate pull requests
+   when the documents can go first with no check.
+4. After a pull request with code is open, push again only to correct a finding or a
+   failed check. Each push starts a new run.
+5. Re-run a failed check one time at most. No empty commit, and no close and reopen of a
+   pull request, to start a check.
+6. Do not add a workflow, a job, a matrix, a schedule or a trigger, and do not remove the
+   path filter or the cache. Only the Head of Technology of `louellet-git` changes the
+   workflow, and a change that adds cost needs the owner.
+7. If you see a run that should not have started, tell the Head of Technology.
+
 ## 7. More than one person
 
 Each contributor can have a set of heads in the account of that contributor. A session
