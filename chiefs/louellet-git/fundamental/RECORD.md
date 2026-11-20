@@ -26,3 +26,7 @@ Done: the merge rule is `chiefs/ORIENTATION.md`, section 4: the head merges its 
 
 ## 2026-11-20 22:27 UTC (correction)
 The rule of the entry above is in `chiefs/ORIENTATION.md`, section 6 ("Reviews and merges", rule 3), not section 4.
+
+## 2026-11-20 23:09 UTC (chat)
+Words: "I think you might have deleted an old ticket, that's not how we should handle those, speak w tech head"
+Done: question to the Head of Technology; the rule is now in `PLANNING/board/README.md` (a merged ticket moves to `PLANNING/board/done/` with `status: done` and `merged:`; never deleted). The two deletions on my branches are replaced by the move.
