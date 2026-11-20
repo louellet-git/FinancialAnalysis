@@ -14,3 +14,7 @@ Done: `chiefs/MEMORY-HOWTO.md`, the memory rules of `chiefs/ORIENTATION.md` (sec
 ## 2026-11-20 19:15 UTC (chat)
 Words: "note again that the memory is different between heads. They serve different purposes. Memory allows the heads to operate better and remember what's important as they're doing their job, you know, very loosely. But it's more particularly in line with what Anthropic released in regards to memory."
 Done: `chiefs/MEMORY-HOWTO.md` written again from the Anthropic post: a purpose for the memory of each head, a small dashboard, few files, the dream pass. The memory rules of `chiefs/ORIENTATION.md` are shorter.
+
+## 2026-11-20 19:28 UTC (chat)
+Words: "if the head ever wants to slightly upgrade the agents a little bit, they're more than welcome to in whatever way helps towards the goal that they have. This is not a must."
+Done: an optional paragraph next to the dream pass in `chiefs/MEMORY-HOWTO.md`, and the same permission in `chiefs/ORIENTATION.md` (sections 3 and 8).
