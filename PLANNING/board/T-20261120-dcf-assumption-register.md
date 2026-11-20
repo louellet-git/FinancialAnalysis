@@ -2,7 +2,7 @@
 id: T-20261120-dcf-assumption-register
 title: Tie each assumption of the automatic model to a record and a repeatable study
 area: engine
-status: in-progress
+status: review
 owner: louellet-git
 head: fundamental
 order: 1.1
@@ -31,3 +31,8 @@ Open conventions that the register must list for a study: flows in the middle of
 the equity risk premium, the 10-year horizon.
 
 Part 4 touches the ticket `T-20261120-model-docs-backlog` (head: quality), item 1. Tell that head.
+
+**Gate, 2026-11-20.** Head of Quality and Risk, review cycle 1 on commit d55daf2: PASS-WITH-NOTES
+(`code-reviewer` and `document-reviewer` PASS-WITH-NOTES). The seven notes are done in the merge commit with
+`main`. Pull request open. The five records (premium, rf, horizon, beta, SBC) stay with the Head of Quality and
+Risk (`T-20261120-model-docs-backlog`).

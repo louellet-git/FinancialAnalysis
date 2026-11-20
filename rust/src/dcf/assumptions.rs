@@ -11,7 +11,7 @@
 
 use super::auto::{ExplainRow, Rules};
 use super::auto_cli::{load_table, map_inputs, read_prices, screen_rows, ScreenConfig, ScreenRow};
-use super::auto_pit::{coverage, median_error, parse_rules, pit_observations, pit_setup, PitObs, Series, HORIZON};
+use super::auto_pit::{ticker_half, coverage, median_error, parse_rules, pit_observations, pit_setup, PitObs, Series, HORIZON};
 use super::stats::percentile;
 use super::DcfError;
 use std::fmt::Write;
@@ -61,6 +61,10 @@ fn pct1(x: f64) -> String {
 fn pct2(x: f64) -> String {
     format!("{:.2}%", x * 100.0)
 }
+/// The form of a flag in a record: `name` on (`--rules name=1`).
+fn flag_text(name: &str, on: bool) -> String {
+    format!("`{name}` {} (`--rules {name}={}`)", if on { "on" } else { "off" }, u8::from(on))
+}
 fn onoff(b: bool) -> String {
     if b { "on" } else { "off" }.to_string()
 }
@@ -74,8 +78,17 @@ macro_rules! row {
 /// The register. The order is the order of the print.
 pub static TABLE: &[Assumption] = &[
     row!("A-001", "one long-run growth (fade level and terminal mean)", "long_run", |r| r.long_run.map_or("off".into(), pct1), "long_run", Record::File("A-001-terminal-growth.md"), DECIDED_2026_11_20, &["growth: long run", "terminal growth"]),
-    row!("A-002", "acquisition charge (share w of the mean spend)", "acq_w", |r| format!("acq_w={}", if r.acq_w { "on" } else { "off" }), "acq_w", Record::File("A-002-acquisition-charge.md"), DECIDED_2026_11_20, &["acquisition charge"]),
-    row!("A-002", "acquisition charge fades with the credited growth", "acq_fade", |r| format!("acq_fade={}", if r.acq_fade { "on" } else { "off" }), "acq_fade", Record::File("A-002-acquisition-charge.md"), DECIDED_2026_11_20, &[]),
+    row!("A-002", "acquisition charge (share w of the mean spend)", "acq_w", |r| flag_text("acq_w", r.acq_w), "acq_w", Record::File("A-002-acquisition-charge.md"), DECIDED_2026_11_20, &["acquisition charge"]),
+    row!("A-002", "acquisition charge fades with the credited growth", "acq_fade", |r| flag_text("acq_fade", r.acq_fade), "acq_fade", Record::File("A-002-acquisition-charge.md"), DECIDED_2026_11_20, &[]),
+    row!("A-003", "floor on the growth of a base year that fell", "last_floor", |r| r.last_floor.map_or("off".into(), |x| format!("{:.0}%", x * 100.0)), "last_floor", Record::File("A-003-base-year-decline-floor.md"), DECIDED_2026_11_20, &[]),
+    row!("none", "margin: weight of the table in the shock size (an option, off)", "margin_sigma_nu", |r| r.margin_sigma_nu.map_or("off".into(), |x| format!("{x}")), "margin_sigma_nu", Record::None, CONVENTION, &[]),
+    row!("none", "statutory tax rate (when the effective rate is not stable)", "none", |r| pct2(r.statutory_tax), "statutory_tax", Record::None, CONVENTION, &[]),
+    row!("none", "least number of fiscal years in the chain", "none", |r| format!("{} years", r.min_years), "min_years", Record::None, CONVENTION, &[]),
+    row!("none", "slow-fade half-life when the table has no fade cells", "none", |r| format!("{} years", r.default_slow_half_life), "default_slow_half_life", Record::None, CONVENTION, &[]),
+    row!("none", "the company growth fades to the long-run level", "fade_to_cap", |r| onoff(r.fade_to_cap), "fade_to_cap", Record::None, CONVENTION, &[]),
+    row!("none", "equity weight is 1 (cost of equity for the whole company)", "equity_weight_one", |r| onoff(r.equity_weight_one), "equity_weight_one", Record::None, CONVENTION, &[]),
+    row!("none", "terminal growth mean is the 10-year zero yield", "terminal_rf", |r| onoff(r.terminal_rf), "terminal_rf", Record::None, CONVENTION, &[]),
+    row!("none", "terminal growth, mean (used when long_run is off)", "terminal_growth", |r| pct2(r.terminal_growth.0), "terminal_growth", Record::None, CONVENTION, &[]),
     row!("none", "equity risk premium, mean", "erp", |r| pct2(r.erp.0), "erp", Record::NotWritten, CONVENTION, &[]),
     row!("none", "equity risk premium, standard deviation", "none", |r| pct2(r.erp.1), "erp", Record::None, CONVENTION, &[]),
     row!("none", "risk-free rate (10-year zero yield of the GSW curve)", "rf", |r| r.rf_fixed.map_or("GSW 10-year zero yield".into(), pct2), "rf_fixed", Record::NotWritten, CONVENTION, &[]),
@@ -295,6 +308,7 @@ fa dcf assumptions --effect K=V[,K=V] --tickers-file FILE [OPTIONS]
   --cache DIR (default <repo>/data/raw)   --as-of DATE (default today)   --table FILE
   --sims N (4000)  --paths N (2000)  --seed S (7)   screen paths, point-in-time paths, seed
   --cut YEAR       point-in-time test out of sample (as `fa dcf pit --cut`)
+  --half H         one half of the tickers, 0 or 1 (as `fa dcf pit --half`; the rule of the hash of the ticker)
   --prices FILE    prices `ticker,price` (else the price cache)   --jobs N";
 
 fn value_of<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
@@ -317,7 +331,10 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         println!("{USAGE}");
         return Ok(());
     }
-    let known = ["--effect", "--tickers-file", "--cache", "--as-of", "--table", "--sims", "--paths", "--seed", "--cut", "--prices", "--jobs"];
+    if args.iter().any(|a| a == "--effect") && value_of(args, "--effect").is_none_or(|v| v.is_empty() || v.starts_with("--")) {
+        return Err(DcfError("--effect needs a value K=V[,K=V]. Usage: fa dcf assumptions --effect K=V[,K=V] --tickers-file FILE [--cache DIR] [--as-of DATE]".into()));
+    }
+    let known = ["--effect", "--tickers-file", "--cache", "--as-of", "--table", "--sims", "--paths", "--seed", "--cut", "--half", "--prices", "--jobs"];
     let mut i = 0;
     while i < args.len() {
         let a = args[i].as_str();
@@ -339,6 +356,7 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     let paths: usize = value_of(args, "--paths").map_or(Ok(2000), |v| v.parse().map_err(|_| bad("--paths", v)))?;
     let seed: u64 = value_of(args, "--seed").map_or(Ok(7), |v| v.parse().map_err(|_| bad("--seed", v)))?;
     let cut: Option<i32> = value_of(args, "--cut").map(|v| v.parse().map_err(|_| bad("--cut", v))).transpose()?;
+    let half: Option<u64> = value_of(args, "--half").map(|v| match v { "0" => Ok(0), "1" => Ok(1), _ => Err(bad("--half", v)) }).transpose()?;
     let jobs: Option<usize> = value_of(args, "--jobs").map(|v| v.parse().map_err(|_| bad("--jobs", v))).transpose()?;
     if sims == 0 || paths == 0 {
         return Err(DcfError("--sims and --paths must be positive".into()));
@@ -351,6 +369,9 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     let mut tickers = mapcheck::cli::read_ticker_file(list).map_err(DcfError)?;
     let mut seen = std::collections::HashSet::new();
     tickers.retain(|t| seen.insert(t.clone()));
+    if let Some(h) = half {
+        tickers.retain(|t| ticker_half(t) == h);
+    }
     let prices = match value_of(args, "--prices") {
         Some(p) => read_prices(p)?,
         None => Default::default(),
@@ -366,7 +387,7 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     };
     let rows0 = run(&base)?;
     let rows1 = run(&alt)?;
-    let setup = pit_setup(&cache, &table_file, cut, None, Some(&tickers))?;
+    let setup = pit_setup(&cache, &table_file, cut, None, Some(&tickers), half)?;
     let obs0 = pit_observations(&setup, paths, seed, &base);
     let obs1 = pit_observations(&setup, paths, seed, &alt);
 
@@ -429,13 +450,69 @@ mod tests {
     fn each_row_names_a_field_that_is_in_its_file_and_the_ids_are_in_the_records() {
         for a in TABLE {
             let text = std::fs::read_to_string(repo().join(a.file)).unwrap_or_else(|x| panic!("{}: {x}", a.file));
-            assert!(text.contains(a.field), "{} is not in {}", a.field, a.file);
-            assert!(a.item != "Rules::default" || text.contains("impl Default for Rules"), "no impl Default for Rules in {}", a.file);
+            let block = default_block(&text);
+            assert!(block.contains(&format!("{}:", a.field)), "the field '{}' is not set in the block `impl Default for Rules` of {}", a.field, a.file);
             assert_eq!(a.id == "none", !matches!(a.record, Record::File(_)));
             if a.id != "none" {
                 assert_eq!(a.state, DECIDED_2026_11_20);
             }
         }
+    }
+
+    /// The fields of `Rules` that are options of a measurement, off by default: each one is an alternative of a row of
+    /// the table or a way to test it. They are not assumptions of their own.
+    const NOT_ASSUMPTIONS: [&str; 9] = ["long_cap", "fade_years", "growth_w", "growth_phi", "margin_w", "margin_last", "acq_charge", "acq_f", "acq_mult"];
+
+    fn default_block(text: &str) -> String {
+        let start = text.find("impl Default for Rules").expect("impl Default for Rules");
+        let rest = &text[start..];
+        rest[..rest.find("\n}\n").expect("end of the block")].to_string()
+    }
+
+    fn struct_fields(text: &str) -> Vec<String> {
+        let start = text.find("pub struct Rules {").expect("struct Rules");
+        let rest = &text[start..];
+        rest[..rest.find("\n}\n").unwrap()]
+            .lines()
+            .skip(1)
+            .filter_map(|l| l.trim().strip_prefix("pub ").and_then(|x| x.split(':').next()).map(str::to_string))
+            .collect()
+    }
+
+    #[test]
+    fn each_field_of_rules_is_in_the_table_or_in_the_short_list_of_options() {
+        let text = std::fs::read_to_string(repo().join(AUTO)).unwrap();
+        let fields = struct_fields(&text);
+        assert!(fields.len() > 30, "the parser of the fields found {} fields", fields.len());
+        let block = default_block(&text);
+        for f in &fields {
+            let in_table = TABLE.iter().any(|a| a.field == f);
+            let option = NOT_ASSUMPTIONS.contains(&f.as_str());
+            assert!(in_table || option, "the field '{f}' of Rules is not in the register (add a row) and not in NOT_ASSUMPTIONS");
+            assert!(!(in_table && option), "the field '{f}' is in the table and in NOT_ASSUMPTIONS");
+            assert!(block.contains(&format!("{f}:")), "the field '{f}' has no default in impl Default for Rules");
+        }
+        for o in NOT_ASSUMPTIONS {
+            assert!(fields.iter().any(|f| f == o), "'{o}' of NOT_ASSUMPTIONS is not a field of Rules");
+        }
+    }
+
+    #[test]
+    fn effect_without_a_value_is_an_error_with_a_usage_line() {
+        for args in [vec!["--effect"], vec!["--effect", "--tickers-file", "x.txt"], vec!["--effect", ""]] {
+            let a: Vec<String> = args.iter().map(|s| s.to_string()).collect();
+            let e = command_inner(&repo(), &a).unwrap_err().to_string();
+            assert!(e.contains("--effect needs a value") && e.contains("Usage: fa dcf assumptions --effect"), "{e}");
+            assert_eq!(command(&repo(), &a), 2);
+        }
+    }
+
+    #[test]
+    fn the_flags_of_a_record_have_the_form_with_the_rules_text() {
+        assert_eq!(flag_text("acq_w", true), "`acq_w` on (`--rules acq_w=1`)");
+        assert_eq!(flag_text("acq_fade", false), "`acq_fade` off (`--rules acq_fade=0`)");
+        let a = TABLE.iter().find(|a| a.key == "acq_w").unwrap();
+        assert_eq!((a.default)(&Rules::default()), "`acq_w` on (`--rules acq_w=1`)");
     }
 
     #[test]

@@ -77,6 +77,18 @@ If a file is not in this table, the head whose work needs the change makes the c
 - The Head of Quality and Risk does not write model code or data code. Thus its verdict
   is independent.
 
+**Many heads at the same time.** Many heads of many persons change `main`. To keep the
+cost of conflicts low:
+
+- Do not write a number that each change makes old into a shared file (for example a test
+  count). Give the command that prints it.
+- A new entry of a shared list is a new file (a ticket in `PLANNING/board/`, a trap in
+  `docs/traps/`), not a line at the end of one long file.
+- Merge `origin/main` into your branch once, just before you ask for the review. Merge again
+  only when git shows a conflict.
+- If your change changes the output of a command of a different head (a default, a shared
+  function), say it in the title of the pull request and send that head one message.
+
 **One data store.** The data cache is not in this repo, and each session has its own
 machine. The data store is the repo `louellet-git/fa-data`: a copy of `data/raw` that each
 session gets with one command.
@@ -94,10 +106,9 @@ session gets with one command.
 
 ## 3. Your team
 
-**Model.** Your agents use the Sonnet model (`model: sonnet` in each agent file). Do not
-change the model of an agent file, and do not start an agent with a different model,
-unless the person tells you. If you start an agent that has no file, give it the Sonnet
-model.
+**Model.** The agent files give the Sonnet model (`model: sonnet`). For one run, you can
+choose a different model that fits the job (for example a smaller model for a small check).
+This is a permission, not a duty. Do not commit to one model: the scope of the work changes.
 
 **Keep your team files current.** You are responsible for the agent files of your team
 and for the skills that your team uses. You are free to improve them in the way that
@@ -111,6 +122,11 @@ is not mandatory. Good reasons for a change:
 
 If your work grows past what your team and skills cover, you may add an agent or a skill,
 or refine one, when you judge it worth the effort. This is a permission, not a duty.
+
+**Test audit.** From time to time, when you judge it useful (for example after several
+merges in your area, or when the tests become slow), start `test-engineer` in a fresh
+context for a test audit of your area: too few tests, too many, slow or repeated tests.
+You decide what to change. It does not run on each change and it is not a gate.
 
 Rules for a change:
 

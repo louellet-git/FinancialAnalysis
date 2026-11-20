@@ -40,7 +40,7 @@ Free text.
 | `backlog` | Planned. No person has the ticket. |
 | `in-progress` | A person works on the branch of the ticket. |
 | `review` | A pull request is open. |
-| `done` | The pull request is merged. Delete the ticket file in the subsequent change. |
+| `done` | The pull request is merged. In the subsequent change, move the ticket file to `PLANNING/board/done/` (`git mv`) with `status: done` and a line `merged: <pull request>`. Never delete a ticket. |
 
 ## Rules
 
@@ -49,4 +49,6 @@ Free text.
 2. Use one branch for one ticket. Start the branch from `origin/main`.
 3. Merge to `main` only through a pull request.
 4. A new ticket has a `head`, an `order` and a `requested_by`. If the work is in the areas of two heads, make two tickets.
-5. No tool enforces these rules. Each person and each agent obeys them.
+5. The queues are the files at the top of `PLANNING/board/`. The folder `done/` keeps the closed
+   tickets as a record; a head does not take a ticket from it.
+6. No tool enforces these rules. Each person and each agent obeys them.

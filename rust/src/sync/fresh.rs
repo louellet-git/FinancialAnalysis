@@ -131,7 +131,16 @@ pub fn keys_of(set: DataSet, ctx: &Ctx, cfg: &SyncConfig, tickers: &[String], in
         DataSet::Fred => crate::bonds::cached_series_ids(),
         DataSet::Futures => futures_keys(),
         DataSet::Vix => vec!["history".into()],
-        DataSet::Bonds => vec![dates::format(previous_market_day(ctx.today))],
+        DataSet::Bonds => {
+            // The last `bond_days` market days before today, newest first.
+            let mut day = ctx.today;
+            (0..cfg.bond_days.max(1))
+                .map(|_| {
+                    day = previous_market_day(day);
+                    dates::format(day)
+                })
+                .collect()
+        }
     }
 }
 
@@ -453,6 +462,20 @@ pub(crate) mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("fedinvest_2026-11-20.csv"), "x").unwrap();
         assert!(state_of(&ctx, &ledger, &cfg, DataSet::Bonds, "2026-11-20").is_current());
+        let _ = std::fs::remove_dir_all(&repo);
+    }
+
+    #[test]
+    fn bond_days_gives_the_last_market_days_over_a_weekend_and_a_holiday() {
+        let repo = temp("bonddays");
+        let five = SyncConfig { bond_days: 5, ..SyncConfig::default() };
+        // Monday 2026-11-23: the last market days are Fri 20, Thu 19, Wed 18, Tue 17, Mon 16.
+        let ctx = ctx_at(&repo, "2026-11-23");
+        assert_eq!(keys_of(DataSet::Bonds, &ctx, &SyncConfig::default(), &[], &[], &[]), ["2026-11-20"]);
+        assert_eq!(keys_of(DataSet::Bonds, &ctx, &five, &[], &[], &[]), ["2026-11-20", "2026-11-19", "2026-11-18", "2026-11-17", "2026-11-16"]);
+        // Friday 2026-11-27 (day after Thanksgiving 2026-11-26): Thanksgiving and the weekend are not in the list.
+        let ctx = ctx_at(&repo, "2026-11-30");
+        assert_eq!(keys_of(DataSet::Bonds, &ctx, &five, &[], &[], &[]), ["2026-11-27", "2026-11-25", "2026-11-24", "2026-11-23", "2026-11-20"]);
         let _ = std::fs::remove_dir_all(&repo);
     }
 }

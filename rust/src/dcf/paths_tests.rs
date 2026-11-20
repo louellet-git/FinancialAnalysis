@@ -1111,3 +1111,33 @@ fn long_flat_mode_keeps_the_expected_risk_free_rate_at_the_level_of_time_zero() 
         }
     }
 }
+
+#[test]
+fn the_mean_of_the_paths_and_its_standard_error_have_the_closed_formula() {
+    // values 1, 2, 3, 4, 10: mean 4; sum of squares of the deviations 9 + 4 + 1 + 0 + 36 = 50; sample variance 50 / 4 = 12.5;
+    // standard error sqrt(12.5 / 5) = sqrt(2.5) = 1.58113883; the largest 1% of 5 paths is one path: 10 / 20 = 0.5
+    let sim = Sim { n: 5, years: 1, per_share: vec![1.0, 2.0, 3.0, 4.0, 10.0], pv_explicit: vec![], pv_terminal: vec![], flags: vec![], k_terminal: vec![], failed: 0, detail: vec![] };
+    assert!((sim.mean() - 4.0).abs() < 1e-12);
+    assert!((sim.mean_se() - 2.5f64.sqrt()).abs() < 1e-12);
+    assert!((sim.top_percent_share() - 0.5).abs() < 1e-12);
+    // one value: no standard error
+    let one = Sim { n: 1, per_share: vec![7.0], ..sim.clone() };
+    assert_eq!((one.mean(), one.mean_se()), (7.0, 0.0));
+}
+
+#[test]
+fn a_path_that_is_not_finite_is_counted_and_left_out_of_the_mean() {
+    // 1, 3 and a NaN and an infinity: the mean of the finite paths is 2; standard error sqrt(2 / 2) = 1; two paths are counted
+    let sim = Sim { n: 4, years: 1, per_share: vec![1.0, 3.0, f64::NAN, f64::INFINITY], pv_explicit: vec![], pv_terminal: vec![], flags: vec![], k_terminal: vec![], failed: 0, detail: vec![] };
+    assert_eq!(sim.non_finite(), 2);
+    assert!((sim.mean() - 2.0).abs() < 1e-12);
+    assert!((sim.mean_se() - 1.0).abs() < 1e-12);
+    // negative values count in the mean; in the top share they count as 0: values -2, 1, 3 -> the mean 2/3; the top path holds 3 / 4
+    let neg = Sim { per_share: vec![-2.0, 1.0, 3.0], n: 3, ..sim.clone() };
+    assert!((neg.mean() - 2.0 / 3.0).abs() < 1e-12);
+    assert!((neg.top_percent_share() - 0.75).abs() < 1e-12);
+    // an empty set: no number (NaN), not 0
+    let empty = Sim { per_share: vec![], n: 0, ..sim.clone() };
+    assert!(empty.mean().is_nan() && empty.mean_se().is_nan());
+    assert_eq!((empty.non_finite(), empty.top_percent_share()), (0, 0.0));
+}

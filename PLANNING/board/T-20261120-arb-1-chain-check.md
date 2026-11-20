@@ -2,12 +2,12 @@
 id: T-20261120-arb-1-chain-check
 title: Find the static arbitrage in a stored option chain with bid and ask
 area: trading
-status: backlog
+status: review
 owner: louellet-git
 requested_by: louellet-git
 head: quant
 order: 1.1
-branch:
+branch: claude/upbeat-cori-a4ykf5
 created: 2026-11-20
 acceptance: `fa options check IBM --date 2026-11-19` reads the stored snapshot and gives, for each series (root and expiry), the number and the size of the violations at executable prices, the tests with planted violations pass, and a short findings note gives the result for IBM and JNJ.
 ---

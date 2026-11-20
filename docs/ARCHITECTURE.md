@@ -629,7 +629,11 @@ revenue; its coverage P10 to P90 is 1 point lower (76.3 / 77.4 / 77.8% against 7
 
 **`fa dcf pit [--cut YEAR] [--rules K=V,..] [--paths N] [--out FILE]`.** The point-in-time test (see #199 for its limits).
 
-**`fa dcf assumptions [--md]`, `fa dcf assumptions --effect K=V,.. --tickers-file F --cache DIR --as-of D`** (ticket `T-20261120-dcf-assumption-register`). The register `assumptions.rs` has one row for each assumption of the automatic model that a person could choose: record number, name, `--rules` key, default, place in the code, record, state (`decided <date>` or `convention, not studied`). The default text is read from `Rules::default()`. A test fails when the section "Choice" of a record does not have the default, or when a key is not in `parse_rules`. `fa dcf auto --explain` names the record number of a row that has a record. `--effect` prints one block for a record: median P50 / price, P50 at or below 0, median `ln(new/old)` of the P50, and the point-in-time errors and coverage at T+1 to T+3, with the command, the seed, the as-of date and the cache commit. The point-in-time part runs on the companies of the ticker list. The median of P50 / price is not rounded (the older records made it from the CSV with 3 decimals: 0.4745 there, 0.4747 here). Procedure of a study: skill `assumption-study`. Tests: 576 + 17 + 1 in `rust/`.
+**`fa dcf assumptions [--md]`** (ticket `T-20261120-dcf-assumption-register`). The register `assumptions.rs` has one row for each assumption of the automatic model that a person could choose: record number, name, `--rules` key, default, place in the code, record, state (`decided <date>` or `convention, not studied`). The default text is read from `Rules::default()`. A test fails when the section "Choice" of a record does not have the default, when a key is not in `parse_rules`, or when a field of `Rules` is neither in the table nor in the short list of options (`NOT_ASSUMPTIONS` in the tests). `fa dcf auto --explain` names the record number of a row that has a record. Procedure of a study: skill `assumption-study`.
+
+**`fa dcf assumptions --effect K=V,.. --tickers-file F --cache DIR --as-of D`** prints one block for a record: median P50 / price, P50 at or below 0, median `ln(new/old)` of the P50, and the point-in-time errors and coverage at T+1 to T+3, with the command, the seed, the as-of date and the cache commit. It reuses the functions of `fa dcf screen` and `fa dcf pit` (`screen_rows`, `pit_observations`). The point-in-time part runs on the companies of the ticker list (`--half` and `--cut` as in `fa dcf pit`). `--effect` with no value is an error (exit code 2).
+
+**Two medians of P50 / price.** The records `docs/assumptions/A-001-terminal-growth.md` and `docs/assumptions/A-002-acquisition-charge.md`, and the model document `docs/models/auto-path-model.md`, give 0.4745. The scratch programs made it from the screen CSV, which rounds the ratio to 3 decimals. `--effect` uses the unrounded values: 0.4747 for the same data and the same rules (before the floor of record A-003).
 
 **The investigation of 2026-11-20** (ticket `T-20261120-dcf-investigation`; findings `analysis/priors/dcf_investigation_2026-11-20.md`;
 traps #260 to #270).
@@ -982,7 +986,7 @@ ticket `option-backtest-rust`).
 
 ## Tests
 
-`cargo test --manifest-path rust/Cargo.toml --locked`: 584 Rust tests (566 + 17 + 1; 2 more are ignored) (the `fa` crate).
-`cargo test --manifest-path rust/mapcheck/Cargo.toml`: 100 Rust tests. The suites make no network calls and start no
+`cargo test --manifest-path rust/Cargo.toml --locked`: the tests of the `fa` crate (the command prints the counts; no document names them, so that each change does not edit the same line).
+`cargo test --manifest-path rust/mapcheck/Cargo.toml`: the tests of `mapcheck`. The suites make no network calls and start no
 Python program; HTTP is replaced by a function that the test gives, and files are in a temp folder.
 No Python test remains (the last 211 Python tests were deleted on 2026-11-19 after each case had a Rust test).
