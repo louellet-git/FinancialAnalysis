@@ -22,3 +22,7 @@ Done: an optional paragraph next to the dream pass in `chiefs/MEMORY-HOWTO.md`, 
 ## 2026-11-20 19:29 UTC (chat)
 Words: "So a note for all heads, they are orchestrator agents. Make sure that's in the relevant file."
 Done: `chiefs/ORIENTATION.md` (first paragraph and section 1) and `docs/TEAMS.md` say that a head is an orchestrator agent, with what that means.
+
+## 2026-11-20 19:42 UTC (chat)
+Words: "Also as a rule all programming should be done in rust"
+Done: the rule in `CLAUDE.md` ("Work rules") now includes one-time analysis programs and scratch programs; the same rule is in `chiefs/ORIENTATION.md` (section 9) and `docs/QUALITY-STANDARDS.md` (section 8).
