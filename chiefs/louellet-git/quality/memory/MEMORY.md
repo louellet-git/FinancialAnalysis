@@ -29,7 +29,12 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   starts that). A gate request can ask for such a run; do not give it to an agent.
 
 ## Review patterns
-- 2026-11-20 conventions review: a charge or a rule that is right for the median company can be wrong for the tail (heavy buyers: ROP P50 $441 to -$88). Ask for the tail class and the count of P50 <= 0 in each model-change brief.
+- 2026-11-20 conventions review: a charge or a rule that is right for the median company can be wrong for the tail (heavy buyers: ROP P50 $441 to -$88). Ask for the tail class and the count of P50 <= 0 in each model-change brief. It found the MAJ; cycle 2 fixed 11 of 13.
+- 2026-11-20 accuracy review: a record defended a default with numbers for the rejected alternatives,
+  and those numbers did not reproduce (-2.9% stated, -0.4% run). Ask the validator to run each
+  rejected alternative of a record.
+- Precedent, 2026-11-20: in cycle 2, a remaining limit that is measured and written in the record
+  passes, with a ticket as a condition (no third cycle). The automatic model is a screen.
 
 ## Pages
 - No page.
