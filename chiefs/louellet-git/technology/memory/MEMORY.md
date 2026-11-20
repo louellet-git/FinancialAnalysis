@@ -3,10 +3,11 @@ For the next session of this head: how the environment and the data sources beha
 person decided. Keep this file below 60 lines. Started 2026-11-20.
 
 ## Goal now and subsequent steps
-- Data store `louellet-git/fa-data`: complete on 2026-11-20 (prices of 999 tickers). Its README has the
+- Data store `louellet-git/fa-data`: complete on 2026-11-20 (prices of 999 tickers; SIC codes of 1,249). Its README has the
   update steps. The Nasdaq site has no prices for CFR, DDS, ET, MOG-A and SUN.
-- Two tickets wait for the "go" of the person: `T-20261120-sync-yahoo-429` (first), then
-  `T-20261120-sic-code` (from the Head of Fundamental Research; it comes to `main` with its pull request).
+- `T-20261120-sync-yahoo-429`: waits for the review verdict of the Head of Quality and Risk (branch pushed,
+  no pull request yet). SIC code: done and handed over (pull request 69).
+- Next in the queue: `T-20261120-portfolio-backtest` (the engine; the research heads write the strategies).
 - The person does the first run on the laptop with the keys (ticket `T-20261120-owner-first-run`).
 - Queue: `PLANNING/board/`, `head: technology`.
 
