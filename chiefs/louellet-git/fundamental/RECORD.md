@@ -19,3 +19,7 @@ Done: no new work starts. The two jobs in progress are completed and committed (
 ## 2026-11-20 21:19 UTC (chat)
 Words: "Proceed with your work"
 Done: the parked work starts again. The data store `louellet-git/fa-data` is the cache (`data/raw`). Next: the full runs of the conventions decision, the gate request, then the engine accuracy ticket.
+
+## 2026-11-20 23:21 UTC (chat)
+Words: "I need to know why the market crashed today and over past few days, generally what I'm looking for is an understanding of where the market valuation WENT. This is a large task that requires its own models being built, and probably will start with you doing one stock at a time until you've built a general enough model to explain. I want to know what NVDA is worth."
+Done: tickets `T-20261120-nvda-valuation` (order 0.1) and `T-20261120-valuation-move-attribution` (order 0.2); data request to the Head of Technology.
