@@ -337,7 +337,7 @@ fn cmd_values(raw: &[String]) -> Result<bool, String> {
                 let report = check_cached(&registry, &cache, ticker, &facts, args.number("--periods", 12)?, dates::today(), true);
                 match sec::company_sic(&cache, ticker) {
                     Some((sic, text)) => println!("\n{ticker}: SIC {sic} {text}, sector {} (Fama-French 12)", sec::ff12_sector(sic)),
-                    None => println!("\n{ticker}: no SIC code in the cache (run: mapcheck fetch --submissions {ticker})"),
+                    None => println!("\n{ticker}: no SIC code in the cache (the file is missing or old, or the filer has no code; run: mapcheck fetch --submissions {ticker})"),
                 }
                 print!("{}", values_listing(&registry, &report));
             }

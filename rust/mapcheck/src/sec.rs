@@ -396,7 +396,11 @@ pub fn load_filing_list_check(cache: &Path, ticker: &str) -> Option<FilingListCh
 /// A filer with no code (a missing, empty or non-number `sic`) gives `None`; the description is then `None` too.
 pub fn parse_sic(json: &[u8]) -> Result<(Option<u32>, Option<String>), String> {
     let value: Value = serde_json::from_slice(json).map_err(|e| format!("submissions: {e}"))?;
-    let sic = value.get("sic").and_then(Value::as_str).and_then(|s| s.trim().parse::<u32>().ok());
+    let sic = match value.get("sic") {
+        Some(Value::String(s)) => s.trim().parse::<u32>().ok(),
+        Some(v) => v.as_u64().and_then(|n| u32::try_from(n).ok()),
+        None => None,
+    };
     let description = value.get("sicDescription").and_then(Value::as_str).map(str::trim).filter(|s| sic.is_some() && !s.is_empty()).map(String::from);
     Ok((sic, description))
 }
@@ -511,6 +515,10 @@ mod tests {
             assert_eq!(parse_sic(none).unwrap(), (None, None));
         }
         assert!(parse_sic(b"not json").is_err());
+        // the SEC gives a string; a number is also read; a code that is not a whole number of 0 or more is no code
+        for (raw, want) in [(r#"{"sic":"0100"}"#, Some(100)), (r#"{"sic":"100"}"#, Some(100)), (r#"{"sic":3570}"#, Some(3570)), (r#"{"sic":"abc"}"#, None), (r#"{"sic":"-5"}"#, None), (r#"{"sic":-5}"#, None)] {
+            assert_eq!(parse_sic(raw.as_bytes()).unwrap().0, want, "{raw}");
+        }
     }
 
     #[test]
