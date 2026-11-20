@@ -546,7 +546,7 @@ growth that is used has no jump (more than 60% for a company with $1B or more of
 `<1B`, `1-10B`, `10-30B`, `30-100B`, `>100B`, `all`), with `phi`, its standard error, the half-life, the mean, the
 standard deviation of the shock, the number of observations and companies, and the other estimates. `priors_for` takes the
 cell of the size and the template if it has 150 observations and 25 companies. If not, it takes the cell of the size, then
-the cell of the template, then all. The cache has no SIC code, so no cell has a sector.
+the cell of the template, then all. The cache has the SIC code in `<T>/sec_8k_earnings.json` (`mapcheck::sec::company_sic`), and `mapcheck::sec::ff12_sector` gives the Fama-French 12 sector. The priors do not use them yet, so no cell has a sector.
 
 **Results of the run of 2026-11-19** (996 companies, 14,305 company-years, 13,228 growth observations; the panel takes 7 seconds
 and the whole command about 15 seconds on 4 threads):
@@ -566,7 +566,7 @@ and the whole command about 15 seconds on 4 threads):
 growth mean is too high, the shock size and the lower tail are too low, and the persistence of margins is too high. The
 fade of fast growers is too slow. The command prints this text with each run. The size of the bias is not measured.
 
-**Limits.** No SIC code, so no sector. No GDP series in the repo cache: the growth less the mean growth of the fiscal year
+**Limits.** The priors do not use the sector yet. No GDP series in the repo cache: the growth less the mean growth of the fiscal year
 replaces it. A company with fewer than three growth values has no weight in the within estimates. The traps are #170 to #184
 of `docs/HIDDEN-ASSUMPTIONS.md`.
 
@@ -715,7 +715,7 @@ No revenue estimates in this source; FMP gives them with a key.
 | `estimates_cache.rs` | `update_ticker` (one request for each endpoint that today's files do not have), the files `estimates/<date>.json` and `earnings_surprises.json`, `surprises_for_sheet`. |
 | `earnings_dates.rs` | `earnings_dates.json` (past and next dates), the calendar cache `_calendar/earnings-<date>.json` and its rule, the scan, `estimate_next`, `resolve_next`, and the comparison with the SEC file (`compare_dates`). |
 | `estimates_cli.rs` | `fa estimates get|show`, `fa earnings calendar|dates`. |
-| `rust/mapcheck/src/sec.rs` | `earnings_filings` (form 8-K with item 2.02 of `filings.recent`), `fetch_earnings_filings`; the command `mapcheck fetch --submissions TICKER...` writes `<T>/sec_8k_earnings.json`. |
+| `rust/mapcheck/src/sec.rs` | `earnings_filings` (form 8-K with item 2.02 of `filings.recent`), `fetch_earnings_filings` (it saves also `sic` and `sic_description` of the filer), `company_sic` (reads them from the cache, no network), `ff12_sector` (SIC code to Fama-French 12 sector); the command `mapcheck fetch --submissions TICKER...` writes `<T>/sec_8k_earnings.json`. |
 
 Commands: `fa estimates get TICKER... [--tickers-file F] [--endpoints LIST] [--momentum] [--refresh]`, `fa estimates show TICKER [--price P]`,
 `fa earnings calendar [TICKER...] [--tickers-file F] [--from D] [--days N]`, `fa earnings dates TICKER... [--tolerance N]`.
@@ -971,6 +971,6 @@ ticket `option-backtest-rust`).
 ## Tests
 
 `cargo test --manifest-path rust/Cargo.toml --locked`: 576 Rust tests (558 + 17 + 1; 2 more are ignored) (the `fa` crate).
-`cargo test --manifest-path rust/mapcheck/Cargo.toml`: 97 Rust tests. The suites make no network calls and start no
+`cargo test --manifest-path rust/mapcheck/Cargo.toml`: 100 Rust tests. The suites make no network calls and start no
 Python program; HTTP is replaced by a function that the test gives, and files are in a temp folder.
 No Python test remains (the last 211 Python tests were deleted on 2026-11-19 after each case had a Rust test).

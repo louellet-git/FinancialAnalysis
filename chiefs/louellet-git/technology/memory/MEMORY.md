@@ -3,12 +3,12 @@ For the next session of this head: how the environment and the data sources beha
 person decided. Keep this file below 60 lines. Started 2026-11-20.
 
 ## Goal now and subsequent steps
-- Data store `louellet-git/fa-data`: complete on 2026-11-20 (prices of 999 tickers). Its README has the
+- Data store `louellet-git/fa-data`: complete on 2026-11-20 (prices of 999 tickers; SIC codes of 1,249). Its README has the
   update steps. The Nasdaq site has no prices for CFR, DDS, ET, MOG-A and SUN.
-- Two tickets wait for the "go" of the person: `T-20261120-sync-yahoo-429` (first), then
-  `T-20261120-sic-code` (from the Head of Fundamental Research; it comes to `main` with its pull request).
+- `T-20261120-sync-yahoo-429`: waits for the review verdict of the Head of Quality and Risk (branch pushed,
+  no pull request yet). SIC code: done and handed over (pull request 69).
+- Next in the queue: `T-20261120-portfolio-backtest` (the engine; the research heads write the strategies).
 - The person does the first run on the laptop with the keys (ticket `T-20261120-owner-first-run`).
-- Queue: `PLANNING/board/`, `head: technology`.
 
 ## Standing words of the person
 - 2026-11-19 or 2026-11-20 (the day was not recorded): "merge to main the branches when complete".
@@ -34,6 +34,11 @@ person decided. Keep this file below 60 lines. Started 2026-11-20.
   store, the repo `louellet-git/fa-data`, that only this head writes. Push to it in parts of less than 40 MB.
 - 2026-11-20: "The fa-data won't be private, continue, and load all the data to it for now". Effect: the
   store is public and has prices and estimates too. Scan for keys before each push to it.
+- 2026-11-20: "Dont take the rules from scan support chiefs on". Effect: never open `/home/user/chiefs` (the
+  repo `louellet-git/chiefs`) as a working folder; its `.claude/CLAUDE.md` loads the Scan Support limits.
+  Change it only with git commands. The lean version is its folder `lean/`.
+- 2026-11-20: the dream pass comes BEFORE a compaction (context use above about 75% of the threshold in
+  `get_session`, or the person says "dream"); after it, only a short check (`chiefs/MEMORY-HOWTO.md`, section 4).
 
 ## Tested rules
 - The cloud machine can restart. A restart stops the background agents; the files and the worktrees
@@ -45,13 +50,9 @@ person decided. Keep this file below 60 lines. Started 2026-11-20.
 - The Windows build can be checked from the cloud machine:
   `cargo check --release --target x86_64-pc-windows-gnu` (the target and `gcc-mingw-w64-x86-64` must be
   installed in a new machine).
-- The four head sessions exist. Find a head by its title with `list_sessions`; do not keep a session id.
-
-## Pages
-- No page. The data sources and their limits are in `docs/DATA-SOURCES.md`.
+- The four head sessions of `louellet-git` exist; the heads of `merlan1996` do not yet. Find a head by
+  its title with `list_sessions`; do not keep a session id. No pages: the sources are in `docs/DATA-SOURCES.md`.
 
 ## Dream pass
-On the word of the person ("clean up memory" or "dream"). Last pass: none.
+Before a compaction (context above about 75% of the threshold) or on the word "dream". Last pass: none.
 
-## Other
-- The heads of `merlan1996` do not exist. Their folders are made at their first start.
