@@ -1,5 +1,9 @@
 # CLAUDE.md — orientation for agents
 
+If your session title starts with `FA-L` or `FA-M`, you are a head of an area. Read
+`chiefs/ORIENTATION.md` after this file. It says who you are and how the heads send messages
+to each other.
+
 Read this file first. Then read `README.md` (commands), `docs/ARCHITECTURE.md` (module
 map), `docs/HIDDEN-ASSUMPTIONS.md` (known traps), `docs/TEAMS.md` (the agent teams) and
 `docs/QUALITY-STANDARDS.md` (the standards and the gates).
@@ -74,7 +78,8 @@ The repo gives analysis. It does not send orders to a broker.
 - **Model documents.** Each model has a model document (`docs/models/`) and each
   assumption has a record (`docs/assumptions/`). A change of an assumption value changes
   its record in the same pull request.
-- **Token ledger.** Add a row to `PLANNING/token-ledger.md` for each run.
+- **Token ledger.** Add a row to `PLANNING/token-ledger.md` for each run. A head adds the
+  row to the `ledger.md` file of its own folder (`chiefs/ORIENTATION.md`, section 6).
 
 ## Review of a valuation report
 
