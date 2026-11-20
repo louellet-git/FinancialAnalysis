@@ -3,9 +3,13 @@ For the next session of this head: how the environment and the data sources beha
 person decided. Keep this file below 60 lines. Started 2026-11-20.
 
 ## Goal now and subsequent steps
-- Keep the data and the build ready for the three other heads. Queue: `PLANNING/board/`, `head: technology`.
-- The person does the first run on the laptop with the keys (ticket `T-20261120-owner-first-run`). Help
-  when the person reports what failed.
+Parked on 2026-11-20 on the word of the person ("park leftover work"). Nothing runs. To continue:
+- Data store `louellet-git/fa-data`: the SEC data is in it. The prices wait until the person makes the
+  repo private (ticket `T-20261120-data-store-prices` has the steps).
+- Two tickets wait for the "go" of the person: `T-20261120-sync-yahoo-429` (first), then
+  `T-20261120-sic-code` (from the Head of Fundamental Research; it comes to `main` with its pull request).
+- The person does the first run on the laptop with the keys (ticket `T-20261120-owner-first-run`).
+- Queue: `PLANNING/board/`, `head: technology`.
 
 ## Standing words of the person
 - 2026-11-19 or 2026-11-20 (the day was not recorded): "merge to main the branches when complete".

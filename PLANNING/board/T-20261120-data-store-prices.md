@@ -23,3 +23,14 @@ Open:
    files, change `SNAPSHOT.md`, push in parts of less than 40 MB.
 4. Git keeps each old version. When the store repo is larger than about 1 GB, start it again from one
    commit (owner decision).
+
+Parked, 2026-11-20 19:54 UTC. The store repo is still public, so no price is in it. The price files exist only
+on the cloud machine of the Head of Technology: the first ticker list (505 tickers, from 2026-11-19) and a
+part of `next500.txt` (the download ran when the work was parked; the Nasdaq source gives about 3 tickers
+each minute). A new machine does not have these files. To continue:
+1. Make sure that the store repo is private (`list_repos` shows the visibility).
+2. On a machine with the main repo built: `fa prices get --tickers-file rust/mapcheck/universe/sp500.txt
+   --source nasdaq`, then the same command for `next500.txt`, then `fa prices get SPY --source nasdaq`.
+   A ticker that has a cache file gets only the new days.
+3. Copy each `prices.json` and `prices.meta.json` into the clone of the store, change `SNAPSHOT.md` and
+   the table of `README.md`, and push in parts of less than 40 MB.
