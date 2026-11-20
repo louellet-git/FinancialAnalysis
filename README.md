@@ -21,7 +21,7 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program that makes the standard variables (necessary)
 cargo build --release --manifest-path rust/Cargo.toml            # the `fa` program
 cargo test --manifest-path rust/mapcheck/Cargo.toml    # 91 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked    # 552 Rust tests (534 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research, data sync)
+cargo test --manifest-path rust/Cargo.toml --locked    # 561 Rust tests (543 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research, data sync)
 ```
 
 No Python test remains. The only Python code that remains is the legacy SEC client with its
@@ -69,7 +69,7 @@ cargo run --release --bin fa -- analyze IBM
 
 # 2. Get the price history, then the value range and the verdict (without --price: the last close of the cache)
 cargo build --release --manifest-path rust/Cargo.toml   # one time: the `fa` program
-rust/target/release/fa prices get IBM                   # daily prices into data/raw/IBM/prices.json (Tiingo, Alpaca, Yahoo, Nasdaq)
+rust/target/release/fa prices get IBM                   # daily prices into data/raw/IBM/prices.json (Tiingo, Yahoo, Nasdaq, Alpaca; Alpaca last)
 rust/target/release/fa verdict IBM [--price 228.53]
 
 # 3. Make the one-page HTML report. Output: data/processed/IBM_dcf.html
@@ -453,7 +453,7 @@ cargo build --release --manifest-path rust/Cargo.toml # one time
 rust/target/release/fa trade fetch                    # download the bars (Yahoo) into data/raw/trading/
 rust/target/release/fa prices intraday SPY --interval 5m --from 2020-01-01   # 5-minute bars since a date (Alpaca, free key)
 rust/target/release/fa options history SPY --from 2024-03-01 --to 2024-03-29 # option surface of past dates from daily closes (Alpaca)
-rust/target/release/fa options snapshot SPY --source alpaca                  # option chain of today (Alpaca, free key)
+rust/target/release/fa options snapshot SPY --source alpaca                  # option chain of today (Alpaca, free key); SPX and VIX too (both roots; level and volatility from put-call parity)
 rust/target/release/fa trade backtest                 # all bots, leaderboard (Rust, 1 second)
 rust/target/release/fa trade backtest --bot s14b_spy_trend_calls -v
 rust/target/release/fa trade backtest --max-risk 250  # larger risk for each trade
@@ -515,7 +515,7 @@ The table of all data sets with their sources, keys and commands is `docs/DATA-S
 | Data | Source | Key |
 |------|--------|-----|
 | Financial statements | SEC EDGAR companyfacts XBRL API | None |
-| Daily prices | Tiingo, Alpaca (free keys), Yahoo chart endpoint, Nasdaq site API | `TIINGO_API_KEY`; `APCA_API_KEY_ID` and `APCA_API_SECRET_KEY` (none for Yahoo and Nasdaq) |
+| Daily prices | Tiingo (key), Yahoo chart endpoint, Nasdaq site API, Alpaca (free keys; last: IEX close, history from 2020-07-27) | `TIINGO_API_KEY`; `APCA_API_KEY_ID` and `APCA_API_SECRET_KEY` (none for Yahoo and Nasdaq) |
 | Intraday bars (1 and 5 minutes), option chain snapshots, option closes of past dates | Alpaca Market Data API (free plan) | `APCA_API_KEY_ID` and `APCA_API_SECRET_KEY` |
 | Option chains | Cboe delayed quotes (about 15 minutes late) | None |
 | Analyst estimates and earnings surprises | Financial Modeling Prep | `FMP_API_KEY` in `.env` or the environment |

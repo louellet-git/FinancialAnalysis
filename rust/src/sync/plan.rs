@@ -95,7 +95,7 @@ pub struct PlanInput<'a> {
     pub option_symbols: Vec<String>,
 }
 
-/// The sources of the prices of a ticker, in the order of the existing code: Tiingo and Alpaca (with keys), Yahoo, Nasdaq. A
+/// The sources of the prices of a ticker, in the order of the existing code: Tiingo (with a key), Yahoo, Nasdaq, Alpaca (with keys; last). A
 /// cache of one source keeps that source: the cache is not mixed, and a block of its host does not make the sync replace the
 /// cache with the data of another source. Only when the key of the cache source is gone, the other sources are tried.
 pub fn price_hosts(ctx: &Ctx, ticker: &str, keys: &KeyInfo) -> Vec<String> {
@@ -103,10 +103,11 @@ pub fn price_hosts(ctx: &Ctx, ticker: &str, keys: &KeyInfo) -> Vec<String> {
     if keys.tiingo {
         available.push("tiingo");
     }
+    available.extend(["yahoo", "nasdaq"]);
     if keys.alpaca {
+        // Last: the IEX close is not the official close and the history is short (2020-07-27); see `price_source::sources`.
         available.push("alpaca");
     }
-    available.extend(["yahoo", "nasdaq"]);
     let cached = std::fs::read_to_string(price_cache::meta_path(&ctx.cache, ticker)).ok().and_then(|t| serde_json::from_str::<price_cache::Meta>(&t).ok()).map(|m| m.source);
     match cached {
         Some(s) if available.contains(&s.as_str()) => vec![s],
@@ -400,7 +401,7 @@ pub(crate) mod tests {
         assert_eq!(price_hosts(&ctx, "IBM", &none), ["nasdaq"], "the cache of Nasdaq stays with Nasdaq");
         assert_eq!(price_hosts(&ctx, "NEW", &none), ["yahoo", "nasdaq"], "no cache: the order of the existing code");
         let all = KeyInfo { tiingo: true, alpaca: true, fred: false, fmp: false };
-        assert_eq!(price_hosts(&ctx, "NEW", &all), ["tiingo", "alpaca", "yahoo", "nasdaq"]);
+        assert_eq!(price_hosts(&ctx, "NEW", &all), ["tiingo", "yahoo", "nasdaq", "alpaca"]);
         assert_eq!(price_hosts(&ctx, "IBM", &all), ["nasdaq"]);
         let _ = std::fs::remove_dir_all(&repo);
     }
