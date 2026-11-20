@@ -9,7 +9,7 @@ stays. The charge fades with the growth that it pays for (`acq_fade`): if the co
 is above the fade level L, the credited growth above L falls linearly to zero along the
 drift ramp, and the charge falls from its year 1 value to zero in the same years (same
 timing). If the mean is at or below L, the charge is constant. `acq_charge` and `acq_f`
-are never faded.
+are never faded. Defaults: `acq_w` on (`--rules acq_w=1`), `acq_fade` on (`--rules acq_fade=1`).
 
 ## Where used
 | Model | File | Parameter name |
