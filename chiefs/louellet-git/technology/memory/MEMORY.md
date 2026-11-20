@@ -1,8 +1,13 @@
-# Memory index: technology (louellet-git)
-What the next session of this head must know and what is not written in another place.
-Keep this file below 60 lines. Started 2026-11-20.
+# Dashboard: technology (louellet-git)
+For the next session of this head: how the environment and the data sources behave, and what the
+person decided. Keep this file below 60 lines. Started 2026-11-20.
 
-## Who and how
+## Goal now and subsequent steps
+- Keep the data and the build ready for the three other heads. Queue: `PLANNING/board/`, `head: technology`.
+- The person does the first run on the laptop with the keys (ticket `T-20261120-owner-first-run`). Help
+  when the person reports what failed.
+
+## Standing words of the person
 - 2026-11-19 or 2026-11-20 (the day was not recorded): "merge to main the branches when complete".
   Effect: open the pull request and merge it after a green check, with no new question.
 - 2026-11-19 or 2026-11-20: "Go back to using sonnet when possible". Now also `chiefs/ORIENTATION.md`,
@@ -21,7 +26,7 @@ Keep this file below 60 lines. Started 2026-11-20.
 - The person puts the keys in `.env` on the laptop. A key never goes in a chat, a file of the repo or
   a commit. In a cloud session, ask with the secure form (`request_credential`).
 
-## What stops work
+## Tested rules
 - The cloud machine can restart. A restart stops the background agents; the files and the worktrees
   stay. Commit unfinished work to its branch before a long wait.
 - The disk became full one time. Remedy: delete `rust/target` and `rust/mapcheck/target` in the
@@ -36,10 +41,8 @@ Keep this file below 60 lines. Started 2026-11-20.
 ## Pages
 - No page. The data sources and their limits are in `docs/DATA-SOURCES.md`.
 
-## Clean-up pass
-On the word of the person ("clean up memory"). Last pass: none.
+## Dream pass
+On the word of the person ("clean up memory" or "dream"). Last pass: none.
 
-## Open on 2026-11-20
-- The person does the first run on the laptop with the keys (ticket `T-20261120-owner-first-run`).
-- The queue is the tickets of `PLANNING/board/` with `head: technology`.
+## Other
 - The heads of `merlan1996` do not exist. Their folders are made at their first start.
