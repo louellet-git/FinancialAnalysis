@@ -13,3 +13,7 @@ after the record rule came into `main` (commit bfb70af).
 Words: "Proceed with your work"
 Done: Took the queue ticket with order 1, `T-20261120-option-history-root-defect`, on the branch
 `claude/upbeat-cori-a4ykf5` (the one branch that this session can push).
+
+## 2026-11-20 21:39 UTC (chat)
+Words: "Speak w Head of tech about this"
+Done: Sent the question about the missing Alpaca key id (HTTP 401 in the smoke test) to the Head of Technology.
