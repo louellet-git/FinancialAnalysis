@@ -24,7 +24,7 @@ HQM ends at the October 2026 average. The ICE series start on 2023-11-20.
   check without FedInvest prices (D3).
 - Corporate series: `awk` over `bonds/fred_HQMCB*YR.csv`, `fred_BAMLC0A1CAAA.csv`, `fred_BAMLC0A2CAA.csv`,
   `fred_BAMLC0A3CA.csv`, the `*EY.csv` files, and `SVENY01` to `SVENY30` of GSW (continuous zero), changed to
-  semi-annual with `2*(exp(r/2)-1)`. The scratch scripts are not in the repository.
+  semi-annual with `2*(exp(r/2)-1)`. `awk` rounds intermediate values to 0.1 bp, so a value can differ by 0.1 bp from the exact value. Std dev = population std dev.
 
 ## 3. Evidence
 ### 3.1 GSW par yield minus Treasury par yield (bp), 218 days
@@ -47,7 +47,7 @@ The mean OAS is 52.7 bp (47.4 bp in January, 58.4 bp in October). Ten months.
 
 | Tenor | HQM minus GSW zero | Residual after OAS, mean | Std dev | Residual 2026-10 |
 |---|---|---|---|---|
-| 1Y | +24.1 | -28.6 | 5.7 | -32.1 |
+| 1Y | +24.1 | -28.6 | 5.6 | -32.1 |
 | 2Y | +40.0 | -12.7 | 4.2 | -18.2 |
 | 3Y | +47.1 | -5.6 | 2.5 | -9.2 |
 | 5Y | +52.7 | 0.0 | 1.9 | +0.8 |
@@ -56,8 +56,10 @@ The mean OAS is 52.7 bp (47.4 bp in January, 58.4 bp in October). Ten months.
 | 20Y | +80.2 | +27.6 | 2.6 | +21.4 |
 | 30Y | +103.6 | +50.9 | 7.6 | +64.2 |
 
-Second source, our zero curve (`fa recon bonds --date 2026-11-18`, one day, HQM of October): 1Y -45.9, 2Y -26.6, 3Y -11.8,
-5Y +0.8, 7Y +12.1, 10Y +28.2, 20Y +22.1, 30Y +70.1 bp. It agrees with the October column to 4 to 14 bp.
+One run, not reproducible, different date. `fa recon bonds --date 2026-11-18` downloaded FedInvest by mistake (D5); its files
+are not in the store. It compares one day (2026-11-18) with the October HQM. Our zero curve gave: 1Y -45.9, 2Y -26.6, 3Y -11.8,
+5Y +0.8, 7Y +12.1, 10Y +28.2, 20Y +22.1, 30Y +70.1 bp. Difference from the October column: 0 to 14 bp (largest 1Y 13.8,
+2Y 8.4). The mean OAS is 63.7 bp on 2026-11-18 and 58.4 bp for October, so about 5 bp of the match is a date effect.
 
 ### 3.3 ICE effective yield minus OAS, against Treasury par, daily, 221 days to 2026-11-18
 Cell = mean of (EY - OAS - Treasury par of the tenor) in bp, std dev in brackets.
@@ -73,14 +75,15 @@ Cell = mean of (EY - OAS - Treasury par of the tenor) in bp, std dev in brackets
 | CCC | 1012 | +1.6 (6.7) | -8.8 (5.1) | -23.6 (5.5) | -40.1 (8.7) |
 
 The implied benchmark is not one Treasury tenor. The tenor with the smallest std dev gets shorter as the rating
-falls: 10Y for AAA and AA, 7Y to 10Y for A and BBB, 5Y for BB, B and CCC.
+falls: 10Y for AAA and AA, 7Y to 10Y for A and BBB, 5Y for BB, B and CCC. This test is weak: for AA the std dev is 3.3 at
+10Y against 3.7 at 7Y, so the tenor is not fixed.
 
 ## 4. What explains each difference
-1. **GSW, 1Y (+8.5 bp).** Probable: the Treasury 1Y point comes from bills (bill basis). GSW uses coupon bonds only
-   and gives a coupon-equivalent yield. Convention. The bill file is needed to test it (step 2).
+1. **GSW, 1Y (+8.5 bp).** Hypothesis, not tested: the Treasury 1Y point comes from bills (bill basis). GSW uses coupon bonds only
+   and gives a coupon-equivalent yield. The bill file is needed to test it (step 2).
 2. **GSW, 10Y and 30Y (+5 bp), 20Y (-2.5 bp).** GSW is a smooth six-parameter Svensson curve. The Treasury curve
-   uses quoted on-the-run prices at fixed points. A smooth curve does not follow the kink at the 20Y point.
-   Probable: fit form. Neither source is wrong. Not tested.
+   uses quoted on-the-run prices at fixed points. Hypothesis, not tested: a smooth curve does not follow a kink at the 20Y point (the 20Y bias is a stable -2.5 bp, std dev 1.1).
+   Hypothesis, not tested: fit form. Neither source is shown to be wrong (hypothesis, not tested).
 3. **Rounding.** Up to 0.5 bp from the 2 decimals of the Treasury file. Small against the std dev of 1.1 to 2.8 bp.
 4. **HQM, from -29 bp (1Y) to +51 bp (30Y).** The test adds one flat spread (53 bp) to all tenors. The HQM spread to
    the zero curve is 24 bp at 1Y and 104 bp at 30Y. The ICE OAS is a mean over an index of mixed maturity, so it fits
@@ -107,7 +110,7 @@ I did not know that the command downloads. The permission system refused my dele
 (the folders `data/raw/prices` and `data/recon` did not exist before). The second source in 3.2 comes from this run.
 
 ## 6. Conventions and open points
-GSW par is coupon-equivalent, GSW zero is continuous, HQM and ICE yields are semi-annual (the owner decides; no assumption record). Open, with owner:
+GSW par is coupon-equivalent, GSW zero is continuous, HQM and ICE yields are semi-annual. I did not read the HQM and ICE definitions (no page fetched): this is from the data and general knowledge, not confirmed. The owner decides; no assumption record. Open, with owner:
 - 1Y bill basis: Quant, with the bill file of step 2. ICE index duration: Quant (a new source: ask first).
 - Zero curve from the par file for all store dates (D3), and removal of the D5 files: Orchestrator.
 
@@ -120,12 +123,12 @@ GSW par is coupon-equivalent, GSW zero is continuous, HQM and ICE yields are sem
 
 ## A. Commands
 
-Run from `/home/user/FinancialAnalysis` (the script sets the folder). Bash. Output is in the order of 3.1, 3.2, 3.3;
-the script was run again and gave the table numbers (the 1Y std dev in 3.2 is 5.7). Two `fa` lines are not in the script:
-`FA_REPO=/home/user/FinancialAnalysis rust/target/release/fa forwards check` (section 2, network) and `fa recon bonds --date 2026-11-18` (second source of 3.2; it downloads, not run again).
+Run from a folder of a checkout that has `data/raw` (a worktree has none; use `/home/user/FinancialAnalysis`). Bash. Output is in the order of 3.1, 3.2, 3.3;
+the script was run again and gave the table numbers (the 1Y std dev in 3.2 prints 5.7 after the 0.1 bp rounding; the exact value is 5.6). Two `fa` lines are not in the script:
+`FA_REPO=/home/user/FinancialAnalysis rust/target/release/fa forwards check` (section 2, network) and `fa recon bonds --date 2026-11-18` (one run, not reproducible: it downloads, and its files are not in the store).
 
 ```bash
-cd /home/user/FinancialAnalysis
+cd "$(git rev-parse --show-toplevel)"
 R=data/raw/rates; B=data/raw/bonds; T=$(mktemp -d)
 # A1. GSW par and Treasury par (3.1)
 awk -F, '/^Date,BETA0/{for(i=1;i<=NF;i++)h[$i]=i;hd=1;next} hd&&$1>="2026-01-01"{printf "%s",$1;split("01 02 03 05 07 10 20 30",t," ");for(k=1;k<=8;k++)printf ",%s",$h["SVENPY" t[k]];print ""}' $R/gsw_feds200628.csv | sort > $T/gsw.csv
