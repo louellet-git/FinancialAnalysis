@@ -10,6 +10,9 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
 - GitHub Actions cost (date not recorded, 2026-11-19 or 2026-11-20): few pull requests; a pull
   request with documents only has no check run. Rules: `chiefs/ORIENTATION.md`, section 6.
 - The computer of the person is a Windows laptop: give commands for PowerShell.
+- 2026-11-20 23:07 UTC: Haiku permitted for the reviewers. Haiku now: document-reviewer, data-quality-analyst,
+  test-engineer. Sonnet: model-validator, auditor, code-reviewer, risk officer. If a Haiku review misses a
+  defect that a later review finds, move that agent back to Sonnet.
 
 ## Goal now
 - Do the gate reviews that the other heads ask for; send one verdict with all findings in one
