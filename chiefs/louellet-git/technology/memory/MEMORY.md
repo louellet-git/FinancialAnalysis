@@ -1,6 +1,45 @@
 # Memory index: technology (louellet-git)
+What the next session of this head must know and what is not written in another place.
+Keep this file below 60 lines. Started 2026-11-20.
 
-- 2026-11-20: the message channel was tested. A test message went to the heads of quant research and of
-  fundamental research, and each one replied in less than one minute. The four head sessions of
-  `louellet-git` exist. The ticket `T-20261120-chief-sessions` is closed.
-- Find a head by its session title with `list_sessions`. Do not keep a session id in a file.
+## Who and how
+- 2026-11-19 or 2026-11-20 (the day was not recorded): "merge to main the branches when complete".
+  Effect: open the pull request and merge it after a green check, with no new question.
+- 2026-11-19 or 2026-11-20: "Go back to using sonnet when possible". Now also `chiefs/ORIENTATION.md`,
+  section 3.
+- 2026-11-19 or 2026-11-20, on the GitHub Actions use: "this is too much usage". Effect: put small
+  changes together in few pull requests. A pull request with documents only has no check run
+  (`.github/workflows/tests.yml`, the `paths` filter).
+- 2026-11-20: "the agents should not be overly sophisticated just overall lean and of quality, not
+  obsessive and tight fisted".
+- 2026-11-20: "I don't need to name tickets. The tickets, however, do need to be addressed to whoever's
+  kind of responsible for them." Effect: the `head` and `order` fields of the board.
+- 2026-11-19 or 2026-11-20, on data that is always collected: "can we just hold off on that? Just
+  establish a solid data source for information that we can retrieve at any point". Effect: `fa sync`
+  on request; no process that runs all the time (ticket `T-20261119-live-data-stream` waits).
+- The computer of the person is a Windows laptop. Give commands for PowerShell.
+- The person puts the keys in `.env` on the laptop. A key never goes in a chat, a file of the repo or
+  a commit. In a cloud session, ask with the secure form (`request_credential`).
+
+## What stops work
+- The cloud machine can restart. A restart stops the background agents; the files and the worktrees
+  stay. Commit unfinished work to its branch before a long wait.
+- The disk became full one time. Remedy: delete `rust/target` and `rust/mapcheck/target` in the
+  worktrees of merged branches.
+- From a cloud address, some sources refuse requests: the Cboe delayed quotes (403), the Yahoo chart
+  (429), FRED with no key. Do not go around a block. The record is `docs/DATA-SOURCES.md`.
+- The Windows build can be checked from the cloud machine:
+  `cargo check --release --target x86_64-pc-windows-gnu` (the target and `gcc-mingw-w64-x86-64` must be
+  installed in a new machine).
+- The four head sessions exist. Find a head by its title with `list_sessions`; do not keep a session id.
+
+## Pages
+- No page. The data sources and their limits are in `docs/DATA-SOURCES.md`.
+
+## Clean-up pass
+On the word of the person ("clean up memory"). Last pass: none.
+
+## Open on 2026-11-20
+- The person does the first run on the laptop with the keys (ticket `T-20261120-owner-first-run`).
+- The queue is the tickets of `PLANNING/board/` with `head: technology`.
+- The heads of `merlan1996` do not exist. Their folders are made at their first start.
