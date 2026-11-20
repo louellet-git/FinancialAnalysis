@@ -38,7 +38,7 @@ fa sync - bring the cached data sets up to date (only the old ones), on request
 
 USAGE:
   fa sync [TICKER...] [--tickers-file F] [--only A,B] [--skip A,B] [--force] [--dry-run] [--max-minutes N]
-          [--option-symbols A,B] [--intraday-symbols A,B]
+          [--option-symbols A,B] [--intraday-symbols A,B] [--bond-days N]
   fa sync --status [TICKER...] [--tickers-file F] [--only A,B] [--skip A,B]
 
   TICKER...          the companies of the run (the tickers that you name also get the 10-K files). With no ticker and no
@@ -51,6 +51,8 @@ USAGE:
   --max-minutes N    stop after N minutes. A second run continues with what is old.
   --option-symbols   symbols of the option chains (default SPY, or option_symbols of sync.toml).
   --intraday-symbols more symbols of the 5-minute bars (SPY and QQQ are always in).
+  --bond-days N      the number of market days of FedInvest prices for the bonds data set (1 to 500; default 1, or
+                     bond_days of sync.toml). A day that has its file is current.
 
 DATA SETS (name: what; maximum age; hosts):
   sec        company facts of the SEC; looks at the SEC filing list once each market day; 1 day; sec
@@ -65,7 +67,7 @@ DATA SETS (name: what; maximum age; hosts):
   fred       the FRED series of the bond functions; 1 day; fred
   futures    VIX futures, CFTC positions, policy path, Yahoo futures; 1 day; cboe, cftc, atlantafed, yahoo
   vix        Cboe VIX history file; 1 day; cboe
-  bonds      FedInvest prices of the last market day; 1 day; treasurydirect
+  bonds      FedInvest prices of the last market day (--bond-days N: the last N days); 1 day; treasurydirect
   A maximum age of 1 day counts market days: a weekend or a market holiday does not make the data old. The ages are in
   sync.toml (optional).
 
@@ -86,6 +88,7 @@ pub struct Args {
     pub max_minutes: Option<f64>,
     pub option_symbols: Option<Vec<String>>,
     pub intraday_symbols: Vec<String>,
+    pub bond_days: Option<u32>,
     /// The words of the command line that say which companies and symbols (for the line "run again").
     pub echo: Vec<String>,
 }
@@ -153,6 +156,13 @@ pub fn parse_args(rest: &[String]) -> Result<Args, String> {
                 let v = value(i, w)?;
                 a.echo.extend([w.to_string(), v.clone()]);
                 a.intraday_symbols = symbols_of(&v);
+                i += 2;
+            }
+            "--bond-days" => {
+                let v = value(i, w)?;
+                let n: u32 = v.parse().map_err(|_| format!("bad --bond-days '{v}'"))?;
+                a.bond_days = Some(config::check_bond_days(n, w)?);
+                a.echo.extend([w.to_string(), v]);
                 i += 2;
             }
             "--force" => {
@@ -401,9 +411,13 @@ pub fn run_with(args: &Args, setup: &RunSetup, make_runner: MakeRunner, out: &mu
     let tickers = resolve_tickers(setup.repo, args, &setup.cfg)?;
     let ledger = Ledger::load(&setup.ctx.cache);
     let option_symbols = args.option_symbols.clone().unwrap_or_else(|| setup.cfg.option_symbols.clone());
+    let mut cfg = setup.cfg.clone();
+    if let Some(n) = args.bond_days {
+        cfg.bond_days = n;
+    }
     let input = PlanInput {
         ctx: &setup.ctx,
-        cfg: &setup.cfg,
+        cfg: &cfg,
         ledger: &ledger,
         tickers: tickers.clone(),
         focus: args.tickers.clone(),

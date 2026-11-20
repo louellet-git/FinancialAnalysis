@@ -123,6 +123,13 @@ fn arguments() {
     assert_eq!(a.max_minutes, Some(2.5));
     assert_eq!(a.option_symbols, Some(v(&["SPY", "QQQ"])));
     assert_eq!(a.echo, ["IBM", "MSFT", "--tickers-file", "x.txt", "--option-symbols", "spy,qqq"]);
+    let a = parse_args(&v(&["--only", "bonds", "--bond-days", "5"])).unwrap();
+    assert_eq!(a.bond_days, Some(5));
+    assert_eq!(a.echo, ["--bond-days", "5"]);
+    assert_eq!(parse_args(&v(&["--force"])).unwrap().bond_days, None);
+    for bad in [&["--bond-days"][..], &["--bond-days", "0"], &["--bond-days", "x"], &["--bond-days", "501"], &["--bond-days", "-1"]] {
+        assert!(parse_args(&v(bad)).is_err(), "{bad:?}");
+    }
     // Skip alone: all data sets but those.
     let a = parse_args(&v(&["--skip", "options,intraday"])).unwrap();
     assert_eq!(selected_sets(&a).len(), ALL.len() - 2);

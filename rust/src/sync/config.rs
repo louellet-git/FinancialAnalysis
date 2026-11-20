@@ -4,6 +4,7 @@
 //! ```toml
 //! tickers_file = "rust/mapcheck/universe/sp500.txt"
 //! option_symbols = ["SPY"]
+//! bond_days = 1
 //! intraday_symbols = ["SPY", "QQQ"]
 //!
 //! [max_age_days]
@@ -17,6 +18,8 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 pub const FILE_NAME: &str = "sync.toml";
+/// The most FedInvest days that one run asks for.
+pub const MAX_BOND_DAYS: u32 = 500;
 pub const DEFAULT_OPTION_SYMBOLS: [&str; 1] = ["SPY"];
 /// The symbols of the intraday bars that the option bots use. The symbols of `--intraday-symbols` come after them.
 pub const DEFAULT_INTRADAY_SYMBOLS: [&str; 2] = ["SPY", "QQQ"];
@@ -27,6 +30,7 @@ struct RawConfig {
     tickers_file: Option<String>,
     option_symbols: Option<Vec<String>>,
     intraday_symbols: Option<Vec<String>>,
+    bond_days: Option<u32>,
     max_age_days: Option<BTreeMap<String, u32>>,
 }
 
@@ -35,6 +39,8 @@ pub struct SyncConfig {
     pub tickers_file: Option<String>,
     pub option_symbols: Vec<String>,
     pub intraday_symbols: Vec<String>,
+    /// The number of market days of FedInvest prices that the bonds data set asks for (1 = the last market day).
+    pub bond_days: u32,
     /// The maximum age of each data set, in the unit of the data set (see `DataSet::age_unit`).
     pub max_age: BTreeMap<DataSet, u32>,
 }
@@ -45,6 +51,7 @@ impl Default for SyncConfig {
             tickers_file: None,
             option_symbols: DEFAULT_OPTION_SYMBOLS.iter().map(|s| s.to_string()).collect(),
             intraday_symbols: DEFAULT_INTRADAY_SYMBOLS.iter().map(|s| s.to_string()).collect(),
+            bond_days: 1,
             max_age: ALL.iter().map(|d| (*d, d.default_max_age())).collect(),
         }
     }
@@ -61,6 +68,14 @@ fn symbols(list: Vec<String>) -> Vec<String> {
     out
 }
 
+/// The number of FedInvest days must be from 1 to `MAX_BOND_DAYS`.
+pub fn check_bond_days(n: u32, name: &str) -> Result<u32, String> {
+    if n == 0 || n > MAX_BOND_DAYS {
+        return Err(format!("{name} must be from 1 to {MAX_BOND_DAYS}"));
+    }
+    Ok(n)
+}
+
 impl SyncConfig {
     /// The config of the text of a `sync.toml`. An unknown key or an unknown data set name is an error (a typo must not
     /// pass in silence).
@@ -75,6 +90,9 @@ impl SyncConfig {
         }
         if let Some(i) = raw.intraday_symbols {
             cfg.intraday_symbols = symbols(i);
+        }
+        if let Some(n) = raw.bond_days {
+            cfg.bond_days = check_bond_days(n, &format!("{FILE_NAME}: bond_days"))?;
         }
         for (name, days) in raw.max_age_days.unwrap_or_default() {
             let set = DataSet::from_name(&name).ok_or_else(|| format!("{FILE_NAME}: max_age_days has an unknown data set '{name}'"))?;
@@ -115,6 +133,7 @@ mod tests {
         assert_eq!(cfg.option_symbols, ["SPY"]);
         assert_eq!(cfg.intraday_symbols, ["SPY", "QQQ"]);
         assert_eq!(cfg.tickers_file, None);
+        assert_eq!(cfg.bond_days, 1);
     }
 
     #[test]
@@ -129,6 +148,15 @@ mod tests {
         assert_eq!(cfg.age_of(DataSet::Prices), 2);
         assert_eq!(cfg.age_of(DataSet::Estimates), 14);
         assert_eq!(cfg.age_of(DataSet::Rates), 1, "a data set that the file does not name keeps its default");
+    }
+
+    #[test]
+    fn bond_days_is_read_and_checked() {
+        assert_eq!(SyncConfig::parse("bond_days = 60\n").unwrap().bond_days, 60);
+        assert_eq!(SyncConfig::parse("").unwrap().bond_days, 1);
+        assert!(SyncConfig::parse("bond_days = 0").unwrap_err().contains("from 1 to 500"));
+        assert!(SyncConfig::parse("bond_days = 501").is_err());
+        assert!(SyncConfig::parse("bond_days = \"a\"").is_err());
     }
 
     #[test]
