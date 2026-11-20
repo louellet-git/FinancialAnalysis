@@ -24,7 +24,7 @@ Run all commands from the repo root.
 # Build (one time, and after each change of the registry)
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml
 
-# Get the data (network: SEC EDGAR; set SEC_USER_AGENT first, see below)
+# Get the data (network: SEC EDGAR; the contact comes from sec_contact.toml, see below)
 rust/mapcheck/target/release/mapcheck fetch --tickers-file rust/mapcheck/universe/batch50.txt
 rust/mapcheck/target/release/mapcheck fetch --top 2000 --write-list rust/mapcheck/universe/top2000.txt
 # The 10-K files, only for the companies that have a critical input with no value
@@ -57,10 +57,13 @@ cargo test --manifest-path rust/mapcheck/Cargo.toml
 
 `mapcheck --help` shows all options.
 
-### SEC_USER_AGENT
+### SEC contact
 
-The SEC asks each program to give its name and a contact in each request. Set the
-environment variable `SEC_USER_AGENT` before a command that gets data from the SEC:
+The SEC asks each program to give its name and a contact in each request. The contact is in
+the file `sec_contact.toml` in the repo root (key `user_agent`; a project address, public on
+purpose). The program looks for the file in the folder of `FA_REPO`, in the current folder and
+each parent folder, and in the repo root known at build time. A person who wants their own
+contact sets the environment variable `SEC_USER_AGENT`. It replaces the file:
 
 ```bash
 export SEC_USER_AGENT="FinancialAnalysis your-name your-contact"
@@ -68,7 +71,7 @@ export SEC_USER_AGENT="FinancialAnalysis your-name your-contact"
 
 PowerShell: `$env:SEC_USER_AGENT = "FinancialAnalysis your-name your-contact"`.
 `www.sec.gov` (the ticker list and the filing files) refuses a request that has no
-contact. A command that reads only the cache does not need the variable.
+contact. A command that reads only the cache does not need a contact.
 
 ## Status of a company
 

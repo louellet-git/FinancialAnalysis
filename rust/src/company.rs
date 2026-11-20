@@ -1,5 +1,5 @@
-//! Typed access to the company data from `mapcheck` (the Rust form of `schema.py`, `store.py`
-//! and the read part of `importer.py`).
+//! Typed access to the company data from `mapcheck` (the Rust form of the earlier Python store, schema
+//! and importer).
 //!
 //! A company has periods; a period has one value for each standard variable of the registry
 //! (`financial_analysis/standard_variables.toml`), in the sequence of the registry, with its source text
@@ -146,7 +146,7 @@ fa import TICKER... [--refresh] [--periods N]
 
 Map the SEC company facts to the standard variables and write data/processed/<TICKER>.json (the file
 that `fa dcf classic` reads). The company facts come from the cache data/raw/<TICKER>/ first; the SEC
-is asked if they are not there, or with --refresh (set SEC_USER_AGENT for that).
+is asked if they are not there, or with --refresh (the SEC contact is in the file sec_contact.toml of the repo; SEC_USER_AGENT replaces it).
   --periods N   fiscal years and quarters for each ticker (default: 12)";
 
 /// `fa import`. Returns the exit code.

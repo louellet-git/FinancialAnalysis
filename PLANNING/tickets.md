@@ -47,10 +47,8 @@ The validators, the red-team corpus and the coverage validator are on the board
 - **Statement templates for banks, insurers and REITs.** The audit only marks them.
 - **Foreign filers.** A filer with annual reports on form 20-F or 40-F has no annual
   rows (51 of the 500 largest registrants). Accept these forms as annual forms.
-- **Contact in the SEC User-Agent.** The Rust program reads the contact from the
-  environment variable `SEC_USER_AGENT`. The legacy Python SEC client module has a
-  fixed contact in its text, in a public repo: remove it when that module is deleted
-  (board ticket `python-to-rust`).
+- **Contact in the SEC User-Agent. Done 2026-11-20.** The contact is the project address in `sec_contact.toml`; the
+  environment variable `SEC_USER_AGENT` replaces it (`docs/HIDDEN-ASSUMPTIONS.md` #285).
 - **Sign of expense tags.** Some filers report an expense as a negative number (DIS
   interest expense). Add a registry option that stores the absolute value.
 
@@ -75,7 +73,6 @@ The validators, the red-team corpus and the coverage validator are on the board
 - Add a row to `PLANNING/token-ledger.md`.
 - A charter review must accept a report before publication. Luc approves frontier runs
   (`PLANNING/reusable-dcf-vision.md`, L5).
-- Keep `requirements.txt` correct when a dependency changes.
 
 ---
 

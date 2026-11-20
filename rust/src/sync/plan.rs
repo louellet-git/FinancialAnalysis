@@ -89,7 +89,9 @@ pub struct PlanInput<'a> {
     pub focus: Vec<String>,
     pub sets: Vec<DataSet>,
     pub force: bool,
+    /// Is there a SEC contact? If not, `sec_error` says why (the text of the skip line).
     pub sec_contact: bool,
+    pub sec_error: String,
     pub keys: KeyInfo,
     pub intraday_extra: Vec<String>,
     pub option_symbols: Vec<String>,
@@ -163,7 +165,7 @@ pub fn make_plan(inp: &PlanInput) -> Plan {
             continue;
         }
         if set.needs_sec_contact() && !inp.sec_contact {
-            plan.skipped.push((set, format!("{} is not set (the SEC asks for a contact in each request)", mapcheck::http::SEC_USER_AGENT_ENV)));
+            plan.skipped.push((set, inp.sec_error.clone()));
             continue;
         }
         let keys = keys_of(set, inp.ctx, inp.cfg, &inp.tickers, &inp.intraday_extra, &inp.option_symbols);
@@ -305,6 +307,7 @@ pub(crate) mod tests {
             sets: sets.to_vec(),
             force: false,
             sec_contact: true,
+            sec_error: String::new(),
             keys: KeyInfo::default(),
             intraday_extra: vec![],
             option_symbols: vec!["SPY".into()],
@@ -362,10 +365,11 @@ pub(crate) mod tests {
         let ctx = ctx_at(&repo, "2026-11-19");
         let mut inp = input(&ctx, &cfg, &ledger, &["IBM"], &[DataSet::Sec, DataSet::Filings, DataSet::Prices, DataSet::Earnings]);
         inp.sec_contact = false;
+        inp.sec_error = "no SEC contact found (test)".into();
         let p = make_plan(&inp);
         let skipped: Vec<DataSet> = p.skipped.iter().map(|(s, _)| *s).collect();
         assert_eq!(skipped, [DataSet::Sec, DataSet::Filings]);
-        assert!(p.skipped[0].1.contains("SEC_USER_AGENT is not set"));
+        assert!(p.skipped[0].1.contains("no SEC contact found (test)"));
         assert_eq!(keys_of_plan(&p, DataSet::Prices), ["IBM"]);
         // The earnings data set runs with the Nasdaq part only: one scan of the calendar, no item of the SEC host.
         assert_eq!(keys_of_plan(&p, DataSet::Earnings), [CALENDAR_KEY]);

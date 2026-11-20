@@ -9,6 +9,7 @@ on:
       - 'rust/**'
       - 'analysis/**'
       - 'financial_analysis/**'
+      - 'sec_contact.toml'
       - '.github/workflows/**'
   push:
     branches: [main]

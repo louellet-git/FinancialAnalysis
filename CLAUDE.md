@@ -61,15 +61,11 @@ The repo gives analysis. It does not send orders to a broker.
 - **Smoke test.** A ticket is complete only after the real command runs and the next
   step can use the output.
 - **No bloat.** Add one small part, show that it gives value, then add the next part.
-- **The language is Rust** (owner decision, 2026-11-19). Write all new code in Rust.
-  Do not write new Python code. One part has one implementation: do not keep a Python
-  copy and a Rust copy of the same part. The only Python code that stays is the legacy
-  SEC client in `financial_analysis/` with its callers (`financial_analysis/importer.py`,
-  `financial_analysis/__init__.py`, `scripts/import_edgar.py`, `scripts/__init__.py`). It
-  stays until the owner decides the new place of the SEC contact text (board ticket
-  `python-to-rust`). Before you change the function of one of these files, move the part
-  to Rust and delete the Python part. A Rust program that only calls Python code does not
-  move a part to Rust.
+- **The language is Rust** (owner decision, 2026-11-19). The repo has no Python code now. Write all
+  new code in Rust. Do not write new Python code. One part has one implementation: do not keep a
+  second copy of a part in another language.
+- **SEC contact.** The SEC contact is in `sec_contact.toml` (a project address, public on purpose).
+  The environment variable `SEC_USER_AGENT` replaces it. Do not put a private contact in the repo.
 - **Do not commit** `data/`, `__pycache__/`, `.env`, or private review-framework files
   (`.claude/agents/`, `vendor/`). This repo is public.
 - **Token ledger.** Add a row to `PLANNING/token-ledger.md` for each run.
@@ -95,8 +91,8 @@ Do not use a first pass alone for a trade.
 ## Commands
 
 ```bash
-cargo test --manifest-path rust/mapcheck/Cargo.toml   # 92 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked   # 568 Rust tests (550 + 17 + 1), no network
+cargo test --manifest-path rust/mapcheck/Cargo.toml   # 97 Rust tests, no network
+cargo test --manifest-path rust/Cargo.toml --locked   # 569 Rust tests (551 + 17 + 1), no network
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
 rust/mapcheck/target/release/mapcheck fetch --submissions IBM   # SEC 8-K item 2.02 list into data/raw/IBM/sec_8k_earnings.json
 rust/target/release/fa estimates get IBM; rust/target/release/fa estimates show IBM   # consensus, targets, surprises (Nasdaq site, no key)
