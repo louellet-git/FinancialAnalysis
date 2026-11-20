@@ -2,12 +2,13 @@
 id: T-20261120-store-arb-data
 title: Add the rate, futures and option data of the arbitrage checks to the data store
 area: importer
-status: review
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: technology
 order: 3
 branch: claude/store-arb-data
+merged: https://github.com/louellet-git/FinancialAnalysis/pull/86
 created: 2026-11-20
 acceptance: The store `louellet-git/fa-data` has the data sets of the list below with their dates in `SNAPSHOT.md`, and `fa recon rich-cheap`, `fa recon bills` and `fa futures check` run on the store with no request to a source.
 ---

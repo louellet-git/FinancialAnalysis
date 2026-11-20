@@ -98,3 +98,7 @@ Done: `lean/` of `louellet-git/chiefs` is a byte-for-byte copy of the heads syst
 ## 2026-11-20 23:08 UTC (chat of the Head of Fundamental Research; checked in its transcript)
 Words: "I think you might have deleted an old ticket, that's not how we should handle those, speak w tech head"
 Done (2026-11-20 23:10 UTC): a merged ticket moves to `PLANNING/board/done/` (`git mv`, `status: done`, a line `merged:`); never deleted (`PLANNING/board/README.md`, skill `ticket-workflow`, `docs/TEAMS.md`). The 27 tickets that were deleted before are restored from git history into `done/`.
+
+## 2026-11-20 23:18 UTC (chat)
+Words: "For the lean system, don't include the agents and skills but include the logic/rules that govern having agents and skills being created that I've already stated. We should be transferring over memory preferences, board preferences, everything, just generalized"
+Done: `lean/` of `louellet-git/chiefs` is the general version (8 files, rules only; chiefs pull request 33). It replaces the exact copy of chiefs pull request 32.
