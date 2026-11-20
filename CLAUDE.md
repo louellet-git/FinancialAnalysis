@@ -1,6 +1,6 @@
 # CLAUDE.md — orientation for agents
 
-If your session title starts with `FA-L` or `FA-M`, you are a head of an area. Read
+If your session title starts with `FA-`, you are a head of an area. Read
 `chiefs/ORIENTATION.md` after this file. It says who you are and how the heads send messages
 to each other.
 
@@ -66,9 +66,16 @@ The repo gives analysis. It does not send orders to a broker.
 - **Smoke test.** A ticket is complete only after the real command runs and the next
   step can use the output.
 - **No bloat.** Add one small part, show that it gives value, then add the next part.
-- **The language is Rust** (owner decision, 2026-11-19). The repo has no Python code now. Write all
-  new code in Rust. Do not write new Python code. One part has one implementation: do not keep a
-  second copy of a part in another language.
+- **The main language is Rust** (owner decision, 2026-11-19; scope set by the owner, 2026-11-20).
+  Write in Rust the programs that calculate, trade or get data: the engines, the trading code, the
+  data loaders and their tests. The repo has no Python code, and no part has a second copy in a
+  different language. A different language is permitted where it fits the work better than Rust:
+  SQL for a database, a shell command, the CI workflow file, the HTML of a report page, a small
+  one-time script. If you are not sure, use Rust.
+- **Data.** The data cache (`data/raw`) comes from the data store, the repo `louellet-git/fa-data`:
+  `git clone --depth 1 https://github.com/louellet-git/fa-data data/raw`. Do not start a bulk download
+  from the sources. Only the Head of Technology of `louellet-git` writes the store
+  (`docs/DATA-SOURCES.md`, "The data store").
 - **SEC contact.** The SEC contact is in `sec_contact.toml` (a project address, public on purpose).
   The environment variable `SEC_USER_AGENT` replaces it. Do not put a private contact in the repo.
 - **Do not commit** `data/`, `__pycache__/`, `.env`, `vendor/`, or the files of a private
@@ -78,6 +85,10 @@ The repo gives analysis. It does not send orders to a broker.
 - **Model documents.** Each model has a model document (`docs/models/`) and each
   assumption has a record (`docs/assumptions/`). A change of an assumption value changes
   its record in the same pull request.
+- **Cost of the checks.** The owner pays for the GitHub Actions runs. Run the tests on your machine
+  before a pull request with code, put small document changes in one pull request, push to an open
+  pull request only to correct it, and do not change the workflow, its path filter or its cache.
+  The full rules: `chiefs/ORIENTATION.md`, section 6.
 - **Token ledger.** Add a row to `PLANNING/token-ledger.md` for each run. A head adds the
   row to the `ledger.md` file of its own folder (`chiefs/ORIENTATION.md`, section 8).
 
@@ -102,7 +113,7 @@ Do not use a first pass alone for a trade.
 ## Commands
 
 ```bash
-cargo test --manifest-path rust/mapcheck/Cargo.toml   # 97 Rust tests, no network
+cargo test --manifest-path rust/mapcheck/Cargo.toml   # 100 Rust tests, no network
 cargo test --manifest-path rust/Cargo.toml --locked   # 582 Rust tests (564 + 17 + 1), no network
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
 rust/mapcheck/target/release/mapcheck fetch --submissions IBM   # SEC 8-K item 2.02 list into data/raw/IBM/sec_8k_earnings.json
