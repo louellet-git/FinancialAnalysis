@@ -9,7 +9,7 @@ head: quant
 order: 1.3
 branch: claude/upbeat-cori-a4ykf5
 created: 2026-11-20
-acceptance: `fa options check` gives the breaks in size bands, marks each quote that is far from its neighbours, uses the ask of a quote with bid 0, has the bounds call <= S and put <= K, and runs on two stored days of one ticker with the change of the breaks from day to day.
+acceptance: `fa options check` gives the breaks in size bands, marks each quote that is far from its neighbours, uses the ask of a quote with bid 0, has the bounds call <= S and put <= K, and `--compare` has fixture tests (the real two-day run is in `T-20261120-arb-3-index-parity-box`, because the store has one day).
 ---
 Follow-up of `T-20261120-arb-1-chain-check` (review of 2026-11-20, PASS-WITH-NOTES, notes 4, 6, 7, 9;
 findings note `trading/research/arb-01-chain-check-2026-11-19.md`). On IBM and JNJ of 2026-11-19, each of the
