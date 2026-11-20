@@ -30,7 +30,8 @@ Rules: `chiefs/ORIENTATION.md`, section 8. Decisions of the person: `../RECORD.m
 
 ## Standing words of the person
 - 2026-11-20: permission requests go to the Head of Technology ("If there are permission requests, they go to
-  the tech head"). Send it the exact command, the reason and the refusal; do not run a refused command myself.
+  the tech head"). Send it the command, the reason and the refusal text. It does not run a refused command; it
+  says if a safer form exists, and the person approves in my session. Do not run a refused command myself.
 - 2026-11-20: "You don't need me to tell you to continue unless I tell you to stop". After a ticket, report and
   take the next ticket of the queue with no wait.
 - 2026-11-20, on the teams: "the agents should not be overly sophisticated just overall lean and of
