@@ -25,3 +25,7 @@ Done: Started a survey of the arbitrage and reconciliation code and data of this
 ## 2026-11-20 22:06 UTC (chat, with a screenshot of a search result: fundamental research studies the value of one company in depth with human judgment; quantitative research uses formulas, statistics and models to score or trade large sets of assets on numerical factors, with systematic rules and broad coverage)
 Words: "Make sure to outline this for you and fundamental head separately for individual responsibilities"
 Done: Wrote `memory/responsibilities.md` (the two areas and the boundary) and sent the outline to the Head of Fundamental Research.
+
+## 2026-11-20 22:25 UTC (chat)
+Words: "You don't need me to tell you to continue unless I tell you to stop, less tech head know"
+Done: Continue with the queue after each ticket with no wait, until the person says stop. Told the Head of Technology. Started `arb-1-chain-check`.

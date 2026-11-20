@@ -5,7 +5,7 @@ Rules: `chiefs/ORIENTATION.md`, section 8. Decisions of the person: `../RECORD.m
 ## Goal now
 - Order 1 (`T-20261120-option-history-root-defect`) is merged (pull request 76, 2026-11-20). The person
   asked for arbitrage work (record, 2026-11-20): the next ticket of the queue is `arb-1-chain-check`
-  (order 1.1). Start it only on the word of the person.
+  (order 1.1), in progress.
 
 ## Next steps
 - `arb-2-rates-recon` (1.2). `arb-3` and `arb-4` (3.1, 3.2) wait for the chain copy (`vol-7`, order 3) and
@@ -26,6 +26,8 @@ Rules: `chiefs/ORIENTATION.md`, section 8. Decisions of the person: `../RECORD.m
   closes), in `rust/src/market/option_history.rs`. A change of the grouping changes both.
 
 ## Standing words of the person
+- 2026-11-20: "You don't need me to tell you to continue unless I tell you to stop". After a ticket, report and
+  take the next ticket of the queue with no wait.
 - 2026-11-20, on the teams: "the agents should not be overly sophisticated just overall lean and of
   quality, not obsessive and tight fisted".
 - The GitHub Actions use was too high: few pull requests, both test suites on this machine first
@@ -33,7 +35,7 @@ Rules: `chiefs/ORIENTATION.md`, section 8. Decisions of the person: `../RECORD.m
 - The computer of the person is a Windows laptop. Give commands for PowerShell.
 
 ## Pages
-- No page.
+- `responsibilities.md`: the split of work between Quant Research and Fundamental Research.
 
 ## Dream pass
 On the word of the person ("clean up memory" or "dream"). Last pass: none.
