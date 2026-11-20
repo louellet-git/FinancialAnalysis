@@ -53,9 +53,10 @@ The repo gives analysis. It does not send orders to a broker.
 
 ## Work rules
 
-- **Language.** Write each new document, and each document that you change, in
-  ASD-STE100 Simplified Technical English. This is the only document standard. Frozen
-  documents and review records keep their original text.
+- **Language.** Write each new document, and each document that you change, in ASD-STE100
+  Simplified Technical English, to about 85%: most sentences follow the rules, and a sentence can
+  break a rule where the STE form is less clear (a technical term, a name, a formula). A document
+  that already meets this needs no rework. Frozen documents and review records keep their text.
 - **Ticket first.** Before you start, set a board ticket to `in-progress` with your
   login and branch, and push that change.
 - **One branch for one ticket.** Start it from `origin/main`. Merge through a pull
@@ -131,6 +132,7 @@ rust/target/release/fa dcf drivers IBM        # version 4 headline numbers; opti
 rust/target/release/fa dcf auto IBM --cache data/raw --explain   # automatic path model of a ticker (a screen, not a reviewed valuation)
 rust/target/release/fa dcf screen --tickers-file rust/mapcheck/universe/sp500.txt --cache data/raw   # one row for each ticker
 rust/target/release/fa dcf pit --cache data/raw   # point-in-time test of the automatic model
+rust/target/release/fa dcf assumptions           # the register of the assumptions of the automatic model (--md; --effect K=V --tickers-file F: the effect of an alternative)
 rust/target/release/fa dcf returns --cache data/raw   # the automatic model value against the later stock returns (a measurement)
 rust/target/release/fa dcf scenarios IBM      # classic engine, bear/base/bull (version 3 inputs)
 rust/target/release/fa backtest IBM           # point-in-time vintage backtest of revenue and FCF

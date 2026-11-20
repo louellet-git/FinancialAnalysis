@@ -102,3 +102,23 @@ Done (2026-11-20 23:10 UTC): a merged ticket moves to `PLANNING/board/done/` (`g
 ## 2026-11-20 23:18 UTC (chat)
 Words: "For the lean system, don't include the agents and skills but include the logic/rules that govern having agents and skills being created that I've already stated. We should be transferring over memory preferences, board preferences, everything, just generalized"
 Done: `lean/` of `louellet-git/chiefs` is the general version (8 files, rules only; chiefs pull request 33). It replaces the exact copy of chiefs pull request 32.
+
+## 2026-11-20 23:22 UTC (chat of the Head of Quality and Risk; relayed, not checked in its transcript)
+Words: "Don't over commit to one model, since the scope of the job will change is what I meant. Tell the tech that. Keep the rule lean and not a need but permission to."
+Done (2026-11-20 23:29 UTC): `chiefs/ORIENTATION.md`, section 3 "Model": the agent files give Sonnet; for one run a head can choose a different model that fits the job; a permission, not a duty.
+
+## 2026-11-20 23:30 UTC (chat)
+Words: "Also eventually we're going to begin making trades on the paper account and eventually on live account. This will mean write ups explaining the logic of the trade and the steps taken/etc. this should never exceed a doc of 2 pages. But it does need to be documented. Also, it should be a standard for everyone to be using 85% ASD-STE100, unless it already is"
+Done: `trading/journal/README.md` (one write-up for each trade, at most 2 pages, with a form), a row in `docs/QUALITY-STANDARDS.md`, a note in the paper-desk ticket. The language rule of `CLAUDE.md`, the skill `ste-writing` and the document reviewer use "about 85% ASD-STE100"; a document that already meets it needs no rework.
+
+## 2026-11-20 23:49 UTC (chat)
+Words: "Great, that works. We need a way that you can get permission requests to the user once it's filtered. Lean method? I don't want a bunch of questions buried in the session."
+Done: `chiefs/ORIENTATION.md`, section 5, "Requests for the person": a refused command or a decision of the person goes to the Head of Technology, which filters it; what stays becomes one board ticket with `area: ask` and `head: owner`, and one push notification for each batch. First ask: `T-20261120-ask-rates-appendix-run`.
+
+## 2026-11-20 23:51 UTC (chat)
+Words: "Also the question should be delivered in clear terms"
+Done: the ask form in `chiefs/ORIENTATION.md`, section 5 (Question, Why it matters, Choices, Recommendation, How to answer; plain words, no internal names); the three open asks written again in that form; the push names each question in plain words.
+
+## 2026-11-20 23:52 UTC (chat)
+Words: "I need the question as a yes/no from the sessions to my phone"
+Done: an ask is a yes/no question; the session where the person answers pushes it to the phone ("Yes or no: ...? Recommended: ..."). `chiefs/ORIENTATION.md`, section 5; the three open asks written again.

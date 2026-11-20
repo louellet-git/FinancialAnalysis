@@ -2,11 +2,12 @@
 id: T-20261120-dcf-conventions-decision
 title: Decide the long-run growth and the acquisition charge of the automatic model
 area: engine
-status: review
+status: done
 owner: louellet-git
 head: fundamental
 order: 1
 branch: claude/magical-planck-41ip3i
+merged: 77
 created: 2026-11-20
 acceptance: Each of the two conventions has a decision (the owner, or the Head of Fundamental Research on the word of the owner of 2026-11-20), a review of the weight of the IBM review passed for each default that changed, and the assumption records give the decision and its date.
 ---
