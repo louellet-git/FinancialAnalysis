@@ -69,7 +69,7 @@ impl RetObs {
 }
 
 /// `(day, close)` of a price series, in date order.
-fn days_of(series: &[(String, f64)]) -> Vec<(i64, f64)> {
+pub fn days_of(series: &[(String, f64)]) -> Vec<(i64, f64)> {
     series.iter().filter_map(|(d, c)| Some((mapcheck::dates::parse(d.get(..10)?)?, *c))).filter(|(_, c)| c.is_finite() && *c > 0.0).collect()
 }
 
@@ -91,6 +91,30 @@ pub struct RetParams<'a> {
     pub seed: u64,
 }
 
+/// The automatic model of one company on `as_of`: `years` is the data known on that date (the last item is the base
+/// year), `price` is the close of `as_of`, `prices` is the price series (only the part up to `as_of` is read: the
+/// beta uses the weeks up to `as_of`). Returns the P50 and the base revenue, `None` if the model refuses.
+/// `fa dcf returns` and `fa portfolio backtest` (strategy `value-rank`) use this one function.
+pub fn model_p50(ticker: &str, years: &[YearData], as_of: &str, price: f64, prices: &[(String, f64)], p: &RetParams) -> Option<(f64, f64)> {
+    let last = years.last()?;
+    let inputs = AutoInputs {
+        ticker: ticker.to_string(),
+        template: "standard".into(),
+        status: "PASS".into(),
+        years: years.to_vec(),
+        balance: Some(BalanceData::from_year(last)),
+        ..Default::default()
+    };
+    let curve = p.curves.and_then(|ds| curve_on(ds, as_of).ok());
+    let beta = p.index.and_then(|m| regression_beta(prices, m, as_of, 260, p.rules.beta_weight, "SPY"));
+    let market = Market { as_of: as_of.to_string(), curve, price: Some(price), price_source: "price cache".into(), beta };
+    let model = build(&inputs, p.table, p.fade, &market, p.rules, BuildOptions::default()).ok()?;
+    let spec = PathsSpec::from_toml(&model.toml).ok()?;
+    let eng = PathEngine::new(&spec).ok()?;
+    let sim = eng.simulate_serial(p.paths, p.seed, &Mods::default()).ok()?;
+    Some((sim.p50(), model.summary.base_revenue))
+}
+
 /// The observations of one company: one for each fiscal year with a model and a price on the date of the model.
 pub fn company_returns(ticker: &str, years: &[YearData], prices: &[(String, f64)], p: &RetParams) -> Vec<RetObs> {
     let days = days_of(prices);
@@ -99,21 +123,7 @@ pub fn company_returns(ticker: &str, years: &[YearData], prices: &[(String, f64)
         let Some(end) = mapcheck::dates::parse(years[b].end.get(..10).unwrap_or("")) else { continue };
         let Some((d0, p0)) = close_on_or_after(&days, end + p.lag, 7) else { continue };
         let as_of = mapcheck::dates::format(d0);
-        let inputs = AutoInputs {
-            ticker: ticker.to_string(),
-            template: "standard".into(),
-            status: "PASS".into(),
-            years: years[..=b].to_vec(),
-            balance: Some(BalanceData::from_year(&years[b])),
-            ..Default::default()
-        };
-        let curve = p.curves.and_then(|ds| curve_on(ds, &as_of).ok());
-        let beta = p.index.and_then(|m| regression_beta(prices, m, &as_of, 260, p.rules.beta_weight, "SPY"));
-        let market = Market { as_of: as_of.clone(), curve, price: Some(p0), price_source: "price cache".into(), beta };
-        let Ok(model) = build(&inputs, p.table, p.fade, &market, p.rules, BuildOptions::default()) else { continue };
-        let Ok(spec) = PathsSpec::from_toml(&model.toml) else { continue };
-        let Ok(eng) = PathEngine::new(&spec) else { continue };
-        let Ok(sim) = eng.simulate_serial(p.paths, p.seed, &Mods::default()) else { continue };
+        let Some((p50, base_revenue)) = model_p50(ticker, &years[..=b], &as_of, p0, prices, p) else { continue };
         let later = |years_after: i64| close_on_or_after(&days, d0 + 365 * years_after + years_after / 4, 7).map(|(_, c)| c / p0 - 1.0);
         let y = &years[b];
         let div_yield = match (y.dividends, y.shares) {
@@ -126,8 +136,8 @@ pub fn company_returns(ticker: &str, years: &[YearData], prices: &[(String, f64)
             fy_end: y.end.clone(),
             as_of: as_of.clone(),
             year: as_of.get(..4).and_then(|x| x.parse().ok()).unwrap_or(0),
-            size: bucket(model.summary.base_revenue),
-            p50: sim.p50(),
+            size: bucket(base_revenue),
+            p50,
             price: p0,
             r1: later(1),
             r3: later(3),

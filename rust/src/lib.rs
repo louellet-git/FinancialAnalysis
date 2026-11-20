@@ -34,6 +34,7 @@ pub mod verdict_rates;
 mod rates_tests;
 pub mod futures;
 pub mod ratemodels;
+pub mod portfolio;
 pub mod trading;
 pub mod analyze;
 pub mod company;

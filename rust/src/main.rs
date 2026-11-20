@@ -60,6 +60,8 @@ USAGE:
   fa recon bills [--date D]                       tests of each cause of the bill difference of recon bonds
   fa recon rich-cheap [--date D] [--out FILE]     fitted NSS curve, difference of each security, rich and cheap candidates
   fa recon history [--from D] [--to D] [--out F]  the same difference over the cached dates: how long it lasts
+  fa portfolio backtest --strategy value-rank|momentum --start D --end D [--rebalance monthly|quarterly] [--cost-bp N] [--tickers-file F] [--cache DIR]
+                                                  portfolio backtest with costs, point-in-time, against SPY (fa portfolio --help)
   fa trade fetch [--symbol S]... [--interval I]...  download the bars of the option bots (Yahoo) into the CSV cache
   fa trade backtest [--bot ID]... [--max-risk N] [--out FILE] [-v]   backtest the option bots (fa trade backtest --help)
   fa trade paper [BOT]... [--no-refresh] [--no-live]   forward paper trading, live Cboe option chain (fa trade paper --help)
@@ -258,6 +260,7 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
         }),
         Some("forwards") => Ok(forwards_cmd(fa, &args[1..])),
         Some("futures") => Ok(financial_analysis::futures::cli::run(&fa.repo, &args[1..])),
+        Some("portfolio") => Ok(ExitCode::from(financial_analysis::portfolio::cli::run(&fa.repo, &args[1..]))),
         Some("backtest") => Ok(ExitCode::from(financial_analysis::dcf::cli::backtest(&fa.repo, &args[1..]))),
         Some("dcf") => Ok(ExitCode::from(financial_analysis::dcf::cli::run(&fa.repo, &args[1..]))),
         Some("options") => match financial_analysis::market::options_cli::run(&fa.repo, &args[1..]) {

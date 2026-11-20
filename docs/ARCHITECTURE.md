@@ -1,3 +1,4 @@
+| `fa portfolio backtest` (`rust/src/portfolio/`) | One portfolio backtester. `mod.rs`: the engine (positions, daily close value, cost in basis points on each traded value, cash, SPY as benchmark; total and annual return, volatility, maximum drawdown, turnover, cost). `strategies.rs`: the reference strategies `value-rank` (the function `model_p50` of `auto_returns.rs`, with the fiscal years filed before the date) and `momentum` (12-1 months); both take the top quintile with equal weight. `cli.rs`: the command. A strategy reads prices through a `View` that holds the days before the rebalance date; the engine trades at the close of that date. The engine reads the cache only. The ticker lists are today's lists (survivorship). |
 # Architecture — code-verified module map
 
 Verified against the code on 2026-07-17 (branch `docs-overhaul`, based on origin/main
@@ -970,7 +971,7 @@ ticket `option-backtest-rust`).
 
 ## Tests
 
-`cargo test --manifest-path rust/Cargo.toml --locked`: 576 Rust tests (558 + 17 + 1; 2 more are ignored) (the `fa` crate).
+`cargo test --manifest-path rust/Cargo.toml --locked`: 593 Rust tests (575 + 17 + 1; 2 more are ignored) (the `fa` crate).
 `cargo test --manifest-path rust/mapcheck/Cargo.toml`: 100 Rust tests. The suites make no network calls and start no
 Python program; HTTP is replaced by a function that the test gives, and files are in a temp folder.
 No Python test remains (the last 211 Python tests were deleted on 2026-11-19 after each case had a Rust test).

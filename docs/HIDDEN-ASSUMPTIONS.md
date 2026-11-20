@@ -1893,6 +1893,15 @@ On 2026-11-20: rank correlation of P50 / price with the 3-year return +0.12 (mea
 revenue above $30B; the lowest quintile (values near or below zero) also had high returns.
 *Evidence:* `analysis/priors/auto_returns_2026-11-20.txt`.
 
+## The portfolio backtest (added 2026-11-20, branch `claude/portfolio-backtest`)
+
+### The ticker list is today's list (survivorship)
+
+*Trap:* `fa portfolio backtest` takes its tickers from a list that exists now (for example `rust/mapcheck/universe/sp500.txt`). A company that failed, was bought or left the index before today is not in the list. The strategies could not buy it, so its losses are not in the result. The result is too good, for both strategies. The command prints this warning in its output.
+*Also:* the price files are adjusted for splits, not for dividends (price returns, also for SPY); a strategy must read other data by its filing date, because only the prices are guarded by the `View`; a ticker that stops trading keeps its last price in the portfolio.
+*What to do:* read the result as a test of the machine, not as a forecast. A list of the index members for each past date (not in the data store now) removes this trap.
+*Evidence:* `rust/src/portfolio/cli.rs` (`LIMITS`), `docs/ARCHITECTURE.md` (row `fa portfolio backtest`).
+
 ## Could not verify
 
 - (none of the named traps failed verification — all located in current code/docs; the
