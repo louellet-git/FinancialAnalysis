@@ -195,6 +195,22 @@ Rules of the channel:
 4. A question for the person goes to the person, not to a different head.
 5. Do not write a session id in a file. An id changes; a title does not.
 
+**Requests for the person (permissions and decisions).** The person sees them on the board,
+not in a chat.
+
+1. When the permission system refuses a command of your session or of an agent of your team,
+   or when only the person can decide, send it to the Head of Technology of your person: the
+   command or the question, the reason, and the refusal text. Do not get around a refusal.
+2. The Head of Technology filters: it answers what it can (a safer form, a fact, a rule that
+   exists) and drops duplicates. It never runs a command that a different session was refused.
+3. What only the person can decide becomes one ticket: `area: ask`, `head: owner`, the
+   question as the title, the options with a recommendation, and the session where the person
+   answers.
+4. For each new batch of asks, the Head of Technology sends one push notification
+   (`PushNotification`): the number of asks and their short titles.
+5. When the person answers, the head records the words in `RECORD.md`, does the work, and moves
+   the ticket to `PLANNING/board/done/`.
+
 ## 6. Reviews and merges
 
 1. Work that has a gate (`docs/QUALITY-STANDARDS.md`, section 5) needs a pass from the
