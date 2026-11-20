@@ -7,7 +7,7 @@
 //!   (real bid and ask) of the same date is never replaced by closes.
 
 use super::alpaca::{self, Client, Keys};
-use super::option_history::{self, AlpacaHistory, ContractQuery, OptionHistorySource, Selection};
+use super::option_history::{self, AlpacaHistory, OptionHistorySource, Selection};
 use super::options::{self, OptionChainSnapshot, OptionQuote};
 use super::{download, today_iso, ticker_dir};
 use crate::trading::calendar::{iso, parse_iso, weekday};
@@ -19,17 +19,28 @@ pub const USAGE: &str = "\
 fa options - option chain snapshots and the option surface of past dates (data/raw/<TICKER>/options/<date>.json)
 
 USAGE:
-  fa options snapshot SYMBOL [--source cboe|alpaca] [--refresh]
+  fa options snapshot SYMBOL [--source cboe|alpaca] [--roots A,B] [--rate R] [--refresh]
                               today's chain. cboe: delayed quotes, no key. alpaca: the free 'indicative' feed
                               (needs APCA_API_KEY_ID and APCA_API_SECRET_KEY); bid and ask are modified quotes.
-  fa options history SYMBOL (--date D | --from D --to D) [--max-days N] [--moneyness LO,HI] [--rate R] [--refresh] [--plan]
+                              Alpaca has index options (SPX, VIX) but no index level and no implied volatility for them:
+                              the program takes the level and the volatility from put-call parity of the chain (Black-76,
+                              European options). The roots of the chain: for SPX and VIX the monthly and the weekly root
+                              (SPX,SPXW and VIX,VIXW); for another symbol the symbol. --roots A,B sets them.
+                              --rate R is one flat rate (decimal) for the index volatility; default: the Treasury curve.
+  fa options history SYMBOL (--date D | --from D --to D) [--max-days N] [--moneyness LO,HI] [--rate R] [--level S:RATIO] [--refresh] [--plan]
                               the surface of past dates from the daily closes of the contracts (Alpaca option bars,
                               since 2024-02). One snapshot file for each trading day, with quote_kind \"close\":
                               the close of the day in last_price, no bid, no ask, implied volatility of Black-76
                               (European model; the options are American). A live snapshot of the same date stays.
-                              Default selection: expiry up to 365 days, strike 0.8 to 1.2 times the spot.
+                              Default selection: expiry up to 120 days, strike 0.9 to 1.1 times the spot.
+                              Index (SPX, VIX): no price of the index at Alpaca. The level is the SPY close times 10 (SPX; picks
+                              the strike range only) or the Cboe VIX history file (VIX; run fa sync --only vix). --level S:RATIO
+                              gives another symbol and ratio. The contract list of Alpaca holds expired index contracts for the
+                              last six months only, so for older dates the program makes the symbols from the rules (SPXW on each
+                              weekday, SPX on the third Friday, strikes every 5 points; VIX on Wednesdays, every 0.5 point).
                               --rate R is one flat rate (decimal); default: the Treasury par curve of each date.
-                              --plan lists the contracts and the number of requests, and gets no closes.
+                              --plan lists the contracts and the number of requests, and gets no closes. A run prints
+                              the same plan to stderr before it asks for closes.
                               A stopped run continues when you run it again (a month with its snapshot files is skipped).";
 
 #[derive(Debug, Default)]
@@ -72,11 +83,10 @@ impl Args {
 }
 
 /// The chain of the Alpaca snapshot reply as a snapshot file. The quotes are the modified quotes of the free feed.
-pub fn chain_snapshot(items: &[alpaca::ChainItem], ticker: &str, date: &str, spot: Option<f64>, feed: &str) -> OptionChainSnapshot {
+pub fn chain_snapshot(items: &[alpaca::ChainItem], ticker: &str, date: &str, spot: Option<f64>, feed: &str, roots: &[String]) -> OptionChainSnapshot {
     let mut quotes = Vec::new();
-    let root = ticker.to_uppercase();
     for i in items {
-        let Some((expiry, call, thousandths)) = parse_option(&i.symbol, &root) else { continue };
+        let Some((expiry, call, thousandths)) = roots.iter().find_map(|r| parse_option(&i.symbol, r)) else { continue };
         let strike = thousandths as f64 / 1000.0;
         quotes.push(OptionQuote {
             contract_symbol: i.symbol.clone(),
@@ -117,35 +127,93 @@ pub fn may_write(cache: &Path, ticker: &str, date: &str, refresh: bool) -> Resul
     }
 }
 
+/// The text of an optional number for a line to a person.
+pub fn show_opt(v: Option<f64>) -> String {
+    v.map_or_else(|| "none".to_string(), |x| format!("{x}"))
+}
+
+/// The rate function of the options commands: one flat rate, or the Treasury par curve of the date (linear in the time).
+pub fn rate_fn(repo: &Path, flat: Option<f64>) -> impl FnMut(&str, f64) -> Result<f64, String> {
+    let mut rates = crate::rates::Rates::live(repo);
+    let mut memo: BTreeMap<String, BTreeMap<String, f64>> = BTreeMap::new();
+    move |date: &str, t: f64| -> Result<f64, String> {
+        if let Some(r) = flat {
+            return Ok(r);
+        }
+        if !memo.contains_key(date) {
+            let day = super::parse_date(date).ok_or_else(|| format!("bad date {date}"))?;
+            let (_, curve) = rates.treasury_curve(Some(day), false).map_err(|e| format!("{e}; give --rate R (a flat rate, decimal) to go on"))?;
+            memo.insert(date.to_string(), curve);
+        }
+        interpolate_curve(&memo[date], t).ok_or_else(|| format!("no Treasury rate for {date}; give --rate R"))
+    }
+}
+
 /// Today's chain from Alpaca (the free indicative feed) into `<cache>/<TICKER>/options/<today>.json`. Gives the line that
 /// the command prints. A snapshot of today with real quotes stays (`refresh` does not replace it).
 pub fn snapshot_alpaca(repo: &Path, cache: &Path, ticker: &str, today: &str, refresh: bool) -> Result<String, String> {
+    snapshot_alpaca_with(repo, cache, ticker, today, refresh, None, None)
+}
+
+/// `snapshot_alpaca` with the roots (default: the roots of the underlying, see `option_history::roots_of`) and a flat rate.
+pub fn snapshot_alpaca_with(repo: &Path, cache: &Path, ticker: &str, today: &str, refresh: bool, roots: Option<Vec<String>>, flat_rate: Option<f64>) -> Result<String, String> {
     if !may_write(cache, ticker, today, refresh)? {
         return Ok(format!("options {ticker} {today}: a snapshot of today exists; --refresh replaces it"));
     }
     let keys = Keys::read(repo).ok_or_else(|| format!("{} and {} are not both set in the environment or in .env", alpaca::KEY_ID_ENV, alpaca::SECRET_ENV))?;
     let client = Client::live(keys);
-    let now = alpaca::now_utc();
-    let from = iso((now.div_euclid(86_400) - 10) as i32);
-    let bars = client.stock_bars(&alpaca::StockQuery { symbols: &[alpaca::api_symbol(ticker)], timeframe: "1Day", start: &from, to: today, today, adjustment: "raw", feed: &alpaca::feed_from_env() }).map_err(|e| e.to_string())?;
-    let spot = bars.get(&alpaca::api_symbol(ticker)).and_then(|v| v.last()).map(|b| b.c);
-    let items = client.chain(ticker, "indicative").map_err(|e| e.to_string())?;
-    let snap = chain_snapshot(&items, ticker, today, spot, "indicative");
+    let index = option_history::index_info(ticker).is_some();
+    let roots = roots.unwrap_or_else(|| option_history::roots_of(ticker));
+    // An index has no price at Alpaca: the spot stays empty and the level comes from put-call parity below.
+    let spot = if index {
+        None
+    } else {
+        let now = alpaca::now_utc();
+        let from = iso((now.div_euclid(86_400) - 10) as i32);
+        let bars = client.stock_bars(&alpaca::StockQuery { symbols: &[alpaca::api_symbol(ticker)], timeframe: "1Day", start: &from, to: today, today, adjustment: "raw", feed: &alpaca::feed_from_env() }).map_err(|e| e.to_string())?;
+        bars.get(&alpaca::api_symbol(ticker)).and_then(|v| v.last()).map(|b| b.c)
+    };
+    let mut items = Vec::new();
+    for root in &roots {
+        items.extend(client.chain(root, "indicative").map_err(|e| e.to_string())?);
+    }
+    let mut snap = chain_snapshot(&items, ticker, today, spot, "indicative", &roots);
+    let mut extra = String::new();
+    if index {
+        let mut rate = rate_fn(repo, flat_rate);
+        let fill = option_history::fill_from_mids(&mut snap, &mut rate)?;
+        snap.note = Some(format!(
+            "Chain snapshot of Alpaca (roots {}). Index options: Alpaca gives no index level and no implied volatility. The forward of each expiry is from put-call parity of the mids of bid and ask ({} of {} expiries); the implied volatility is Black-76 on that forward for out-of-the-money and near-the-money quotes ({} quotes); the spot is {}. No open interest.",
+            roots.join(","),
+            fill.expiries_with_parity,
+            fill.expiries,
+            fill.filled,
+            match &fill.level_from {
+                Some((e, n, f)) => format!("the forward {f:.2} of the expiry {e} ({n} days away)"),
+                None => "not known (no expiry within 10 days has a forward)".to_string(),
+            }
+        ));
+        extra = format!(", implied volatility for {} quotes from put-call parity", fill.filled);
+    }
     let path = options::save_snapshot(&snap, cache)?;
-    Ok(format!("options {ticker} {today}: {} quotes, spot {:?}, {} requests, feed indicative, written to {}", snap.quotes.len(), snap.spot_price, client.requests(), path.display()))
+    Ok(format!("options {ticker} {today}: {} quotes, spot {}, {} requests, feed indicative{extra}, written to {}", snap.quotes.len(), show_opt(snap.spot_price), client.requests(), path.display()))
 }
 
 fn snapshot(repo: &Path, rest: &[String]) -> Result<i32, String> {
-    let a = Args::parse(rest, &["--source"], &["--refresh"])?;
+    let a = Args::parse(rest, &["--source", "--roots", "--rate"], &["--refresh"])?;
     let ticker = a.symbol.clone().ok_or("give a symbol: fa options snapshot SPY")?;
     let cache = super::price_cli::cache_dir(repo);
     let today = today_iso();
     match a.flag("--source").unwrap_or("cboe") {
         "cboe" => {
             let (snap, source) = options::fetch_option_chain(&cache, &ticker, a.has("--refresh"), &today, &|u| download(u))?;
-            println!("options {ticker} {today}: {} quotes, spot {:?}, source {:?} (Cboe delayed quotes)", snap.quotes.len(), snap.spot_price, source);
+            println!("options {ticker} {today}: {} quotes, spot {}, source {:?} (Cboe delayed quotes)", snap.quotes.len(), show_opt(snap.spot_price), source);
         }
-        "alpaca" => println!("{}", snapshot_alpaca(repo, &cache, &ticker, &today, a.has("--refresh"))?),
+        "alpaca" => {
+            let roots = a.flag("--roots").map(|r| r.split(',').map(|x| x.trim().to_uppercase()).filter(|x| !x.is_empty()).collect::<Vec<_>>());
+            let flat = a.flag("--rate").map(|r| r.parse::<f64>().map_err(|_| format!("bad --rate '{r}'"))).transpose()?;
+            println!("{}", snapshot_alpaca_with(repo, &cache, &ticker, &today, a.has("--refresh"), roots, flat)?);
+        }
         other => return Err(format!("unknown source '{other}' (use cboe or alpaca)")),
     }
     Ok(0)
@@ -184,7 +252,7 @@ fn weekdays(a: &str, b: &str) -> Vec<String> {
 }
 
 fn history(repo: &Path, rest: &[String]) -> Result<i32, String> {
-    let a = Args::parse(rest, &["--date", "--from", "--to", "--max-days", "--moneyness", "--rate", "--source"], &["--refresh", "--plan"])?;
+    let a = Args::parse(rest, &["--date", "--from", "--to", "--max-days", "--moneyness", "--rate", "--source", "--level"], &["--refresh", "--plan"])?;
     let ticker = a.symbol.clone().ok_or("give a symbol: fa options history SPY --date 2024-06-07")?;
     let (from, to) = match (a.flag("--date"), a.flag("--from"), a.flag("--to")) {
         (Some(d), None, None) => (d.to_string(), d.to_string()),
@@ -211,34 +279,32 @@ fn history(repo: &Path, rest: &[String]) -> Result<i32, String> {
     }
     let flat_rate: Option<f64> = a.flag("--rate").map(|r| r.parse().map_err(|_| format!("bad --rate '{r}'"))).transpose()?;
     let keys = Keys::read(repo).ok_or_else(|| format!("{} and {} are not both set in the environment or in .env", alpaca::KEY_ID_ENV, alpaca::SECRET_ENV))?;
-    let src = AlpacaHistory { client: Client::live(keys), feed: alpaca::feed_from_env(), now: alpaca::now_utc() };
     let cache = super::price_cli::cache_dir(repo);
+    let given_level = a
+        .flag("--level")
+        .map(|l| {
+            let (sym, ratio) = l.split_once(':').ok_or("--level takes SYMBOL:RATIO, for example SPY:10")?;
+            let ratio: f64 = ratio.parse().map_err(|_| format!("bad --level ratio '{ratio}'"))?;
+            if !(ratio.is_finite() && ratio > 0.0) {
+                return Err("--level needs a ratio above 0".to_string());
+            }
+            Ok((sym.to_string(), ratio))
+        })
+        .transpose()?;
+    let level = option_history::level_for(&ticker, &cache, given_level.as_ref().map(|(s, r)| (s.as_str(), *r)));
+    let src = AlpacaHistory { client: Client::live(keys), feed: alpaca::feed_from_env(), now: alpaca::now_utc(), level };
     let refresh = a.has("--refresh");
 
     if a.has("--plan") {
         let spots = src.spot_closes(&ticker, &from, &to)?;
-        let (smin, smax) = spots.values().fold((f64::MAX, 0.0f64), |(x, y), s| (x.min(*s), y.max(*s)));
-        let last = parse_iso(&to).unwrap();
-        let q = ContractQuery { expiry_from: from.clone(), expiry_to: iso(last + sel.max_days as i32), strike_min: (smin * sel.money_lo).floor(), strike_max: (smax * sel.money_hi).ceil() };
+        let q = option_history::contract_query(src.name(), &ticker, &spots, &from, &to, &sel)?;
         let n = src.contracts(&ticker, &q)?.len();
         let bars = n.div_ceil(src.bars_per_request());
-        println!("plan {ticker} {from} to {to}: {} trading days with a close, {n} contracts (expiry {} to {}, strike {} to {}); at least {bars} requests of closes; {} requests used so far; the free plan allows 200 each minute", spots.len(), q.expiry_from, q.expiry_to, q.strike_min, q.strike_max, src.requests());
+        println!("plan {ticker} {from} to {to}: {} trading days with a level, {n} contracts (expiry {} to {}, strike {} to {}); at least {bars} requests of closes ({} contracts in a request); {} requests used so far; the free plan allows 200 each minute", spots.len(), q.expiry_from, q.expiry_to, q.strike_min, q.strike_max, src.bars_per_request(), src.requests());
         return Ok(0);
     }
 
-    let mut rates = crate::rates::Rates::live(repo);
-    let mut memo: BTreeMap<String, BTreeMap<String, f64>> = BTreeMap::new();
-    let mut rate = |date: &str, t: f64| -> Result<f64, String> {
-        if let Some(r) = flat_rate {
-            return Ok(r);
-        }
-        if !memo.contains_key(date) {
-            let day = super::parse_date(date).ok_or_else(|| format!("bad date {date}"))?;
-            let (_, curve) = rates.treasury_curve(Some(day), false).map_err(|e| format!("{e}; give --rate R (a flat rate, decimal) to go on"))?;
-            memo.insert(date.to_string(), curve);
-        }
-        interpolate_curve(&memo[date], t).ok_or_else(|| format!("no Treasury rate for {date}; give --rate R"))
-    };
+    let mut rate = rate_fn(repo, flat_rate);
 
     let (mut written, mut kept, mut skipped_months) = (0, 0, 0);
     for (a_day, b_day) in super::intraday::month_windows(&from, &to) {
@@ -289,7 +355,7 @@ mod tests {
             alpaca::ChainItem { symbol: "SPY240419P00500000".into(), ..Default::default() },
             alpaca::ChainItem { symbol: "SPY1240419C00500000".into(), ..Default::default() },
         ];
-        let s = chain_snapshot(&items, "spy", "2024-04-01", Some(505.0), "indicative");
+        let s = chain_snapshot(&items, "spy", "2024-04-01", Some(505.0), "indicative", &["SPY".to_string()]);
         assert_eq!(s.quotes.len(), 2, "an adjusted root is not in the chain");
         assert_eq!(s.quotes[0].option_type, "call");
         assert_eq!((s.quotes[0].strike, s.quotes[0].expiry.as_str()), (500.0, "2024-04-19"));
@@ -339,5 +405,25 @@ mod tests {
         assert!(Args::parse(&v(&["spy", "--bad"]), &[], &[]).is_err());
         assert!(Args::parse(&v(&["spy", "qqq"]), &[], &[]).is_err());
         assert_eq!(weekdays("2024-03-01", "2024-03-05"), ["2024-03-01", "2024-03-04", "2024-03-05"]);
+    }
+
+    #[test]
+    fn an_option_value_is_printed_as_a_number_or_none() {
+        assert_eq!(show_opt(Some(706.8)), "706.8");
+        assert_eq!(show_opt(None), "none");
+    }
+
+    #[test]
+    fn index_chain_has_both_roots_and_no_adjusted_root() {
+        let items = vec![
+            alpaca::ChainItem { symbol: "SPX261120C06500000".into(), ..Default::default() },
+            alpaca::ChainItem { symbol: "SPXW261123P03000000".into(), ..Default::default() },
+            alpaca::ChainItem { symbol: "SPXO261118C06300000".into(), ..Default::default() },
+        ];
+        let roots = option_history::roots_of("SPX");
+        let s = chain_snapshot(&items, "SPX", "2026-11-20", None, "indicative", &roots);
+        assert_eq!(s.quotes.len(), 2);
+        assert!(s.spot_price.is_none());
+        assert_eq!(chain_snapshot(&items, "SPX", "2026-11-20", None, "indicative", &["SPX".to_string()]).quotes.len(), 1);
     }
 }

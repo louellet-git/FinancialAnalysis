@@ -55,7 +55,7 @@ USAGE:
 DATA SETS (name: what; maximum age; hosts):
   sec        company facts of the SEC; looks at the SEC filing list once each market day; 1 day; sec
   filings    the files of the latest 10-K (named tickers, and tickers that have them); with sec; sec
-  prices     daily prices; 1 day; tiingo, alpaca (with keys), yahoo, nasdaq
+  prices     daily prices; 1 day; tiingo (with a key), yahoo, nasdaq, alpaca (with keys, last)
   intraday   5-minute bars of SPY, QQQ and --intraday-symbols; 1 day; alpaca (with keys), yahoo
   estimates  consensus, price targets, surprises; 7 days; nasdaq
   earnings   calendar scan and past report dates; 1 day; nasdaq, sec

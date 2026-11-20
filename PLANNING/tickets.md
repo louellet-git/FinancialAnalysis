@@ -66,6 +66,10 @@ The validators, the red-team corpus and the coverage validator are on the board
 - **News scan.** Read the news for a ticker, find the effect on statement items, and
   shock the valuation and the position.
 
+## Data sources (small corrections)
+
+- **Alpaca and Tiingo after the first real tests (2026-11-20).** Index options (SPX, VIX) with a level and an implied volatility, weekly roots, a practical default selection of `fa options history`, Alpaca last in the order of the daily price sources, and the `divCash` fault of the Tiingo check (#280 to #284 of `docs/HIDDEN-ASSUMPTIONS.md`). Open: the FRED API has not run; NDX and RUT have no level proxy.
+
 ## Standard duties for each run
 
 - Add a row to `PLANNING/token-ledger.md`.
