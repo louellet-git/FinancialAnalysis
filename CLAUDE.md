@@ -1,7 +1,8 @@
 # CLAUDE.md — orientation for agents
 
 Read this file first. Then read `README.md` (commands), `docs/ARCHITECTURE.md` (module
-map) and `docs/HIDDEN-ASSUMPTIONS.md` (known traps).
+map), `docs/HIDDEN-ASSUMPTIONS.md` (known traps), `docs/TEAMS.md` (the agent teams) and
+`docs/QUALITY-STANDARDS.md` (the standards and the gates).
 
 ## Purpose
 
@@ -66,8 +67,13 @@ The repo gives analysis. It does not send orders to a broker.
   second copy of a part in another language.
 - **SEC contact.** The SEC contact is in `sec_contact.toml` (a project address, public on purpose).
   The environment variable `SEC_USER_AGENT` replaces it. Do not put a private contact in the repo.
-- **Do not commit** `data/`, `__pycache__/`, `.env`, or private review-framework files
-  (`.claude/agents/`, `vendor/`). This repo is public.
+- **Do not commit** `data/`, `__pycache__/`, `.env`, `vendor/`, or the files of a private
+  review framework of a third party. This repo is public. The own agent teams and skills of
+  this repo (`.claude/agents/`, `.claude/skills/`) are committed.
+  Install a private framework in the user folder (`~/.claude/agents/`), not in the repo.
+- **Model documents.** Each model has a model document (`docs/models/`) and each
+  assumption has a record (`docs/assumptions/`). A change of an assumption value changes
+  its record in the same pull request.
 - **Token ledger.** Add a row to `PLANNING/token-ledger.md` for each run.
 
 ## Review of a valuation report
@@ -80,9 +86,9 @@ A report that a person uses for a decision goes through four steps:
 3. A reviewer grades the content and the format. Repeat until it passes.
 4. An auditor traces each claim to a source and calculates each number again.
 
-The agent definitions for these roles are in a private framework. Each person installs
-them locally; they are not in this repo. If they are not installed, do the four steps
-manually. Luc approves each report for a new ticker (`PLANNING/reusable-dcf-vision.md`,
+The four roles are agents of this repo: `equity-analyst`, `model-validator`,
+`document-reviewer` and `auditor` (`.claude/agents/`). The flow is the skill
+`valuation-report-review`. Luc approves each report for a new ticker (`PLANNING/reusable-dcf-vision.md`,
 L5).
 
 A first pass (for example `analysis/JNJ/FIRST-PASS.md`) did not go through these steps.
@@ -92,7 +98,7 @@ Do not use a first pass alone for a trade.
 
 ```bash
 cargo test --manifest-path rust/mapcheck/Cargo.toml   # 97 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked   # 569 Rust tests (551 + 17 + 1), no network
+cargo test --manifest-path rust/Cargo.toml --locked   # 572 Rust tests (554 + 17 + 1), no network
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
 rust/mapcheck/target/release/mapcheck fetch --submissions IBM   # SEC 8-K item 2.02 list into data/raw/IBM/sec_8k_earnings.json
 rust/target/release/fa estimates get IBM; rust/target/release/fa estimates show IBM   # consensus, targets, surprises (Nasdaq site, no key)

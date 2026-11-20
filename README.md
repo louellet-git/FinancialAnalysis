@@ -13,7 +13,7 @@ parts:
 The repo gives analysis only. It does not send orders to a broker. It is not investment
 advice.
 
-Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
+Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`. The agent teams: `docs/TEAMS.md`. The quality standards: `docs/QUALITY-STANDARDS.md`.
 
 ## Start
 
@@ -21,7 +21,7 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program that makes the standard variables (necessary)
 cargo build --release --manifest-path rust/Cargo.toml            # the `fa` program
 cargo test --manifest-path rust/mapcheck/Cargo.toml    # 97 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked    # 569 Rust tests (551 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research, data sync)
+cargo test --manifest-path rust/Cargo.toml --locked    # 572 Rust tests (554 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research, data sync)
 ```
 
 The repo has no Python code.
