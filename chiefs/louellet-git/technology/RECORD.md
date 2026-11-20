@@ -78,3 +78,11 @@ Done: two backlog tickets, `T-20261120-portfolio-backtest` (head technology) and
 ## 2026-11-20 22:05 UTC (chat)
 Words: "whenever a separate contributor wants to begin working, I don't want it to automatically default to the board based on tickets that I've brought up. I think it should default to tickets that the collaborator brought up individually. So when a new session is spawned, don't immediately prompt to start working on tickets that other members have created."
 Done: the field `requested_by` (no field means `louellet-git`); a head offers and takes only the tickets of its own person (`chiefs/ORIENTATION.md`, sections 4 and 7; `PLANNING/board/README.md`; skill `ticket-workflow`; the lean version in `chiefs`).
+
+## 2026-11-20 22:24 UTC (chat of the Head of Quant Research; checked in its transcript)
+Words: "You don't need me to tell you to continue unless I tell you to stop, less tech head know"
+Done: after a ticket, report and take the next ticket of the queue with no wait, until the person says stop. Started `T-20261120-portfolio-backtest`, `T-20261120-store-arb-data` and `T-20261120-delete-merged-branches`.
+
+## 2026-11-20 22:32 UTC (chat)
+Words: "Also, I need every team to have a team that scrutinizes the amount of tests that any given team has, not run all the time but every so often at the discretion of the head"
+Done: a test-audit mode in `.claude/agents/test-engineer.md`; one paragraph in `chiefs/ORIENTATION.md` (section 3): each head starts it from time to time; not a gate. Same line in the lean version of `chiefs`.
