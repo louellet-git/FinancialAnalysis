@@ -29,3 +29,7 @@ Done: Wrote `memory/responsibilities.md` (the two areas and the boundary) and se
 ## 2026-11-20 22:25 UTC (chat)
 Words: "You don't need me to tell you to continue unless I tell you to stop, less tech head know"
 Done: Continue with the queue after each ticket with no wait, until the person says stop. Told the Head of Technology. Started `arb-1-chain-check`.
+
+## 2026-11-20 23:46 UTC (chat)
+Words: "If there are permission requests, they go to the tech head, please let it know."
+Done: Sent the open permission request (the refused run of the step-2 appendix script) and the rule to the Head of Technology.
