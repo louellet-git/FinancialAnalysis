@@ -2,7 +2,7 @@
 id: T-20261120-option-history-root-defect
 title: Keep the SPX and SPXW quotes apart in the option history
 area: trading
-status: in-progress
+status: review
 owner: louellet-git
 head: quant
 order: 1
