@@ -27,7 +27,7 @@ USAGE:
                               European options). The roots of the chain: for SPX and VIX the monthly and the weekly root
                               (SPX,SPXW and VIX,VIXW); for another symbol the symbol. --roots A,B sets them.
                               --rate R is one flat rate (decimal) for the index volatility; default: the Treasury curve.
-  fa options check SYMBOL --date D [--rate R] [--top N]
+  fa options check SYMBOL --date D [--rate R] [--top N] [--min-size USD] [--iv-mark POINTS] [--compare D2]
                               no-arbitrage checks of a stored chain at executable prices (buy at the ask, sell at the bid):
                               intrinsic value, monotony, slope, butterfly, calendar, upper parity bound only (the lower bound needs the
                               dividends). Without --rate the Treasury curve can be downloaded (one file); give --rate R for no network.
@@ -49,16 +49,23 @@ USAGE:
                               A stopped run continues when you run it again (a month with its snapshot files is skipped).";
 
 pub const CHECK_USAGE: &str = "\
-fa options check SYMBOL --date D [--rate R] [--top N]
+fa options check SYMBOL --date D [--rate R] [--top N] [--min-size USD] [--iv-mark POINTS] [--compare D2]
 
   Reads data/raw/SYMBOL/options/D.json and finds the quotes that break a no-arbitrage rule at executable prices
   (buy at the ask, sell at the bid). A break at mid prices only is not a finding.
   Checks: intrinsic value (ask below it; American options), monotony, slope, butterfly, calendar (American),
   upper parity bound only (American; the lower bound needs the dividends). A quote with an ask below the intrinsic
-  value leaves the other checks. A quote with bid 0 or no bid is dropped and counted.
+  value leaves the other checks.
   --rate R: one flat rate (decimal). Without it the Treasury curve is used and can be downloaded (one file);
   give --rate R for no network.
   --top N: the number of breaks to list (default 10).
+  --min-size USD: a break below this size is not counted. The output has the breaks in four size bands (below 0.10, 0.10 to 1, 1 to 10, 10 and above).
+  --iv-mark POINTS: a quote is marked when its Black-76 implied volatility (forward from parity) is more than POINTS volatility points from the
+  median of its 2 neighbours on each side (same series and type); default 10 (a smile moves a few points between strikes; a stale quote moves
+  more). 0 turns it off. The output counts the breaks with and without a marked leg.
+  --compare D2: the breaks of day D that stay on day D2 (same check, same legs). Both days must be stored; the command downloads nothing.
+  A quote with bid 0 and an ask above 0 is a buy leg only. A bid above S (call) or K (put) is a break (bound).
+  European indexes (SPX, XSP, NDX, RUT, VIX): no calendar, parity, intrinsic or bound test.
   A break is not a profit: no costs, no borrow, no time of the quotes, early exercise not priced.";
 
 #[derive(Debug, Default)]
@@ -352,17 +359,25 @@ fn history(repo: &Path, rest: &[String]) -> Result<i32, String> {
 
 /// `fa options check T --date D [--rate R]`: the no-arbitrage checks of a stored chain at executable prices (`option_arb`).
 fn check(repo: &Path, rest: &[String]) -> Result<i32, String> {
-    let a = Args::parse(rest, &["--date", "--rate", "--top"], &[])?;
+    let a = Args::parse(rest, &["--date", "--rate", "--top", "--min-size", "--iv-mark", "--compare"], &[])?;
     let ticker = a.symbol.clone().ok_or("give a symbol: fa options check IBM --date 2026-11-19")?;
     let date = a.flag("--date").ok_or("give --date D (a stored snapshot)")?;
     let flat = a.flag("--rate").map(|r| r.parse::<f64>().map_err(|_| format!("bad --rate '{r}'"))).transpose()?;
     let top = a.flag("--top").map(|n| n.parse::<usize>().map_err(|_| format!("bad --top '{n}'"))).transpose()?.unwrap_or(10);
     let cache = super::price_cli::cache_dir(repo);
     let snap = options::load_snapshot(&cache, &ticker, Some(date))?;
-    let american = option_history::index_info(&ticker).is_none();
+    let american = option_history::index_info(&ticker).is_none() && !super::option_arb::is_european(&ticker);
+    let min_size = a.flag("--min-size").map(|n| n.parse::<f64>().map_err(|_| format!("bad --min-size '{n}'"))).transpose()?.unwrap_or(0.0);
+    let iv_mark = a.flag("--iv-mark").map(|n| n.parse::<f64>().map_err(|_| format!("bad --iv-mark '{n}'"))).transpose()?.map_or(0.10, |p| p / 100.0);
+    let opts = super::option_arb::CheckOpts { min_size, iv_mark };
     let mut rate = rate_fn(repo, flat);
-    let rep = super::option_arb::check_chain(&snap, american, &mut rate)?;
+    let rep = super::option_arb::check_chain(&snap, american, &mut rate, &opts)?;
     print!("{}", super::option_arb::render(&ticker, &snap, &rep, american, top));
+    if let Some(d2) = a.flag("--compare") {
+        let snap2 = options::load_snapshot(&cache, &ticker, Some(d2))?;
+        let rep2 = super::option_arb::check_chain(&snap2, american, &mut rate, &opts)?;
+        print!("{}", super::option_arb::render_compare(&ticker, &super::option_arb::compare(&rep, &rep2, date, d2), top));
+    }
     Ok(0)
 }
 

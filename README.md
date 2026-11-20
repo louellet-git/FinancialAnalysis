@@ -450,7 +450,7 @@ cargo build --release --manifest-path rust/Cargo.toml # one time
 rust/target/release/fa trade fetch                    # download the bars (Yahoo) into data/raw/trading/
 rust/target/release/fa prices intraday SPY --interval 5m --from 2020-01-01   # 5-minute bars since a date (Alpaca, free key)
 rust/target/release/fa options history SPY --from 2024-03-01 --to 2024-03-29 # option surface of past dates from daily closes (Alpaca)
-rust/target/release/fa options check IBM --date 2026-11-19 [--rate R]        # no-arbitrage checks of a stored chain at executable prices (bid and ask); upper parity bound only; without --rate the Treasury curve can be downloaded (one file), give --rate R for no network
+rust/target/release/fa options check IBM --date 2026-11-19 [--rate R] [--min-size USD] [--iv-mark POINTS] [--compare D2]      # no-arbitrage checks of a stored chain at executable prices (bid and ask); upper parity bound only; without --rate the Treasury curve can be downloaded (one file), give --rate R for no network
 rust/target/release/fa options snapshot SPY --source alpaca                  # option chain of today (Alpaca, free key); SPX and VIX too (both roots; level and volatility from put-call parity)
 rust/target/release/fa vol fit heston --symbol IBM --date 2026-11-19  # fit Heston (or bates) to a stored snapshot with bid and ask; error by expiry in vol points
 rust/target/release/fa trade backtest                 # all bots, leaderboard (Rust, 1 second)
