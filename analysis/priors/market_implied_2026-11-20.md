@@ -25,18 +25,24 @@ price imply, when the value engine is at its defaults? A person can answer with 
   3. A shift of the margin (start and target), from -50 to +50 points. Report: the shift and the free cash flow margin of
      year 10 (after SBC and the charge).
 - **Bound.** A search with no solution in its range gives the bound and a flag (`<`: the price needs a lower number than the
-  bound; `>`: a higher number). `nm`: the value does not rise or fall in the expected direction on the ends of the range
+  bound; `>`: a higher number). A `<` of the premium search is not always the -4% end of the range: the engine gives no
+  value for a cost of capital that is not positive, so the search can stop at the floor of the rate at 0%. 23 of the 57
+  `premium<` rows of sp500 are of this kind (34 are at -4%); in next500, 49 of 68 (for example SHOP, at -2.50%). `nm`: the value does not rise or fall in the expected direction on the ends of the range
   and at the model number. A row with `nm` has no number for that search.
 - **List premium.** One number: the equity risk premium for which the median of `V` / price over the list is 1.0.
-- **Groups.** P25, P50 and P75 of each measure. A cell has `*` when more than 20% of its values are bounds: a quartile of
-  censored values is not a measured number. Sector: Fama-French 12 name of the SIC code. Industry: the SIC code with its
-  description (industries with 5 tickers or more in the command; 10 or more in this file).
-- **Price.** The last close of the price cache (2026-11-18). The price also gives the equity weight of the cost of capital
+- **Groups.** P25, P50 and P75 of each measure. A cell has `*` when more than 20% of the values of that cell are bounds
+  (the denominator is the number of tickers that have a number for that measure in that group, not the size of the
+  group): a quartile of censored values is not a measured number. Sector: the Fama-French 12 name of the SIC code, from
+  the file `Siccodes12.txt` of Kenneth French (the address is in `rust/mapcheck/src/sec.rs`, function `ff12_sector`). The
+  SIC code and its description come from the SEC submissions data of the filer (`sec_8k_earnings.json` of the cache).
+  Industry: the SIC code with its description (industries with 5 tickers or more in the command; 10 or more in this file).
+- **Price.** The last close of the price cache: 2026-11-18 for the tickers of `sp500.txt` and 2026-11-19 for the tickers of
+  `next500.txt` (the two lists differ by one day). The price also gives the equity weight of the cost of capital
   (`E / (E + debt)`), as in `fa dcf auto`. So `V` depends on the price a little.
 
 ## 3. Data and commands
 
-Cache: the data store `louellet-git/fa-data`, commit 08361bd, data of 2026-11-19 (a read-only copy with the SIC codes).
+Cache: the data store `louellet-git/fa-data`, commit 08361bd or later, data of 2026-11-19 (a read-only copy with the SIC codes).
 Model date `--as-of 2026-11-19`. Code: branch `claude/dcf-market-implied` with `main` of 2026-11-20 (pull requests 77, 81).
 
 ```
@@ -61,26 +67,40 @@ Searches (tickers with a price):
 | `sp500.txt` | 57 / 11 / 24 | 8 / 20 / 25 | 0 / 29 / 0 |
 | `next500.txt` | 68 / 24 / 87 | 9 / 18 / 87 | 0 / 48 / 0 |
 
-## 4. Why the value at the means and not the P50
+## 4. Which statistic: the value at the means, the P50 or the mean
 
-A DCF with a risk-adjusted rate gives the present value of the EXPECTED cash flows. So the price compares with an
-expected value, not with the median over the draws (decision on the ticket, 2026-11-20; the reason does not use the price).
-The path at the means is a deterministic estimate of the expected value. The P50 is lower when the distribution is
-skewed to the right, which it is here.
+The search uses the value of the path at the means because it is deterministic and stable. It is not the expected
+value: for most tickers it lies between the P50 and the simulated mean (median 0.89 of the mean). The mean is unstable
+for some tickers (one tail holds a large share of it). So the size of the gap to the price depends on the statistic.
+The reason for the choice does not use the price. (An earlier text of the ticket said that the path at the means is an
+estimate of the expected value. The runs show that it is not; the ticket text is corrected.)
 
-Value at the means against the P50 of `fa dcf auto` (10,000 paths, seed 7, data of 2026-11-19, defaults of `main`):
+Value at the means, P50 and simulated mean of `fa dcf auto` (10,000 paths, seed 7, `--cache <store copy> --as-of
+2026-11-19`, defaults of `main`; the standard error of the mean is in brackets):
 
-| Ticker | `V` at the means | P50 |
+| Ticker | `V` at the means | P50 | Mean (standard error) |
+|---|---|---|---|
+| AAPL | $144.87 | $132.89 | $153.05 (0.90) |
+| ABT | $48.44 | $42.45 | $69.04 (0.81) |
+| ADBE | $271.01 | $248.47 | $295.62 (2.02) |
+| IBM | $134.95 | $95.84 | $152.78 (1.99) |
+| KO | $49.35 | $36.38 | $51.15 (0.52) |
+
+Over the lists (`fa dcf screen`, 4,000 paths, seed 7, column `mean` of its CSV; `fa dcf implied`, columns `price` and
+`value_at_means`; both CSV files joined by ticker with `join`, the ratios made with `bc`, the median of an even count is
+the mean of the two middle values):
+
+| Measure | sp500 | next500 |
 |---|---|---|
-| AAPL | $144.87 | $132.89 |
-| ABT | $48.44 | $42.45 |
-| ADBE | $271.01 | $248.47 |
-| IBM | $134.95 | $95.84 |
-| KO | $49.35 | $36.38 |
+| `V` / simulated mean (tickers with a mean above 0) | 0.89 (n 400) | 0.88 (n 306) |
+| Simulated mean / price (tickers with a price) | 0.77 (n 430) | 0.86 (n 391) |
+| `V` / price (`fa dcf implied`) | 0.63 (n 430) | 0.76 (n 391) |
+| P50 / price (`fa dcf screen`) | 0.477 (n 430) | 0.579 (n 391) |
 
-The median of P50 / price of `fa dcf screen` (4,000 paths) is 0.476 for sp500 and 0.579 for next500. The median of
-`V` / price of `fa dcf implied` is 0.63 and 0.76. They are two different measures. The screen number is the lower one.
-Do not compare a number of one with a number of the other.
+`V` lies between the screen P50 and the screen mean for 402 of 431 tickers (sp500; 24 below the P50, 5 above the mean)
+and for 309 of 395 tickers (next500; 85 below the P50, 1 above the mean). The screen uses 4,000 paths, `fa dcf auto` 10,000.
+
+These are four different measures. Do not compare a number of one with a number of another.
 
 ## 5. Results
 
@@ -99,9 +119,9 @@ value at the list premium over the price.
 
 | Group | n | `V` / price | Cost of capital | 10-year growth | Margin of year 10 | `V(list premium)` / price |
 |---|---|---|---|---|---|---|
-| all | 431 | 0.34 0.63 1.20 | -3.21 -1.35 1.10 (400) | -1.24 2.44 8.63 (406) | -1.41 4.27 15.76 | 0.55 1.00 1.85 |
-| size <1B | 1 | 0.90 | -0.47 | 1.38 | 5.11 | 1.41 |
-| size 1-10B | 155 | 0.25 0.59 1.06 | -3.29 -1.49 0.46 (134) | -0.77 4.71 10.25 (137) | -0.75 6.82 22.13 | 0.42 0.97 1.63 |
+| all | 431 | 0.34 0.63 1.20 (430) | -3.21 -1.35 1.10 (400) | -1.24 2.44 8.63 (406) | -1.41 4.27 15.76 (430) | 0.55 1.00 1.85 (430) |
+| size <1B | 1 | 0.90 0.90 0.90 | -0.47 -0.47 -0.47 | 1.38 1.38 1.38 | 5.11 5.11 5.11 | 1.41 1.41 1.41 |
+| size 1-10B | 155 | 0.25 0.59 1.06 (154) | -3.29 -1.49 0.46 (134) | -0.77 4.71 10.25 (137) | -0.75 6.82 22.13 (154) | 0.42 0.97 1.63 (154) |
 | size 10-30B | 162 | 0.30 0.60 1.20 | -3.32 -1.84 0.86 (156) | -1.18 2.62 8.50 (157) | -1.39 4.60 13.96 | 0.51 0.89 1.87 |
 | size 30-100B | 78 | 0.46 0.84 1.30 | -2.61 -0.84 1.43 (75) | -1.37 1.07 5.10 (77) | -1.27 1.30 9.64 | 0.74 1.20 1.81 |
 | size >100B | 35 | 0.45 1.36 2.36 | -3.31 1.25 4.10* (34) | -4.79 -1.13 9.70 (34) | -2.93 -0.46 6.87 | 0.67 1.67 3.51 |
@@ -122,18 +142,18 @@ value at the list premium over the price.
 
 | Group | n | `V` / price | Cost of capital | 10-year growth | Margin of year 10 | `V(list premium)` / price |
 |---|---|---|---|---|---|---|
-| all | 395 | 0.09 0.76 1.51 (391) | -2.87 -0.22 2.57* (323) | -3.56 -0.26 6.89 (304) | -2.15 2.72 19.16 (391) | 0.12 1.00 1.97 |
+| all | 395 | 0.09 0.76 1.51 (391) | -2.87 -0.22 2.57* (323) | -3.56 -0.26 6.89 (304) | -2.15 2.72 19.16 (391) | 0.12 1.00 1.97 (391) |
 | size <1B | 59 | -0.77 -0.15 0.12 | -12.38 -9.96 -2.48* (28) | 2.65 10.60 27.88 (18) | 27.07 50.00 50.00* | -1.08 -0.18 0.14 |
-| size 1-10B | 257 | 0.22 0.74 1.30 (255) | -2.97 -0.73 1.56 (220) | -2.75 1.35 7.36 (210) | -2.05 3.20 14.21 | 0.32 0.95 1.69 |
-| size 10-30B | 62 | 1.05 1.60 2.40 (61) | 0.36 2.24 4.56 (59) | -3.89 -2.73 -0.27 (60) | -3.64 -1.68 -0.20 (61) | 1.39 2.04 3.03 |
-| size 30-100B | 16 | 2.38 3.64 10.04 (15) | 2.73 4.64 6.10* (15) | -10.24 -5.45 -2.64 (15) | -3.74 -2.39 -1.63 (15) | 3.04 4.37 12.54 |
-| size >100B | 1 | 35.10 | 9.96* | -26.29* | -2.87 | 44.69 |
+| size 1-10B | 257 | 0.22 0.74 1.30 (255) | -2.97 -0.73 1.56 (220) | -2.75 1.35 7.36 (210) | -2.05 3.20 14.21 (255) | 0.32 0.95 1.69 (255) |
+| size 10-30B | 62 | 1.05 1.60 2.40 (61) | 0.36 2.24 4.56 (59) | -3.89 -2.73 -0.27 (60) | -3.64 -1.68 -0.20 (61) | 1.39 2.04 3.03 (61) |
+| size 30-100B | 16 | 2.38 3.64 10.04 (15) | 2.73 4.64 6.10* (15) | -10.24 -5.45 -2.64 (15) | -3.74 -2.39 -1.63 (15) | 3.04 4.37 12.54 (15) |
+| size >100B | 1 | 35.10 35.10 35.10 | 9.96 9.96 9.96* | -26.29 -26.29 -26.29* | -2.87 -2.87 -2.87 | 44.69 44.69 44.69 |
 | BusEq | 88 | -0.23 0.17 0.58 | -9.98 -3.15 -2.01* (61) | 1.39 9.35 16.78 (52) | 6.73 19.76 44.16* | -0.33 0.21 0.75 |
 | Chems | 9 | 0.69 1.10 1.55 | -1.38 0.41 1.54 | -1.48 -1.01 3.81 | -2.08 -0.67 3.59 | 0.94 1.46 1.97 |
 | Durbl | 9 | 0.66 1.42 1.72 | -0.02 1.93 2.50 (8) | -3.22 -2.18 0.35 (8) | -3.12 -1.50 3.24 | 0.90 1.87 2.27 |
 | Enrgy | 13 | 2.27 2.89 5.02 (12) | 3.70 6.82 8.38* (12) | -9.31 -6.81 -4.68 (12) | -20.82 -13.27 -5.83 (12) | 2.95 3.74 6.27 (12) |
 | Hlth | 51 | -0.18 0.11 1.03 | -3.56 -0.70 1.16* (31) | -2.69 0.24 5.37 (28) | -0.27 8.98 50.00* | -0.26 0.17 1.32 |
-| Manuf | 51 | 0.49 0.76 1.14 (50) | -2.36 -1.11 0.79 (48) | -0.91 2.93 7.47 (48) | -0.59 2.79 8.66 (50) | 0.65 1.01 1.45 |
+| Manuf | 51 | 0.49 0.76 1.14 (50) | -2.36 -1.11 0.79 (48) | -0.91 2.93 7.47 (48) | -0.59 2.79 8.66 (50) | 0.65 1.01 1.45 (50) |
 | Money | 37 | -0.03 0.90 1.72 | -3.88 0.60 4.65* (31) | -14.89 -2.62 2.35 (26) | -3.73 1.22 27.81 | -0.03 1.21 2.27 |
 | NoDur | 15 | 0.84 2.21 3.83 | -0.80 2.99 3.85* | -4.84 -3.97 1.53 | -5.75 -2.85 1.18 | 1.07 2.83 4.33 |
 | Other | 59 | 0.49 0.85 1.72 | -1.25 -0.21 2.91 (53) | -3.73 -0.12 3.27 (51) | -3.46 0.71 9.16 | 0.67 1.15 2.31 |
@@ -167,14 +187,17 @@ value at the list premium over the price.
   one number for a list. It is not a forecast of the market premium.
 - Software, semiconductors and other business equipment (BusEq) have a low `V` / price (median 0.37 in sp500). The price
   needs a lower cost of capital (3 points less), or more growth (10 points a year more), or a higher margin of year 10
-  (19 points more) than the model has. The margin cells for BusEq and the semiconductor industries have `*`: they are
-  mostly at the bound of +50 points, so their quartiles are lower bounds.
+  (19 points more) than the model has. The margin cell of BusEq has `*`: 23 of 97 tickers (24%) are at the +50 bound in
+  sp500, and 21 of 88 (24%) in next500; only the P75 is in the bound region. Semiconductors (3674): 8 of 16 in sp500
+  and 5 of 13 in next500 are at the bound (more than 20%), so the P75 and, in sp500, the P50 (49.91) are at or near it.
 - Energy, durable goods, telecom and non-durable goods have a `V` / price above 1 (median 1.7 for energy in sp500). The
   price needs a higher cost of capital, or less growth, or a lower margin than the model has.
 - Larger tickers have a higher `V` / price (size >100B: 1.36; 1-10B: 0.59 in sp500). The model and the price rank the
   size classes in the same way in both lists, except the size classes with few tickers.
-- The sector order of `V` / price has the same ends in the two lists (energy and non-durable goods high; BusEq low;
-  health care also low in next500). The middle sectors change places.
+- The sector order of `V` / price is not the same in the two lists. Energy and BusEq are at the high end and the low
+  end in both (energy 1.71 and 2.89; BusEq 0.37 and 0.17). Durable goods are the highest in sp500 (3.10, 7 tickers) and
+  Utils are the lowest (-0.10); in next500 Utils are above the median (1.31) and health care is the lowest (0.11). The
+  middle sectors change places.
 
 **What a person must NOT read into these tables.** They are not a signal and not a price target. A low `V` / price
 does not say that a stock is expensive: it says that the model with its defaults gives a lower value than the price. The
@@ -191,30 +214,35 @@ different explanations of the same gap, not a sum. Do not use the table to chang
   tickers; the cause is not tested here (a capex that is large against the margin is one possible cause). The median
   `V` / price of Utils is -0.10 (sp500) and the P25 is
   negative; 26 of 34 tickers have a premium number. Read the utility cells as "the model does not fit", not as a market
-  view. The same is true, in a smaller part, for pharma and biotech with a negative margin in the next500 list
-  (`V` / price median -0.02).
-- **`nm` and bounds.** `nm` rows (24 and 87 for the premium search) have no number: the terminal cash flow is negative,
-  so the value rises with the premium. They are not in the cells of the difference columns (see the counts in
-  brackets). The next500 list has 87 such rows of 391 (22%), so its difference columns describe a part of the list.
+  view. The same may be true for pharma (2834) in the next500 list (`V` / price median -0.02); the margin sign of that
+  group is not shown here.
+- **`nm` and bounds.** `nm` rows (24 and 87 for the premium search) have no number. A negative terminal cash flow is a
+  possible cause (the value would then rise with the premium); it is not tested here, and 5 of the 24 `nm` rows in sp500
+  and 10 of the 87 in next500 have a `V` / price above 0. They are not in the cells of the difference columns (see the
+  counts in brackets). The next500 list has 87 such rows of 391 (22%), so its difference columns describe a part of the list.
   Rows at a bound are in the cells at the bound value; a `*` marks a cell with more than 20% of them.
 - **Growth and margin ranges.** A bound at +60 or +50 points can be a clamp of the engine (the limits of the growth and
   of the margin), not only a bound of the search.
-- **Price.** The price is the last close of the cache (2026-11-18), not the close of the model date. The equity weight
+- **Price.** The price is the last close of the cache (2026-11-18 for the tickers of sp500, 2026-11-19 for next500: the
+  two lists differ by one day), not the close of the model date. The equity weight
   uses the price. A growth shift above the long-run level changes the fade, and with it the acquisition charge
   (`acq_fade`), because the builder applies its rules to the shifted mean.
 - **Survivorship.** The lists are the members of the universe files of today. They have companies that did well enough to
   be in an index. A list of 2016 would give other numbers.
 - **The code of today.** The SIC code is the code of the filer today (trap #170). This command values today only, so the
   limit does not apply to it. The result is not a history of groups.
-- **Data date.** The data is of 2026-11-19 (store commit 08361bd). The numbers change with the data and with the defaults.
+- **Data date.** The data is of 2026-11-19 (store commit 08361bd or later). The numbers change with the data and with the defaults.
 - **Size class.** A class with 1 ticker (<1B in sp500; >100B in next500) is one ticker, not a median.
-- **One run.** This is one run. No skeptic, reviewer or auditor has looked at it. A number here is not recalculated by
-  the auditor.
+- **One run.** This is one run. The file passed an audit (the auditor of the Head of Quality and Risk, 2026-11-20,
+  cycle 1). No skeptic has attacked the substance and no reviewer has graded the content and the format. The audit did
+  not check the model itself (the defaults of the builder), the choice of the value at the means as the statistic, or
+  the SIC groups against a second source. The numbers of the three searches of one ticker were not recalculated by hand.
 
 ## 8. What stays open
 
-- The mean of the simulated value with its standard error (the engine ticket) as a check of the path at the means.
-  Owner: Head of Fundamental Research.
+- A search on the simulated mean (with its standard error) instead of the value at the means, or next to it. The mean is
+  unstable for some tickers. Owner: Head of Fundamental Research.
+- The cause of the `nm` rows (a negative terminal cash flow is only a possible cause). Owner: Head of Fundamental Research.
 - A rule for capex of regulated utilities, or a refusal of the utility class. Owner: the owner of the conventions decision.
 - A decision on the free-cash-flow DCF for the financial companies of the group `Money`. Owner: the owner.
 - A history of groups (SIC code at the date of the model). Owner: Head of Technology.

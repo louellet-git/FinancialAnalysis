@@ -40,15 +40,16 @@ Run of the 218 tickers of the partial cache (A to CME, old defaults): 135 with a
 4. The findings file (part 4) and the gate (model-validator, code-reviewer) wait for the data store of the
    Head of Technology. Merge `main` and the conventions branch first: this branch has the old defaults.
 
-**Decision of the Head of Fundamental Research, 2026-11-20 (open point 1).** The search keeps the value at
-the means. Reason (no reason uses the price): a DCF with a risk-adjusted discount rate gives the present value
-of the EXPECTED cash flows, so the price compares with an expected value, not with the median of the value
-over the parameter draws. The path at the means is a deterministic estimate of that expected value; the P50 is
-lower by construction when the distribution is skewed (data of 2026-11-19, old defaults, seed 7, 10,000 paths:
-AAPL value at the means $127.94 against P50 $122.57; ABT $48.44 against $38.84; ADBE $250.49 against $235.73;
-IBM $159.72 against $132.87; KO $35.09 against $29.76). Effect: the P50 / price of `fa dcf screen` is a
-conservative measure and is not the same as the value / price of `fa dcf implied`. The findings file must say
-this. Follow-up for the engine ticket: report the mean of the simulated value with its standard error.
+**Decision of the Head of Fundamental Research, 2026-11-20 (open point 1), corrected after review cycle 1.** The
+search keeps the value at the means, because it is deterministic and stable. It is NOT the expected value. A DCF with
+a risk-adjusted discount rate gives the present value of the expected cash flows, but the path at the means is not
+that expected value: for most tickers it lies between the P50 and the simulated mean (median 0.89 of the mean; data of
+2026-11-19, defaults of `main`, `fa dcf auto`, seed 7, 10,000 paths: AAPL $144.87 against P50 $132.89 and mean $153.05;
+IBM $134.95 against $95.84 and $152.78). The mean is unstable for some tickers (one tail holds a large share). So the
+size of the gap to the price depends on the statistic: value at the means / price median 0.63 (sp500), mean / price
+about 0.77, P50 / price 0.477. The P50 / price of `fa dcf screen` is a different, lower measure. The findings file
+says this. Follow-up for the engine ticket: report the mean of the simulated value with its standard error (done in
+`fa dcf auto`, pull request 81).
 
 **State, 2026-11-20 22:10 UTC.** Part 3b done: sector (Fama-French 12) and industry (SIC) groups from the cache
 (`mapcheck::sec::company_sic`), a `*` on a group cell with more than 20% bounds. Check run on `sp500.txt` and

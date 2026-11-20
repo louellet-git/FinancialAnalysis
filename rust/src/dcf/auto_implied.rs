@@ -44,7 +44,9 @@ fa dcf implied [--tickers-file FILE | TICKER ...] [OPTIONS]
     growth           a shift of the company mean of the growth and of the growth of year 1 (-30 to +60 points)
     margin           a shift of the start and of the target of the free cash flow margin (-50 to +50 points)
   No solution in the range gives the bound and a flag in the column `flags` (`<`: the price needs a lower number than the
-  bound, `>`: a higher number; `nm`: the value is not monotone in the number on the ends of the range).
+  bound, `>`: a higher number; `nm`: the value is not monotone in the number on the ends of the range; such a row has
+  no number for that search and is not in the quartiles of that measure). A `<` can also be the floor of the rate at 0%
+  (the engine gives no value for a cost of capital that is not positive), not the low end of the range.
   Then the premium that the whole list implies (the median of value / price is 1) and, for each group, the median of the
   value at that premium over the price. Without a ticker: all tickers of the cache.
   --cache DIR     as for `fa dcf auto`

@@ -645,7 +645,7 @@ The groups (all, size, sector, industry with 5 tickers or more) give P25, P50 an
 of years 1 to 10, and margin of year 10 (FCFF after SBC and the charge over revenue), and the value at the premium of the list over the price. The
 sector and the industry come from `--groups FILE` (CSV `ticker,sector,industry`) if given, else from the SIC code of the cache (`mapcheck::sec::company_sic`, sector = Fama-French 12 name by `ff12_sector`, industry = the code with its description) through the one function `groups_of`; a ticker with no code has no group. The code is the code of the filer today (trap #170); this command values today only, so that limit does not apply to it. A quartile cell with more than 20% bounds (`<` or `>`) has a `*`: a quartile of censored values is not a measured number. The industries are in the order of their size.
 The premium of the list is the premium for which the median of value / price over the tickers
-with a value and a price is 1.0. The price enters the builder only through the equity weight (`E / (E + debt)`), as in `fa dcf auto`; the price
+with a value and a price is 1.0. The value at the means is not the expected value: for most tickers it lies between the P50 and the simulated mean (median 0.89 of the mean). The price enters the builder only through the equity weight (`E / (E + debt)`), as in `fa dcf auto`; the price
 cache gives the last close, not the close of `--as-of`. Two runs give the same bytes, and the result does not depend on `--jobs` (a test compares 1 and 4 threads).
 
 **The investigation of 2026-11-20** (ticket `T-20261120-dcf-investigation`; findings `analysis/priors/dcf_investigation_2026-11-20.md`;
