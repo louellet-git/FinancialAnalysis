@@ -135,7 +135,7 @@ pub fn contract_from_info(underlying: &str, c: &ContractInfo) -> Option<Contract
 
 /// The root of an OCC symbol: the text before the last 15 characters (`SPXW261127C07000000` gives `SPXW`). A symbol with no
 /// such form gives an empty root.
-fn occ_root(symbol: &str) -> String {
+pub(crate) fn occ_root(symbol: &str) -> String {
     let b = symbol.as_bytes();
     if b.len() < 15 || !symbol.is_ascii() {
         return String::new();

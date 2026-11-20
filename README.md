@@ -20,8 +20,8 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`. The agent teams: `
 ```bash
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program that makes the standard variables (necessary)
 cargo build --release --manifest-path rust/Cargo.toml            # the `fa` program
-cargo test --manifest-path rust/mapcheck/Cargo.toml    # 100 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked    # 597 Rust tests (579 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research, data sync)
+cargo test --manifest-path rust/mapcheck/Cargo.toml    # all mapcheck tests, no network (it prints the counts)
+cargo test --manifest-path rust/Cargo.toml --locked    # all fa tests, no network (it prints the counts) (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research, data sync)
 ```
 
 The repo has no Python code.
@@ -130,7 +130,7 @@ fa dcf auto IBM [--cache DIR] [--price P] [--explain] [--write FILE]   # automat
 fa dcf screen --tickers-file rust/mapcheck/universe/sp500.txt [--cache DIR] [--out FILE] [--jobs N] [--prices FILE]   # one row for each ticker (value range, refusals), parallel over tickers
 fa dcf pit [--cache DIR] [--cut YEAR] [--rules K=V,..] [--out FILE]   # point-in-time test of the automatic model: real revenue and free cash flow against the bands
 fa dcf returns [--cache DIR] [--rules K=V,..] [--lag DAYS] [--out FILE]   # the point-in-time model value (P50 / price) against the later 1-year and 3-year returns
-fa portfolio backtest --strategy value-rank|momentum --start D --end D [--rebalance monthly|quarterly] [--cost-bp N] [--tickers-file F] [--cache DIR] [--out FILE]   # portfolio backtest: weights on each rebalance date, daily value, cost, SPY as benchmark (the ticker list is today's list: the result is too good)
+fa portfolio backtest --strategy value-rank|momentum --start D [--end D] [--rebalance monthly|quarterly] [--cost-bp N] [--tickers-file F] [--cache DIR] [--out FILE]   # portfolio backtest: weights on each rebalance date, daily value, cost, SPY and an equal-weight line of the list as references (the ticker list is today's list: the result is too good)
 fa dcf screen ... --implied [--rules K=V,..]      # also the cost of capital that gives the price; --rules: an alternative rule (list: fa dcf auto --help)
 fa prices get IBM MSFT [--tickers-file rust/mapcheck/universe/sp500.txt] [--source tiingo|yahoo|nasdaq] [--full]   # price history into data/raw (network)
 fa prices show IBM [--from D] [--to D]            # rows of the cache
@@ -140,7 +140,7 @@ fa estimates get IBM MSFT [--tickers-file F] [--endpoints forecast,surprise,targ
 fa estimates show IBM [--price P]                 # consensus by period, revisions, forward P/E, target against the last close, next report date
 fa earnings calendar [IBM...] [--tickers-file F] [--from D] [--days 60]   # Nasdaq earnings calendar scan, next report date of each ticker (network)
 fa earnings dates IBM JNJ [--tolerance 1]         # past report dates against the SEC 8-K list (mapcheck fetch --submissions TICKER)
-fa sync [IBM MSFT...] [--tickers-file F] [--only A,B] [--skip A,B] [--force] [--dry-run] [--max-minutes N]   # bring all old data sets up to date, one queue for each host (network)
+fa sync [IBM MSFT...] [--tickers-file F] [--only A,B] [--skip A,B] [--force] [--dry-run] [--max-minutes N] [--bond-days N]   # bring all old data sets up to date, one queue for each host; --bond-days N asks for the FedInvest prices of the last N market days (network)
 fa sync --status [IBM...]                         # one line for each data set: current, old, no data; no request
 fa verdict IBM [--price 228.53] [--simulations 10000] [--seed 7] [--rf-date today] [--rf-base-date 2026-07-16] [--rating A-]
 fa rates [snapshot|yield|curve|history|nyfed|inflation|fred|check] [--date D]   # JSON
@@ -451,6 +451,7 @@ cargo build --release --manifest-path rust/Cargo.toml # one time
 rust/target/release/fa trade fetch                    # download the bars (Yahoo) into data/raw/trading/
 rust/target/release/fa prices intraday SPY --interval 5m --from 2020-01-01   # 5-minute bars since a date (Alpaca, free key)
 rust/target/release/fa options history SPY --from 2024-03-01 --to 2024-03-29 # option surface of past dates from daily closes (Alpaca)
+rust/target/release/fa options check IBM --date 2026-11-19 [--rate R]        # no-arbitrage checks of a stored chain at executable prices (bid and ask); upper parity bound only; without --rate the Treasury curve can be downloaded (one file), give --rate R for no network
 rust/target/release/fa options snapshot SPY --source alpaca                  # option chain of today (Alpaca, free key); SPX and VIX too (both roots; level and volatility from put-call parity)
 rust/target/release/fa trade backtest                 # all bots, leaderboard (Rust, 1 second)
 rust/target/release/fa trade backtest --bot s14b_spy_trend_calls -v

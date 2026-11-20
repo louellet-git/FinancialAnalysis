@@ -5,7 +5,8 @@ description: Use when you write or change a document, a ticket, an agent file or
 
 # Writing in Simplified Technical English
 
-`CLAUDE.md` makes ASD-STE100 the only document standard for new and changed documents.
+`CLAUDE.md` makes ASD-STE100 the document standard for new and changed documents, to about 85%:
+most sentences follow the rules; a sentence can break a rule where the STE form is less clear.
 Frozen documents and review records keep their text. This skill is a short guide. It is
 not the full standard.
 

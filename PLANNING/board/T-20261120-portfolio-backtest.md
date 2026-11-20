@@ -31,8 +31,13 @@ Known limits to state in each result: the ticker lists are today's lists (surviv
 Owners: the Head of Technology builds the engine; each research head writes its strategy; the Head of Quality
 and Risk validates (skill `point-in-time-test`).
 
-State, 2026-11-20 (Head of Technology). `fa portfolio backtest --strategy value-rank|momentum`. Real run on the
-store, `sp500.txt`, 2018 to 2026-11-13, monthly, 10 bp (price returns; today's ticker list, so the result is
-too good): value-rank +9.51% a year against SPY +12.64% (new automatic model defaults of 2026-11-20); momentum
-+19.82% against +12.35%. Next: each research head writes its own strategy on this engine; an option bot as a
-strategy, a list of past index members, and dividends are not in this version.
+State, 2026-11-20 (Head of Technology), after review cycle 1. `fa portfolio backtest --strategy value-rank|momentum`.
+Real run on the store, `sp500.txt` (502 tickers), 2018-01-01 to 2026-11-13, monthly, 10 bp (price returns; today's
+ticker list, so the result is too good): value-rank +19.03% a year (431 tickers scored, first position 2018-01-02)
+against SPY +12.35%; momentum +19.82%; equal-weight of the whole list +14.56% (same costs). The first version of
+value-rank gave +9.51%: it read the fiscal years by the date of the latest filing, so the newest year came about one
+year late; the vintage of each rebalance date (only facts filed before it) removes this. The parameter table is
+in-sample. Poison test of the review (each fact filed from 2022-06-01 times 1000, on a copy of the store): the
+portfolio first differed on 2020-11-03 before the fix and differs on 2022-09-01 after it. Value-rank takes 88 s (was
+17 s): one set of years for each annual filing day. Next: each research head writes its own strategy on this engine;
+an option bot as a strategy, a list of past index members, and dividends are not in this version.

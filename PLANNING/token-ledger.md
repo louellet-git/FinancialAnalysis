@@ -1,5 +1,8 @@
 # Token ledger — cost per run (success metric #1)
 
+**Closed for new rows on 2026-11-21.** Each session writes the ledger of its own folder (`CLAUDE.md`,
+"Token ledger"), so that parallel branches do not edit one file.
+
 Instrumented from run one, per the approved industrialization plan. Subagent output
 tokens summed from orchestration records; orchestrator overhead excluded (roughly
 constant per run).
