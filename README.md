@@ -20,7 +20,7 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`. The agent teams: `
 ```bash
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program that makes the standard variables (necessary)
 cargo build --release --manifest-path rust/Cargo.toml            # the `fa` program
-cargo test --manifest-path rust/mapcheck/Cargo.toml    # 97 Rust tests, no network
+cargo test --manifest-path rust/mapcheck/Cargo.toml    # 100 Rust tests, no network
 cargo test --manifest-path rust/Cargo.toml --locked    # 572 Rust tests (554 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research, data sync)
 ```
 
