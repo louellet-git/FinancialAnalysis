@@ -53,9 +53,10 @@ The repo gives analysis. It does not send orders to a broker.
 
 ## Work rules
 
-- **Language.** Write each new document, and each document that you change, in
-  ASD-STE100 Simplified Technical English. This is the only document standard. Frozen
-  documents and review records keep their original text.
+- **Language.** Write each new document, and each document that you change, in ASD-STE100
+  Simplified Technical English, to about 85%: most sentences follow the rules, and a sentence can
+  break a rule where the STE form is less clear (a technical term, a name, a formula). A document
+  that already meets this needs no rework. Frozen documents and review records keep their text.
 - **Ticket first.** Before you start, set a board ticket to `in-progress` with your
   login and branch, and push that change.
 - **One branch for one ticket.** Start it from `origin/main`. Merge through a pull

@@ -26,7 +26,7 @@ STE defects that you found (quote, rule, fix). Sample about 20 sentences.
    are stated; no claim is bigger than its evidence.
 3. Disclosures that apply are present (first pass, model prices, conflict of interest).
 4. Each command and path in the text exists (`--help`, `ls`).
-5. STE: the text is short, active and consistent. Many defects are a MAJ. Single defects
+5. STE: in a sample of about 20 sentences, about 85% follow the rules (`CLAUDE.md`, "Language"). Clearly less is a MAJ. Single defects
    are notes.
 
 **Never.** Rewrite the document. Check numbers against sources. Never edit a file of the repo, commit, or push. Write scratch files only in the scratchpad that the orchestrator names.
