@@ -2,13 +2,13 @@
 id: T-20261120-dcf-conventions-decision
 title: Decide the long-run growth and the acquisition charge of the automatic model
 area: engine
-status: backlog
+status: in-progress
 owner: louellet-git
 head: fundamental
 order: 1
-branch:
+branch: claude/magical-planck-41ip3i
 created: 2026-11-20
-acceptance: The owner chose each of the two conventions, a review of the weight of the IBM review passed for each default that changed, and the assumption records give the decision and its date.
+acceptance: Each of the two conventions has a decision (the owner, or the Head of Fundamental Research on the word of the owner of 2026-11-20), a review of the weight of the IBM review passed for each default that changed, and the assumption records give the decision and its date.
 ---
 Source: `analysis/priors/dcf_conventions_study_2026-11-20.md`. The study changed no default. Its options
 are off: `--rules long_run=`, `acq_w=1`, `acq_f=` with `acq_mult=`.
@@ -40,3 +40,7 @@ The study recommends the second choice.
 needs a review of the same weight as the IBM review (`CLAUDE.md`, source rule 3): flow "Model change" of
 `docs/TEAMS.md`. Update `docs/assumptions/A-001-terminal-growth.md` and write the record of the acquisition
 charge in the same pull request.
+
+**Owner word, 2026-11-20.** The owner does not choose each convention. The Head of Fundamental Research
+decides what is most appropriate, and writes the study and the decision in the assumption records
+(`chiefs/louellet-git/fundamental/RECORD.md`, entry of 2026-11-20 19:27 UTC).
