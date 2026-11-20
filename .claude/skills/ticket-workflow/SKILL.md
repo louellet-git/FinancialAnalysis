@@ -10,7 +10,7 @@ runs the git steps. A subagent does the checks and leaves the commit to the orch
 
 ## Steps
 1. Find or write the ticket `PLANNING/board/T-YYYYMMDD-<slug>.md` (fields: id, title,
-   area, status, owner, branch, created, acceptance). Work without a ticket is in
+   area, status, owner, head, order, branch, created, acceptance). Work without a ticket is in
    `PLANNING/tickets.md`: make a ticket and delete the item there.
 2. Set `status: in-progress`, `owner` (your GitHub login) and `branch`. Commit and push
    this change first.

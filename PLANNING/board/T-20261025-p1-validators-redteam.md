@@ -4,6 +4,8 @@ title: P1 remainder: validators, red-team corpus, coverage validator
 area: engine
 status: backlog
 owner: louellet-git
+head: quality
+order: 3
 branch:
 created: 2026-10-25
 acceptance: Validators, a red-team specimen corpus and a statement-coverage validator exist and pass in pytest.

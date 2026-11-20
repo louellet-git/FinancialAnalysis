@@ -4,6 +4,8 @@ title: Write the model documents and the assumption records of the other models
 area: docs
 status: backlog
 owner: louellet-git
+head: quality
+order: 2
 branch:
 created: 2026-11-20
 acceptance: Each model of the list has a model document (at most 120 lines) and each assumption of it has a record (at most 60 lines), and the table of the model document names each record.

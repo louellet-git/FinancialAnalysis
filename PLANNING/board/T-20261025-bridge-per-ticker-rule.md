@@ -4,6 +4,8 @@ title: Add bridge-per-ticker rule and validator
 area: planning
 status: backlog
 owner: louellet-git
+head: quality
+order: 4
 branch:
 created: 2026-10-25
 acceptance: RULES.md carries a rule requiring a reviewed net-debt bridge per basket ticker, and a validator fails a ticker without one.

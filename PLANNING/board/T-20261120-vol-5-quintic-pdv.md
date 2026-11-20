@@ -4,6 +4,8 @@ title: Fit the quintic Ornstein-Uhlenbeck model and the path-dependent volatilit
 area: engine
 status: backlog
 owner: louellet-git
+head: quant
+order: 7
 branch:
 created: 2026-11-20
 acceptance: `fa vol pdv SPY` fits the Guyon-Lekeufack model to the daily SPY and VIX files since 1990 with an out-of-sample R-squared, and `fa vol fit quintic --symbol SPX` fits the live SPX smile with the error by expiry in vol points.

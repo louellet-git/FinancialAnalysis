@@ -4,6 +4,8 @@ title: Price and fit the Heston and Bates models with Fourier methods
 area: engine
 status: backlog
 owner: louellet-git
+head: quant
+order: 2
 branch:
 created: 2026-11-20
 acceptance: `fa vol fit heston --symbol SPX` fits the live SPX chain of one day in under 5 seconds, the Heston price test reproduces the published value 5.785155450 to 1e-8, and the fit error by expiry is printed in vol points.

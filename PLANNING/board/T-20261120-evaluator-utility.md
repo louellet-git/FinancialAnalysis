@@ -4,6 +4,8 @@ title: Build the value model for utilities
 area: engine
 status: backlog
 owner: louellet-git
+head: fundamental
+order: 3
 branch:
 created: 2026-11-20
 acceptance: `fa dcf auto` gives a value range above zero for each of the 27 utilities that the free-cash-flow model values at or below zero, from an excess-return model with an allowed-return ROE, and a point-in-time test on the 34 regulated utilities reports the coverage of its bands.

@@ -4,6 +4,8 @@ title: Fit a two-factor Bergomi forward variance model
 area: engine
 status: backlog
 owner: louellet-git
+head: quant
+order: 5
 branch:
 created: 2026-11-20
 acceptance: `fa vol fit bergomi2f --symbol SPX` fits the forward variance curve from the VIX strip of each live expiry, then the volatility of volatility and the correlations to the SPX smile in under 10 seconds, with the error by expiry in vol points.

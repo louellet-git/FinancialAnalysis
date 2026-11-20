@@ -4,6 +4,8 @@ title: Show a continuous stream of data on the screen
 area: engine
 status: backlog
 owner: louellet-git
+head: technology
+order: 6
 branch:
 created: 2026-11-19
 acceptance: The viewer shows a page that updates with no action of the person, with the age of each data set, and a background process keeps each data set inside its maximum age for one day with no person at the computer.

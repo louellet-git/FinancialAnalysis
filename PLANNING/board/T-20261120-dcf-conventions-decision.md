@@ -4,6 +4,8 @@ title: Decide the long-run growth and the acquisition charge of the automatic mo
 area: engine
 status: backlog
 owner: louellet-git
+head: fundamental
+order: 1
 branch:
 created: 2026-11-20
 acceptance: The owner chose each of the two conventions, a review of the weight of the IBM review passed for each default that changed, and the assumption records give the decision and its date.

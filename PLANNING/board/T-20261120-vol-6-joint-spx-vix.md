@@ -4,6 +4,8 @@ title: Fit SPX and VIX smiles together and compare the models
 area: engine
 status: backlog
 owner: louellet-git
+head: quant
+order: 8
 branch:
 created: 2026-11-20
 acceptance: `fa vol joint --model rbergomi|bergomi2f|quintic --date D` fits the SPX smile, the VIX futures and the VIX options of one live day with one parameter set, and `fa vol compare` prints one table of the models with the error in vol points for each instrument.

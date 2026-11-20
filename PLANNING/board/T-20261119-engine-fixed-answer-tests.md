@@ -4,6 +4,8 @@ title: Add fixed-answer tests for the two DCF engines
 area: engine
 status: backlog
 owner: merlan1996
+head: fundamental
+order: 8
 branch:
 created: 2026-11-19
 acceptance: Pytest compares each engine, with randomness off, against a DCF calculated by hand, and the values agree.

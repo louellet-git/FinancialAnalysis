@@ -4,6 +4,8 @@ title: Grade the IBM watch list against the Q2 and Q3 results
 area: ticker:IBM
 status: backlog
 owner: louellet-git
+head: fundamental
+order: 9
 branch:
 created: 2026-10-25
 acceptance: Each watch-list item of the report and the 2026 mechanical vintage has a grade against the Q2 and Q3 results, and the first bet-ledger entries are recorded.

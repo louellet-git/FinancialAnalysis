@@ -4,6 +4,8 @@ title: Decide and build the value models for the classes that have no data or no
 area: engine
 status: backlog
 owner: louellet-git
+head: fundamental
+order: 7
 branch:
 created: 2026-11-19
 acceptance: Each class that `mapcheck` gives the status N/A has a decision (a model, or a recorded reason for no model), and one class has a working model.

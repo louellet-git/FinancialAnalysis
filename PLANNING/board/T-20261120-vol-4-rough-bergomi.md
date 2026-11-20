@@ -4,6 +4,8 @@ title: Simulate rough Bergomi, fit it, and estimate the roughness
 area: engine
 status: backlog
 owner: louellet-git
+head: quant
+order: 6
 branch:
 created: 2026-11-20
 acceptance: `fa vol fit rbergomi --symbol SPX` fits H, eta and rho to the live SPX smile in under 30 seconds with the error by expiry in vol points, and `fa vol hurst SPY` repeats the roughness estimate of the study (0.147 on the 5-minute bars) with its bootstrap error.

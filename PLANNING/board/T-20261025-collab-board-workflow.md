@@ -4,6 +4,8 @@ title: Decide the fate of pull request #18 (board gate, CI)
 area: planning
 status: backlog
 owner: louellet-git
+head: technology
+order: 5
 branch:
 created: 2026-10-25
 acceptance: Pull request #18 is closed, or the parts that the owner wants are merged.
