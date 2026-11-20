@@ -13,6 +13,8 @@ person decided. Keep this file below 60 lines. Started 2026-11-20.
 ## Standing words of the person
 - 2026-11-19 or 2026-11-20 (the day was not recorded): "merge to main the branches when complete".
   Effect: open the pull request and merge it after a green check, with no new question.
+- 2026-11-20: "You don't need me to tell you to continue unless I tell you to stop". After a ticket, report
+  and take the next ticket of the queue with no wait.
 - 2026-11-19 or 2026-11-20: "Go back to using sonnet when possible". Now also `chiefs/ORIENTATION.md`,
   section 3.
 - 2026-11-19 or 2026-11-20, on the GitHub Actions use: "this is too much usage". Effect: put small
@@ -45,11 +47,11 @@ person decided. Keep this file below 60 lines. Started 2026-11-20.
   stay. Commit unfinished work to its branch before a long wait.
 - The disk became full one time. Remedy: delete `rust/target` and `rust/mapcheck/target` in the
   worktrees of merged branches.
+- A cloud session cannot delete a remote branch (the git proxy answers HTTP 403). The repo deletes a
+  branch after its merge; a delete of an old branch is work for the person.
 - From a cloud address, some sources refuse requests: the Cboe delayed quotes (403), the Yahoo chart
   (429), FRED with no key. Do not go around a block. The record is `docs/DATA-SOURCES.md`.
-- The Windows build can be checked from the cloud machine:
-  `cargo check --release --target x86_64-pc-windows-gnu` (the target and `gcc-mingw-w64-x86-64` must be
-  installed in a new machine).
+- Windows build check: `cargo check --release --target x86_64-pc-windows-gnu` (install the target first).
 - The four head sessions of `louellet-git` exist; the heads of `merlan1996` do not yet. Find a head by
   its title with `list_sessions`; do not keep a session id. No pages: the sources are in `docs/DATA-SOURCES.md`.
 
