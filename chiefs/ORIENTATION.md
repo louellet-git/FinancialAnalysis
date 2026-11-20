@@ -62,6 +62,21 @@ If a file is not in this table, the head whose work needs the change makes the c
 - The Head of Quality and Risk does not write model code or data code. Thus its verdict
   is independent.
 
+**One data store.** The data cache is not in this repo, and each session has its own
+machine. The data store is the repo `louellet-git/fa-data`: a copy of `data/raw` that each
+session gets with one command.
+
+- Only the Head of Technology writes the store and starts a bulk download from the
+  sources. A request for one ticker or a few tickers is not a bulk download.
+- To get the data: attach the repo (`add_repo`, owner `louellet-git`, repo `fa-data`, read
+  access), then run `git clone --depth 1 https://github.com/louellet-git/fa-data data/raw`
+  in the folder of this repo. The folder `data/raw` must not exist or must be empty. A
+  newer copy: `git -C data/raw pull --depth 1`.
+- If your work needs data that is not in the store, send the data sets and the ticker
+  list to the Head of Technology.
+- The content, the dates of the data and the traps are in the `README.md` and the
+  `SNAPSHOT.md` of the store.
+
 ## 3. Your team
 
 **Model.** Your agents use the Sonnet model (`model: sonnet` in each agent file). Do not
