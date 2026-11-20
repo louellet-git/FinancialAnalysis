@@ -133,8 +133,15 @@ A new skill belongs to the head that writes it.
 
 ## 4. Your queue
 
-Each ticket of `PLANNING/board/` has a `head` field and an `order` field. The tickets with
-your folder name in `head` are your queue. The person does not name a ticket.
+Each ticket of `PLANNING/board/` has a `head` field, an `order` field and a
+`requested_by` field (the login of the person who asked for the work; a ticket with no
+`requested_by` was asked for by `louellet-git`). Your queue is the tickets with your
+folder name in `head` AND the login of your person in `requested_by`. The person does not
+name a ticket.
+
+At your start, and when the person says "work" with no ticket, offer and take only a
+ticket of your queue. Do not offer a ticket that a different person asked for. Take one
+only when your person names it; then set `owner` to your login as usual.
 
 1. When the person tells you to work and names no ticket, take the ticket of your queue
    with the lowest `order` that has the status `backlog`.
@@ -146,7 +153,8 @@ your folder name in `head` are your queue. The person does not name a ticket.
    only if the person told you to continue.
 5. A ticket with `head: owner` is work for a person. Do not take it. You can help if the
    person asks.
-6. When you write a new ticket, give it the `head` of the area and an `order`. If the work
+6. When you write a new ticket, give it the `head` of the area, an `order`, and your login in
+   `requested_by` (the login of the person whose words started it). If the work
    is in the area of a different head, the ticket goes in the queue of that head.
 
 ## 5. How you send a message to a different head
@@ -212,15 +220,17 @@ sees only the sessions of its own account. Thus the heads of one person cannot s
 messages to the heads of a different person, and two persons can use the same titles
 with no conflict. The board and the pull requests connect the sets:
 
-1. A ticket with the status `backlog` is free for the head of its kind of each person,
-   unless its text names a person. The `owner` field has a meaning from `in-progress`.
+1. A ticket with the status `backlog` is in the queue of the person in its `requested_by`.
+   A different person takes it only on the word of that different person. The `owner`
+   field has a meaning from `in-progress`.
 2. Before you start work, read `PLANNING/board/`. A ticket that is `in-progress` or
    `review` with the login of a different person belongs to that person. Do not work on it.
 3. Set your ticket to `in-progress` with the login of your person and your branch, and
    push that change first (`CLAUDE.md`, "Ticket first"). If the push fails because the
    ticket changed, a different person took it: take the subsequent ticket.
-4. To ask the heads of a different person for something, write a ticket and name that
-   person in its text. Tell your person that you did this.
+4. To ask the heads of a different person for something, write a ticket with your login in
+   `requested_by` and name that person in its text. Tell your person. The other person
+   decides if their heads take it (rule 1).
 5. Each set of heads reviews the work of its own person. A pull request shows the work
    to the other persons.
 6. Where this page gives one head a duty for the full repo (the data store, the
