@@ -8,7 +8,7 @@ head: quant
 order: 2
 branch: claude/upbeat-cori-a4ykf5
 created: 2026-11-20
-acceptance: `fa vol fit heston --symbol SPX` fits the live SPX chain of one day in under 5 seconds, the Heston price test reproduces the published value 5.785155450 to 1e-8, and the fit error by expiry is printed in vol points.
+acceptance: `fa vol fit heston --symbol SPX` fits the live SPX chain of one day in under 5 seconds, the Heston price test reproduces the published value 5.785155450 to 2e-8 and the converged value 5.785155434376 to 1e-10 (changed 2026-11-20: an independent Gil-Pelaez price by the validator shows that the published T = 1 digits are 1.56e-8 high), and the fit error by expiry is printed in vol points.
 ---
 Step 1 of the sequence of `analysis/priors/volatility_study_2026-11-20.md`. Depends on: nothing. The data check is in section A of the study.
 
@@ -60,4 +60,4 @@ and no arbitrage test on closes of different times.
 
 ## Commands
 
-`fa vol price heston --params ... --strikes ...`, `fa vol fit heston|bates --symbol SPX [--date D] [--expiry-max DAYS]`, `fa vol check heston` (the fixed-answer tests as a command).
+`fa vol fit heston|bates --symbol SPX [--date D] [--time HHMM] [--expiry-max DAYS]`. `fa vol price` and `fa vol check` are not in this ticket (the fixed-answer tests run with `cargo test`).
