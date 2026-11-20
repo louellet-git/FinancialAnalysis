@@ -983,3 +983,11 @@ ticket `option-backtest-rust`).
 `cargo test --manifest-path rust/mapcheck/Cargo.toml`: the tests of `mapcheck`. The suites make no network calls and start no
 Python program; HTTP is replaced by a function that the test gives, and files are in a temp folder.
 No Python test remains (the last 211 Python tests were deleted on 2026-11-19 after each case had a Rust test).
+
+### `rust/src/volmodels/` — Heston and Bates by Fourier methods (2026-11-20)
+
+Rust only. Ticket `T-20261120-vol-1-heston-bates`. Model document: `docs/models/heston-bates.md`.
+Files: `cx.rs` (complex type), `base.rs` (trait `CharModel`, quote set, loss, error in vol points),
+`fourier.rs` (Lewis integral with adaptive Gauss-Legendre, Carr-Madan FFT), `models.rs`
+(`Heston`, `Bates`), `calib.rs` (Levenberg-Marquardt), `chain.rs` (snapshot to quote set, with
+counts of dropped quotes), `cli.rs` (`fa vol fit`). Prices are model prices, fitted to mids of bid and ask.
