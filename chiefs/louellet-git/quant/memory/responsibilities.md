@@ -46,6 +46,11 @@ correct for the files. This page says who owns which question.
   The engine stays fundamental. The use of their output as a factor across the universe is quant.
   A move of a file needs the person and a change of `chiefs/ORIENTATION.md` (the Head of
   Technology owns its structure).
+- `fa dcf implied` (the cost of capital, growth and margin that the price implies) is fundamental: a
+  measurement with the value engine. Its use as a factor or a ranking is quant. The Head of Fundamental
+  Research agreed with this page on 2026-11-20 (its page: `../../fundamental/memory/responsibilities.md`).
+- In the portfolio backtest, a fundamental strategy is a list of few companies with a value and a reason;
+  a quant strategy is a rule on many tickers.
 - A trade idea from one ticker report (fundamental) and a trade idea from a screen (quant) are
   different. Each head reviews its own idea.
 
