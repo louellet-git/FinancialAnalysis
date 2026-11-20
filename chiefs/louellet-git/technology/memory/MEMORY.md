@@ -3,9 +3,12 @@ For the next session of this head: how the environment and the data sources beha
 person decided. Keep this file below 60 lines. Started 2026-11-20.
 
 ## Goal now and subsequent steps
-- Keep the data and the build ready for the three other heads. Queue: `PLANNING/board/`, `head: technology`.
-- The person does the first run on the laptop with the keys (ticket `T-20261120-owner-first-run`). Help
-  when the person reports what failed.
+- Data store `louellet-git/fa-data`: complete on 2026-11-20 (prices of 999 tickers). Its README has the
+  update steps. The Nasdaq site has no prices for CFR, DDS, ET, MOG-A and SUN.
+- Two tickets wait for the "go" of the person: `T-20261120-sync-yahoo-429` (first), then
+  `T-20261120-sic-code` (from the Head of Fundamental Research; it comes to `main` with its pull request).
+- The person does the first run on the laptop with the keys (ticket `T-20261120-owner-first-run`).
+- Queue: `PLANNING/board/`, `head: technology`.
 
 ## Standing words of the person
 - 2026-11-19 or 2026-11-20 (the day was not recorded): "merge to main the branches when complete".
@@ -25,6 +28,12 @@ person decided. Keep this file below 60 lines. Started 2026-11-20.
 - The computer of the person is a Windows laptop. Give commands for PowerShell.
 - The person puts the keys in `.env` on the laptop. A key never goes in a chat, a file of the repo or
   a commit. In a cloud session, ask with the secure form (`request_credential`).
+- 2026-11-20, on the language: "we don't need everything in Rust, mainly trading and stuff". Effect: Rust
+  for the engines, the trading code and the data loaders; SQL or a small script is permitted.
+- 2026-11-20, on the data: "we shouldn't have all that data spread across 4 sessions". Effect: one data
+  store, the repo `louellet-git/fa-data`, that only this head writes. Push to it in parts of less than 40 MB.
+- 2026-11-20: "The fa-data won't be private, continue, and load all the data to it for now". Effect: the
+  store is public and has prices and estimates too. Scan for keys before each push to it.
 
 ## Tested rules
 - The cloud machine can restart. A restart stops the background agents; the files and the worktrees

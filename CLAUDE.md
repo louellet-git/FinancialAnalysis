@@ -1,6 +1,6 @@
 # CLAUDE.md — orientation for agents
 
-If your session title starts with `FA-L` or `FA-M`, you are a head of an area. Read
+If your session title starts with `FA-`, you are a head of an area. Read
 `chiefs/ORIENTATION.md` after this file. It says who you are and how the heads send messages
 to each other.
 
@@ -66,9 +66,16 @@ The repo gives analysis. It does not send orders to a broker.
 - **Smoke test.** A ticket is complete only after the real command runs and the next
   step can use the output.
 - **No bloat.** Add one small part, show that it gives value, then add the next part.
-- **The language is Rust** (owner decision, 2026-11-19). The repo has no Python code now. Write all
-  new code in Rust. Do not write new Python code. One part has one implementation: do not keep a
-  second copy of a part in another language.
+- **The main language is Rust** (owner decision, 2026-11-19; scope set by the owner, 2026-11-20).
+  Write in Rust the programs that calculate, trade or get data: the engines, the trading code, the
+  data loaders and their tests. The repo has no Python code, and no part has a second copy in a
+  different language. A different language is permitted where it fits the work better than Rust:
+  SQL for a database, a shell command, the CI workflow file, the HTML of a report page, a small
+  one-time script. If you are not sure, use Rust.
+- **Data.** The data cache (`data/raw`) comes from the data store, the repo `louellet-git/fa-data`:
+  `git clone --depth 1 https://github.com/louellet-git/fa-data data/raw`. Do not start a bulk download
+  from the sources. Only the Head of Technology of `louellet-git` writes the store
+  (`docs/DATA-SOURCES.md`, "The data store").
 - **SEC contact.** The SEC contact is in `sec_contact.toml` (a project address, public on purpose).
   The environment variable `SEC_USER_AGENT` replaces it. Do not put a private contact in the repo.
 - **Do not commit** `data/`, `__pycache__/`, `.env`, `vendor/`, or the files of a private

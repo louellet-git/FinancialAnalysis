@@ -7,6 +7,17 @@ Owner rule. A person syncs the data when the person wants to. No program runs al
 So each data set needs a source that gives the PAST on request. A source that gives only the present is a weak source.
 The program must then copy the data each day, and a day that nobody copies is lost.
 
+## The data store
+
+The data cache (`data/raw`) is not in this repo. A copy of it is in the repo
+`louellet-git/fa-data`, so that each session gets the data with one command and sends no
+request to the sources. Only the Head of Technology writes the store and starts a bulk
+download (`chiefs/ORIENTATION.md`, section 2). Command:
+`git clone --depth 1 https://github.com/louellet-git/fa-data data/raw`.
+The store has each data set of the cache. The owner decided on 2026-11-20 that the store repo
+is public for now. Its `README.md` lists the data sets and their sources, and its `SNAPSHOT.md`
+gives the date of each download.
+
 ## Words in the table
 
 - **Key.** A free or paid key that the person puts in the environment or in `.env` (names in `.env.example`). "none" means no key.
