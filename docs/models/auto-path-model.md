@@ -49,12 +49,12 @@ The records "not written" belong to the board ticket
 ## Limits
 - The model is a screen. Its P10 to P90 band covers about 80% of real revenue in the
   point-in-time test, with known errors (`docs/HIDDEN-ASSUMPTIONS.md`, #199).
-- After a year of decline the revenue P50 stays too low (T+2 and T+3), mostly for the base years 2019 and 2020
+- After a year of decline the revenue P50 stays too low (T+2 and T+3), in a few base years with a common shock (2018 to 2021; A-003)
   (`docs/HIDDEN-ASSUMPTIONS.md`, #286). The bands for a stable margin are too wide; the rule `margin_sigma_nu` is
   measured and is not on by default (#286).
-- The output gives the mean of the simulated value for each share and its standard error. A DCF with a risk-adjusted
-  rate values expected cash flows: compare the mean with a price, not the P50. For a ticker with a small P50 the mean can
-  be driven by a few paths (`top_1pct_share_of_mean` in the `--json` output).
+- The output gives the mean of the simulated value for each share, its standard error and the share of the sum that the
+  largest 1% of the paths hold. The mean is a measurement of the distribution, not a better estimate than the P50 (the
+  headline stays the P50). It is unstable when one tail holds a large share, and it is not tested against later returns.
 - No bank, insurer, REIT or fund. No pension, lease or minority item in the net debt.
 - The median value is far below the market price for most tickers (median ratio 0.49 on
   2026-11-19). The investigation shows that no single defect causes this

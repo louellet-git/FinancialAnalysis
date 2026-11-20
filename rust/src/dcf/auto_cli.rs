@@ -46,7 +46,8 @@ fa dcf auto TICKER [OPTIONS]
                   of the history), growth_phi, last_floor (default 0: a base year with growth below this value enters the
                   company mean and the first step as this value; -1 is off)
                   margin: margin_pool_se, margin_w, margin_last (the target is the margin of the base year),
-                  margin_sigma_nu (weight in years of the table shock in the shock size of the margin; default own_sigma_nu)
+                  margin_sigma_nu (weight in years of the table shock in the shock size of the margin; 0 or more; 0 = the table value only;
+                  default own_sigma_nu)
                   discount: rf (a fixed rate), erp, beta_weight, equity_weight_one, terminal_growth, terminal_rf
                   (terminal growth = the 10-year zero yield), years (horizon), stub, mid_year
                   cash flow and bridge: sbc_cost, acq_charge, no_interest_income, bridge_lti, bridge_leases, shares_latest

@@ -53,7 +53,7 @@ Development half and scoring half: parity of the FNV-1a hash of the ticker (`fa 
   band makes the size rows 1-10B and 30-100B worse by more than 2 points. Examine again with a table made from a
   longer panel.
 - **C, accepted:** the output gives the mean of the value and its standard error; the screen CSV has a `mean`
-  column. The headline stays the P50: the mean is unstable for some tickers (median mean / P50 1.34 over 392
+  column. The headline stays the P50: the mean is unstable for some tickers (median mean / P50 1.34 over 393
   tickers, P99 8.97; the top 1% of paths hold 58% of the mean of EXE). No default changed.
 Open: the gate (model-validator, code-reviewer); merge after `T-20261120-dcf-conventions-decision`.
 Candidate parts 1, 2, 4 and 5 of the list above are not started.

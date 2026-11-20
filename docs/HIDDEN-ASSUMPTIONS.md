@@ -1890,11 +1890,11 @@ revenue above $30B; the lowest quintile (values near or below zero) also had hig
 The panel shows that the next year is not a decline: the median real growth of T+1 is +2.7% to +7.1%, and the larger the decline, the larger the growth.
 Test with the mean at the cell value (`growth_w=0`): the median error of the P50 at T+2 and T+3 falls from +7.6% and +11.3% to +3.1% and +3.1%, so the company mean is the main part.
 The year-1 step (`growth_phi=0`) only gives +1.5% to 0.0% at T+1. The correction (A-003) floors the growth of the base year at 0% for the company mean and the first step.
-The error that stays (+5.1% and +7.4% at T+2 and T+3 on half 1; +8.5% and +13.6% with `--cut 2015`) is mostly the base years 2019 and 2020: the real growth of 2021 was +13% to +20% for those companies,
-a common shock that no rule of the company history sees at the base date. A recovery term that is estimated on this panel fits that episode: it needs a decision of the owner.
+The error that stays (+5.1% and +7.4% at T+2 and T+3 on half 1; +8.5% and +13.6% with `--cut 2015`) is in a few base years with a common shock, not in all: real growth less model growth is +16.3 points at T+2 of 2019, +8.7 at T+2 of 2020 (T+1 of 2020: +12.9), +11.8 at T+3 of 2018 and +6.9 at T+3 of 2019, and it is near 0 or negative for 2012, 2013 and 2017 (table in A-003).
+A recovery term estimated on these years fits those years; it needs a study out of sample and a decision of the owner.
 (2) *A stable margin.* The width comes from the weight of the table shock in the shock size of the margin (`own_sigma_nu` = 4 years). The company mean (`margin_w=1`, no uncertainty of the mean) changes the coverage by 0.2 points only.
 `fa dcf pit --diag nu` tests the weight on the panel with the margin of the next year: the best weight by the mean log density is 1 year (half 0), 2 years (half 1) and 0.5 years (table up to 2015).
-`margin_sigma_nu=1` (chosen on half 0) takes the free cash flow coverage of the stable class (range below 5 points) on half 1 from 94.5% to 90.2% (T+3), but with `--cut 2015` the size bucket 1-10B falls from 78.0% to 74.2% at T+3,
+`margin_sigma_nu=1` (chosen on half 0) takes the free cash flow coverage of the stable class (range below 5 points) on half 1 from 94.5% to 89.5% (T+3; 90.2% at T+1 and T+2), but with `--cut 2015` the size bucket 1-10B falls from 78.0% to 74.2% at T+3,
 which is more than 2 points under the target. The rule stays off by default. The panel since 2016 has larger margin shocks than the panel before it (the cut run is below 80% before the change).
 *Evidence:* `fa dcf pit --half 0|1 --diag decline`, `--diag nu`, `--rules last_floor=-1`, `--rules margin_sigma_nu=1`; the tests `a_decline_in_the_base_year_enters_the_growth_mean_and_the_first_step_as_zero`.
 

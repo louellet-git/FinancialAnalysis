@@ -1,6 +1,6 @@
 # A-003: Floor on the growth of the base year
 
-Updated: 2026-11-20.
+Updated: 2026-11-20. Commit: not made (the orchestrator makes it).
 
 ## Choice
 When the organic revenue growth of the base year is below 0%, the automatic model uses 0% in its place for two
@@ -13,31 +13,37 @@ shock size keep the real values. The floor value is 0%. A base year with growth 
 | Automatic path model | `rust/src/dcf/auto.rs` | `Rules.last_floor` (default `Some(0.0)`; `--rules last_floor=-1` is off) |
 
 ## Alternatives considered
-| Alternative | Why not chosen |
-|---|---|
-| Floor on all values of the history | It moves the company mean up for all companies. The error for the classes with growth above 10% becomes worse by 1 to 2 points at T+3. |
-| Floor at +3% or +6% | Better for the decline class, but the median error of all company-years becomes -2.9% and -4.7% at T+3 (half 0). |
-| A recovery term estimated on the panel | The recovery after a decline is mostly the years 2019 and 2020 (see below). A term that is estimated on this panel fits one episode. It needs a decision of the owner. |
-| Phi = 0 for the growth | It gives T+1 right, but T+2 and T+3 stay 6% to 10% too low. |
+Half 0 (2,834 company-years), `fa dcf pit --half 0 --rules last_floor=X`. Median error of the revenue P50 at T+3:
+| Alternative | All company-years | Decline class | Why not chosen |
+|---|---|---|---|
+| Floor 0% (chosen) | -0.0% | +6.5% | No fitted number. |
+| Floor +3% | -0.4% | +4.9% | A positive floor is a parameter that the test would choose. It is not ruled out: it needs a study out of sample. |
+| Floor +6% | -1.0% | +3.4% | The same. |
+| Off (`last_floor=-1`) | +0.7% | +10.8% | The error that this record corrects. |
+| Phi = 0 for the growth (full cache; off: +11.3%) | | +9.8% | It fixes T+1 only (T+2: +6.1%). |
+| A recovery term estimated on the panel | | | The gaps are in a few base years with a common shock (table below). A term estimated on them fits those years. It needs a decision of the owner. |
 
 ## Why this choice
-The panel (6,030 company-years, cache of 2026-11-19) shows that the growth of the next year after a decline year is
-positive at each decline size: median +2.7% (decline 0 to 5%), +3.2%, +5.9%, +7.1% (decline above 20%).
-A negative value in the company mean treats the decline as a rate that stays. The floor of 0% has no parameter that
-is fitted. Command: `fa dcf pit --diag decline`.
+The next year after a decline year is not a decline. In the full panel (the scoring half too; the value 0 is not
+fitted) the median growth of T+1 is +2.7% (decline 0 to 5%), +3.2%, +5.9% and +7.1% (decline above 20%). A negative
+value in the company mean treats the decline as a rate that stays. The floor says only that it does not.
+Command: `fa dcf pit --diag decline`.
 
 ## Effect on the result
-Decline class (growth < 0%), median error of the revenue P50 at T+1 / T+2 / T+3, half 1 (the scoring half, split by the
-hash of the ticker): +2.0 / +7.8 / +11.8% before, +0.0 / +5.1 / +7.4% after. With `--cut 2015`: +3.1 / +12.7 / +17.9% before,
-+1.2 / +8.5 / +13.6% after. The error stays: it is mostly the base years 2019 and 2020 (the real revenue of 2021).
-The classes with growth of 0% or more do not change. Side effect: the largest companies (revenue above $100B, 184 company-years
-in the `--cut 2015` run) are inside the band in 97.3% of the cases at T+3, before 95.1%.
+Decline class, median error of the revenue P50 at T+1 / T+2 / T+3, half 1 (the scoring half): +2.0 / +7.8 / +11.8% before,
++0.0 / +5.1 / +7.4% after. With `--cut 2015`: +3.1 / +12.7 / +17.9% before, +1.2 / +8.5 / +13.6% after.
+The error that stays, by base year (full panel, after the floor; real growth less model growth, points of growth):
+| Base year | 2012 | 2013 | 2014 | 2015 | 2016 | 2017 | 2018 | 2019 | 2020 | 2021 | 2022 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| T+2 | +1.7 | -5.4 | -1.4 | +3.8 | +4.9 | -1.5 | -0.1 | +16.3 | +8.7 | +6.9 | +1.9 |
+| T+3 | -6.3 | -3.2 | +4.6 | +3.5 | -2.4 | -1.8 | +11.8 | +6.9 | -0.8 | +4.7 | +2.3 |
+The largest gaps are T+2 of 2019 and 2020 (+16.3, +8.7; T+1 of 2020: +12.9) and T+3 of 2018 and 2019 (+11.8, +6.9).
+The years 2012 and 2013 overshoot. Side effect: for revenue above $100B (184 company-years, `--cut 2015`) the share
+inside the band at T+3 is 97.3%, before 95.1%.
 
 ## Who decided and when
-Built by the valuation quant; accepted by the Head of Fundamental Research, 2026-11-20 (ticket
-`T-20261120-dcf-engine-accuracy`), on the word of the owner of the same date. The side effect on the largest
-companies is accepted: about 4 company-years, in a row that was already above the target. A recovery term is refused:
-it would fit one episode (the base years 2019 and 2020). Review: not done yet.
+Valuation quant, ticket `T-20261120-dcf-engine-accuracy`, 2026-11-20. The Head of Quality and Risk held the value 0%.
 
 ## When to examine it again
-When the table is made again with a longer panel, or when an owner decision gives a recovery term.
+When the table is made again with a longer panel, or when a study out of sample of a positive floor or of a
+recovery term exists.

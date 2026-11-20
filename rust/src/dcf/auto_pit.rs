@@ -530,7 +530,7 @@ pub fn sigma_nu_scan(companies: &[CompanyPanel], table: &ProcessTable, rules: &R
             if max_year.is_some_and(|y| rows[t].year > y) {
                 continue;
             }
-            if !rows[j + 1 - (HIST_MARGIN - 1)..=t].iter().skip(1).all(|r| r.prev_ok) {
+            if !rows[j + 1 - HIST_MARGIN..=t].iter().skip(1).all(|r| r.prev_ok) {
                 continue;
             }
             let ms: Vec<Option<f64>> = rows[j + 1 - HIST_MARGIN..=t].iter().map(|r| r.fcf_margin()).collect();
@@ -562,7 +562,7 @@ pub fn sigma_nu_scan(companies: &[CompanyPanel], table: &ProcessTable, rules: &R
 pub fn render_sigma_nu(scan: &[[(usize, f64, usize); 4]], grid: &[f64], label: &str) -> String {
     let mut out = String::new();
     let _ = writeln!(out, "\nDIAGNOSIS: weight of the table shock in the shock size of the margin ({label})");
-    let _ = writeln!(out, "  The margin of the next year against the normal of the model: mean log density, and the share inside P10 to P90 (target 80%).");
+    let _ = writeln!(out, "  The margin of the next year against the normal of the model: mean log density, and the share inside P10 to P90 (target 80%). nu = 0 is the table value only.");
     let names = ["range < 5 pt", "5 to 10 pt", "above 10 pt", "all"];
     let _ = write!(out, "  {:>6}", "nu");
     for n in names {
@@ -640,8 +640,18 @@ pub fn parse_rules(text: &str) -> R<Rules> {
             "acq_f" => r.acq_f = Some(x),
             "acq_mult" => r.acq_mult = x,
             "acq_w" => r.acq_w = x != 0.0,
-            "last_floor" => r.last_floor = if x <= -1.0 { None } else { Some(x) },
-            "margin_sigma_nu" => r.margin_sigma_nu = Some(x),
+            "last_floor" => {
+                if !x.is_finite() {
+                    return Err(DcfError(format!("--rules: last_floor must be a finite number, got '{v}'")));
+                }
+                r.last_floor = if x <= -1.0 { None } else { Some(x) }
+            }
+            "margin_sigma_nu" => {
+                if !x.is_finite() || x < 0.0 {
+                    return Err(DcfError(format!("--rules: margin_sigma_nu must be 0 or more, got '{v}'")));
+                }
+                r.margin_sigma_nu = Some(x)
+            }
             _ => return Err(DcfError(format!("--rules: unknown rule '{k}'"))),
         }
     }

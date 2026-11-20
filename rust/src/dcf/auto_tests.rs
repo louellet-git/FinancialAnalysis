@@ -891,3 +891,34 @@ fn the_halves_of_the_point_in_time_test_split_the_tickers_by_a_fixed_rule() {
     // the lowest bit of the offset basis (1) and of the lowest bits of the bytes: A (0x41) -> 0; B (0x42) -> 1; IBM (0x49, 0x42, 0x4d) -> 1 ^ 1 ^ 0 ^ 1 = 1
     assert_eq!((ticker_half("A"), ticker_half("B"), ticker_half("IBM")), (0, 1, 1));
 }
+
+#[test]
+fn the_floor_of_the_base_year_has_clear_edges() {
+    let run = |i: &AutoInputs, floor: Option<f64>| build(i, &table(), &[], &market(), &Rules { last_floor: floor, ..plain_rules() }, BuildOptions::default());
+    let with_last = |f: &dyn Fn(f64) -> f64| {
+        let mut i = inputs();
+        let prev = i.years[4].revenue.unwrap();
+        i.years[5].revenue = Some(f(prev));
+        i.balance = Some(BalanceData::from_year(i.years.last().unwrap()));
+        i
+    };
+    // growth exactly at the floor (0%): nothing changes
+    let flat = with_last(&|p| p);
+    let (a, b) = (run(&flat, Some(0.0)).unwrap(), run(&flat, None).unwrap());
+    assert_eq!((a.summary.growth_start, a.summary.growth_company_mean), (b.summary.growth_start, b.summary.growth_company_mean));
+    // a base year with no growth value (a jump of +200% with revenue above $1B is left out of the history): nothing changes
+    let jump = with_last(&|p| 3.0 * p);
+    let (a, b) = (run(&jump, Some(0.0)).unwrap(), run(&jump, None).unwrap());
+    assert_eq!((a.summary.growth_start, a.summary.growth_company_mean), (b.summary.growth_start, b.summary.growth_company_mean));
+    // a negative revenue in the base year: the floor does not change the answer (an error or the same numbers)
+    let neg = with_last(&|p| -p);
+    match (run(&neg, Some(0.0)), run(&neg, None)) {
+        (Ok(a), Ok(b)) => assert_eq!(a.summary.growth_start, b.summary.growth_start),
+        (Err(a), Err(b)) => assert_eq!(a.to_string(), b.to_string()),
+        _ => panic!("the floor changes whether a model is made for a negative revenue"),
+    }
+    // the parser: a floor must be a finite number; a weight of the margin shock must be 0 or more
+    assert!(parse_rules("last_floor=nan").is_err() && parse_rules("last_floor=inf").is_err());
+    assert!(parse_rules("margin_sigma_nu=-1").is_err() && parse_rules("margin_sigma_nu=nan").is_err());
+    assert_eq!(parse_rules("margin_sigma_nu=0").unwrap().margin_sigma_nu, Some(0.0));
+}
