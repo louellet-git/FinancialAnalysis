@@ -26,3 +26,7 @@ Done: `chiefs/ORIENTATION.md` (first paragraph and section 1) and `docs/TEAMS.md
 ## 2026-11-20 19:42 UTC (chat)
 Words: "Also as a rule all programming should be done in rust"
 Done: the rule in `CLAUDE.md` ("Work rules") now includes one-time analysis programs and scratch programs; the same rule is in `chiefs/ORIENTATION.md` (section 9) and `docs/QUALITY-STANDARDS.md` (section 8).
+
+## 2026-11-20 19:45 UTC (chat)
+Words: "The head of fundamental is trying to download a bunch of data that I think you probably already have. So I think we shouldn't have all that data spread across 4 sessions. Can you think of a good solution? And let it know to stop that if you can think of a better solution. Also, we don't need everything in Rust, mainly trading and stuff. Like if we need some work in SQL or whatever, like yeah, that's different."
+Done: the Rust rule has its new scope (`CLAUDE.md`, `chiefs/ORIENTATION.md` section 9, `docs/QUALITY-STANDARDS.md`). A message went to the Head of Fundamental Research about the data. The one data store waits for a decision of the person on its place.
