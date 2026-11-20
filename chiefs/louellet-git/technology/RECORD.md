@@ -110,3 +110,7 @@ Done (2026-11-20 23:29 UTC): `chiefs/ORIENTATION.md`, section 3 "Model": the age
 ## 2026-11-20 23:30 UTC (chat)
 Words: "Also eventually we're going to begin making trades on the paper account and eventually on live account. This will mean write ups explaining the logic of the trade and the steps taken/etc. this should never exceed a doc of 2 pages. But it does need to be documented. Also, it should be a standard for everyone to be using 85% ASD-STE100, unless it already is"
 Done: `trading/journal/README.md` (one write-up for each trade, at most 2 pages, with a form), a row in `docs/QUALITY-STANDARDS.md`, a note in the paper-desk ticket. The language rule of `CLAUDE.md`, the skill `ste-writing` and the document reviewer use "about 85% ASD-STE100"; a document that already meets it needs no rework.
+
+## 2026-11-20 23:49 UTC (chat)
+Words: "Great, that works. We need a way that you can get permission requests to the user once it's filtered. Lean method? I don't want a bunch of questions buried in the session."
+Done: `chiefs/ORIENTATION.md`, section 5, "Requests for the person": a refused command or a decision of the person goes to the Head of Technology, which filters it; what stays becomes one board ticket with `area: ask` and `head: owner`, and one push notification for each batch. First ask: `T-20261120-ask-rates-appendix-run`.
