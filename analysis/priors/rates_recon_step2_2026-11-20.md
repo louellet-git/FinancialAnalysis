@@ -59,8 +59,8 @@ The par curve is above the bill-rate table by +12 bp (1M), +10 (1.5M), +12 (2M),
 |---|---|---|---|
 | Autocorrelation, raw residual | 0.948 | 0.928 | 0.918 |
 | Autocorrelation, residual minus own mean | 0.441 | 0.199 | 0.062 |
-| Half-life, raw (business days) | 13.7 | 53.0 | 102.2 |
-| Half-life, minus own mean (business days) | 0.8 | 2.1 | 2.5 |
+| Half-life from phi, raw (business days) | 13.7 | 53.0 | 102.2 |
+| Half-life from phi, minus own mean (business days) | 0.8 | 2.1 | 2.5 |
 
 The raw residual is close to a unit root (phi 0.93 to 0.95; no formal test was run, the sample is 58 days). Almost
 all of it is a fixed level for each security. After the own mean is removed the residual lasts about 1 to 3 days.
@@ -70,7 +70,7 @@ The 10% most rich at a date keep 96% of the residual after 10 days (raw) but 13%
 ### 3.4 The 10 largest lasting residuals
 
 "Lasting" = at least 38 dates, the same sign on 90% of the days, and |mean| above both the mean cost and 1.9 bp (the
-fit RMSE). The rule is mine, set before the run, not tuned. 61 of 340 securities pass (29 rich, 32 cheap). The half-life
+fit RMSE). The rule is mine, set before the run, not tuned. 61 of 340 securities pass (60 with exact values: 29 rich, 31 cheap; the table rounds to 2 decimals). The half-life
 is of the deviation from the own mean (lag-1 coefficient), not of the level.
 
 | CUSIP | Maturity | Coupon | Mean residual (bp) | Cost (bp) | Std dev (bp) | Half-life (days) | Group |
@@ -86,8 +86,8 @@ is of the deviation from the own mean (lag-1 coefficient), not of the level.
 | 912810QD3 | 2039-11-15 | 4.375% | -5.44 | 0.86 | 0.59 | 1.4 | old 30-year |
 | 912810QE1 | 2040-02-15 | 4.625% | -5.07 | 0.88 | 0.48 | 1.1 | other |
 
-All 10 are rich (the price is above the curve) and are bonds of 10 to 14 years. The first cheap one is 91282CNP2
-(+3.27 bp, cost 2.34): it is near the fit RMSE and is not a candidate. The cheap candidates have |mean| of 2.6 to 3.3 bp.
+All 10 are rich (the price is above the curve) and are bonds of 9.2 to 13.3 years (from 2026-11-18). The first cheap one is 91282CNP2
+(+3.27 bp, cost 2.34). The 31 cheap securities that pass the rule (exact values) have |mean| of 1.9 to 3.3 bp: they pass, but sit near the fit RMSE (1.9 bp).
 
 ## 4. Answers
 
@@ -108,9 +108,9 @@ All 10 are rich (the price is above the curve) and are bonds of 10 to 14 years. 
 ## 5. Candidates (each is a candidate, not an arbitrage)
 
 For each of the 10 bonds of 3.4 the residual (5 to 15 bp) is above the one-leg cost (0.9 to 2.5 bp) and above the
-fit RMSE. The side is rich: the trade would be to short the bond. Not known for any of them: the borrow fee and
+fit RMSE. The side is rich. Not known for any of them: the borrow fee and
 the special repo rate of the bond, the financing of the long leg, the round trip (two legs: about twice the cost),
-the tax, and the model error of the fit (the 10Y to 20Y bucket has the largest RMSE, 2.77 bp on 2026-11-18). No
+the tax, the interpolation gap of #112 (no note or non-SOMA security in 2036 to 2042), and the model error of the fit (RMSE 2.77 bp for 10Y to 20Y on 2026-11-18, the largest for 1Y or more). No
 position is advised. A residual that does not close in 58 days has no known exit: the owner must decide if a
 level that lasts is a mispricing or a feature of these bonds.
 
@@ -127,13 +127,13 @@ level that lasts is a mispricing or a feature of these bonds.
 
 ## A. Commands
 
-Run from `/home/user/FinancialAnalysis`, bash. The script was run from the appendix text and gave the numbers of the tables
+Run from the repository root of a checkout that has `data/raw` and a built `fa` (set `FA` for another binary). In B5 the group column is for 2026-11-18 only. The script was run from the appendix text and gave the numbers of the tables
 (the results of `fa` commands are in the order 3.1, 3.2 (first date), 3.1b, 3.2, 3.3, 3.4). It writes only to a `mktemp`
 folder and downloads nothing. It needs the binary of the worktree (`cargo build --release --manifest-path rust/Cargo.toml --locked`).
 
 ```bash
-cd /home/user/FinancialAnalysis
-export FA_REPO=/home/user/FinancialAnalysis; FA=/home/user/wt-arb2/rust/target/release/fa
+cd "$(git rev-parse --show-toplevel)"
+export FA_REPO=$PWD; FA=${FA:-rust/target/release/fa}
 R=$FA_REPO/data/raw/rates; T=$(mktemp -d)
 # B1. Bill-basis tests (table 3.1) and fit on 2026-11-18 (3.2)
 $FA recon bills --date 2026-11-18
