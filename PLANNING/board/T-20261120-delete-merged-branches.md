@@ -2,11 +2,11 @@
 id: T-20261120-delete-merged-branches
 title: Delete the merged branches of the remote repo
 area: planning
-status: backlog
+status: in-progress
 owner: louellet-git
 head: technology
 order: 1
-branch:
+branch: claude/delete-merged-branches
 created: 2026-11-20
 acceptance: `git branch -r --merged origin/main` lists only `origin/main`, and no branch with work that is not in `main` was deleted.
 ---
