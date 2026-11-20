@@ -10,3 +10,4 @@ acceptance: No file or history object from delegation-exp or doc-review-framewor
 ---
 Step 1 (done in branch `claude/admiring-allen-f5aaeq`): the files are removed from the tree and are in `.gitignore`.
 Step 2 (owner, open): rewrite the history of `main`. Do this after all other branches are merged or deleted. Old pull-request refs (`refs/pull/*`) keep the old objects; only GitHub Support can remove them.
+Note, 2026-11-20: `.claude/agents/` now contains the own agents of this repo and is not in `.gitignore`. Install a private framework in the user folder (`~/.claude/agents/`), not in the repo folder.

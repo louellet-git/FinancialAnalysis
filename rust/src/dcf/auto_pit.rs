@@ -66,6 +66,8 @@ pub struct PitObs {
     /// Range of the free cash flow margin over the last 5 years.
     pub margin_range: f64,
     pub has_jump: bool,
+    /// Mean of `acquisitions_net_of_cash` / revenue over the last 5 years up to T (a missing value counts as 0).
+    pub acq_past: f64,
     /// P10, P50, P90 of the revenue of T+1 to T+3.
     pub rev_q: [[f64; 3]; HORIZON],
     pub rev_act: [f64; HORIZON],
@@ -88,7 +90,7 @@ pub fn fcff_of_rules(y: &YearData, tax: f64, rules: &Rules) -> Option<f64> {
     if rules.no_interest_income {
         v -= (1.0 - tax) * y.interest_income.unwrap_or(0.0);
     }
-    if rules.acq_charge {
+    if rules.acq_charge || rules.acq_f.is_some() || rules.acq_w {
         v -= y.acquisitions.unwrap_or(0.0).abs();
     }
     Some(v)
@@ -162,6 +164,7 @@ pub fn company_observations(ticker: &str, years: &[YearData], table: &ProcessTab
             g_last: None,
             margin_range: 0.0,
             has_jump,
+            acq_past: years[..=b].iter().rev().take(5).map(|y| y.acquisitions.unwrap_or(0.0).abs() / y.revenue.filter(|r| *r > 0.0).unwrap_or(f64::INFINITY)).sum::<f64>() / years[..=b].iter().rev().take(5).count() as f64,
             rev_q: [[0.0; 3]; HORIZON],
             rev_act: [0.0; HORIZON],
             fcff_q: [[0.0; 3]; HORIZON],
@@ -288,6 +291,20 @@ fn margin_class(o: &PitObs) -> usize {
     }
 }
 
+fn acq_class(o: &PitObs) -> usize {
+    if o.acq_past < 0.005 {
+        0
+    } else if o.acq_past < 0.02 {
+        1
+    } else if o.acq_past < 0.05 {
+        2
+    } else {
+        3
+    }
+}
+
+const ACQ_CLASSES: [&str; 4] = ["spend < 0.5%", "0.5% to 2%", "2% to 5%", "above 5%"];
+
 const MARGIN_CLASSES: [&str; 3] = ["margin range < 5 pt", "5 to 10 pt", "above 10 pt"];
 
 fn pct_cell(c: &Cover) -> String {
@@ -361,6 +378,29 @@ pub fn render(obs: &[PitObs], header: &str) -> String {
                 err_cell(median_error(obs, s, 2, &keep))
             );
         }
+        let _ = writeln!(out, "\n{name} by acquisition spend of the last 5 years (mean of acquisitions_net_of_cash / revenue)");
+        for (k, label) in ACQ_CLASSES.iter().enumerate() {
+            let keep = move |o: &PitObs| acq_class(o) == k;
+            let c: Vec<Cover> = (0..HORIZON).map(|h| coverage(obs, s, h, &keep)).collect();
+            if c[0].n < 20 {
+                continue;
+            }
+            let _ = writeln!(
+                out,
+                "  {:<22} {:>6}  {:^15} {:^15} {:^15}   {} {} {}   real below P50: {:>3.0}% {:>3.0}% {:>3.0}%",
+                label,
+                c[0].n,
+                pct_cell(&c[0]),
+                pct_cell(&c[1]),
+                pct_cell(&c[2]),
+                err_cell(median_error(obs, s, 0, &keep)),
+                err_cell(median_error(obs, s, 1, &keep)),
+                err_cell(median_error(obs, s, 2, &keep)),
+                c[0].below_p50 as f64 / c[0].n as f64 * 100.0,
+                c[1].below_p50 as f64 / c[1].n.max(1) as f64 * 100.0,
+                c[2].below_p50 as f64 / c[2].n.max(1) as f64 * 100.0
+            );
+        }
         let _ = writeln!(out, "\n{name} by range of the free cash flow margin of the last 5 years (a cyclical or unstable margin has a large range)");
         for (k, label) in MARGIN_CLASSES.iter().enumerate() {
             let keep = move |o: &PitObs| margin_class(o) == k;
@@ -425,6 +465,7 @@ pub fn parse_rules(text: &str) -> R<Rules> {
             "equity_weight_one" => r.equity_weight_one = x != 0.0,
             "terminal_rf" => r.terminal_rf = x != 0.0,
             "long_cap" => r.long_cap = Some(x),
+            "long_run" => r.long_run = Some(x),
             "fade_years" => r.fade_years = Some(x as usize),
             "growth_w" => r.growth_w = Some(x),
             "growth_phi" => r.growth_phi = Some(x),
@@ -438,6 +479,9 @@ pub fn parse_rules(text: &str) -> R<Rules> {
             "stub" => r.stub = x != 0.0,
             "mid_year" => r.mid_year = x != 0.0,
             "acq_charge" => r.acq_charge = x != 0.0,
+            "acq_f" => r.acq_f = Some(x),
+            "acq_mult" => r.acq_mult = x,
+            "acq_w" => r.acq_w = x != 0.0,
             _ => return Err(DcfError(format!("--rules: unknown rule '{k}'"))),
         }
     }
