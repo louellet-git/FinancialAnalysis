@@ -42,3 +42,7 @@ Done: the open state is in the ticket `T-20261120-data-store-prices` and in the 
 ## 2026-11-20 20:01 UTC (chat)
 Words: "The fa-data won't be private, continue, and load all the data to it for now"
 Done: each data set of the cache is in `louellet-git/fa-data` (15 pushes; a scan found no key and no mail address outside the SEC filing files). A new clone takes 28 seconds and `fa dcf auto IBM` gives the same P50 on it. The download of the rest of `next500.txt` runs.
+
+## 2026-11-20 20:16 UTC (chat)
+Words: "When merlan1996 gets on and sets up his agent, how will his Claude code session react to this? Should we have a check for sessions that exist/creation of new sessions? He may also want to create sessions, we should potentially distinguish between his heads and ours, + any other contributors"
+Done: `chiefs/ORIENTATION.md`: the person of a head is the GitHub login of its session (`get_me`), a check at the start for a second session with the same title, a rule for new sessions, and section 7 for more than one person. `CLAUDE.md`: the data rule for each session.
