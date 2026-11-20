@@ -2,7 +2,8 @@
 
 Non-obvious assumptions an agent can trip on. Each entry carries an evidence pointer;
 every entry below was re-verified against the code/docs on 2026-07-17. If you find a new
-one, add it here with a pointer.
+one, add it as a new file in `docs/traps/` (`docs/traps/README.md`): one file for each trap, so that
+parallel branches do not conflict. This file keeps the older traps; correct them here.
 
 **Deleted evidence files (2026-11-19).** The entries 1 to 135 name Python files as evidence. These
 files are deleted: `financial_analysis/{backtest,dcf,driver_dcf,scenarios,schema,store,market_data,options}.py`,
