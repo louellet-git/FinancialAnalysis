@@ -142,7 +142,7 @@ fn occ_root(symbol: &str) -> String {
     }
     let rest = &b[b.len() - 15..];
     if rest.iter().enumerate().all(|(i, c)| if i == 6 { *c == b'C' || *c == b'P' } else { c.is_ascii_digit() }) {
-        symbol[..b.len() - 15].to_string()
+        symbol[..b.len() - 15].trim_end().to_string()
     } else {
         String::new()
     }
@@ -281,15 +281,15 @@ fn level_hint(underlying: &str) -> String {
 /// has a forward from put-call parity, else the proxy. The note says so.
 fn apply_level_note(day: &mut DayBuild, date: &str, note: &str) {
     let Some(d) = parse_iso(date) else { return };
-    let near = day.forwards.iter().filter(|f| f.from_parity).filter_map(|f| Some((parse_iso(&f.expiry)? - d, f.forward))).filter(|(n, _)| *n > 0 && *n <= 10).min_by_key(|(n, _)| *n);
+    let near = day.forwards.iter().filter(|f| f.from_parity).filter_map(|f| Some((parse_iso(&f.expiry)? - d, f.forward, format!("{} {}", f.root, f.expiry).trim().to_string()))).filter(|(n, _, _)| *n > 0 && *n <= 10).min_by_key(|(n, _, _)| *n);
     let proxy = day.snapshot.spot_price;
     // Index options are European: the sentence about American options does not apply.
     if let Some(n) = day.snapshot.note.as_mut() {
         *n = n.replace("the options are American, so an error remains", "index options are European, so Black-76 is the model of the options");
     }
-    if let Some((n, f)) = near {
+    if let Some((n, f, series)) = near {
         day.snapshot.spot_price = Some(f);
-        day.snapshot.note = Some(format!("{} Level of the underlying: the forward of the expiry {n} days away from put-call parity ({note}).", day.snapshot.note.clone().unwrap_or_default()));
+        day.snapshot.note = Some(format!("{} Level of the underlying: the forward of the series {series} ({n} days away) from put-call parity ({note}).", day.snapshot.note.clone().unwrap_or_default()));
     } else {
         day.snapshot.note = Some(format!("{} Level of the underlying: a proxy {:?} ({note}).", day.snapshot.note.clone().unwrap_or_default(), proxy));
     }
@@ -856,6 +856,8 @@ mod tests {
         assert_eq!(occ_root("SPXW261218C07000000"), "SPXW");
         assert_eq!(occ_root("SPX261218P07000000"), "SPX");
         assert_eq!(occ_root("SPY240419C00500000"), "SPY");
+        assert_eq!(occ_root("SPY   240419C00500000"), "SPY", "padded OCC form");
+        assert_eq!(occ_root("SPY1260117C00500000"), "SPY1", "adjusted root");
         assert_eq!(occ_root("BAD"), "");
         assert_eq!(occ_root("SPX2612xxC07000000"), "");
     }
@@ -876,6 +878,13 @@ mod tests {
         let mut rate = flat_rate();
         let fill = fill_from_mids(&mut snap, &mut rate).unwrap();
         assert_eq!((fill.expiries, fill.expiries_with_parity), (2, 2), "two series, not one expiry");
+        // The same strike gives a different volatility in each series: each has its own forward.
+        let t28 = 28.0 / 365.0;
+        let iv_of = |root: &str| snap.quotes.iter().find(|q| q.contract_symbol == occ(root, 6980.0, false)).unwrap().implied_volatility.unwrap();
+        let (iv_x, iv_w) = (iv_of("SPX"), iv_of("SPXW"));
+        assert!((iv_x - implied_vol(false, 100.0, 7000.0, 6980.0, t28, df).unwrap()).abs() < 1e-5, "SPX {iv_x}");
+        assert!((iv_w - implied_vol(false, 100.0, 7010.0, 6980.0, t28, df).unwrap()).abs() < 1e-5, "SPXW {iv_w}");
+        assert!((iv_x - iv_w).abs() > 1e-3, "{iv_x} {iv_w}");
         // 28 days is beyond the 10 days of the level, so no level; the forwards show in the volatilities: a put at the forward
         // of its own root has the volatility of its own price, so the check is on the level of a nearer expiry below.
         assert_eq!(fill.level_from, None);
