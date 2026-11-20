@@ -3,8 +3,8 @@ For the next session of this head: how the environment and the data sources beha
 person decided. Keep this file below 60 lines. Started 2026-11-20.
 
 ## Goal now and subsequent steps
-- Data store `louellet-git/fa-data`: it has each data set of the cache. Open: the prices of the rest of
-  `next500.txt`, and the update steps in the store README (ticket `T-20261120-data-store-prices`).
+- Data store `louellet-git/fa-data`: complete on 2026-11-20 (prices of 999 tickers). Its README has the
+  update steps. The Nasdaq site has no prices for CFR, DDS, ET, MOG-A and SUN.
 - Two tickets wait for the "go" of the person: `T-20261120-sync-yahoo-429` (first), then
   `T-20261120-sic-code` (from the Head of Fundamental Research; it comes to `main` with its pull request).
 - The person does the first run on the laptop with the keys (ticket `T-20261120-owner-first-run`).
