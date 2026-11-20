@@ -2,13 +2,13 @@
 id: T-20261120-data-store-prices
 title: Put the prices in the data store and write the update procedure
 area: importer
-status: backlog
+status: in-progress
 owner: louellet-git
 head: technology
 order: 0.7
-branch:
+branch: claude/data-store-full
 created: 2026-11-20
-acceptance: The store `louellet-git/fa-data` is private and has the daily prices of the two ticker lists and of SPY, a new clone gives `fa dcf screen` a price ratio for each ticker of the two lists, and the store `README.md` gives the steps of an update.
+acceptance: The store `louellet-git/fa-data` has the daily prices of the two ticker lists and of SPY, a new clone gives `fa dcf screen` a price ratio for each ticker of the two lists, and the store `README.md` gives the steps of an update.
 ---
 State on 2026-11-20: the store has the SEC company facts (1,249 tickers), the SEC lists of earnings
 reports (505 tickers) and the GSW rate curve file. A new clone takes about 17 seconds, and
@@ -34,3 +34,11 @@ each minute). A new machine does not have these files. To continue:
    A ticker that has a cache file gets only the new days.
 3. Copy each `prices.json` and `prices.meta.json` into the clone of the store, change `SNAPSHOT.md` and
    the table of `README.md`, and push in parts of less than 40 MB.
+
+Continued, 2026-11-20 20:01 UTC. The owner decided: "The fa-data won't be private, continue, and load all the data to
+it for now". The store now has each data set of the cache (1.4 GB in files, about 300 MB to transfer; a
+new clone takes about 28 seconds). Prices: the first list and SPY (505 tickers) and 81 tickers of
+`next500.txt`. `fa dcf auto IBM --cache <clone>` gives the same P50 as the source machine ($132.91).
+Open: the rest of `next500.txt` (the download runs; then copy, change `SNAPSHOT.md`, push); the update
+steps in the store `README.md`. Items 1 and the "make sure that the store repo is private" step above do
+not apply now.
