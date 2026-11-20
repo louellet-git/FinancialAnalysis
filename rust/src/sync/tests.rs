@@ -123,6 +123,13 @@ fn arguments() {
     assert_eq!(a.max_minutes, Some(2.5));
     assert_eq!(a.option_symbols, Some(v(&["SPY", "QQQ"])));
     assert_eq!(a.echo, ["IBM", "MSFT", "--tickers-file", "x.txt", "--option-symbols", "spy,qqq"]);
+    let a = parse_args(&v(&["--only", "bonds", "--bond-days", "5"])).unwrap();
+    assert_eq!(a.bond_days, Some(5));
+    assert_eq!(a.echo, ["--bond-days", "5"]);
+    assert_eq!(parse_args(&v(&["--force"])).unwrap().bond_days, None);
+    for bad in [&["--bond-days"][..], &["--bond-days", "0"], &["--bond-days", "x"], &["--bond-days", "501"], &["--bond-days", "-1"]] {
+        assert!(parse_args(&v(bad)).is_err(), "{bad:?}");
+    }
     // Skip alone: all data sets but those.
     let a = parse_args(&v(&["--skip", "options,intraday"])).unwrap();
     assert_eq!(selected_sets(&a).len(), ALL.len() - 2);
@@ -299,6 +306,25 @@ fn the_config_changes_the_age() {
     assert!(text.contains("1 current, 0 old") && text.contains("max age 2 market days"), "{text}");
 }
 
+
+#[test]
+fn the_bond_days_flag_wins_over_the_config_file() {
+    let b = Bench::new("bonddays-flag", "2026-11-23"); // a Monday; no FedInvest file in the cache
+    let status = |extra: &[&str], cfg: SyncConfig| {
+        let mut a = vec!["--status", "--only", "bonds"];
+        a.extend_from_slice(extra);
+        let args = parse_args(&v(&a)).unwrap();
+        let mut text = String::new();
+        run_with(&args, &b.setup(env(true, false), cfg), &|_: &[String], _: &Ledger| -> Box<dyn Runner> { unreachable!() }, &mut |t| text.push_str(t), &|_| {}).unwrap();
+        norm(&text)
+    };
+    let file = || SyncConfig::parse("bond_days = 3").unwrap();
+    assert!(status(&[], SyncConfig::default()).contains("1 no data"));
+    let text = status(&[], file());
+    assert!(text.contains("3 no data"), "the file gives 3 days: {text}");
+    let text = status(&["--bond-days", "5"], file());
+    assert!(text.contains("5 no data"), "the flag wins over the file: {text}");
+}
 #[test]
 fn the_rates_data_set_of_a_weekend_is_current_after_a_friday_run() {
     let b = Bench::new("weekend", "2026-11-21");

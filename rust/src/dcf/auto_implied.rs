@@ -22,7 +22,6 @@ use super::panel::BUCKET_LABELS;
 use super::process::PathsSpec;
 use super::stats::{percentile, sorted_copy};
 use super::DcfError;
-use mapcheck::registry::Registry;
 use rayon::prelude::*;
 use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
@@ -718,10 +717,7 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         None => HashMap::new(),
     };
     let rules = super::auto_pit::parse_rules(o.get("--rules").unwrap_or(""))?;
-    let registry = Registry::embedded().map_err(DcfError)?;
-    let t0 = Instant::now();
-    let inputs = map_inputs(&registry, &cache, &tickers, as_of_day, jobs)?;
-    let map_s = t0.elapsed().as_secs_f64();
+    let (inputs, map_s) = map_inputs(&cache, &tickers, as_of_day, jobs)?;
     let (curve, index) = curve_and_index(&cache, &as_of);
     let market_of = |t: &str| -> Market { market_from_cache(&cache, t, &as_of, prices.get(t).copied(), &rules, curve.as_ref(), index.as_deref()) };
     let cfg = ImpliedConfig { table: &table, fade: &fade, rules: rules.clone(), cache: Some(&cache) };

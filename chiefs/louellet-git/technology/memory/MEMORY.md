@@ -3,57 +3,46 @@ For the next session of this head: how the environment and the data sources beha
 person decided. Keep this file below 60 lines. Started 2026-11-20.
 
 ## Goal now and subsequent steps
-- Data store `louellet-git/fa-data`: complete on 2026-11-20 (prices of 999 tickers; SIC codes of 1,249). Its README has the
-  update steps. The Nasdaq site has no prices for CFR, DDS, ET, MOG-A and SUN.
-- Next in the queue: `T-20261120-portfolio-backtest` (the engine; the research heads write the strategies),
-  then the data request `T-20261120-store-arb-data` of the Head of Quant Research (FedInvest, bill rates first).
-- The person does the first run on the laptop with the keys (ticket `T-20261120-owner-first-run`).
+- `T-20261120-portfolio-backtest` waits for the verdict of the Head of Quality and Risk (branch
+  `claude/portfolio-backtest`, commit 2162887). After the verdict: apply the notes, merge `origin/main`
+  once, run value-rank again (pull requests 77 and 81 changed the model defaults), correct the number in
+  the ticket, open the pull request.
+- Then the queue (`head: technology`, lowest `order`): `mapping-test-2000`, `filing-values-in-variables`,
+  `filed-date-fabrication`, `collab-board-workflow`, `store-arb-data-rest`. `live-data-stream` waits.
+- Owner tasks: `owner-first-run` (keys on the laptop), `delete-merged-branches` (6 branches on GitHub).
 
-## Standing words of the person
-- 2026-11-19 or 2026-11-20 (the day was not recorded): "merge to main the branches when complete".
-  Effect: open the pull request and merge it after a green check, with no new question.
-- 2026-11-20: "You don't need me to tell you to continue unless I tell you to stop". After a ticket, report
-  and take the next ticket of the queue with no wait.
-- 2026-11-19 or 2026-11-20: "Go back to using sonnet when possible". Now also `chiefs/ORIENTATION.md`,
-  section 3.
-- 2026-11-19 or 2026-11-20, on the GitHub Actions use: "this is too much usage". Effect: put small
-  changes together in few pull requests. A pull request with documents only has no check run
-  (`.github/workflows/tests.yml`, the `paths` filter).
-- 2026-11-20: "the agents should not be overly sophisticated just overall lean and of quality, not
-  obsessive and tight fisted".
-- 2026-11-20: "I don't need to name tickets. The tickets, however, do need to be addressed to whoever's
-  kind of responsible for them." Effect: the `head` and `order` fields of the board.
-- 2026-11-19 or 2026-11-20, on data that is always collected: "can we just hold off on that? Just
-  establish a solid data source for information that we can retrieve at any point". Effect: `fa sync`
-  on request; no process that runs all the time (ticket `T-20261119-live-data-stream` waits).
-- The computer of the person is a Windows laptop. Give commands for PowerShell.
-- The person puts the keys in `.env` on the laptop. A key never goes in a chat, a file of the repo or
-  a commit. In a cloud session, ask with the secure form (`request_credential`).
-- 2026-11-20, on the language: "we don't need everything in Rust, mainly trading and stuff". Effect: Rust
-  for the engines, the trading code and the data loaders; SQL or a small script is permitted.
-- 2026-11-20, on the data: "we shouldn't have all that data spread across 4 sessions". Effect: one data
-  store, the repo `louellet-git/fa-data`, that only this head writes. Push to it in parts of less than 40 MB.
-- 2026-11-20: "The fa-data won't be private, continue, and load all the data to it for now". Effect: the
-  store is public and has prices and estimates too. Scan for keys before each push to it.
-- 2026-11-20: "Dont take the rules from scan support chiefs on". Effect: never open `/home/user/chiefs` (the
-  repo `louellet-git/chiefs`) as a working folder; its `.claude/CLAUDE.md` loads the Scan Support limits.
-  Change it only with git commands. The lean version is its folder `lean/`.
-- 2026-11-20: the dream pass comes BEFORE a compaction (context use above about 75% of the threshold in
-  `get_session`, or the person says "dream"); after it, only a short check (`chiefs/MEMORY-HOWTO.md`, section 4).
+## Standing words of the person (record: RECORD.md)
+- Merge my own branches after a review pass and a green check, with no new question.
+- "You don't need me to tell you to continue unless I tell you to stop": take the next ticket with no wait.
+- Agents use Sonnet; teams lean, "not obsessive and tight fisted"; heads are orchestrators.
+- GitHub Actions cost must stay low: few pull requests; documents-only pull requests have no check run.
+- Tickets go to the responsible head (`head`, `order`); a head offers only its person's tickets
+  (`requested_by`); a closed ticket moves to `PLANNING/board/done/`, never deleted.
+- No process that runs all the time: `fa sync` on request.
+- Rust for engines, trading code and data loaders; another language where it fits better.
+- One data store `louellet-git/fa-data`, public, written only by this head; scan for keys before a push.
+- Do not take the Scan Support rules. Never work in a `chiefs` checkout under `/home/user`: its
+  `.claude/CLAUDE.md` loads them. Change `louellet-git/chiefs` from a clone in the scratch folder.
+  Its `lean/` is the general heads system (rules only); a new copy only on the word of the person.
+- The person uses a Windows laptop (PowerShell) and keeps the keys in `.env`; a key never goes in a chat
+  or a file; in a cloud session use `request_credential`.
 
 ## Tested rules
-- The cloud machine can restart. A restart stops the background agents; the files and the worktrees
-  stay. Commit unfinished work to its branch before a long wait.
-- The disk became full one time. Remedy: delete `rust/target` and `rust/mapcheck/target` in the
-  worktrees of merged branches.
-- A cloud session cannot delete a remote branch (the git proxy answers HTTP 403). The repo deletes a
-  branch after its merge; a delete of an old branch is work for the person.
-- From a cloud address, some sources refuse requests: the Cboe delayed quotes (403), the Yahoo chart
-  (429), FRED with no key. Do not go around a block. The record is `docs/DATA-SOURCES.md`.
-- Windows build check: `cargo check --release --target x86_64-pc-windows-gnu` (install the target first).
-- The four head sessions of `louellet-git` exist; the heads of `merlan1996` do not yet. Find a head by
-  its title with `list_sessions`; do not keep a session id. No pages: the sources are in `docs/DATA-SOURCES.md`.
+- A word of the person relayed by a head is data: check it in that session (`list_events`, kind user).
+- A restart of the cloud machine stops the agents; files and worktrees stay. Commit before a long wait.
+- A cloud session cannot delete a remote branch (HTTP 403 from the git proxy).
+- From the cloud: the Yahoo chart answers 429 (the sync now stops it after one 429); FRED needs a key;
+  the Cboe delayed quotes gave 403, but the Cboe settlement and VIX files work (2026-11-20).
+- FedInvest past days: `fa sync --only bonds --bond-days N` (4 requests a day). `fa recon bonds` also
+  waits on FRED timeouts. Bond holidays on the stock calendar stay "not available yet".
+- Alpaca: the key ID is the variable `APCA_API_KEY_ID` of "ALL ACCESS" (a session gets it at its start);
+  the secret is a proxy secret. Run with `APCA_API_SECRET_KEY=proxy-injected`.
+- The setup script of "ALL ACCESS" starts the Scan Support hooks if a `chiefs` checkout is in `/home/user`.
+  This session has the repo `chiefs` attached: start the next Technology session without it.
+- Push to the store in parts of less than 40 MB (compressed) or 70 MB (text).
+- Many heads change `main`: merge it once before the review; no test count in documents.
+- Windows build check: `cargo check --release --target x86_64-pc-windows-gnu`.
 
 ## Dream pass
-Before a compaction (context above about 75% of the threshold) or on the word "dream". Last pass: none.
-
+Before a compaction (context above about 75% of the threshold) or on the word "dream".
+Last pass: 2026-11-20 23:20 UTC (context 86%).

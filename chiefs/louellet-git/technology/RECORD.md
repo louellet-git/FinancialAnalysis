@@ -98,3 +98,15 @@ Done: `lean/` of `louellet-git/chiefs` is a byte-for-byte copy of the heads syst
 ## 2026-11-20 23:08 UTC (chat of the Head of Fundamental Research; checked in its transcript)
 Words: "I think you might have deleted an old ticket, that's not how we should handle those, speak w tech head"
 Done (2026-11-20 23:10 UTC): a merged ticket moves to `PLANNING/board/done/` (`git mv`, `status: done`, a line `merged:`); never deleted (`PLANNING/board/README.md`, skill `ticket-workflow`, `docs/TEAMS.md`). The 27 tickets that were deleted before are restored from git history into `done/`.
+
+## 2026-11-20 23:18 UTC (chat)
+Words: "For the lean system, don't include the agents and skills but include the logic/rules that govern having agents and skills being created that I've already stated. We should be transferring over memory preferences, board preferences, everything, just generalized"
+Done: `lean/` of `louellet-git/chiefs` is the general version (8 files, rules only; chiefs pull request 33). It replaces the exact copy of chiefs pull request 32.
+
+## 2026-11-20 23:22 UTC (chat of the Head of Quality and Risk; relayed, not checked in its transcript)
+Words: "Don't over commit to one model, since the scope of the job will change is what I meant. Tell the tech that. Keep the rule lean and not a need but permission to."
+Done (2026-11-20 23:29 UTC): `chiefs/ORIENTATION.md`, section 3 "Model": the agent files give Sonnet; for one run a head can choose a different model that fits the job; a permission, not a duty.
+
+## 2026-11-20 23:30 UTC (chat)
+Words: "Also eventually we're going to begin making trades on the paper account and eventually on live account. This will mean write ups explaining the logic of the trade and the steps taken/etc. this should never exceed a doc of 2 pages. But it does need to be documented. Also, it should be a standard for everyone to be using 85% ASD-STE100, unless it already is"
+Done: `trading/journal/README.md` (one write-up for each trade, at most 2 pages, with a form), a row in `docs/QUALITY-STANDARDS.md`, a note in the paper-desk ticket. The language rule of `CLAUDE.md`, the skill `ste-writing` and the document reviewer use "about 85% ASD-STE100"; a document that already meets it needs no rework.

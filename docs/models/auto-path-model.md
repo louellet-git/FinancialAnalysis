@@ -49,6 +49,7 @@ value, 3 no value, 2 an error. `fa dcf screen` gives one CSV row for each ticker
 | not written | Beta | 2/3 regression beta + 1/3 | Weekly returns, 5 years |
 | not written | SBC | A cost of the model | IBM review F5 |
 
+The register of the code is `fa dcf assumptions` (`rust/src/dcf/assumptions.rs`): it lists each row with its default, its code place, its record and its state. The procedure of a study: skill `assumption-study`.
 The records "not written" belong to the board ticket
 `T-20261120-model-docs-backlog`.
 

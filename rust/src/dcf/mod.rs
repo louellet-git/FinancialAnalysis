@@ -13,6 +13,7 @@ pub mod auto;
 pub mod auto_cli;
 pub mod auto_implied;
 pub mod auto_pit;
+pub mod assumptions;
 pub mod auto_returns;
 pub mod backtest;
 pub mod calib_bands;

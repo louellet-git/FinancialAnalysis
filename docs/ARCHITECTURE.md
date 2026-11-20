@@ -580,6 +580,7 @@ data, run it, and test it. No hand input and no network. An automatic model is a
 | `auto.rs` | The builder `build`. Input: the standard variables of the company (`AutoInputs`, `YearData`), the parameter table with its fade cells, the market (`Market`: GSW curve, price, beta). Output: the model file (TOML, `engine = "paths"`), one row for each number with source and rule (`ExplainRow`), the warnings. It refuses (`Refusal`) with a reason. The helpers (`ar1_fit`, `own_sigma`, `tax_rate`, `regression_beta`, `load_curve`) are public and tested with a hand calculation. |
 | `auto_cli.rs` | `fa dcf auto TICKER` (map from the cache, build, print, run with `paths_cli::run`, price-implied values) and `fa dcf screen` (one row for each ticker; rayon over tickers). |
 | `auto_pit.rs` | `fa dcf pit`: the point-in-time test. `model_at` makes the model from the fiscal years up to the base year only. |
+| `assumptions.rs` | The register of the assumptions (`fa dcf assumptions`): one static row for each assumption, the default read from `Rules::default()`, the record, the state. `--effect` runs the screen and the point-in-time test twice (reuse of `screen_rows` and `pit_observations`). Its tests make the link to `docs/assumptions/`. |
 | `auto_tests.rs` | Unit tests: each rule on small data with a fixed answer, the refusals, the point-in-time property, the screen on 1 and on 4 threads. |
 | `calibrate.rs` (added) | `FadeCell`, `FadeFile`, `slow_half_life`, `level_spread_ratio`: the fade table as data. |
 | `calib_report.rs` (added) | `fade_cells`: `fa dcf calibrate --out FILE` now writes the `[[fade]]` cells after the AR(1) cells. |
@@ -647,6 +648,12 @@ sector and the industry come from `--groups FILE` (CSV `ticker,sector,industry`)
 The premium of the list is the premium for which the median of value / price over the tickers
 with a value and a price is 1.0. The value at the means is not the expected value: for most tickers it lies between the P50 and the simulated mean (median 0.89 of the mean). The price enters the builder only through the equity weight (`E / (E + debt)`), as in `fa dcf auto`; the price
 cache gives the last close, not the close of `--as-of`. Two runs give the same bytes, and the result does not depend on `--jobs` (a test compares 1 and 4 threads).
+
+**`fa dcf assumptions [--md]`** (ticket `T-20261120-dcf-assumption-register`). The register `assumptions.rs` has one row for each assumption of the automatic model that a person could choose: record number, name, `--rules` key, default, place in the code, record, state (`decided <date>` or `convention, not studied`). The default text is read from `Rules::default()`. A test fails when the section "Choice" of a record does not have the default, when a key is not in `parse_rules`, or when a field of `Rules` is neither in the table nor in the short list of options (`NOT_ASSUMPTIONS` in the tests). `fa dcf auto --explain` names the record number of a row that has a record. Procedure of a study: skill `assumption-study`.
+
+**`fa dcf assumptions --effect K=V,.. --tickers-file F --cache DIR --as-of D`** prints one block for a record: median P50 / price, P50 at or below 0, median `ln(new/old)` of the P50, and the point-in-time errors and coverage at T+1 to T+3, with the command, the seed, the as-of date and the cache commit. It reuses the functions of `fa dcf screen` and `fa dcf pit` (`screen_rows`, `pit_observations`). The point-in-time part runs on the companies of the ticker list (`--half` and `--cut` as in `fa dcf pit`). `--effect` with no value is an error (exit code 2).
+
+**Two medians of P50 / price.** The records `docs/assumptions/A-001-terminal-growth.md` and `docs/assumptions/A-002-acquisition-charge.md`, and the model document `docs/models/auto-path-model.md`, give 0.4745. The scratch programs made it from the screen CSV, which rounds the ratio to 3 decimals. `--effect` uses the unrounded values: 0.4747 for the same data and the same rules (before the floor of record A-003).
 
 **The investigation of 2026-11-20** (ticket `T-20261120-dcf-investigation`; findings `analysis/priors/dcf_investigation_2026-11-20.md`;
 traps #260 to #270).
