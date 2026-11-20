@@ -13,7 +13,7 @@ parts:
 The repo gives analysis only. It does not send orders to a broker. It is not investment
 advice.
 
-Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
+Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`. The agent teams: `docs/TEAMS.md`. The quality standards: `docs/QUALITY-STANDARDS.md`.
 
 ## Start
 

@@ -21,8 +21,8 @@ data/reports/
 # Claude local settings
 .claude/settings.local.json
 
-# Private review frameworks: local install only, never commit (this repo is public)
-.claude/agents/
+# Private files: never commit (this repo is public). The own agents and skills of this
+# repo (.claude/agents/, .claude/skills/) are committed; a third-party skill and vendor/ are not.
 .claude/skills/officecli/
 vendor/
 

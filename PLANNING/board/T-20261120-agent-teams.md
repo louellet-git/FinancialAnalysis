@@ -16,3 +16,10 @@ Owner decision, 2026-11-20: the agent teams and the skills are files of this pub
 repo (`.claude/agents/`, `.claude/skills/`). The rule of `CLAUDE.md` that kept
 `.claude/agents/` out of the repo was for a private review framework of a third
 party. That framework stays out. The teams of this ticket are our own files.
+
+State, 2026-11-20 (written by the agent, the orchestrator examines it): the files are
+written and not committed. They are 16 agents (`.claude/agents/`), 11 skills
+(`.claude/skills/`), `docs/TEAMS.md`, `docs/QUALITY-STANDARDS.md`, the templates and one
+example of a model document and of an assumption record (`docs/models/`,
+`docs/assumptions/`), and the changes of `CLAUDE.md`, `.gitignore` and `README.md`.
+Open: the other model documents (ticket `T-20261120-model-docs-backlog`).
