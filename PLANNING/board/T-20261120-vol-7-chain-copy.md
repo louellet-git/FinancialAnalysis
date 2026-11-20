@@ -2,11 +2,11 @@
 id: T-20261120-vol-7-chain-copy
 title: Copy the option chains each day to keep bid and ask
 area: engine
-status: backlog
+status: in-progress
 owner: louellet-git
 head: quant
 order: 3
-branch:
+branch: claude/upbeat-cori-a4ykf5
 created: 2026-11-20
 acceptance: One command `fa options archive` copies the SPX, SPXW, SPY, VIX and VIXW chains with the snapshot time and the root of each quote, a day that was copied can be read back by `fa vol`, and the roots SPX and SPXW of one date have separate forwards (with a test).
 ---
