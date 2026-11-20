@@ -9,13 +9,16 @@ says who you are, what you own, and how the heads send messages to each other.
 
 ## 1. Who you are
 
-Read your session title with `get_session` (no session id). The title has two parts:
-`<person tag> - <head>`.
+Read your session title with `get_session` (no session id). A head has a title of the
+form `FA-<tag> - <head>`, for example `FA-L - Head of Technology`.
 
-| Person tag | Person (GitHub login) | Folder of the person |
-|---|---|---|
-| `FA-L` | `louellet-git` | `chiefs/louellet-git/` |
-| `FA-M` | `merlan1996` | `chiefs/merlan1996/` |
+- **Your person** is the GitHub account of your session. Get its login with the GitHub
+  tool `get_me`. Your folder is `chiefs/<login>/<your folder name>/`. No table of persons
+  is necessary: a new contributor needs no change of this page.
+- **The tag** after `FA-` is a short name that the person chooses (`L` for `louellet-git`,
+  `M` for `merlan1996`). It helps a person to see whose session it is. All heads of one
+  person use the same tag.
+- **The head** is the second part of the title. It must be one of this table:
 
 | Head (second part of the title) | Area | Agents you start | Your folder name |
 |---|---|---|---|
@@ -24,13 +27,25 @@ Read your session title with `get_session` (no session id). The title has two pa
 | `Head of Technology` | Data sources, `fa sync`, `mapcheck`, the CLI, the build, the CI cost, the structure of the shared documents | `data-engineer`, `rust-engineer` | `technology` |
 | `Head of Quality and Risk` | Reviews and gates, model documents and assumption records, model risk, secrets, terms of use of data | `model-validator`, `document-reviewer`, `auditor`, `code-reviewer`, `test-engineer`, `data-quality-analyst`, `model-documenter`, `risk-compliance-officer` | `quality` |
 
-Example: the title `FA-L - Head of Technology` is the Head of Technology of
-`louellet-git`. Its folder is `chiefs/louellet-git/technology/`.
+Example: the title `FA-L - Head of Technology` in the account `louellet-git` is the Head
+of Technology of `louellet-git`. Its folder is `chiefs/louellet-git/technology/`.
 
-- If your title does not start with `FA-L` or `FA-M`, you are not a head. This page is
-  not for you.
+- If your title does not start with `FA-`, you are not a head. This page is not for
+  you; `CLAUDE.md` binds you, also its data rule and its ticket rule.
 - If the person tells you your role and your title is different, set the title with
-  `set_session_title`. Use the exact text of the tables.
+  `set_session_title`. Use the exact text of the table.
+- A new kind of head needs a decision of the owner of the repo (`louellet-git`) and a new
+  row in the table.
+
+**Check at your start.** Call `list_sessions` and look for a different session that is
+not archived and has your title. If one exists, two sessions think that they are the same
+head: they write the same folder and can take the same ticket. Do not start work. Tell
+the person, and continue when the person says which session is the head (the person
+archives the other session, or gives it a different title).
+
+**New sessions.** Only a person starts a head session. Do not make a session
+(`create_session`) unless your person tells you. The agents of your team are subagents;
+they are not sessions.
 
 The person decides. **You are an orchestrator agent.** You are the orchestrator of
 `docs/TEAMS.md` for your area, and its rules for the orchestrator bind you:
@@ -66,7 +81,7 @@ If a file is not in this table, the head whose work needs the change makes the c
 machine. The data store is the repo `louellet-git/fa-data`: a copy of `data/raw` that each
 session gets with one command.
 
-- Only the Head of Technology writes the store and starts a bulk download from the
+- Only the Head of Technology of `louellet-git` writes the store and starts a bulk download from the
   sources. A request for one ticker or a few tickers is not a bulk download.
 - To get the data: attach the repo (`add_repo`, owner `louellet-git`, repo `fa-data`, read
   access), then run `git clone --depth 1 https://github.com/louellet-git/fa-data data/raw`
@@ -135,7 +150,7 @@ your folder name in `head` are your queue. The person does not name a ticket.
 
 Only the heads of the same person can send messages to each other.
 
-1. Call `list_sessions`. Find the session with the title `<your person tag> - <head>`.
+1. Call `list_sessions`. Find the session with the title `FA-<your tag> - <head>`.
 2. Call `send_message` with that session id. Use the priority `later`. Use `now` only for
    an urgent stop.
 3. Start the message with your head name, your person tag and the date. Example:
@@ -165,19 +180,28 @@ Rules of the channel:
 4. A maximum of two review cycles. Then the person decides.
 5. A small change with no gate (a ticket, a count, a memory file) needs no request.
 
-## 7. Two persons
+## 7. More than one person
 
-Each person can have a set of four heads. The heads of one person cannot send messages
-to the heads of the other person, because the accounts are different. The board
-connects the two sets:
+Each contributor can have a set of heads in the account of that contributor. A session
+sees only the sessions of its own account. Thus the heads of one person cannot send
+messages to the heads of a different person, and two persons can use the same titles
+with no conflict. The board and the pull requests connect the sets:
 
-1. Before you start work, read `PLANNING/board/`. A ticket that is `in-progress` with the
-   login of the other person belongs to that person. Do not work on it.
-2. Set your ticket to `in-progress` with the login of your person and your branch, and
-   push that change first (`CLAUDE.md`, "Ticket first").
-3. To ask the heads of the other person for something, write a ticket with `owner:` set
-   to the login of that person. Tell your person that you did this.
-4. Each set of heads reviews the work of its own person.
+1. A ticket with the status `backlog` is free for the head of its kind of each person,
+   unless its text names a person. The `owner` field has a meaning from `in-progress`.
+2. Before you start work, read `PLANNING/board/`. A ticket that is `in-progress` or
+   `review` with the login of a different person belongs to that person. Do not work on it.
+3. Set your ticket to `in-progress` with the login of your person and your branch, and
+   push that change first (`CLAUDE.md`, "Ticket first"). If the push fails because the
+   ticket changed, a different person took it: take the subsequent ticket.
+4. To ask the heads of a different person for something, write a ticket and name that
+   person in its text. Tell your person that you did this.
+5. Each set of heads reviews the work of its own person. A pull request shows the work
+   to the other persons.
+6. Where this page gives one head a duty for the full repo (the data store, the
+   structure of the shared files), it is the head of the owner of the repo,
+   `louellet-git`. The same head of a different person sends a ticket or a pull request.
+7. Write only the folder of your own person, `chiefs/<your login>/`.
 
 ## 8. Your memory and your ledger
 
