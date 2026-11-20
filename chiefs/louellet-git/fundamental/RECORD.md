@@ -15,3 +15,7 @@ Done: new ticket `T-20261120-dcf-engine-accuracy` (order 1.3). The engine work c
 ## 2026-11-20 19:52 UTC (chat)
 Words: "Park leftover work once you wrap up current jobs"
 Done: no new work starts. The two jobs in progress are completed and committed (the conventions decision, the market-implied command); the other tickets stay in the backlog with their state on the board.
+
+## 2026-11-20 21:19 UTC (chat)
+Words: "Proceed with your work"
+Done: the parked work starts again. The data store `louellet-git/fa-data` is the cache (`data/raw`). Next: the full runs of the conventions decision, the gate request, then the engine accuracy ticket.
