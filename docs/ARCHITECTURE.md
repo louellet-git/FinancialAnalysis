@@ -618,6 +618,12 @@ growth, the target margin and the half-life of the fade. `--write FILE` writes t
 the models, stage 3 simulates them. Each ticker runs on one thread, so the result does not depend on `--jobs` (a test compares 1 and 4 threads). The default is 4,000 paths. No price is downloaded.
 `--prices FILE` has lines `ticker,price`.
 
+**The two defaults of 2026-11-20** (records A-001 and A-002; #271). `long_run = 0.040` and `acq_w = 1`. Data of 2026-11-19, `fa dcf screen` of `sp500.txt`
+(4,000 paths, seed 7), old model `--rules long_run=off,acq_w=0` and new model: median P50 / price 0.4895 to 0.427 (430 tickers; the 55 stable names 0.523 to 0.504); P50 at or
+below 0: 38 to 50. `fa dcf pit`: revenue error unchanged; error of the free cash flow after acquisitions, T+1 / T+2 / T+3, -1.7 / -1.4 / -0.6 to -0.4 / 0.0 / +0.8% of
+revenue, coverage 1 point lower. `fa dcf returns`: rank correlation of P50 / price with the return, 1 year +0.062 to +0.044, 3 years +0.128 to +0.110 (means over the years).
+IBM P50 (`fa dcf auto IBM`, 2026-11-19) $132.87 to $95.84. Files: `analysis/priors/auto_pit_{old,new}_2026-11-20.txt`, `auto_returns_{old,new}_2026-11-20.txt`; the screen CSV is not kept (the command makes it again).
+
 **`fa dcf pit [--cut YEAR] [--rules K=V,..] [--paths N] [--out FILE]`.** The point-in-time test (see #199 for its limits).
 
 **The investigation of 2026-11-20** (ticket `T-20261120-dcf-investigation`; findings `analysis/priors/dcf_investigation_2026-11-20.md`;

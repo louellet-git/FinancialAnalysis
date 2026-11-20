@@ -10,8 +10,7 @@ G = the long-run nominal growth of the economy = the longer-run median "Change i
 GDP" + the longer-run median "PCE inflation" of the FOMC Summary of Economic Projections
 (SEP). SEP of 2026-09-16: 2.0% + 2.0% = 4.0%. The standard deviation of the terminal
 growth stays 0.75%. A company with a mean below L keeps its own mean.
-The engine caps the draw by the target of the growth process, by the risk-free rate, and
-by the cost of capital less 2%.
+The engine also caps the draw (growth target, risk-free rate, cost of capital less 2%).
 The reviewed IBM model keeps its own 2.25% (a closed decision that does not change).
 
 ## Where used
@@ -27,7 +26,6 @@ The reviewed IBM model keeps its own 2.25% (a closed decision that does not chan
 | 2.25% for the terminal growth, the yield for the fade (the old model) | `--rules long_run=off` | Two numbers that do not agree: a step of 2.9 points between year 10 and year 11 |
 | The 10-year zero yield for both | `--rules terminal_rf=1` | The yield is a cap and a proxy, not the growth of the economy; sources A and B of the study cap the stable growth at the growth of the economy |
 | 3.8% (CBO: 1.8% + 2.0%) | `--rules long_run=0.038` | The CBO site refuses requests; the study read the inputs in secondary summaries only. It is the cross-check |
-| 2.25% for both | `--rules long_cap=0.0225,terminal_growth=0.0225` | Not supported by the data: see below |
 
 ## Why this choice
 None of the reasons uses the price.
@@ -44,11 +42,13 @@ follows the source: a new SEP value changes the default and this record with no 
 review of the rule. Source: `analysis/priors/dcf_conventions_study_2026-11-20.md`.
 
 ## Effect on the result
-Study, 430 tickers, median P50 / price: two old numbers 0.489; 3.8% (`long_run=0.038`)
-0.546; the yield (`terminal_rf=1`) 0.603. These are the study numbers for 3.8%, not
-for 4.0%. The run with 4.0% and both new defaults: not yet run. Example on 2026-11-20,
-AAPL, seed 7, 10,000 paths: P50 $128.84 (old) and $140.71 (both new defaults).
-The effects of several changes do not add.
+Study (3.8%, 430 tickers, median P50 / price): old 0.489; `long_run=0.038` 0.546;
+`terminal_rf=1` 0.603. Run of 2026-11-20 on the data of 2026-11-19 (`fa dcf screen`
+on `sp500.txt`, `--as-of 2026-11-19`, 4,000 paths, seed 7; old model `--rules long_run=off,acq_w=0`
+and new model): both new defaults together, 430 tickers with a price, median ratio 0.4895
+to 0.427 (stable set of 55: 0.523 to 0.504). Each alone: L = 4.0% (`acq_w=0`) 0.5605;
+the charge (`long_run=off`) 0.382. They do not add. Point-in-time revenue error (all sizes, T+1 to T+3): -0.4 / +0.7 / +1.7%
+(old: -0.4 / +0.7 / +1.6%). AAPL, 10,000 paths: P50 $128.84 to $140.71.
 
 ## Who decided and when
 The Head of Fundamental Research, on the word of the owner of 2026-11-20 (record:

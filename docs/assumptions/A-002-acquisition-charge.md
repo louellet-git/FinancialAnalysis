@@ -21,7 +21,6 @@ stays as it is.
 |---|---|---|
 | No charge (the old model) | `--rules acq_w=0` | The model overstates the free cash flow after acquisitions: median error 1.7% of revenue in the next year |
 | Full charge | `--rules acq_charge=1` | Too much: the shrink of the growth already takes out much of the bought growth |
-| Charge a share `f` and cut the bought growth | `--rules acq_f=F,acq_mult=M` | Needs an outside number (`acq_mult`) |
 
 ## Why this choice
 None of the reasons uses the price.
@@ -30,7 +29,7 @@ credits the share `w` of the growth that the spend bought, so it charges the sha
 the spend. It needs no outside number. It matches the reviewed IBM `f = 0.5`. In the
 point-in-time test, the error of the free cash flow after acquisitions goes from
 -1.7 / -1.4 / -0.6 to -0.4 / 0.0 / +0.8 % of revenue (median, 1 / 2 / 3 years after the base year).
-Source: `analysis/priors/dcf_conventions_study_2026-11-20.md`.
+Source: `analysis/priors/dcf_conventions_study_2026-11-20.md`. The run of 2026-11-20 repeats it.
 
 Known limits:
 - Heavy buyers (spend above 5% of revenue) are over-charged in the point-in-time test:
@@ -40,8 +39,16 @@ Known limits:
 
 ## Effect on the result
 Study, 430 tickers, median P50 / price: no charge 0.489; `acq_w=1` 0.382; full charge
-0.309. The run with both new defaults: not yet run. Example on 2026-11-20, AAPL, seed 7:
-the charge is 0.01% of revenue. The effects of several changes do not add.
+0.309. Run of 2026-11-20 on the data of 2026-11-19, both new defaults together
+(`fa dcf screen`, `sp500.txt`, 4,000 paths, seed 7): median ratio 0.4895 to 0.427;
+tickers with P50 at or below 0: 38 to 50 of 430. The effects do not add (see A-001).
+Point-in-time test, free cash flow after acquisitions, median error at T+1 / T+2 / T+3
+(`fa dcf pit`; old model with `--rules long_run=off,acq_w=0,acq_f=0,acq_mult=0`, new
+with the defaults; files `analysis/priors/auto_pit_old_afteracq_2026-11-20.txt`, `auto_pit_new_2026-11-20.txt`):
+all -1.7 / -1.4 / -0.6% to -0.4 / 0.0 / +0.8% of revenue. Spend above 5%: -3.3 / -2.9 /
+-2.4% to +1.8 / +2.2 / +3.1%. Worse: the coverage P10 to P90 of this free cash flow is
+77.3 / 78.0 / 78.4% (old) and 76.3 / 77.1 / 77.4% (new), about 1 point lower; the share
+above P90 goes from 5.4% to 9.1% at T+1. IBM P50 with both defaults (`fa dcf auto IBM`, 10,000 paths): $132.87 to $95.84.
 
 ## Who decided and when
 The Head of Fundamental Research, on the word of the owner of 2026-11-20 (record:

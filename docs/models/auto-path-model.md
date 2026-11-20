@@ -50,17 +50,22 @@ The records "not written" belong to the board ticket
 `T-20261120-model-docs-backlog`.
 
 ## Limits
-- The model is a screen. Its P10 to P90 band covers about 80% of real revenue in the
+- The model is a screen. Its P10 to P90 band covers 84% to 87% of real revenue in the
   point-in-time test, with known errors (`docs/HIDDEN-ASSUMPTIONS.md`, #199).
 - No bank, insurer, REIT or fund. No pension, lease or minority item in the net debt.
-- The two defaults of 2026-11-20 (A-001, A-002) change every value. The numbers below
-  and the point-in-time numbers of `analysis/priors/auto_pit_*.txt` are from the model
-  before them (`--rules long_run=off,acq_w=0`). New numbers: not yet run.
+- The two defaults of 2026-11-20 (A-001, A-002) change every value. Run on the data of
+  2026-11-19 (4,000 paths, seed 7): median ratio 0.4895 to 0.427 (430 tickers; stable
+  set 0.523 to 0.504); tickers with P50 at or below 0: 38 to 50. Old `auto_pit_*.txt`
+  files are from the model before them (`--rules long_run=off,acq_w=0`).
+- Point-in-time test, 6,030 company-years: revenue coverage P10 to P90 86.1 / 83.8 /
+  86.9% at T+1 / T+2 / T+3 (the same as before). Free cash flow after acquisitions:
+  coverage 76.3 / 77.1 / 77.4% (old model, same definition: 77.3 / 78.0 / 78.4%).
+  Files: `analysis/priors/auto_pit_new_2026-11-20.txt`, `auto_pit_old_afteracq_2026-11-20.txt`.
 - The acquisition charge over-charges heavy buyers (spend above 5% of revenue), and the
   5-year mean can hold one large deal. A company with no reported spend has no charge.
 - L is a typed constant. A new FOMC SEP changes it by a change of the code and of A-001.
 - The median value is far below the market price for most tickers (median ratio 0.49 on
-  2026-11-19, before the two defaults of 2026-11-20). The investigation shows that no single defect causes this
+  2026-11-19 before the two defaults of 2026-11-20; 0.427 after them). The investigation shows that no single defect causes this
   (`analysis/priors/dcf_investigation_2026-11-20.md`). Do not read the ratio as a signal
   without the review.
 
