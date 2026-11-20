@@ -2,7 +2,7 @@
 id: T-20261120-dcf-investigation
 title: Find why the automatic DCF gives low values, and correct the defects that have a reason
 area: engine
-status: in-progress
+status: review
 owner: louellet-git
 branch: claude/dcf-investigation
 created: 2026-11-20
@@ -30,3 +30,8 @@ Steps:
 3. Measure the model against the later stock returns with the 10 years of prices.
 4. Make the corrections that have a reason. Show the point-in-time bands before and
    after each one.
+
+Result, 2026-11-20 (for the review): `analysis/priors/dcf_investigation_2026-11-20.md`. Four defects corrected (discount
+timing, interest income and investments in the bridge, share count, template detection), each with a test; the median of
+P50 / price goes from 0.480 to 0.489. The rest of the gap is conventions; the alternatives are options of `--rules` for the
+owner's decision (section 6 of the findings). New command `fa dcf returns`; new option `fa dcf screen --implied`.

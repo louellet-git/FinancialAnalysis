@@ -58,6 +58,8 @@ pub const BANK_DEPOSITS_SHARE: f64 = 0.20; // deposits / total assets
 pub const INSURER_PREMIUMS_SHARE: f64 = 0.20; // premiums / revenue
 pub const INSURER_POLICY_SHARE: f64 = 0.30; // policyholder liabilities / total assets
 pub const REIT_PROPERTY_SHARE: f64 = 0.30; // investment property / total assets
+pub const LENDER_LOANS_SHARE: f64 = 0.50; // loans and finance receivables / total assets (no current-assets total)
+pub const DEPOSIT_TAKER_LOANS_SHARE: f64 = 0.40; // loans / total assets, with an interest expense on deposits
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Severity {
@@ -116,6 +118,14 @@ pub struct PeriodChecks {
 /// - fund: revenue is the total investment income of an investment company, and the
 ///   balance sheet has no current-assets total;
 /// - reit: investment property is 30% or more of total assets.
+///
+/// Added 2026-11-20 (ticket `T-20261120-dcf-investigation`; banks and REITs that passed as standard):
+/// - bank: the deposits can also be `DepositsDomestic` or the interest-bearing plus the non-interest-bearing
+///   deposit lines; a company with an interest expense on deposits and loans of 40% or more of total assets is a
+///   bank; a lender with no current-assets total and loans or finance receivables of 50% or more of total assets
+///   is a bank (its debt is the material of its business, not a financing choice);
+/// - reit: the investment property can also be the gross real estate less its accumulated depreciation, and the
+///   net investment in sales-type leases of real estate counts as property.
 pub fn filer_template(registry: &Registry, p: &PeriodData) -> &'static str {
     let raw = |name: &str| p.raw_extras.get(&format!("us-gaap/{name}")).copied();
     let share = |part: Option<f64>, total: Option<f64>| match (part, total) {
@@ -124,10 +134,25 @@ pub fn filer_template(registry: &Registry, p: &PeriodData) -> &'static str {
     };
     let assets = p.get(registry, "total_assets");
     let revenue = p.get(registry, "revenue");
-    if share(raw("Deposits"), assets) >= BANK_DEPOSITS_SHARE {
+    let split_deposits = match (raw("InterestBearingDepositLiabilities"), raw("NoninterestBearingDepositLiabilities")) {
+        (None, None) => None,
+        (a, b) => Some(a.unwrap_or(0.0) + b.unwrap_or(0.0)),
+    };
+    let deposits = [raw("Deposits"), raw("DepositsDomestic"), split_deposits].into_iter().flatten().fold(None, |m: Option<f64>, v| Some(m.map_or(v, |m| m.max(v))));
+    if share(deposits, assets) >= BANK_DEPOSITS_SHARE {
         return "bank";
     }
     let unclassified = p.get(registry, "total_current_assets").is_none();
+    let loans = ["FinancingReceivableExcludingAccruedInterestAfterAllowanceForCreditLoss", "LoansAndLeasesReceivableNetReportedAmount", "NotesReceivableNet", "LoansReceivableNet"]
+        .iter()
+        .filter_map(|t| raw(t))
+        .fold(None, |m: Option<f64>, v| Some(m.map_or(v, |m| m.max(v))));
+    if raw("InterestExpenseDeposits").is_some_and(|x| x > 0.0) && share(loans, assets) >= DEPOSIT_TAKER_LOANS_SHARE {
+        return "bank";
+    }
+    if unclassified && share(loans, assets) >= LENDER_LOANS_SHARE {
+        return "bank";
+    }
     if share(raw("PremiumsEarnedNet"), revenue) >= INSURER_PREMIUMS_SHARE && unclassified {
         return "insurer";
     }
@@ -142,7 +167,13 @@ pub fn filer_template(registry: &Registry, p: &PeriodData) -> &'static str {
     if p.source(registry, "revenue") == "= investment_income_operating" && unclassified {
         return "fund";
     }
-    let property = raw("RealEstateInvestmentPropertyNet").or_else(|| raw("RealEstateInvestmentPropertyAtCost"));
+    let gross_less_depreciation = raw("RealEstateGrossAtCarryingValue").map(|g| g - raw("RealEstateInvestmentPropertyAccumulatedDepreciation").unwrap_or(0.0));
+    let property = raw("RealEstateInvestmentPropertyNet").or_else(|| raw("RealEstateInvestmentPropertyAtCost")).or(gross_less_depreciation);
+    let leased_property = raw("NetInvestmentInLeaseExcludingAccruedInterestAfterAllowanceForCreditLoss").or_else(|| raw("NetInvestmentInLease"));
+    let property = match (property, leased_property) {
+        (None, None) => None,
+        (a, b) => Some(a.unwrap_or(0.0) + b.unwrap_or(0.0)),
+    };
     if share(property, assets) >= REIT_PROPERTY_SHARE {
         return "reit";
     }
@@ -889,6 +920,29 @@ mod tests {
         let unclassified: Vec<_> = with(vec![("PremiumsEarnedNet", flow(800.0))]).into_iter().filter(|(n, _)| *n != "AssetsCurrent").collect();
         assert_eq!(template(unclassified), "insurer");
         assert_eq!(template(with(vec![("RealEstateInvestmentPropertyNet", balance(900.0))])), "reit");
+    }
+
+    #[test]
+    fn banks_lenders_and_reits_with_other_tags_are_not_standard() {
+        let registry = Registry::embedded().unwrap();
+        let template = |concepts: Vec<(&'static str, Vec<crate::facts::Fact>)>| {
+            let facts = with_shares(company(concepts));
+            filer_template(&registry, &resolve_period(&registry, &facts, END, Forms::Annual))
+        };
+        let unclassified = |v: Vec<(&'static str, Vec<crate::facts::Fact>)>| -> Vec<(&'static str, Vec<crate::facts::Fact>)> { with(v).into_iter().filter(|(n, _)| *n != "AssetsCurrent").collect() };
+        // domestic deposits (PNFP) and split deposit lines
+        assert_eq!(template(with(vec![("DepositsDomestic", balance(900.0))])), "bank");
+        assert_eq!(template(with(vec![("InterestBearingDepositLiabilities", balance(500.0)), ("NoninterestBearingDepositLiabilities", balance(200.0))])), "bank");
+        // an interest expense on deposits and a loan book of 40% of assets, no deposits line (GBCI)
+        assert_eq!(template(with(vec![("InterestExpenseDeposits", flow(20.0)), ("FinancingReceivableExcludingAccruedInterestAfterAllowanceForCreditLoss", balance(700.0))])), "bank");
+        // a lender with no current-assets total (OMF); the same loans with current assets (a maker with a finance arm) stay standard
+        assert_eq!(template(unclassified(vec![("NotesReceivableNet", balance(900.0))])), "bank");
+        assert_eq!(template(with(vec![("NotesReceivableNet", balance(900.0))])), "standard");
+        // real estate as gross value less depreciation (CPT) and as sales-type leases (VICI)
+        assert_eq!(template(with(vec![("RealEstateGrossAtCarryingValue", balance(1400.0)), ("RealEstateInvestmentPropertyAccumulatedDepreciation", balance(500.0))])), "reit");
+        assert_eq!(template(with(vec![("NetInvestmentInLeaseExcludingAccruedInterestAfterAllowanceForCreditLoss", balance(800.0))])), "reit");
+        // small lines stay standard
+        assert_eq!(template(with(vec![("DepositsDomestic", balance(30.0)), ("NetInvestmentInLease", balance(100.0))])), "standard");
     }
 
     #[test]

@@ -717,7 +717,11 @@ could not run against the real site. The other `fa rates` commands do not need F
 FRED series in `rust/tests/fixtures/rates/fred.json` are made up (ICE data may not be
 copied into a public repo). On a network that FRED answers, run `fa bonds` and
 `fa bonds check` once before you trust a `--rating` result.
-*Evidence:* `fa rates fred --series DGS10` on 2026-11-19.
+**Changed 2026-11-20 (test of the orchestrator).** The refusal is for the address with no key only. With a FRED API key in
+the environment variable `FRED_API_KEY`, the FRED API answers the cloud container: 26 of 26 series in 57 seconds, and
+`fa bonds`, `fa bonds check` and `fa verdict --rating` then work on real data. With no key, the keyless address still
+refuses the container.
+*Evidence:* `fa rates fred --series DGS10` on 2026-11-19 (no key); the orchestrator's run with `FRED_API_KEY` on 2026-11-20.
 
 **129. The BLS API has a daily request limit for each address.** On 2026-11-19 the CPI
 request got "the daily threshold for total number of requests ... has been reached". API
@@ -1424,7 +1428,8 @@ companies and a standard error of `phi` of 0.139 and 0.134 (the cell of all size
 
 **192. The SBC ratio is a constant.** It is the mean of the last 3 years, with no shock. The table has no SBC series. A company with no `sbc_total` in the 3 years has a ratio of 0 and a warning.
 
-**193. The net debt bridge is simple.** `total_debt` less `cash_and_short_term_investments`, from the latest balance sheet (a 10-Q if it is newer than the 10-K). It
+**193. The net debt bridge is simple.** (Changed 2026-11-20: the bridge also subtracts `long_term_investments`, and the
+interest income is out of the margin; see #262.) `total_debt` less `cash_and_short_term_investments`, from the latest balance sheet (a 10-Q if it is newer than the 10-K). It
 leaves out pensions, operating leases, minority interests, litigation reserves and investments. The output has a memo line that shows the
 size of the three items that are in the mapping (per share). The variable `total_debt` has two estimates for many companies (check `total_debt_estimates`); the model takes the value of
 the mapping and prints the warning. For IBM the debt includes the debt of the financing business.
@@ -1434,10 +1439,12 @@ the mapping and prints the warning. For IBM the debt includes the debt of the fi
 the latest 10-Q if it is newer. The trailing four quarters are not used (the quarters of the mapping are single quarters; the fourth quarter is not in the 10-Q files). For a fast
 grower the revenue base is 3 to 12 months old. The point-in-time test uses fiscal years only.
 
-**195. The share count is the weighted average of the diluted shares of the latest period,** not the count at the end of the period. A company with large buybacks or an issue of
+**195. (Changed 2026-11-20, see #263: the count at the end of the period plus the dilution is now the default.)
+The share count is the weighted average of the diluted shares of the latest period,** not the count at the end of the period. A company with large buybacks or an issue of
 shares in the period has a different count. The price per share of the output follows this count.
 
-**196. Beta and the equity weight need prices that the cache mostly does not have.** The cache has price files for two tickers (IBM and JNJ) and the SPY file for the index. Other tickers have
+**196. (Changed by the price layer: the cache of 2026-11-19 has price files for 505 tickers, so most S&P 500 tickers now
+have a regression beta and an equity weight.) Beta and the equity weight need prices that the cache mostly does not have.** The cache has price files for two tickers (IBM and JNJ) and the SPY file for the index. Other tickers have
 beta 1.0 and an equity weight of 1.0 (the cost of equity for the cash flow of the whole company): for a company with much debt the value is too low. The output has a warning. The regression
 beta uses 5 years of weekly returns of the stock (adjusted close) against SPY (the close of the trading cache) and the weight 2/3 (the rest is 1.0). The standard error of such a beta is about 0.1.
 
@@ -1770,6 +1777,84 @@ always. A missing cache gives no warning (the command says that itself). The war
 **259. Windows (PowerShell) is a goal of the code, not a tested fact.** The code uses `PathBuf` for all paths, starts no shell command, and has a console handler for Ctrl+C (`SetConsoleCtrlHandler`). No test ran on Windows
 (the development container is Linux), and the Windows part of `interrupt.rs` was never compiled. The progress line of each item is plain text on stderr (no cursor control). A person on Windows must set `SEC_USER_AGENT` with `$env:SEC_USER_AGENT = "..."`.
 *Evidence:* `rust/src/sync/interrupt.rs`; `README.md`, part "First run on your computer".
+
+## The investigation of the automatic DCF (added 2026-11-20, branch `claude/dcf-investigation`)
+
+Ticket `T-20261120-dcf-investigation`. Findings and numbers: `analysis/priors/dcf_investigation_2026-11-20.md`.
+
+**260. The low values of the automatic model come from conventions, not from one error.** On 2026-11-19 the median of
+P50 / price was 0.48 (438 S&P 500 tickers). The four defects that we corrected move it to 0.49. Each of the large parts is a
+convention: the risk-free rate of 5.13% (a fixed 4.2% gives +0.10), the premium of 4.41% (3.5% gives +0.06), the terminal
+growth of 2.25% (the risk-free rate gives +0.12), the 10-year horizon (20 years at the cap gives +0.08), SBC as a cost
+(+0.08). The price needs a cost of capital of 5.4% (median) against the 8.7% of the model. Do not read a low ratio as "the
+market is wrong" or as "the model is wrong": it is the distance between these conventions and the market.
+*Evidence:* `fa dcf screen ... --rules K=V`, `fa dcf screen ... --implied`; the findings file, sections 2 and 3.
+
+**261. The discount of the automatic model starts on the model date (changed 2026-11-20).** Before, year 1 (the fiscal year
+after the base year) was one full year away, also when it ended one month later, and the cash of the part of year 1 before
+the 10-Q was in the bridge and in the flows. Now the model file has `[discount] stub_years` (years from the model date to the
+end of year 1, cut to 0 to 1) and `year1_share` (the share of year 1 after the balance sheet date); the engine uses them only
+when a model file has them, so the hand models do not change. A model made on another day has another value: give `--as-of`
+to compare two runs. The point-in-time test has no timing (it tests revenue and cash flow, not the value).
+*Evidence:* `stub_and_share`, `the_timing_of_the_discount_follows_the_model_date_and_the_balance_sheet`.
+
+**262. The bridge follows the stock-and-flow rule of the IBM review F15 (changed 2026-11-20).** The after-tax `interest_income`
+is out of the margin, because the cash that earns it is in the bridge; `long_term_investments` (AAPL $80B, GOOGL $69B, MSFT
+$36B) is now in the bridge. Equity-method stakes stay out (their dividends are in the operating cash flow). A company with no
+value of `interest_income` in the mapping (MSFT, AAPL on 2026-11-19) keeps its interest income in the margin. The point-in-time
+free cash flow follows the same rule (`fcff_of_rules`). `--rules no_interest_income=0,bridge_lti=0` gives the old rule.
+*Evidence:* `interest_income_leaves_the_margin_and_the_investments_enter_the_bridge`.
+
+**263. The share count is the count at the end of the period plus the dilution (changed 2026-11-20).** `shares_outstanding`
+plus `shares_diluted - shares_basic`. If the result is not within 85% to 110% of the weighted diluted count (a filer that tags
+one class of several, or a unit error) the model uses the weighted count and prints a warning. Many 10-Q files have no
+`shares_outstanding`; then the weighted count stays. The median effect on the screen is 0%.
+*Evidence:* `the_share_count_is_the_count_at_the_end_plus_the_dilution`.
+
+**264. Banks, lenders and REITs with other tags are not standard (changed 2026-11-20).** `filer_template` also reads
+`DepositsDomestic` and the two deposit lines, an interest expense on deposits with loans of 40% of assets, loans or notes
+receivable of 50% of assets with no current-assets total (a lender), the gross real estate less its depreciation, and the net
+investment in sales-type leases. 18 tickers of `sp500.txt` and `next500.txt` change: to REIT AMT, CCI, CPT, EQIX, HST, IRM,
+LAMR, LINE, MAC, OUT, RHP, SBAC, VICI; to bank AFRM, CNH, GBCI, OMF, PNFP. CNH is a maker of machines with a finance arm that
+is most of its assets: the rule refuses it as a lender. The calibration table of 2026-11-19 was estimated with the old rule.
+*Evidence:* `banks_lenders_and_reits_with_other_tags_are_not_standard` (`rust/mapcheck/src/checks.rs`).
+
+**265. Utilities pass as standard and get a value at or below zero.** 27 of the 43 S&P 500 tickers with P50 at or below zero
+on 2026-11-19 are electric and gas utilities. Their free cash flow after capex is negative because the rate base grows with
+debt. A free-cash-flow DCF with the margin of the history is the wrong tool for them. No rule refuses them yet.
+*Evidence:* the screen file; the findings file, section 4.5.
+
+**266. Acquisitions are free in the automatic model.** The growth history keeps the growth that cash for businesses bought
+(below the jump limit of 60%), and the free cash flow has no cost for it: the error F2 of the IBM review. The option
+`--rules acq_charge=1` charges the mean ratio of `acquisitions_net_of_cash` to revenue of the margin years. It lowers the median
+ratio by 0.16 (JNJ -67%, IBM -68%). That is too much, because the shrink of the growth already takes out much of the bought
+growth. The correct pair is not known from the data. The default is off; the owner decides.
+*Evidence:* `the_acquisition_charge_is_an_option_with_the_mean_ratio`; the findings file, section 4.6.
+
+**267. The model has two numbers for the long-run growth.** The company growth fades to the 10-year zero yield (5.13%, #189), and
+the terminal growth is 2.25%. The premium of 4.41% is the implied premium of Damodaran, which uses a long-run growth equal to the
+risk-free rate. `--rules terminal_rf=1` (terminal growth = the yield) and `--rules long_cap=0.0225` (the fade goes to 2.25%) are the
+two consistent choices. The default did not change.
+*Evidence:* the findings file, section 4.7.
+
+**268. The rules of the builder accept alternatives.** `fa dcf auto`, `fa dcf screen`, `fa dcf pit` and `fa dcf returns` take
+`--rules K=V,..` (the list: `fa dcf auto --help`). They are for measurement and for the owner's decision. A screen with a rule that
+is not the default is not the automatic model of the repo: write the rules next to each number that you quote.
+
+**269. The implied cost of capital of the screen is a search on the premium.** `fa dcf screen --implied` moves the mean of the equity
+premium; the risk-free rate and the caps of the terminal growth stay. The guard "terminal growth at most the cost of capital less 2%"
+binds when the rate is low, so the search cannot reach very low rates: the column shows `<x` when the price needs a lower rate than `x`.
+A path with a cost of capital that is not positive counts as a value above any price. The implied rate depends on all other numbers.
+*Evidence:* `implied_discount_rate` (`auto_cli.rs`).
+
+**270. The return test (`fa dcf returns`) has its own limits.** The model of fiscal year T is made on the date end of T + 100 days with
+the data up to T, the balance sheet of T, the curve, the beta and the price of that date. The returns are price returns (the price files
+are not adjusted for dividends); the lines "with dividends" add the yield of the fiscal year for each year of the horizon. The years
+are the clusters of the standard error; the 3-year windows of near years overlap, so the real error is about 1.7 times the printed one.
+The companies are those of the cache now: a company that grew into the S&P 500 is in the test with its years before it entered.
+On 2026-11-20: rank correlation of P50 / price with the 3-year return +0.12 (mean of 7 yearly values); no relation for companies with
+revenue above $30B; the lowest quintile (values near or below zero) also had high returns.
+*Evidence:* `analysis/priors/auto_returns_2026-11-20.txt`.
 
 ## Could not verify
 

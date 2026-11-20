@@ -512,7 +512,7 @@ fn old_as_paths(old: &ModelSpec) -> (PathsSpec, BTreeMap<String, String>) {
         process,
         reinvestment: ReinvestSpec::default(),
         tax: TaxSpec { rate: get("tax_rate").mean, opening_loss: 0.0, loss_limit_share: 1.0 },
-        discount: DiscountSpec { beta: param("beta"), erp: param("erp"), kd_spread: get("kd_spread").mean, equity_weight: get("equity_weight").mean },
+        discount: DiscountSpec { beta: param("beta"), erp: param("erp"), kd_spread: get("kd_spread").mean, equity_weight: get("equity_weight").mean, stub_years: None, year1_share: None, mid_year: false },
         rates: RatesSpec { rf: Some(param("rf")), ..RatesSpec::default() },
         terminal: TerminalSpec { growth: param("terminal_growth"), cap_by_process: None, rf_margin: None, roic: None },
         failure: None,

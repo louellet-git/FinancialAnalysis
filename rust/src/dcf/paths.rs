@@ -222,6 +222,8 @@ pub struct PathEngine {
     erp: usize,
     kd_spread: f64,
     equity_weight: f64,
+    /// `discount.stub_years`, `discount.year1_share`, `discount.mid_year` (`None`: the end-of-year rule).
+    timing: Option<(f64, f64, bool)>,
     tax: f64,
     mode_b: bool,
     opening_loss: f64,
@@ -476,6 +478,15 @@ impl PathEngine {
         if !(0.0..=1.0).contains(&d.equity_weight) {
             return err(format!("discount.equity_weight must be in [0, 1], got {}.", d.equity_weight));
         }
+        let timing = if d.stub_years.is_some() || d.year1_share.is_some() || d.mid_year {
+            let (stub, share) = (d.stub_years.unwrap_or(1.0), d.year1_share.unwrap_or(1.0));
+            if !((0.0..=1.0).contains(&stub) && (0.0..=1.0).contains(&share)) {
+                return err(format!("discount.stub_years and discount.year1_share must be in [0, 1], got {stub} and {share}."));
+            }
+            Some((stub, share, d.mid_year))
+        } else {
+            None
+        };
         if !(0.0..1.0).contains(&spec.tax.rate) {
             return err(format!("tax.rate must be in [0, 1), got {}.", spec.tax.rate));
         }
@@ -621,6 +632,7 @@ impl PathEngine {
             erp,
             kd_spread: d.kd_spread,
             equity_weight: d.equity_weight,
+            timing,
             tax: spec.tax.rate,
             mode_b,
             opening_loss: spec.tax.opening_loss,
@@ -826,7 +838,27 @@ impl PathEngine {
             if k <= 0.0 {
                 return err("The cost of capital is not positive on at least one path: bound the draws of the discount rate (lo) or reduce the rate volatility.");
             }
-            disc /= 1.0 + k;
+            // `flow_at`: the discount factor of the cash flow of year t (the same as `disc` with the end-of-year rule)
+            let mut flow_at = 1.0;
+            let mut share_t = 1.0;
+            match self.timing {
+                None => disc /= 1.0 + k,
+                Some((stub, share, mid)) => {
+                    if t == 1 {
+                        disc /= (1.0 + k).powf(stub);
+                        share_t = share;
+                        if mid {
+                            // the flows of year 1 after the balance sheet are spread over the last `share` of the year
+                            flow_at = (1.0 + k).powf(stub - (stub - share / 2.0).max(0.0));
+                        }
+                    } else {
+                        disc /= 1.0 + k;
+                        if mid {
+                            flow_at = (1.0 + k).sqrt();
+                        }
+                    }
+                }
+            }
             // cash flow
             let ebit_or_fcff = total * (m - sbc - ch);
             let (fcff, reinv) = if self.mode_b {
@@ -856,7 +888,7 @@ impl PathEngine {
             if let (Some(f), true) = (self.failure, hazard > 0.0) {
                 let recovery = f.multiple * total_prev;
                 if expected_failure {
-                    pv += surv * ((1.0 - hazard) * fcff + hazard * recovery) * disc;
+                    pv += surv * ((1.0 - hazard) * fcff * share_t + hazard * recovery) * disc * flow_at;
                     surv *= 1.0 - hazard;
                 } else if sampled_failure && rng.uniform() < hazard {
                     pv += recovery * disc;
@@ -870,10 +902,10 @@ impl PathEngine {
                     t_done = t - 1;
                     break;
                 } else {
-                    pv += fcff * disc;
+                    pv += fcff * share_t * disc * flow_at;
                 }
             } else {
-                pv += fcff * disc;
+                pv += fcff * share_t * disc * flow_at;
             }
             last_fcff = fcff;
             total_prev = total;
@@ -925,6 +957,9 @@ impl PathEngine {
                 last_fcff * (1.0 + tg)
             };
             pv_terminal = fcff_next / (k_t - tg) * disc * surv;
+            if matches!(self.timing, Some((_, _, true))) {
+                pv_terminal *= (1.0 + k_t).sqrt();
+            }
         }
         Ok(PathOut {
             per_share: (pv + pv_terminal - self.net_debt) / self.shares,

@@ -193,6 +193,18 @@ pub struct DiscountSpec {
     pub kd_spread: f64,
     #[serde(default = "default_one")]
     pub equity_weight: f64,
+    /// Years from the valuation date to the end of year 1, in [0, 1]. Not set: 1 (the cash flow of year 1 is one
+    /// full year away). The automatic model sets it from the date of the model and the end of the base fiscal year.
+    #[serde(default)]
+    pub stub_years: Option<f64>,
+    /// Share of the cash flow of year 1 that comes after the date of the balance sheet of the bridge, in [0, 1]. Not
+    /// set: 1. The part before that date is already in the cash and the debt of the bridge.
+    #[serde(default)]
+    pub year1_share: Option<f64>,
+    /// The cash flows of a year come in the middle of the year (and the terminal value half a year earlier), not at
+    /// the end. Not set: false (the end of the year).
+    #[serde(default)]
+    pub mid_year: bool,
 }
 
 fn default_rate_model() -> String {
