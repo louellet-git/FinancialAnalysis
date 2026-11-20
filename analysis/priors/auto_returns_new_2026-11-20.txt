@@ -1,0 +1,92 @@
+THE VALUE AGAINST THE LATER RETURNS (automatic model, point in time). Command: fa dcf returns --cache data/raw --out analysis/priors/auto_returns_new_2026-11-20.csv
+Rules: Rules { years: 10, erp: (0.0441, 0.0075), kd_spread: 0.015, terminal_growth: (0.0225, 0.0075), statutory_tax: 0.21, beta_weight: 0.6666666666666666, hw_a: 0.14, hw_sigma: 0.0075, fade_to_cap: true, default_slow_half_life: 4.0, own_sigma_nu: 4.0, level_kappa: -1.0, min_years: 3, history_organic: true, margin_pool_se: 0.08, rf_fixed: None, equity_weight_one: false, terminal_rf: false, long_cap: None, long_run: Some(0.04), fade_years: None, growth_w: None, growth_phi: None, margin_w: None, margin_last: false, sbc_cost: true, bridge_lti: true, bridge_leases: false, no_interest_income: true, shares_latest: true, stub: true, mid_year: false, acq_charge: false, acq_f: None, acq_mult: 0.0, acq_w: true, acq_fade: true }
+6682 observations of 803 companies (standard template, with a price file); lag 100 days; 1000 paths; 7.4 s. curve: GSW; index: SPY.
+P50 / price over all observations: median 0.745; share above 1: 37.2%; share at or below 0: 13.8%
+
+1-YEAR RETURN (price only)
+  all sizes
+    rank correlation of P50/price with the 1-year return: pooled +0.086 (n 5908); mean over 9 years (each with 20 or more) +0.058, standard error 0.037 (t 1.6)
+    each year: 2017: +0.069 (n 507) 2018: -0.033 (n 526) 2019: -0.108 (n 626) 2020: +0.139 (n 656) 2021: +0.236 (n 674) 2022: +0.160 (n 703) 2023: +0.072 (n 719) 2024: -0.062 (n 734) 2025: +0.046 (n 749)
+    quintile of P50/price (1 = lowest): mean return | less the mean of the year:  Q1 +51.8% | +24.2% (n 1181)  Q2 +19.2% | -8.4% (n 1180)  Q3 +15.8% | -11.8% (n 1186)  Q4 +18.8% | -8.9% (n 1180)  Q5 +32.6% | +5.0% (n 1181)
+    Q5 - Q1 return: mean over 9 years -18.8%, standard error 17.2% (t -1.1)
+  size <1B
+    rank correlation of P50/price with the 1-year return: pooled +0.009 (n 669); mean over 9 years (each with 20 or more) +0.023, standard error 0.058 (t 0.4)
+    each year: 2017: +0.103 (n 73) 2018: -0.040 (n 73) 2019: -0.165 (n 77) 2020: -0.097 (n 83) 2021: +0.343 (n 86) 2022: +0.173 (n 75) 2023: -0.127 (n 70) 2024: -0.122 (n 67) 2025: +0.135 (n 65)
+    quintile of P50/price (1 = lowest): mean return | less the mean of the year:  Q1 +90.6% | +36.1% (n 134)  Q2 +37.1% | -16.3% (n 133)  Q3 +44.2% | -9.9% (n 135)  Q4 +43.2% | -10.1% (n 133)  Q5 +54.6% | +0.1% (n 134)
+    Q5 - Q1 return: mean over 9 years -31.8%, standard error 33.7% (t -0.9)
+  size 1-10B
+    rank correlation of P50/price with the 1-year return: pooled +0.125 (n 3040); mean over 9 years (each with 20 or more) +0.085, standard error 0.038 (t 2.2)
+    each year: 2017: +0.045 (n 271) 2018: -0.047 (n 273) 2019: -0.073 (n 330) 2020: +0.225 (n 342) 2021: +0.155 (n 365) 2022: +0.190 (n 355) 2023: +0.180 (n 359) 2024: -0.041 (n 374) 2025: +0.130 (n 369)
+    quintile of P50/price (1 = lowest): mean return | less the mean of the year:  Q1 +56.0% | +25.7% (n 608)  Q2 +20.4% | -10.1% (n 609)  Q3 +15.5% | -14.8% (n 606)  Q4 +20.7% | -9.8% (n 609)  Q5 +39.3% | +9.0% (n 608)
+    Q5 - Q1 return: mean over 9 years -16.6%, standard error 23.4% (t -0.7)
+  size 10-30B
+    rank correlation of P50/price with the 1-year return: pooled +0.135 (n 1440); mean over 9 years (each with 20 or more) +0.124, standard error 0.049 (t 2.5)
+    each year: 2017: +0.198 (n 107) 2018: +0.019 (n 120) 2019: -0.144 (n 143) 2020: +0.387 (n 154) 2021: +0.195 (n 148) 2022: +0.179 (n 187) 2023: +0.137 (n 188) 2024: +0.050 (n 186) 2025: +0.098 (n 204)
+    quintile of P50/price (1 = lowest): mean return | less the mean of the year:  Q1 +15.0% | -1.9% (n 289)  Q2 +12.0% | -4.9% (n 287)  Q3 +15.0% | -1.7% (n 288)  Q4 +15.8% | -1.1% (n 287)  Q5 +26.5% | +9.6% (n 289)
+    Q5 - Q1 return: mean over 9 years +12.6%, standard error 8.4% (t 1.5)
+  size 30-100B
+    rank correlation of P50/price with the 1-year return: pooled +0.082 (n 537); mean over 9 years (each with 20 or more) +0.081, standard error 0.055 (t 1.5)
+    each year: 2017: +0.251 (n 40) 2018: +0.232 (n 41) 2019: -0.106 (n 54) 2020: +0.319 (n 52) 2021: +0.095 (n 53) 2022: -0.051 (n 58) 2023: +0.045 (n 71) 2024: -0.153 (n 79) 2025: +0.095 (n 83)
+    quintile of P50/price (1 = lowest): mean return | less the mean of the year:  Q1 +16.0% | +3.1% (n 107)  Q2 +7.4% | -5.9% (n 106)  Q3 +14.3% | +1.3% (n 111)  Q4 +12.4% | -0.9% (n 106)  Q5 +15.3% | +2.3% (n 107)
+    Q5 - Q1 return: mean over 9 years +2.2%, standard error 4.6% (t 0.5)
+  size >100B
+    rank correlation of P50/price with the 1-year return: pooled +0.053 (n 222); mean over 7 years (each with 20 or more) +0.024, standard error 0.089 (t 0.3)
+    each year: 2019: -0.010 (n 22) 2020: +0.355 (n 25) 2021: +0.361 (n 22) 2022: -0.094 (n 28) 2023: -0.136 (n 31) 2024: -0.176 (n 28) 2025: -0.135 (n 28)
+    quintile of P50/price (1 = lowest): mean return | less the mean of the year:  Q1 +16.4% | +0.7% (n 44)  Q2 +13.9% | -1.9% (n 43)  Q3 +13.1% | -2.4% (n 48)  Q4 +11.5% | -4.3% (n 43)  Q5 +23.7% | +8.0% (n 44)
+    Q5 - Q1 return: mean over 7 years +7.2%, standard error 10.2% (t 0.7)
+
+1-YEAR RETURN, WITH DIVIDENDS (estimate)
+  all sizes
+    rank correlation of P50/price with the 1-year return: pooled +0.097 (n 5908); mean over 9 years (each with 20 or more) +0.069, standard error 0.037 (t 1.9)
+    each year: 2017: +0.080 (n 507) 2018: -0.033 (n 526) 2019: -0.082 (n 626) 2020: +0.148 (n 656) 2021: +0.247 (n 674) 2022: +0.173 (n 703) 2023: +0.082 (n 719) 2024: -0.052 (n 734) 2025: +0.055 (n 749)
+    quintile of P50/price (1 = lowest): mean return | less the mean of the year:  Q1 +52.9% | +23.5% (n 1181)  Q2 +20.1% | -9.2% (n 1180)  Q3 +17.1% | -12.3% (n 1186)  Q4 +20.4% | -9.0% (n 1180)  Q5 +36.4% | +7.0% (n 1181)
+    Q5 - Q1 return: mean over 9 years -16.0%, standard error 17.2% (t -0.9)
+
+3-YEAR RETURN (price only)
+  all sizes
+    rank correlation of P50/price with the 3-year return: pooled +0.147 (n 4416); mean over 7 years (each with 20 or more) +0.126, standard error 0.045 (t 2.8)
+    each year: 2017: -0.022 (n 507) 2018: +0.056 (n 526) 2019: +0.078 (n 626) 2020: +0.289 (n 656) 2021: +0.278 (n 674) 2022: +0.155 (n 703) 2023: +0.047 (n 710)
+    quintile of P50/price (1 = lowest): mean return | less the mean of the year:  Q1 +127.3% | +51.4% (n 882)  Q2 +47.1% | -28.8% (n 881)  Q3 +50.0% | -25.6% (n 890)  Q4 +58.7% | -17.3% (n 881)  Q5 +96.5% | +20.6% (n 882)
+    Q5 - Q1 return: mean over 7 years -31.6%, standard error 31.3% (t -1.0)
+  size <1B
+    rank correlation of P50/price with the 3-year return: pooled +0.043 (n 537); mean over 7 years (each with 20 or more) +0.020, standard error 0.063 (t 0.3)
+    each year: 2017: -0.114 (n 73) 2018: -0.037 (n 73) 2019: +0.008 (n 77) 2020: +0.074 (n 83) 2021: +0.362 (n 86) 2022: -0.013 (n 75) 2023: -0.137 (n 70)
+    quintile of P50/price (1 = lowest): mean return | less the mean of the year:  Q1 +193.6% | +70.0% (n 108)  Q2 +99.4% | -22.8% (n 106)  Q3 +93.3% | -29.3% (n 109)  Q4 +85.2% | -37.0% (n 106)  Q5 +141.7% | +18.2% (n 108)
+    Q5 - Q1 return: mean over 7 years -59.0%, standard error 49.2% (t -1.2)
+  size 1-10B
+    rank correlation of P50/price with the 3-year return: pooled +0.211 (n 2293); mean over 7 years (each with 20 or more) +0.182, standard error 0.046 (t 4.0)
+    each year: 2017: -0.003 (n 271) 2018: +0.134 (n 273) 2019: +0.075 (n 330) 2020: +0.336 (n 342) 2021: +0.301 (n 365) 2022: +0.238 (n 355) 2023: +0.196 (n 355)
+    quintile of P50/price (1 = lowest): mean return | less the mean of the year:  Q1 +139.2% | +54.6% (n 458)  Q2 +48.3% | -36.5% (n 459)  Q3 +56.6% | -27.9% (n 459)  Q4 +60.8% | -23.9% (n 459)  Q5 +118.5% | +33.9% (n 458)
+    Q5 - Q1 return: mean over 7 years -20.9%, standard error 69.2% (t -0.3)
+  size 10-30B
+    rank correlation of P50/price with the 3-year return: pooled +0.207 (n 1048); mean over 7 years (each with 20 or more) +0.173, standard error 0.051 (t 3.4)
+    each year: 2017: -0.023 (n 107) 2018: +0.072 (n 120) 2019: +0.162 (n 143) 2020: +0.413 (n 154) 2021: +0.210 (n 148) 2022: +0.205 (n 187) 2023: +0.169 (n 186)
+    quintile of P50/price (1 = lowest): mean return | less the mean of the year:  Q1 +56.8% | +5.4% (n 210)  Q2 +37.1% | -13.8% (n 209)  Q3 +38.6% | -12.8% (n 210)  Q4 +44.1% | -6.8% (n 209)  Q5 +79.2% | +27.9% (n 210)
+    Q5 - Q1 return: mean over 7 years +23.3%, standard error 20.4% (t 1.1)
+  size 30-100B
+    rank correlation of P50/price with the 3-year return: pooled +0.057 (n 373); mean over 7 years (each with 20 or more) +0.084, standard error 0.071 (t 1.2)
+    each year: 2017: +0.316 (n 40) 2018: +0.120 (n 41) 2019: +0.107 (n 54) 2020: +0.294 (n 52) 2021: +0.036 (n 53) 2022: -0.085 (n 58) 2023: -0.197 (n 69)
+    quintile of P50/price (1 = lowest): mean return | less the mean of the year:  Q1 +26.1% | -7.7% (n 74)  Q2 +36.8% | +2.3% (n 74)  Q3 +42.5% | +9.2% (n 77)  Q4 +26.1% | -8.4% (n 74)  Q5 +38.0% | +4.2% (n 74)
+    Q5 - Q1 return: mean over 7 years +15.8%, standard error 9.1% (t 1.7)
+  size >100B
+    rank correlation of P50/price with the 3-year return: pooled +0.161 (n 165); mean over 5 years (each with 20 or more) +0.045, standard error 0.091 (t 0.5)
+    each year: 2019: +0.338 (n 22) 2020: +0.075 (n 25) 2021: +0.058 (n 22) 2022: -0.019 (n 28) 2023: -0.226 (n 30)
+    quintile of P50/price (1 = lowest): mean return | less the mean of the year:  Q1 +37.8% | -16.3% (n 32)  Q2 +53.6% | -1.1% (n 33)  Q3 +50.1% | +0.5% (n 35)  Q4 +28.2% | -26.5% (n 33)  Q5 +98.4% | +44.3% (n 32)
+    Q5 - Q1 return: mean over 5 years +48.2%, standard error 12.7% (t 3.8)
+
+3-YEAR RETURN, WITH DIVIDENDS (estimate)
+  all sizes
+    rank correlation of P50/price with the 3-year return: pooled +0.161 (n 4416); mean over 7 years (each with 20 or more) +0.139, standard error 0.046 (t 3.0)
+    each year: 2017: -0.014 (n 507) 2018: +0.059 (n 526) 2019: +0.102 (n 626) 2020: +0.305 (n 656) 2021: +0.289 (n 674) 2022: +0.170 (n 703) 2023: +0.059 (n 710)
+    quintile of P50/price (1 = lowest): mean return | less the mean of the year:  Q1 +130.8% | +49.2% (n 882)  Q2 +50.0% | -31.6% (n 881)  Q3 +54.1% | -27.3% (n 890)  Q4 +63.5% | -18.1% (n 881)  Q5 +109.6% | +28.0% (n 882)
+    Q5 - Q1 return: mean over 7 years -22.0%, standard error 32.3% (t -0.7)
+
+LIMITS
+  - The price files are adjusted for splits, not for dividends: the returns are price returns. The lines "with dividends" add
+    the dividend yield of the fiscal year (dividends_paid / market value on the date of the model) for each year of the horizon.
+  - Survivorship: the companies are those of the cache now (mostly the S&P 500 of 2026). A company that failed or was bought
+    is not in the test. The firms that fell out of the index had low later returns; if the model ranked them high (cheap), the
+    test without them shows a better ranking than the real one; if it ranked them low, a worse one.
+  - The mapping takes the latest filing of each year: a restatement after T enters the data of T.
+  - The parameter table was estimated on all years (also the years after T).
+  - The 3-year returns of the years in sequence overlap: the observations of near years are not independent.

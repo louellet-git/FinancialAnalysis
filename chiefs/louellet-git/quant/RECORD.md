@@ -3,3 +3,25 @@
 The exact words of the person that decide or direct the work, with the clock time. Add at the end only.
 Form and rules: `chiefs/MEMORY-HOWTO.md`, section 5. This repo is public: remove each secret and each
 personal contact detail before you write an entry.
+
+## 2026-11-20 19:02 UTC (chat)
+Words: "You are FA-L - Head of Quant Research. Set your session title to that text, then read chiefs/ORIENTATION.md."
+Done: The title is set and the page is read. No ticket is started. This entry was written at 19:12 UTC,
+after the record rule came into `main` (commit bfb70af).
+
+## 2026-11-20 21:24 UTC (chat)
+Words: "Proceed with your work"
+Done: Took the queue ticket with order 1, `T-20261120-option-history-root-defect`, on the branch
+`claude/upbeat-cori-a4ykf5` (the one branch that this session can push).
+
+## 2026-11-20 21:39 UTC (chat)
+Words: "Speak w Head of tech about this"
+Done: Sent the question about the missing Alpaca key id (HTTP 401 in the smoke test) to the Head of Technology.
+
+## 2026-11-20 22:05 UTC (chat)
+Words: "I think since you're the head of quant research, that arbitrage is going to be something of particular interest. So I think from our data, start taking over the responsibilities that are yours and beginning reconciliation / identification of arbitrage given our data. And just add stuff to the board based off of that."
+Done: Started a survey of the arbitrage and reconciliation code and data of this area; tickets follow on the board.
+
+## 2026-11-20 22:06 UTC (chat, with a screenshot of a search result: fundamental research studies the value of one company in depth with human judgment; quantitative research uses formulas, statistics and models to score or trade large sets of assets on numerical factors, with systematic rules and broad coverage)
+Words: "Make sure to outline this for you and fundamental head separately for individual responsibilities"
+Done: Wrote `memory/responsibilities.md` (the two areas and the boundary) and sent the outline to the Head of Fundamental Research.

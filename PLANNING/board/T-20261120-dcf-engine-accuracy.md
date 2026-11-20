@@ -2,7 +2,7 @@
 id: T-20261120-dcf-engine-accuracy
 title: Measure the weak points of the stochastic DCF engine and correct them one at a time
 area: engine
-status: in-progress
+status: review
 owner: louellet-git
 head: fundamental
 order: 1.3
@@ -45,9 +45,15 @@ Rule: no part is chosen or tuned with the market price (`docs/QUALITY-STANDARDS.
 Development half and scoring half: parity of the FNV-1a hash of the ticker (`fa dcf pit --half 0|1`).
 - **A, accepted (default on):** `last_floor = 0`: a base-year organic growth below 0% enters the company mean and
   the first step as 0% (record A-003). Decline class, scoring half, revenue P50 error T+1 / T+2 / T+3: +2.0 / +7.8 /
-  +11.8% to +0.0 / +5.1 / +7.4%; `--cut 2015`: +3.1 / +12.7 / +17.9% to +1.2 / +8.5 / +13.6%. All company-years:
+  +11.8% to +0.0 / +5.1 / +7.4%; `--cut 2015`: +3.1 / +12.7 / +17.9% to +1.2 / +8.5 / +13.6%. All company-years (full panel):
   -0.4 / +0.7 / +1.6% to -0.7 / +0.1 / +1.0%. Files: `analysis/priors/auto_pit_floor_{before,after}_2026-11-20.txt`.
-  A recovery term is refused: the rest of the error is mostly the base years 2019 and 2020 (one episode).
+  A recovery term is refused: the rest of the error is in a few base years with a common shock (2018 to 2021; A-003, #286).
+  The numbers above were on the defaults before pull request 77 (`long_run` off, `acq_w` off). On the merged defaults
+  (`long_run = 0.040`, `acq_w`, `acq_fade`; seed 7, 2,000 paths, full files `analysis/priors/auto_pit_floor_{before,after}_2026-11-20.txt`,
+  before = `--rules last_floor=-1`): decline class scoring half +2.0 / +7.8 / +11.8% to +0.0 / +5.1 / +7.4%; `--cut 2015`
+  +3.1 / +12.7 / +17.9% to +1.2 / +8.6 / +13.7%; all company-years, full panel -0.4 / +0.7 / +1.7% to -0.7 / +0.1 / +1.0%.
+  Screen of `sp500.txt` (`--as-of 2026-11-19`), median P50 / price: 0.4745 floor off (as main), 0.4770 floor on.
+  On the merged defaults the free cash flow bands of a stable margin are at 83.0 / 83.4 / 83.6% (scoring half): B has no case now.
 - **B, not accepted (option only, `margin_sigma_nu`):** the band of a stable margin is too wide in sample (95%), but
   out of sample (`--cut 2015`) the bands are already at or below the target (82.6 / 80.8 / 79.1%), and a narrower
   band makes the size rows 1-10B and 30-100B worse by more than 2 points. Examine again with a table made from a
@@ -57,3 +63,7 @@ Development half and scoring half: parity of the FNV-1a hash of the ticker (`fa 
   tickers, P99 8.97; the top 1% of paths hold 58% of the mean of EXE). No default changed.
 Open: the gate (model-validator, code-reviewer); merge after `T-20261120-dcf-conventions-decision`.
 Candidate parts 1, 2, 4 and 5 of the list above are not started.
+
+**Gate, 2026-11-20.** Head of Quality and Risk, review cycle 2 on commit c799006: PASS-WITH-NOTES
+(`model-validator` PASS-WITH-NOTES, `code-reviewer` PASS-WITH-NOTES). The seven notes are done in the merge
+commit with `main` (the conventions change). Pull request open.

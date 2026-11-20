@@ -23,6 +23,14 @@ Half 0 (2,834 company-years), `fa dcf pit --half 0 --rules last_floor=X`. Median
 | Phi = 0 for the growth (full cache; off: +11.3%) | | +9.8% | It fixes T+1 only (T+2: +6.1%). |
 | A recovery term estimated on the panel | | | The gaps are in a few base years with a common shock (table below). A term estimated on them fits those years. It needs a decision of the owner. |
 
+The table above and the numbers of "Effect" below are on the defaults before pull request 77 (`long_run` off, `acq_w` off).
+On the merged defaults (`long_run = 0.040`, `acq_w`, `acq_fade`; `fa dcf pit`, seed 7, 2,000 paths) the numbers are the
+same to 0.1 point for the decline class: half 0 floor 0 -> T+3 decline +6.5%, off +10.9%; half 1 +0.0 / +5.1 / +7.4% against
++2.0 / +7.8 / +11.8%; `--cut 2015` +1.2 / +8.6 / +13.7% against +3.1 / +12.7 / +17.9%. All company-years, error T+1 / T+2 / T+3:
+half 0 -0.7 / +0.2 / +0.7% off, -1.0 / -0.4 / -0.0% on (the floor makes T+1 slightly worse); full panel -0.4 / +0.7 / +1.7% off,
+-0.7 / +0.1 / +1.0% on. Files (merged defaults, full panel, in sample): `analysis/priors/auto_pit_floor_before_2026-11-20.txt`
+(`--rules last_floor=-1`) and `auto_pit_floor_after_2026-11-20.txt` (default).
+
 ## Why this choice
 The next year after a decline year is not a decline. In the full panel (the scoring half too; the value 0 is not
 fitted) the median growth of T+1 is +2.7% (decline 0 to 5%), +3.2%, +5.9% and +7.1% (decline above 20%). A negative
