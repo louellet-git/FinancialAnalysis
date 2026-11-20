@@ -151,6 +151,17 @@ fn auto_inner(repo: &Path, args: &[String]) -> R<u8> {
     if o.positional.len() > 1 {
         return e(format!("auto takes one ticker, got {}", o.positional.len()));
     }
+    // One line when the cached data that the model reads is older than its maximum age (not for a past date or another cache).
+    if o.get("--as-of").is_none() && cache_dir(repo, &o) == repo.join("data").join("raw") {
+        use crate::sync::dataset::DataSet;
+        let mut sets = vec![DataSet::Sec, DataSet::Estimates];
+        if o.get("--price").is_none() {
+            sets.push(DataSet::Prices);
+        }
+        if let Some(w) = crate::sync::old_data_warning(repo, &ticker, &sets) {
+            eprintln!("fa: {w}");
+        }
+    }
     let cache = cache_dir(repo, &o);
     let (table, fade) = load_table(&table_path(repo, &o))?;
     let (as_of, as_of_day) = as_of_of(&o)?;

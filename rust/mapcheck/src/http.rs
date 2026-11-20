@@ -11,6 +11,9 @@ use std::time::{Duration, Instant};
 /// `SEC_USER_AGENT="FinancialAnalysis your-name your-contact"`.
 pub const SEC_USER_AGENT_ENV: &str = "SEC_USER_AGENT";
 
+/// The time limit of one request when the caller gives none.
+pub const DEFAULT_TIMEOUT_SECONDS: u64 = 60;
+
 pub struct Client {
     agent: ureq::Agent,
     user_agent: String,
@@ -37,22 +40,27 @@ impl std::fmt::Display for HttpError {
 
 impl Client {
     pub fn new(user_agent: &str, delay_seconds: f64) -> Client {
-        Client::build(user_agent, delay_seconds, None)
+        Client::build(user_agent, delay_seconds, None, DEFAULT_TIMEOUT_SECONDS)
+    }
+
+    /// The same as `new`, with the time limit of one request (the whole request, in seconds).
+    pub fn with_timeout(user_agent: &str, delay_seconds: f64, timeout_seconds: u64) -> Client {
+        Client::build(user_agent, delay_seconds, None, timeout_seconds.max(1))
     }
 
     /// A client for a web form that needs a session. It keeps the cookies, sends
     /// them again, and does not follow redirects (the caller reads each step).
     pub fn session(user_agent: &str, delay_seconds: f64) -> Client {
-        let mut client = Client::build(user_agent, delay_seconds, Some(0));
+        let mut client = Client::build(user_agent, delay_seconds, Some(0), DEFAULT_TIMEOUT_SECONDS);
         client.cookies = Some(Vec::new());
         client
     }
 
-    fn build(user_agent: &str, delay_seconds: f64, redirects: Option<u32>) -> Client {
+    fn build(user_agent: &str, delay_seconds: f64, redirects: Option<u32>, timeout_seconds: u64) -> Client {
         // `http_status_as_error(false)`: the code reads the status itself (a 3xx answer
         // is a normal step in a form session).
         let mut config = ureq::Agent::config_builder()
-            .timeout_global(Some(Duration::from_secs(60)))
+            .timeout_global(Some(Duration::from_secs(timeout_seconds)))
             .http_status_as_error(false);
         // Version 2 followed 5 redirects; keep that rule.
         config = config.max_redirects(redirects.unwrap_or(5));

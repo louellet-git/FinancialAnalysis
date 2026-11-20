@@ -309,6 +309,9 @@ fn estimates_show(repo: &Path, rest: &[String]) -> Result<i32, String> {
         Some(v) => Some((v.parse::<f64>().map_err(|_| format!("bad --price '{v}'"))?, "given by --price".to_string())),
         None => price_cache::last_close(&cache, t).map(|l| (l.close, format!("{}, {}", l.date, l.source))),
     };
+    if let Some(w) = crate::sync::old_data_warning(repo, t, &[crate::sync::dataset::DataSet::Estimates, crate::sync::dataset::DataSet::Prices]) {
+        eprintln!("fa: {w}");
+    }
     let today = today_iso();
     let surprises = estimates_cache::load_surprises(&cache, t).map(|f| f.rows).unwrap_or_default();
     let next = earnings_dates::resolve_next(&cache, t, &today);
@@ -377,28 +380,18 @@ fn earnings_calendar(repo: &Path, rest: &[String]) -> Result<i32, String> {
     let through = covered.last().cloned().unwrap_or_else(|| from.clone());
     println!("{:<8}{:<12}{:<14}{:<9}{:>10}{:>6}  source", "ticker", "next date", "time", "quarter", "EPS fcst", "ests");
     let (mut found, mut estimated, mut none) = (0, 0, Vec::new());
-    for t in &p.tickers {
-        let hit = next.get(&nasdaq_est::symbol(t));
-        let value = match hit {
-            Some((d, r)) => {
+    for n in earnings_dates::apply_calendar(&cache, &p.tickers, &covered, &from, &today) {
+        let t = &n.ticker;
+        match (&n.calendar, &n.value) {
+            (Some((d, r)), _) => {
                 found += 1;
                 println!("{t:<8}{d:<12}{:<14}{:<9}{:>10}{:>6}  calendar", r.time, r.fiscal_quarter, fmt(r.eps_forecast, 2), fmt(r.estimates, 0));
-                Some(earnings_dates::next_date_of(d, r))
             }
-            None => match earnings_dates::estimate_next(&earnings_dates::known_past_dates(&cache, t), &today) {
-                Some(e) => {
-                    estimated += 1;
-                    println!("{t:<8}{:<12}{:<14}{:<9}{:>10}{:>6}  estimate (a year ago + 364 days)", e.date, "-", "-", "-", "-");
-                    Some(e)
-                }
-                None => {
-                    none.push(t.clone());
-                    None
-                }
-            },
-        };
-        if !covered.is_empty() {
-            let _ = earnings_dates::set_next(&cache, t, &today, value, &through);
+            (None, Some(e)) => {
+                estimated += 1;
+                println!("{t:<8}{:<12}{:<14}{:<9}{:>10}{:>6}  estimate (a year ago + 364 days)", e.date, "-", "-", "-", "-");
+            }
+            (None, None) => none.push(t.clone()),
         }
     }
     println!("{found} of {} ticker(s) have a date in the calendar window to {through}; {estimated} more have an estimate from the past dates; {} have none{}", p.tickers.len(), none.len(), if none.is_empty() { String::new() } else { format!(": {}", none.iter().take(30).cloned().collect::<Vec<_>>().join(" ")) });

@@ -95,8 +95,8 @@ Do not use a first pass alone for a trade.
 ## Commands
 
 ```bash
-cargo test --manifest-path rust/mapcheck/Cargo.toml   # 90 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked   # 498 Rust tests (480 + 17 + 1), no network
+cargo test --manifest-path rust/mapcheck/Cargo.toml   # 91 Rust tests, no network
+cargo test --manifest-path rust/Cargo.toml --locked   # 552 Rust tests (534 + 17 + 1), no network
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
 rust/mapcheck/target/release/mapcheck fetch --submissions IBM   # SEC 8-K item 2.02 list into data/raw/IBM/sec_8k_earnings.json
 rust/target/release/fa estimates get IBM; rust/target/release/fa estimates show IBM   # consensus, targets, surprises (Nasdaq site, no key)
@@ -116,6 +116,8 @@ rust/target/release/fa dcf scenarios IBM      # classic engine, bear/base/bull (
 rust/target/release/fa backtest IBM           # point-in-time vintage backtest of revenue and FCF
 rust/target/release/fa report IBM             # one-page HTML report: data/processed/IBM_dcf.html (plotly.js from the CDN)
 rust/target/release/fa rates                  # Treasury curves, SOFR, EFFR, inflation (also: fa bonds)
+rust/target/release/fa sync --status IBM      # what is old, for each data set (no request); also: fa sync --dry-run
+rust/target/release/fa sync IBM MSFT          # bring the old data sets up to date (one queue for each host; --only, --skip, --force, --max-minutes)
 rust/target/release/fa trade fetch            # option bots: download the bars (Yahoo) into the cache
 rust/target/release/fa trade backtest         # option bots, leaderboard
 rust/target/release/fa trade paper            # option bots: one paper-trade step (live Cboe chain)

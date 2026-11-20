@@ -20,14 +20,46 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`.
 ```bash
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program that makes the standard variables (necessary)
 cargo build --release --manifest-path rust/Cargo.toml            # the `fa` program
-cargo test --manifest-path rust/mapcheck/Cargo.toml    # 90 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked    # 498 Rust tests (480 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research)
+cargo test --manifest-path rust/mapcheck/Cargo.toml    # 91 Rust tests, no network
+cargo test --manifest-path rust/Cargo.toml --locked    # 552 Rust tests (534 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research, data sync)
 ```
 
 No Python test remains. The only Python code that remains is the legacy SEC client with its
 callers; see "Standard input variables".
 
 Run all commands from the repo root.
+
+## First run on your computer
+
+Do these steps one time on a new computer. The commands run from the root of the repo.
+
+1. Build the two programs (the first build takes some minutes):
+
+   ```bash
+   cargo build --release --manifest-path rust/mapcheck/Cargo.toml
+   cargo build --release --manifest-path rust/Cargo.toml
+   ```
+
+2. Copy `.env.example` to `.env` (the file is not in git; do not commit it). The keys in it are optional: with no key, the sources with no key are used. `fa sync` prints which key would add which source.
+
+   - bash: `cp .env.example .env`
+   - PowerShell: `Copy-Item .env.example .env`
+
+3. Set `SEC_USER_AGENT` (a name and a contact, for example `FinancialAnalysis your-name your-email`). The SEC asks for it in each request. It is an environment variable; `fa sync` does not read it from `.env`. Without it, `fa sync` skips the SEC data sets and says so.
+
+   - bash: `export SEC_USER_AGENT="FinancialAnalysis your-name your-email"`
+   - PowerShell: `$env:SEC_USER_AGENT = "FinancialAnalysis your-name your-email"`
+
+4. Look at what is old (no network request), then bring the data up to date. The sync runs on request only.
+
+   - bash: `rust/target/release/fa sync --status IBM MSFT` then `rust/target/release/fa sync IBM MSFT`
+   - PowerShell: `.\rust\target\release\fa.exe sync --status IBM MSFT` then `.\rust\target\release\fa.exe sync IBM MSFT`
+
+   Use `fa sync --dry-run` to see the requests and the estimated time first. Use `--tickers-file rust/mapcheck/universe/sp500.txt` for the S&P 500 (about 500 requests to Nasdaq: some tens of minutes; add `--max-minutes N` to limit a run).
+   Ctrl+C stops the run with all files in a correct state. Run the command again to continue with what is old.
+
+5. A second run on the same day makes no request for a data set that is current. The summary has one line for each data set and one line for each host, the list of what stays old, and the command to run again.
+   A host that refuses the program (HTTP 429 or HTTP 403) or does not answer is stopped for that run; the other hosts go on.
 
 ## From a ticker to a decision
 
@@ -106,6 +138,8 @@ fa estimates get IBM MSFT [--tickers-file F] [--endpoints forecast,surprise,targ
 fa estimates show IBM [--price P]                 # consensus by period, revisions, forward P/E, target against the last close, next report date
 fa earnings calendar [IBM...] [--tickers-file F] [--from D] [--days 60]   # Nasdaq earnings calendar scan, next report date of each ticker (network)
 fa earnings dates IBM JNJ [--tolerance 1]         # past report dates against the SEC 8-K list (mapcheck fetch --submissions TICKER)
+fa sync [IBM MSFT...] [--tickers-file F] [--only A,B] [--skip A,B] [--force] [--dry-run] [--max-minutes N]   # bring all old data sets up to date, one queue for each host (network)
+fa sync --status [IBM...]                         # one line for each data set: current, old, no data; no request
 fa verdict IBM [--price 228.53] [--simulations 10000] [--seed 7] [--rf-date today] [--rf-base-date 2026-07-16] [--rating A-]
 fa rates [snapshot|yield|curve|history|nyfed|inflation|fred|check] [--date D]   # JSON
 fa bonds [snapshot|spread|yield|over10y|moodys|hqm|check] [--rating A-] [--date D]   # JSON

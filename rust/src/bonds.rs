@@ -51,6 +51,26 @@ const DAILY_MAX_AGE: i64 = 7;
 /// Days: a monthly average has the date of the 1st and is published after the month end.
 const MONTHLY_MAX_AGE: i64 = 70;
 
+/// The FRED series that the bond functions cache in `data/raw/bonds/fred_<ID>.csv`, in a stable order: the ICE
+/// option-adjusted spreads and yields of each rating, Moody's Aaa and Baa yields and their spreads over the 10-year
+/// Treasury, and the Treasury HQM corporate spot rates.
+pub fn cached_series_ids() -> Vec<String> {
+    let mut ids: Vec<String> = Vec::new();
+    for (_, id) in ICE_OAS {
+        ids.push(id.to_string());
+        ids.push(format!("{id}EY"));
+    }
+    ids.extend(MOODYS.iter().map(|(_, id)| id.to_string()));
+    ids.extend(MOODYS_SPREAD_10Y.iter().map(|(_, id)| id.to_string()));
+    ids.extend(HQM_MATURITIES.iter().map(|n| format!("HQMCB{n}YR")));
+    ids
+}
+
+/// The cache file of one FRED series of the bond functions.
+pub fn cached_series_path(cache: &std::path::Path, id: &str) -> std::path::PathBuf {
+    cache.join("bonds").join(format!("fred_{id}.csv"))
+}
+
 fn ice_oas_id(bucket: &str) -> &'static str {
     ICE_OAS.iter().find(|(b, _)| *b == bucket).map(|(_, id)| *id).unwrap_or("")
 }
@@ -121,7 +141,7 @@ impl Rates {
         if let Some(s) = self.fred_memo.get(series_id) {
             return Ok(s.clone());
         }
-        let path = self.cache.join("bonds").join(format!("fred_{series_id}.csv"));
+        let path = cached_series_path(&self.cache, series_id);
         let read = |p: &std::path::Path| std::fs::read_to_string(p).map_err(|e| format!("{}: {e}", p.display()));
         let parsed = if path.exists() && !refresh && is_fresh_file(&path, 6.0) {
             parse_fred_csv(&read(&path)?, true)?

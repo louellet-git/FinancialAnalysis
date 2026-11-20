@@ -7,7 +7,6 @@
 
 use crate::CheckResult;
 use mapcheck::dates;
-use mapcheck::http::Client;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -232,25 +231,25 @@ fn is_fresh(path: &Path) -> bool {
         .is_some_and(|age| age < MAX_AGE)
 }
 
-fn client() -> Client {
-    Client::new("FinancialAnalysis fa (personal research)", 0.2)
-}
-
 /// The dataset from the cache, or from the Board when the cache is old. A new file goes
 /// to the cache only after it parses. If the download fails and a cache exists, the old
 /// file is used and a warning goes to stderr.
 pub fn load(repo: &Path) -> Result<Dataset> {
+    load_with(repo, false)
+}
+
+/// The same as `load`; with `force` the file is asked again even when the cache is younger than 12 hours (`fa sync`
+/// decides itself that the file is old).
+pub fn load_with(repo: &Path, force: bool) -> Result<Dataset> {
     let path = cache_path(repo);
-    if is_fresh(&path) {
+    if !force && is_fresh(&path) {
         if let Ok(text) = std::fs::read_to_string(&path) {
             if let Ok(ds) = parse_gsw(&text) {
                 return Ok(ds);
             }
         }
     }
-    let fetched = client()
-        .get(GSW_URL)
-        .map_err(|e| e.to_string())
+    let fetched = crate::hostnet::get(GSW_URL, &[], 0.2)
         .and_then(|b| String::from_utf8(b).map_err(|_| "GSW file is not UTF-8 text".to_string()))
         .and_then(|text| parse_gsw(&text).map(|ds| (text, ds)));
     match fetched {
@@ -356,11 +355,10 @@ pub fn check(repo: &Path, days: u32) -> Result<Vec<CheckResult>> {
     let ds = load(repo)?;
     let last = ds.rows[ds.rows.len() - 1].day;
     let from = last - days as i64;
-    let mut http = client();
     let mut table: BTreeMap<String, BTreeMap<i64, f64>> = BTreeMap::new();
     let year_of = |day: i64| dates::format(day)[..4].to_string();
     for year in [year_of(from), year_of(last)].iter().collect::<std::collections::BTreeSet<_>>() {
-        let bytes = http.get(&TREASURY_CSV.replace("{year}", year)).map_err(|e| e.to_string())?;
+        let bytes = crate::hostnet::get(&TREASURY_CSV.replace("{year}", year), &[], 0.2)?;
         for (column, values) in parse_treasury_csv(&String::from_utf8_lossy(&bytes))? {
             table.entry(column).or_default().extend(values);
         }

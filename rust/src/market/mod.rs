@@ -45,7 +45,6 @@ use serde_json::Value;
 use std::fmt;
 use std::marker::PhantomData;
 use std::path::Path;
-use std::sync::{Mutex, OnceLock};
 
 /// The name that outside sites see (the same as `fa futures`).
 pub use crate::futures::USER_AGENT;
@@ -53,19 +52,15 @@ pub use crate::futures::USER_AGENT;
 /// Seconds between two requests to outside sites.
 pub const REQUEST_PAUSE_SECONDS: f64 = 2.0;
 
-/// One GET request to an outside site. One client is shared by all sources of this module, so
-/// two requests are at least 2 seconds apart, whatever the site.
+/// One GET request to an outside site. The request goes through the queue of its host (`hostnet`): two requests
+/// to one host are at least 2 seconds apart and never run at the same time; two hosts do not wait for each other.
 pub fn download(url: &str) -> Result<Vec<u8>, String> {
-    static CLIENT: OnceLock<Mutex<mapcheck::http::Client>> = OnceLock::new();
-    let client = CLIENT.get_or_init(|| Mutex::new(mapcheck::http::Client::new(USER_AGENT, REQUEST_PAUSE_SECONDS)));
-    client.lock().map_err(|_| "HTTP client lock failed".to_string())?.get(url).map_err(|e| e.to_string())
+    crate::hostnet::get(url, &[], REQUEST_PAUSE_SECONDS)
 }
 
 /// The same as `download`, with more request headers (the Tiingo key is a header). The error text has no header value.
 pub fn download_with_headers(url: &str, headers: &[(&str, &str)]) -> Result<Vec<u8>, String> {
-    static CLIENT: OnceLock<Mutex<mapcheck::http::Client>> = OnceLock::new();
-    let client = CLIENT.get_or_init(|| Mutex::new(mapcheck::http::Client::new(USER_AGENT, REQUEST_PAUSE_SECONDS)));
-    client.lock().map_err(|_| "HTTP client lock failed".to_string())?.get_with_headers(url, headers).map_err(|e| e.to_string())
+    crate::hostnet::get(url, headers, REQUEST_PAUSE_SECONDS)
 }
 
 /// Python `round(x, 6)`: the exact decimal value of the number, rounded to 6 places.

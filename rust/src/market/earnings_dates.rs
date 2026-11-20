@@ -181,6 +181,43 @@ pub fn next_from_cache(cache: &Path, dates: &[String]) -> std::collections::Hash
     out
 }
 
+/// The next report date of one ticker after a scan.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TickerNext {
+    pub ticker: String,
+    /// The calendar day and row, when the calendar has the ticker.
+    pub calendar: Option<(String, CalendarRow)>,
+    /// The date that was written: the calendar date, else the estimate from the past dates, else `None`.
+    pub value: Option<NextDate>,
+    /// `value` is an estimate (the calendar has no date).
+    pub estimated: bool,
+}
+
+/// After a scan: find the next date of each ticker in the cached calendar days of `covered`, else estimate it from the
+/// past dates, and write it into the file of the ticker (`earnings_dates.json`) when the scan covered at least one day.
+/// `fa earnings calendar` and `fa sync` both call this function.
+pub fn apply_calendar(cache: &Path, tickers: &[String], covered: &[String], from: &str, today: &str) -> Vec<TickerNext> {
+    let next = next_from_cache(cache, covered);
+    let through = covered.last().cloned().unwrap_or_else(|| from.to_string());
+    let mut out = Vec::new();
+    for t in tickers {
+        let hit = next.get(&nasdaq_est::symbol(t)).cloned();
+        let (value, estimated) = match &hit {
+            Some((d, r)) => (Some(next_date_of(d, r)), false),
+            None => {
+                let e = estimate_next(&known_past_dates(cache, t), today);
+                let estimated = e.is_some();
+                (e, estimated)
+            }
+        };
+        if !covered.is_empty() {
+            let _ = set_next(cache, t, today, value.clone(), &through);
+        }
+        out.push(TickerNext { ticker: t.clone(), calendar: hit, value, estimated });
+    }
+    out
+}
+
 pub fn next_date_of(date: &str, r: &CalendarRow) -> NextDate {
     NextDate { date: date.to_string(), time: r.time.clone(), fiscal_quarter: r.fiscal_quarter.clone(), eps_forecast: r.eps_forecast, estimates: r.estimates, source: "nasdaq calendar".into() }
 }

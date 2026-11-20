@@ -148,6 +148,9 @@ pub struct Options {
     pub forced: bool,
     /// The wait after HTTP 429, before the one new try.
     pub retry_wait: Duration,
+    /// Ask the source again, although the cache says that it was updated today (`fa sync --force`). The rules of the
+    /// cache source and of no mixing stay.
+    pub again: bool,
 }
 
 /// What the run knows: the sources that answered HTTP 429 twice.
@@ -246,7 +249,7 @@ pub fn update_ticker(cache: &Path, ticker: &str, sources: &[Box<dyn PriceSource>
 /// `update_ticker` for sources that are not boxed (the same rules).
 pub fn update_with(cache: &Path, ticker: &str, mut order: Vec<&dyn PriceSource>, opt: &Options, run: &mut Run) -> Status {
     let existing = load_existing(cache, ticker);
-    if !opt.full && !opt.forced {
+    if !opt.full && !opt.forced && !opt.again {
         if let Some((_, m)) = &existing {
             if m.updated == opt.today {
                 return Status::Current;
@@ -340,7 +343,7 @@ pub fn update_many(cache: &Path, tickers: &[String], src: &dyn PriceSource, opt:
     let mut todo: Vec<(usize, Option<String>)> = Vec::new(); // (index, overlap start; None = full history)
     for (i, t) in tickers.iter().enumerate() {
         match load_existing(cache, t) {
-            Some((_, m)) if !opt.full && !opt.forced && m.updated == opt.today => on_status(i, &Status::Current),
+            Some((_, m)) if !opt.full && !opt.forced && !opt.again && m.updated == opt.today => on_status(i, &Status::Current),
             Some((rows, m)) if !opt.full && m.source == src.name() && m.adjusted == adjusted => {
                 let from = rows.last().and_then(|p| add_days(&p.date, -OVERLAP_DAYS));
                 todo.push((i, from));
@@ -422,7 +425,7 @@ mod tests {
     }
 
     fn opt(today: &str) -> Options {
-        Options { today: today.into(), full: false, forced: false, retry_wait: Duration::ZERO }
+        Options { today: today.into(), full: false, forced: false, retry_wait: Duration::ZERO, again: false }
     }
 
     fn dir(name: &str) -> PathBuf {

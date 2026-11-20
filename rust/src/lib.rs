@@ -37,7 +37,9 @@ pub mod ratemodels;
 pub mod trading;
 pub mod analyze;
 pub mod company;
+pub mod hostnet;
 pub mod market;
+pub mod sync;
 pub mod report;
 
 use serde::de::DeserializeOwned;

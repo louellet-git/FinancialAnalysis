@@ -78,8 +78,13 @@ fn text(bytes: Vec<u8>) -> String {
     bytes.iter().map(|b| *b as char).collect()
 }
 
-/// Download the file for one date ("YYYY-MM-DD") from TreasuryDirect.
+/// Download the file for one date ("YYYY-MM-DD") from TreasuryDirect. The steps of the session are one turn in the
+/// queue of the host (`hostnet`), so no other request goes to TreasuryDirect between two steps.
 pub fn download(date: &str) -> Result<String, String> {
+    crate::hostnet::paced("treasurydirect", 0.0, BASE, |_| download_session(date))
+}
+
+fn download_session(date: &str) -> Result<String, String> {
     let mut client = Client::session(USER_AGENT, 1.0);
     let e = |x: mapcheck::http::HttpError| x.to_string();
     let form = text(client.get(&format!("{BASE}/selectSecurityPriceDate")).map_err(e)?);
