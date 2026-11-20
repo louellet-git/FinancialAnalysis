@@ -53,11 +53,11 @@ orchestrator decides, and writes the decision in the pull request.
 ## 4. Definition of done
 
 All kinds: the ticket is `in-progress` before the work; one branch from `origin/main`;
-a row in `PLANNING/token-ledger.md`; no `data/`, `.env` or secret in the commit.
+a row in the ledger of your own folder; no `data/`, `.env` or secret in the commit.
 
 | Kind | Done when |
 |---|---|
-| Code change | New logic has tests with fixed answers. Both suites pass. The real command ran. The IBM numbers are the same, or the change is the aim of the ticket. Documents that name counts or commands are right. |
+| Code change | New logic has tests with fixed answers. Both suites pass. The real command ran. The IBM numbers are the same, or the change is the aim of the ticket. Documents that name commands are right; no document names a test count. |
 | Data source | Terms read and noted. Honest client name. Fixture tests pass. One real run with a date. Row in `docs/DATA-SOURCES.md`. Traps in `docs/HIDDEN-ASSUMPTIONS.md`. |
 | Model change | The reason does not use the price. Fixed-answer tests pass. The IBM numbers are the same: $83.84 / $151.84 / $258.03 (`fa dcf drivers IBM`, seed 7). The model document and the assumption records are current. |
 | Investigation | One findings file (skill `investigation-report`). Each number was calculated again by the auditor. |

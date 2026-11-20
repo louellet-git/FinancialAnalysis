@@ -26,8 +26,8 @@ Run the checks locally first.
    (`CLAUDE.md`, "Smoke test").
 4. Reviewed numbers: `rust/target/release/fa dcf drivers IBM` (seed 7) gives
    $83.84 / $151.84 / $258.03. If a change moves them, the change must say why.
-5. Test counts in documents. `CLAUDE.md`, `README.md` and `docs/ARCHITECTURE.md` name the
-   counts. Update them in the same change, with the numbers of step 1.
+5. Documents name no test count (the command prints it). Do not add a count: each change
+   would edit the same line, and parallel branches would conflict.
 6. If the change touched platform code (`rust/src/sync/interrupt.rs`, paths, console
    code), compile for Windows when the target is installed:
    `cargo check --manifest-path rust/Cargo.toml --target x86_64-pc-windows-gnu`. If the
@@ -39,4 +39,4 @@ Run the checks locally first.
 ## Check
 - Both suites pass, with the counts written.
 - No new clippy warning in the new code.
-- The IBM numbers and the document counts are right.
+- The IBM numbers are right.

@@ -86,3 +86,7 @@ Done: after a ticket, report and take the next ticket of the queue with no wait,
 ## 2026-11-20 22:32 UTC (chat)
 Words: "Also, I need every team to have a team that scrutinizes the amount of tests that any given team has, not run all the time but every so often at the discretion of the head"
 Done: a test-audit mode in `.claude/agents/test-engineer.md`; one paragraph in `chiefs/ORIENTATION.md` (section 3): each head starts it from time to time; not a gate. Same line in the lean version of `chiefs`.
+
+## 2026-11-20 23:01 UTC (chat)
+Words: "Think about many heads from many users working, and consider that from a lean perspective to find a solution to this potential future issue. Token cheap, GitHub cost cheap, line of code cheap and time cheap,"
+Done: measured the files that today's merges touched most (CLAUDE.md 7, docs/ARCHITECTURE.md 6, README.md 5, PLANNING/token-ledger.md 4, docs/HIDDEN-ASSUMPTIONS.md 3). Removed the test counts from the documents; new traps are one file each in `docs/traps/`; the shared token ledger takes no new row; four rules in `chiefs/ORIENTATION.md` (section 2, "Many heads at the same time").

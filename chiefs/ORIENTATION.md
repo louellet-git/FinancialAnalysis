@@ -77,6 +77,18 @@ If a file is not in this table, the head whose work needs the change makes the c
 - The Head of Quality and Risk does not write model code or data code. Thus its verdict
   is independent.
 
+**Many heads at the same time.** Many heads of many persons change `main`. To keep the
+cost of conflicts low:
+
+- Do not write a number that each change makes old into a shared file (for example a test
+  count). Give the command that prints it.
+- A new entry of a shared list is a new file (a ticket in `PLANNING/board/`, a trap in
+  `docs/traps/`), not a line at the end of one long file.
+- Merge `origin/main` into your branch once, just before you ask for the review. Merge again
+  only when git shows a conflict.
+- If your change changes the output of a command of a different head (a default, a shared
+  function), say it in the title of the pull request and send that head one message.
+
 **One data store.** The data cache is not in this repo, and each session has its own
 machine. The data store is the repo `louellet-git/fa-data`: a copy of `data/raw` that each
 session gets with one command.
