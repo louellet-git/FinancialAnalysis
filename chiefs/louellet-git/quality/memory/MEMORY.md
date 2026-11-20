@@ -24,6 +24,7 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   1.5 GB) and link it as `data/raw` of the worktree. Agents read it and never write it.
 - The store has no SIC code in the 505 earnings list files (until the next `fa sync`), and no
   price file for CFR, DDS, ET, MOG-A, SUN. Tell the agents: these are not new findings.
+- Alpaca from a cloud session: dummy key variables give HTTP 401 (the proxy does not add the key id; 2026-11-20). A real Alpaca run needs the person or a key.
 - Write in each brief that the agent must not download many tickers (only the Head of Technology
   starts that). A gate request can ask for such a run; do not give it to an agent.
 
