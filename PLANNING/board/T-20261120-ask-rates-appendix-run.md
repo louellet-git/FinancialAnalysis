@@ -1,6 +1,6 @@
 ---
 id: T-20261120-ask-rates-appendix-run
-title: Run a rates calculation again, which the safety system stopped?
+title: Yes or no: run the stopped rates calculation once?
 area: ask
 status: backlog
 owner: louellet-git
@@ -9,19 +9,13 @@ head: owner
 order: 1
 branch:
 created: 2026-11-20
-acceptance: The person answers in the session that the ticket names.
+acceptance: The person answers yes or no in the session that the ticket names.
 ---
-**Question.** Do you want to allow one calculation that the safety system stopped two times?
+**Question.** Yes or no: may the Head of Quant Research run its stopped rates calculation once?
 
-**Why it matters.** The Head of Quant Research wants to run its bond-rate calculation again, to confirm
-the tables in its rates note. An independent auditor already checked those same tables, and they were
-correct. Little is lost if it does not run.
+**Why it matters.** The safety system stopped this calculation two times. It only confirms tables that an
+independent auditor already checked and found correct, so little is lost without it.
 
-**Choices.**
-- A. No: keep the stop. The audited tables are enough.
-- B. Yes: allow the run once.
+**Recommendation.** No.
 
-**Recommendation.** A (no).
-
-**How to answer.** In the session "FA-L - Head of Quant Research", say "A" or "B". For B, approve
-the prompt when it shows.
+**Answer in.** The session "FA-L - Head of Quant Research".

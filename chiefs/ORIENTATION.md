@@ -203,12 +203,13 @@ not in a chat.
    command or the question, the reason, and the refusal text. Do not get around a refusal.
 2. The Head of Technology filters: it answers what it can (a safer form, a fact, a rule that
    exists) and drops duplicates. It never runs a command that a different session was refused.
-3. What only the person can decide becomes one ticket: `area: ask`, `head: owner`. Write it in
-   clear, plain words, with no internal names that the person must look up. The form:
-   **Question** (one sentence), **Why it matters** (two or three sentences, with the cost if any),
-   **Choices** (A, B, C), **Recommendation**, **How to answer** (the session, and one letter).
-4. For each new batch of asks, the Head of Technology sends one push notification
-   (`PushNotification`): the number of asks and each question in plain words.
+3. What only the person can decide becomes one ticket: `area: ask`, `head: owner`. It is a
+   yes/no question in clear, plain words, with no internal names: **Question** (yes/no, one
+   sentence), **Why it matters** (two or three sentences, with the cost if any),
+   **Recommendation** (yes or no), and the session where the person answers.
+4. The session where the person answers sends the question to the phone of the person
+   (`PushNotification`, under 200 characters): "Yes or no: <question>? Recommended: <yes or no>."
+   For a question of a different head, the Head of Technology tells that head to send it.
 5. When the person answers, the head records the words in `RECORD.md`, does the work, and moves
    the ticket to `PLANNING/board/done/`.
 

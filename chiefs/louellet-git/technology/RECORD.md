@@ -118,3 +118,7 @@ Done: `chiefs/ORIENTATION.md`, section 5, "Requests for the person": a refused c
 ## 2026-11-20 23:51 UTC (chat)
 Words: "Also the question should be delivered in clear terms"
 Done: the ask form in `chiefs/ORIENTATION.md`, section 5 (Question, Why it matters, Choices, Recommendation, How to answer; plain words, no internal names); the three open asks written again in that form; the push names each question in plain words.
+
+## 2026-11-20 23:52 UTC (chat)
+Words: "I need the question as a yes/no from the sessions to my phone"
+Done: an ask is a yes/no question; the session where the person answers pushes it to the phone ("Yes or no: ...? Recommended: ..."). `chiefs/ORIENTATION.md`, section 5; the three open asks written again.
