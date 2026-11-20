@@ -5,7 +5,6 @@ person decided. Keep this file below 60 lines. Started 2026-11-20.
 ## Goal now and subsequent steps
 - Data store `louellet-git/fa-data`: complete on 2026-11-20 (prices of 999 tickers; SIC codes of 1,249). Its README has the
   update steps. The Nasdaq site has no prices for CFR, DDS, ET, MOG-A and SUN.
-- Done on 2026-11-20: SIC code (pull request 69, handed over), Yahoo 429 stop (pull request 73).
 - Next in the queue: `T-20261120-portfolio-backtest` (the engine; the research heads write the strategies),
   then the data request `T-20261120-store-arb-data` of the Head of Quant Research (FedInvest, bill rates first).
 - The person does the first run on the laptop with the keys (ticket `T-20261120-owner-first-run`).
