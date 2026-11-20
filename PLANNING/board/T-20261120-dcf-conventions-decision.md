@@ -2,7 +2,7 @@
 id: T-20261120-dcf-conventions-decision
 title: Decide the long-run growth and the acquisition charge of the automatic model
 area: engine
-status: in-progress
+status: review
 owner: louellet-git
 head: fundamental
 order: 1
@@ -56,3 +56,6 @@ $128.84 (old) and $140.71 (new), seed 7. Open, in this order:
 2. The gate: a request to the Head of Quality and Risk (model-validator, code-reviewer). That machine needs
    the same data.
 3. The pull request, after a pass.
+
+**State, 2026-11-20 21:45 UTC.** The full runs are done (records A-001 and A-002, section "Effect on the
+result"). The gate request went to the Head of Quality and Risk. The pull request opens after a pass.
