@@ -50,3 +50,19 @@ Done: `chiefs/ORIENTATION.md`: the person of a head is the GitHub login of its s
 ## 2026-11-20 21:29 UTC (chat)
 Words: "Btw, this reduction in billing usage is a serious improvement, good work." Then: "Make sure that the rules for billing that make it sustainable are abided by for all heads"
 Done: seven cost rules in `chiefs/ORIENTATION.md` (section 6), a short rule in `CLAUDE.md` for each session, one line in the skill `release-checks`. GitHub Actions cost: $1.19 on 2026-11-19, $0.16 on 2026-11-20, billed $0.
+
+## 2026-11-20 21:41 UTC (chat)
+Words: "There is a repo called the -chiefs that I have. [...] just extract what we have and paste it into there in a section called like a folder. Just make it like the lean version [...] direct anyone that spawns that to go grab that and use that as its version. Generalize it for different projects, but keep it lean"
+Done: `louellet-git/chiefs` has `lean/` (README, ORIENTATION, MEMORY) and a pointer at the top of its README (chiefs pull request 31).
+
+## 2026-11-20 21:41 UTC (chat)
+Words: "Dont take the rules from scan support chiefs on, remove them when you get the chance."
+Done: the Scan Support rules are not followed. The delete of the local copy `/home/user/chiefs` was refused by a safety check; the person can approve it. Do not open that folder as a working folder.
+
+## 2026-11-20 21:41 UTC (chat)
+Words: "Also, every time a compaction is done, automatically or requested, that is when dreaming occurs"
+Done: `chiefs/MEMORY-HOWTO.md` (section 4) and `chiefs/ORIENTATION.md` (section 8) start a short dream pass after each compaction; the same change in `lean/` of the `chiefs` repo.
+
+## 2026-11-20 21:42 UTC (chat)
+Words: "Maybe it should be beforehand?"
+Done: the dream pass comes before a compaction (context use above about 75% of the threshold, or the person says "dream" first); after a compaction only a short check.

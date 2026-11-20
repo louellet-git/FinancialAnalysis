@@ -34,6 +34,11 @@ person decided. Keep this file below 60 lines. Started 2026-11-20.
   store, the repo `louellet-git/fa-data`, that only this head writes. Push to it in parts of less than 40 MB.
 - 2026-11-20: "The fa-data won't be private, continue, and load all the data to it for now". Effect: the
   store is public and has prices and estimates too. Scan for keys before each push to it.
+- 2026-11-20: "Dont take the rules from scan support chiefs on". Effect: never open `/home/user/chiefs` (the
+  repo `louellet-git/chiefs`) as a working folder; its `.claude/CLAUDE.md` loads the Scan Support limits.
+  Change it only with git commands. The lean version is its folder `lean/`.
+- 2026-11-20: the dream pass comes BEFORE a compaction (context use above about 75% of the threshold in
+  `get_session`, or the person says "dream"); after it, only a short check (`chiefs/MEMORY-HOWTO.md`, section 4).
 
 ## Tested rules
 - The cloud machine can restart. A restart stops the background agents; the files and the worktrees

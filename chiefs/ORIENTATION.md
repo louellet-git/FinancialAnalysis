@@ -243,7 +243,10 @@ the memory of each head is for. You decide what is important and how to arrange 
    repo is public: no secret, no personal contact detail, no private words.
 5. If a note and the person disagree, the person is correct. Correct the note.
 6. Commit and push your memory with your work.
-7. When the person says "clean up memory" or "dream", do the dream pass. In the pass, or at any
+7. Do the dream pass BEFORE a compaction: when your context use is above about 75% of the
+   compaction threshold (`get_session`), and when the person says "dream" or "clean up
+   memory". After a compaction, only read the dashboard and correct what the summary
+   disagrees with (`chiefs/MEMORY-HOWTO.md`, section 4). In the pass, or at any
    other time, you can make the agents of your team a little better in the way that helps
    your goal (section 3). This is not mandatory.
 8. Add the token ledger row of each run to your `ledger.md`, not to
