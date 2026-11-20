@@ -532,6 +532,7 @@ fn the_coverage_counts_below_inside_and_above() {
         g_last: Some(0.1),
         margin_range: 0.02,
         has_jump: false,
+        acq_past: 0.0,
         rev_q: [[90.0, 100.0, 110.0]; HORIZON],
         rev_act: [actual; HORIZON],
         fcff_q: [[1.0, 2.0, 3.0]; HORIZON],
@@ -740,6 +741,72 @@ fn the_acquisition_charge_is_an_option_with_the_mean_ratio() {
     let on = build(&i, &table(), &[], &market(), &Rules { acq_charge: true, ..plain_rules() }, BuildOptions::default()).unwrap();
     assert!((draw_mean(&spec_of(&on).process["charge"].start) - 0.02).abs() < 1e-12);
     assert!(ev_at_means(&on) < ev_at_means(&off));
+}
+
+#[test]
+fn the_paired_acquisition_rule_charges_a_share_and_takes_out_the_rest_of_the_bought_growth() {
+    let mut i = inputs();
+    for y in i.years.iter_mut() {
+        y.acquisitions = Some(0.02 * y.revenue.unwrap());
+    }
+    let run = |r: Rules| build(&i, &table(), &[], &market(), &r, BuildOptions::default()).unwrap();
+    let off = run(plain_rules());
+    // f = 1: the charge is the mean ratio and the growth history stays as it is (the same as `acq_charge`)
+    let one = run(Rules { acq_f: Some(1.0), acq_mult: 2.0, ..plain_rules() });
+    assert!((one.summary.acq_ratio - 0.02).abs() < 1e-12);
+    assert!((one.summary.growth_company_mean - off.summary.growth_company_mean).abs() < 1e-12);
+    // f = 0.5, 2 dollars of revenue for each dollar: half the charge, and the growth of each year is lower by
+    // (1 - f) m acquisitions / revenue of the year before = 0.5 x 2 x 0.02 x 1.1 = 2.2 points
+    let half = run(Rules { acq_f: Some(0.5), acq_mult: 2.0, ..plain_rules() });
+    assert!((half.summary.acq_ratio - 0.01).abs() < 1e-12);
+    assert!(half.summary.growth_company_mean < off.summary.growth_company_mean);
+    assert!(half.summary.growth_start < off.summary.growth_start - 0.01);
+    // f = 0: organic growth only, no charge
+    let zero = run(Rules { acq_f: Some(0.0), acq_mult: 2.0, ..plain_rules() });
+    assert_eq!(zero.summary.acq_ratio, 0.0);
+    assert!(zero.summary.growth_start < half.summary.growth_start);
+    // off by default: the option changes nothing when it is not given
+    assert!(Rules::default().acq_f.is_none());
+    let r = parse_rules("acq_f=0.5,acq_mult=1.5").unwrap();
+    assert_eq!((r.acq_f, r.acq_mult), (Some(0.5), 1.5));
+}
+
+#[test]
+fn the_charge_can_follow_the_weight_of_the_growth_history() {
+    let mut i = inputs();
+    for y in i.years.iter_mut() {
+        y.acquisitions = Some(0.02 * y.revenue.unwrap());
+    }
+    let off = build(&i, &table(), &[], &market(), &plain_rules(), BuildOptions::default()).unwrap();
+    let on = build(&i, &table(), &[], &market(), &Rules { acq_w: true, ..plain_rules() }, BuildOptions::default()).unwrap();
+    // the weight of the history in the growth mean is printed in the rule text of the row "growth: company mean"
+    let rule = &on.rows.iter().find(|r| r.input == "growth: company mean").unwrap().rule;
+    let w: f64 = rule.split("= ").nth(2).unwrap().split(';').next().unwrap().trim().parse().unwrap();
+    assert!(w > 0.0 && w < 1.0, "{rule}");
+    assert!((on.summary.acq_ratio - 0.02 * w).abs() < 2e-5 /* w is printed with three decimals */, "{} {}", on.summary.acq_ratio, w);
+    // the growth history stays as it is
+    assert!((on.summary.growth_company_mean - off.summary.growth_company_mean).abs() < 1e-12);
+    assert!(parse_rules("acq_w=1").unwrap().acq_w && !Rules::default().acq_w);
+}
+
+#[test]
+fn one_long_run_growth_is_the_lower_of_the_yield_and_the_number() {
+    let i = inputs();
+    // the market has no curve: the 10-year zero yield is the default 4.2%
+    let tg = |r: Rules| {
+        let m = build(&i, &table(), &[], &market(), &r, BuildOptions::default()).unwrap();
+        let t = m.toml.split("[terminal]").nth(1).unwrap().to_string();
+        t.split("mean = ").nth(1).unwrap().split(',').next().unwrap().trim().parse::<f64>().unwrap()
+    };
+    // off: the terminal growth is the rule value
+    assert!((tg(plain_rules()) - 0.0225).abs() < 1e-12);
+    // on: the number when it is below the yield, the yield when it is below the number
+    assert!((tg(Rules { long_run: Some(0.038), ..plain_rules() }) - 0.038).abs() < 1e-12);
+    assert!((tg(Rules { long_run: Some(0.05), ..plain_rules() }) - DEFAULT_RF).abs() < 1e-12);
+    // the explicit rule wins
+    assert!((tg(Rules { long_run: Some(0.03), terminal_rf: true, ..plain_rules() }) - DEFAULT_RF).abs() < 1e-12);
+    assert_eq!(parse_rules("long_run=0.038").unwrap().long_run, Some(0.038));
+    assert!(Rules::default().long_run.is_none());
 }
 
 #[test]

@@ -89,6 +89,10 @@ pub struct Rules {
     pub terminal_rf: bool,
     /// The level that the company growth fades to. `None`: the 10-year zero yield.
     pub long_cap: Option<f64>,
+    /// One long-run growth for the fade level and the mean terminal growth: the lower of the 10-year zero yield and this
+    /// number (the stable growth is at most the risk-free rate and at most the nominal growth of the economy). `long_cap`
+    /// and `terminal_rf` win over it. `None`: off.
+    pub long_run: Option<f64>,
     /// The length of the ramp of the fade in years. `None`: from the half-life of the fade table.
     pub fade_years: Option<usize>,
     /// The weight of the history in the company mean of the growth (`None`: the shrink rule).
@@ -119,6 +123,19 @@ pub struct Rules {
     /// The cash paid for businesses (`acquisitions_net_of_cash` / revenue, mean of the margin history years) is a cost of
     /// the model: the growth history keeps the growth that the acquisitions bought (IBM review F2 and F16).
     pub acq_charge: bool,
+    /// The paired rule of the conventions study: a share `f` (0 to 1) of the acquisition spend recurs. The model charges
+    /// `f` times the mean ratio of `acquisitions_net_of_cash` to revenue, and the growth history keeps only `f` of the
+    /// growth that the spend bought (`acq_mult` revenue for each dollar, half in the year of the spend and half in the next
+    /// year): each growth value of the history is reduced by `(1 - f) acq_mult` times the mean of the spend ratios of that
+    /// year and of the year before (spend / revenue of the year before the spend). `f = 1` is `acq_charge`; `f = 0` is
+    /// organic growth only, with no charge. `None`: off.
+    pub acq_f: Option<f64>,
+    /// Revenue that one dollar of acquisition spend buys (used with `acq_f`).
+    pub acq_mult: f64,
+    /// The charge is the share `w` of the mean spend ratio, with `w` the weight of the history in the company mean of the
+    /// growth (the shrink). The growth history stays as it is: the model credits `w` of the growth that the spend bought,
+    /// so it charges `w` of the spend. Needs no `acq_mult`. Off: no such charge.
+    pub acq_w: bool,
 }
 
 impl Default for Rules {
@@ -143,6 +160,7 @@ impl Default for Rules {
             equity_weight_one: false,
             terminal_rf: false,
             long_cap: None,
+            long_run: None,
             fade_years: None,
             growth_w: None,
             growth_phi: None,
@@ -156,6 +174,9 @@ impl Default for Rules {
             stub: true,
             mid_year: false,
             acq_charge: false,
+            acq_f: None,
+            acq_mult: 0.0,
+            acq_w: false,
         }
     }
 }
@@ -761,8 +782,10 @@ pub fn raw_years(years: &[YearData]) -> Vec<RawYear> {
 }
 
 /// The trailing chain of fiscal years with revenue and 350 to 380 days between the ends, as years of `YearData` and
-/// the growth of each (`None` for the first year and for a jump: more than 60% and revenue of $1B or more).
-fn chain(years: &[YearData], organic: bool) -> (Vec<YearData>, Vec<Option<f64>>, RuleCounts) {
+/// the growth of each (`None` for the first year and for a jump: more than 60% and revenue of $1B or more). `bought` is
+/// the revenue that the growth history takes out for each dollar of acquisition spend (`bought * acquisitions / revenue
+/// of the year before`); 0 leaves the growth as it is.
+fn chain(years: &[YearData], organic: bool, bought: f64) ->(Vec<YearData>, Vec<Option<f64>>, RuleCounts) {
     let raws = raw_years(years);
     let mut counts = RuleCounts::default();
     let rows = clean_series(raws, &mut counts);
@@ -782,7 +805,17 @@ fn chain(years: &[YearData], organic: bool) -> (Vec<YearData>, Vec<Option<f64>>,
             let mut y = (*y).clone();
             y.revenue = Some(r.revenue);
             data.push(y);
-            growth.push(if i == 0 { None } else { (if organic { r.growth_organic() } else { r.growth_clean() }).filter(|g| *g > GROWTH_LIMITS.0 && *g < GROWTH_LIMITS.1) });
+            // the bought growth comes half in the year of the spend and half in the next year (panel regression of the
+            // conventions study: both lags have the same coefficient)
+            let cut = if i == 0 || bought == 0.0 {
+                0.0
+            } else {
+                let spend = |k: usize, base: f64| data[k].acquisitions.unwrap_or(0.0).abs() / base;
+                let a_now = spend(data.len() - 1, rows[start + i - 1].revenue);
+                let a_before = if i >= 2 && data.len() >= 2 { spend(data.len() - 2, rows[start + i - 2].revenue) } else { a_now };
+                bought * 0.5 * (a_now + a_before)
+            };
+            growth.push(if i == 0 { None } else { (if organic { r.growth_organic() } else { r.growth_clean() }).map(|g| g - cut).filter(|g| *g > GROWTH_LIMITS.0 && *g < GROWTH_LIMITS.1) });
         }
     }
     (data, growth, counts)
@@ -826,7 +859,8 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
         }
     }
     // the history
-    let (hist, growth_all, _) = chain(&inputs.years, rules.history_organic);
+    let acq_share = rules.acq_f.map_or(if rules.acq_charge { 1.0 } else { 0.0 }, |f| f.clamp(0.0, 1.0));
+    let (hist, growth_all, _) = chain(&inputs.years, rules.history_organic, if rules.acq_f.is_some() { (1.0 - acq_share) * rules.acq_mult } else { 0.0 });
     if hist.len() < rules.min_years {
         return Err(Refusal::ShortHistory(format!("{} fiscal years in sequence with revenue; {} are needed", hist.len(), rules.min_years)));
     }
@@ -894,7 +928,7 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
         warnings.push(format!("no GSW yield curve: the risk-free rate is the default {} (a fixed rate)", pct(DEFAULT_RF)));
     }
     let mu = gfit.mu.clamp(-0.5, 1.5);
-    let cap = rules.long_cap.unwrap_or(rf_long);
+    let cap = rules.long_cap.unwrap_or_else(|| rules.long_run.map_or(rf_long, |x| x.min(rf_long)));
     let g_long = if rules.fade_to_cap { mu.min(cap) } else { mu };
     let slow_h = match slow_half_life(fade) {
         Some(h) => h.clamp(1.0, 10.0),
@@ -958,7 +992,8 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
 
     // ---- acquisitions: the mean ratio of the years of the margin history (a year with no value counts as 0)
     let acq_vals: Vec<f64> = hist.iter().rev().take(HIST_MARGIN).filter_map(|y| Some(y.acquisitions.unwrap_or(0.0).abs() / y.revenue.filter(|r| *r > 0.0)?)).collect();
-    let acq_ratio = if rules.acq_charge && !acq_vals.is_empty() { acq_vals.iter().sum::<f64>() / acq_vals.len() as f64 } else { 0.0 };
+    let acq_share = if rules.acq_w { gfit.w } else { acq_share };
+    let acq_ratio = if acq_share > 0.0 && !acq_vals.is_empty() { acq_share * acq_vals.iter().sum::<f64>() / acq_vals.len() as f64 } else { 0.0 };
 
     // ---- bridge and shares
     let debt = balance.total_debt.unwrap_or_else(|| {
@@ -1074,8 +1109,8 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
         "sbc_total / revenue, last 3 years",
         "mean ratio, fixed; SBC is a cost of the model (repo convention: a cash-equivalent cost; existing awards are in the share count)",
     );
-    if rules.acq_charge {
-        row("acquisition charge", pct(acq_ratio), "acquisitions_net_of_cash / revenue, the years of the margin history", "mean ratio, fixed; a cost of the model, because the growth history keeps the bought growth (IBM review F2 and F16)");
+    if acq_share > 0.0 {
+        row("acquisition charge", pct(acq_ratio), "acquisitions_net_of_cash / revenue, the years of the margin history", "mean ratio times the share f of the paired rule (f = 1: acq_charge; acq_f; acq_w: f = the weight of the history in the growth mean), fixed; a cost of the model, because the growth history keeps the bought growth (IBM review F2 and F16)");
     }
     row("tax rate", pct(tax), "income_tax_expense, income_before_tax", &tax_rule);
     row(
@@ -1213,7 +1248,13 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
             let _ = writeln!(tw, "[rates]\nmodel = \"fixed\"\nrf = {}\n", f(DEFAULT_RF));
         }
     }
-    let tg_mean = if rules.terminal_rf { rf_long } else { rules.terminal_growth.0 };
+    let tg_mean = if rules.terminal_rf {
+        rf_long
+    } else if let Some(x) = rules.long_run {
+        x.min(rf_long)
+    } else {
+        rules.terminal_growth.0
+    };
     let _ = writeln!(tw, "[terminal]\ngrowth = {{ mean = {}, std = {} }}\ncap_by_process = \"growth\"\nrf_margin = 0.0\n", f(tg_mean), f(rules.terminal_growth.1));
     let _ = writeln!(tw, "[reinvestment]\nmode = \"margin\"");
     for (name, fit) in [("growth", &gfit), ("margin", &mfit)] {

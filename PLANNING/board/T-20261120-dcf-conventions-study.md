@@ -18,3 +18,18 @@ Owner request, 2026-11-20: investigate the recommendations of
    acquisition spend with a credit for the growth that it buys).
 
 No default changes in this ticket. The owner decides after the findings.
+
+Result, 2026-11-20 (not yet committed): the findings file is
+`analysis/priors/dcf_conventions_study_2026-11-20.md` (evidence in
+`analysis/priors/dcf_conventions_study_2026-11-20_panel.txt`).
+
+1. One long-run growth. Recommendation: one number `L = lower of the 10-year zero yield and the
+   long-run nominal growth of the economy` (now 3.8%) for the fade level and the terminal growth.
+   Option `--rules long_run=0.038` (off by default). Ratio +0.057. The value 3.8% comes from a
+   secondary report of CBO: the owner must check it.
+2. Acquisition charge. Recommendation: charge `w` times the mean spend, with `w` the weight of the
+   growth history in the shrink; history unchanged. Option `--rules acq_w=1` (off by default).
+   Ratio -0.107. The IBM `f = 0.5` is near `w = 0.55`.
+
+The owner decides both defaults. A default change of the charge needs a review of the same weight as
+the IBM review. When the pull request is open, set the status to `review`.

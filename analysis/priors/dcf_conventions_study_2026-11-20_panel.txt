@@ -1,0 +1,173 @@
+standard-template companies in the panel: 849; 10-year windows: 4016; companies with a window: 568
+start years with a 10-year window: [2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016]
+
+== by size at the start (revenue of the start year), all start years, windows with and without a jump
+<1B all windows                    n   773 co  175 | CAGR10 P25  10.2 med  16.4 mean  20.5 P75  25.9 | >z10  95% >2.25%  96% >3.8%  94% | z10 mean 2.75 | yrs8-12 n  555 med  12.0 mean  13.8
+<1B no jump in window              n   665 co  146 | CAGR10 P25   9.2 med  14.7 mean  18.7 P75  23.7 | >z10  94% >2.25%  96% >3.8%  93% | z10 mean 2.75 | yrs8-12 n  479 med  12.0 mean  13.7
+1-10B all windows                  n  2010 co  340 | CAGR10 P25   3.2 med   6.4 mean   7.3 P75  10.4 | >z10  78% >2.25%  81% >3.8%  71% | z10 mean 2.78 | yrs8-12 n 1465 med   7.2 mean   8.4
+1-10B no jump in window            n  1643 co  297 | CAGR10 P25   3.0 med   5.8 mean   6.3 P75   9.2 | >z10  76% >2.25%  81% >3.8%  69% | z10 mean 2.79 | yrs8-12 n 1203 med   7.0 mean   7.4
+10-30B all windows                 n   765 co  148 | CAGR10 P25  -0.0 med   2.5 mean   3.0 P75   5.8 | >z10  47% >2.25%  52% >3.8%  39% | z10 mean 2.80 | yrs8-12 n  549 med   3.8 mean   4.4
+10-30B no jump in window           n   678 co  127 | CAGR10 P25  -0.3 med   2.0 mean   2.5 P75   5.2 | >z10  43% >2.25%  49% >3.8%  34% | z10 mean 2.84 | yrs8-12 n  497 med   3.7 mean   3.8
+30-100B all windows                n   338 co   66 | CAGR10 P25   0.4 med   3.6 mean   3.7 P75   6.8 | >z10  57% >2.25%  59% >3.8%  47% | z10 mean 2.80 | yrs8-12 n  241 med   7.1 mean   6.8
+30-100B no jump in window          n   274 co   54 | CAGR10 P25   1.1 med   3.9 mean   4.4 P75   7.4 | >z10  59% >2.25%  63% >3.8%  51% | z10 mean 2.84 | yrs8-12 n  199 med   7.1 mean   6.1
+>100B all windows                  n   130 co   22 | CAGR10 P25  -1.6 med   2.2 mean   1.8 P75   7.4 | >z10  44% >2.25%  50% >3.8%  38% | z10 mean 2.76 | yrs8-12 n   96 med   4.4 mean   3.4
+>100B no jump in window            n   120 co   21 | CAGR10 P25  -1.6 med   2.5 mean   2.0 P75   7.8 | >z10  46% >2.25%  52% >3.8%  40% | z10 mean 2.79 | yrs8-12 n   89 med   4.1 mean   2.9
+revenue >= 10B all                 n  1233 co  194 | CAGR10 P25  -0.1 med   2.7 mean   3.1 P75   6.2 | >z10  50% >2.25%  54% >3.8%  41% | z10 mean 2.80 | yrs8-12 n  886 med   4.8 mean   5.0
+revenue >= 10B no jump             n  1072 co  171 | CAGR10 P25  -0.1 med   2.6 mean   2.9 P75   5.9 | >z10  48% >2.25%  53% >3.8%  39% | z10 mean 2.83 | yrs8-12 n  785 med   4.5 mean   4.3
+revenue >= 10B, acq<2% of revenue  n   828 co  143 | CAGR10 P25  -0.1 med   2.7 mean   3.2 P75   6.4 | >z10  50% >2.25%  53% >3.8%  41% | z10 mean 2.77 | yrs8-12 n  586 med   5.0 mean   5.6
+revenue >= 10B, acq>=2% of revenue n   405 co   82 | CAGR10 P25  -0.1 med   2.7 mean   2.7 P75   5.8 | >z10  50% >2.25%  55% >3.8%  41% | z10 mean 2.85 | yrs8-12 n  300 med   3.9 mean   3.7
+stable set (55 names) all          n   426 co   49 | CAGR10 P25   0.8 med   3.3 mean   3.6 P75   6.4 | >z10  53% >2.25%  61% >3.8%  44% | z10 mean 2.90 | yrs8-12 n  328 med   4.4 mean   4.6
+stable set no jump                 n   390 co   48 | CAGR10 P25   1.1 med   3.3 mean   3.5 P75   6.2 | >z10  53% >2.25%  61% >3.8%  44% | z10 mean 2.89 | yrs8-12 n  298 med   4.6 mean   4.6
+
+== by start year, revenue >= 10B (all windows)
+start 2007 (>=10B)                 n    94 co   94 | CAGR10 P25  -0.8 med   1.5 mean   1.8 P75   3.9 | >z10  23% >2.25%  41% >3.8%  26% | z10 mean 4.28 | yrs8-12 n   94 med   2.7 mean   2.9
+start 2008 (>=10B)                 n   118 co  118 | CAGR10 P25  -1.0 med   1.6 mean   1.8 P75   4.8 | >z10  36% >2.25%  46% >3.8%  33% | z10 mean 3.18 | yrs8-12 n  118 med   1.9 mean   1.8
+start 2009 (>=10B)                 n   108 co  108 | CAGR10 P25   0.0 med   3.1 mean   3.0 P75   6.5 | >z10  41% >2.25%  57% >3.8%  42% | z10 mean 4.07 | yrs8-12 n  108 med   3.5 mean   3.9
+start 2010 (>=10B)                 n   116 co  115 | CAGR10 P25  -1.1 med   0.9 mean   1.6 P75   5.0 | >z10  32% >2.25%  36% >3.8%  30% | z10 mean 3.44 | yrs8-12 n  116 med   5.2 mean   5.0
+start 2011 (>=10B)                 n   137 co  136 | CAGR10 P25  -0.8 med   1.6 mean   2.4 P75   6.2 | >z10  47% >2.25%  45% >3.8%  34% | z10 mean 2.01 | yrs8-12 n  137 med   5.8 mean   5.7
+start 2012 (>=10B)                 n   142 co  142 | CAGR10 P25   0.2 med   3.1 mean   3.3 P75   7.2 | >z10  61% >2.25%  58% >3.8%  44% | z10 mean 1.86 | yrs8-12 n  142 med   7.2 mean   8.5
+start 2013 (>=10B)                 n   158 co  158 | CAGR10 P25   0.4 med   3.5 mean   3.6 P75   7.0 | >z10  54% >2.25%  58% >3.8%  46% | z10 mean 3.08 | yrs8-12 n  158 med   4.3 mean   5.2
+start 2014 (>=10B)                 n   170 co  170 | CAGR10 P25   0.3 med   3.0 mean   3.5 P75   5.9 | >z10  56% >2.25%  56% >3.8%  44% | z10 mean 2.26 | yrs8-12 n   13 med   5.1 mean   8.0
+start 2015 (>=10B)                 n   172 co  172 | CAGR10 P25   1.5 med   4.0 mean   4.5 P75   6.7 | >z10  69% >2.25%  70% >3.8%  52% | z10 mean 2.28 | yrs8-12 n    0 med   NaN mean   NaN
+start 2016 (>=10B)                 n    18 co   18 | CAGR10 P25   4.5 med   6.5 mean   7.8 P75   9.4 | >z10  94% >2.25%  89% >3.8%  78% | z10 mean 1.62 | yrs8-12 n    0 med   NaN mean   NaN
+
+== by start year, all sizes >= 1B (all windows)
+start 2007 (>=1B)                  n   167 co  167 | CAGR10 P25  -0.4 med   2.6 mean   3.0 P75   6.3 | >z10  35% >2.25%  51% >3.8%  39% | z10 mean 4.30 | yrs8-12 n  164 med   3.3 mean   3.6
+start 2008 (>=1B)                  n   294 co  294 | CAGR10 P25   0.4 med   3.7 mean   4.2 P75   7.2 | >z10  54% >2.25%  62% >3.8%  49% | z10 mean 3.20 | yrs8-12 n  294 med   3.8 mean   4.0
+start 2009 (>=1B)                  n   331 co  331 | CAGR10 P25   2.2 med   5.3 mean   5.8 P75   8.8 | >z10  60% >2.25%  74% >3.8%  62% | z10 mean 4.05 | yrs8-12 n  328 med   6.3 mean   7.0
+start 2010 (>=1B)                  n   355 co  354 | CAGR10 P25   0.3 med   4.1 mean   4.4 P75   7.9 | >z10  55% >2.25%  62% >3.8%  52% | z10 mean 3.44 | yrs8-12 n  352 med   6.7 mean   7.8
+start 2011 (>=1B)                  n   383 co  380 | CAGR10 P25   1.1 med   4.8 mean   5.6 P75   9.2 | >z10  68% >2.25%  67% >3.8%  57% | z10 mean 2.01 | yrs8-12 n  382 med   7.0 mean   7.6
+start 2012 (>=1B)                  n   395 co  395 | CAGR10 P25   2.4 med   5.9 mean   6.3 P75  10.0 | >z10  78% >2.25%  76% >3.8%  64% | z10 mean 1.87 | yrs8-12 n  395 med   8.3 mean  10.3
+start 2013 (>=1B)                  n   412 co  412 | CAGR10 P25   2.1 med   5.3 mean   6.3 P75   9.4 | >z10  69% >2.25%  74% >3.8%  64% | z10 mean 3.08 | yrs8-12 n  411 med   5.6 mean   6.7
+start 2014 (>=1B)                  n   426 co  426 | CAGR10 P25   1.9 med   5.2 mean   6.0 P75   8.8 | >z10  73% >2.25%  73% >3.8%  62% | z10 mean 2.26 | yrs8-12 n   25 med   5.1 mean   7.1
+start 2015 (>=1B)                  n   445 co  445 | CAGR10 P25   3.1 med   5.8 mean   7.0 P75   9.5 | >z10  82% >2.25%  82% >3.8%  70% | z10 mean 2.27 | yrs8-12 n    0 med   NaN mean   NaN
+start 2016 (>=1B)                  n    35 co   35 | CAGR10 P25   4.3 med   6.7 mean   8.0 P75  10.0 | >z10  97% >2.25%  91% >3.8%  77% | z10 mean 1.61 | yrs8-12 n    0 med   NaN mean   NaN
+
+== fast starters: first 3 years CAGR above the start-year 10y zero yield, revenue >= 1B
+fast starters, all                 n  2013 co  436 | CAGR10 P25   4.4 med   7.2 mean   8.1 P75  10.9 | >z10  83% >2.25%  87% >3.8%  79% | z10 mean 2.74 | yrs8-12 n 1417 med   7.1 mean   7.9
+fast starters, no jump             n  1671 co  378 | CAGR10 P25   4.2 med   6.8 mean   7.3 P75   9.9 | >z10  82% >2.25%  87% >3.8%  78% | z10 mean 2.77 | yrs8-12 n 1194 med   6.9 mean   7.1
+fast starters (>12%), no jump      n   447 co  183 | CAGR10 P25   7.2 med  10.6 mean  11.3 P75  14.7 | >z10  91% >2.25%  94% >3.8%  90% | z10 mean 2.91 | yrs8-12 n  324 med   7.5 mean   8.1
+others, no jump                    n  1044 co  285 | CAGR10 P25  -0.6 med   1.6 mean   1.3 P75   3.7 | >z10  37% >2.25%  42% >3.8%  24% | z10 mean 2.88 | yrs8-12 n  794 med   4.9 mean   4.8
+
+== 1. acquisitions_net_of_cash / revenue (missing value = 0; 'rep' = share of company-years with a value)
+company-years (pooled) by size bucket of the year:
+  <1B      n   1900 rep  52% | median  0.00% mean 20.18% P75  1.52% P90 18.28% | share of years > 2%: 23.5%
+  1-10B    n   6046 rep  67% | median  0.04% mean  5.33% P75  2.86% P90 13.64% | share of years > 2%: 28.3%
+  10-30B   n   2599 rep  63% | median  0.00% mean  2.90% P75  1.42% P90  6.43% | share of years > 2%: 21.4%
+  30-100B  n   1055 rep  65% | median  0.02% mean  2.21% P75  0.74% P90  4.75% | share of years > 2%: 17.1%
+  >100B    n    409 rep  63% | median  0.05% mean  1.20% P75  0.88% P90  2.98% | share of years > 2%: 15.9%
+companies with 5 or more years, by size bucket of the median revenue (company mean share over all years):
+  <1B      companies  131 | median  2.08% mean 15.46% | mean share >= 2%: 50.4% (66) | regular (>=2% and spend >0.5% in 70% of years):  9.2% (12) | CV of the share of regular: median 1.48
+  1-10B    companies  421 | median  3.30% mean  6.15% | mean share >= 2%: 59.6% (251) | regular (>=2% and spend >0.5% in 70% of years): 19.7% (83) | CV of the share of regular: median 1.22
+  10-30B   companies  152 | median  1.22% mean  2.87% | mean share >= 2%: 40.1% (61) | regular (>=2% and spend >0.5% in 70% of years): 12.5% (19) | CV of the share of regular: median 1.20
+  30-100B  companies   65 | median  0.86% mean  2.34% | mean share >= 2%: 32.3% (21) | regular (>=2% and spend >0.5% in 70% of years):  7.7% (5) | CV of the share of regular: median 1.80
+  >100B    companies   23 | median  0.33% mean  1.14% | mean share >= 2%: 21.7% (5) | regular (>=2% and spend >0.5% in 70% of years):  8.7% (2) | CV of the share of regular: median 1.12
+  >=10B    companies  240 | median  1.07% mean  2.56% | mean share >= 2%: 36.2% | regular: 10.8% (26)
+
+== lumpiness: next-3-year mean share against the past-5-year mean share (company-years with 5 past and 3 next rows)
+  all sizes: n 6326 | mean past 7.66% mean next 5.07% | OLS next = 4.03% + 0.14 x past
+      past < 0.5%  n  2409 mean past  0.07% mean next  1.51% ratio of means 23.08 median of ratios 1.49
+      0.5% to 2%   n  1160 mean past  1.17% mean next  3.52% ratio of means 3.01 median of ratios 0.85
+      2% to 5%     n  1023 mean past  3.27% mean next  4.94% ratio of means 1.51 median of ratios 0.61
+      above 5%     n  1730 mean past 18.33% mean next 10.21% ratio of means 0.56 median of ratios 0.36
+  >=10B: n 2299 | mean past 3.00% mean next 2.56% | OLS next = 1.39% + 0.39 x past
+      past < 0.5%  n   975 mean past  0.07% mean next  0.79% ratio of means 11.37 median of ratios 1.21
+      0.5% to 2%   n   548 mean past  1.14% mean next  1.96% ratio of means 1.72 median of ratios 0.55
+      2% to 5%     n   366 mean past  3.25% mean next  3.57% ratio of means 1.10 median of ratios 0.46
+      above 5%     n   410 mean past 12.24% mean next  6.70% ratio of means 0.55 median of ratios 0.24
+
+== 2. panel regression: revenue growth_t on a_t = acq_t / revenue_(t-1), a_(t-1), (a_(t-2)); company effects (and year effects); SE clustered by company
+  all, company FE, lags a0 a1                  n  7595 co  778 | b0  0.25 (0.03) b1  0.20 (0.03) | sum 0.45
+  all, company+year FE, lags a0 a1             n  7595 co  778 | b0  0.21 (0.03) b1  0.20 (0.03) | sum 0.41
+  all, company+year FE, lags a0 a1 a2          n  7595 co  778 | b0  0.21 (0.03) b1  0.20 (0.03) b2  0.00 (0.02) | sum 0.41
+  size >= 1B, company+year FE                  n  6849 co  720 | b0  0.22 (0.03) b1  0.21 (0.03) | sum 0.42
+  size >= 10B, company+year FE                 n  2925 co  351 | b0  0.14 (0.06) b1  0.27 (0.06) | sum 0.41
+  size >= 10B, company+year FE, a0 a1 a2       n  2925 co  351 | b0  0.14 (0.06) b1  0.27 (0.06) b2  0.01 (0.05) | sum 0.42
+  size 1-10B, company+year FE                  n  3924 co  536 | b0  0.24 (0.03) b1  0.19 (0.03) | sum 0.43
+  size >= 1B, company FE only                  n  6849 co  720 | b0  0.26 (0.03) b1  0.21 (0.03) | sum 0.47
+  size >= 1B, a0 a1, a>0 only (spenders)       n  4066 co  574 | b0  0.23 (0.03) b1  0.21 (0.03) | sum 0.44
+
+== organic growth of acquirers against non-acquirers (revenue >= 1B at t-1; jumps above 60% left out)
+  multiplier used: b0 0.215 b1 0.208 (sum 0.423)
+  1-10B     regular acquirers        n   739 co   96 | total growth median  7.42% mean  8.46% | organic median  4.02% mean  4.68% | vs year median: total +1.58 organic -1.88 (medians, points)
+  1-10B     low spend (<0.5% mean)   n   947 co  124 | total growth median  6.71% mean  8.37% | organic median  6.70% mean  8.34% | vs year median: total +1.40 organic +1.33 (medians, points)
+  >=10B     regular acquirers        n   300 co   40 | total growth median  4.80% mean  4.69% | organic median  2.21% mean  1.74% | vs year median: total -0.91 organic -3.60 (medians, points)
+  >=10B     low spend (<0.5% mean)   n   904 co  106 | total growth median  3.34% mean  3.96% | organic median  3.29% mean  3.91% | vs year median: total -2.58 organic -2.62 (medians, points)
+  all >=1B  regular acquirers        n  1039 co  115 | total growth median  6.81% mean  7.37% | organic median  3.42% mean  3.83% | vs year median: total +0.74 organic -2.37 (medians, points)
+  all >=1B  low spend (<0.5% mean)   n  1851 co  188 | total growth median  5.10% mean  6.22% | organic median  5.08% mean  6.18% | vs year median: total -0.40 organic -0.43 (medians, points)
+
+== 3. ten acquirers: growth history with and without the acquisition years, and the model growth start
+  multiplier m = 0.423. Columns: acq = MEDIAN spend share of the last 5 years (spend above 0.5% of revenue in at least 4 of them); hist = the last 4 growth values of the model history (organic rule), mean; clean = mean of the history years with spend < 1% of revenue; then growth start (year 1) / company mean mu / charge c (% of revenue) with: default | acq_w (history stays, charge w x mean) | f=0 | f=0.5 | f=1| f=0 | f=0.5 | f=1 (acq_f, acq_mult = m)
+  ROP    rev    7.9B acq 41.63% | hist ["12.3", "13.9", "15.0", "11.1"] mean  13.1% | clean   NaN% (0 of 4) | 11.3/11.1/c 0.0 11.3/11.1/c23.6 -2.8/-1.3/c 0.0  4.2/ 4.8/c21.0 11.3/11.1/c42.1
+  BRO    rev    5.9B acq 18.52% | hist ["22.8", "12.9", "19.1", "17.1"] mean  18.0% | clean   NaN% (0 of 4) | 14.9/13.3/c 0.0 14.9/13.3/c23.2  0.4/ 3.7/c 0.0  7.4/ 8.2/c23.2 14.9/13.3/c46.5
+  EQT    rev    8.6B acq 16.58% | hist ["-23.7", "-7.9", "144.6", "0.2"] mean  28.3% | clean   NaN% (0 of 4) |  9.1/ 9.1/c 0.0  9.1/ 9.1/c 0.3  9.0/ 9.0/c 0.0  9.1/ 9.1/c 9.1  9.1/ 9.1/c18.3
+  WCN    rev    9.5B acq 15.61% | hist ["6.1", "11.2", "11.2", "17.2"] mean  11.4% | clean   NaN% (0 of 4) |  9.5/10.2/c 0.0  9.5/10.2/c 9.6  4.1/ 5.2/c 0.0  6.8/ 7.7/c 8.7  9.5/10.2/c17.4
+  APH    rev   23.1B acq 14.17% | hist ["51.7", "21.3", "-0.5", "16.1"] mean  22.1% | clean   NaN% (0 of 4) | 15.7/ 6.7/c 0.0 15.7/ 6.7/c 2.0 13.8/ 6.5/c 0.0 14.8/ 6.6/c 6.1 15.7/ 6.7/c12.2
+  IR     rev    7.7B acq 14.01% | hist ["5.7", "5.2", "16.2", "14.8"] mean  10.5% | clean   NaN% (0 of 4) |  9.0/ 9.6/c 0.0  9.0/ 9.6/c 9.0  3.8/ 5.5/c 0.0  6.3/ 7.4/c 8.5  9.0/ 9.6/c17.0
+  BSX    rev   20.1B acq 12.72% | hist ["19.9", "17.6", "12.3", "6.7"] mean  14.1% | clean   NaN% (0 of 4) | 11.3/ 9.2/c 0.0 11.3/ 9.2/c 8.3  6.2/ 5.0/c 0.0  8.8/ 7.1/c 8.0 11.3/ 9.2/c15.9
+  AME    rev    7.4B acq 12.61% | hist ["6.6", "5.2", "7.3", "10.9"] mean   7.5% | clean   NaN% (0 of 4) |  7.7/ 8.0/c 0.0  7.7/ 8.0/c10.2  3.6/ 3.6/c 0.0  5.6/ 5.8/c 9.1  7.7/ 8.0/c18.1
+  TDG    rev   10.6B acq 11.57% | hist ["19.5", "11.2", "20.6", "21.3"] mean  18.2% | clean   NaN% (0 of 4) | 12.8/11.1/c 0.0 12.8/11.1/c 9.8  6.9/ 6.6/c 0.0  9.9/ 8.9/c 9.5 12.8/11.1/c19.1
+  SSNC   rev    6.3B acq 11.00% | hist ["6.6", "6.9", "4.2", "4.6"] mean   5.6% | clean   4.2% (1 of 4) |  6.8/ 6.9/c 0.0  6.8/ 6.9/c 6.7  3.2/ 3.8/c 0.0  5.0/ 5.3/c 6.0  6.8/ 6.9/c11.9
+=== conv_study long ===
+observations per variant: [1859, 1859, 1859, 1859, 1859]
+base years: {2010, 2011, 2012, 2013, 2014, 2015, 2016}
+companies: 0
+
+== all >= 1B
+  year 10 | cap = 10y zero yield of the date (the rule)  n 1625 | below P10  1.9% above P90  8.4% | real below P50   29% | median real/P50 - 1  +24.3% | median growth gap +2.20 pt/yr
+  year 10 | cap = 2.25%                                  n 1625 | below P10  1.8% above P90  8.6% | real below P50   29% | median real/P50 - 1  +24.6% | median growth gap +2.23 pt/yr
+  year 10 | cap = 3.8%                                   n 1625 | below P10  2.2% above P90  7.6% | real below P50   35% | median real/P50 - 1  +18.5% | median growth gap +1.71 pt/yr
+  year 10 | cap = 5.13% (today's yield, fixed)           n 1625 | below P10  2.6% above P90  6.7% | real below P50   38% | median real/P50 - 1  +15.3% | median growth gap +1.43 pt/yr
+  year 10 | no cap (company mean stays)                  n 1625 | below P10  3.8% above P90  5.3% | real below P50   44% | median real/P50 - 1   +7.2% | median growth gap +0.69 pt/yr
+  year  5 | cap = 10y zero yield of the date (the rule)  n 1625 | below P10  6.5% above P90  6.8% | real below P50   53% | median real/P50 - 1   -2.2% | median growth gap -0.44 pt/yr
+  year  5 | cap = 2.25%                                  n 1625 | below P10  6.6% above P90  6.8% | real below P50   53% | median real/P50 - 1   -2.3% | median growth gap -0.47 pt/yr
+  year  5 | cap = 3.8%                                   n 1625 | below P10  6.7% above P90  6.6% | real below P50   54% | median real/P50 - 1   -3.2% | median growth gap -0.64 pt/yr
+
+== 10B and above
+  year 10 | cap = 10y zero yield of the date (the rule)  n  672 | below P10  3.0% above P90  4.2% | real below P50   35% | median real/P50 - 1  +16.4% | median growth gap +1.53 pt/yr
+  year 10 | cap = 2.25%                                  n  672 | below P10  2.8% above P90  4.3% | real below P50   34% | median real/P50 - 1  +16.4% | median growth gap +1.53 pt/yr
+  year 10 | cap = 3.8%                                   n  672 | below P10  3.3% above P90  4.2% | real below P50   39% | median real/P50 - 1  +12.2% | median growth gap +1.16 pt/yr
+  year 10 | cap = 5.13% (today's yield, fixed)           n  672 | below P10  3.7% above P90  3.7% | real below P50   41% | median real/P50 - 1   +9.7% | median growth gap +0.93 pt/yr
+  year 10 | no cap (company mean stays)                  n  672 | below P10  4.2% above P90  3.6% | real below P50   43% | median real/P50 - 1   +8.0% | median growth gap +0.78 pt/yr
+  year  5 | cap = 10y zero yield of the date (the rule)  n  672 | below P10  7.3% above P90  4.2% | real below P50   57% | median real/P50 - 1   -4.3% | median growth gap -0.88 pt/yr
+  year  5 | cap = 2.25%                                  n  672 | below P10  7.3% above P90  4.2% | real below P50   57% | median real/P50 - 1   -4.3% | median growth gap -0.88 pt/yr
+  year  5 | cap = 3.8%                                   n  672 | below P10  7.4% above P90  4.0% | real below P50   58% | median real/P50 - 1   -5.1% | median growth gap -1.04 pt/yr
+
+== 1-10B
+  year 10 | cap = 10y zero yield of the date (the rule)  n  953 | below P10  1.2% above P90 11.4% | real below P50   25% | median real/P50 - 1  +30.6% | median growth gap +2.70 pt/yr
+  year 10 | cap = 2.25%                                  n  953 | below P10  1.2% above P90 11.5% | real below P50   25% | median real/P50 - 1  +30.5% | median growth gap +2.70 pt/yr
+  year 10 | cap = 3.8%                                   n  953 | below P10  1.5% above P90 10.0% | real below P50   31% | median real/P50 - 1  +23.4% | median growth gap +2.12 pt/yr
+  year 10 | cap = 5.13% (today's yield, fixed)           n  953 | below P10  1.8% above P90  8.8% | real below P50   36% | median real/P50 - 1  +19.0% | median growth gap +1.76 pt/yr
+  year 10 | no cap (company mean stays)                  n  953 | below P10  3.5% above P90  6.5% | real below P50   45% | median real/P50 - 1   +7.0% | median growth gap +0.68 pt/yr
+  year  5 | cap = 10y zero yield of the date (the rule)  n  953 | below P10  6.0% above P90  8.7% | real below P50   50% | median real/P50 - 1   +0.2% | median growth gap +0.03 pt/yr
+  year  5 | cap = 2.25%                                  n  953 | below P10  6.1% above P90  8.6% | real below P50   50% | median real/P50 - 1   +0.1% | median growth gap +0.02 pt/yr
+  year  5 | cap = 3.8%                                   n  953 | below P10  6.2% above P90  8.4% | real below P50   52% | median real/P50 - 1   -1.2% | median growth gap -0.24 pt/yr
+
+== company mean above the cap of the rule (mu > z10)
+  year 10 | cap = 10y zero yield of the date (the rule)  n 1429 | below P10  2.1% above P90  8.7% | real below P50   31% | median real/P50 - 1  +22.3% | median growth gap +2.04 pt/yr
+  year 10 | cap = 2.25%                                  n 1429 | below P10  2.0% above P90  8.9% | real below P50   30% | median real/P50 - 1  +21.9% | median growth gap +2.00 pt/yr
+  year 10 | cap = 3.8%                                   n 1429 | below P10  2.4% above P90  7.8% | real below P50   37% | median real/P50 - 1  +15.4% | median growth gap +1.44 pt/yr
+  year 10 | cap = 5.13% (today's yield, fixed)           n 1429 | below P10  2.9% above P90  6.8% | real below P50   41% | median real/P50 - 1  +11.3% | median growth gap +1.08 pt/yr
+  year 10 | no cap (company mean stays)                  n 1429 | below P10  4.2% above P90  5.2% | real below P50   48% | median real/P50 - 1   +2.5% | median growth gap +0.25 pt/yr
+  year  5 | cap = 10y zero yield of the date (the rule)  n 1429 | below P10  6.9% above P90  6.6% | real below P50   55% | median real/P50 - 1   -3.8% | median growth gap -0.76 pt/yr
+  year  5 | cap = 2.25%                                  n 1429 | below P10  6.9% above P90  6.6% | real below P50   55% | median real/P50 - 1   -3.6% | median growth gap -0.72 pt/yr
+  year  5 | cap = 3.8%                                   n 1429 | below P10  7.1% above P90  6.4% | real below P50   57% | median real/P50 - 1   -4.7% | median growth gap -0.96 pt/yr
+
+== company mean at or below the cap (mu <= z10)
+  year 10 | cap = 10y zero yield of the date (the rule)  n  196 | below P10  0.5% above P90  6.1% | real below P50   18% | median real/P50 - 1  +40.3% | median growth gap +3.44 pt/yr
+  year 10 | cap = 2.25%                                  n  196 | below P10  0.5% above P90  6.1% | real below P50   18% | median real/P50 - 1  +40.3% | median growth gap +3.44 pt/yr
+  year 10 | cap = 3.8%                                   n  196 | below P10  0.5% above P90  6.1% | real below P50   18% | median real/P50 - 1  +40.3% | median growth gap +3.44 pt/yr
+  year 10 | cap = 5.13% (today's yield, fixed)           n  196 | below P10  0.5% above P90  6.1% | real below P50   18% | median real/P50 - 1  +40.3% | median growth gap +3.44 pt/yr
+  year 10 | no cap (company mean stays)                  n  196 | below P10  0.5% above P90  6.1% | real below P50   18% | median real/P50 - 1  +40.3% | median growth gap +3.44 pt/yr
+  year  5 | cap = 10y zero yield of the date (the rule)  n  196 | below P10  4.1% above P90  8.2% | real below P50   37% | median real/P50 - 1   +7.8% | median growth gap +1.51 pt/yr
+  year  5 | cap = 2.25%                                  n  196 | below P10  4.1% above P90  8.2% | real below P50   37% | median real/P50 - 1   +7.8% | median growth gap +1.51 pt/yr
+  year  5 | cap = 3.8%                                   n  196 | below P10  4.1% above P90  8.2% | real below P50   37% | median real/P50 - 1   +7.8% | median growth gap +1.51 pt/yr
+
+== by base year (all >= 1B), year 10, median real/P50 - 1
+  base 2010: z10 3.43% | cap  +57.0% (n 1) | cap  +64.6% (n 1) | cap  +54.7% (n 1) | cap  +46.9% (n 1) | no  +14.2% (n 1) 
+  base 2011: z10 2.31% | cap  +19.9% (n 164) | cap  +18.6% (n 164) | cap  +12.1% (n 164) | cap   +9.2% (n 164) | no   +3.9% (n 164) 
+  base 2012: z10 1.75% | cap  +30.7% (n 304) | cap  +28.5% (n 304) | cap  +25.0% (n 304) | cap  +21.2% (n 304) | no  +13.4% (n 304) 
+  base 2013: z10 2.71% | cap  +10.4% (n 357) | cap  +14.5% (n 357) | cap   +7.9% (n 357) | cap   +3.9% (n 357) | no   -3.9% (n 357) 
+  base 2014: z10 2.46% | cap  +14.5% (n 372) | cap  +14.7% (n 372) | cap   +9.2% (n 372) | cap   +5.2% (n 372) | no   -4.6% (n 372) 
+  base 2015: z10 2.24% | cap  +37.3% (n 397) | cap  +37.8% (n 397) | cap  +30.3% (n 397) | cap  +25.5% (n 397) | no  +20.6% (n 397) 
+  base 2016: z10 1.67% | cap  +62.6% (n 30) | cap  +58.9% (n 30) | cap  +49.6% (n 30) | cap  +42.4% (n 30) | no  +33.2% (n 30) 

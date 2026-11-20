@@ -41,11 +41,17 @@ fa dcf auto TICKER [OPTIONS]
   --as-of DATE    date of the model and of the yield curve (default today)
   --rules K=V,..  change a rule of the builder (a flag is 0 or 1):
                   growth and fade: history_organic, own_sigma_nu, level_kappa, fade_to_cap, long_cap (the level of the
-                  fade; default the 10-year zero yield), fade_years, growth_w (weight of the history), growth_phi
+                  fade; default the 10-year zero yield), long_run (one number for the fade level and the mean
+                  terminal growth: the lower of the 10-year zero yield and this number), fade_years, growth_w (weight
+                  of the history), growth_phi
                   margin: margin_pool_se, margin_w, margin_last (the target is the margin of the base year)
                   discount: rf (a fixed rate), erp, beta_weight, equity_weight_one, terminal_growth, terminal_rf
                   (terminal growth = the 10-year zero yield), years (horizon), stub, mid_year
                   cash flow and bridge: sbc_cost, acq_charge, no_interest_income, bridge_lti, bridge_leases, shares_latest
+                  acquisitions: acq_f (a share f of the spend recurs: charge f times the mean spend ratio, and the
+                  growth history loses (1 - f) acq_mult of the revenue that each dollar bought), acq_mult, acq_w (the
+                  charge is w times the mean spend ratio, w = the weight of the history in the growth mean; the
+                  history stays)
   --seed S (7)  --sims N (10000)  --no-attribution  --json  --time   (as `fa dcf drivers --model`)";
 
 pub const SCREEN_USAGE: &str = "\
@@ -379,6 +385,10 @@ pub struct ScreenValue {
     pub shares: f64,
     pub beta: f64,
     pub equity_weight: f64,
+    /// Share of the terminal value in the enterprise value (`E[PV TV] / E[EV]` over the paths).
+    pub tv_share: f64,
+    /// The acquisition charge of the model (a share of revenue; 0 when off).
+    pub acq_ratio: f64,
     pub warnings: usize,
     pub n_hist: usize,
 }
@@ -485,6 +495,8 @@ fn simulate_row(m: &AutoModel, spec: &PathsSpec, market: &Market, cfg: &ScreenCo
         shares: sm.shares,
         beta: sm.beta,
         equity_weight: sm.equity_weight,
+        tv_share: sim.tv_share(),
+        acq_ratio: sm.acq_ratio,
         model_rate,
         implied_rate,
         implied_rate_below: below,
@@ -493,7 +505,7 @@ fn simulate_row(m: &AutoModel, spec: &PathsSpec, market: &Market, cfg: &ScreenCo
     })
 }
 
-pub const CSV_HEADER: &str = "ticker,status,template,size,base_revenue,growth_start,growth_long_run,margin_start,margin_target,p10,p50,p90,price,p50_over_price,share_below_price,implied_long_run_growth,ev_over_revenue,warnings,growth_values,refusal,model_rate,implied_rate,sbc_ratio,net_debt,shares,beta,equity_weight";
+pub const CSV_HEADER: &str = "ticker,status,template,size,base_revenue,growth_start,growth_long_run,margin_start,margin_target,p10,p50,p90,price,p50_over_price,share_below_price,implied_long_run_growth,ev_over_revenue,warnings,growth_values,refusal,model_rate,implied_rate,sbc_ratio,net_debt,shares,beta,equity_weight,tv_share,acq_ratio";
 
 /// The cost of capital of year 1 at the means of the model (the 10-year zero yield as the risk-free rate).
 pub fn model_rate_of(sm: &Summary) -> f64 {
@@ -564,16 +576,18 @@ pub fn csv_line(r: &ScreenRow) -> String {
             v.warnings,
             v.n_hist
         ) + &format!(
-            ",{},{},{},{},{},{},{}",
+            ",{},{},{},{},{},{},{},{},{}",
             num(v.model_rate, 4),
             v.implied_rate.map_or(String::new(), |x| format!("{}{}", if v.implied_rate_below { "<" } else { "" }, num(x, 4))),
             num(v.sbc_ratio, 4),
             num(v.net_debt, 0),
             num(v.shares, 0),
             num(v.beta, 3),
-            num(v.equity_weight, 3)
+            num(v.equity_weight, 3),
+            num(v.tv_share, 3),
+            num(v.acq_ratio, 4)
         ),
-        Err((key, _)) => format!("{},{},{},,,,,,,,,,,,,,,,,{},,,,,,,", r.ticker, r.status, r.template, key.replace(',', ";")),
+        Err((key, _)) => format!("{},{},{},,,,,,,,,,,,,,,,,{},,,,,,,,,", r.ticker, r.status, r.template, key.replace(',', ";")),
     }
 }
 
