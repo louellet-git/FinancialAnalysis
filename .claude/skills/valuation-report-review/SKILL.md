@@ -15,7 +15,7 @@ for a trade. The orchestrator runs the flow. Each QA step starts in a fresh cont
 | 2. Attack | `model-validator` | Step 1 done | Verdict PASS or PASS-WITH-NOTES. On REVISE the analyst fixes and writes a disposition for each finding; the skeptic runs again (one more cycle at most, then the orchestrator decides) |
 | 3. Grade | `document-reviewer` | Step 2 passed; the text will not change in content | Verdict PASS or PASS-WITH-NOTES for content, format and STE |
 | 4. Audit | `auditor` | Steps 2 and 3 passed | Each claim is OK, or the DIFF is fixed; no NO SOURCE on a load-bearing number |
-| Close | `risk-compliance-officer` | Step 4 passed | Disclosures present (first pass or reviewed; model prices; conflict of interest for ANT); no secret |
+| Close (only on request, for example a conflict of interest) | `risk-compliance-officer` | Step 4 passed | Disclosures present (first pass or reviewed; model prices; conflict of interest for ANT); no secret |
 
 After step 4 and the close, the orchestrator asks Luc to approve a report for a new
 ticker (`PLANNING/reusable-dcf-vision.md`, L5). A change after a step sends the work back
