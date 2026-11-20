@@ -619,6 +619,26 @@ the models, stage 3 simulates them. Each ticker runs on one thread, so the resul
 
 **`fa dcf pit [--cut YEAR] [--rules K=V,..] [--paths N] [--out FILE]`.** The point-in-time test (see #199 for its limits).
 
+**`fa dcf implied [--tickers-file FILE | TICKER ...] [--cache DIR] [--as-of D] [--prices FILE] [--rules K=V,..] [--groups FILE] [--out FILE] [--jobs N]`**
+(`auto_implied.rs`, ticket `T-20261120-dcf-market-implied`). It shows what the market price implies for each ticker and for groups. It has no
+random part: the value is the value of the one path at the means (`PathEngine::deterministic`: each parameter at its mean, each shock zero). A
+market-implied value is a measurement. No default and no rule of the builder reads it (`docs/QUALITY-STANDARDS.md`, section 6).
+Three searches (bisection) move one number each and keep all others. Each step builds the model again with changed `Rules`, so each cap, fade and
+guard of the builder applies: (1) the mean of the equity risk premium, range -4% to +20% (the report has the implied cost of capital of year 1,
+`model_rate_of`); (2) `Rules::growth_shift`, range -30 to +60 points, added to the company mean of the growth and to the growth of year 1 (the
+long-run level and the terminal rule follow the builder for that mean); (3) `Rules::margin_shift`, range -50 to +50 points, added to the start and
+to the target of the margin. The two shifts are not `--rules` keys; they are 0 by default and change no model. For a premium below 2% the lower
+bound of the draw moves to the mean (the default model keeps 2%). A search with no solution gives the bound and a flag in the column `flags`
+(`premium<`, `growth>`: the price needs a number below or above the bound). A value that does not have the expected direction on the ends of the
+range and at the model number gets the flag `:nm` (a company with a negative terminal cash flow has a value that rises with the premium). A jump of the
+value (the engine gives no value for a part of the range) gives a bound, not a number. The columns are in the CSV header of `auto_implied.rs`.
+The groups (all, size, sector, industry with 5 tickers or more) give P25, P50 and P75 of: value / price, implied less model cost of capital, growth
+of years 1 to 10, and margin of year 10 (FCFF after SBC and the charge over revenue), and the value at the premium of the list over the price. The
+sector and the industry come from `--groups FILE` (CSV `ticker,sector,industry`) through the one function `groups_of`; the SIC code of the cache
+(ticket `T-20261120-sic-code`) replaces its body later. The premium of the list is the premium for which the median of value / price over the tickers
+with a value and a price is 1.0. The price enters the builder only through the equity weight (`E / (E + debt)`), as in `fa dcf auto`; the price
+cache gives the last close, not the close of `--as-of`. Two runs give the same bytes, and the result does not depend on `--jobs` (a test compares 1 and 4 threads).
+
 **The investigation of 2026-11-20** (ticket `T-20261120-dcf-investigation`; findings `analysis/priors/dcf_investigation_2026-11-20.md`;
 traps #260 to #270).
 

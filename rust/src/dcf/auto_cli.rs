@@ -69,14 +69,14 @@ fa dcf screen [--tickers-file FILE | TICKER ...] [OPTIONS]
                   \"<x\": the price needs a rate below x, where the rate of some paths is not positive)";
 
 #[derive(Debug, Clone, Default)]
-struct Opts {
+pub(super) struct Opts {
     values: HashMap<String, String>,
     flags: Vec<String>,
-    positional: Vec<String>,
+    pub(super) positional: Vec<String>,
 }
 
 impl Opts {
-    fn parse(args: &[String], values: &[&str], flags: &[&str]) -> R<Opts> {
+    pub(super) fn parse(args: &[String], values: &[&str], flags: &[&str]) -> R<Opts> {
         let mut o = Opts::default();
         let mut it = args.iter();
         while let Some(a) = it.next() {
@@ -93,13 +93,13 @@ impl Opts {
         }
         Ok(o)
     }
-    fn get(&self, k: &str) -> Option<&str> {
+    pub(super) fn get(&self, k: &str) -> Option<&str> {
         self.values.get(k).map(String::as_str)
     }
-    fn flag(&self, k: &str) -> bool {
+    pub(super) fn flag(&self, k: &str) -> bool {
         self.flags.iter().any(|f| f == k)
     }
-    fn num<T: std::str::FromStr>(&self, k: &str, default: T) -> R<T> {
+    pub(super) fn num<T: std::str::FromStr>(&self, k: &str, default: T) -> R<T> {
         match self.get(k) {
             None => Ok(default),
             Some(v) => v.parse().or_else(|_| e(format!("bad value for {k}: '{v}'"))),
@@ -113,15 +113,15 @@ pub fn load_table(path: &Path) -> R<(ProcessTable, Vec<FadeCell>)> {
     Ok((ProcessTable::from_toml(&text)?, FadeFile::from_toml(&text)?.fade))
 }
 
-fn cache_dir(repo: &Path, o: &Opts) -> PathBuf {
+pub(super) fn cache_dir(repo: &Path, o: &Opts) -> PathBuf {
     o.get("--cache").map(PathBuf::from).unwrap_or_else(|| repo.join("data").join("raw"))
 }
 
-fn table_path(repo: &Path, o: &Opts) -> PathBuf {
+pub(super) fn table_path(repo: &Path, o: &Opts) -> PathBuf {
     o.get("--table").map(PathBuf::from).unwrap_or_else(|| repo.join(DEFAULT_TABLE))
 }
 
-fn as_of_of(o: &Opts) -> R<(String, i64)> {
+pub(super) fn as_of_of(o: &Opts) -> R<(String, i64)> {
     match o.get("--as-of") {
         Some(t) => match mapcheck::dates::parse(t) {
             Some(d) => Ok((t.to_string(), d)),
@@ -547,7 +547,7 @@ pub fn implied_discount_rate(spec: &PathsSpec, sm: &Summary, price: f64, n: usiz
     Ok(x.map(|x| (base + slope * (x - sm.erp), err_max >= x - 1e-6)))
 }
 
-fn num(x: f64, d: usize) -> String {
+pub(super) fn num(x: f64, d: usize) -> String {
     format!("{x:.d$}")
 }
 
@@ -621,6 +621,45 @@ fn quantile_text(mut v: Vec<f64>, d: usize) -> String {
     format!("P5 {} | P25 {} | P50 {} | P75 {} | P95 {} (n = {})", s(5.0), s(25.0), s(50.0), s(75.0), s(95.0), v.len())
 }
 
+/// `--jobs N` (`None`: the global pool).
+pub(super) fn jobs_of(o: &Opts) -> R<Option<usize>> {
+    match o.get("--jobs") {
+        Some(j) => Ok(Some(j.parse().or_else(|_| e(format!("bad value for --jobs: '{j}'")))?)),
+        None => Ok(None),
+    }
+}
+
+/// The tickers of the command line: the names, then `--tickers-file`; with none, all tickers of the cache. No double.
+pub(super) fn tickers_of(o: &Opts, cache: &Path) -> R<Vec<String>> {
+    let mut tickers: Vec<String> = o.positional.iter().map(|t| t.to_uppercase()).collect();
+    if let Some(f) = o.get("--tickers-file") {
+        tickers.extend(mapcheck::cli::read_ticker_file(f).map_err(DcfError)?);
+    }
+    if tickers.is_empty() {
+        tickers = super::panel::cache_tickers(cache).map_err(DcfError)?;
+    }
+    let mut seen = std::collections::HashSet::new();
+    tickers.retain(|t| seen.insert(t.clone()));
+    Ok(tickers)
+}
+
+/// The mapping of the company facts of the cache to the standard variables, with the checks, for a list of tickers.
+pub(super) fn map_inputs(registry: &Registry, cache: &Path, tickers: &[String], as_of_day: i64, jobs: Option<usize>) -> R<Vec<AutoInputs>> {
+    let run_map = || -> Vec<AutoInputs> {
+        tickers
+            .par_iter()
+            .map(|t| {
+                let r = mapcheck::run::check_ticker(registry, cache, t, MAP_PERIODS, as_of_day, true);
+                inputs_from_report(registry, &r)
+            })
+            .collect()
+    };
+    Ok(match jobs {
+        Some(n) => rayon::ThreadPoolBuilder::new().num_threads(n.max(1)).build().map_err(|x| DcfError(x.to_string()))?.install(run_map),
+        None => run_map(),
+    })
+}
+
 /// `fa dcf screen`. Returns the exit code.
 pub fn screen(repo: &Path, args: &[String]) -> u8 {
     match screen_inner(repo, args) {
@@ -643,22 +682,11 @@ fn screen_inner(repo: &Path, args: &[String]) -> R<()> {
     let (as_of, as_of_day) = as_of_of(&o)?;
     let sims: usize = o.num("--sims", 4000)?;
     let seed: u64 = o.num("--seed", 7)?;
-    let jobs: Option<usize> = match o.get("--jobs") {
-        Some(j) => Some(j.parse().or_else(|_| e(format!("bad value for --jobs: '{j}'")))?),
-        None => None,
-    };
+    let jobs = jobs_of(&o)?;
     if sims == 0 {
         return e("--sims must be positive");
     }
-    let mut tickers: Vec<String> = o.positional.iter().map(|t| t.to_uppercase()).collect();
-    if let Some(f) = o.get("--tickers-file") {
-        tickers.extend(mapcheck::cli::read_ticker_file(f).map_err(DcfError)?);
-    }
-    if tickers.is_empty() {
-        tickers = super::panel::cache_tickers(&cache).map_err(DcfError)?;
-    }
-    let mut seen = std::collections::HashSet::new();
-    tickers.retain(|t| seen.insert(t.clone()));
+    let tickers = tickers_of(&o, &cache)?;
     let prices = match o.get("--prices") {
         Some(p) => read_prices(p)?,
         None => HashMap::new(),
@@ -668,26 +696,10 @@ fn screen_inner(repo: &Path, args: &[String]) -> R<()> {
 
     // stage 1: the mapping (company facts of the cache to the standard variables, with the checks)
     let t0 = Instant::now();
-    let run_map = || -> Vec<AutoInputs> {
-        tickers
-            .par_iter()
-            .map(|t| {
-                let r = mapcheck::run::check_ticker(&registry, &cache, t, MAP_PERIODS, as_of_day, true);
-                inputs_from_report(&registry, &r)
-            })
-            .collect()
-    };
-    let inputs: Vec<AutoInputs> = match jobs {
-        Some(n) => rayon::ThreadPoolBuilder::new().num_threads(n.max(1)).build().map_err(|x| DcfError(x.to_string()))?.install(run_map),
-        None => run_map(),
-    };
+    let inputs = map_inputs(&registry, &cache, &tickers, as_of_day, jobs)?;
     let map_s = t0.elapsed().as_secs_f64();
 
-    let curve = load_curve(&cache, &as_of).ok();
-    if curve.is_none() {
-        eprintln!("fa: no yield curve in the cache: the rate is the default {:.1}%", DEFAULT_RF * 100.0);
-    }
-    let index = load_index(&cache);
+    let (curve, index) = curve_and_index(&cache, &as_of);
     let market_of = |t: &str| -> Market {
         let price = prices.get(t).copied();
         market_from_cache(&cache, t, &as_of, price, &rules, curve.as_ref(), index.as_deref())
@@ -737,6 +749,15 @@ fn screen_inner(repo: &Path, args: &[String]) -> R<()> {
         println!("  tickers with a price: {}", with_price.len());
     }
     Ok(())
+}
+
+/// The yield curve of the date and the market index of the cache (a message when the curve is missing).
+pub(super) fn curve_and_index(cache: &Path, as_of: &str) -> (Option<CurveNumbers>, Option<Vec<(String, f64)>>) {
+    let curve = load_curve(cache, as_of).ok();
+    if curve.is_none() {
+        eprintln!("fa: no yield curve in the cache: the rate is the default {:.1}%", DEFAULT_RF * 100.0);
+    }
+    (curve, load_index(cache))
 }
 
 fn load_index(cache: &Path) -> Option<Vec<(String, f64)>> {

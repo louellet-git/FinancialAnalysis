@@ -103,7 +103,7 @@ Do not use a first pass alone for a trade.
 
 ```bash
 cargo test --manifest-path rust/mapcheck/Cargo.toml   # 97 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked   # 572 Rust tests (554 + 17 + 1), no network
+cargo test --manifest-path rust/Cargo.toml --locked   # 582 Rust tests (564 + 17 + 1), no network
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program (necessary)
 rust/mapcheck/target/release/mapcheck fetch --submissions IBM   # SEC 8-K item 2.02 list into data/raw/IBM/sec_8k_earnings.json
 rust/target/release/fa estimates get IBM; rust/target/release/fa estimates show IBM   # consensus, targets, surprises (Nasdaq site, no key)
@@ -118,6 +118,7 @@ rust/target/release/fa verdict IBM --price 228.53   # value range against a pric
 rust/target/release/fa dcf drivers IBM        # version 4 headline numbers; options for each analysis (fa dcf --help)
 rust/target/release/fa dcf auto IBM --cache data/raw --explain   # automatic path model of a ticker (a screen, not a reviewed valuation)
 rust/target/release/fa dcf screen --tickers-file rust/mapcheck/universe/sp500.txt --cache data/raw   # one row for each ticker
+rust/target/release/fa dcf implied --cache data/raw --groups FILE   # what the price implies (cost of capital, growth, margin) and group medians; no random part (a measurement)
 rust/target/release/fa dcf pit --cache data/raw   # point-in-time test of the automatic model
 rust/target/release/fa dcf returns --cache data/raw   # the automatic model value against the later stock returns (a measurement)
 rust/target/release/fa dcf scenarios IBM      # classic engine, bear/base/bull (version 3 inputs)

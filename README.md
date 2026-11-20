@@ -21,7 +21,7 @@ Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`. The agent teams: `
 cargo build --release --manifest-path rust/mapcheck/Cargo.toml   # the Rust program that makes the standard variables (necessary)
 cargo build --release --manifest-path rust/Cargo.toml            # the `fa` program
 cargo test --manifest-path rust/mapcheck/Cargo.toml    # 97 Rust tests, no network
-cargo test --manifest-path rust/Cargo.toml --locked    # 572 Rust tests (554 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research, data sync)
+cargo test --manifest-path rust/Cargo.toml --locked    # 582 Rust tests (564 + 17 + 1), no network (`fa` crate: DCF, backtest, report, rates, bonds, company data, market data, xlsx file, models, futures, option trading, bond research, data sync)
 ```
 
 The repo has no Python code.
@@ -131,6 +131,7 @@ fa dcf screen --tickers-file rust/mapcheck/universe/sp500.txt [--cache DIR] [--o
 fa dcf pit [--cache DIR] [--cut YEAR] [--rules K=V,..] [--out FILE]   # point-in-time test of the automatic model: real revenue and free cash flow against the bands
 fa dcf returns [--cache DIR] [--rules K=V,..] [--lag DAYS] [--out FILE]   # the point-in-time model value (P50 / price) against the later 1-year and 3-year returns
 fa dcf screen ... --implied [--rules K=V,..]      # also the cost of capital that gives the price; --rules: an alternative rule (list: fa dcf auto --help)
+fa dcf implied [--tickers-file FILE | TICKER ...] [--cache DIR] [--as-of D] [--groups FILE] [--prices FILE] [--rules K=V,..] [--out FILE] [--jobs N]   # what the price implies: cost of capital, growth, margin; medians by size, sector, industry; the premium of the whole list; no random part
 fa prices get IBM MSFT [--tickers-file rust/mapcheck/universe/sp500.txt] [--source tiingo|yahoo|nasdaq] [--full]   # price history into data/raw (network)
 fa prices show IBM [--from D] [--to D]            # rows of the cache
 fa prices last IBM JNJ                            # last close, date, source; warns when older than 5 weekdays

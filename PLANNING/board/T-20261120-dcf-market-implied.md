@@ -28,3 +28,14 @@ Parts, one at a time:
 
 Needs: the SIC code of each ticker (ticket `T-20261120-sic-code`, head: technology). Part 1 and the size
 groups do not need it.
+
+**State, parked on the word of the owner, 2026-11-20.** Parts 1, 2 and 3 are built on the branch
+(`rust/src/dcf/auto_implied.rs`, 10 new tests, 564 + 17 + 1 tests pass, two runs give the same bytes).
+Run of the 218 tickers of the partial cache (A to CME, old defaults): 135 with a price, median value / price
+0.67, list premium 2.16% (model 4.41%). Open, in this order:
+1. The search uses the value at the means. It is above the simulated P50 (AAPL 134.53 against 128.84, ABT
+   36.40 against 29.84, ADBE 289.35 against 270.91). Decide if the search must use the P50 with a fixed seed.
+2. 14 of 135 tickers have a negative value and get no implied premium or growth (flag `nm`).
+3. Sector and industry groups: `--groups FILE` works; the SIC code waits for `T-20261120-sic-code`.
+4. The findings file (part 4) and the gate (model-validator, code-reviewer) wait for the data store of the
+   Head of Technology. Merge `main` and the conventions branch first: this branch has the old defaults.
