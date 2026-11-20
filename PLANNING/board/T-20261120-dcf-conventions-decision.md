@@ -57,5 +57,5 @@ $128.84 (old) and $140.71 (new), seed 7. Open, in this order:
    the same data.
 3. The pull request, after a pass.
 
-**State, 2026-11-20 21:45 UTC.** The full runs are done (records A-001 and A-002, section "Effect on the
+**State, 2026-11-20 21:28 UTC.** The full runs are done (records A-001 and A-002, section "Effect on the
 result"). The gate request went to the Head of Quality and Risk. The pull request opens after a pass.
