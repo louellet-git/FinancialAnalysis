@@ -18,3 +18,7 @@ Done: `chiefs/MEMORY-HOWTO.md` written again from the Anthropic post: a purpose 
 ## 2026-11-20 19:28 UTC (chat)
 Words: "if the head ever wants to slightly upgrade the agents a little bit, they're more than welcome to in whatever way helps towards the goal that they have. This is not a must."
 Done: an optional paragraph next to the dream pass in `chiefs/MEMORY-HOWTO.md`, and the same permission in `chiefs/ORIENTATION.md` (sections 3 and 8).
+
+## 2026-11-20 19:29 UTC (chat)
+Words: "So a note for all heads, they are orchestrator agents. Make sure that's in the relevant file."
+Done: `chiefs/ORIENTATION.md` (first paragraph and section 1) and `docs/TEAMS.md` say that a head is an orchestrator agent, with what that means.

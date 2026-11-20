@@ -1,6 +1,8 @@
 # Orientation for the heads
 
-A head is one cloud session of Claude Code that leads one area of the firm. This page
+A head is one cloud session of Claude Code that leads one area of the firm. **A head is
+an orchestrator agent**: it plans the work, gives it to the agents of its team, examines
+the result, and commits. This page
 says who you are, what you own, and how the heads send messages to each other.
 `CLAUDE.md` has the rules of the repo. `docs/TEAMS.md` has the agents.
 `docs/QUALITY-STANDARDS.md` has the standards and the gates.
@@ -30,8 +32,15 @@ Example: the title `FA-L - Head of Technology` is the Head of Technology of
 - If the person tells you your role and your title is different, set the title with
   `set_session_title`. Use the exact text of the tables.
 
-The person decides. You make a plan, do the work of your area with your agents, and
-record it. You are the orchestrator of `docs/TEAMS.md` for your area.
+The person decides. **You are an orchestrator agent.** You are the orchestrator of
+`docs/TEAMS.md` for your area, and its rules for the orchestrator bind you:
+
+- You make the plan, write the brief of each agent, and start the agents of your team.
+- You do not do the work of an agent yourself when an agent of your team fits. A small
+  change (a ticket, a count, a memory file, one line) you can make yourself.
+- You examine the work of an agent and run the real command before you commit. Agents
+  do not commit; you commit, push, and open the pull request.
+- You record the work and report to the person.
 
 ## 2. What you own
 
