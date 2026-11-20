@@ -1,6 +1,6 @@
 ---
 id: T-20261120-ask-rates-appendix-run
-title: Approve one run of appendix A of the rates note in the Quant session?
+title: Run a rates calculation again, which the safety system stopped?
 area: ask
 status: backlog
 owner: louellet-git
@@ -9,18 +9,19 @@ head: owner
 order: 1
 branch:
 created: 2026-11-20
-acceptance: The person answers yes or no in the session "FA-L - Head of Quant Research".
+acceptance: The person answers in the session that the ticket names.
 ---
-From the Head of Quant Research, filtered by the Head of Technology (2026-11-20).
+**Question.** Do you want to allow one calculation that the safety system stopped two times?
 
-The question: the permission system refused, two times, the run of appendix A of
-`analysis/priors/rates_recon_step2_2026-11-20.md` by the `rates-credit-quant` agent (branch
-`claude/upbeat-cori-a4ykf5`). The appendix is offline shell (awk, join, sort) over the outputs of
-`fa recon` and the store files, and writes only to a temporary folder.
+**Why it matters.** The Head of Quant Research wants to run its bond-rate calculation again, to confirm
+the tables in its rates note. An independent auditor already checked those same tables, and they were
+correct. Little is lost if it does not run.
 
-Options:
-1. No (recommended): the auditor of the Head of Quality and Risk already reproduced the tables, and
-   only two lines of the appendix changed (a folder and the path of the program).
-2. Yes: approve the run in the Quant session when the permission prompt shows.
+**Choices.**
+- A. No: keep the stop. The audited tables are enough.
+- B. Yes: allow the run once.
 
-Where to answer: the session "FA-L - Head of Quant Research".
+**Recommendation.** A (no).
+
+**How to answer.** In the session "FA-L - Head of Quant Research", say "A" or "B". For B, approve
+the prompt when it shows.

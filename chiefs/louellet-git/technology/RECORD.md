@@ -114,3 +114,7 @@ Done: `trading/journal/README.md` (one write-up for each trade, at most 2 pages,
 ## 2026-11-20 23:49 UTC (chat)
 Words: "Great, that works. We need a way that you can get permission requests to the user once it's filtered. Lean method? I don't want a bunch of questions buried in the session."
 Done: `chiefs/ORIENTATION.md`, section 5, "Requests for the person": a refused command or a decision of the person goes to the Head of Technology, which filters it; what stays becomes one board ticket with `area: ask` and `head: owner`, and one push notification for each batch. First ask: `T-20261120-ask-rates-appendix-run`.
+
+## 2026-11-20 23:51 UTC (chat)
+Words: "Also the question should be delivered in clear terms"
+Done: the ask form in `chiefs/ORIENTATION.md`, section 5 (Question, Why it matters, Choices, Recommendation, How to answer; plain words, no internal names); the three open asks written again in that form; the push names each question in plain words.
