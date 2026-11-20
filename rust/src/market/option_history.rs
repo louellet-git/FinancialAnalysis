@@ -100,6 +100,8 @@ impl Default for Selection {
 /// The forward of one expiry on one date and where it came from.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ForwardInfo {
+    /// The root of the series (`SPX`, `SPXW`; empty when the symbol has no OCC form).
+    pub root: String,
     pub expiry: String,
     pub forward: f64,
     pub from_parity: bool,
@@ -122,6 +124,8 @@ pub struct Built {
 /// Rate (decimal, continuous) for a date and a time to expiry in years.
 pub type RateFn<'a> = &'a mut dyn FnMut(&str, f64) -> Result<f64, String>;
 
+type Entry<'a> = (&'a Contract, f64, f64);
+
 /// The contract of the symbol `SPY240419C00500000` with the data of the contract list.
 pub fn contract_from_info(underlying: &str, c: &ContractInfo) -> Option<Contract> {
     // The root must be one of the roots of the underlying: an adjusted contract (`SPY1...`) has another root and is not in the surface.
@@ -129,21 +133,37 @@ pub fn contract_from_info(underlying: &str, c: &ContractInfo) -> Option<Contract
     Some(Contract { symbol: c.symbol.clone(), expiry: c.expiry.clone(), call: c.call, strike: c.strike })
 }
 
-/// One date: the filter, the forward of each expiry, the implied volatility of each contract.
+/// The root of an OCC symbol: the text before the last 15 characters (`SPXW261127C07000000` gives `SPXW`). A symbol with no
+/// such form gives an empty root.
+fn occ_root(symbol: &str) -> String {
+    let b = symbol.as_bytes();
+    if b.len() < 15 || !symbol.is_ascii() {
+        return String::new();
+    }
+    let rest = &b[b.len() - 15..];
+    if rest.iter().enumerate().all(|(i, c)| if i == 6 { *c == b'C' || *c == b'P' } else { c.is_ascii_digit() }) {
+        symbol[..b.len() - 15].to_string()
+    } else {
+        String::new()
+    }
+}
+
+/// One date: the filter, the forward of each series (root and expiry), the implied volatility of each contract.
+/// The roots SPX (AM settlement) and SPXW (PM settlement) can share an expiry date: they are two series.
 pub fn day_snapshot(source: &str, underlying: &str, date: &str, spot: f64, entries: &[(&Contract, f64, f64)], sel: &Selection, rate: RateFn) -> Result<DayBuild, String> {
     let day = parse_iso(date).ok_or_else(|| format!("bad date {date}"))?;
-    let mut by_expiry: BTreeMap<&str, Vec<&(&Contract, f64, f64)>> = BTreeMap::new();
+    let mut by_expiry: BTreeMap<(String, &str), Vec<&Entry>> = BTreeMap::new();
     for e in entries {
         let (c, close, volume) = *e;
         let Some(exp) = parse_iso(&c.expiry) else { continue };
         let days = (exp - day) as i64;
         let keep = close > 0.0 && volume > 0.0 && days > 0 && days <= sel.max_days && c.strike >= spot * sel.money_lo && c.strike <= spot * sel.money_hi;
         if keep {
-            by_expiry.entry(c.expiry.as_str()).or_default().push(e);
+            by_expiry.entry((occ_root(&c.symbol), c.expiry.as_str())).or_default().push(e);
         }
     }
     let (mut quotes, mut forwards, mut parity_count) = (Vec::new(), Vec::new(), 0);
-    for (expiry, group) in &by_expiry {
+    for ((root, expiry), group) in &by_expiry {
         let t = (parse_iso(expiry).unwrap() - day) as f64 / 365.0;
         let r = rate(date, t)?;
         let df = (-r * t).exp();
@@ -160,7 +180,7 @@ pub fn day_snapshot(source: &str, underlying: &str, date: &str, spot: f64, entri
         let parity = forward_from_parity(&pair_list, spot, df);
         let forward = parity.unwrap_or(spot / df);
         parity_count += parity.is_some() as usize;
-        forwards.push(ForwardInfo { expiry: expiry.to_string(), forward: round6(forward), from_parity: parity.is_some() });
+        forwards.push(ForwardInfo { root: root.clone(), expiry: expiry.to_string(), forward: round6(forward), from_parity: parity.is_some() });
         for (c, close, volume) in group.iter().map(|e| **e) {
             // Out of the money, or within 1% of the forward: the early exercise premium of an in-the-money American option is not in the model.
             let usable = if c.call { c.strike >= forward * 0.99 } else { c.strike <= forward * 1.01 };
@@ -180,9 +200,9 @@ pub fn day_snapshot(source: &str, underlying: &str, date: &str, spot: f64, entri
             });
         }
     }
-    quotes.sort_by(|a, b| (&a.expiry, &a.option_type).cmp(&(&b.expiry, &b.option_type)).then(a.strike.total_cmp(&b.strike)));
+    quotes.sort_by(|a, b| (&a.expiry, &a.option_type).cmp(&(&b.expiry, &b.option_type)).then(a.strike.total_cmp(&b.strike)).then_with(|| a.contract_symbol.cmp(&b.contract_symbol)));
     let note = format!(
-        "Closes of the day, no bid and no ask. Implied volatility: Black-76, forward from put-call parity for {parity_count} of {} expiries (else spot / discount factor, no dividend), out-of-the-money and near-the-money options only; the options are American, so an error remains. Selection: expiry up to {} days, strike {} to {} times the spot.",
+        "Closes of the day, no bid and no ask. Implied volatility: Black-76, forward from put-call parity for {parity_count} of {} series (one root and one expiry; else spot / discount factor, no dividend), out-of-the-money and near-the-money options only; the options are American, so an error remains. Selection: expiry up to {} days, strike {} to {} times the spot.",
         forwards.len(),
         sel.max_days,
         sel.money_lo,
@@ -278,11 +298,13 @@ fn apply_level_note(day: &mut DayBuild, date: &str, note: &str) {
 /// What `fill_from_mids` did.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct MidFill {
+    /// The series (one root and one expiry) in the future.
     pub expiries: usize,
+    /// The series that have a forward from parity.
     pub expiries_with_parity: usize,
     pub filled: usize,
-    /// The level that was set: the forward of this expiry and its days.
-    pub level_from: Option<(String, i64, f64)>,
+    /// The level that was set: the root and the expiry of the forward, its days, and the forward.
+    pub level_from: Option<(String, String, i64, f64)>,
 }
 
 /// A live chain with bid and ask but no implied volatility (the index chains of Alpaca): the mid of bid and ask of a call and a
@@ -292,16 +314,16 @@ pub struct MidFill {
 /// spot becomes the forward of the nearest expiry (1 to 10 days away) that has a forward from parity.
 pub fn fill_from_mids(snap: &mut OptionChainSnapshot, rate: RateFn) -> Result<MidFill, String> {
     let day = parse_iso(&snap.snapshot_date).ok_or_else(|| format!("bad date {}", snap.snapshot_date))?;
-    let mut by_expiry: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+    let mut by_expiry: BTreeMap<(String, String), Vec<usize>> = BTreeMap::new();
     for (i, q) in snap.quotes.iter().enumerate() {
-        by_expiry.entry(q.expiry.clone()).or_default().push(i);
+        by_expiry.entry((occ_root(&q.contract_symbol), q.expiry.clone())).or_default().push(i);
     }
     let mid = |q: &OptionQuote| match (q.bid, q.ask) {
         (Some(b), Some(a)) if b > 0.0 && a >= b => Some(0.5 * (a + b)),
         _ => None,
     };
     let mut fill = MidFill::default();
-    for (expiry, idx) in &by_expiry {
+    for ((root, expiry), idx) in &by_expiry {
         let Some(exp) = parse_iso(expiry) else { continue };
         let n = (exp - day) as i64;
         if n <= 0 {
@@ -324,8 +346,8 @@ pub fn fill_from_mids(snap: &mut OptionChainSnapshot, rate: RateFn) -> Result<Mi
         let list: Vec<(f64, f64, f64)> = pairs.values().copied().collect();
         let Some(forward) = forward_from_parity_blind(&list, df) else { continue };
         fill.expiries_with_parity += 1;
-        if (1..=10).contains(&n) && fill.level_from.as_ref().is_none_or(|(_, m, _)| n < *m) {
-            fill.level_from = Some((expiry.clone(), n, forward));
+        if (1..=10).contains(&n) && fill.level_from.as_ref().is_none_or(|(_, _, m, _)| n < *m) {
+            fill.level_from = Some((root.clone(), expiry.clone(), n, forward));
         }
         for &i in idx {
             let call = snap.quotes[i].option_type == "call";
@@ -342,7 +364,7 @@ pub fn fill_from_mids(snap: &mut OptionChainSnapshot, rate: RateFn) -> Result<Mi
         }
     }
     if snap.spot_price.is_none() {
-        if let Some((_, _, f)) = &fill.level_from {
+        if let Some((_, _, _, f)) = &fill.level_from {
             snap.spot_price = Some(round6(*f));
             let spot = *f;
             for q in &mut snap.quotes {
@@ -818,6 +840,109 @@ mod tests {
         snap.spot_price = None;
         fill_from_mids(&mut snap, &mut rate).unwrap();
         assert_eq!(snap.quotes[0].implied_volatility, Some(0.5));
+    }
+
+    /// Prices (strike, call, put) with put-call parity for the forward `f`: C - P = df * (F - K), so K + (C - P) / df = F.
+    fn parity_prices(f: f64, df: f64) -> Vec<(f64, f64, f64)> {
+        (6980..=7040).step_by(10).map(|k| (k as f64, 100.0 + df * (f - k as f64), 100.0)).collect()
+    }
+
+    fn occ(root: &str, k: f64, call: bool) -> String {
+        format!("{root}261218{}{:08}", if call { "C" } else { "P" }, (k * 1000.0) as i64)
+    }
+
+    #[test]
+    fn occ_root_is_the_text_before_the_last_15_characters() {
+        assert_eq!(occ_root("SPXW261218C07000000"), "SPXW");
+        assert_eq!(occ_root("SPX261218P07000000"), "SPX");
+        assert_eq!(occ_root("SPY240419C00500000"), "SPY");
+        assert_eq!(occ_root("BAD"), "");
+        assert_eq!(occ_root("SPX2612xxC07000000"), "");
+    }
+
+    #[test]
+    fn fill_from_mids_keeps_two_roots_of_one_expiry_apart() {
+        // 2026-11-20 to 2026-12-18 (a third Friday): 28 days. SPX has the forward 7000, SPXW the forward 7010, same strikes.
+        let df = (-R * 28.0 / 365.0).exp();
+        let mut quotes = Vec::new();
+        for (root, f) in [("SPX", 7000.0), ("SPXW", 7010.0)] {
+            for (k, c, p) in parity_prices(f, df) {
+                for (call, m) in [(true, c), (false, p)] {
+                    quotes.push(OptionQuote { contract_symbol: occ(root, k, call), option_type: if call { "call" } else { "put" }.into(), expiry: "2026-12-18".into(), strike: k, last_price: None, bid: Some(m - 0.05), ask: Some(m + 0.05), volume: None, open_interest: None, implied_volatility: None, in_the_money: None });
+                }
+            }
+        }
+        let mut snap = OptionChainSnapshot { ticker: "SPX".into(), snapshot_date: "2026-11-20".into(), spot_price: None, quotes, source: None, feed: None, quote_kind: None, note: None };
+        let mut rate = flat_rate();
+        let fill = fill_from_mids(&mut snap, &mut rate).unwrap();
+        assert_eq!((fill.expiries, fill.expiries_with_parity), (2, 2), "two series, not one expiry");
+        // 28 days is beyond the 10 days of the level, so no level; the forwards show in the volatilities: a put at the forward
+        // of its own root has the volatility of its own price, so the check is on the level of a nearer expiry below.
+        assert_eq!(fill.level_from, None);
+        // The same chain with the expiry 7 days away: the level is the forward of the first root in the order of the keys (SPX).
+        let mut near = snap.clone();
+        near.snapshot_date = "2026-12-11".into();
+        near.spot_price = None;
+        let df7 = (-R * 7.0 / 365.0).exp();
+        for q in &mut near.quotes {
+            let root = occ_root(&q.contract_symbol);
+            let f = if root == "SPX" { 7000.0 } else { 7010.0 };
+            let (_, c, p) = parity_prices(f, df7).into_iter().find(|x| x.0 == q.strike).unwrap();
+            let m = if q.option_type == "call" { c } else { p };
+            q.bid = Some(m - 0.05);
+            q.ask = Some(m + 0.05);
+            q.implied_volatility = None;
+        }
+        let fill = fill_from_mids(&mut near, &mut rate).unwrap();
+        assert_eq!((fill.expiries, fill.expiries_with_parity), (2, 2));
+        let (root, expiry, n, f) = fill.level_from.clone().unwrap();
+        assert_eq!((root.as_str(), expiry.as_str(), n), ("SPX", "2026-12-18", 7));
+        assert!((f - 7000.0).abs() < 1e-6, "SPX forward {f}");
+        // Each root alone gives its own forward: remove SPX and the level is the SPXW forward.
+        let mut only_w = near.clone();
+        only_w.quotes.retain(|q| occ_root(&q.contract_symbol) == "SPXW");
+        only_w.spot_price = None;
+        let fill = fill_from_mids(&mut only_w, &mut rate).unwrap();
+        let (root, _, _, f) = fill.level_from.unwrap();
+        assert_eq!(root, "SPXW");
+        assert!((f - 7010.0).abs() < 1e-6, "SPXW forward {f}");
+    }
+
+    #[test]
+    fn day_snapshot_gives_one_forward_for_each_root_of_an_expiry() {
+        let df = (-R * 28.0 / 365.0).exp();
+        let mut contracts = Vec::new();
+        for (root, f) in [("SPX", 7000.0), ("SPXW", 7010.0)] {
+            for (k, c, p) in parity_prices(f, df) {
+                for (call, m) in [(true, c), (false, p)] {
+                    contracts.push((Contract { symbol: occ(root, k, call), expiry: "2026-12-18".into(), call, strike: k }, m, 5.0));
+                }
+            }
+        }
+        let entries: Vec<(&Contract, f64, f64)> = contracts.iter().map(|(c, m, v)| (c, *m, *v)).collect();
+        let mut rate = flat_rate();
+        let built = day_snapshot("x", "SPX", "2026-11-20", 7000.0, &entries, &Selection::default(), &mut rate).unwrap();
+        assert_eq!(built.forwards.len(), 2);
+        let (a, b) = (&built.forwards[0], &built.forwards[1]);
+        assert_eq!((a.root.as_str(), b.root.as_str()), ("SPX", "SPXW"));
+        assert!(a.from_parity && b.from_parity);
+        assert!((a.forward - 7000.0).abs() < 1e-5, "{a:?}");
+        assert!((b.forward - 7010.0).abs() < 1e-5, "{b:?}");
+        assert!(built.snapshot.note.unwrap().contains("parity for 2 of 2 series"));
+        assert_eq!(built.snapshot.quotes.len(), entries.len(), "no quote is lost");
+    }
+
+    #[test]
+    fn a_stock_chain_has_one_series_for_each_expiry() {
+        let src = Synthetic::new();
+        let mut rate = flat_rate();
+        let built = build_range(&src, "SPY", "2024-03-04", "2024-03-04", &Selection { max_days: 200, money_lo: 0.9, money_hi: 1.1 }, &mut rate).unwrap();
+        let f = &built.days[0].forwards;
+        assert_eq!(f.len(), 3, "three expiries in 200 days");
+        assert!(f.iter().all(|x| x.root == "SPY"));
+        let mut e: Vec<&str> = f.iter().map(|x| x.expiry.as_str()).collect();
+        e.dedup();
+        assert_eq!(e.len(), 3);
     }
 
     #[test]
