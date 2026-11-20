@@ -1911,6 +1911,20 @@ to get it again. An explicit `--rules terminal_growth=X` turns `long_run` off (t
 *Evidence:* `one_long_run_growth_is_the_lower_of_the_yield_and_the_number`, `the_charge_can_follow_the_weight_of_the_growth_history`;
 `docs/assumptions/A-001-terminal-growth.md`, `A-002-acquisition-charge.md`.
 
+**286. Two systematic errors of the automatic model: the year after a decline, and the bands for a stable margin (2026-11-20).**
+(1) *A decline in the base year.* The company mean of the growth is the mean of the last 4 values, so a decline year enters it as a rate that stays.
+The panel shows that the next year is not a decline: the median real growth of T+1 is +2.7% to +7.1%, and the larger the decline, the larger the growth.
+Test with the mean at the cell value (`growth_w=0`): the median error of the P50 at T+2 and T+3 falls from +7.6% and +11.3% to +3.1% and +3.1%, so the company mean is the main part.
+The year-1 step (`growth_phi=0`) only gives +1.5% to 0.0% at T+1. The correction (A-003) floors the growth of the base year at 0% for the company mean and the first step.
+The error that stays (+5.1% and +7.4% at T+2 and T+3 on half 1; +8.5% and +13.6% with `--cut 2015`) is in a few base years with a common shock, not in all: real growth less model growth is +16.3 points at T+2 of 2019, +8.7 at T+2 of 2020 (T+1 of 2020: +12.9), +11.8 at T+3 of 2018 and +6.9 at T+3 of 2019, and it is near 0 or negative for 2012, 2013 and 2017 (table in A-003).
+A recovery term estimated on these years fits those years; it needs a study out of sample and a decision of the owner.
+(2) *A stable margin.* The width comes from the weight of the table shock in the shock size of the margin (`own_sigma_nu` = 4 years). The company mean (`margin_w=1`, no uncertainty of the mean) changes the coverage by 0.2 points only.
+`fa dcf pit --diag nu` tests the weight on the panel with the margin of the next year: the best weight by the mean log density is 1 year (half 0), 2 years (half 1) and 0.5 years (table up to 2015).
+`margin_sigma_nu=1` (chosen on half 0) takes the free cash flow coverage of the stable class (range below 5 points) on half 1 from 94.5% to 89.5% (T+3; 90.2% at T+1 and T+2), but with `--cut 2015` the size bucket 1-10B falls from 78.0% to 74.2% at T+3,
+which is more than 2 points under the target. The rule stays off by default. The panel since 2016 has larger margin shocks than the panel before it (the cut run is below 80% before the change).
+Note of the merge with pull request 77: the numbers of (2) are on the defaults before it. On the merged defaults (`acq_w`, `acq_fade`, `long_run`) the free cash flow of the stable class is inside the band in 83.0 / 83.4 / 83.6% (half 1; `--cut 2015`: 78.5 / 79.2 / 78.2%), so the bands are no longer too wide; `margin_sigma_nu=1` gives 73.8 / 77.4 / 78.0% (half 1). The rule is not needed.
+*Evidence:* `fa dcf pit --half 0|1 --diag decline`, `--diag nu`, `--rules last_floor=-1`, `--rules margin_sigma_nu=1`; the tests `a_decline_in_the_base_year_enters_the_growth_mean_and_the_first_step_as_zero`.
+
 ## Could not verify
 
 - (none of the named traps failed verification — all located in current code/docs; the

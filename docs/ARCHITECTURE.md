@@ -979,7 +979,7 @@ ticket `option-backtest-rust`).
 
 ## Tests
 
-`cargo test --manifest-path rust/Cargo.toml --locked`: 584 Rust tests (566 + 17 + 1; 2 more are ignored) (the `fa` crate).
+`cargo test --manifest-path rust/Cargo.toml --locked`: 591 Rust tests (573 + 17 + 1; 2 more are ignored) (the `fa` crate).
 `cargo test --manifest-path rust/mapcheck/Cargo.toml`: 100 Rust tests. The suites make no network calls and start no
 Python program; HTTP is replaced by a function that the test gives, and files are in a temp folder.
 No Python test remains (the last 211 Python tests were deleted on 2026-11-19 after each case had a Rust test).
