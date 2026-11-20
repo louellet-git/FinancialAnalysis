@@ -1408,6 +1408,7 @@ a proxy for the long-run nominal growth of the economy. The fade applies only if
 made with the companies that survive: the real fade is faster (#181). The ramp changes the revenue coverage by less than 1 point at T+3 in the
 test; it matters for the value, which the test does not measure.
 *Evidence:* `fa dcf pit --rules fade_to_cap=0`.
+*Changed 2026-11-20:* the cap is now L = the lower of the yield and 4.0% (see #271); `--rules long_run=off` gives the text above.
 
 **190. The margin of the model is the free cash flow before SBC and before interest.** `(operating cash flow - capex_total + (1 - t) interest paid) / revenue`.
 Operating cash flow already adds back the SBC: a formula with "plus SBC" would count it twice. The SBC is a cost of the model (the ratio is a separate process), as in the IBM
@@ -1859,12 +1860,14 @@ debt. A free-cash-flow DCF with the margin of the history is the wrong tool for 
 ratio by 0.16 (JNJ -67%, IBM -68%). That is too much, because the shrink of the growth already takes out much of the bought
 growth. The correct pair is not known from the data. The default is off; the owner decides.
 *Evidence:* `the_acquisition_charge_is_an_option_with_the_mean_ratio`; the findings file, section 4.6.
+*Changed 2026-11-20:* the default is now the charge `w` x the mean ratio (#271, record A-002).
 
 **267. The model has two numbers for the long-run growth.** The company growth fades to the 10-year zero yield (5.13%, #189), and
 the terminal growth is 2.25%. The premium of 4.41% is the implied premium of Damodaran, which uses a long-run growth equal to the
 risk-free rate. `--rules terminal_rf=1` (terminal growth = the yield) and `--rules long_cap=0.0225` (the fade goes to 2.25%) are the
 two consistent choices. The default did not change.
 *Evidence:* the findings file, section 4.7.
+*Changed 2026-11-20:* the default is now one number L (#271, record A-001).
 
 **268. The rules of the builder accept alternatives.** `fa dcf auto`, `fa dcf screen`, `fa dcf pit` and `fa dcf returns` take
 `--rules K=V,..` (the list: `fa dcf auto --help`). They are for measurement and for the owner's decision. A screen with a rule that
@@ -1884,6 +1887,18 @@ The companies are those of the cache now: a company that grew into the S&P 500 i
 On 2026-11-20: rank correlation of P50 / price with the 3-year return +0.12 (mean of 7 yearly values); no relation for companies with
 revenue above $30B; the lowest quintile (values near or below zero) also had high returns.
 *Evidence:* `analysis/priors/auto_returns_2026-11-20.txt`.
+
+**271. The automatic model has two new defaults: one long-run growth and an acquisition charge (2026-11-20).** (1) `long_run = 0.040`:
+L = the lower of the 10-year zero yield and 4.0% is the fade level and the mean terminal growth. The 4.0% is 2.0% (longer-run real GDP
+growth) + 2.0% (longer-run PCE inflation), medians of the FOMC Summary of Economic Projections of 2026-09-16. It is a typed constant
+(`LONG_RUN_GROWTH` in `auto.rs`): a new SEP does not change it by itself. The reviewed IBM model keeps its 2.25% (closed decision).
+(2) `acq_w = 1`: the model charges `w` x the mean of `acquisitions_net_of_cash / revenue` of 5 years. A year with no value counts as 0,
+so a company that does not report the line has no charge. `acq_charge` and `acq_f` win over `acq_w`. The point-in-time test with
+`acq_w` on holds the real free cash flow after acquisitions (`fcff_of_rules`), so its error numbers differ from the old runs.
+A screen, a point-in-time run or a return run made before this change is a different model: run it with `--rules long_run=off,acq_w=0`
+to get it again. An explicit `--rules terminal_growth=X` turns `long_run` off (the old model with that number).
+*Evidence:* `one_long_run_growth_is_the_lower_of_the_yield_and_the_number`, `the_charge_can_follow_the_weight_of_the_growth_history`;
+`docs/assumptions/A-001-terminal-growth.md`, `A-002-acquisition-charge.md`.
 
 ## Could not verify
 

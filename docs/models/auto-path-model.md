@@ -20,12 +20,15 @@ valuation. Do not use it alone for a trade (`CLAUDE.md`, "Review of a valuation 
 1. Map the company facts. Refuse a ticker with mapping status FAIL, fewer than 3
    fiscal years, or a template other than `standard` (bank, insurer, REIT, fund, foreign).
 2. Growth: an AR(1) around a company mean that is shrunk to the cell mean. The mean fades
-   to the 10-year zero yield by year 10.
+   by year 10 to L, the lower of the 10-year zero yield and 4.0% (A-001). A mean below L
+   stays. L is also the mean of the terminal growth.
 3. Margin: free cash flow before SBC and interest, shrunk the same way. SBC is a cost.
 4. Discount rate: CAPM with the shrunk beta, the equity risk premium, and a Hull-White
-   risk-free rate. Net debt and shares come from the latest balance sheet.
+   risk-free rate. Net debt and shares come from the latest balance sheet. The model
+   charges `w` times the mean ratio of the cash for businesses to revenue (A-002).
 5. Write a model file (`engine = "paths"`) and run the path engine (`rust/src/dcf/paths.rs`).
-6. Terminal value: Gordon form with the terminal growth.
+6. Terminal value: Gordon form with the terminal growth. Its mean is L (the same number
+   as the fade level), its standard deviation is 0.75%.
 
 ## Outputs
 The model numbers with their source (`--explain`), the P10, P50 and P90 of the value
@@ -35,7 +38,8 @@ value, 3 no value, 2 an error. `fa dcf screen` gives one CSV row for each ticker
 ## Assumptions
 | Record | Name | Value | One line |
 |---|---|---|---|
-| A-001 | Terminal growth | 2.25% (std 0.75%) | Repo convention from the IBM driver review |
+| A-001 | One long-run growth L | min(10-year zero yield, 4.0%); terminal std 0.75% | Fade level and terminal mean. 4.0% = FOMC SEP 2026-09-16 (2.0% + 2.0%). Decided 2026-11-20 |
+| A-002 | Acquisition charge | `w` x mean spend / revenue, 5 years | `w` = weight of the history in the growth mean. Decided 2026-11-20 |
 | not written | Equity risk premium | 4.41% (std 0.75%, lower bound 2%) | Damodaran implied value, 2026-11-19 |
 | not written | Risk-free rate | 10-year zero yield of the GSW curve | Hull-White `a` 0.14, `sigma` 0.0075 |
 | not written | Horizon | 10 years | Repo convention |
@@ -49,8 +53,14 @@ The records "not written" belong to the board ticket
 - The model is a screen. Its P10 to P90 band covers about 80% of real revenue in the
   point-in-time test, with known errors (`docs/HIDDEN-ASSUMPTIONS.md`, #199).
 - No bank, insurer, REIT or fund. No pension, lease or minority item in the net debt.
+- The two defaults of 2026-11-20 (A-001, A-002) change every value. The numbers below
+  and the point-in-time numbers of `analysis/priors/auto_pit_*.txt` are from the model
+  before them (`--rules long_run=off,acq_w=0`). New numbers: not yet run.
+- The acquisition charge over-charges heavy buyers (spend above 5% of revenue), and the
+  5-year mean can hold one large deal. A company with no reported spend has no charge.
+- L is a typed constant. A new FOMC SEP changes it by a change of the code and of A-001.
 - The median value is far below the market price for most tickers (median ratio 0.49 on
-  2026-11-19). The investigation shows that no single defect causes this
+  2026-11-19, before the two defaults of 2026-11-20). The investigation shows that no single defect causes this
   (`analysis/priors/dcf_investigation_2026-11-20.md`). Do not read the ratio as a signal
   without the review.
 

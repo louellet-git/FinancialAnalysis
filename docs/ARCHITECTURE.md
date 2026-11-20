@@ -592,7 +592,7 @@ data, run it, and test it. No hand input and no network. An automatic model is a
 | Base revenue | `revenue` of the latest fiscal year | The trailing four quarters are not used (see #194). |
 | Growth: company mean | `revenue` of 5 fiscal years in sequence; the table cell of the size bucket (`priors_for`) | Mean of the last 4 growth values, shrunk to the cell mean with `w = tau^2 / (tau^2 + sigma^2 mvf)`. A jump with cash for businesses, or one that reverses, is left out. |
 | Growth: year 1 | the same | AR(1): `mean + phi (last - mean)`; standard deviation `sqrt((1 - phi)^2 var_mean + sigma^2)`. The value and the long-run mean are correlated. |
-| Growth: long run | 10-year zero yield of the GSW curve (`data/raw/rates`); fade cells of the table | The company mean fades linearly to the yield by year 10 if it is above it. The ramp equals an exponential fade with the half-life of the fade table (k = 3 to 10). |
+| Growth: long run | L = the lower of the 10-year zero yield of the GSW curve (`data/raw/rates`) and 4.0% (`LONG_RUN_GROWTH`, FOMC SEP 2026-09-16; record A-001, 2026-11-20); fade cells of the table | The company mean fades linearly to L by year 10 if it is above it (a mean below L stays). The ramp equals an exponential fade with the half-life of the fade table (k = 3 to 10). |
 | Growth: shocks | table cell, own history, fade cells | `phi` and `sigma` of the cell; `sigma` of the company from its own residuals (weight 4 years); at least `kappa` times the level (`kappa` from the fade table). |
 | Margin | `operating_cash_flow`, `capex_total` (else `capex`), `interest_paid` (else `interest_expense`), `interest_income`, `revenue` | FCFF before SBC and before interest `= (OCF - capex + (1 - t) (interest - interest income)) / revenue` (the interest income is out since 2026-11-20: the cash that earns it is in the bridge). The history is shrunk as the table margin (after interest); the mean after-tax interest ratio is added. A `phi` with a standard error above 0.08 is replaced by the `phi` of all sizes. |
 | SBC | `sbc_total` / `revenue`, last 3 years | Constant, a cost of the model. |
@@ -604,7 +604,8 @@ data, run it, and test it. No hand input and no network. An automatic model is a
 | Equity risk premium | repo convention | 4.41%, standard deviation 0.75%, lower bound 2%. |
 | Risk-free rate | GSW file of the cache | Hull-White (`a` 0.14, `sigma` 0.0075), `long_flat`, 10-year zero yield; else a fixed 4.2% with a warning. |
 | Equity weight | `--price`, else the last close of the price cache | `E / (E + debt)`; else 1.0 with a warning. |
-| Terminal growth, horizon | repo convention | 2.25% (standard deviation 0.75%), the caps of the engine; 10 years. |
+| Acquisition charge | `acquisitions_net_of_cash` / `revenue`, 5 years (a year with no value is 0), `w` of the growth mean | Cost of the model: `w` x the mean ratio (`acq_w`, record A-002, 2026-11-20). |
+| Terminal growth, horizon | one long-run growth L (record A-001) | Mean L (the same number as the fade level), standard deviation 0.75%, the caps of the engine; 10 years. `long_run=off` gives the mean 2.25% of the old model. |
 
 **Templates and data quality.** Only `standard` has a model. `bank`, `insurer`, `reit`, `fund`, `foreign`, `new`, `non-usd` and `no-revenue` give "no model for this template". A mapping
 status of FAIL, a necessary variable with no value, or fewer than 3 fiscal years in sequence give no value and name the reason. A mapping status of WARN runs, and the warnings that touch a model input are printed.
@@ -624,7 +625,7 @@ traps #260 to #270).
 
 | Part | Function |
 |---|---|
-| `Rules` (`auto.rs`) | Alternatives for measurement and for the owner: `rf`, `erp`, `beta_weight`, `equity_weight_one`, `terminal_growth`, `terminal_rf`, `years`, `long_cap`, `long_run`, `fade_years`, `growth_w`, `growth_phi`, `margin_w`, `margin_last`, `sbc_cost`, `acq_charge`, `acq_f`, `acq_mult`, `acq_w`, `bridge_lti`, `bridge_leases`, `no_interest_income`, `shares_latest`, `stub`, `mid_year`. `--rules K=V,..` of `fa dcf auto`, `screen`, `pit` and `returns` sets them (`auto_pit::parse_rules`). |
+| `Rules` (`auto.rs`) | Alternatives for measurement and for the owner: `rf`, `erp`, `beta_weight`, `equity_weight_one`, `terminal_growth`, `terminal_rf`, `years`, `long_cap`, `long_run` (default 0.040; `off` or 0: the old model; `terminal_growth=X` also turns it off), `fade_years`, `growth_w`, `growth_phi`, `margin_w`, `margin_last`, `sbc_cost`, `acq_charge`, `acq_f`, `acq_mult`, `acq_w` (default 1; 0: no charge; `acq_charge` and `acq_f` win), `bridge_lti`, `bridge_leases`, `no_interest_income`, `shares_latest`, `stub`, `mid_year`. `--rules K=V,..` of `fa dcf auto`, `screen`, `pit` and `returns` sets them (`auto_pit::parse_rules`). |
 | `[discount]` (`process.rs`, `paths.rs`) | `stub_years`, `year1_share`, `mid_year`. Not set: the end-of-year rule of before (the hand models do not change). |
 | `fa dcf screen --implied` (`auto_cli.rs`) | `implied_discount_rate`: the cost of capital of year 1 that gives the price (a search on the premium). New CSV columns: `model_rate`, `implied_rate`, `sbc_ratio`, `net_debt`, `shares`, `beta`, `equity_weight`. |
 | `fa dcf returns` (`auto_returns.rs`) | The P50 / price of the point-in-time model (date: end of the fiscal year + 100 days) against the later 1-year and 3-year price returns: rank correlations by year and pooled, quintiles inside each year, size buckets, the years as clusters. About 10 s for 420 companies. Result: `analysis/priors/auto_returns_2026-11-20.txt`. |

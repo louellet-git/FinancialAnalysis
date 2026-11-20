@@ -29,4 +29,14 @@ Do them one at a time, the largest measured error first:
    (`T-20261120-sic-code`).
 5. Terminal value: the margin of year 10 pays for the growth of the history, not for the terminal growth.
 
+Measured errors of the point-in-time test (`analysis/priors/auto_pit_2026-11-20.txt`, 6,030 company-years;
+target: 10% below P10, 80% inside, 10% above P90). These two are the first parts, before the list above:
+- A. After a year of decline (1,345 company-years, 22%): the real revenue is above P90 in 15% to 19% of the
+  cases, and the P50 is 7.6% too low at T+2 and 11.3% too low at T+3. The model does not see the recovery.
+- B. Stable margin (range below 5 points, 1,540 company-years, 26%): 95% of the real free cash flows are
+  inside the band. The band is too wide. For a range above 10 points the band is right (78% to 80%).
+
+Method: develop a rule on the companies A to CME (the 215 tickers of the partial cache). Score it on the
+other companies when the data store has them. A test set does not select the rule that it scores.
+
 Rule: no part is chosen or tuned with the market price (`docs/QUALITY-STANDARDS.md`, section 6).
