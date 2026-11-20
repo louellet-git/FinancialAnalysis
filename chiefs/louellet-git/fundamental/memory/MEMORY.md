@@ -10,7 +10,9 @@ each stock, industry and sector. The person does not choose each assumption: thi
 2. `T-20261120-dcf-market-implied`: `fa dcf implied` (value at the means, three searches, group medians).
 3. `T-20261120-dcf-assumption-register`: one table in the code, `fa dcf assumptions`, a test that ties
    each default to its record, the missing records, the skill for an assumption study.
-4. Sector medians need the SIC code: ticket `T-20261120-sic-code` (head: technology).
+4. `T-20261120-dcf-engine-accuracy`: measure the weak points of the stochastic engine, correct one at a
+   time (precision of the P50, base revenue, bands, sector cells, terminal value).
+5. Sector medians and sector cells need the SIC code: ticket `T-20261120-sic-code` (head: technology).
 
 ## Decisions of this head (the reasons are in the records; no reason uses the price)
 - 2026-11-20, long-run growth: one number `L` = lower of the 10-year zero yield and `G`. `G` = FOMC
@@ -22,6 +24,8 @@ each stock, industry and sector. The person does not choose each assumption: thi
   so that the result has no random part. A market-implied value is a measurement, never an input.
 
 ## Standing words of the person
+- 2026-11-20: the immediate goal is to improve the stochastic DCF engine, for stocks only ("stick to
+  underlyings"); no option work in this area.
 - 2026-11-20: "the agents should not be overly sophisticated just overall lean and of quality, not
   obsessive and tight fisted".
 - 2026-11-19 or 2026-11-20, on the GitHub Actions use: "this is too much usage". Effect: few pull
