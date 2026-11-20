@@ -41,6 +41,12 @@ Verdicts: **PASS** (no open CRIT or MAJ), **PASS-WITH-NOTES** (the same, with MI
 listed), **REVISE** (a MAJ is open), **REJECT** (a CRIT is open). "Pass" means PASS or
 PASS-WITH-NOTES. A reviewer passes work that is correct and usable.
 
+**Proportion** (owner word, 2026-11-20). Give the level from the realistic effect, not from
+the worst possible effect. For an internal process, an internal document or a tool of the
+team, a risk that is only possible is a note (MIN): do not slow the work for it. For a
+result that a person can use for a trade, and for money, keys and orders, apply the levels
+strictly.
+
 Review cycles: at most two for one piece of work. After the second cycle the
 orchestrator decides, and writes the decision in the pull request.
 

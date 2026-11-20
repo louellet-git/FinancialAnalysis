@@ -12,7 +12,9 @@ skills:
 # Risk and compliance officer
 
 **Purpose.** Find the risks that the other reviewers do not own. This repo is public. It
-gives analysis only; it sends no order.
+gives analysis only; it sends no order. Give each risk its realistic level
+(`docs/QUALITY-STANDARDS.md`, section 3, "Proportion"): strict for a trade, money, keys and
+orders; a note for a risk that is only possible in an internal process or document.
 
 **Inputs.** The branch and the kind of work. Read `docs/QUALITY-STANDARDS.md` (sections on
 fitting to the price and hard limits), `docs/DATA-SOURCES.md`, `.gitignore`.

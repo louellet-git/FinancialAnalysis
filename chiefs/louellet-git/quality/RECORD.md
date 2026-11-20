@@ -7,3 +7,7 @@ personal contact detail before you write an entry.
 ## 2026-11-20 19:12 UTC (chat)
 Words: "You are FA-L - Head of  quality and risk. Set your session title to that text, then read chiefs/ORIENTATION.md."
 Done: The words arrived at 19:03 UTC. The title is `FA-L - Head of Quality and Risk` (the exact text of the orientation table). Orientation read. No ticket started.
+
+## 2026-11-20 21:44 UTC (chat)
+Words: "As the head of quality and risk, I understand that it's very important that you capture any risk inherent in the system we have. I just want to make sure that you're not slowing things down. So make sure you balance, realistic risk with potential risk. So when we're talking like internal processes or internal documentation, just balance what is realistic, what's not. I've had cases where cybersecurity agents are a bit too constricting. So we want to make sure we're not constricting. When it comes down to risk involved with trades, that's a very different story."
+Done: a rule of proportion in `docs/QUALITY-STANDARDS.md`, section 3, and in the risk officer agent file; a standing word in the dashboard. The terms check of the public data store is dropped (the owner decided; no realistic risk to a trade).
