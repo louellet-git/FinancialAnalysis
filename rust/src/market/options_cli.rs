@@ -29,7 +29,9 @@ USAGE:
                               --rate R is one flat rate (decimal) for the index volatility; default: the Treasury curve.
   fa options check SYMBOL --date D [--rate R] [--top N]
                               no-arbitrage checks of a stored chain at executable prices (buy at the ask, sell at the bid):
-                              monotony, slope, butterfly, calendar, parity bound; no network. A break is not a profit.
+                              intrinsic value, monotony, slope, butterfly, calendar, upper parity bound only (the lower bound needs the
+                              dividends). Without --rate the Treasury curve can be downloaded (one file); give --rate R for no network.
+                              A break is not a profit. fa options check --help: more.
   fa options history SYMBOL (--date D | --from D --to D) [--max-days N] [--moneyness LO,HI] [--rate R] [--level S:RATIO] [--refresh] [--plan]
                               the surface of past dates from the daily closes of the contracts (Alpaca option bars,
                               since 2024-02). One snapshot file for each trading day, with quote_kind \"close\":
@@ -45,6 +47,19 @@ USAGE:
                               --plan lists the contracts and the number of requests, and gets no closes. A run prints
                               the same plan to stderr before it asks for closes.
                               A stopped run continues when you run it again (a month with its snapshot files is skipped).";
+
+pub const CHECK_USAGE: &str = "\
+fa options check SYMBOL --date D [--rate R] [--top N]
+
+  Reads data/raw/SYMBOL/options/D.json and finds the quotes that break a no-arbitrage rule at executable prices
+  (buy at the ask, sell at the bid). A break at mid prices only is not a finding.
+  Checks: intrinsic value (ask below it; American options), monotony, slope, butterfly, calendar (American),
+  upper parity bound only (American; the lower bound needs the dividends). A quote with an ask below the intrinsic
+  value leaves the other checks. A quote with bid 0 or no bid is dropped and counted.
+  --rate R: one flat rate (decimal). Without it the Treasury curve is used and can be downloaded (one file);
+  give --rate R for no network.
+  --top N: the number of breaks to list (default 10).
+  A break is not a profit: no costs, no borrow, no time of the quotes, early exercise not priced.";
 
 #[derive(Debug, Default)]
 struct Args {
@@ -359,6 +374,10 @@ pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
         }
         Some("snapshot") => snapshot(repo, &args[1..]),
         Some("history") => history(repo, &args[1..]),
+        Some("check") if matches!(args.get(1).map(String::as_str), Some("-h" | "--help")) => {
+            println!("{CHECK_USAGE}");
+            Ok(0)
+        }
         Some("check") => check(repo, &args[1..]),
         Some(other) => Err(format!("unknown options command '{other}'; see fa options --help")),
     }

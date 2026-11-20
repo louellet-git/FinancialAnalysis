@@ -2,7 +2,7 @@
 //!
 //! Pure functions, no I/O. A break at mid prices only is not a finding. A break here is a quote pair that
 //! breaks a bound at executable prices; it is not a profit (no costs, no borrow, no time of the quotes, early
-//! exercise: `docs/HIDDEN-ASSUMPTIONS.md` #112). A series is one root and one expiry.
+//! exercise). A series is one root and one expiry.
 //!
 //! Checks (K1 < K2 < K3 are strikes of one series and one type):
 //! 1. Monotony. Call: bid C(K2) > ask C(K1). Put: bid P(K1) > ask P(K2). All strike pairs.
@@ -82,11 +82,15 @@ pub struct Dropped {
     pub ask_below_bid: usize,
     pub bad_symbol: usize,
     pub bad_expiry: usize,
+    /// An expiry on or before the snapshot date.
+    pub past_expiry: usize,
+    /// An option type that is not "call" or "put".
+    pub bad_type: usize,
 }
 
 impl Dropped {
     pub fn total(&self) -> usize {
-        self.no_bid + self.no_ask + self.ask_below_bid + self.bad_symbol + self.bad_expiry
+        self.no_bid + self.no_ask + self.ask_below_bid + self.bad_symbol + self.bad_expiry + self.past_expiry + self.bad_type
     }
 }
 
@@ -128,8 +132,16 @@ pub fn check_chain(snap: &OptionChainSnapshot, american: bool, rate: &mut dyn Fn
             rep.dropped.bad_symbol += 1;
             continue;
         }
-        if parse_iso(&q.expiry).is_none() {
+        let Some(exp_day) = parse_iso(&q.expiry) else {
             rep.dropped.bad_expiry += 1;
+            continue;
+        };
+        if exp_day <= day {
+            rep.dropped.past_expiry += 1;
+            continue;
+        }
+        if q.option_type != "call" && q.option_type != "put" {
+            rep.dropped.bad_type += 1;
             continue;
         }
         let bid = q.bid.unwrap_or(0.0);
@@ -168,7 +180,7 @@ pub fn check_chain(snap: &OptionChainSnapshot, american: bool, rate: &mut dyn Fn
                 let intrinsic = if q.call { s - q.strike } else { q.strike - s };
                 if q.ask + EPS < intrinsic {
                     rep.below_intrinsic += 1;
-                    push_break(&mut breaks, 5, root, expiry, intrinsic - q.ask, &[(&q.symbol, q.ask)], format!("{}: ask {} of {} is below the intrinsic value {:.4} (S {} less K, or K less S; S is a last price)", kind(q.call), q.ask, q.symbol, intrinsic, s));
+                    push_break(&mut breaks, 5, root, expiry, intrinsic - q.ask, &[(&q.symbol, q.ask)], format!("{}: ask {} of {} is below the intrinsic value {:.4} (S {:.2} less K, or K less S; S is a last price)", kind(q.call), q.ask, q.symbol, intrinsic, s));
                     continue;
                 }
             }
@@ -227,7 +239,7 @@ pub fn check_chain(snap: &OptionChainSnapshot, american: bool, rate: &mut dyn Fn
                 let bound = s - c.strike * df;
                 let size = c.bid - p.ask - bound;
                 if size > EPS {
-                    push_break(&mut breaks, 4, root, expiry, size, &[(&c.symbol, c.bid), (&p.symbol, p.ask)], format!("bid {} of {} less ask {} of {} is above S - K df = {:.4} (S {} is a last price, not a bid or ask)", c.bid, c.symbol, p.ask, p.symbol, bound, s));
+                    push_break(&mut breaks, 4, root, expiry, size, &[(&c.symbol, c.bid), (&p.symbol, p.ask)], format!("bid {} of {} less ask {} of {} is above S - K df = {:.4} (S {:.2} is a last price, not a bid or ask)", c.bid, c.symbol, p.ask, p.symbol, bound, s));
                 }
             }
         }
@@ -294,7 +306,7 @@ pub fn render(ticker: &str, snap: &OptionChainSnapshot, rep: &Report, american: 
     let mut s = String::new();
     let d = &rep.dropped;
     s.push_str(&format!(
-        "options check {ticker} {}: spot {} ({}), {} quotes, {} used, {} dropped (bid missing or 0: {}, ask missing: {}, ask below bid: {}, bad symbol: {}, bad expiry: {}); {} used quotes have an ask below the intrinsic value and are removed from the checks 1 to 5\n",
+        "options check {ticker} {}: spot {} ({}), {} quotes, {} used, {} dropped (bid missing or 0: {}, ask missing: {}, ask below bid: {}, bad symbol: {}, bad expiry: {}, expiry on or before the snapshot date: {}, option type not call or put: {}); {} used quotes have an ask below the intrinsic value and are removed from the checks 1 to 5\n",
         snap.snapshot_date,
         snap.spot_price.map_or("none".to_string(), |x| format!("{x:.2}")),
         if american { "American options" } else { "European index: no calendar test, no parity bound" },
@@ -306,6 +318,8 @@ pub fn render(ticker: &str, snap: &OptionChainSnapshot, rep: &Report, american: 
         d.ask_below_bid,
         d.bad_symbol,
         d.bad_expiry,
+        d.past_expiry,
+        d.bad_type,
         rep.below_intrinsic
     ));
     s.push_str(&format!("source {:?}, quote_kind {:?}: a file with no source field is a Cboe delayed snapshot; the file has no time of the quotes.\n\n", snap.source, snap.quote_kind));
@@ -404,7 +418,7 @@ mod tests {
     #[test]
     fn planted_monotony_break_has_the_exact_size() {
         let mut v = clean();
-        // Call 100 of the first expiry: bid 5.0 against ask 4.1 of the 90... no: make call 110 bid 4.5 above ask 4.1 of call 100.
+        // Call 110 bid 4.5 is above ask 4.1 of call 100: size 0.4.
         let i = v.iter().position(|x| x.strike == 110.0 && x.option_type == "call" && x.expiry == "2026-01-16").unwrap();
         v[i].bid = Some(4.5);
         v[i].ask = Some(4.6);
@@ -418,13 +432,13 @@ mod tests {
     #[test]
     fn planted_slope_break_has_the_exact_size() {
         let mut v = clean();
-        // Put 110 of the first expiry: bid 25 against ask 1.1 of put 100 ... width 10: 25 - 1.1... use put 90 ask 1.1.
+        // Put 110 of the first expiry: bid 15.0 less ask 4.1 of put 100 is 10.9; the width is 10; size 0.9.
         let i = v.iter().position(|x| x.strike == 110.0 && x.option_type == "put" && x.expiry == "2026-01-16").unwrap();
         v[i].bid = Some(15.0);
         v[i].ask = Some(15.2);
         let r = run(v);
         let s: Vec<_> = r.breaks.iter().filter(|b| b.check == 1).collect();
-        // pairs (90,110): 15 - 1.1 - 20? no: width 20 -> no break; (100,110): 15 - 4.1 - 10 = 0.9 break.
+        // Pair (90,110): 15 - 1.1 - 20 is below 0, no break. Pair (100,110): 15 - 4.1 - 10 = 0.9.
         assert_eq!(s.len(), 1, "{:?}", s);
         assert!((s[0].size - 0.9).abs() < 1e-9, "{}", s[0].size);
     }
@@ -432,8 +446,8 @@ mod tests {
     #[test]
     fn planted_butterfly_break_has_the_exact_size() {
         let mut v = clean();
-        // Call 100 bid 4.7 with ask 90 = 11.1 and ask 110 = 1.1: bound = 0.5 * 11.1 + 0.5 * 1.1 = 6.1 -> no break at 4.7.
-        // Lift the middle call to 7.0 bid: 7.0 - 6.1 = 0.9. The monotony is not broken (bid 7.0 < ask 11.1).
+        // Bound for the call 100: 0.5 x ask 11.1 (call 90) + 0.5 x ask 1.1 (call 110) = 6.1. A bid 7.0 breaks it by 0.9.
+        // Monotony stays clean: bid 7.0 is below ask 11.1.
         let i = v.iter().position(|x| x.strike == 100.0 && x.option_type == "call" && x.expiry == "2026-01-16").unwrap();
         v[i].bid = Some(7.0);
         v[i].ask = Some(7.2);
@@ -446,7 +460,7 @@ mod tests {
     #[test]
     fn planted_calendar_break_has_the_exact_size() {
         let mut v = clean();
-        // First expiry put 100 bid 5.5; second expiry put 100 ask 5.1: break 0.4. Other tests stay clean or are not counted.
+        // First expiry put 100 bid 5.5; second expiry put 100 ask 5.1: break 0.4. The other checks stay clean.
         let i = v.iter().position(|x| x.strike == 100.0 && x.option_type == "put" && x.expiry == "2026-01-16").unwrap();
         v[i].bid = Some(5.5);
         v[i].ask = Some(5.6);
@@ -496,6 +510,20 @@ mod tests {
         let r2 = check_chain(&snap(v), false, &mut zero).unwrap();
         assert_eq!(count(&r2, 5), 0);
         assert!(count(&r2, 0) >= 1);
+    }
+
+    #[test]
+    fn a_series_with_an_expiry_on_or_before_the_snapshot_date_is_dropped_and_counted() {
+        let mut v = clean();
+        add(&mut v, "XYZ", "260102", "2026-01-02", true, 100.0, 1.0, 1.2);
+        add(&mut v, "XYZ", "251219", "2025-12-19", false, 100.0, 1.0, 1.2);
+        let mut odd = q(&sym("XYZ", "260116", true, 120.0), true, "2026-01-16", 120.0, 1.0, 1.2);
+        odd.option_type = "weird".into();
+        v.push(odd);
+        let r = run(v);
+        assert_eq!((r.dropped.past_expiry, r.dropped.bad_type), (2, 1));
+        assert_eq!(r.rows.len(), 2, "no series for the past expiries");
+        assert_eq!(r.breaks.len(), 0);
     }
 
     #[test]
