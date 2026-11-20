@@ -57,7 +57,7 @@ a row in the ledger of your own folder; no `data/`, `.env` or secret in the comm
 | Investigation | One findings file (skill `investigation-report`). Each number was calculated again by the auditor. |
 | Valuation report | The four steps of `CLAUDE.md` were done in order (skill `valuation-report-review`). Luc approved a new ticker. |
 | Trade (paper or live) | A write-up of at most 2 pages in `trading/journal/` (form in its `README.md`): the logic, the trade, the steps taken, the risks; the result after the close. |
-| Document | The text is STE. Each command and path exists. Each number has a source. |
+| Document | The text is about 85% STE (`CLAUDE.md`, "Language"). Each command and path exists. Each number has a source. |
 
 Each model has a model document (`docs/models/`, at most 120 lines). Each assumption has
 a record (`docs/assumptions/`, at most 60 lines). A code change that moves an assumption
