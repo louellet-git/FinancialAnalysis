@@ -2,11 +2,11 @@
 id: T-20261120-portfolio-backtest
 title: Build one portfolio backtester for the strategies of the two research heads
 area: trading
-status: backlog
+status: in-progress
 owner: louellet-git
 head: technology
 order: 2
-branch:
+branch: claude/portfolio-backtest
 created: 2026-11-20
 acceptance: One command runs a strategy over past dates with point-in-time data only and gives the return, the drawdown, the turnover and the costs against a benchmark, for one fundamental strategy and one quant strategy, and the Head of Quality and Risk passes its look-ahead test.
 ---
