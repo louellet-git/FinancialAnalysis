@@ -39,3 +39,13 @@ Run of the 218 tickers of the partial cache (A to CME, old defaults): 135 with a
 3. Sector and industry groups: `--groups FILE` works; the SIC code waits for `T-20261120-sic-code`.
 4. The findings file (part 4) and the gate (model-validator, code-reviewer) wait for the data store of the
    Head of Technology. Merge `main` and the conventions branch first: this branch has the old defaults.
+
+**Decision of the Head of Fundamental Research, 2026-11-20 (open point 1).** The search keeps the value at
+the means. Reason (no reason uses the price): a DCF with a risk-adjusted discount rate gives the present value
+of the EXPECTED cash flows, so the price compares with an expected value, not with the median of the value
+over the parameter draws. The path at the means is a deterministic estimate of that expected value; the P50 is
+lower by construction when the distribution is skewed (data of 2026-11-19, old defaults, seed 7, 10,000 paths:
+AAPL value at the means $127.94 against P50 $122.57; ABT $48.44 against $38.84; ADBE $250.49 against $235.73;
+IBM $159.72 against $132.87; KO $35.09 against $29.76). Effect: the P50 / price of `fa dcf screen` is a
+conservative measure and is not the same as the value / price of `fa dcf implied`. The findings file must say
+this. Follow-up for the engine ticket: report the mean of the simulated value with its standard error.
