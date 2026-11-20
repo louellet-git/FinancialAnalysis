@@ -53,7 +53,8 @@ fa dcf implied [--tickers-file FILE | TICKER ...] [OPTIONS]
   --table FILE    parameter table
   --rules K=V,..  change a rule of the builder (the list: fa dcf auto --help)
   --groups FILE   CSV lines `ticker,sector,industry` (a header line is allowed): the groups by sector and by industry
-                  (industries with 5 tickers or more). Without it only the groups all and size are printed.
+                  (industries with 5 tickers or more). It wins over the SIC code. Without it: the SIC code of the cache
+                  (sector = Fama-French 12 name, industry = code and description; the code of today).
   --out FILE      write one CSV row for each ticker
   --jobs N        threads (default: all); the result does not depend on N";
 
@@ -211,6 +212,8 @@ pub struct ImpliedConfig<'a> {
     pub table: &'a ProcessTable,
     pub fade: &'a [FadeCell],
     pub rules: Rules,
+    /// The cache for the SIC code (`groups_of`); `None`: only the groups of the file.
+    pub cache: Option<&'a Path>,
 }
 
 /// The result for one ticker with a value.
@@ -297,10 +300,19 @@ pub struct MarketPremium {
     pub median_at_model: f64,
 }
 
-/// The sector and the industry of a ticker. One function: a later source (the SIC code of the cache, ticket
-/// `T-20261120-sic-code`) replaces the body, not the callers.
-pub fn groups_of(ticker: &str, groups: &HashMap<String, (String, String)>) -> (String, String) {
-    groups.get(ticker).cloned().unwrap_or_default()
+/// The sector and the industry of a ticker. One function. The file of `--groups` wins; else the SIC code of the cache
+/// (`mapcheck::sec::company_sic`, from `<T>/sec_8k_earnings.json`, no network): the sector is the Fama-French 12 name and
+/// the industry is the code with its description (for example "3570 Computer & office equipment"). A ticker with no code
+/// has no group. The code is the code of the filer TODAY (`docs/HIDDEN-ASSUMPTIONS.md` #170); this command values today
+/// only, so that limit does not apply to it.
+pub fn groups_of(ticker: &str, groups: &HashMap<String, (String, String)>, cache: Option<&Path>) -> (String, String) {
+    if let Some(g) = groups.get(ticker) {
+        return g.clone();
+    }
+    match cache.and_then(|c| mapcheck::sec::company_sic(c, ticker)) {
+        Some((sic, desc)) => (mapcheck::sec::ff12_sector(sic).to_string(), if desc.is_empty() { sic.to_string() } else { format!("{sic} {desc}") }),
+        None => (String::new(), String::new()),
+    }
 }
 
 /// CSV lines `ticker,sector,industry` (a header line, comments after `#` and empty lines are allowed). The industry is the
@@ -361,7 +373,7 @@ pub fn implied_models(
         let mut rows: Vec<ImpliedRow> = bases
             .par_iter()
             .map(|b| {
-                let (sector, industry) = groups_of(&b.inp.ticker, groups);
+                let (sector, industry) = groups_of(&b.inp.ticker, groups, cfg.cache);
                 let outcome = match &b.base {
                     Err(Failure::Refusal(r)) => Err((r.key(), r.to_string())),
                     Err(Failure::Engine(m)) => Err(("engine error".to_string(), m.clone())),
@@ -496,9 +508,18 @@ fn market_premium(bases: &[Base], cfg: &ImpliedConfig) -> R<Option<MarketPremium
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Quartiles {
     pub n: usize,
+    /// Values that are bounds of a search (`<` or `>`), not solutions.
+    pub bounded: usize,
     pub p25: f64,
     pub p50: f64,
     pub p75: f64,
+}
+
+impl Quartiles {
+    /// More than 20% of the values are bounds: a quartile of censored values is not a measured number.
+    pub fn censored(&self) -> bool {
+        self.bounded * 5 > self.n
+    }
 }
 
 pub const MEASURES: [&str; 5] = ["value / price", "implied - model cost of capital", "implied - model 10-year growth", "implied - model margin", "value at the list premium / price"];
@@ -512,21 +533,29 @@ pub struct GroupLine {
     pub measures: [Option<Quartiles>; 5],
 }
 
-fn quartiles(mut v: Vec<f64>) -> Option<Quartiles> {
-    v.retain(|x| x.is_finite());
-    if v.is_empty() {
+fn quartiles(v: Vec<(f64, bool)>) -> Option<Quartiles> {
+    let bounded = v.iter().filter(|x| x.0.is_finite() && x.1).count();
+    let vals: Vec<f64> = v.iter().map(|x| x.0).filter(|x| x.is_finite()).collect();
+    if vals.is_empty() {
         return None;
     }
-    let s = sorted_copy(&v);
-    Some(Quartiles { n: s.len(), p25: percentile(&s, 25.0), p50: percentile(&s, 50.0), p75: percentile(&s, 75.0) })
+    let s = sorted_copy(&vals);
+    Some(Quartiles { n: s.len(), bounded, p25: percentile(&s, 25.0), p50: percentile(&s, 50.0), p75: percentile(&s, 75.0) })
 }
 
 fn group_line(name: String, rows: &[&ImpliedValue]) -> GroupLine {
-    let col = |f: &dyn Fn(&ImpliedValue) -> Option<f64>| quartiles(rows.iter().filter_map(|r| f(r)).collect());
+    let col = |f: &dyn Fn(&ImpliedValue) -> Option<(f64, bool)>| quartiles(rows.iter().filter_map(|r| f(r)).collect());
+    let bound = |f: &Option<Found>| f.is_some_and(|f| f.bound != Bound::Exact);
     GroupLine {
         name,
         n: rows.len(),
-        measures: [col(&|r| r.value_over_price()), col(&|r| r.rate_diff()), col(&|r| r.growth_diff()), col(&|r| r.margin_diff()), col(&|r| r.at_market)],
+        measures: [
+            col(&|r| r.value_over_price().map(|x| (x, false))),
+            col(&|r| r.rate_diff().map(|x| (x, bound(&r.premium)))),
+            col(&|r| r.growth_diff().map(|x| (x, bound(&r.growth)))),
+            col(&|r| r.margin_diff().map(|x| (x, bound(&r.margin)))),
+            col(&|r| r.at_market.map(|x| (x, false))),
+        ],
     }
 }
 
@@ -555,10 +584,11 @@ pub fn group_table(rows: &[ImpliedRow]) -> Vec<GroupLine> {
     for (k, sel) in &sectors {
         out.push(group_line(format!("sector {k}"), sel));
     }
-    for (k, sel) in &industries {
-        if sel.len() >= INDUSTRY_MIN {
-            out.push(group_line(format!("industry {k}"), sel));
-        }
+    // the largest industries first (the same count: by name)
+    let mut big: Vec<(&&str, &Vec<&ImpliedValue>)> = industries.iter().filter(|(_, sel)| sel.len() >= INDUSTRY_MIN).collect();
+    big.sort_by(|a, b| b.1.len().cmp(&a.1.len()).then(a.0.cmp(b.0)));
+    for (k, sel) in big {
+        out.push(group_line(format!("industry {k}"), sel));
     }
     out
 }
@@ -631,7 +661,7 @@ pub fn csv_text(rows: &[ImpliedRow]) -> String {
 fn q_text(q: &Option<Quartiles>, scale: f64, d: usize, n: usize) -> String {
     match q {
         None => "-".into(),
-        Some(q) => format!("{} {} {}{}", num(q.p25 * scale, d), num(q.p50 * scale, d), num(q.p75 * scale, d), if q.n != n { format!(" ({})", q.n) } else { String::new() }),
+        Some(q) => format!("{} {} {}{}{}", num(q.p25 * scale, d), num(q.p50 * scale, d), num(q.p75 * scale, d), if q.censored() { "*" } else { "" }, if q.n != n { format!(" ({})", q.n) } else { String::new() }),
     }
 }
 
@@ -643,7 +673,7 @@ pub fn group_text(lines: &[GroupLine]) -> String {
     for (i, m) in MEASURES.iter().enumerate() {
         s.push_str(&format!(" | {m}{}", if i == 0 || i == 4 { "" } else { " (points)" }));
     }
-    s.push_str("\n  each measure: P25 P50 P75\n");
+    s.push_str("\n  each measure: P25 P50 P75; * more than 20% of the values are bounds of a search (< or >): a quartile of censored values is not a measured number\n");
     for l in lines {
         s.push_str(&format!("{:<34} {:>5}", l.name, l.n));
         for (i, q) in l.measures.iter().enumerate() {
@@ -692,7 +722,7 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     let map_s = t0.elapsed().as_secs_f64();
     let (curve, index) = curve_and_index(&cache, &as_of);
     let market_of = |t: &str| -> Market { market_from_cache(&cache, t, &as_of, prices.get(t).copied(), &rules, curve.as_ref(), index.as_deref()) };
-    let cfg = ImpliedConfig { table: &table, fade: &fade, rules: rules.clone() };
+    let cfg = ImpliedConfig { table: &table, fade: &fade, rules: rules.clone(), cache: Some(&cache) };
     let (rows, market, timing) = implied_models(&inputs, &market_of, &groups, &cfg, jobs)?;
     if let Some(path) = o.get("--out") {
         std::fs::write(path, csv_text(&rows)).map_err(|x| DcfError(format!("{path}: {x}")))?;
@@ -733,7 +763,7 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         None => println!("\nPREMIUM OF THE WHOLE LIST: no ticker has a value and a price"),
     }
     if groups.is_empty() {
-        println!("  (no --groups file: only the groups all and size)");
+        println!("  Groups: the SIC code of the cache (`<T>/sec_8k_earnings.json`), sector = Fama-French 12, industry = the code with its description. The code is the code of the filer today (trap #170); this command values today only, so that limit does not apply. A ticker with no code has no group.");
     }
     println!("\nGROUPS (tickers with a value; the numbers are the quartiles of each measure)");
     print!("{}", group_text(&group_table(&rows)));

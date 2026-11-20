@@ -634,8 +634,8 @@ range and at the model number gets the flag `:nm` (a company with a negative ter
 value (the engine gives no value for a part of the range) gives a bound, not a number. The columns are in the CSV header of `auto_implied.rs`.
 The groups (all, size, sector, industry with 5 tickers or more) give P25, P50 and P75 of: value / price, implied less model cost of capital, growth
 of years 1 to 10, and margin of year 10 (FCFF after SBC and the charge over revenue), and the value at the premium of the list over the price. The
-sector and the industry come from `--groups FILE` (CSV `ticker,sector,industry`) through the one function `groups_of`; the SIC code of the cache
-(ticket `T-20261120-sic-code`) replaces its body later. The premium of the list is the premium for which the median of value / price over the tickers
+sector and the industry come from `--groups FILE` (CSV `ticker,sector,industry`) if given, else from the SIC code of the cache (`mapcheck::sec::company_sic`, sector = Fama-French 12 name by `ff12_sector`, industry = the code with its description) through the one function `groups_of`; a ticker with no code has no group. The code is the code of the filer today (trap #170); this command values today only, so that limit does not apply to it. A quartile cell with more than 20% bounds (`<` or `>`) has a `*`: a quartile of censored values is not a measured number. The industries are in the order of their size.
+The premium of the list is the premium for which the median of value / price over the tickers
 with a value and a price is 1.0. The price enters the builder only through the equity weight (`E / (E + debt)`), as in `fa dcf auto`; the price
 cache gives the last close, not the close of `--as-of`. Two runs give the same bytes, and the result does not depend on `--jobs` (a test compares 1 and 4 threads).
 
@@ -990,7 +990,7 @@ ticket `option-backtest-rust`).
 
 ## Tests
 
-`cargo test --manifest-path rust/Cargo.toml --locked`: 572 Rust tests (554 + 17 + 1; 2 more are ignored) (the `fa` crate).
+`cargo test --manifest-path rust/Cargo.toml --locked`: 585 Rust tests (567 + 17 + 1; 2 more are ignored) (the `fa` crate).
 `cargo test --manifest-path rust/mapcheck/Cargo.toml`: 100 Rust tests. The suites make no network calls and start no
 Python program; HTTP is replaced by a function that the test gives, and files are in a temp folder.
 No Python test remains (the last 211 Python tests were deleted on 2026-11-19 after each case had a Rust test).

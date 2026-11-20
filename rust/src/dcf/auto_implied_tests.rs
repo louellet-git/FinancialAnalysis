@@ -19,7 +19,7 @@ fn priced(p: Option<f64>) -> impl Fn(&str) -> Market + Sync {
 
 fn run(inp: &[AutoInputs], rules: Rules, market_of: &(dyn Fn(&str) -> Market + Sync), jobs: Option<usize>) -> (Vec<ImpliedRow>, Option<MarketPremium>) {
     let t = table();
-    let cfg = ImpliedConfig { table: &t, fade: &[], rules };
+    let cfg = ImpliedConfig { table: &t, fade: &[], rules, cache: None };
     let (rows, mp, _) = implied_models(inp, market_of, &HashMap::new(), &cfg, jobs).unwrap();
     (rows, mp)
 }
@@ -263,9 +263,9 @@ fn the_group_medians_of_a_list_of_six_rows_are_the_hand_calculated_ones() {
 #[test]
 fn a_group_file_gives_the_sector_and_the_industry() {
     let g = parse_groups("ticker,sector,industry\nibm, Technology , IT Services, Consulting\n# a comment\nJNJ,Health Care,Pharma\n", "test").unwrap();
-    assert_eq!(groups_of("IBM", &g), ("Technology".to_string(), "IT Services, Consulting".to_string()));
-    assert_eq!(groups_of("JNJ", &g).0, "Health Care");
-    assert_eq!(groups_of("NONE", &g), (String::new(), String::new()));
+    assert_eq!(groups_of("IBM", &g, None), ("Technology".to_string(), "IT Services, Consulting".to_string()));
+    assert_eq!(groups_of("JNJ", &g, None).0, "Health Care");
+    assert_eq!(groups_of("NONE", &g, None), (String::new(), String::new()));
     assert!(parse_groups("IBM,Technology\n", "test").is_err());
     // a comma of an industry does not break the CSV
     let r = row("IBM", "1-10B", "Technology", "IT Services, Consulting", 100.0, 100.0, 0.0, 0.0, 0.0, 1.0);
@@ -343,4 +343,69 @@ fn the_shifts_of_the_builder_move_one_number_and_zero_changes_nothing() {
     assert!(PathsSpec::from_toml(&low.toml).is_ok());
     // the default lower bound stays 2%
     assert!(base.toml.contains("erp = { mean = 0.0441, std = 0.0075, lo = 0.02 }"));
+}
+
+#[test]
+fn the_sic_code_of_the_cache_gives_the_sector_and_the_industry_and_the_file_wins() {
+    let dir = std::env::temp_dir().join(format!("implied-sic-{}", std::process::id()));
+    for (t, body) in [
+        ("IBM", r#"{"sic": 3570, "sic_description": "Computer & office equipment", "filings": []}"#),
+        ("JPM", r#"{"sic": 6021, "sic_description": "National commercial banks", "filings": []}"#),
+        ("OLD", r#"{"filings": []}"#),
+        ("NODESC", r#"{"sic": 7372, "filings": []}"#),
+    ] {
+        std::fs::create_dir_all(dir.join(t)).unwrap();
+        std::fs::write(dir.join(t).join("sec_8k_earnings.json"), body).unwrap();
+    }
+    let none = HashMap::new();
+    assert_eq!(groups_of("IBM", &none, Some(&dir)), ("BusEq".to_string(), "3570 Computer & office equipment".to_string()));
+    assert_eq!(groups_of("JPM", &none, Some(&dir)), ("Money".to_string(), "6021 National commercial banks".to_string()));
+    assert_eq!(groups_of("NODESC", &none, Some(&dir)), ("BusEq".to_string(), "7372".to_string()));
+    // no code (an old file, a missing file) or no cache: no group
+    assert_eq!(groups_of("OLD", &none, Some(&dir)), (String::new(), String::new()));
+    assert_eq!(groups_of("GONE", &none, Some(&dir)), (String::new(), String::new()));
+    assert_eq!(groups_of("IBM", &none, None), (String::new(), String::new()));
+    // the file of `--groups` wins
+    let file = parse_groups("IBM,Mine,Own industry\n", "t").unwrap();
+    assert_eq!(groups_of("IBM", &file, Some(&dir)), ("Mine".to_string(), "Own industry".to_string()));
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn a_cell_with_more_than_twenty_percent_bounds_gets_a_star() {
+    let mut rows: Vec<ImpliedRow> = (0..5).map(|k| row(&format!("T{k}"), BUCKET_LABELS[1], "S", "I", 100.0, 90.0, 0.01, 0.01, 0.01, 1.0)).collect();
+    let bound = |r: &mut ImpliedRow, premium: bool, growth: bool| {
+        let v = r.outcome.as_mut().unwrap();
+        if premium {
+            v.premium = Some(Found { x: ERP_RANGE.0, bound: Bound::Below, monotone: true });
+        }
+        if growth {
+            v.growth = Some(Found { x: GROWTH_RANGE.1, bound: Bound::Above, monotone: true });
+        }
+    };
+    // premium: 2 of 5 rows are bounds (40%); growth: 1 of 5 (20%, not more than 20%)
+    bound(&mut rows[0], true, true);
+    bound(&mut rows[1], true, false);
+    let t = group_table(&rows);
+    let all = &t[0];
+    let (q_rate, q_growth, q_margin) = (all.measures[1].unwrap(), all.measures[2].unwrap(), all.measures[3].unwrap());
+    assert_eq!((q_rate.bounded, q_growth.bounded, q_margin.bounded), (2, 1, 0));
+    assert!(q_rate.censored() && !q_growth.censored() && !q_margin.censored());
+    assert!(!all.measures[0].unwrap().censored());
+    let text = group_text(&t);
+    let line = text.lines().find(|l| l.starts_with("all ")).unwrap();
+    let cells: Vec<&str> = line.split(" | ").collect();
+    assert!(cells[2].contains('*') && !cells[3].contains('*') && !cells[4].contains('*'), "{line}");
+    assert!(text.contains("more than 20% of the values are bounds"));
+    // a second growth bound: 2 of 5
+    bound(&mut rows[2], false, true);
+    assert!(group_table(&rows)[0].measures[2].unwrap().censored());
+}
+
+#[test]
+fn the_industries_are_in_the_order_of_their_size() {
+    let mk = |k: usize, i: &str| row(&format!("{i}{k}"), BUCKET_LABELS[1], "S", i, 100.0, 90.0, 0.0, 0.0, 0.0, 1.0);
+    let rows: Vec<ImpliedRow> = (0..5).map(|k| mk(k, "B")).chain((0..7).map(|k| mk(k, "A"))).chain((0..5).map(|k| mk(k, "C"))).chain((0..4).map(|k| mk(k, "D"))).collect();
+    let names: Vec<String> = group_table(&rows).into_iter().filter(|g| g.name.starts_with("industry")).map(|g| g.name).collect();
+    assert_eq!(names, vec!["industry A", "industry B", "industry C"]);
 }
