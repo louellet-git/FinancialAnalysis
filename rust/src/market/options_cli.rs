@@ -27,6 +27,11 @@ USAGE:
                               European options). The roots of the chain: for SPX and VIX the monthly and the weekly root
                               (SPX,SPXW and VIX,VIXW); for another symbol the symbol. --roots A,B sets them.
                               --rate R is one flat rate (decimal) for the index volatility; default: the Treasury curve.
+  fa options check SYMBOL --date D [--rate R] [--top N]
+                              no-arbitrage checks of a stored chain at executable prices (buy at the ask, sell at the bid):
+                              intrinsic value, monotony, slope, butterfly, calendar, upper parity bound only (the lower bound needs the
+                              dividends). Without --rate the Treasury curve can be downloaded (one file); give --rate R for no network.
+                              A break is not a profit. fa options check --help: more.
   fa options history SYMBOL (--date D | --from D --to D) [--max-days N] [--moneyness LO,HI] [--rate R] [--level S:RATIO] [--refresh] [--plan]
                               the surface of past dates from the daily closes of the contracts (Alpaca option bars,
                               since 2024-02). One snapshot file for each trading day, with quote_kind \"close\":
@@ -42,6 +47,19 @@ USAGE:
                               --plan lists the contracts and the number of requests, and gets no closes. A run prints
                               the same plan to stderr before it asks for closes.
                               A stopped run continues when you run it again (a month with its snapshot files is skipped).";
+
+pub const CHECK_USAGE: &str = "\
+fa options check SYMBOL --date D [--rate R] [--top N]
+
+  Reads data/raw/SYMBOL/options/D.json and finds the quotes that break a no-arbitrage rule at executable prices
+  (buy at the ask, sell at the bid). A break at mid prices only is not a finding.
+  Checks: intrinsic value (ask below it; American options), monotony, slope, butterfly, calendar (American),
+  upper parity bound only (American; the lower bound needs the dividends). A quote with an ask below the intrinsic
+  value leaves the other checks. A quote with bid 0 or no bid is dropped and counted.
+  --rate R: one flat rate (decimal). Without it the Treasury curve is used and can be downloaded (one file);
+  give --rate R for no network.
+  --top N: the number of breaks to list (default 10).
+  A break is not a profit: no costs, no borrow, no time of the quotes, early exercise not priced.";
 
 #[derive(Debug, Default)]
 struct Args {
@@ -332,6 +350,22 @@ fn history(repo: &Path, rest: &[String]) -> Result<i32, String> {
     Ok(0)
 }
 
+/// `fa options check T --date D [--rate R]`: the no-arbitrage checks of a stored chain at executable prices (`option_arb`).
+fn check(repo: &Path, rest: &[String]) -> Result<i32, String> {
+    let a = Args::parse(rest, &["--date", "--rate", "--top"], &[])?;
+    let ticker = a.symbol.clone().ok_or("give a symbol: fa options check IBM --date 2026-11-19")?;
+    let date = a.flag("--date").ok_or("give --date D (a stored snapshot)")?;
+    let flat = a.flag("--rate").map(|r| r.parse::<f64>().map_err(|_| format!("bad --rate '{r}'"))).transpose()?;
+    let top = a.flag("--top").map(|n| n.parse::<usize>().map_err(|_| format!("bad --top '{n}'"))).transpose()?.unwrap_or(10);
+    let cache = super::price_cli::cache_dir(repo);
+    let snap = options::load_snapshot(&cache, &ticker, Some(date))?;
+    let american = option_history::index_info(&ticker).is_none();
+    let mut rate = rate_fn(repo, flat);
+    let rep = super::option_arb::check_chain(&snap, american, &mut rate)?;
+    print!("{}", super::option_arb::render(&ticker, &snap, &rep, american, top));
+    Ok(0)
+}
+
 pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
     match args.first().map(String::as_str) {
         None | Some("-h" | "--help" | "help") => {
@@ -340,6 +374,11 @@ pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
         }
         Some("snapshot") => snapshot(repo, &args[1..]),
         Some("history") => history(repo, &args[1..]),
+        Some("check") if matches!(args.get(1).map(String::as_str), Some("-h" | "--help")) => {
+            println!("{CHECK_USAGE}");
+            Ok(0)
+        }
+        Some("check") => check(repo, &args[1..]),
         Some(other) => Err(format!("unknown options command '{other}'; see fa options --help")),
     }
 }
