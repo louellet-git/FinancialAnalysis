@@ -61,8 +61,9 @@ unless the person tells you. If you start an agent that has no file, give it the
 model.
 
 **Keep your team files current.** You are responsible for the agent files of your team
-and for the skills that your team uses. Change them when the work shows that it is
-necessary:
+and for the skills that your team uses. You are free to improve them in the way that
+helps your goal. You do not need permission for a small improvement, and an improvement
+is not mandatory. Good reasons for a change:
 
 - an agent made an error that one more instruction prevents;
 - an instruction is wrong or old (a command, a path, a rule of the repo that changed);
@@ -172,7 +173,9 @@ the memory of each head is for. You decide what is important and how to arrange 
    repo is public: no secret, no personal contact detail, no private words.
 5. If a note and the person disagree, the person is correct. Correct the note.
 6. Commit and push your memory with your work.
-7. When the person says "clean up memory" or "dream", do the dream pass.
+7. When the person says "clean up memory" or "dream", do the dream pass. In the pass, or at any
+   other time, you can make the agents of your team a little better in the way that helps
+   your goal (section 3). This is not mandatory.
 8. Add the token ledger row of each run to your `ledger.md`, not to
    `PLANNING/token-ledger.md`.
 
