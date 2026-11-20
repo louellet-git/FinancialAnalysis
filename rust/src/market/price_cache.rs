@@ -178,7 +178,7 @@ fn fetch(src: &dyn PriceSource, ticker: &str, from: Option<&str>, opt: &Options,
                     run.blocked.insert(src.name().to_string());
                     return Err(Attempt::RateLimited(format!("{m} (waited once, then stopped {} for this run; the cache is unchanged)", src.name())));
                 }
-                eprintln!("fa: {} answered HTTP 429; waiting {} s before one new try", src.name(), opt.retry_wait.as_secs());
+                eprintln!("fa: {} answered {}; waiting {} s before one new try", src.name(), m.split(" for ").next().unwrap_or("HTTP 429"), opt.retry_wait.as_secs());
                 std::thread::sleep(opt.retry_wait);
             }
             Err(FetchError::Failed(m)) => return Err(Attempt::Failed(m)),
@@ -326,7 +326,7 @@ fn fetch_group(src: &dyn PriceSource, tickers: &[String], from: Option<&str>, op
                     run.blocked.insert(src.name().to_string());
                     return Err(Attempt::RateLimited(format!("{m} (waited once, then stopped {} for this run; the cache is unchanged)", src.name())));
                 }
-                eprintln!("fa: {} answered HTTP 429; waiting {} s before one new try", src.name(), opt.retry_wait.as_secs());
+                eprintln!("fa: {} answered {}; waiting {} s before one new try", src.name(), m.split(" for ").next().unwrap_or("HTTP 429"), opt.retry_wait.as_secs());
                 std::thread::sleep(opt.retry_wait);
             }
             Err(FetchError::Failed(m)) => return Err(Attempt::Failed(m)),
