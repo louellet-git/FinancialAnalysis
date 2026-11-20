@@ -66,12 +66,12 @@ The repo gives analysis. It does not send orders to a broker.
 - **Smoke test.** A ticket is complete only after the real command runs and the next
   step can use the output.
 - **No bloat.** Add one small part, show that it gives value, then add the next part.
-- **All programming is in Rust** (owner decision, 2026-11-19; owner rule, 2026-11-20). The repo has
-  no Python code. Write each program in Rust: the code of the repo, the tests, and also a one-time
-  analysis program or a scratch program of a head or an agent. Do not write a program in Python or
-  in a different language. One part has one implementation: do not keep a second copy of a part in
-  another language. A shell command for files, git or a build is not a program. The CI workflow
-  file and the HTML of the report pages stay as they are.
+- **The main language is Rust** (owner decision, 2026-11-19; scope set by the owner, 2026-11-20).
+  Write in Rust the programs that calculate, trade or get data: the engines, the trading code, the
+  data loaders and their tests. The repo has no Python code, and no part has a second copy in a
+  different language. A different language is permitted where it fits the work better than Rust:
+  SQL for a database, a shell command, the CI workflow file, the HTML of a report page, a small
+  one-time script. If you are not sure, use Rust.
 - **SEC contact.** The SEC contact is in `sec_contact.toml` (a project address, public on purpose).
   The environment variable `SEC_USER_AGENT` replaces it. Do not put a private contact in the repo.
 - **Do not commit** `data/`, `__pycache__/`, `.env`, `vendor/`, or the files of a private

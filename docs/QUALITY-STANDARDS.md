@@ -101,5 +101,5 @@ backtest with model prices is not a result with market prices.
 ## 8. Hard limits
 
 No order code. No secret in a file, a commit or a chat (skill `secrets-and-privacy`). No
-change to `analysis/IBM/report/*`, `REVIEW.md` or `DRIVER-REVIEW.md`. All programming is in Rust (`CLAUDE.md`, "Work rules"): no program in Python or in a different language, also not a scratch program.
+change to `analysis/IBM/report/*`, `REVIEW.md` or `DRIVER-REVIEW.md`. The engines, the trading code and the data loaders are in Rust (`CLAUDE.md`, "Work rules").
 A subagent does not commit. A client name is honest; no program imitates a browser.
