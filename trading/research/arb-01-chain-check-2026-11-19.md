@@ -20,12 +20,11 @@ The command reads `data/raw/<T>/options/2026-11-19.json`. Without `--rate`, the 
 
 ## Checks
 
-- Intrinsic (American options): ask below the intrinsic value. A person buys at the ask and exercises at once.
-- Monotony, slope, butterfly, calendar and parity bound are in `fa options check --help`. A quote that breaks the intrinsic check leaves them. The header counts these quotes.
+- The checks (intrinsic, monotony, slope, butterfly, calendar, parity bound) are in `fa options check --help`. The intrinsic check is a buy at the ask and an exercise at once. A quote that breaks the intrinsic check leaves them. The header counts these quotes.
 
 ## Data limits
 
-- The files have no `source` field and no time of the quotes. They are Cboe delayed quotes.
+- The IBM and JNJ files have no `source` field and no time of the quotes. They are Cboe delayed quotes.
 - The spot (IBM 228.53, JNJ 272.70) is a last price. A stock price has no bid and no ask. The result is one day of one source.
 
 ## Results
@@ -48,19 +47,13 @@ Without the intrinsic check the counts were 708 (IBM) and 257 (JNJ).
 
 ## The five largest remaining breaks (checks 1 to 5)
 
-IBM (spot 228.53):
+| Size (USD) | Break | Judgment |
+|---|---|---|
+| 21.95, 21.90, 21.75, 21.75 | IBM call 135 of 2026-12-18, bid 117.85, against the asks of the calls 150 to 170 (slope) | One quote. The call 135 quote is too high: its ask 121.4 is 28 above the intrinsic value. The call 140 has bid 87.8 and ask 91.3; the intrinsic value of the call 135 is 93.53. Volume 1, open interest 1. Stale or wide quote. |
 
 | Size (USD) | Break | Judgment |
 |---|---|---|
-| 21.95, 21.90, 21.75, 21.75 | Call 135 of 2026-12-18, bid 117.85, against the asks of the calls 150 to 170 (slope) | One quote. The call 135 quote is too high: its ask 121.4 is 28 above the intrinsic value. The call 140 has bid 87.8 and ask 91.3; the intrinsic value of the call 135 is 93.53. Volume 1, open interest 1. Stale or wide quote. |
-| 21.85 | Same call 135 bid, against the ask 96 of the call 135 of 2027-01-15 (calendar) | Same quote. |
-
-JNJ (spot 272.70):
-
-| Size (USD) | Break | Judgment |
-|---|---|---|
-| 43.00, 42.35, 41.90 | Put 350 of 2026-12-18, bid 122.2, against the asks of the put 350 of three later expiries (calendar) | One quote. The intrinsic value of the put is 77.30. The bid is 45 above it, with 29 days to expiry. Volume 2, open interest 0. Stale or wide quote. |
-| 42.20, 41.75 | Same bid against the asks of the puts 310 and 300 of 2026-12-18 (slope) | Same quote. |
+| 43.00, 42.35, 41.90 | JNJ put 350 of 2026-12-18, bid 122.2, against the asks of the put 350 of three later expiries (calendar) | One quote. The intrinsic value of the put is 77.30. The bid is 45 above it, with 29 days to expiry. Volume 2, open interest 0. Stale or wide quote. |
 
 Judgment: the five largest remaining breaks of each ticker are one bad quote.
 The other breaks are not judged. No break is shown to be tradable.
@@ -117,3 +110,30 @@ The five largest breaks with no marked leg, and my judgment:
 Limits:
 - No second day is stored, so `--compare` is tested on fixtures only. I did not judge the other breaks.
 - The implied volatility of a deep in-the-money American quote is distorted by early exercise. The marker compares quotes of one type only.
+
+## SPX 2026-11-20
+
+Command: `fa options check SPX --date 2026-11-20 --rate 0.04 --top 5` (default) and the same with `--all-strikes`.
+The file is the Alpaca indicative feed (SPX and SPXW, 57 series, spot 6929.78 from the forward of the nearest series).
+The indicative feed gives modified quotes, not executable prices (trap #280). SPX options are European: no calendar, parity, intrinsic or bound test.
+No SPX break can be a finding until a feed with real quotes exists. The filter removes 99 % of the breaks; the 143 that stay are below 6 USD.
+For a European index the strike filter is the default: a call with K >= 0.99 F and a put with K <= 1.01 F (F is the parity forward of the series).
+
+| Item | `--all-strikes` | Default (strike filter) |
+|---|---|---|
+| Quotes in file / used (1071 are buy legs; 3262 dropped) | 32046 / 28784 | 28784, of which 12996 removed by the filter |
+| Breaks (monotony, slope, butterfly) | 10172 | 143 |
+| With a marked leg / none (marked quotes) | 3686 / 6486 (956) | 1 / 142 (32) |
+| Band below 0.10 USD (all / no marked leg) | 93 / 76 | 12 / 12 |
+| Band 0.10 to 1 USD | 826 / 633 | 72 / 71 |
+| Band 1 to 10 USD | 4733 / 3370 | 59 / 59 |
+| Band 10 USD and above | 4520 / 2407 | 0 / 0 |
+
+The five largest breaks with no marked leg:
+- `--all-strikes`: 115.42 USD (butterfly, calls 1800 to 2200 of 2027-02-19), 113.55 (slope, calls 800 and 1000 of 2027-04-16), 110.68, 105.37 and 98.36.
+  All are deep in-the-money quotes. Judgment: modified quotes of the indicative feed. Not a finding.
+- Default: 5.86 USD (butterfly, calls 7100, 7125, 7150 of 2027-09-17), 5.45 (put monotony, SPXW 2027-09-30, puts 6830 and 6840), 5.00, 4.51 and 4.34 (butterflies).
+  Example: the bid of the call 7125 is 564.76; the asks of the calls 7100 and 7150 are 569.96 and 547.85. The spreads are 8 to 19 USD wide.
+  The put 6830 of 2027-09-30 has bid 442.55, and its last trade is 209.62. Judgment: wide and modified quotes. The breaks are 0.5 % to 1 % of the price, inside the spread.
+  No break is shown to be tradable. Limits: one day, one feed, no time of the quotes; the other 138 breaks are not judged.
+

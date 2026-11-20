@@ -61,11 +61,13 @@ pub struct CheckOpts {
     pub min_size: f64,
     /// A quote is marked when its implied volatility differs from the median of its neighbours by more than this (volatility, 0.10 = 10 points). 0 or less: no marking.
     pub iv_mark: f64,
+    /// Keep only the quotes out of the money or within 1 % of the forward of their series: a call with K >= 0.99 F, a put with K <= 1.01 F (the rule of the volatility fit).
+    pub otm: bool,
 }
 
 impl Default for CheckOpts {
     fn default() -> Self {
-        CheckOpts { min_size: 0.0, iv_mark: 0.10 }
+        CheckOpts { min_size: 0.0, iv_mark: 0.10, otm: false }
     }
 }
 
@@ -166,6 +168,9 @@ pub struct Report {
     pub below_intrinsic: usize,
     /// Quotes with a bid above the bound (call above S, put above K): not used in the other checks.
     pub above_bound: usize,
+    /// Quotes removed by the out-of-the-money filter, and the series with no forward (no filter).
+    pub otm_removed: usize,
+    pub otm_no_forward: usize,
     /// The marked quotes (symbols).
     pub marked: BTreeSet<String>,
     pub opts: Option<CheckOpts>,
@@ -278,6 +283,29 @@ pub fn check_chain(snap: &OptionChainSnapshot, american: bool, rate: &mut dyn Fn
         let r = rate(&snap.snapshot_date, t.max(1.0 / 365.0))?;
         let df = (-r * t).exp();
         let mut row = SeriesRow { root: root.clone(), expiry: expiry.clone(), days, rate: Some(r), ..Default::default() };
+        let filtered: Vec<Used>;
+        let all: &Vec<Used> = if opts.otm {
+            let mut pairs = Vec::new();
+            for c in all.iter().filter(|q| q.call && !q.buy_only()) {
+                if let Some(p) = all.iter().find(|q| !q.call && !q.buy_only() && q.strike == c.strike) {
+                    pairs.push((c.strike, 0.5 * (c.bid + c.ask), 0.5 * (p.bid + p.ask)));
+                }
+            }
+            let fwd = spot.and_then(|s| forward_from_parity(&pairs, s, df)).or_else(|| forward_from_parity_blind(&pairs, df));
+            match fwd {
+                Some(f) => {
+                    filtered = all.iter().filter(|q| if q.call { q.strike >= 0.99 * f } else { q.strike <= 1.01 * f }).cloned().collect();
+                    rep.otm_removed += all.len() - filtered.len();
+                    &filtered
+                }
+                None => {
+                    rep.otm_no_forward += 1;
+                    all
+                }
+            }
+        } else {
+            all
+        };
         // 5 intrinsic (American options): an ask below the intrinsic value. Buy at the ask and exercise at once.
         // 6 bound: a bid above S (call) or K (put): sell it. S is a last price of the file, not a bid or an ask, and the quotes
         // are not at one time. A quote of these two checks leaves the other checks.
@@ -502,7 +530,7 @@ pub fn render(ticker: &str, snap: &OptionChainSnapshot, rep: &Report, american: 
     let d = &rep.dropped;
     let opts = rep.opts.unwrap_or_default();
     s.push_str(&format!(
-        "options check {ticker} {}: spot {} ({}), {} quotes, {} used ({} with bid 0 and an ask above 0: buy legs only), {} dropped (no bid and no ask above 0: {}, ask missing: {}, ask below bid: {}, bad symbol: {}, bad expiry: {}, expiry on or before the snapshot date: {}, option type not call or put: {}); {} used quotes have an ask below the intrinsic value and {} have a bid above S or K: they are removed from the other checks. {} quotes are marked (implied volatility more than {:.0} points from the median of the neighbours). Size floor: {} USD.\n",
+        "options check {ticker} {}: spot {} ({}), {} quotes, {} used ({} with bid 0 and an ask above 0: buy legs only), {} dropped (no bid and no ask above 0: {}, ask missing: {}, ask below bid: {}, bad symbol: {}, bad expiry: {}, expiry on or before the snapshot date: {}, option type not call or put: {}); {} used quotes have an ask below the intrinsic value and {} have a bid above S or K: they are removed from the other checks. {} quotes are marked (implied volatility more than {:.0} points from the median of the neighbours). Size floor: {} USD. {}\n",
         snap.snapshot_date,
         snap.spot_price.map_or("none".to_string(), |x| format!("{x:.2}")),
         if american { "American options" } else { "European index: no calendar test, no parity bound, no intrinsic test, no bound test" },
@@ -521,9 +549,18 @@ pub fn render(ticker: &str, snap: &OptionChainSnapshot, rep: &Report, american: 
         rep.above_bound,
         rep.marked.len(),
         opts.iv_mark * 100.0,
-        opts.min_size
+        opts.min_size,
+        if opts.otm {
+            format!("Strike filter on (--otm): only quotes out of the money or within 1 % of the forward of their series (call K >= 0.99 F, put K <= 1.01 F); {} quotes removed; {} series had no forward and were not filtered. --all-strikes turns it off.", rep.otm_removed, rep.otm_no_forward)
+        } else {
+            "Strike filter off: all strikes.".to_string()
+        }
     ));
-    s.push_str(&format!("source {:?}, quote_kind {:?}: a file with no source field is a Cboe delayed snapshot; the file has no time of the quotes.\n\n", snap.source, snap.quote_kind));
+    match snap.source.as_deref() {
+        None => s.push_str(&format!("source none, quote_kind {:?}: a file with no source field is a Cboe delayed snapshot; the file has no time of the quotes.\n\n", snap.quote_kind)),
+        Some("alpaca") => s.push_str(&format!("source alpaca, feed {:?}, quote_kind {:?}: Alpaca indicative feed: modified quotes, not executable prices (#280). A break here is not a finding.\n\n", snap.feed, snap.quote_kind)),
+        Some(other) => s.push_str(&format!("source {other}, feed {:?}, quote_kind {:?}: the time and the kind of the quotes must be checked before a break is a finding.\n\n", snap.feed, snap.quote_kind)),
+    }
     s.push_str("Each cell is breaks/tests. int = ask below intrinsic value, bnd = bid above S or K (American options only; S is a last price, not a bid or ask; the quotes are not at one time), distinct = quotes in at least one break, marked = marked quotes, clean = breaks with no marked leg. mono = monotony, slope, bfly = butterfly, cal = calendar (counted on the later expiry), par = parity bound.\n");
     s.push_str(&format!("{:<6} {:<10} {:>4} {:>6} {:>9} {:>7} {:>9} {:>9} {:>9} {:>9} {:>9} {:>8} {:>6} {:>6} {:>9} {:>8} {:>7}\n", "root", "expiry", "days", "quotes", "int", "bnd", "mono", "slope", "bfly", "cal", "par", "distinct", "marked", "clean", "max $", "rate %", "q %"));
     for r in &rep.rows {
@@ -882,7 +919,7 @@ mod tests {
         assert_eq!(band_of(0.0999), 0);
         assert_eq!((band_of(0.10), band_of(0.99), band_of(1.0), band_of(9.99), band_of(10.0)), (1, 1, 2, 2, 3));
         // A floor of 1 USD removes the breaks of 0.9; the parity break of 1.4 and the calendar break of 1.9 stay.
-        let r2 = check_chain(&snap(v), true, &mut zero, &CheckOpts { min_size: 1.0, iv_mark: 0.10 }).unwrap();
+        let r2 = check_chain(&snap(v), true, &mut zero, &CheckOpts { min_size: 1.0, iv_mark: 0.10, otm: false }).unwrap();
         assert_eq!(count(&r2, 2), 0);
         assert!(r2.breaks.iter().all(|b| b.size >= 1.0));
         assert_eq!(r2.breaks.len(), r.breaks.iter().filter(|b| b.size >= 1.0).count());
@@ -941,7 +978,7 @@ mod tests {
         assert!(!fly.is_empty() && fly.iter().all(|b| b.marked), "{:?}", r.breaks);
         assert_eq!(r.rows[0].clean, r.breaks.iter().filter(|b| !b.marked).count());
         // Marking off: no quote is marked and no break is flagged.
-        let r0 = check_chain(&snap(v), true, &mut zero, &CheckOpts { min_size: 0.0, iv_mark: 0.0 }).unwrap();
+        let r0 = check_chain(&snap(v), true, &mut zero, &CheckOpts { min_size: 0.0, iv_mark: 0.0, otm: false }).unwrap();
         assert!(r0.marked.is_empty() && r0.breaks.iter().all(|b| !b.marked));
         assert_eq!(r0.breaks.len(), r.breaks.len(), "the marker flags; it does not remove");
     }
@@ -974,5 +1011,43 @@ mod tests {
         let c2 = compare(&a, &b, "2026-01-02", "2026-01-16");
         assert!(c2.expired > 0);
         assert!(render_compare("XYZ", &c, 5).contains("stay"));
+    }
+
+    #[test]
+    fn the_strike_filter_keeps_the_out_of_the_money_quotes_and_those_near_the_forward() {
+        // A European index chain: no spot, forward 100 from put-call parity (rate 0), strikes 90 to 110.
+        let mut v = Vec::new();
+        for k in [90.0f64, 95.0, 100.0, 105.0, 110.0] {
+            let (c, p) = ((100.0 - k).max(0.0) + 2.0, (k - 100.0).max(0.0) + 2.0);
+            add(&mut v, "SPX", "260116", "2026-01-16", true, k, c - 0.1, c + 0.1);
+            add(&mut v, "SPX", "260116", "2026-01-16", false, k, p - 0.1, p + 0.1);
+        }
+        // The deep in-the-money call 90 has a low ask: bid 6.9 of the call 95 is above it (3.9).
+        let i = pos(&v, 90.0, true, "2026-01-16");
+        v[i].bid = Some(2.9);
+        v[i].ask = Some(3.0);
+        let mut s = snap(v);
+        s.spot_price = None;
+        let all = check_chain(&s, false, &mut zero, &CheckOpts { otm: false, ..CheckOpts::default() }).unwrap();
+        assert_eq!(count(&all, 0), 1, "{:?}", all.breaks);
+        assert!((all.breaks.iter().find(|b| b.check == 0).unwrap().size - 3.9).abs() < 1e-9, "{:?}", all.breaks);
+        assert_eq!(all.breaks.len(), 2, "monotony 3.9 and butterfly 4.35");
+        let f = check_chain(&s, false, &mut zero, &CheckOpts { otm: true, ..CheckOpts::default() }).unwrap();
+        // Removed: the calls 90 and 95 (K < 99) and the puts 105 and 110 (K > 101).
+        assert_eq!((f.otm_removed, f.otm_no_forward, f.quotes_used), (4, 0, 10));
+        assert_eq!(f.rows[0].quotes_used, 6);
+        assert_eq!(f.breaks.len(), 0);
+    }
+
+    #[test]
+    fn the_header_names_the_source_of_the_file() {
+        let r = run(clean());
+        let mut s = snap(clean());
+        assert!(render("XYZ", &s, &r, true, 3).contains("a file with no source field is a Cboe delayed snapshot"));
+        s.source = Some("alpaca".into());
+        s.feed = Some("indicative".into());
+        let text = render("XYZ", &s, &r, true, 3);
+        assert!(text.contains("Alpaca indicative feed: modified quotes, not executable prices (#280)"));
+        assert!(!text.contains("Cboe delayed snapshot"));
     }
 }
