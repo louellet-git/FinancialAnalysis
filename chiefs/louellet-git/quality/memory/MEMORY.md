@@ -49,11 +49,13 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   and each future purchase a total loss is two frames; NVDA round 2). Ask for the range across frames.
 - A weighted sum over a list: ask for the top weights and the excluded part (one 1000x share count of
   WAT made 39% of the weight; attribution review).
-- Haiku did well on narrow checks with a fixed list (byte comparisons, a 5-point diff). Sonnet for attacks.
+- Haiku for narrow fixed-list checks; Sonnet for attacks.
 - A harness or a backtest: ask the validator to plant a look-ahead (1 day and 40 days) in a scratch copy;
   the author's own mutant only showed the long case (backtest environment, 2026-11-21).
 - A model change: ask for the P50 change by class (margin, size, no spend) in % of value, not only the
   score in % of revenue (acquisition intercept: thin margins -25%).
 - A design before a run: one primary test, a rejection rule, a fixed window count; review it before data.
+- Prices in the store are split-adjusted; SEC shares are as filed. A past value per share against a past
+  price needs a split check (BKNG 25x; the weekly strategy edge vanished). Truncation and poison miss it.
 ## Dream pass (before a compaction, above about 75% in `get_session`, or on "dream")
 Last pass: 2026-11-21 04:10 UTC; earlier 01:25 and 00:30 UTC.
