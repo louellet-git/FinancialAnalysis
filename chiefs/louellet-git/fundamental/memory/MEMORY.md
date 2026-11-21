@@ -44,8 +44,8 @@ person decided. Keep this file below 60 lines. Started 2026-11-20. Dream pass: 2
 
 ## Tested rules and contacts
 - Heads by session title (send_message; the id comes from `list_sessions`, never in a file): FA-L - Head of
-  Technology, of Economics, of Quant Research, of Staff. New gate requests go to the NEW session "FA-L - Head of
-  Quality and Risk" when Luc starts it; the old one ("Quality and Risk (fallback)") takes no new gate.
+  Technology, of Quality and Risk (one session; the test of a second one ended on 2026-11-21), of Economics, of Quant
+  Research, of Staff.
 - Head of Staff: one short message when a result is done (it reads a result before Luc), an owner decision, a
   conflict, a long block. No status reports. A permission refusal goes to Technology.
 - No push to a branch under review until the verdict. A change under `rust/` or `analysis/` starts a check run (put
