@@ -34,6 +34,9 @@ and the review steps that remain.
 4. Forward disclosures (RPO, guidance) are used or excluded with a reason (rule R1).
 5. The report says what the price implies, and no input comes from the price. A valuation
    of ANT carries the conflict disclosure. The text is STE.
+6. Backtest (owner, 2026-11-21: "Backtesting is integral to our work here"). The report gives
+   the point-in-time record of the automatic model for the ticker (its rows of `fa dcf pit`),
+   and a trade from the report follows a backtested rule (for example A-009) or says that it does not.
 
 **Never.** Never commit, push, or open a pull request (the orchestrator does this). Never pass your own
 work. Never hide a weak point. Never show a first pass as a reviewed valuation.

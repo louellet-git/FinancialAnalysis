@@ -55,3 +55,7 @@ Done: the weekly ticket says paper for 2026-11-27 to 2026-12-18, live from about
 ## 2026-11-21 04:30 UTC (chat)
 Words: "Ensure that before you have trades and we begin the weekly trades, that you have effectively back tested your future state blind projections using the DCF engine and using prior data. A recommendation should work at any time and point and when it doesn't, the model should have already priced it in such that it does work. You can speak w the economist about this."
 Done: ticket `T-20261121-blind-projection-test` (a condition before the first weekly trade, paper included); the test design is written before any run and goes to the Head of Economics for review.
+
+## 2026-11-21 04:30 UTC (chat)
+Words: "Backtesting is integral to our work here"
+Done: a standing rule of this area: each model change and each strategy has a point-in-time backtest, written before its run (check 6 of `valuation-quant` and `equity-analyst`); proposed to the Head of Quality and Risk as a standard for all areas.
