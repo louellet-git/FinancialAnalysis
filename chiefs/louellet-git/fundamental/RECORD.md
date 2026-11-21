@@ -120,3 +120,7 @@ Words: "Hm, I think that the implied premium/implied growth should also be part 
 ## 2026-11-21 about 20:30 UTC (chat)
 Words: "For attribution, there are numbers in the valuation that are a direct result of the math, but there are some that are implied. The implied components require the view of the economists." and "The economists require their own engine in that regard."
 Done: design change 2 on `T-20261121-premium-company-part`: the common change of the premium and the growth comes from an Economics engine (owner: the Head of Economics) through a file interface; the math parts stay in `fa dcf attribute`. Request and interface sent to the Head of Economics.
+
+## 2026-11-21 about 17:20 UTC (in the session of the Head of Quality and Risk, relayed)
+Words (on Deere and a captive finance arm, after the explanation of the sum of parts): "Enhance the DCF engine."
+Done: ticket `T-20261121-evaluator-captive-finance` (detection, then an industrial DCF plus a finance-arm equity value; after the bank evaluator; gate model-validator + code-reviewer with a backtest).
