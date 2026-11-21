@@ -195,7 +195,13 @@ pub fn resolve(repo: &Path, h: &Hypothesis) -> Result<Resolved, String> {
         }
         let file = hypotheses_dir(repo).join(format!("{p}.toml"));
         let text = std::fs::read_to_string(&file).map_err(|e| format!("parent hypothesis '{p}': {}: {e}", file.display()))?;
+        let child_family = cur.family.clone();
         cur = Hypothesis::parse_lenient(&text)?;
+        if let (Some(a), Some(b)) = (&child_family, &cur.family) {
+            if a != b {
+                return Err(format!("hypothesis family '{a}' differs from the family '{b}' of its parent '{p}': a child stays in the family of its parent"));
+            }
+        }
         family = family.or_else(|| cur.family.clone());
         (window_start, window_id) = (cur.oos_day(), cur.id.clone());
         chain.push(p);
@@ -500,6 +506,17 @@ pub struct RunRecord {
 
 /// The run files of the working tree and of the whole git history (all branches, also the files that were deleted). A deleted
 /// file is a hidden variant: it stays in the count.
+/// Whether the git history can be read in full. None: it can. Some(reason): the counts of the runs and the earlier reads of a
+/// window could be too low (git fails, or the clone is shallow). A hypothesis run is refused then; an exploratory read gets a warning.
+pub fn history_state(repo: &Path) -> Option<String> {
+    match git(repo, &["rev-parse", "--is-shallow-repository"]) {
+        None => return Some("git cannot read this repository".to_string()),
+        Some(s) if s == "true" => return Some("the clone is shallow (get the full history first: `git fetch --unshallow origin`, or a bounded `git fetch --depth=100000 origin main`)".to_string()),
+        Some(_) => {}
+    }
+    git_bytes(repo, &["log", "--all", "--name-only", "--format=", "--", "trading/runs"]).is_none().then(|| "git log --all failed".to_string())
+}
+
 /// The run files (not the window-read files).
 pub fn list_runs(repo: &Path) -> Vec<RunRecord> {
     list_files(repo).into_iter().filter(|r| !is_window_read(&r.path)).collect()
@@ -881,6 +898,49 @@ cost_bp = 10
         let e = exploratory_reads(&repo, "value-rank", d("2023-01-01"));
         assert_eq!(e, vec![ExploreRead { id: "value-rank-sp500-v1".into(), window_id: "value-rank-sp500-v1".into(), window_start: d("2023-01-01") }]);
         assert!(exploratory_reads(&repo, "momentum", d("2026-01-01")).is_empty()); // another strategy
+        let _ = std::fs::remove_dir_all(&repo);
+    }
+
+    #[test]
+    fn an_incomplete_git_history_is_found() {
+        // no git repository
+        let plain = scratch("nogit");
+        assert!(history_state(&plain).is_some());
+        // a complete repository
+        let src = scratch("hist");
+        git_in(&src, &["init", "-q"]);
+        std::fs::write(src.join("a"), "1").unwrap();
+        git_in(&src, &["add", "-A"]);
+        git_in(&src, &["commit", "-q", "-m", "one"]);
+        std::fs::write(src.join("a"), "2").unwrap();
+        git_in(&src, &["commit", "-q", "-am", "two"]);
+        assert_eq!(history_state(&src), None);
+        // a shallow clone: the history is not complete
+        let shallow = scratch("shallow");
+        let _ = std::fs::remove_dir_all(&shallow);
+        let ok = Command::new("git").args(["clone", "-q", "--depth", "1", &format!("file://{}", src.display())]).arg(&shallow).output().unwrap().status.success();
+        assert!(ok);
+        let why = history_state(&shallow).expect("a shallow clone must be reported");
+        assert!(why.starts_with("the clone is shallow") && why.contains("--unshallow"), "{why}");
+        for d in [plain, src, shallow] {
+            let _ = std::fs::remove_dir_all(&d);
+        }
+    }
+
+    #[test]
+    fn a_child_must_stay_in_the_family_of_its_parent() {
+        let repo = scratch("fam");
+        std::fs::create_dir_all(hypotheses_dir(&repo)).unwrap();
+        let put = |id: &str, extra: &str| {
+            let t = GOOD.replace("value-rank-sp500-v1", id).replace("prior_variants = 4", &format!("prior_variants = 4\n{extra}"));
+            std::fs::write(hypotheses_dir(&repo).join(format!("{id}.toml")), t).unwrap();
+        };
+        put("a", "family = \"one\"");
+        put("b", "parent = \"a\"\nfamily = \"two\"");
+        put("c", "parent = \"a\"\nfamily = \"one\"");
+        let load = |id: &str| Hypothesis::parse(&std::fs::read_to_string(hypotheses_dir(&repo).join(format!("{id}.toml"))).unwrap()).unwrap();
+        assert!(resolve(&repo, &load("b")).unwrap_err().contains("differs"));
+        assert_eq!(resolve(&repo, &load("c")).unwrap().family, "one");
         let _ = std::fs::remove_dir_all(&repo);
     }
 

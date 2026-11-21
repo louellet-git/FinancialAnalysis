@@ -115,6 +115,26 @@ fn poison_days(args: &[String]) -> Result<Vec<(String, i64)>, String> {
     list.split(',').map(|t| mapcheck::dates::parse(t).map(|d| (t.to_string(), d)).ok_or_else(|| format!("--poison-check '{t}' is not YYYY-MM-DD (a list: D1,D2)"))).collect()
 }
 
+/// The files that the command writes (`--trades`, `--out`) must not exist: it does not replace a file. Runs before any work.
+fn refuse_existing(args: &[String]) -> Result<(), String> {
+    for name in ["--trades", "--out"] {
+        if let Some(p) = opt(args, name) {
+            if Path::new(p).exists() {
+                return Err(format!("{name} {p}: the file exists; the command does not replace a file"));
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Close the run log, and only then give the text to the writer. If the log cannot be closed, nothing is written: no result is
+/// visible that the log does not hold.
+fn publish(finish: impl FnOnce() -> Result<(), String>, text: &str, write: &mut dyn FnMut(&str)) -> Result<(), String> {
+    finish()?;
+    write(text);
+    Ok(())
+}
+
 /// Write a new file. A file that exists is never replaced.
 fn write_new(path: &str, text: &str) -> Result<(), String> {
     use std::io::Write;
@@ -133,13 +153,7 @@ struct Body {
 
 fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
     check_options(args_in)?;
-    for name in ["--trades", "--out"] {
-        if let Some(p) = opt(args_in, name) {
-            if Path::new(p).exists() {
-                return Err(format!("{name} {p}: the file exists; the command does not replace a file"));
-            }
-        }
-    }
+    refuse_existing(args_in)?;
     let hyp: Option<(Hypothesis, harness::FileProof)> = match opt(args_in, "--hypothesis") {
         Some(f) => {
             let file = PathBuf::from(f);
@@ -153,6 +167,11 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
         }
         None => None,
     };
+    if hyp.is_some() {
+        if let Some(why) = harness::history_state(repo) {
+            return Err(format!("the git history of the run logs is incomplete ({why}): a hypothesis run is refused, because the variant count could be too low"));
+        }
+    }
     let merged: Vec<String> = match &hyp {
         Some((h, _)) => h.merge_args(args_in, repo)?,
         None => args_in.to_vec(),
@@ -227,6 +246,7 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
     let mut state: Option<(PathBuf, harness::Counts, bool, bool, Vec<String>, i64)> = None;
     let mut explore_reads: Vec<harness::ExploreRead> = Vec::new();
     let mut explore_files: Vec<String> = Vec::new();
+    let mut explore_incomplete: Option<String> = None;
     if let Some((hy, proof)) = &hyp {
         let res = harness::resolve(repo, hy)?;
         let counts = harness::count_runs(repo, hy, &res);
@@ -280,6 +300,9 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
         state = Some((path, counts, read, clean, why, res.window_start));
     } else {
         explore_reads = harness::exploratory_reads(repo, strategy, end);
+        if !explore_reads.is_empty() {
+            explore_incomplete = harness::history_state(repo);
+        }
         // Each registered window that this run reads gets a record BEFORE any result: a new file for each window (a read, not a variant).
         let stamp = harness::utc_stamp(harness::now_secs());
         for read in &explore_reads {
@@ -292,6 +315,7 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
                 "strategy": strategy,
                 "command": harness::log_args(repo, args_in),
                 "store": "<store>",
+                "history_incomplete": explore_incomplete,
             });
             let path = harness::write_window_read(repo, read, &stamp, &record)?;
             explore_files.push(harness::rel_path(repo, &path.to_string_lossy()));
@@ -357,24 +381,17 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
                 }
                 let _ = writeln!(
                     h,
-                    "runs of this hypothesis: {} (prior variants {} + {} logged runs, this run included); runs of family {}: {} (prior {} + {} logged runs of all ids, git history included)",
+                    "runs of this hypothesis: {} (prior variants {} + {} logged {}, this run included); runs of family {}: {} (prior {} + {} logged {} of all ids, git history included)",
                     counts.variants_id(),
                     counts.prior_id,
                     counts.n_id,
+                    if counts.n_id == 1 { "run" } else { "runs" },
                     start_record["family"].as_str().unwrap_or("?"),
                     counts.variants_family(),
                     counts.prior_family,
-                    counts.n_family
+                    counts.n_family,
+                    if counts.n_family == 1 { "run" } else { "runs" }
                 );
-                let build = &start_record["build"];
-                if build["commit"].as_str().is_none_or(str::is_empty) {
-                    let _ = writeln!(h, "WARNING: the commit of the build is unknown.");
-                } else if build["is_head"] != true {
-                    let _ = writeln!(h, "WARNING: this binary was built from commit {}, not from HEAD {}.", build["commit"].as_str().unwrap_or(""), code.as_deref().unwrap_or("?"));
-                }
-                if dirty {
-                    let _ = writeln!(h, "WARNING: the code has changes that are not committed (code_dirty).");
-                }
             }
             _ => {
                 let _ = writeln!(h, "exploratory run: no hypothesis file, not usable for a decision (not counted as a variant)");
@@ -384,8 +401,19 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
                     for p in &explore_files {
                         let _ = writeln!(h, "window read recorded: {p} (commit it with your work)");
                     }
+                    if let Some(why) = &explore_incomplete {
+                        let _ = writeln!(h, "WARNING: the git history is incomplete ({why}): the counts and the earlier reads of this window may be too low (history_incomplete in the record)");
+                    }
                 }
             }
+        }
+        if harness::BUILD_COMMIT.is_empty() {
+            let _ = writeln!(h, "WARNING: the commit of the build is unknown.");
+        } else if code.as_deref() != Some(harness::BUILD_COMMIT) {
+            let _ = writeln!(h, "WARNING: this binary was built from commit {}, not from HEAD {}.", harness::BUILD_COMMIT, code.as_deref().unwrap_or("?"));
+        }
+        if dirty {
+            let _ = writeln!(h, "WARNING: the code has changes that are not committed (code_dirty).");
         }
         let (mut poison_lines, mut poison_error) = (Vec::new(), None);
         for (day, pd) in &poisons {
@@ -445,22 +473,36 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
             Err(e)
         }
         Ok(b) => {
-            let status = if b.poison_error.is_some() { "failed" } else { "done" };
-            finish(serde_json::json!({
-                "status": status, "results": b.results, "poison_checks": b.poison_lines, "poison_error": b.poison_error,
-                "poison_not_covered": (!b.poison_lines.is_empty()).then_some(harness::POISON_NOT_COVERED),
-            }))?;
-            print!("{}", b.out);
+            let mut text = b.out.clone();
             if let Some((path, ..)) = &state {
-                println!("run log ({status}): {}", harness::rel_path(repo, &path.to_string_lossy()));
+                let _ = writeln!(text, "run log ({}): {}", if b.poison_error.is_some() { "failed" } else { "done" }, harness::rel_path(repo, &path.to_string_lossy()));
             }
+            // The files come first: a write error leaves the log "failed", not "done".
+            let mut files = Vec::new();
             if let Some(path) = opt(args, "--trades") {
-                write_new(path, &b.trades_csv)?;
-                println!("trades written to {path}");
+                files.push((path, &b.trades_csv));
+                let _ = writeln!(text, "trades written to {path}");
             }
             if let Some(path) = opt(args, "--out") {
-                write_new(path, &b.series_csv)?;
+                files.push((path, &b.series_csv));
             }
+            if let Some(e) = files.iter().find_map(|(p, t)| write_new(p, t).err()) {
+                if let Err(f) = finish(serde_json::json!({ "status": "failed", "error": e })) {
+                    eprintln!("fa: the run log: {f}");
+                }
+                return Err(e);
+            }
+            let status = if b.poison_error.is_some() { "failed" } else { "done" };
+            publish(
+                || {
+                    finish(serde_json::json!({
+                        "status": status, "results": b.results, "poison_checks": b.poison_lines, "poison_error": b.poison_error,
+                        "poison_not_covered": (!b.poison_lines.is_empty()).then_some(harness::POISON_NOT_COVERED),
+                    }))
+                },
+                &text,
+                &mut |t| print!("{t}"),
+            )?;
             match b.poison_error {
                 Some(e) => Err(format!("poison check failed: {e}")),
                 None => Ok(()),
@@ -543,7 +585,7 @@ pub fn render(r: &Report, ew: &Report, cfg: &Config, args: &[String], info: &Inf
 
 #[cfg(test)]
 mod tests {
-    use super::{check_options, poison_days, spread};
+    use super::{check_options, poison_days, publish, refuse_existing, spread, write_new};
 
     fn a(v: &[&str]) -> Vec<String> {
         v.iter().map(|s| s.to_string()).collect()
@@ -557,6 +599,39 @@ mod tests {
         assert!(check_options(&a(&["--strategy"])).unwrap_err().contains("needs a value"));
         assert!(check_options(&a(&["--strategy", "--start"])).is_err());
         assert!(check_options(&a(&["momentum"])).is_err());
+    }
+
+    #[test]
+    fn the_result_is_written_only_after_the_log_is_closed() {
+        use std::cell::RefCell;
+        let order = RefCell::new(Vec::<String>::new());
+        let ok = publish(|| { order.borrow_mut().push("finish".into()); Ok(()) }, "result", &mut |t| order.borrow_mut().push(format!("print {t}")));
+        assert!(ok.is_ok());
+        assert_eq!(*order.borrow(), ["finish", "print result"]);
+        // a finish that fails: nothing is printed
+        let order = RefCell::new(Vec::<String>::new());
+        let e = publish(|| Err("disk full".to_string()), "result", &mut |t| order.borrow_mut().push(t.to_string()));
+        assert_eq!(e, Err("disk full".to_string()));
+        assert!(order.borrow().is_empty());
+    }
+
+    #[test]
+    fn an_existing_output_file_is_refused_before_any_work() {
+        let dir = std::env::temp_dir().join(format!("fa-cli-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let (have, missing) = (dir.join("have.csv"), dir.join("missing.csv"));
+        std::fs::write(&have, "x").unwrap();
+        let (h, m) = (have.to_string_lossy().into_owned(), missing.to_string_lossy().into_owned());
+        for opt in ["--trades", "--out"] {
+            assert!(refuse_existing(&a(&[opt, &h])).unwrap_err().contains("the file exists"));
+            assert!(refuse_existing(&a(&[opt, &m])).is_ok());
+        }
+        assert!(refuse_existing(&a(&["--start", "2018-01-01"])).is_ok());
+        // the writer does not replace a file either
+        assert!(write_new(&h, "y").is_err());
+        assert_eq!(std::fs::read_to_string(&have).unwrap(), "x");
+        assert!(write_new(&m, "y").is_ok() && write_new(&m, "z").is_err());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

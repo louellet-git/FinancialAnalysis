@@ -62,5 +62,5 @@ Until point-in-time index members exist, each result carries the label "universe
 
 `--poison-check D1,D2` runs the strategy again with each close and each fact from D on multiplied by a factor that differs by
 ticker. The target weights of each rebalance up to D (D included) and the trades before D must stay equal. D must be a
-rebalance day. Use two days: one in the 10-K season (Feb to Mar) and one in the second half of the year. It does not cover the
+rebalance day. Use two days: one in the 10-K season (Feb to Mar) and one in the second half of the year. The check samples the given days only: a leak on another rebalance day escapes it. A look-ahead of a few days is caught only close to a given day, so give days that are near the filing seasons of the test period. It does not cover the
 GSW curve, the parameter table and the tickers file.

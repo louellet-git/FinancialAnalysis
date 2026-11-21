@@ -23,7 +23,9 @@ oos_start = "2023-01-01"
 # of the work on the harness: (1) the first version of the strategy (35% of the days in cash); (2) the review run with the
 # facts of 2022-06-01 on multiplied by 1000; (3) the fixed run (+19.02% against +14.56%, pull request 104); (4) the momentum
 # run on the same list; (5) the exploratory value-rank run of 2018 to 2026-11 on the harness before the first logged run.
-# This is a count of the runs that are known; there can be more, so read it as "at least 5".
+# Double count: none of these 5 is a logged run file. The logged run of v1 (trading/runs/value-rank-sp500-v1/) is counted by the
+# run log, not by this number, so it is not counted twice. Not in this number: the exploratory value-rank runs of Fundamental
+# Research (about 14). This is a count of the runs that are known; there can be more, so read it as "at least 5".
 prior_variants = 5
 
 # The window was seen before this file (the exploratory runs reached 2026-11).

@@ -8,14 +8,23 @@ fn git(args: &[&str]) -> Option<String> {
 }
 
 fn main() {
-    let commit = git(&["rev-parse", "HEAD"]).unwrap_or_default();
-    let dirty = git(&["status", "--porcelain", "--", "."]).is_some_and(|s| !s.is_empty());
+    let root = git(&["rev-parse", "--show-toplevel"]).unwrap_or_else(|| "..".to_string());
+    let in_root = |args: &[&str]| -> Option<String> {
+        let mut a = vec!["-C", root.as_str()];
+        a.extend_from_slice(args);
+        git(&a)
+    };
+    let commit = in_root(&["rev-parse", "HEAD"]).unwrap_or_default();
+    // The same rule as the run: the whole repository, but not the run logs (a run log is not code).
+    let dirty = in_root(&["status", "--porcelain", "--", ".", ":(exclude)trading/runs"]).is_none_or(|s| !s.is_empty());
     println!("cargo:rustc-env=FA_BUILD_COMMIT={commit}");
     println!("cargo:rustc-env=FA_BUILD_DIRTY={dirty}");
     println!("cargo:rerun-if-changed=src");
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=../financial_analysis");
     for p in ["HEAD", "logs/HEAD"] {
-        if let Some(path) = git(&["rev-parse", "--git-path", p]) {
+        if let Some(path) = in_root(&["rev-parse", "--git-path", p]) {
+            let path = if std::path::Path::new(&path).is_absolute() { path } else { format!("{root}/{path}") };
             println!("cargo:rerun-if-changed={path}");
         }
     }
