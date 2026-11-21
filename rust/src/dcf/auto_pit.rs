@@ -651,7 +651,7 @@ LIMITS
 /// The fiscal years of a ticker. The share counts are on the basis of the price file of the ticker (`splits`, up to the
 /// last date of the price file: `share_basis::basis_to`).
 pub fn load_company_years(registry: &Registry, cache: &Path, ticker: &str, splits: &[crate::market::splits::Split]) -> Option<(String, Vec<YearData>)> {
-    let to = if splits.is_empty() { String::new() } else { super::share_basis::basis_to(cache, ticker, false) };
+    let to = super::share_basis::to_for(cache, ticker, splits);
     let path = mapcheck::run::facts_path(cache, ticker)?;
     let facts = mapcheck::run::read_facts(&path).ok()?;
     if !facts.has_us_gaap() {

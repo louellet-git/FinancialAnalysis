@@ -4,6 +4,7 @@ use super::harness::{self, Hypothesis};
 use super::strategies::{load_vintages_with, EqualWeight, Momentum, Pick, ValueRank, Vintages, WeeklyValueRank};
 use super::{perf_line, Config, Prices, Rebalance, Report};
 use crate::dcf::auto::{index_from_cache, DEFAULT_TABLE};
+use crate::dcf::auto_returns::{beta_reset, beta_warning};
 use crate::dcf::auto_cli::load_table;
 use crate::dcf::auto_pit::parse_rules;
 use crate::dcf::auto_returns::RetParams;
@@ -39,13 +40,15 @@ fa portfolio backtest --strategy NAME --start D [--end D] [OPTIONS]
                      with the sector weights of the scored list; the stock choice without the sector tilt
   --pick top|bottom  with value-rank --neutral sector: the top fifth (default) or the bottom fifth of each sector, held
                      long (the test of the short side of A-009: does the bottom fifth return less than the equal weight)
-                     (--neutral and --pick are not parameters of a hypothesis file: with --hypothesis they are an error)
+                     (--neutral, --pick and --hold are not given on the command line with --hypothesis: the file gives hold; --neutral and --pick are not parameters of a file)
   --hold true|false  (false) no rebalance: a held ticker that is still in the targets keeps its shares (no trade); a ticker that
                      leaves the targets is sold at that close; a new ticker gets its target weight of the value of that day after
-                     the sales (scaled down together if the cash is not enough). Cost on the traded value only. For every strategy;
+                     the sales (scaled down together if the cash is not enough). Cost on the traded value only. A held name with no
+                     fresh close on a rebalance day is sold at its stale close, and can be bought again the next week. For every strategy;
                      mainly value-rank-weekly (A-009 holds 13 weeks). The equal-weight line is not changed. A hypothesis file can
                      set it (params.hold).
-  --out FILE         write the daily value of the portfolio, of SPY and of the equal-weight line as CSV
+  --out FILE         write the daily value as CSV with the columns date, portfolio, spy and equal_weight (the equal-weight line of the
+                     list, on the dates of the strategy; empty where it has no value)
   --holdings FILE    write the target weights of each rebalance date as CSV (date,ticker,weight)
   --hypothesis FILE  a registered hypothesis (trading/hypotheses/<id>.toml, committed): the file gives strategy, params and tickers
                      file (a value of the command that differs from the file is an error); the run writes the add-only log
@@ -301,6 +304,7 @@ fn calibrate(repo: &Path, args: &[String]) -> Result<(), String> {
     eprintln!("value-rank: {} of {} tickers have SEC facts with the standard template", universe.len(), tickers.len());
     let sectors = sector_map(&cache, &universe, Some("sector"))?.ok_or("the sector of each ticker is needed")?;
     let index = index_from_cache(&cache);
+    beta_reset();
     let vparams = RetParams { table: &parts.table, fade: &parts.fade, rules: &parts.rules, curves: parts.curves.as_ref(), index: None, lag: 100, paths, seed };
     let s = ValueRank { years, series: &raw, index: index.as_deref(), params: vparams, scored: Default::default(), signals: Default::default(), sectors: Some(sectors.clone()), pick: Pick::Top };
     let (rows, entries) = super::calibrate::collect(&prices, &universe, &|v, u| s.score(v, u), &sectors, &rdays, end.min(spy_last));
@@ -310,7 +314,8 @@ fn calibrate(repo: &Path, args: &[String]) -> Result<(), String> {
     if let Some(f) = opt(args, "--entries-out") {
         write_new(f, &super::calibrate::entries_csv(&entries))?;
     }
-    print!("{}{}", parts.split_note, super::calibrate::summary(&rows, &entries, &windows, &params));
+    let beta_note = beta_warning(index.is_none()).unwrap_or_default();
+    print!("{}{}{}", parts.split_note, beta_note, super::calibrate::summary(&rows, &entries, &windows, &params));
     Ok(())
 }
 
@@ -344,6 +349,9 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
     if hyp.is_some() {
         if let Some(x) = ["--neutral", "--pick"].iter().find(|x| opt(args_in, x).is_some()) {
             return Err(format!("{x} is not a parameter of a hypothesis file: the run would differ from the registered one"));
+        }
+        if opt(args_in, "--hold").is_some() {
+            return Err("--hold is given by the hypothesis file (params.hold), not on the command line".into());
         }
         if let Some(why) = harness::history_state(repo) {
             return Err(format!("the git history of the run logs is incomplete ({why}): a hypothesis run is refused, because the variant count could be too low"));
@@ -379,6 +387,9 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
     }
     if weekly && opt(args, "--neutral").is_some() {
         return Err("value-rank-weekly ranks inside the sector by its own rule: no --neutral".into());
+    }
+    if weekly && rebalance != Rebalance::Weekly {
+        return Err("--strategy value-rank-weekly needs --rebalance weekly (the rule has a hold of 13 weeks and one entry step each week)".into());
     }
     if !is_vr && (opt(args, "--neutral").is_some() || opt(args, "--pick").is_some()) {
         return Err("--neutral and --pick are for the value-rank strategies".into());
@@ -512,10 +523,13 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
                 (x, _) => Err(format!("unknown strategy '{x}': value-rank, value-rank-weekly or momentum")),
             }
         };
+        beta_reset();
         let (report, n_scored, universe) = run_with(&raw, &prices, index.as_deref(), None, &cfg)?;
+        // one line for the run (the poison runs below are not counted)
+        let beta_note = if is_vr { beta_warning(index.is_none()).unwrap_or_default() } else { String::new() };
         let ew = super::run(&prices, &tickers, &EqualWeight, &cfg)?;
         let info = Info { n_tickers: tickers.len(), n_scored, late, seconds: t0.elapsed().as_secs_f64() };
-        let mut out = format!("{}{}", vr.as_ref().map_or("", |p| p.split_note.as_str()), render(&report, &ew, &cfg, args_in, &info));
+        let mut out = format!("{}{beta_note}{}", vr.as_ref().map_or("", |p| p.split_note.as_str()), render(&report, &ew, &cfg, args_in, &info));
 
         let (zero, two) = harness::cost_levels(&prices, &universe, &report, &cfg, hold)?;
         let mut h = String::new();
@@ -819,6 +833,23 @@ mod tests {
         assert_eq!(poison_days(&a(&["--poison-check", "2022-03-01,2022-09-01"])).unwrap().len(), 2);
         assert!(poison_days(&a(&["--poison-check", "2022-03-01,x"])).is_err());
         assert!(poison_days(&a(&[])).unwrap().is_empty());
+    }
+
+    #[test]
+    fn the_weekly_strategy_needs_the_weekly_rebalance() {
+        let repo = std::path::Path::new(".");
+        for r in [&["--rebalance", "monthly"][..], &[][..]] {
+            let mut v = vec!["--strategy", "value-rank-weekly", "--start", "2018-01-01"];
+            v.extend_from_slice(r);
+            let e = super::backtest(repo, &a(&v)).unwrap_err();
+            assert!(e.contains("needs --rebalance weekly"), "{e}");
+        }
+    }
+
+    #[test]
+    fn a_missing_market_index_gives_one_warning_line() {
+        let w = crate::dcf::auto_returns::beta_warning(true).unwrap();
+        assert!(w.starts_with("WARNING") && w.matches('\n').count() == 1);
     }
 
     #[test]

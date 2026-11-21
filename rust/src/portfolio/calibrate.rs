@@ -167,6 +167,17 @@ pub struct Boot {
     /// The 2.5% and the 97.5% points of the statistic over the resamples.
     pub lo: f64,
     pub hi: f64,
+    /// The number of resamples (a p of 0 means: below 1 / reps).
+    pub reps: usize,
+}
+
+/// The text of a one-sided bootstrap p: a p of 0 is "below 1/reps" (the resamples cannot show a smaller p).
+pub fn p_text(p: f64, reps: usize) -> String {
+    if p > 0.0 {
+        format!("{p:.4}")
+    } else {
+        format!("below 1/{reps}")
+    }
 }
 
 /// A circular block bootstrap of a ratio statistic. `series` has one `(sum, count)` for each week, in date order; the
@@ -207,7 +218,7 @@ pub fn block_bootstrap(series: &[(f64, f64)], block: usize, reps: usize, seed: u
     let se = (stats.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (m - 1.0).max(1.0)).sqrt();
     let p = stats.iter().filter(|x| **x - mean + null >= stat - 1e-12).count() as f64 / m;
     stats.sort_by(|a, b| a.total_cmp(b));
-    Some(Boot { stat, se, p, lo: percentile(&stats, 0.025), hi: percentile(&stats, 0.975) })
+    Some(Boot { stat, se, p, lo: percentile(&stats, 0.025), hi: percentile(&stats, 0.975), reps: stats.len() })
 }
 
 /// The decile of a rank: 0 for the rank below 0.1, 9 for the rank of 0.9 or more.
@@ -373,7 +384,7 @@ fn verdict(b: bool) -> &'static str {
 
 fn boot_line(label: &str, b: Option<Boot>) -> String {
     match b {
-        Some(b) => format!("{label}: mean {}, bootstrap se {}, one-sided p {:.4}\n", pct(b.stat), pct(b.se), b.p),
+        Some(b) => format!("{label}: mean {}, bootstrap se {}, one-sided p {}\n", pct(b.stat), pct(b.se), p_text(b.p, b.reps)),
         None => format!("{label}: no data\n"),
     }
 }
@@ -628,6 +639,14 @@ mod tests {
         let c = block_bootstrap(&series, 4, 2000, 8, 0.0).unwrap();
         assert_eq!(a, b);
         assert_ne!(a.se, c.se);
+    }
+
+    #[test]
+    fn a_bootstrap_p_of_zero_is_written_as_below_one_over_reps() {
+        assert_eq!(p_text(0.0, 10_000), "below 1/10000");
+        assert_eq!(p_text(0.0123, 10_000), "0.0123");
+        let b = block_bootstrap(&[(2.0, 1.0); 10], 3, 500, 7, 0.0).unwrap();
+        assert!(boot_line("x", Some(b)).contains("one-sided p below 1/500"));
     }
 
     #[test]

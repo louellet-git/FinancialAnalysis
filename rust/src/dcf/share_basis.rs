@@ -47,6 +47,17 @@ pub fn basis_to(cache: &Path, ticker: &str, warn: bool) -> String {
     })
 }
 
+/// The `to` date for the share basis of a ticker, for the three readers of the facts (`load_vintages_with` of the portfolio,
+/// `load_company_years` of the point-in-time test, `map_inputs_with` of the live commands): the last date of the price file
+/// of the ticker, with no warning; an empty text when there are no splits (no factor is asked then).
+pub fn to_for(cache: &Path, ticker: &str, splits: &[Split]) -> String {
+    if splits.is_empty() {
+        String::new()
+    } else {
+        basis_to(cache, ticker, false)
+    }
+}
+
 /// The share basis for one ticker: `factor(s)` is `split_factor(splits, ticker, s, to)`. A model that reads a share
 /// count takes `s` = the FILING date of the share fact (see `YearData::from_period`): a filing that is issued after a
 /// split shows the share counts already adjusted for it (ASC 260), also for a period that ended before the split. Only

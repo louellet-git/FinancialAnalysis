@@ -219,7 +219,7 @@ impl Vintages {
 /// The vintages of a company from its facts, and its template. The vintages before the last one filed before `from`
 /// are not made: no decision from `from` on uses them.
 ///
-/// The share counts are on the basis of the closes of the store (`splits`, see `dcf/splits.rs`): the splits up to `to`,
+/// The share counts are on the basis of the closes of the store (`splits`, see `market/splits.rs` and `dcf/share_basis.rs`): the splits up to `to`,
 /// the last date of the price file of the ticker.
 pub fn vintages_of(registry: &Registry, ticker: &str, facts: &CompanyFacts, from: i64, splits: &[Split], to: &str) -> Option<(String, Vintages)> {
     if !facts.has_us_gaap() {
@@ -254,7 +254,7 @@ pub fn load_vintages(registry: &Registry, cache: &Path, ticker: &str, from: i64,
 pub fn load_vintages_with(registry: &Registry, cache: &Path, ticker: &str, from: i64, splits: &[Split], change: impl FnOnce(&mut CompanyFacts)) -> Option<(String, Vintages)> {
     let mut facts = mapcheck::run::read_facts(&mapcheck::run::facts_path(cache, ticker)?).ok()?;
     change(&mut facts);
-    let to = if splits.is_empty() { String::new() } else { crate::dcf::share_basis::basis_to(cache, ticker, false) };
+    let to = crate::dcf::share_basis::to_for(cache, ticker, splits);
     vintages_of(registry, ticker, &facts, from, splits, &to)
 }
 
@@ -563,14 +563,19 @@ mod tests {
 
     /// As `with_rank`, with the market index given.
     fn with_rank_index<T>(years: &BTreeMap<String, Vintages>, series: &BTreeMap<String, Vec<(String, f64)>>, index: &[(String, f64)], at: &str, f: impl FnOnce(&ValueRank, &View, &[String]) -> T) -> T {
+        with_rank_full(years, series, index, None, Pick::Top, at, |s, v, u| f(&s, v, u))
+    }
+
+    /// As `with_rank_index`, with the sectors and the pick given; `f` gets the scorer itself (the weekly strategy owns one).
+    fn with_rank_full<T>(years: &BTreeMap<String, Vintages>, series: &BTreeMap<String, Vec<(String, f64)>>, index: &[(String, f64)], sectors: Option<BTreeMap<String, String>>, pick: Pick, at: &str, f: impl FnOnce(ValueRank, &View, &[String]) -> T) -> T {
         let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
         let (table, fade) = crate::dcf::auto_cli::load_table(&repo.join(crate::dcf::auto::DEFAULT_TABLE)).map_err(|e| e.0).unwrap();
         let rules = crate::dcf::auto_pit::parse_rules("").map_err(|e| e.0).unwrap();
         let params = RetParams { table: &table, fade: &fade, rules: &rules, curves: None, index: None, lag: 100, paths: 100, seed: 7 };
         let prices = crate::portfolio::Prices::from_raw(series);
-        let s = ValueRank { years: years.clone(), series, index: Some(index), params, scored: Default::default(), sectors: None, pick: Pick::Top, signals: Default::default() };
+        let s = ValueRank { years: years.clone(), series, index: Some(index), params, scored: Default::default(), sectors, pick, signals: Default::default() };
         let universe: Vec<String> = series.keys().cloned().collect();
-        f(&s, &View::new(d(at), &prices), &universe)
+        f(s, &View::new(d(at), &prices), &universe)
     }
 
     // ---- the split basis: the k-test ----
@@ -775,6 +780,69 @@ mod tests {
             let c = with_rank_index(&years, &series, &early, at, |s, v, u| s.score(v, u));
             assert_ne!(a.0, c, "{at}");
         }
+    }
+
+    /// The fixture with two sectors of 6 tickers (T00 to T05: P, T06 to T11: Q).
+    fn two_sectors() -> BTreeMap<String, String> {
+        (0..N).map(|k| (format!("T{k:02}"), if k < 6 { "P" } else { "Q" }.to_string())).collect()
+    }
+
+    #[test]
+    fn pick_bottom_through_value_rank_gives_the_lowest_scores_of_each_sector() {
+        let years = all_vintages();
+        let series: BTreeMap<String, Vec<(String, f64)>> = (0..N).map(|k| (format!("T{k:02}"), closes(k, "2030-01-01"))).collect();
+        let at = "2020-09-04";
+        let run = |pick| with_rank_full(&years, &series, &market(), Some(two_sectors()), pick, at, |s, v, u| (s.score(v, u), s.weights(v, u).unwrap()));
+        let ((scored, top), (_, bottom)) = (run(Pick::Top), run(Pick::Bottom));
+        assert_eq!(scored.len(), N);
+        let sectors = two_sectors();
+        // the expected sets by hand: the highest and the lowest score of each sector (6 tickers: a fifth is 2 of them rounded up to 1)
+        let extreme = |sign: f64, sector: &str| -> String {
+            let mut v: Vec<&(String, f64)> = scored.iter().filter(|(t, _)| sectors[t] == sector).collect();
+            v.sort_by(|a, b| (sign * b.1).total_cmp(&(sign * a.1)).then(a.0.cmp(&b.0)));
+            v[0].0.clone()
+        };
+        let names = |w: &[(String, f64)]| -> Vec<String> { let mut n: Vec<String> = w.iter().map(|x| x.0.clone()).collect(); n.sort(); n };
+        let mut want_top = vec![extreme(1.0, "P"), extreme(1.0, "Q")];
+        let mut want_bottom = vec![extreme(-1.0, "P"), extreme(-1.0, "Q")];
+        want_top.sort();
+        want_bottom.sort();
+        assert_eq!(names(&top), want_top);
+        assert_eq!(names(&bottom), want_bottom);
+        assert_ne!(top, bottom);
+    }
+
+    #[test]
+    fn the_weekly_strategy_gives_each_open_name_one_39th_for_12_weeks_and_drops_it_at_the_13th() {
+        let years = all_vintages();
+        let series: BTreeMap<String, Vec<(String, f64)>> = (0..N).map(|k| (format!("T{k:02}"), closes(k, "2030-01-01"))).collect();
+        let start = d("2020-09-04");
+        type Week = (Vec<(String, f64)>, BTreeMap<String, i64>);
+        let weeks: Vec<Week> = with_rank_full(&years, &series, &market(), Some(two_sectors()), Pick::Top, "2020-09-04", |s, _, u| {
+            let prices = crate::portfolio::Prices::from_raw(&series);
+            let weekly = WeeklyValueRank { base: s, open: Default::default() };
+            (0..16).map(|k| (weekly.weights(&View::new(start + 7 * k, &prices), u).unwrap(), weekly.open.lock().unwrap().clone())).collect()
+        });
+        let mut prev = 0usize;
+        for (k, (w, open)) in weeks.iter().enumerate() {
+            // each open name has the weight 1/39, whatever the size of the open set (1 / len would give 1/2 here)
+            assert!(!w.is_empty() && w.iter().all(|(_, x)| (*x - 1.0 / 39.0).abs() < 1e-12), "week {k}: {w:?}");
+            assert_eq!(w.len(), open.len());
+            // the open set grows by 3 names at most each week
+            assert!(w.len() <= prev + 3, "week {k}");
+            prev = w.len();
+        }
+        // one name for each sector in the first week (the fifth of 6 tickers is 1), entry day = the first Friday
+        let first: Vec<&String> = weeks[0].1.keys().collect();
+        assert_eq!(first, ["T05", "T10"]);
+        assert!(weeks[0].1.values().all(|e| *e == start));
+        // the entry day stays for 12 more weeks (weeks 1 to 12) ...
+        for k in 1..=12 {
+            assert_eq!(weeks[k].1, weeks[0].1, "week {k}");
+        }
+        // ... and at the 13th week (91 days) the position is dropped; the same names rank first again and enter again that day
+        assert!(weeks[13].1.values().all(|e| *e == start + 91), "{:?}", weeks[13].1);
+        assert_eq!(weeks[13].1.keys().collect::<Vec<_>>(), first);
     }
 
     // ---- the short side test and the weekly rule (A-009) ----

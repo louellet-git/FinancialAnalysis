@@ -95,6 +95,29 @@ pub struct RetParams<'a> {
 /// year), `price` is the close of `as_of`, `prices` is the price series (only the part up to `as_of` is read: the
 /// beta uses the weeks up to `as_of`). Returns the P50 and the base revenue, `None` if the model refuses.
 /// `fa dcf returns` and `fa portfolio backtest` (strategy `value-rank`) use this one function.
+/// The models of the run in which a market index was given but the beta could not be made (fewer than 104 weekly pairs):
+/// the model has the default beta there. A run reads it once at its end (`beta_warning`).
+static BETA_DROPPED: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+/// Start of a run: the count of dropped betas is set to 0.
+pub fn beta_reset() {
+    BETA_DROPPED.store(0, std::sync::atomic::Ordering::SeqCst);
+}
+
+/// One WARNING line for the output of a run when the beta was dropped, else `None`: `index_missing` (no market index: SPY
+/// file missing or fewer than 520 rows, `index_from_cache`), or models with fewer than 104 weekly pairs (the first two years
+/// of the data). The line is for the run, not for each ticker.
+pub fn beta_warning(index_missing: bool) -> Option<String> {
+    let n = BETA_DROPPED.load(std::sync::atomic::Ordering::SeqCst);
+    if index_missing {
+        Some("WARNING: no market index (the SPY file is missing or has fewer than 520 rows): the beta is dropped in every model of this run (default beta).\n".to_string())
+    } else if n > 0 {
+        Some(format!("WARNING: the beta was dropped in {n} model(s) of this run (fewer than 104 weekly returns with SPY, the first two years of the data or a short price history): the default beta is used there.\n"))
+    } else {
+        None
+    }
+}
+
 pub fn model_p50(ticker: &str, years: &[YearData], as_of: &str, price: f64, prices: &[(String, f64)], p: &RetParams) -> Option<(f64, f64)> {
     let last = years.last()?;
     let inputs = AutoInputs {
@@ -107,6 +130,9 @@ pub fn model_p50(ticker: &str, years: &[YearData], as_of: &str, price: f64, pric
     };
     let curve = p.curves.and_then(|ds| curve_on(ds, as_of).ok());
     let beta = p.index.and_then(|m| regression_beta(prices, m, as_of, 260, p.rules.beta_weight, "SPY"));
+    if p.index.is_some() && beta.is_none() {
+        BETA_DROPPED.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    }
     let market = Market { as_of: as_of.to_string(), curve, price: Some(price), price_source: "price cache".into(), beta };
     let model = build(&inputs, p.table, p.fade, &market, p.rules, BuildOptions::default()).ok()?;
     let spec = PathsSpec::from_toml(&model.toml).ok()?;
@@ -342,6 +368,7 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     let splits = crate::market::splits::load_splits(&cache).map_err(DcfError)?;
     let curves = std::fs::read_to_string(cache.join("rates").join("gsw_feds200628.csv")).ok().and_then(|t| crate::forwards::parse_gsw(&t).ok());
     let index = index_from_cache(&cache);
+    beta_reset();
     let p = RetParams { table: &table, fade: &fade, rules: &rules, curves: curves.as_ref(), index: index.as_deref(), lag, paths, seed };
     let t0 = std::time::Instant::now();
     let mut obs: Vec<RetObs> = tickers
@@ -372,6 +399,9 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         if index.is_some() { "SPY" } else { "none (beta 1)" }
     );
     text.push_str(&super::share_basis::check_report(&splits, &tickers));
+    if let Some(w) = beta_warning(index.is_none()) {
+        text.push_str(&w);
+    }
     let ratio: Vec<f64> = obs.iter().map(|o| o.ratio()).collect();
     let mut s = ratio.clone();
     s.sort_by(|a, b| a.total_cmp(b));

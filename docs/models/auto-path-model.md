@@ -61,7 +61,7 @@ The records "not written" belong to the board ticket
 ## Limits
 - Share basis. The price files of the store are split-adjusted up to the last date of each file. The share counts of the
   SEC facts are not. The model multiplies each share count by the product of the factors of the splits with
-  `filing date of the fact < ex_date <= last date of the price file` (`rust/src/dcf/splits.rs`, table
+  `filing date of the fact < ex_date <= last date of the price file` (`rust/src/market/splits.rs`, `rust/src/dcf/share_basis.rs`, table
   `<cache>/_corporate/splits.csv`; one place: `YearData::from_period`). The filing date is used, not the period end,
   because a filing issued after a split shows the counts already adjusted for it (ASC 260). A spin-off and a class
   change are not splits. A row with `sec_check` other than `match` is not confirmed by the SEC facts. A missing

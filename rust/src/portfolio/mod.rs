@@ -483,6 +483,21 @@ mod tests {
     }
 
     #[test]
+    fn hold_buys_on_the_value_after_the_cost_of_the_sales_when_the_cash_is_enough() {
+        // 100 bp. Day 0: A 0.5 costs 0.005 (cash 0.495). Day 5: A is 0.525, the value 1.02. A leaves: the sale of 0.525 costs
+        // 0.00525, so the base of the new buy is 1.02 - 0.00525 = 1.01475 and B gets 0.4 of it = 0.4059 (the cash 1.01475 is
+        // enough: no scaling). The cost of the day is 0.01 * (0.525 + 0.4059).
+        let r = hold_run(100.0, vec![vec![("A", 0.5)], vec![("B", 0.4)], vec![("B", 0.4)]], true);
+        let bought: f64 = 0.4 * (1.02 - 0.01 * 0.525);
+        let cost_day5 = 0.01 * (0.525 + bought);
+        let b = r.trades.iter().find(|t| t.ticker == "B").unwrap();
+        near(b.after, bought / (1.02 - cost_day5));
+        near(r.cost_total, 0.005 + cost_day5);
+        // B is flat and not traded again: the value on the last day = B + the cash
+        near(r.nav[39], 1.02 - cost_day5);
+    }
+
+    #[test]
     fn hold_scales_the_new_buys_down_to_the_cash() {
         // day 5: the value is 1.025, B wants 0.5 * 1.025 = 0.5125, the cash is 0.5: B gets 0.5, the cash is 0
         let r = hold_run(0.0, vec![vec![("A", 0.5)], vec![("A", 0.5), ("B", 0.5)], vec![("A", 0.5), ("B", 0.5)]], true);

@@ -690,7 +690,7 @@ fn map_inputs_with(cache: &Path, tickers: &[String], as_of_day: i64, filed_cut: 
             .map(|t| {
                 let r = mapcheck::run::check_ticker_filed(&registry, cache, t, MAP_PERIODS, as_of_day, true, filed_cut);
                 // `to`: the last date of the price file of the ticker; no warning here (a ticker with no price file has no price and no value)
-                let to = if splits.is_empty() { String::new() } else { super::share_basis::basis_to(cache, t, false) };
+                let to = super::share_basis::to_for(cache, t, &splits);
                 inputs_from_report(&registry, &r, &splits, &to)
             })
             .collect()

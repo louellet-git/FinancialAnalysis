@@ -189,7 +189,7 @@ fn base_revenue(company: &Company, annuals: &[&Period]) -> Result<f64, DcfError>
 }
 
 // No split factor: these models take their shares from a curated file of the ticker; the curator must use the
-// post-split basis (the automatic model has the factor: `dcf/splits.rs`, `YearData::from_period`).
+// post-split basis (the automatic model has the factor: `market/splits.rs`, `dcf/share_basis.rs`, `YearData::from_period`).
 fn shares_outstanding(annuals: &[&Period]) -> Option<f64> {
     for p in annuals.iter().rev() {
         if let Some(s) = p.shares_outstanding.filter(|s| *s != 0.0) {

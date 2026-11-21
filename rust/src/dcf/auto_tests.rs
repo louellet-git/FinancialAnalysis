@@ -1283,6 +1283,11 @@ fn market_at_takes_the_close_of_the_price_date_and_market_from_cache_the_last_cl
 
 /// The SEC facts of a company with six fiscal years 2020 to 2025 (10-K filed on 15 Feb of the next year) and 100M shares.
 fn live_facts() -> mapcheck::facts::CompanyFacts {
+    serde_json::from_str(&live_facts_text()).unwrap_or_else(|e| panic!("{e}"))
+}
+
+/// The text of the facts of [`live_facts`] (a cache file of a test).
+fn live_facts_text() -> String {
     let dur = |tag: &str, f: &dyn Fn(i32) -> f64| -> String {
         let rows: Vec<String> = (0..6).map(|k| format!(r#"{{"start":"{y}-01-01","end":"{y}-12-31","val":{v},"form":"10-K","filed":"{f}-02-15","fy":{y},"fp":"FY"}}"#, y = 2020 + k, v = f(k), f = 2021 + k)).collect();
         format!(r#""{tag}":{{"units":{{"USD":[{}]}}}}"#, rows.join(","))
@@ -1305,7 +1310,7 @@ fn live_facts() -> mapcheck::facts::CompanyFacts {
         inst("Assets", "USD", 2e9),
         shares_w.join(",")
     );
-    serde_json::from_str(&text).unwrap_or_else(|e| panic!("{e}"))
+    text
 }
 
 /// The live case: a 25:1 split on 2026-04-06, after the last 10-K (period end 2025-12-31). The share counts of the 10-K
@@ -1399,4 +1404,62 @@ fn a_short_spy_file_gives_no_index() {
     write(520);
     assert_eq!(index_from_cache(&dir).map(|s| s.len()), Some(520));
     std::fs::remove_dir_all(&dir).ok();
+}
+
+/// A cache of the ticker LIVE: the facts of `live_facts` (100M shares in each 10-K, filed 2021 to 2026), a price file that
+/// ends on 2026-11-19 and is adjusted for the splits up to that day, and (with `ex_date`) a split table with a 1:8 split.
+fn share_basis_cache(name: &str, ex_date: Option<&str>) -> std::path::PathBuf {
+    use crate::market::splits::{to_csv, Split, SplitRow};
+    let dir = std::env::temp_dir().join(format!("fa_basis_{name}_{}", std::process::id()));
+    std::fs::remove_dir_all(&dir).ok();
+    std::fs::create_dir_all(dir.join("LIVE")).unwrap();
+    let row = |d: &str| format!(r#"{{"date":"{d}","open":20,"high":20,"low":20,"close":20,"volume":1}}"#);
+    std::fs::write(dir.join("LIVE").join("prices.json"), format!("[{},{}]", row("2026-11-18"), row("2026-11-19"))).unwrap();
+    std::fs::write(dir.join("LIVE").join("prices.meta.json"), r#"{"adjusted":"splits","last_date":"2026-11-19"}"#).unwrap();
+    std::fs::write(dir.join("LIVE").join("company_facts.json"), live_facts_text()).unwrap();
+    if let Some(d) = ex_date {
+        std::fs::create_dir_all(dir.join("_corporate")).unwrap();
+        let split = Split { ticker: "LIVE".into(), ex_date: d.into(), old_rate: 1.0, new_rate: 8.0, factor: 8.0, kind: "forward".into(), sec_check: "match".into() };
+        std::fs::write(dir.join("_corporate").join("splits.csv"), to_csv(&[SplitRow::new(split, "test", "applied", false)])).unwrap();
+    }
+    dir
+}
+
+/// The latest share count that each of the three readers of the facts gives for LIVE on the cache `dir`, each with the split
+/// table of that cache: `load_company_years` (point-in-time test), `load_vintages` (portfolio backtest) and `map_inputs`
+/// (live commands: reads the table itself). The three get `to` from `share_basis::to_for`.
+fn reader_shares(dir: &std::path::Path) -> [Option<f64>; 3] {
+    let reg = Registry::embedded().unwrap();
+    let splits = crate::market::splits::load_splits(dir).unwrap_or_default();
+    let a = load_company_years(&reg, dir, "LIVE", &splits).unwrap().1;
+    let b = crate::portfolio::strategies::load_vintages(&reg, dir, "LIVE", 0, &splits).unwrap().1;
+    let day = mapcheck::dates::parse("2026-11-21").unwrap();
+    let c = map_inputs(dir, &["LIVE".to_string()], day, Some(1)).unwrap().0;
+    [a.last().unwrap().shares, b.0.last().unwrap().1.last().unwrap().shares, c[0].years.last().unwrap().shares]
+}
+
+/// The wiring of `to` where the readers use it: a split with the ex-date AFTER the last date of the price file is not in the
+/// closes, so the share counts stay as they are (the same as with no split table). The defect `to` = today would give 8x.
+#[test]
+fn the_readers_do_not_count_a_split_after_the_last_price_date() {
+    let base = share_basis_cache("none", None);
+    let after = share_basis_cache("after", Some("2026-11-20"));
+    let want = reader_shares(&base);
+    assert_eq!(want, [Some(1e8); 3]);
+    assert_eq!(reader_shares(&after), want);
+    for d in [base, after] {
+        std::fs::remove_dir_all(d).ok();
+    }
+}
+
+/// The same cache with the ex-date ON the last price date: the closes are adjusted for it, so the share counts are 8 times.
+#[test]
+fn the_readers_count_a_split_on_or_before_the_last_price_date() {
+    let on = share_basis_cache("on", Some("2026-11-19"));
+    let before = share_basis_cache("before", Some("2026-06-01"));
+    assert_eq!(reader_shares(&on), [Some(8e8); 3]);
+    assert_eq!(reader_shares(&before), [Some(8e8); 3]);
+    for d in [on, before] {
+        std::fs::remove_dir_all(d).ok();
+    }
 }
