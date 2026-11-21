@@ -2,6 +2,8 @@
 
 Updated: 2026-11-21. Commit: 90ed737 (base of the branch). One document for two tests of measurement.
 
+Backtest: these two commands are the point-in-time tests of the automatic model. Their own check is the truncation and poison test (skill `point-in-time-test`).
+
 ## Purpose
 `fa dcf pit` asks: do the P10 to P90 bands of the model for revenue and free cash flow hold the real values of
 T+1 to T+3? `fa dcf returns` asks: does the P50 / price rank the later stock returns? They are measurements of the

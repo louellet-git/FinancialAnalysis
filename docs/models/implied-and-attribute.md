@@ -1,6 +1,8 @@
 # Model: what the price implies, and where the price move went (`fa dcf implied`, `fa dcf attribute`)
 
 Updated: 2026-11-21. Commit: 90ed737 (base of the branch). These two commands share one document: they share
+
+Backtest: none applies, because these commands measure what a price implies and split a past change; they do not forecast. Their point-in-time checks apply (facts filed on or before each date, the stale-price check, the truncation test).
 the value at the means, the searches and the code in `auto_implied.rs`.
 
 ## Purpose

@@ -2,6 +2,8 @@
 
 Updated: 2026-11-20.
 
+Backtest: `fa dcf pit` (the point-in-time test of the projections, T1 of `T-20261121-blind-projection-test`) and `fa portfolio backtest --strategy value-rank` (pull request 136: no evidence of an edge on split-corrected prices).
+
 ## Purpose
 `fa dcf auto TICKER` makes a Monte Carlo DCF model for one ticker with no hand input, and
 runs it. `fa dcf screen` does this for many tickers. It is a screen. It is not a reviewed

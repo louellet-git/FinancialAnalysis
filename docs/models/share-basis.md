@@ -2,6 +2,8 @@
 
 Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
 
+Backtest: the k-test (all prices before a date times k change no earlier decision) and the reruns of pull request 136.
+
 ## Purpose
 Put the share count of the SEC facts on the same date as the split-adjusted closes of the data store. Without
 this, a value per share that divides by a filed count is wrong by the split factor when a split came after the

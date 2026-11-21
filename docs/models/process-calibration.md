@@ -2,6 +2,8 @@
 
 Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
 
+Backtest: `fa dcf pit --cut YEAR` (the table comes from the years up to the cut; the later years score it).
+
 ## Purpose
 `fa dcf calibrate` estimates, from the company cache, the AR(1) parameters of revenue growth and of the margins,
 the growth fade of fast growers, and the shock correlations. It writes the table that the automatic path model

@@ -2,6 +2,8 @@
 
 Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
 
+Backtest: `fa backtest TICKER` (point-in-time vintages of the revenue and free cash flow projections). None applies to the value of one reviewed model, because one ticker gives no sample; the four-step review applies. The classic IBM version 3 is frozen.
+
 ## Purpose
 Two engines for a hand-built valuation of one company. The driver engine (`fa dcf drivers`) draws named
 drivers together and gives a value range for each share. The classic engine (`fa dcf classic`, `fa dcf scenarios`)
