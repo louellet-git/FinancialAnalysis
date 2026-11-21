@@ -54,12 +54,23 @@ fa dcf premium-series --tickers-file FILE --start D1 --end D2 --out FILE [OPTION
   --cache DIR     as for `fa dcf auto`
   --out FILE      the CSV; each row is written when it is done
   --bridge        also make the s2_* columns (this is the slow part)
+  --per-ticker FILE  with --bridge: a second CSV with one row for each week and ticker with a weight (the first week has
+                  none). Header: friday, anchor, ticker, weight, change, facts, time, rates, premium, growth, residual,
+                  nomodel. Decimals; an empty field is a missing value. weight: the share of the market value of the list at
+                  the previous anchor; change: the change of the price of the ticker; the other columns are the bridge line
+                  of the ticker (the same parts as the s2_* columns), as shares of the market value of the LIST at the
+                  previous anchor. So the rows of a week add to the s2_* columns of the main CSV (weight x change adds to
+                  s2_change). The main CSV does not change
   --table FILE    parameter table
   --rules K=V,..  change a rule of the builder (the list: fa dcf auto --help)
   --jobs N        threads (default: all); the result does not depend on N";
 
 /// The header of the CSV: a fixed contract with the programs that read the file.
 pub const HEADER: &str = "friday,anchor,curve_source,curve_date,zero10,s1,n_value,n_list,ret_w,n_ret,s2_facts,s2_time,s2_rates,s2_premium,s2_growth,s2_residual,s2_nomodel,s2_change";
+
+/// The header of the second CSV (`--per-ticker`): a fixed contract. Decimals. The parts are shares of the market value of the
+/// list at the previous anchor, so the rows of a week add to the s2_* columns of the main CSV.
+pub const PER_TICKER_HEADER: &str = "friday,anchor,ticker,weight,change,facts,time,rates,premium,growth,residual,nomodel";
 
 /// A curve may be this many days older than its anchor.
 pub const CURVE_LAG_DAYS: i64 = 3;
@@ -148,6 +159,27 @@ pub struct Row {
     pub n_ret: Option<usize>,
     /// facts, time, rates, premium, growth, residual, nomodel, change
     pub s2: Option<[f64; 8]>,
+    /// With the bridge: one line for each ticker with a weight (sorted by ticker). Not a column of the main CSV.
+    pub per_ticker: Vec<TickerRow>,
+}
+
+/// The bridge line of one ticker for one week (the full bridge of `fa dcf attribute`, premium view first).
+#[derive(Debug, Clone, PartialEq)]
+pub struct TickerRow {
+    pub ticker: String,
+    /// The share of the market value of the list at the previous anchor.
+    pub weight: f64,
+    /// The change of the price of the ticker.
+    pub change: f64,
+    /// facts, time, rates, premium, growth, residual, nomodel (shares of the market value of the list at the previous anchor)
+    pub parts: [f64; 7],
+}
+
+impl TickerRow {
+    pub fn csv_line(&self, friday: &str, anchor: &str) -> String {
+        let p: Vec<String> = self.parts.iter().map(|x| f(Some(*x))).collect();
+        format!("{friday},{anchor},{},{},{},{}", self.ticker, f(Some(self.weight)), f(Some(self.change)), p.join(","))
+    }
 }
 
 fn f(x: Option<f64>) -> String {
@@ -242,6 +274,8 @@ pub fn week_row(ctx: &Ctx, friday: &str, prior: Option<&State>) -> R<(Row, State
             if let Some(b) = full_bridge(&rows, View::Premium) {
                 let a = &b.all;
                 row.s2 = Some([a.parts[0], a.parts[1], a.parts[2], a.parts[3], a.parts[4], a.parts[5], a.parts[6], a.change]);
+                row.per_ticker = b.tickers.iter().map(|l| TickerRow { ticker: l.name.clone(), weight: l.share, change: l.change, parts: l.parts }).collect();
+                row.per_ticker.sort_by(|x, y| x.ticker.cmp(&y.ticker));
             }
         }
     }
@@ -280,7 +314,10 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         println!("{PREMIUM_SERIES_USAGE}");
         return Ok(());
     }
-    let o = Opts::parse(args, &["--cache", "--out", "--jobs", "--table", "--start", "--end", "--tickers-file", "--rules"], &["--bridge"])?;
+    let o = Opts::parse(args, &["--cache", "--out", "--jobs", "--table", "--start", "--end", "--tickers-file", "--rules", "--per-ticker"], &["--bridge"])?;
+    if o.get("--per-ticker").is_some() && !o.flag("--bridge") {
+        return e("--per-ticker needs --bridge");
+    }
     let cache = cache_dir(repo, &o);
     let (table, fade) = load_table(&table_path(repo, &o))?;
     let (start, end) = (date_of(&o, "--start")?, date_of(&o, "--end")?);
@@ -317,6 +354,14 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     };
     let mut file = std::fs::File::create(out).map_err(|x| DcfError(format!("{out}: {x}")))?;
     writeln!(file, "{HEADER}").map_err(|x| DcfError(x.to_string()))?;
+    let mut per_ticker_file = match o.get("--per-ticker") {
+        Some(p) => {
+            let mut pf = std::fs::File::create(p).map_err(|x| DcfError(format!("{p}: {x}")))?;
+            writeln!(pf, "{PER_TICKER_HEADER}").map_err(|x| DcfError(x.to_string()))?;
+            Some(pf)
+        }
+        None => None,
+    };
     println!("PREMIUM SERIES {} to {}: {} Fridays, {} tickers, {}. No random part. A market-implied value is a measurement, not an input. The list is a list of today's names (survivorship).", fridays[0], fridays[fridays.len() - 1], fridays.len(), tickers.len(), if ctx.bridge { "with the bridge" } else { "no bridge" });
     let mut run = || -> R<()> {
         let t_all = Instant::now();
@@ -326,6 +371,12 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
             let t0 = Instant::now();
             let (row, state) = week_row(&ctx, fr, prior.as_ref())?;
             writeln!(file, "{}", row.csv_line()).and_then(|_| file.flush()).map_err(|x| DcfError(x.to_string()))?;
+            if let Some(pf) = per_ticker_file.as_mut() {
+                for t in &row.per_ticker {
+                    writeln!(pf, "{}", t.csv_line(&row.friday, &row.anchor)).map_err(|x| DcfError(x.to_string()))?;
+                }
+                pf.flush().map_err(|x| DcfError(x.to_string()))?;
+            }
             if row.source == Some(CurveSource::Par) && switch.is_none() {
                 switch = Some(fr.clone());
                 println!("  SWITCH WEEK: {fr} is the first week with the par fit (curve date {})", row.curve_date);

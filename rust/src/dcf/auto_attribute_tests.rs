@@ -498,7 +498,117 @@ fn the_curve_text_is_the_old_text_for_gsw_and_names_the_fit_for_the_others() {
 fn an_unknown_curve_value_is_an_error() {
     let args: Vec<String> = ["--curve", "ois", "--from", "2026-11-13", "--to", "2026-11-20"].iter().map(|s| s.to_string()).collect();
     let x = command_inner(Path::new("."), &args).unwrap_err();
-    assert!(x.0.contains("--curve 'ois': use gsw, fedinvest or par"), "{}", x.0);
+    assert!(x.0.contains("--curve 'ois': use auto, gsw, fedinvest or par"), "{}", x.0);
+}
+
+fn dates_of(v: &[&str]) -> Vec<String> {
+    v.iter().map(|s| s.to_string()).collect()
+}
+
+fn gsw_of(v: &[Option<&str>]) -> Vec<Option<String>> {
+    v.iter().map(|s| s.map(|x| x.to_string())).collect()
+}
+
+#[test]
+fn auto_picks_gsw_when_both_rows_are_fresh_and_par_when_one_is_four_days_old() {
+    let dates = dates_of(&["2026-11-13", "2026-11-20"]);
+    // both rows on the date, or 3 days older: gsw
+    let (s, why) = auto_curve_source(&gsw_of(&[Some("2026-11-13"), Some("2026-11-17")]), &dates);
+    assert_eq!(s, "gsw");
+    assert!(why.starts_with("gsw, because") && why.contains("2026-11-17, 3 days older"), "{why}");
+    // the row of D2 is 4 days old: par at both dates, and the text names the date and the lag
+    let (s, why) = auto_curve_source(&gsw_of(&[Some("2026-11-13"), Some("2026-11-16")]), &dates);
+    assert_eq!(s, "par");
+    assert!(why.starts_with("par, because") && why.contains("2026-11-20: GSW row 2026-11-16, 4 days older") && why.contains("one source is used at all dates"), "{why}");
+    // the file ends at D1 (the real case): the lag at D2 is 7 days
+    assert_eq!(auto_curve_source(&gsw_of(&[Some("2026-11-13"), Some("2026-11-13")]), &dates).0, "par");
+    // no row at a date: par
+    let (s, why) = auto_curve_source(&gsw_of(&[None, Some("2026-11-20")]), &dates);
+    assert_eq!((s, why.contains("2026-11-13: no GSW row")), ("par", true));
+}
+
+#[test]
+fn auto_with_fresh_rows_is_the_run_of_curve_gsw_and_an_explicit_source_stays() {
+    let dates = dates_of(&["2026-11-13", "2026-11-20"]);
+    let fresh = gsw_of(&[Some("2026-11-12"), Some("2026-11-20")]);
+    let (auto, note) = effective_source("auto", &fresh, &dates);
+    let (gsw, none) = effective_source("gsw", &fresh, &dates);
+    assert_eq!(auto, gsw, "the same source gives the same run");
+    assert_eq!(auto, "gsw");
+    // --curve gsw has no new text; auto names its choice
+    assert_eq!(none, None);
+    assert!(note.is_some_and(|n| n.starts_with("CURVE SOURCE (--curve auto): gsw, because")));
+    // an explicit source is not changed by old rows
+    let old = gsw_of(&[Some("2026-11-01"), Some("2026-11-02")]);
+    assert_eq!(effective_source("gsw", &old, &dates).0, "gsw");
+    assert_eq!(effective_source("fedinvest", &old, &dates).0, "fedinvest");
+    assert_eq!(effective_source("auto", &old, &dates).0, "par");
+}
+
+fn spy_days(v: &[&str]) -> Vec<(String, f64)> {
+    v.iter().map(|d| (d.to_string(), 100.0)).collect()
+}
+
+#[test]
+fn d0_is_d1_less_the_days_of_the_window_and_moves_back_to_a_trading_day() {
+    // window 2026-11-13 to 2026-11-20 is 7 days: D0 = 2026-11-06 (a Friday with a close)
+    let spy = spy_days(&["2026-11-05", "2026-11-06", "2026-11-13", "2026-11-20"]);
+    assert_eq!(prior_date(&spy, "2026-11-13", "2026-11-20").unwrap(), "2026-11-06");
+    // Good Friday 2026-04-03 has no close: D1 2026-04-10, D2 2026-04-17, D0 = 2026-04-03 moves to Thursday 2026-04-02
+    let spy = spy_days(&["2026-04-01", "2026-04-02", "2026-04-06", "2026-04-10", "2026-04-17"]);
+    assert_eq!(prior_date(&spy, "2026-04-10", "2026-04-17").unwrap(), "2026-04-02");
+    // a window of 3 days: D1 Monday 2026-11-09 to D2 Thursday 2026-11-12: D0 Friday 2026-11-06
+    let spy = spy_days(&["2026-11-05", "2026-11-06", "2026-11-09", "2026-11-12"]);
+    assert_eq!(prior_date(&spy, "2026-11-09", "2026-11-12").unwrap(), "2026-11-06");
+    // a SPY series that is too short is an error
+    assert!(prior_date(&spy_days(&["2026-11-13"]), "2026-11-13", "2026-11-20").is_err());
+}
+
+#[test]
+fn the_prior_window_lines_chain_for_a_hand_made_list() {
+    // two companies, 10 shares each. Prices at D0, D1, D2: A 10, 11, 12.1 (+10% twice); B 20, 19, 17.1 (-5%, -10%).
+    // Value at D0 = 100 + 200 = 300; D1 = 110 + 190 = 300; D2 = 121 + 171 = 292.
+    // D0 to D1: 0%; D1 to D2: 292 / 300 - 1 = -2.6667%; D0 to D2: 292 / 300 - 1 = -2.6667% (the same: D1 = D0 in value).
+    let w01 = vec![row("A", 10.0, 11.0, 3, 10.0, 0.05), row("B", 20.0, 19.0, 3, 10.0, 0.05)];
+    let w12 = vec![row("A", 11.0, 12.1, 3, 10.0, 0.05), row("B", 19.0, 17.1, 3, 10.0, 0.05)];
+    let w02 = vec![row("A", 10.0, 12.1, 3, 10.0, 0.05), row("B", 20.0, 17.1, 3, 10.0, 0.05)];
+    let l = [prior_line("2026-11-06", "2026-11-13", &w01), prior_line("2026-11-13", "2026-11-20", &w12), prior_line("2026-11-06", "2026-11-20", &w02)];
+    let c = |i: usize| l[i].as_ref().unwrap().change;
+    assert!(c(0).abs() < 1e-12, "{}", c(0));
+    assert!((c(1) - (292.0 / 300.0 - 1.0)).abs() < 1e-12);
+    // D0 to D2 equals the chained change of the two windows
+    assert!(((1.0 + c(0)) * (1.0 + c(1)) - 1.0 - c(2)).abs() < 1e-12, "{} {} {}", c(0), c(1), c(2));
+    // the whole change is in the plug of the premium view (which = 3): the premium part equals the change of each window
+    for x in l.iter().map(|x| x.as_ref().unwrap()) {
+        assert!((x.parts[3] - x.change).abs() < 1e-12 && x.parts[0].abs() < 1e-12 && x.parts[2].abs() < 1e-12, "{x:?}");
+        assert!((x.parts.iter().sum::<f64>() - x.change).abs() < 1e-12);
+    }
+    let text = prior_window_text("2026-11-06", "2026-11-13", "2026-11-20", &l);
+    assert!(text.contains("(6) PRIOR WINDOW"));
+    let (a, b, d) = (text.find("2026-11-06 to 2026-11-13 "), text.find("2026-11-13 to 2026-11-20 "), text.find("2026-11-06 to 2026-11-20 "));
+    assert!(a.is_some() && a < b && b < d, "the three lines in the order D0 to D1, D1 to D2, D0 to D2:\n{text}");
+    assert!(text.contains("2026-11-06 to 2026-11-13, then 2026-11-13 to 2026-11-20, chained: -2.67%"), "{text}");
+    assert!(text.contains("-2.67% |"), "{text}");
+    // the same inputs give the same text
+    assert_eq!(text, prior_window_text("2026-11-06", "2026-11-13", "2026-11-20", &l));
+}
+
+#[test]
+fn the_common_change_of_a_prior_line_is_the_premium_common_change() {
+    let mut rows = vec![row("A", 10.0, 8.0, 3, 10.0, 0.05), row("B", 30.0, 27.0, 3, 10.0, 0.05)];
+    for r in rows.iter_mut() {
+        if let Ok(a) = r.outcome.as_mut() {
+            if let Ok(c) = a.prem.as_mut() {
+                c.split = Some(Split { c: -0.00581, label: "list median".into(), common_ln: -0.01, company_ln: 0.0, rev_common_ln: -0.01, rev_company_ln: 0.0, none: false, covered: None });
+            }
+        }
+    }
+    let l = prior_line("2026-11-13", "2026-11-20", &rows).unwrap();
+    assert_eq!(l.common, Some((-0.00581, "list median".to_string())));
+    let text = prior_window_text("2026-11-06", "2026-11-13", "2026-11-20", &[None, Some(l), None]);
+    assert!(text.contains("-0.581"), "{text}");
+    assert!(text.contains("source of c: list median."), "{text}");
+    assert!(text.contains("2026-11-06 to 2026-11-13: no ticker has a weight"), "{text}");
 }
 
 #[test]

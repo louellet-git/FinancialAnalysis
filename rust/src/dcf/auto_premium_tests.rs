@@ -166,3 +166,40 @@ fn a_poison_of_a_close_after_the_anchor_does_not_change_the_row_and_the_truncati
     assert!((x[..7].iter().sum::<f64>() - x[7]).abs() < 1e-9, "{x:?}");
     let _ = (std::fs::remove_dir_all(clean), std::fs::remove_dir_all(poisoned));
 }
+
+#[test]
+fn the_per_ticker_header_and_line_are_the_contract() {
+    assert_eq!(PER_TICKER_HEADER, "friday,anchor,ticker,weight,change,facts,time,rates,premium,growth,residual,nomodel");
+    assert_eq!(PER_TICKER_HEADER.split(',').count(), 12);
+    let t = TickerRow { ticker: "NVDA".into(), weight: 0.25, change: -0.0856, parts: [0.0, 0.0, -0.01, -0.02, 0.0, 0.5, f64::NAN] };
+    // a missing value (NaN) is an empty field
+    assert_eq!(t.csv_line("2026-11-20", "2026-11-20"), "2026-11-20,2026-11-20,NVDA,0.25,-0.0856,0,0,-0.01,-0.02,0,0.5,");
+    assert_eq!(t.csv_line("2026-11-20", "2026-11-20").split(',').count(), 12);
+}
+
+#[test]
+fn the_per_ticker_rows_of_a_week_add_to_the_main_row() {
+    let cache = write_cache("per_ticker", false);
+    let rows = two_weeks(&cache, &Arc::new(Mutex::new(Vec::new())));
+    // the first week has no bridge and no rows
+    assert!(rows[0].per_ticker.is_empty());
+    let w = &rows[1];
+    assert_eq!(w.per_ticker.len(), 3);
+    assert_eq!(w.per_ticker.iter().map(|t| t.ticker.as_str()).collect::<Vec<_>>(), vec!["T00", "T01", "T02"]);
+    let s2 = w.s2.unwrap();
+    for (k, want) in s2.iter().take(7).enumerate() {
+        let sum: f64 = w.per_ticker.iter().map(|t| t.parts[k]).sum();
+        assert!((sum - want).abs() < 1e-12, "part {k}: {sum} against {want}");
+    }
+    // the weights add to 1 and weight x change adds to the change of the list
+    assert!((w.per_ticker.iter().map(|t| t.weight).sum::<f64>() - 1.0).abs() < 1e-12);
+    assert!((w.per_ticker.iter().map(|t| t.weight * t.change).sum::<f64>() - s2[7]).abs() < 1e-12);
+    // the parts are not all zero: the test can fail
+    assert!(w.per_ticker.iter().any(|t| t.parts.iter().any(|p| p.abs() > 1e-6)));
+    // the main CSV line is the same as without the per-ticker rows
+    let mut bare = w.clone();
+    bare.per_ticker.clear();
+    assert_eq!(w.csv_line(), bare.csv_line());
+    assert_eq!(w.csv_line().split(',').count(), 18);
+    let _ = std::fs::remove_dir_all(cache);
+}

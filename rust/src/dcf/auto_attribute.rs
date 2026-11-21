@@ -40,6 +40,7 @@
 use super::auto::*;
 use super::auto_baserate::{base_rates, BASERATE_PERIODS, BASERATE_YEARS};
 use super::auto_cli::{cache_dir, curve_and_index, jobs_of, load_table, map_inputs_pit, map_inputs_pit_periods, num, table_path, tickers_of, Opts, BANNER};
+use super::auto_premium::{anchor_of, curve_source, CurveSource};
 use super::auto_reality;
 use super::auto_implied::{groups_of, list_premium, NO_VALUE, point, point_at_premium, point_with, read_groups, solve, Bound, Failure, Found, ImpliedConfig, ERP_RANGE, GROWTH_RANGE};
 use super::stats::percentile;
@@ -79,12 +80,21 @@ fa dcf attribute [--tickers-file FILE | TICKER ...] --from D1 --to D2 [OPTIONS]
   --table FILE    parameter table
   --rules K=V,..  change a rule of the builder (the list: fa dcf auto --help)
   --groups FILE   CSV lines `ticker,sector,industry` (wins over the SIC code of the cache)
-  --curve SRC     gsw (default): the GSW row of the Federal Reserve Board (it lags about one week); fedinvest: the NSS
+  --curve SRC     auto (default): gsw when the last GSW row on or before each date is at most 3 days older than that date
+                  (A-027, the rule of `fa dcf premium-series`); else par at all dates. The text names the source that was
+                  chosen and why. With gsw at all dates the result is the same as --curve gsw.
+                  gsw: the GSW row of the Federal Reserve Board (it lags about one week); fedinvest: the NSS
                   curve that `fa recon rich-cheap` fits to the FedInvest Treasury prices of the last file on or before each
                   date; par: the same NSS fit to the Treasury daily par yield curve (1 to 30 years, each tenor a par
                   bond) of the last row on or before each date. The fit error (root mean square, basis points) is printed;
                   a par curve with an error above 5 bp is refused. Do not read the fitted curve beyond 30 years.
-                  One source is used at both dates.
+                  One source is used at all dates.
+  --prior-window  add the block \"(6) PRIOR WINDOW\" (the late-reaction check). Let n be the number of days from D1 to D2.
+                  D0 is D1 less n days, moved to the last SPY trading day on or before it. The same procedure runs for D0
+                  to D1 and for D0 to D2 (the same code as the main run). The block prints the line \"all\" of the full
+                  bridge (premium view first) for D0 to D1, D1 to D2 and D0 to D2, each with its common change c, and the
+                  change of D0 to D1 followed by D1 to D2 for comparison. With --curve auto, D0 is one of the dates for the
+                  choice of the source. It does not work with --top. It adds no CSV column.
   --out FILE      write one CSV row for each ticker. The last four columns are:
                   beta1, beta2     the beta that the model uses at D1 and at D2 (the shrunk regression beta; empty with no beta)
                   dur_premium1     D = -(ln V(x1 + h) - ln V(x1 - h)) / (2 h), h = 0.001, where x1 is the premium that the price
@@ -1880,6 +1890,177 @@ fn curve_line(source: &str, c: &CurveNumbers, rmse_bp: Option<f64>) -> String {
     format!("curve ({source} fit) {}: 10-year zero {:.4}%{fit}", c.date, c.zero10 * 100.0)
 }
 
+// ---------------------------------------------------------------------------------------------
+// The curve source (`--curve auto`) and the prior window (`--prior-window`)
+// ---------------------------------------------------------------------------------------------
+
+/// The source that `--curve auto` chooses: `"gsw"` when the last GSW row on or before each date is at most `CURVE_LAG_DAYS`
+/// days older than that date (the rule of `fa dcf premium-series`, `auto_premium::curve_source`, A-027); else `"par"` at all
+/// dates (one source at all dates). `gsw_dates[i]` is the date of the last GSW row on or before `dates[i]`. The text names the
+/// source and the reason.
+pub fn auto_curve_source(gsw_dates: &[Option<String>], dates: &[String]) -> (&'static str, String) {
+    let mut all_gsw = true;
+    let mut items: Vec<String> = Vec::new();
+    for (g, d) in gsw_dates.iter().zip(dates) {
+        let fresh = curve_source(g.as_deref(), d) == CurveSource::Gsw;
+        all_gsw &= fresh;
+        items.push(match (g, lag_days(g.as_deref().unwrap_or(""), d)) {
+            (Some(g), Some(l)) => format!("{d}: GSW row {g}, {l} days older{}", if fresh { "" } else { ", more than 3 days or not on or before the date" }),
+            _ => format!("{d}: no GSW row on or before the date"),
+        });
+    }
+    let source = if all_gsw { "gsw" } else { "par" };
+    let why = if all_gsw {
+        format!("gsw, because the GSW row of each date is at most {CURVE_LAG_DAYS} days older than the date ({})", items.join("; "))
+    } else {
+        format!("par, because a GSW row is more than {CURVE_LAG_DAYS} days older than its date or is missing ({}); one source is used at all dates", items.join("; "))
+    };
+    (source, why)
+}
+
+/// The source of a run: `requested` (`gsw`, `fedinvest`, `par`) as it is, or for `auto` the choice of `auto_curve_source` with
+/// the text of the choice. With `auto` and fresh GSW rows the source is `gsw`, so the run is the run of `--curve gsw`.
+pub fn effective_source(requested: &str, gsw_dates: &[Option<String>], dates: &[String]) -> (String, Option<String>) {
+    if requested != "auto" {
+        return (requested.to_string(), None);
+    }
+    let (s, why) = auto_curve_source(gsw_dates, dates);
+    (s.to_string(), Some(format!("CURVE SOURCE (--curve auto): {why}.")))
+}
+
+/// D0 of the prior window: D1 less the number of days from D1 to D2, moved to the last day on or before it with a SPY close
+/// (`auto_premium::anchor_of`, the trading calendar of the premium series).
+pub fn prior_date(spy: &[(String, f64)], d1: &str, d2: &str) -> R<String> {
+    let (a, b) = (mapcheck::dates::parse(d1), mapcheck::dates::parse(d2));
+    let (Some(a), Some(b)) = (a, b) else { return e("the dates of the prior window are not dates") };
+    anchor_of(spy, &mapcheck::dates::format(a - (b - a)))
+}
+
+/// One "all" line of a window for the block "(6) PRIOR WINDOW": the premium-first full bridge of the whole list.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PriorLine {
+    pub from: String,
+    pub to: String,
+    /// The change of the whole list (value-weighted, a share).
+    pub change: f64,
+    /// Facts, time, rates, premium, growth, residual, no model value (shares of the list value at the start).
+    pub parts: [f64; N_BRIDGE],
+    /// The premium plug in two parts: common and company.
+    pub premium_split: [f64; 2],
+    /// The common change c of the premium view (a decimal) and the name of its source.
+    pub common: Option<(f64, String)>,
+}
+
+/// The line "all" of the premium-first full bridge of the rows of a window (`None`: no ticker has a weight).
+pub fn prior_line(from: &str, to: &str, rows: &[AttrRow]) -> Option<PriorLine> {
+    let b = full_bridge(rows, View::Premium)?;
+    Some(PriorLine { from: from.to_string(), to: to.to_string(), change: b.all.change, parts: b.all.parts, premium_split: [b.all.split[0], b.all.split[1]], common: b.common[0].clone() })
+}
+
+/// The block "(6) PRIOR WINDOW": the lines D0 to D1, D1 to D2 and D0 to D2 (in this order), and the change of the first two
+/// chained. The first two windows chain exactly when each ticker has a weight in both: the chained change is printed to show it.
+pub fn prior_window_text(d0: &str, d1: &str, d2: &str, lines: &[Option<PriorLine>; 3]) -> String {
+    let mut s = format!(
+        "\n(6) PRIOR WINDOW: the same list from D0 = {d0} (D1 less the days of the window, moved to the last SPY trading day on or before it). The line \"all\" of the FULL BRIDGE, premium view first, for each window; points of the market value of the list at the start of the window; c is the common change of the premium view of the window. The same procedure and the same curve source as the main run.\n"
+    );
+    s.push_str(&format!("  {:<25} {:>8} | {:>7}{:>7}{:>7}{:>9}{:>16}{:>16}{:>8}{:>8}{:>8} | {:>9}\n", "window", "change", "facts", "time", "rates", "premium", "premium-common", "premium-company", "growth", "resid", "nomodel", "c (pts)"));
+    for (l, (a, b)) in lines.iter().zip([(d0, d1), (d1, d2), (d0, d2)]) {
+        match l {
+            Some(l) => {
+                let f = |x: f64, w: usize| format!("{:>w$}", sgn(x * 100.0, 2));
+                let c = l.common.as_ref().map_or("none".to_string(), |(c, _)| sgn(c * 100.0, 3));
+                s.push_str(&format!(
+                    "  {:<25} {:>7}% | {}{}{}{}{}{}{}{}{} | {:>9}\n",
+                    format!("{} to {}", l.from, l.to),
+                    sgn(l.change * 100.0, 2),
+                    f(l.parts[0], 7),
+                    f(l.parts[1], 7),
+                    f(l.parts[2], 7),
+                    f(l.parts[3], 9),
+                    f(l.premium_split[0], 16),
+                    f(l.premium_split[1], 16),
+                    f(l.parts[4], 8),
+                    f(l.parts[5], 8),
+                    f(l.parts[6], 8),
+                    c
+                ));
+            }
+            None => s.push_str(&format!("  {a} to {b}: no ticker has a weight\n")),
+        }
+    }
+    if let (Some(x), Some(y)) = (&lines[0], &lines[1]) {
+        s.push_str(&format!("  {d0} to {d1}, then {d1} to {d2}, chained: {}%.\n", sgn(((1.0 + x.change) * (1.0 + y.change) - 1.0) * 100.0, 2)));
+    }
+    if let Some((_, label)) = lines.iter().flatten().find_map(|l| l.common.clone()) {
+        s.push_str(&format!("  source of c: {label}.\n"));
+    }
+    s
+}
+
+/// What a window needs besides its two sides: the cache, the config, the groups, the index, the threads and the common change.
+struct Setup<'a> {
+    cache: &'a Path,
+    cfg: &'a ImpliedConfig<'a>,
+    groups: &'a HashMap<String, (String, String)>,
+    index: Option<&'a [(String, f64)]>,
+    jobs: Option<usize>,
+    /// `--common`: `None` is `file`.
+    mode: Option<CommonMode>,
+    common_list: Option<&'a str>,
+    common_file: Option<&'a str>,
+}
+
+/// One date of a window: the date, the facts of the date and the curve of the date.
+struct Side<'a> {
+    date: &'a str,
+    day: i64,
+    inputs: &'a [AutoInputs],
+    curve: Option<&'a CurveNumbers>,
+}
+
+fn market_fn<'a>(s: &'a Setup<'a>, side: &'a Side<'a>) -> impl Fn(&str) -> Market + Sync + 'a {
+    move |t: &str| -> Market { market_at(s.cache, t, side.date, None, Some(side.date), &s.cfg.rules, side.curve, s.index) }
+}
+
+/// The rows of one window with the common change of each view, and the text line of the common change. The main run and the
+/// windows of `--prior-window` all run here (one implementation).
+fn run_window(s: &Setup, a: &Side, b: &Side) -> R<(Vec<AttrRow>, String)> {
+    let (market1_of, market2_of) = (market_fn(s, a), market_fn(s, b));
+    let mut rows = attribute_list(a.inputs, b.inputs, &market1_of, &market2_of, s.groups, s.cfg, s.jobs)?;
+    // a close older than the SPY close of the same date takes the row out of the sums; the one-weight rule runs again after it
+    let closes = |t: &str| super::auto::price_series(s.cache, t);
+    finish_weights(&mut rows, &closes, a.date, b.date);
+    // the common change of each view, then the second pass that splits each plug in two
+    let line = match s.mode {
+        None => {
+            let f = s.common_file.ok_or_else(|| DcfError("--common file needs --common-file FILE".into()))?;
+            let econ = econ_from_text(&std::fs::read_to_string(f).map_err(|x| DcfError(format!("{f}: {x}")))?, b.date)?;
+            add_common_economics(&mut rows, b.inputs, &market1_of, &market2_of, s.cfg, &econ, s.jobs)?;
+            econ_line(&econ, s.cfg.rules.long_run.is_some(), economics_cover(rows.iter()))
+        }
+        Some(mode) => {
+            let common: CommonChanges = match s.common_list {
+                Some(f) => {
+                    let list = mapcheck::cli::read_ticker_file(f).map_err(DcfError)?;
+                    let ((l1, _), (l2, _)) = (map_inputs_pit(s.cache, &list, a.date, a.day, s.jobs)?, map_inputs_pit(s.cache, &list, b.date, b.day, s.jobs)?);
+                    let mut lrows = attribute_list(&l1, &l2, &market1_of, &market2_of, s.groups, s.cfg, s.jobs)?;
+                    finish_weights(&mut lrows, &closes, a.date, b.date);
+                    common_from_rows(&lrows, mode)
+                }
+                None if rows.len() > 1 => common_from_rows(&rows, mode),
+                None => no_common("one ticker and no --common-list"),
+            };
+            add_common(&mut rows, b.inputs, &market1_of, &market2_of, s.cfg, &common, s.jobs)?;
+            format!(
+                "COMMON CHANGE c (the plug of each view is split in two engine steps, common and company): premium view {}; growth view {}.",
+                common_label(&common[0]),
+                common_label(&common[1])
+            )
+        }
+    };
+    Ok((rows, line))
+}
+
 fn date_of(o: &Opts, key: &str) -> R<(String, i64)> {
     match o.get(key) {
         Some(t) => match mapcheck::dates::parse(t) {
@@ -1898,9 +2079,13 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     let o = Opts::parse(
         args,
         &["--cache", "--out", "--jobs", "--table", "--from", "--to", "--tickers-file", "--rules", "--groups", "--curve", "--common", "--common-list", "--common-file", "--top", "--baserate-list", "--premium-history"],
-        &["--reality"],
+        &["--reality", "--prior-window"],
     )?;
     let reality = o.flag("--reality");
+    let prior_window = o.flag("--prior-window");
+    if prior_window && o.get("--top").is_some() {
+        return e("--prior-window does not work with --top");
+    }
     if !reality && (o.get("--baserate-list").is_some() || o.get("--premium-history").is_some()) {
         return e("--baserate-list and --premium-history need --reality");
     }
@@ -1908,10 +2093,16 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         Some(t) => Some(t.parse::<usize>().ok().filter(|n| *n > 0).ok_or_else(|| DcfError(format!("--top '{t}': use a whole number of 1 or more")))?),
         None => None,
     };
-    let source = o.get("--curve").unwrap_or("gsw").to_string();
-    if !["gsw", "fedinvest", "par"].contains(&source.as_str()) {
-        return e(format!("--curve '{source}': use gsw, fedinvest or par"));
+    let requested = o.get("--curve").unwrap_or("auto").to_string();
+    if !["auto", "gsw", "fedinvest", "par"].contains(&requested.as_str()) {
+        return e(format!("--curve '{requested}': use auto, gsw, fedinvest or par"));
     }
+    let mode = match o.get("--common").unwrap_or("median") {
+        "median" => Some(CommonMode::Median),
+        "vw" => Some(CommonMode::ValueWeighted),
+        "file" => None,
+        other => return e(format!("--common '{other}': use median, vw or file")),
+    };
     let cache = cache_dir(repo, &o);
     let (table, fade) = load_table(&table_path(repo, &o))?;
     let ((d1, day1), (d2, day2)) = (date_of(&o, "--from")?, date_of(&o, "--to")?);
@@ -1928,8 +2119,30 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     let t0 = Instant::now();
     let (inputs1, map1) = map_inputs_pit(&cache, &tickers, &d1, day1, jobs)?;
     let (inputs2, map2) = map_inputs_pit(&cache, &tickers, &d2, day2, jobs)?;
-    let (mut curve1, index) = curve_and_index(&cache, &d1);
-    let (mut curve2, _) = curve_and_index(&cache, &d2);
+    let (curve1_gsw, index) = curve_and_index(&cache, &d1);
+    let (curve2_gsw, _) = curve_and_index(&cache, &d2);
+    // D0 of the prior window: the last SPY trading day on or before D1 less the days of the window
+    let d0: Option<(String, i64)> = if prior_window {
+        let spy = index.as_deref().ok_or_else(|| DcfError("--prior-window needs the SPY price series in the cache".into()))?;
+        let d = prior_date(spy, &d1, &d2)?;
+        let day = mapcheck::dates::parse(&d).ok_or_else(|| DcfError(format!("'{d}' is not a date")))?;
+        Some((d, day))
+    } else {
+        None
+    };
+    let curve0_gsw = match &d0 {
+        Some((d, _)) => curve_and_index(&cache, d).0,
+        None => None,
+    };
+    // the source of the curve: one source at all dates of the run
+    let mut dates: Vec<String> = vec![d1.clone(), d2.clone()];
+    let mut gsw_dates: Vec<Option<String>> = vec![curve1_gsw.as_ref().map(|c| c.date.clone()), curve2_gsw.as_ref().map(|c| c.date.clone())];
+    if let Some((d, _)) = &d0 {
+        dates.push(d.clone());
+        gsw_dates.push(curve0_gsw.as_ref().map(|c| c.date.clone()));
+    }
+    let (source, source_note) = effective_source(&requested, &gsw_dates, &dates);
+    let (mut curve1, mut curve2, mut curve0) = (curve1_gsw, curve2_gsw, curve0_gsw);
     if source != "gsw" {
         let load = |d: &str| -> Result<(CurveNumbers, Option<f64>), String> {
             if source == "par" {
@@ -1944,48 +2157,33 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         println!("{}", curve_line(&source, &c2, r2));
         curve1 = Some(c1);
         curve2 = Some(c2);
+        if let Some((d, _)) = &d0 {
+            let (c0, r0) = load(d).map_err(DcfError)?;
+            println!("{}", curve_line(&source, &c0, r0));
+            curve0 = Some(c0);
+        }
     }
-    let market1_of = |t: &str| -> Market { market_at(&cache, t, &d1, None, Some(&d1), &rules, curve1.as_ref(), index.as_deref()) };
-    let market2_of = |t: &str| -> Market { market_at(&cache, t, &d2, None, Some(&d2), &rules, curve2.as_ref(), index.as_deref()) };
+    if let Some(n) = &source_note {
+        println!("{n}");
+    }
     let cfg = ImpliedConfig { table: &table, fade: &fade, rules: rules.clone(), cache: Some(&cache) };
+    let setup = Setup { cache: &cache, cfg: &cfg, groups: &groups, index: index.as_deref(), jobs, mode, common_list: o.get("--common-list"), common_file: o.get("--common-file") };
+    let side1 = Side { date: &d1, day: day1, inputs: &inputs1, curve: curve1.as_ref() };
+    let side2 = Side { date: &d2, day: day2, inputs: &inputs2, curve: curve2.as_ref() };
+    let (market1_of, market2_of) = (market_fn(&setup, &side1), market_fn(&setup, &side2));
     let t1 = Instant::now();
-    let mut rows = attribute_list(&inputs1, &inputs2, &market1_of, &market2_of, &groups, &cfg, jobs)?;
-    // a close older than the SPY close of the same date takes the row out of the sums; the one-weight rule runs again after it
-    let closes = |t: &str| super::auto::price_series(&cache, t);
-    finish_weights(&mut rows, &closes, &d1, &d2);
-    // the common change of each view, then the second pass that splits each plug in two
-    let mode = match o.get("--common").unwrap_or("median") {
-        "median" => Some(CommonMode::Median),
-        "vw" => Some(CommonMode::ValueWeighted),
-        "file" => None,
-        other => return e(format!("--common '{other}': use median, vw or file")),
-    };
-    let common_line = match mode {
-        None => {
-            let f = o.get("--common-file").ok_or_else(|| DcfError("--common file needs --common-file FILE".into()))?;
-            let econ = econ_from_text(&std::fs::read_to_string(f).map_err(|x| DcfError(format!("{f}: {x}")))?, &d2)?;
-            add_common_economics(&mut rows, &inputs2, &market1_of, &market2_of, &cfg, &econ, jobs)?;
-            econ_line(&econ, cfg.rules.long_run.is_some(), economics_cover(rows.iter()))
+    let (mut rows, common_line) = run_window(&setup, &side1, &side2)?;
+    // the prior window: D0 to D1 and D0 to D2 with the same code, and the line "all" of each window
+    let prior_text = match &d0 {
+        Some((d0, day0)) => {
+            let (inputs0, _) = map_inputs_pit(&cache, &tickers, d0, *day0, jobs)?;
+            let side0 = Side { date: d0, day: *day0, inputs: &inputs0, curve: curve0.as_ref() };
+            let (rows01, _) = run_window(&setup, &side0, &side1)?;
+            let (rows02, _) = run_window(&setup, &side0, &side2)?;
+            let lines = [prior_line(d0, &d1, &rows01), prior_line(&d1, &d2, &rows), prior_line(d0, &d2, &rows02)];
+            Some(prior_window_text(d0, &d1, &d2, &lines))
         }
-        Some(mode) => {
-            let common: CommonChanges = match o.get("--common-list") {
-                Some(f) => {
-                    let list = mapcheck::cli::read_ticker_file(f).map_err(DcfError)?;
-                    let ((l1, _), (l2, _)) = (map_inputs_pit(&cache, &list, &d1, day1, jobs)?, map_inputs_pit(&cache, &list, &d2, day2, jobs)?);
-                    let mut lrows = attribute_list(&l1, &l2, &market1_of, &market2_of, &groups, &cfg, jobs)?;
-                    finish_weights(&mut lrows, &closes, &d1, &d2);
-                    common_from_rows(&lrows, mode)
-                }
-                None if rows.len() > 1 => common_from_rows(&rows, mode),
-                None => no_common("one ticker and no --common-list"),
-            };
-            add_common(&mut rows, &inputs2, &market1_of, &market2_of, &cfg, &common, jobs)?;
-            format!(
-                "COMMON CHANGE c (the plug of each view is split in two engine steps, common and company): premium view {}; growth view {}.",
-                common_label(&common[0]),
-                common_label(&common[1])
-            )
-        }
+        None => None,
     };
     // the premium that the whole list implies at D1 and at D2, against the history (before the cut: the list of the run)
     let list_prem = match o.get("--premium-history") {
@@ -2080,6 +2278,9 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     }
     if let Some((rr, rates, list_name, _)) = &reality_out {
         print!("{}", auto_reality::block_text(rr, rates, list_name, list_prem.as_ref()));
+    }
+    if let Some(t) = &prior_text {
+        print!("{t}");
     }
     let br_s = reality_out.as_ref().map_or(0.0, |x| x.3);
     println!("\nTIME: mapping {:.2} s (base rates {br_s:.2} s) | attribution {attr_s:.2} s ({} threads) | total {:.2} s", map1 + map2, jobs.unwrap_or_else(rayon::current_num_threads), t0.elapsed().as_secs_f64());
