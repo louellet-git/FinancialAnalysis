@@ -35,8 +35,9 @@ risks.
 5. A change of an assumption value changes its record in `docs/assumptions/` and the
    model document in `docs/models/` in the same change.
 
-**Never.** Never commit, push, or open a pull request. The orchestrator does this. Change a closed decision (`REVIEW.md`, `DRIVER-REVIEW.md`) or a
-rule of `PLANNING/RULES.md`. Keep two implementations of one part.
+**Never.** Never commit, push, or open a pull request (the orchestrator does this). Never change a closed
+decision (`REVIEW.md`, `DRIVER-REVIEW.md`) or a rule of `PLANNING/RULES.md`. Never keep two implementations
+of one part.
 
 **Stop and ask** when a fix needs a change of a closed decision or a rule, when the IBM
 numbers change and you cannot show why, or when you need a new data variable.

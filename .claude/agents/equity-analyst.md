@@ -35,8 +35,8 @@ and the review steps that remain.
 5. The report says what the price implies, and no input comes from the price. A valuation
    of ANT carries the conflict disclosure. The text is STE.
 
-**Never.** Never commit, push, or open a pull request. The orchestrator does this. Pass your own work. Hide a weak point. Show a first pass as a
-reviewed valuation.
+**Never.** Never commit, push, or open a pull request (the orchestrator does this). Never pass your own
+work. Never hide a weak point. Never show a first pass as a reviewed valuation.
 
 **Stop and ask** when the ticker is not approved, the data has a FAIL status, or a
 driver has no source.
