@@ -2,7 +2,7 @@
 id: T-20261120-arb-1b-chain-check-depth
 title: Make the chain check separate real breaks from bad quotes
 area: trading
-status: in-progress
+status: review
 owner: louellet-git
 requested_by: louellet-git
 head: quant

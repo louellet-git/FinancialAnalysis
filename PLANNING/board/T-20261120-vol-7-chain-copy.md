@@ -2,7 +2,7 @@
 id: T-20261120-vol-7-chain-copy
 title: Copy the option chains each day to keep bid and ask
 area: engine
-status: in-progress
+status: review
 owner: louellet-git
 head: quant
 order: 3
@@ -62,3 +62,8 @@ Run the command on 5 market days in a row (one person, by hand). Report: quotes 
 ## Commands
 
 `fa options archive [SYMBOLS] [--keep-days N]`, `fa sync --only chains`.
+
+Steps 2 and 3 done (`fa options archive`; review PASS-WITH-NOTES, cycle 2, 2026-11-21). Open: `fa options snapshot
+--source alpaca --refresh` and the `fa sync` Alpaca fallback write a timed Alpaca file with no 80% check, and the
+next `fa options archive` takes any Alpaca file as its base. Step 4 (`T-20261120-sync-chains`) runs the same check.
+The Cboe path of `fa analyze` (`fetch_option_chain`) reads only its own plain `<date>.json`, not a timed Alpaca file.

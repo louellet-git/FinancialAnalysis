@@ -2,7 +2,7 @@
 id: T-20261120-vol-1-heston-bates
 title: Price and fit the Heston and Bates models with Fourier methods
 area: engine
-status: in-progress
+status: review
 owner: louellet-git
 head: quant
 order: 2

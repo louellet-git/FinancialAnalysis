@@ -299,8 +299,11 @@ pub fn fetch_option_chain(
     fetch: &dyn Fn(&str) -> Result<Vec<u8>, String>,
 ) -> Result<(OptionChainSnapshot, Source), String> {
     let ticker = ticker.to_uppercase();
-    if !refresh && !stems_of_date(cache, &ticker, today).is_empty() {
-        match load_snapshot(cache, &ticker, Some(today)) {
+    // Only the plain `<date>.json` of the Cboe path is a cache hit: a timed Alpaca file of today is a different source
+    // (indicative quotes), and `fa analyze` expects the Cboe chain.
+    let plain = snapshot_path(cache, &ticker, today);
+    if !refresh && plain.is_file() {
+        match read_text(&plain).and_then(|t| serde_json::from_str::<OptionChainSnapshot>(&lenient_json(&t)).map_err(|e| e.to_string())) {
             Ok(snapshot) => return Ok((snapshot, Source::Cache)),
             Err(e) => eprintln!("fa: corrupt options snapshot for {ticker} ({e}); asking Cboe again"),
         }
@@ -568,5 +571,20 @@ mod tests {
            "ask": null, "volume": 5, "open_interest": 0, "implied_volatility": null, "in_the_money": true}]}"#;
         let s: OptionChainSnapshot = serde_json::from_str(text).unwrap();
         assert_eq!((s.quotes[0].volume, s.quotes[0].in_the_money, s.quotes[0].last_price), (Some(5), Some(true), None));
+    }
+
+    #[test]
+    fn a_timed_alpaca_file_of_today_is_not_a_cboe_cache_hit() {
+        let dir = std::env::temp_dir().join(format!("fa-options-timed-{}", std::process::id()));
+        let mut s = snapshot_from_cboe(&cboe_reply(), "TEST", "2026-11-21").unwrap();
+        s.source = Some("alpaca".into());
+        s.snapshot_time = Some("2026-11-21T15:27Z".into());
+        let timed = save_snapshot(&s, &dir).unwrap();
+        assert!(timed.to_string_lossy().ends_with("2026-11-21T1527.json"), "{}", timed.display());
+        let reply = cboe_reply();
+        let fetch = |_: &str| -> Result<Vec<u8>, String> { Ok(reply.clone()) };
+        let (_, source) = fetch_option_chain(&dir, "TEST", false, "2026-11-21", &fetch).unwrap();
+        assert_eq!(source, Source::Cboe, "the Cboe path asks Cboe; it does not read the Alpaca file");
+        std::fs::remove_dir_all(&dir).ok();
     }
 }
