@@ -143,12 +143,40 @@ impl<'a> Series<'a> {
         let cpi_0 = self.src.december(1871).ok()?;
         let g = ((d_k / cpi_k) / (d_0 / cpi_0)).powf(1.0 / (yk - 1871) as f64) - 1.0;
         let dy = d_k / o.price;
+        Some(dy + g - self.r10(t)?)
+    }
+
+    /// r10(t) = GS10(t)/100 - ((CPIK(t) / CPIK(t-120))^(1/10) - 1) (section 3). GS10: the Shiller long rate before
+    /// 1953-04, FRED GS10 from 1953-04.
+    pub fn r10(&self, t: i32) -> Option<f64> {
+        let (y, m) = ym(t);
+        let o = self.obs_at(t)?;
         let cpik_now = self.src.known(y, m).ok()?;
         let cpik_back = self.src.known(y - 10, m).ok()?;
-        // GS10: the Shiller long rate before 1953-04, FRED GS10 from 1953-04 (section 3)
         let gs = if t >= mi(1953, 4) { self.inp.gs10.get(&(y, m)).copied()? } else { o.gs10 };
-        let r10 = gs / 100.0 - ((cpik_now / cpik_back).powf(0.1) - 1.0);
-        Some(dy + g - r10)
+        Some(gs / 100.0 - ((cpik_now / cpik_back).powf(0.1) - 1.0))
+    }
+
+    /// CAPE10(t) = the real P(t) / the mean of the real annual E of the last 10 known years (record R3). The known years
+    /// follow the dividend rule (section 5). Each December E is deflated with its own December CPI; P(t) with CPIK(t).
+    pub fn cape10(&self, t: i32) -> Option<f64> {
+        let (y, m) = ym(t);
+        let o = self.obs_at(t)?;
+        let yk = known_year(y, m);
+        let mut sum = 0.0;
+        for yr in yk - 9..=yk {
+            sum += self.src.december_earnings(yr)? / self.src.december(yr).ok()?;
+        }
+        let mean_e = sum / 10.0;
+        if mean_e <= 0.0 {
+            return None;
+        }
+        Some((o.price / self.src.known(y, m).ok()?) / mean_e)
+    }
+
+    /// P2(t) = 1 / CAPE10(t) - r10(t) (section 3, record R3).
+    pub fn p2(&self, t: i32) -> Option<f64> {
+        Some(1.0 / self.cape10(t)? - self.r10(t)?)
     }
 }
 
@@ -228,14 +256,14 @@ pub struct Oos {
     pub forecasts: usize,
 }
 
-/// The out-of-sample R2 of section 4: at month i the fit uses the pairs of s with s + 120 <= i (expanding), the
-/// benchmark is the mean of the same X values, the first forecast comes with `MIN_PAIRS_OOS` pairs.
-pub fn oos_r2(pairs: &[Pair]) -> Option<Oos> {
+/// The out-of-sample R2 of section 4: at month i the fit uses the pairs of s with s + H <= i (expanding; `lag` = H),
+/// the benchmark is the mean of the same X values, the first forecast comes with `MIN_PAIRS_OOS` pairs.
+pub fn oos_r2(pairs: &[Pair], lag: usize) -> Option<Oos> {
     let (mut n, mut sx, mut sy, mut sxx, mut sxy) = (0.0f64, 0.0, 0.0, 0.0, 0.0);
     let (mut sse_m, mut sse_b, mut cnt) = (0.0, 0.0, 0usize);
     for i in 0..pairs.len() {
-        if i >= BLOCK {
-            if let Some((x, y)) = pairs[i - BLOCK] {
+        if i >= lag {
+            if let Some((x, y)) = pairs[i - lag] {
                 n += 1.0;
                 sx += x;
                 sy += y;
@@ -257,6 +285,20 @@ pub fn oos_r2(pairs: &[Pair]) -> Option<Oos> {
         return None;
     }
     Some(Oos { r2: 1.0 - sse_m / sse_b, forecasts: cnt })
+}
+
+/// The OLS slope of one phase alone: the pairs at positions `phase`, `phase + 120`, ... (record R3: "phase January" is
+/// the phase that starts at 1893-01, `phase` 0). Returns the slope and the number of windows.
+pub fn single_phase_slope(pairs: &[Pair], phase: usize) -> Option<(f64, usize)> {
+    let (mut n, mut sx, mut sy, mut sxx, mut sxy) = (0.0f64, 0.0, 0.0, 0.0, 0.0);
+    for p in pairs.iter().skip(phase).step_by(BLOCK).flatten() {
+        n += 1.0;
+        sx += p.0;
+        sy += p.1;
+        sxx += p.0 * p.0;
+        sxy += p.0 * p.1;
+    }
+    slope_from(n, sx, sy, sxx, sxy).map(|b| (b, n as usize))
 }
 
 /// Holm step-down adjusted p-values (one-sided, same order as the input).
@@ -313,9 +355,9 @@ struct Test {
     oos: Option<Oos>,
 }
 
-fn run_test(name: &str, pairs: Vec<Pair>) -> Test {
+fn run_test(name: &str, pairs: Vec<Pair>, lag: usize) -> Test {
     let boot = bootstrap(&pairs, REPS, SEED);
-    let oos = oos_r2(&pairs);
+    let oos = oos_r2(&pairs, lag);
     Test { name: name.to_string(), pairs, boot, oos }
 }
 
@@ -327,24 +369,50 @@ fn f4(x: Option<f64>) -> String {
     x.map_or("n/a".to_string(), |v| format!("{v:.4}"))
 }
 
+fn last_month(obs: &[Obs], has: impl Fn(&Obs) -> bool) -> i32 {
+    obs.iter().filter(|o| has(o)).map(|o| mi(o.year, o.month)).max().unwrap_or(0)
+}
+
+/// The largest absolute difference between the Shiller gs10 column and FRED GS10 from 1953-04, with its month and the
+/// number of months compared (record R3, point 7).
+pub fn gs10_difference(obs: &[Obs], gs10: &Fred) -> (f64, i32, usize) {
+    let (mut mx, mut at, mut n) = (0.0f64, 0, 0usize);
+    for o in obs {
+        let m = mi(o.year, o.month);
+        if m < mi(1953, 4) {
+            continue;
+        }
+        if let Some(f) = gs10.get(&(o.year, o.month)) {
+            n += 1;
+            let d = (o.gs10 - f).abs();
+            if d > mx {
+                mx = d;
+                at = m;
+            }
+        }
+    }
+    (mx, at, n)
+}
+
 pub fn run(obs: &[Obs], inp: &Inputs) -> R<Report> {
     let s = Series::new(obs, inp);
     let first = mi(obs[0].year, obs[0].month);
     let last_obs = mi(obs[obs.len() - 1].year, obs[obs.len() - 1].month);
     let last_of = |f: &Fred| f.keys().map(|k| mi(k.0, k.1)).max().unwrap_or(0);
-    // section 4: the last data month is the last month for which CPIAUCNS, GS10 and TB3MS have a value
-    let latest = last_of(inp.cpi).min(last_of(inp.gs10)).min(last_of(inp.tb3ms));
+    // section 4 (line 89, record R3): the last month for which every series of the test has a value, minus H.
+    // The series: CPIAUCNS, GS10, TB3MS and the Shiller dividend.
+    let latest = last_of(inp.cpi).min(last_of(inp.gs10)).min(last_of(inp.tb3ms)).min(last_month(obs, |o| o.dividend.is_some()));
     let start = mi(1893, 1);
     let end120 = latest - H_MAIN;
     let end60 = latest - H_SEC;
 
     // the engine: the primary premium and the four variants (record R1)
     let fred = Some(inp.cpi);
-    let variants: [(&str, f64, usize); 5] = [("base", 0.02, 10), ("L1", 0.01, 10), ("L3", 0.03, 10), ("N5", 0.02, 5), ("N20", 0.02, 20)];
+    let variants: [(f64, usize); 5] = [(0.02, 10), (0.01, 10), (0.03, 10), (0.02, 5), (0.02, 20)];
     let mut erp: Vec<HashMap<i32, f64>> = Vec::new();
     let mut base_rows: HashMap<i32, MarketRow> = HashMap::new();
     let mut gordon: HashMap<i32, f64> = HashMap::new();
-    for (k, (_, l, n)) in variants.iter().enumerate() {
+    for (k, (l, n)) in variants.iter().enumerate() {
         let rows = compute(obs, fred, *l, *n)?;
         let mut mp = HashMap::new();
         for r in rows {
@@ -361,9 +429,33 @@ pub fn run(obs: &[Obs], inp: &Inputs) -> R<Report> {
         }
         erp.push(mp);
     }
+    // point 7 of R3: the difference between the Shiller gs10 and FRED GS10; if above 0.0001, the engine runs once more
+    // with FRED GS10 from 1953-04 for rr
+    let (gdiff, gdiff_at, gdiff_n) = gs10_difference(obs, inp.gs10);
+    let mut erp_alt: HashMap<i32, f64> = HashMap::new();
+    if gdiff > 1e-4 {
+        let alt: Vec<Obs> = obs
+            .iter()
+            .map(|o| {
+                let mut c = o.clone();
+                if mi(o.year, o.month) >= mi(1953, 4) {
+                    if let Some(f) = inp.gs10.get(&(o.year, o.month)) {
+                        c.gs10 = *f;
+                    }
+                }
+                c
+            })
+            .collect();
+        for r in compute(&alt, fred, 0.02, 10)? {
+            if let Some(x) = r.erp_implied {
+                erp_alt.insert(mi(r.year, r.month), x);
+            }
+        }
+    }
 
     // the month records
     let p1: HashMap<i32, f64> = (first..=last_obs).filter_map(|t| s.p1(t).map(|v| (t, v))).collect();
+    let p2: HashMap<i32, f64> = (first..=last_obs).filter_map(|t| s.p2(t).map(|v| (t, v))).collect();
     let mut x120: HashMap<i32, f64> = HashMap::new();
     let mut x60: HashMap<i32, f64> = HashMap::new();
     let mut drop120: HashMap<i32, Drop> = HashMap::new();
@@ -388,27 +480,44 @@ pub fn run(obs: &[Obs], inp: &Inputs) -> R<Report> {
     }
 
     let sample: Vec<i32> = (start..=end120).collect();
-    let pairs_of = |pred: &dyn Fn(i32) -> Option<f64>| -> Vec<Pair> { sample.iter().map(|t| Some((pred(*t)?, *x120.get(t)?))).collect() };
-    let p1_pairs = pairs_of(&|t| p1.get(&t).copied());
-    let eng_pairs: Vec<Vec<Pair>> = erp.iter().map(|mp| pairs_of(&|t| mp.get(&t).copied())).collect();
-    let gor_pairs = pairs_of(&|t| gordon.get(&t).copied());
+    let sample60: Vec<i32> = (start..=end60).collect();
+    let pairs_of = |months: &[i32], x: &HashMap<i32, f64>, pred: &dyn Fn(i32) -> Option<f64>| -> Vec<Pair> { months.iter().map(|t| Some((pred(*t)?, *x.get(t)?))).collect() };
+    let p1_pairs = pairs_of(&sample, &x120, &|t| p1.get(&t).copied());
+    let p2_pairs = pairs_of(&sample, &x120, &|t| p2.get(&t).copied());
+    let p1_pairs60 = pairs_of(&sample60, &x60, &|t| p1.get(&t).copied());
+    let eng_pairs: Vec<Vec<Pair>> = erp.iter().map(|mp| pairs_of(&sample, &x120, &|t| mp.get(&t).copied())).collect();
+    let gor_pairs = pairs_of(&sample, &x120, &|t| gordon.get(&t).copied());
+    let alt_pairs = pairs_of(&sample, &x120, &|t| erp_alt.get(&t).copied());
 
-    let primary_engine = run_test("engine erp_implied (L 2%, N 10)", eng_pairs[0].clone());
-    let primary_p1 = run_test("P1", p1_pairs.clone());
+    let primary_engine = run_test("engine erp_implied (L 2%, N 10)", eng_pairs[0].clone(), 120);
+    let primary_p1 = run_test("P1", p1_pairs.clone(), 120);
     let fam_names = ["engine L 1%", "engine L 3%", "engine N 5", "engine N 20", "engine erp_gordon (L 2%)"];
     let mut family: Vec<Test> = Vec::new();
     for (k, nm) in fam_names.iter().enumerate() {
         let pairs = if k < 4 { eng_pairs[k + 1].clone() } else { gor_pairs.clone() };
-        family.push(run_test(nm, pairs));
+        family.push(run_test(nm, pairs, 120));
+    }
+    // the P1 family, m = 6 (section 6): S1, S2, B1 to B4
+    let blocks = [("B1", (1893, 1), (1922, 12)), ("B2", (1923, 1), (1952, 12)), ("B3", (1953, 1), (1982, 12)), ("B4", (1983, 1), (2016, 10))];
+    let block_range = |lo: (i32, u32), hi: (i32, u32)| -> (i32, i32) { (mi(lo.0, lo.1), mi(hi.0, hi.1).min(end120)) };
+    let slice = |pairs: &[Pair], a: i32, b: i32| pairs[(a - start) as usize..=(b - start) as usize].to_vec();
+    let s1 = run_test("S1  P1, H = 60, 1893-01 to end", p1_pairs60.clone(), 60);
+    let s2 = run_test("S2  P2, H = 120", p2_pairs.clone(), 120);
+    let mut fam6: Vec<Test> = vec![s1, s2];
+    for (name, lo, hi) in blocks {
+        let (a, b) = block_range(lo, hi);
+        let pairs = slice(&p1_pairs, a, b);
+        let boot = if has_regression((b - a + 1) as usize) { bootstrap(&pairs, REPS, SEED) } else { None };
+        fam6.push(Test { name: format!("{name} P1, H = 120, {} to {}", label(a), label(b)), pairs, boot, oos: None });
     }
 
     // the score text
     let mut t = String::new();
     let w = &mut t;
-    let _ = writeln!(w, "SCORE of the market-level premium, design analysis/macro/2026-11-21-long-history-design.md (2ffd392, R1, R2: 7b6c050)");
+    let _ = writeln!(w, "SCORE of the market-level premium, complete run. Design analysis/macro/2026-11-21-long-history-design.md (2ffd392, R1, R2: 7b6c050, R3 after the first run)");
     let _ = writeln!(w, "A measurement. The price is the input of the search; no model input comes from a return. One run on the frozen sample.");
-    let _ = writeln!(w, "Latest data month used (CPIAUCNS, GS10, TB3MS; section 4): {}. Last start month H=120: {}. H=60: {}.", label(latest), label(end120), label(end60));
-    let _ = writeln!(w, "Bootstrap (section 4): circular blocks of {BLOCK} start months, K = {REPS}, seed {SEED}, generator PCG64 (nprandom). Phases: {BLOCK}.");
+    let _ = writeln!(w, "Latest data month with every series (CPIAUCNS, GS10, TB3MS, Shiller dividend; section 4, line 89): {}. Last start month H=120: {}. H=60: {}.", label(latest), label(end120), label(end60));
+    let _ = writeln!(w, "Bootstrap (section 4): circular blocks of {BLOCK} start months, K = {REPS}, seed {SEED}. Generator: PCG64 (numpy default_rng) from the repo nprandom, block starts by `bounded`. Phases: {BLOCK}.");
     let _ = writeln!(w, "Sample (section 4): start months {} to {} = {} calendar months; independent windows floor(n/120) = {}.", label(start), label(end120), sample.len(), independent_windows(sample.len()));
 
     let _ = writeln!(w, "\nCOUNTS (sections 4, 9 R2)");
@@ -421,27 +530,25 @@ pub fn run(obs: &[Obs], inp: &Inputs) -> R<Report> {
         let list: Vec<String> = ms.iter().take(6).map(|m| label(*m)).collect();
         let _ = writeln!(w, "  X120 dropped, {nm}: {} {}", ms.len(), list.join(" "));
     }
-    let end60s: Vec<i32> = (start..=end60).collect();
-    let n_x60 = end60s.iter().filter(|t| x60.contains_key(t)).count();
+    let n_x60 = sample60.iter().filter(|t| x60.contains_key(t)).count();
     let mut d60: Vec<String> = drop60.iter().filter(|(m, _)| **m >= start && **m <= end60).map(|(m, d)| format!("{} {:?}", label(*m), d)).collect();
     d60.sort();
-    let _ = writeln!(w, "X(t,60) present in 1893-01 to {}: {n_x60} of {}; dropped: {}", label(end60), end60s.len(), d60.join(", "));
+    let _ = writeln!(w, "X(t,60) present in {} to {}: {n_x60} of {}; dropped: {}", label(start), label(end60), sample60.len(), d60.join(", "));
     let miss = |f: &dyn Fn(i32) -> bool| sample.iter().filter(|t| !f(**t)).count();
-    let _ = writeln!(w, "Predictor missing in the sample: P1 {}, engine erp_implied {}", miss(&|t| p1.contains_key(&t)), miss(&|t| erp[0].contains_key(&t)));
+    let _ = writeln!(w, "Predictor missing in the sample: P1 {}, P2 {}, engine erp_implied {}", miss(&|t| p1.contains_key(&t)), miss(&|t| p2.contains_key(&t)), miss(&|t| erp[0].contains_key(&t)));
     let no_cpi_rows = base_rows.values().filter(|r| r.status == "no_cpi").count();
     let no_root = base_rows.values().filter(|r| r.status.starts_with("no_root")).count();
     let _ = writeln!(w, "Engine rows with status no_cpi (R2): {no_cpi_rows}; with no root: {no_root}. No value is filled.");
-    let _ = writeln!(w, "Pairs in the sample: P1 {}, engine {}, L1 {}, L3 {}, N5 {}, N20 {}, gordon {}", count_pairs(&p1_pairs), count_pairs(&eng_pairs[0]), count_pairs(&eng_pairs[1]), count_pairs(&eng_pairs[2]), count_pairs(&eng_pairs[3]), count_pairs(&eng_pairs[4]), count_pairs(&gor_pairs));
+    let _ = writeln!(w, "Pairs in the sample: P1 {}, P2 {}, engine {}, L1 {}, L3 {}, N5 {}, N20 {}, gordon {}", count_pairs(&p1_pairs), count_pairs(&p2_pairs), count_pairs(&eng_pairs[0]), count_pairs(&eng_pairs[1]), count_pairs(&eng_pairs[2]), count_pairs(&eng_pairs[3]), count_pairs(&eng_pairs[4]), count_pairs(&gor_pairs));
 
     let line = |w: &mut String, tt: &Test| {
-        let _ = writeln!(w, "  {:<28} pairs {:>5}  b_hat {:>9}  p {:>8}  OOS R2 {:>9} ({} forecasts)", tt.name, count_pairs(&tt.pairs), f4(tt.boot.map(|b| b.b_hat)), f4(tt.boot.map(|b| b.p)), f4(tt.oos.map(|o| o.r2)), tt.oos.map_or(0, |o| o.forecasts));
+        let _ = writeln!(w, "  {:<34} pairs {:>5}  b_hat {:>9}  p {:>8}  OOS R2 {:>9} ({} forecasts)", tt.name, count_pairs(&tt.pairs), f4(tt.boot.map(|b| b.b_hat)), f4(tt.boot.map(|b| b.p)), f4(tt.oos.map(|o| o.r2)), tt.oos.map_or(0, |o| o.forecasts));
     };
     let pass = |tt: &Test| -> bool { tt.boot.is_some_and(|b| b.b_hat > 0.0 && b.p < ALPHA) && tt.oos.is_some_and(|o| o.r2 > 0.0) };
 
     let _ = writeln!(w, "\nPRIMARY TESTS (section 4: the mean phase slope, one-sided p < {ALPHA} AND OOS R2 > 0)");
     line(w, &primary_p1);
-    let p1_pass = pass(&primary_p1);
-    let _ = writeln!(w, "  P1: {}", if p1_pass { "PASS" } else { "FAIL" });
+    let _ = writeln!(w, "  P1: {}", if pass(&primary_p1) { "PASS" } else { "FAIL" });
     line(w, &primary_engine);
     let eng_pass = pass(&primary_engine);
     let _ = writeln!(w, "  engine: rejection rule {}", if eng_pass { "PASS" } else { "FAIL" });
@@ -453,14 +560,35 @@ pub fn run(obs: &[Obs], inp: &Inputs) -> R<Report> {
     let _ = writeln!(w, "  engine OOS R2 {} < P1 OOS R2 {}: {}", f4(primary_engine.oos.map(|o| o.r2)), f4(primary_p1.oos.map(|o| o.r2)), below);
     let _ = writeln!(w, "  engine result: {}", if eng_pass && !below { "PASS (does not fail)" } else { "FAIL" });
 
-    let _ = writeln!(w, "\nENGINE SECONDARY FAMILY (section 9 R1: m = 5, Holm, family-wise {ALPHA}, one-sided; separate from the P1 family)");
+    let _ = writeln!(w, "\nP1 FAMILY (section 6: S1, S2, B1 to B4; m = 6, Holm on the bootstrap p, family-wise {ALPHA}, one-sided; the OOS R2 is descriptive)");
+    let _ = writeln!(w, "  P2 = 1 / CAPE10 - r10 (section 3, R3); CAPE10 = real P(t) / mean real annual E of the last 10 known years.");
+    let ps6: Vec<f64> = fam6.iter().map(|f| f.boot.map_or(1.0, |b| b.p)).collect();
+    let adj6 = holm(&ps6);
+    for (f, a) in fam6.iter().zip(&adj6) {
+        line(w, f);
+        let _ = writeln!(w, "      Holm-adjusted p {:.4}: {}", a, if *a <= ALPHA { "reject H0" } else { "no rejection" });
+    }
+
+    let _ = writeln!(w, "\nENGINE SECONDARY FAMILY (section 9 R1: m = 5, Holm on the bootstrap p, family-wise {ALPHA}, one-sided; separate from the P1 family; the OOS R2 is descriptive)");
     let ps: Vec<f64> = family.iter().map(|f| f.boot.map_or(1.0, |b| b.p)).collect();
     let adj = holm(&ps);
     for (f, a) in family.iter().zip(&adj) {
         line(w, f);
         let _ = writeln!(w, "      Holm-adjusted p {:.4}: {}", a, if *a <= ALPHA { "reject H0" } else { "no rejection" });
     }
-    let _ = writeln!(w, "  The design gives no OOS condition for the secondary tests: the OOS R2 is reported, not combined with the Holm result.");
+
+    let _ = writeln!(w, "\nGS10 (R3 point 7): Shiller gs10 against FRED GS10 from 1953-04: maximum absolute difference {gdiff:.4} percentage points at {} ({gdiff_n} months compared).", label(gdiff_at));
+    if gdiff > 1e-4 {
+        let alt = run_test("engine erp_implied, FRED GS10 in rr", alt_pairs.clone(), 120);
+        let _ = writeln!(w, "  The difference is above 0.0001: the engine ran once more with FRED GS10 from 1953-04 for rr. Both results (the first is the primary, R1):");
+        line(w, &primary_engine);
+        line(w, &alt);
+        let alt_below = match (alt.oos, primary_p1.oos) {
+            (Some(e), Some(p)) => e.r2 < p.r2,
+            _ => true,
+        };
+        let _ = writeln!(w, "  with FRED GS10: rejection rule {}; OOS R2 below P1: {}", if pass(&alt) { "PASS" } else { "FAIL" }, alt_below);
+    }
 
     let _ = writeln!(w, "\nPERIODS (section 6: a window belongs to the period of its start month; independent windows = floor(start months / 120))");
     let _ = writeln!(w, "Monetary regimes (descriptive only, no p-value, not in a Holm family):");
@@ -475,59 +603,52 @@ pub fn run(obs: &[Obs], inp: &Inputs) -> R<Report> {
         };
         let _ = writeln!(w, "  {name}: start months in the sample {n}, independent windows {}: {note}", independent_windows(n));
     }
-    let _ = writeln!(w, "30-year blocks (section 6; B1 to B4 are the scored partition of the P1 family; no Holm here: the family needs S2, which needs P2):");
-    let blocks = [("B1", (1893, 1), (1922, 12)), ("B2", (1923, 1), (1952, 12)), ("B3", (1953, 1), (1982, 12)), ("B4", (1983, 1), (2016, 10))];
+    let _ = writeln!(w, "30-year blocks (section 6). P1 blocks are in the P1 family above. Engine blocks: not in a Holm family, uncorrected:");
     for (name, lo, hi) in blocks {
-        let (a, b) = (mi(lo.0, lo.1), mi(hi.0, hi.1).min(end120));
+        let (a, b) = block_range(lo, hi);
         let n = (b - a + 1) as usize;
-        let slice = |pairs: &[Pair]| pairs[(a - start) as usize..=(b - start) as usize].to_vec();
         if has_regression(n) {
-            for (who, pairs) in [("P1", slice(&p1_pairs)), ("engine", slice(&eng_pairs[0]))] {
+            for (who, pairs) in [("P1", slice(&p1_pairs, a, b)), ("engine", slice(&eng_pairs[0], a, b))] {
                 let bt = bootstrap(&pairs, REPS, SEED);
-                let _ = writeln!(w, "  {name} {who}: start months {n}, independent windows {}, b_hat {}, p {} (uncorrected)", independent_windows(n), f4(bt.map(|x| x.b_hat)), f4(bt.map(|x| x.p)));
+                let tag = if who == "P1" { "in the P1 family" } else { "not in a Holm family, uncorrected" };
+                let _ = writeln!(w, "  {name} {who}: start months {n}, independent windows {}, b_hat {}, p {} ({tag})", independent_windows(n), f4(bt.map(|x| x.b_hat)), f4(bt.map(|x| x.p)));
             }
         } else {
             let _ = writeln!(w, "  {name}: start months {n}, independent windows {}: no regression", independent_windows(n));
         }
     }
 
-    let _ = writeln!(w, "\nJANUARY CHECK (section 4: phase January alone; the January phase is the phase of the month of January in the sample)");
-    for tt in [&primary_p1, &primary_engine] {
-        let jan: Vec<Pair> = tt.pairs.iter().zip(&sample).map(|(p, m)| if ym(*m).1 == 1 { *p } else { None }).collect();
-        let (mut n, mut sx, mut sy, mut sxx, mut sxy) = (0.0, 0.0, 0.0, 0.0, 0.0);
-        for (x, y) in jan.iter().flatten() {
-            n += 1.0;
-            sx += x;
-            sy += y;
-            sxx += x * x;
-            sxy += x * y;
+    let _ = writeln!(w, "\nJANUARY PHASE (section 4, R3 point 4; descriptive): the single phase that starts at {}, windows at every 120th month.", label(start));
+    for (nm, pairs) in [("P1", &p1_pairs), ("P2", &p2_pairs), ("engine erp_implied", &eng_pairs[0])] {
+        match single_phase_slope(pairs, 0) {
+            Some((b, n)) => {
+                let _ = writeln!(w, "  {nm}: slope {b:.4} over {n} non-overlapping windows");
+            }
+            None => {
+                let _ = writeln!(w, "  {nm}: no slope");
+            }
         }
-        let _ = writeln!(w, "  {}: slope over the Januaries ({} pairs, every 12th month, not one 120-month phase) {}", tt.name, n as usize, f4(slope_from(n, sx, sy, sxx, sxy)));
     }
 
-    let _ = writeln!(w, "\nINTERPRETATIONS (the design is not exact here; each can change a number)");
+    let _ = writeln!(w, "\nINTERPRETATIONS that remain (the design is not exact here; each can change a number)");
     for l in [
-        "1. P2 is not built: section 3 gives 1/CAPE10 - r10 without the exact CAPE window (months, deflator). Nothing is scored for P2.",
-        "2. The last start month is 2016-10 by section 4. Shiller D has no value for 2026-10, so the window of 2016-10 (and 2021-10 for H=60) drops out, with no fill, as R2 does for a missing value.",
-        "3. The bootstrap phase of a pseudo-sample is its position modulo 120 (the blocks have 120 months). The generator PCG64 and the bounded integer of nprandom are mine: the design names no generator.",
-        "4. 20 years of complete pairs = 240 monthly pairs.",
-        "5. The crossing ratio of the deflator (1912-12 to 1913-01) uses the Shiller CPI; Dr(Y) of g(t) deflates with the December CPI of the engine rule (Shiller before 1913, CPIAUCNS from 1913).",
-        "6. The 'phase' slope uses the calendar months of the sample; a dropped month leaves a gap. Windows per period count calendar start months.",
-        "7. Secondary tests: Holm decides on p only; the design gives no OOS condition for them.",
-        "8. January check: the design says 'phase January alone'; here the slope over the Januaries (every 12th month), because one 120-month phase has about 12 points.",
-        "9. P1 r10 uses FRED GS10 from 1953-04 (section 3); the engine rr uses the Shiller gs10 column as committed (R1).",
+        "1. S1 (H = 60) uses the statistic and bootstrap of section 4 as written: 120 phases, blocks of 120 start months, OOS lag 60. The design gives no change for H = 60.",
+        "2. 20 years of complete pairs = 240 monthly pairs.",
+        "3. The crossing ratio of the deflator (1912-12 to 1913-01) uses the Shiller CPI; Dr(Y) of g(t) and the annual E of CAPE10 deflate with the December CPI of the engine rule (Shiller before 1913, CPIAUCNS from 1913); P(t) in CAPE10 deflates with CPIK(t).",
+        "4. The phase slope uses the calendar months of the sample; a dropped month leaves a gap. Windows per period count calendar start months.",
+        "5. The bootstrap phase of a pseudo-sample is its position modulo 120.",
     ] {
         let _ = writeln!(w, "  {l}");
     }
 
     // the CSV by month
-    let mut csv = String::from("month,period,erp_implied,P1,X60,X120,erp_L1,erp_L3,erp_N5,erp_N20,erp_gordon,status\n");
+    let mut csv = String::from("month,period,erp_implied,P1,P2,X60,X120,erp_L1,erp_L3,erp_N5,erp_N20,erp_gordon,erp_fredgs10,status\n");
     let f6 = |x: Option<&f64>| x.map_or(String::new(), |v| format!("{v:.6}"));
     let mut months: Vec<i32> = base_rows.keys().copied().collect();
     months.sort();
     for m in months {
         let st = base_rows[&m].status;
-        let _ = writeln!(csv, "{},{},{},{},{},{},{},{},{},{},{},{}", label(m), regime(m), f6(erp[0].get(&m)), f6(p1.get(&m)), f6(x60.get(&m)), f6(x120.get(&m)), f6(erp[1].get(&m)), f6(erp[2].get(&m)), f6(erp[3].get(&m)), f6(erp[4].get(&m)), f6(gordon.get(&m)), st);
+        let _ = writeln!(csv, "{},{},{},{},{},{},{},{},{},{},{},{},{},{}", label(m), regime(m), f6(erp[0].get(&m)), f6(p1.get(&m)), f6(p2.get(&m)), f6(x60.get(&m)), f6(x120.get(&m)), f6(erp[1].get(&m)), f6(erp[2].get(&m)), f6(erp[3].get(&m)), f6(erp[4].get(&m)), f6(gordon.get(&m)), f6(erp_alt.get(&m)), st);
     }
     Ok(Report { score_text: t, months_csv: csv })
 }

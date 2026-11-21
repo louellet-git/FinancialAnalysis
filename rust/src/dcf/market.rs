@@ -43,6 +43,8 @@ pub struct Obs {
     pub month: u32,
     pub price: f64,
     pub dividend: Option<f64>,
+    /// Earnings, annual rate (for P2 only).
+    pub earnings: Option<f64>,
     pub cpi: f64,
     pub gs10: f64,
     pub estimate: bool,
@@ -94,7 +96,7 @@ pub fn read_shiller(text: &str) -> R<Vec<Obs>> {
                 return e(format!("line {}: months are not consecutive", i + 1));
             }
         }
-        out.push(Obs { year, month, price, dividend: opt_f(f[2]), cpi, gs10, estimate: f[7].trim() == "true" });
+        out.push(Obs { year, month, price, dividend: opt_f(f[2]), earnings: opt_f(f[3]), cpi, gs10, estimate: f[7].trim() == "true" });
     }
     if out.is_empty() {
         return e("no data rows");
@@ -201,6 +203,10 @@ impl<'a> CpiSource<'a> {
     /// The December dividend of year y (the Shiller annual rate), if the file has it.
     pub(super) fn december_dividend(&self, y: i32) -> Option<f64> {
         self.obs[*self.idx.get(&(y, 12))?].dividend
+    }
+    /// The December earnings of year y (the Shiller annual rate), if the file has it.
+    pub(super) fn december_earnings(&self, y: i32) -> Option<f64> {
+        self.obs[*self.idx.get(&(y, 12))?].earnings
     }
     fn shiller(&self, y: i32, m: u32) -> Result<f64, Miss> {
         self.idx.get(&(y, m)).map(|i| self.obs[*i].cpi).ok_or(Miss::Skip)

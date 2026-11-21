@@ -23,6 +23,7 @@ fn synth(gd: f64, gs: f64, price: f64) -> Vec<Obs> {
                 month: m,
                 price,
                 dividend: Some(10.0 * (1.0 + gd).powi(y - 1871)),
+                earnings: None,
                 cpi: 10.0 * 1.002f64.powi(k),
                 gs10: gs,
                 estimate: false,

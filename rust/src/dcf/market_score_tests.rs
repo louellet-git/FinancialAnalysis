@@ -1,7 +1,7 @@
 use super::*;
 
 fn ob(y: i32, m: u32, price: f64, dividend: Option<f64>, cpi: f64) -> Obs {
-    Obs { year: y, month: m, price, dividend, cpi, gs10: 5.0, estimate: false }
+    Obs { year: y, month: m, price, dividend, earnings: None, cpi, gs10: 5.0, estimate: false }
 }
 
 fn fred(v: &[((i32, u32), f64)]) -> Fred {
@@ -100,7 +100,7 @@ fn slope_and_oos_on_a_known_line() {
     let pairs = line_pairs(1486, 2.0, 3.0);
     let b = phase_mean_slope(&pairs).unwrap();
     assert!((b - 3.0).abs() < 1e-9, "{b}");
-    let o = oos_r2(&pairs).unwrap();
+    let o = oos_r2(&pairs, 120).unwrap();
     assert!((o.r2 - 1.0).abs() < 1e-9, "{}", o.r2);
     // the pairs of s = 0..239 are complete at i = 239 + 120 = 359: the first forecast
     assert_eq!(o.forecasts, 1486 - 359);
@@ -145,4 +145,60 @@ fn holm_hand_case() {
     for (a, e) in adj.iter().zip(expect) {
         assert!((a - e).abs() < 1e-12, "{adj:?}");
     }
+}
+
+#[test]
+fn cape10_hand_case_with_the_lag() {
+    // years 1930 to 1950; the December earnings of year y are y - 1900, other months are poison (999); CPI 100; P 200
+    let mut obs = Vec::new();
+    let mut cpi = Fred::new();
+    for y in 1930..=1950 {
+        for m in 1..=12u32 {
+            let mut o = ob(y, m, 200.0, Some(1.0), 100.0);
+            o.earnings = Some(if m == 12 { (y - 1900) as f64 } else { 999.0 });
+            obs.push(o);
+            cpi.insert((y, m), 100.0);
+        }
+    }
+    let empty = Fred::new();
+    let inp = Inputs { cpi: &cpi, tb3ms: &empty, nber: &empty, gs10: &empty };
+    let s = Series::new(&obs, &inp);
+    // 1944-03: known year 1942 (Y-2), the years 1933 to 1942: mean E = 37.5, real 0.375; real P = 2
+    let c = s.cape10(mi(1944, 3)).unwrap();
+    assert!((c - 2.0 / 0.375).abs() < 1e-12, "{c}");
+    // 1944-04: known year 1943, the years 1934 to 1943: mean E = 38.5
+    let c = s.cape10(mi(1944, 4)).unwrap();
+    assert!((c - 2.0 / 0.385).abs() < 1e-12, "{c}");
+    // before 1936 the lag is always Y-2: 1935-06 uses 1933, with the years 1924 to 1933 (1924 is not in the file)
+    assert!(s.cape10(mi(1935, 6)).is_none());
+    // poison: the December earnings of 1943 changed; the row of 1944-03 does not change, the row of 1944-04 does
+    let mut p = obs.clone();
+    p.iter_mut().find(|o| o.year == 1943 && o.month == 12).unwrap().earnings = Some(1e6);
+    let s2 = Series::new(&p, &inp);
+    assert_eq!(s2.cape10(mi(1944, 3)), s.cape10(mi(1944, 3)));
+    assert_ne!(s2.cape10(mi(1944, 4)), s.cape10(mi(1944, 4)));
+}
+
+#[test]
+fn january_phase_is_the_single_phase_from_the_first_month() {
+    let pairs = line_pairs(1486, 2.0, 3.0);
+    let (b, n) = single_phase_slope(&pairs, 0).unwrap();
+    assert!((b - 3.0).abs() < 1e-9);
+    assert_eq!(n, 13); // positions 0, 120, ..., 1440: 1893-01, 1903-01, ..., 2013-01
+    // a different phase has 12 windows here
+    assert_eq!(single_phase_slope(&pairs, 100).unwrap().1, 12);
+}
+
+#[test]
+fn gs10_difference_counts_from_1953_04() {
+    let mut a = ob(1953, 3, 1.0, Some(1.0), 1.0);
+    a.gs10 = 2.0;
+    let mut b = ob(1953, 4, 1.0, Some(1.0), 1.0);
+    b.gs10 = 2.83;
+    let mut c = ob(1953, 5, 1.0, Some(1.0), 1.0);
+    c.gs10 = 2.5;
+    let f = fred(&[((1953, 3), 9.0), ((1953, 4), 2.83), ((1953, 5), 3.0)]);
+    let (d, at, n) = gs10_difference(&[a, b, c], &f);
+    assert!((d - 0.5).abs() < 1e-12);
+    assert_eq!((at, n), (mi(1953, 5), 2));
 }
