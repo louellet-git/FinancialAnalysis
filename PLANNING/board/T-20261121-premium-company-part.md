@@ -75,3 +75,48 @@ go to the growth-shift free variable (a shift of the growth path of years 1 to 1
 window) means "no information": the plug of that view is labelled "not covered by the economics view", and the text gives
 the count of covered rows. The list median and the value-weighted mean keep the rule of design change 1 (c on the free
 variable of the view).
+
+**Gate verdict on claude/premium-series (a993e68), cycle 1 (20:15 UTC, 2026-11-21): PASS WITH CONDITIONS.** The code and the
+method passed (code-reviewer, model-validator, document-reviewer of the Head of Quality and Risk). The three document
+conditions D1 to D3 are fixed in ee82144 on claude/premium-series (pushed); Quality checks that commit itself.
+TO DO in the next code commit on claude/attribution-reality, before its gate request (the MIN points, no block):
+1. The test of the step h: assert 0.001 with a literal, and assert each bound alone.
+2. The usage text "the last four columns" is now ten columns (ATTRIBUTE_USAGE); the test name at auto_attribute_tests.rs:584.
+3. `--common-file` without `--common file`, and `--common-list` with `--common file`: make each an error (now ignored).
+4. csv_line: `idx(name)` with unwrap_or(0) can write over the ticker column; use expect.
+5. mark_stale gives 0 with no message when SPY is missing: print a warning.
+6. An empty beta means 1.0: write 1.0 and a flag.
+7. Documents: the common step uses the beta and the weight of D1 (the design text says D2); the company part holds the
+   change of beta and weight; the default c is the median of the same prices that it explains, so the company part is
+   not news; the long sentences of premium-series.md (Purpose, Method 3 and 5).
+8. Merge ee82144 into claude/attribution-reality (the same documents are on both branches).
+Before the series run of record: the poison and truncation tests on 3 real dates must also cover a 10-K/A after the
+anchor, a split after the anchor, the GSW and par rows and the switch week, a holiday Friday, every column, and the cut
+table. The first three dates (2020-03-20, 2022-06-17, 2025-04-04) are in `analysis/priors/data/premium_series_pit/`.
+
+**Pull request 190 (20:32 UTC, 2026-11-21):** claude/premium-series (9f8863c, main c251fa3 merged; 966 + 17 + 1 and 126 tests
+pass; the IBM headline is unchanged; the S&P 10 smoke test gives -9.96%). After the green check: merge, then the run of
+record of the week on main (the commands of pages 2 and 3 with `--curve par`), then merge main into
+claude/attribution-reality. The second branch waits for its gate verdict (a0e2480).
+
+**Golden case (20:49 UTC, 2026-11-21).** Pull request 190 is merged (main 7e88cfe). It changed the output of
+`fa dcf attribute`, and the stored-output test of the Head of Quant Research (`fa selftest golden`, case
+`dcf_attribute_panel32`) failed on main. Pull request 195 (claude/golden-attribute-pr190) has the new expected text;
+it waits for the look of the Head of Quant Research and the green check; then merge it.
+TO DO in the pull request of claude/attribution-reality: run `fa selftest golden` (it needs the data store of the case
+as data/raw; FA_REPO names the repo root) and update each case that the new default curve and the beta flag change,
+with a reason. Rule from now on: `fa selftest golden` is a release check of each change of a command output.
+
+**Merged (21:06 UTC, 2026-11-21).** Pull requests 190, 195 and 199 are merged (main 3fc1acc); the code list of gate cycle 1
+is done. STILL OPEN on this ticket: (1) the series run of record (S&P 500 from 2019-01-04): first a review of the pit
+results of 61fe8de against the eight points of Quality, and a parameter table cut before 2019 (`--table`), or a header
+that states the look-ahead; then send the commit and the switch week (2026-11-20) to the Head of Economics; (2) a
+truncation test of the base rates in the suite; (3) the long sentences of `docs/models/premium-series.md`; (4) the
+register rows of `assumptions.rs` for A-027 to A-037.
+
+**Point-in-time tests of the series on main (22:27 UTC, 2026-11-21).** The Head of Quality and Risk reviewed the first
+results (61fe8de): REVISE (P1 the split basis, P2 the par path, P3 the code of main, P4 the parameter table). New tests:
+`analysis/priors/data/premium_series_pit_main/` (result.md, cmp.txt, the scripts, the CSV files): 5 dates truncation
+and poison, the par path with a switch week, the share basis of D, six controls; all pass on main 99c5af6. Sent to
+Quality for its check. STILL OPEN before the series run of record: a parameter table cut before 2019 (none exists), or
+the label "parameters in-sample" in the header and the document.

@@ -158,6 +158,7 @@ fn attribution(p1: f64, p2: f64, c: Chain, shares: f64) -> Attribution {
         grow: Ok(c),
         cagr1: 0.1,
         cagr2: 0.1,
+        growth2_bound: Bound::Exact,
         growth_at_x1: None,
         cagr_at_x1: f64::NAN,
         shares1: shares,
@@ -497,7 +498,117 @@ fn the_curve_text_is_the_old_text_for_gsw_and_names_the_fit_for_the_others() {
 fn an_unknown_curve_value_is_an_error() {
     let args: Vec<String> = ["--curve", "ois", "--from", "2026-11-13", "--to", "2026-11-20"].iter().map(|s| s.to_string()).collect();
     let x = command_inner(Path::new("."), &args).unwrap_err();
-    assert!(x.0.contains("--curve 'ois': use gsw, fedinvest or par"), "{}", x.0);
+    assert!(x.0.contains("--curve 'ois': use auto, gsw, fedinvest or par"), "{}", x.0);
+}
+
+fn dates_of(v: &[&str]) -> Vec<String> {
+    v.iter().map(|s| s.to_string()).collect()
+}
+
+fn gsw_of(v: &[Option<&str>]) -> Vec<Option<String>> {
+    v.iter().map(|s| s.map(|x| x.to_string())).collect()
+}
+
+#[test]
+fn auto_picks_gsw_when_both_rows_are_fresh_and_par_when_one_is_four_days_old() {
+    let dates = dates_of(&["2026-11-13", "2026-11-20"]);
+    // both rows on the date, or 3 days older: gsw
+    let (s, why) = auto_curve_source(&gsw_of(&[Some("2026-11-13"), Some("2026-11-17")]), &dates);
+    assert_eq!(s, "gsw");
+    assert!(why.starts_with("gsw, because") && why.contains("2026-11-17, 3 days older"), "{why}");
+    // the row of D2 is 4 days old: par at both dates, and the text names the date and the lag
+    let (s, why) = auto_curve_source(&gsw_of(&[Some("2026-11-13"), Some("2026-11-16")]), &dates);
+    assert_eq!(s, "par");
+    assert!(why.starts_with("par, because") && why.contains("2026-11-20: GSW row 2026-11-16, 4 days older") && why.contains("one source is used at all dates"), "{why}");
+    // the file ends at D1 (the real case): the lag at D2 is 7 days
+    assert_eq!(auto_curve_source(&gsw_of(&[Some("2026-11-13"), Some("2026-11-13")]), &dates).0, "par");
+    // no row at a date: par
+    let (s, why) = auto_curve_source(&gsw_of(&[None, Some("2026-11-20")]), &dates);
+    assert_eq!((s, why.contains("2026-11-13: no GSW row")), ("par", true));
+}
+
+#[test]
+fn auto_with_fresh_rows_is_the_run_of_curve_gsw_and_an_explicit_source_stays() {
+    let dates = dates_of(&["2026-11-13", "2026-11-20"]);
+    let fresh = gsw_of(&[Some("2026-11-12"), Some("2026-11-20")]);
+    let (auto, note) = effective_source("auto", &fresh, &dates);
+    let (gsw, none) = effective_source("gsw", &fresh, &dates);
+    assert_eq!(auto, gsw, "the same source gives the same run");
+    assert_eq!(auto, "gsw");
+    // --curve gsw has no new text; auto names its choice
+    assert_eq!(none, None);
+    assert!(note.is_some_and(|n| n.starts_with("CURVE SOURCE (--curve auto): gsw, because")));
+    // an explicit source is not changed by old rows
+    let old = gsw_of(&[Some("2026-11-01"), Some("2026-11-02")]);
+    assert_eq!(effective_source("gsw", &old, &dates).0, "gsw");
+    assert_eq!(effective_source("fedinvest", &old, &dates).0, "fedinvest");
+    assert_eq!(effective_source("auto", &old, &dates).0, "par");
+}
+
+fn spy_days(v: &[&str]) -> Vec<(String, f64)> {
+    v.iter().map(|d| (d.to_string(), 100.0)).collect()
+}
+
+#[test]
+fn d0_is_d1_less_the_days_of_the_window_and_moves_back_to_a_trading_day() {
+    // window 2026-11-13 to 2026-11-20 is 7 days: D0 = 2026-11-06 (a Friday with a close)
+    let spy = spy_days(&["2026-11-05", "2026-11-06", "2026-11-13", "2026-11-20"]);
+    assert_eq!(prior_date(&spy, "2026-11-13", "2026-11-20").unwrap(), "2026-11-06");
+    // Good Friday 2026-04-03 has no close: D1 2026-04-10, D2 2026-04-17, D0 = 2026-04-03 moves to Thursday 2026-04-02
+    let spy = spy_days(&["2026-04-01", "2026-04-02", "2026-04-06", "2026-04-10", "2026-04-17"]);
+    assert_eq!(prior_date(&spy, "2026-04-10", "2026-04-17").unwrap(), "2026-04-02");
+    // a window of 3 days: D1 Monday 2026-11-09 to D2 Thursday 2026-11-12: D0 Friday 2026-11-06
+    let spy = spy_days(&["2026-11-05", "2026-11-06", "2026-11-09", "2026-11-12"]);
+    assert_eq!(prior_date(&spy, "2026-11-09", "2026-11-12").unwrap(), "2026-11-06");
+    // a SPY series that is too short is an error
+    assert!(prior_date(&spy_days(&["2026-11-13"]), "2026-11-13", "2026-11-20").is_err());
+}
+
+#[test]
+fn the_prior_window_lines_chain_for_a_hand_made_list() {
+    // two companies, 10 shares each. Prices at D0, D1, D2: A 10, 11, 12.1 (+10% twice); B 20, 19, 17.1 (-5%, -10%).
+    // Value at D0 = 100 + 200 = 300; D1 = 110 + 190 = 300; D2 = 121 + 171 = 292.
+    // D0 to D1: 0%; D1 to D2: 292 / 300 - 1 = -2.6667%; D0 to D2: 292 / 300 - 1 = -2.6667% (the same: D1 = D0 in value).
+    let w01 = vec![row("A", 10.0, 11.0, 3, 10.0, 0.05), row("B", 20.0, 19.0, 3, 10.0, 0.05)];
+    let w12 = vec![row("A", 11.0, 12.1, 3, 10.0, 0.05), row("B", 19.0, 17.1, 3, 10.0, 0.05)];
+    let w02 = vec![row("A", 10.0, 12.1, 3, 10.0, 0.05), row("B", 20.0, 17.1, 3, 10.0, 0.05)];
+    let l = [prior_line("2026-11-06", "2026-11-13", &w01), prior_line("2026-11-13", "2026-11-20", &w12), prior_line("2026-11-06", "2026-11-20", &w02)];
+    let c = |i: usize| l[i].as_ref().unwrap().change;
+    assert!(c(0).abs() < 1e-12, "{}", c(0));
+    assert!((c(1) - (292.0 / 300.0 - 1.0)).abs() < 1e-12);
+    // D0 to D2 equals the chained change of the two windows
+    assert!(((1.0 + c(0)) * (1.0 + c(1)) - 1.0 - c(2)).abs() < 1e-12, "{} {} {}", c(0), c(1), c(2));
+    // the whole change is in the plug of the premium view (which = 3): the premium part equals the change of each window
+    for x in l.iter().map(|x| x.as_ref().unwrap()) {
+        assert!((x.parts[3] - x.change).abs() < 1e-12 && x.parts[0].abs() < 1e-12 && x.parts[2].abs() < 1e-12, "{x:?}");
+        assert!((x.parts.iter().sum::<f64>() - x.change).abs() < 1e-12);
+    }
+    let text = prior_window_text("2026-11-06", "2026-11-13", "2026-11-20", &l);
+    assert!(text.contains("(6) PRIOR WINDOW"));
+    let (a, b, d) = (text.find("2026-11-06 to 2026-11-13 "), text.find("2026-11-13 to 2026-11-20 "), text.find("2026-11-06 to 2026-11-20 "));
+    assert!(a.is_some() && a < b && b < d, "the three lines in the order D0 to D1, D1 to D2, D0 to D2:\n{text}");
+    assert!(text.contains("2026-11-06 to 2026-11-13, then 2026-11-13 to 2026-11-20, chained: -2.67%"), "{text}");
+    assert!(text.contains("-2.67% |"), "{text}");
+    // the same inputs give the same text
+    assert_eq!(text, prior_window_text("2026-11-06", "2026-11-13", "2026-11-20", &l));
+}
+
+#[test]
+fn the_common_change_of_a_prior_line_is_the_premium_common_change() {
+    let mut rows = vec![row("A", 10.0, 8.0, 3, 10.0, 0.05), row("B", 30.0, 27.0, 3, 10.0, 0.05)];
+    for r in rows.iter_mut() {
+        if let Ok(a) = r.outcome.as_mut() {
+            if let Ok(c) = a.prem.as_mut() {
+                c.split = Some(Split { c: -0.00581, label: "list median".into(), common_ln: -0.01, company_ln: 0.0, rev_common_ln: -0.01, rev_company_ln: 0.0, none: false, covered: None });
+            }
+        }
+    }
+    let l = prior_line("2026-11-13", "2026-11-20", &rows).unwrap();
+    assert_eq!(l.common, Some((-0.00581, "list median".to_string())));
+    let text = prior_window_text("2026-11-06", "2026-11-13", "2026-11-20", &[None, Some(l), None]);
+    assert!(text.contains("-0.581"), "{text}");
+    assert!(text.contains("source of c: list median."), "{text}");
+    assert!(text.contains("2026-11-06 to 2026-11-13: no ticker has a weight"), "{text}");
 }
 
 #[test]
@@ -526,7 +637,8 @@ fn a_list_of_21_weighted_tickers_prints_no_ticker_lines_and_a_list_of_20_does() 
 fn the_premium_duration_is_the_central_difference_of_ln_value() {
     let t = table();
     let model = rules_w1().erp.0;
-    let (h, x) = (DURATION_STEP, 0.04);
+    assert_eq!(DURATION_STEP, 0.001, "the step of the record and of the usage text");
+    let (h, x) = (0.001, 0.04);
     let m = mk(1.0, None);
     // by hand: D = -(ln V(x + h) - ln V(x - h)) / (2 h), with the two values of the same engine at x +- h
     let (up, down) = (value(&inputs(), &m, x + h), value(&inputs(), &m, x - h));
@@ -540,7 +652,9 @@ fn the_premium_duration_is_the_central_difference_of_ln_value() {
     let by_hand = -(value(&inputs(), &m, model + h).ln() - value(&inputs(), &m, model - h).ln()) / (2.0 * h);
     assert!((a.dur_premium1.unwrap() - by_hand).abs() < 1e-6, "{:?} {by_hand}", a.dur_premium1);
     // a step far outside the range has no value: no duration
-    assert!(premium_duration(&inputs(), &cfg(&t), &m, -5.0, h).is_none() || premium_duration(&inputs(), &cfg(&t), &m, 50.0, h).is_none());
+    let (low, high) = (premium_duration(&inputs(), &cfg(&t), &m, -5.0, h), premium_duration(&inputs(), &cfg(&t), &m, 50.0, h));
+    assert!(low.is_none(), "a premium of -5.0: {low:?}");
+    assert!(high.is_none(), "a premium of 50.0: {high:?}");
 }
 
 #[test]
@@ -581,7 +695,7 @@ fn the_8k_field_has_the_filings_after_d1_and_on_or_before_d2() {
 }
 
 #[test]
-fn the_csv_header_ends_with_the_four_new_columns_and_the_old_ones_keep_their_places() {
+fn the_csv_header_keeps_the_old_columns_and_appends_the_ten_new_ones() {
     assert!(CSV_HEADER.contains(",refusal,beta1,beta2,dur_premium1,earnings_8k,"));
     assert!(CSV_HEADER.ends_with(",earnings_8k,c_premium,c_growth,p_premium_common_pct,p_premium_company_pct,g_growth_common_pct,g_growth_company_pct"));
     assert!(CSV_HEADER.starts_with("ticker,size,sector,industry,price1,price2,change_pct,"));
@@ -596,7 +710,10 @@ fn the_csv_header_ends_with_the_four_new_columns_and_the_old_ones_keep_their_pla
     let cells: Vec<&str> = line.split(',').collect();
     assert_eq!(cells.len(), CSV_HEADER.split(',').count());
     let k = CSV_HEADER.split(',').position(|h| h == "beta1").unwrap();
-    assert_eq!(&cells[k..k + 4], ["1.1000", "", "21.500", "2026-11-17;2026-11-19"]);
+    // beta2 is missing: the model uses 1.0, the cell has 1.0000 and the row has the flag
+    assert_eq!(&cells[k..k + 4], ["1.1000", "1.0000", "21.500", "2026-11-17;2026-11-19"]);
+    let flags = cells[CSV_HEADER.split(',').position(|h| h == "flags").unwrap()];
+    assert!(flags.contains("beta2-default") && !flags.contains("beta1-default"), "{flags}");
     // no split yet: the six new cells are empty
     assert!(cells[cells.len() - 6..].iter().all(|c| c.is_empty()));
 }
@@ -719,15 +836,22 @@ fn the_median_and_the_value_weighted_c_of_a_hand_made_list() {
 #[test]
 fn the_file_source_gives_the_row_of_d2_and_an_empty_field_is_no_information() {
     let text = "date,erp_change,growth_change,source\n2026-11-13,0.001,0.002,old\n2026-11-20,-0.0025,,economics v1\n";
-    let c = econ_from_text(text, "2026-11-20").unwrap();
+    let c = econ_from_text(text, "2026-11-13", "2026-11-20").unwrap();
     assert_eq!((c.erp, c.growth, c.source.as_str()), (Some(-0.0025), None, "economics v1"));
     assert!(c.label(true).starts_with("economics view, economics v1") && c.label(true).contains("erp_change only"), "{}", c.label(true));
-    assert!(econ_from_text(text, "2026-11-19").is_err());
-    assert!(econ_from_text("date,erp\n", "2026-11-20").is_err());
-    assert!(econ_from_text("date,erp_change,growth_change,source\n2026-11-20,abc,,x\n", "2026-11-20").is_err());
-    let empty = econ_from_text("date,erp_change,growth_change,source\n2026-11-20,,,test only\n", "2026-11-20").unwrap();
+    assert!(econ_from_text(text, "2026-11-13", "2026-11-19").is_err());
+    assert!(econ_from_text("date,erp\n", "2026-11-13", "2026-11-20").is_err());
+    assert!(econ_from_text("date,erp_change,growth_change,source\n2026-11-20,abc,,x\n", "2026-11-13", "2026-11-20").is_err());
+    let empty = econ_from_text("date,erp_change,growth_change,source\n2026-11-20,,,test only\n", "2026-11-13", "2026-11-20").unwrap();
     assert_eq!((empty.erp, empty.growth), (None, None));
     assert!(empty.label(true).contains("not covered"), "{}", empty.label(true));
+    // the file of `fa macro view`: more columns, in a different order; with a column d1 the row must also match D1
+    let view = "date,d1,erp_change,growth_change,source,growth_parts\n2026-11-20,2026-11-06,0.009,0.001,spf,other window\n2026-11-20,2026-11-13,0.004,-0.001,spf,RGDP10 2.0 + CPI10 2.3\n2026-03-20,2026-03-13,,,no release,\n";
+    let v = econ_from_text(view, "2026-11-13", "2026-11-20").unwrap();
+    assert_eq!((v.erp, v.growth, v.source.as_str()), (Some(0.004), Some(-0.001), "spf"));
+    let none = econ_from_text(view, "2026-03-13", "2026-03-20").unwrap();
+    assert_eq!((none.erp, none.growth, none.source.as_str()), (None, None, "no release"));
+    assert!(econ_from_text(view, "2026-11-12", "2026-11-20").is_err(), "a row of another D1 is not the row of the window");
 }
 
 fn econ(erp: Option<f64>, growth: Option<f64>) -> EconView {
@@ -924,4 +1048,82 @@ fn one_and_four_threads_give_the_same_rows_after_the_common_pass() {
     assert_eq!(format!("{one:?}"), format!("{four:?}"));
     assert_eq!(csv_text(&one), csv_text(&four));
     assert!(one.iter().filter_map(|r| r.outcome.as_ref().ok()).any(|a| a.prem.as_ref().is_ok_and(|c| c.split.is_some())));
+}
+
+/// A row with a CIK and a market value `price x 10`.
+fn class_row(name: &str, price: f64, cik: &str) -> AttrRow {
+    let mut r = row(name, price, price * 0.9, 3, 10.0, 0.05);
+    r.cik = Some(cik.into());
+    r
+}
+
+#[test]
+fn top_keeps_the_largest_companies_and_both_classes_of_one_company() {
+    // GOOG (market value 1000) and GOOGL (980, same company) carry one weight; MSFT 500; AAA 300; BBB 100
+    let mut rows = vec![class_row("GOOG", 100.0, "7"), class_row("GOOGL", 98.0, "7"), class_row("MSFT", 50.0, "2"), class_row("AAA", 30.0, "3"), class_row("BBB", 10.0, "4")];
+    one_weight_for_one_company(&mut rows);
+    assert_eq!(rows[1].weight_of.as_deref(), Some("GOOG"));
+    // the top 2 companies are GOOG and MSFT: three tickers, because the class GOOGL stays
+    let keep = keep_top(&rows, 2);
+    assert_eq!(keep, vec![0, 1, 2]);
+    let kept: Vec<AttrRow> = keep.iter().map(|i| rows[*i].clone()).collect();
+    let w = whole_list(&kept).unwrap();
+    // 2 companies in the sum (the class has no weight), market value 1000 + 500
+    assert_eq!(w.n, 2);
+    assert!((w.value1 - 1500.0).abs() < 1e-9, "{w:?}");
+    assert_eq!(w.dropped, vec![("GOOGL".to_string(), "GOOG".to_string())]);
+    // the top 1 is GOOG with its class; a number above the count keeps all
+    assert_eq!(keep_top(&rows, 1), vec![0, 1]);
+    assert_eq!(keep_top(&rows, 10), vec![0, 1, 2, 3, 4]);
+    // a stale row has no weight: it is not ranked, even when it is the largest
+    rows[3].stale = Some("close of 2026-11-12 for 2026-11-13 (SPY 2026-11-13)".into());
+    rows[3].prices = Some((500.0, 450.0));
+    assert_eq!(keep_top(&rows, 3), vec![0, 1, 2, 4]);
+}
+
+#[test]
+fn the_common_change_with_top_is_the_common_change_of_the_full_list() {
+    let t = table();
+    let list = synthetic(12);
+    let price = |tk: &str, day: usize| -> f64 {
+        let k: f64 = tk[1..].parse().unwrap();
+        // D1 price grows with the index (so the largest are the last); the move to D2 differs from one ticker to the next
+        (20.0 + 3.0 * k) * if day == 2 { 0.80 + 0.04 * k } else { 1.0 }
+    };
+    let m1 = |tk: &str| mk(price(tk, 1), Some(curve(0.042, 4.0)));
+    let m2 = |tk: &str| mk(price(tk, 2), Some(curve(0.045, 4.3)));
+    let mut rows = attribute_list(&list, &list, &m1, &m2, &HashMap::new(), &cfg(&t), Some(1)).unwrap();
+    let full = common_from_rows(&rows, CommonMode::Median);
+    add_common(&mut rows, &list, &m1, &m2, &cfg(&t), &full, Some(1)).unwrap();
+    let keep = keep_top(&rows, 3);
+    assert_eq!(keep.len(), 3);
+    let kept: Vec<AttrRow> = keep.iter().map(|i| rows[*i].clone()).collect();
+    // the kept rows hold the c of the full list in both views ...
+    let c_of = |r: &AttrRow, v: View| r.outcome.as_ref().ok().and_then(|a| a.chain(v)).and_then(|c| c.split.as_ref()).map(|s| s.c);
+    let mut seen = 0;
+    for r in &kept {
+        for (k, v) in [View::Premium, View::Growth].into_iter().enumerate() {
+            if let Some(c) = c_of(r, v) {
+                assert_eq!(Some(c), full[k].c, "{} {v:?}", r.ticker);
+                seen += 1;
+            }
+        }
+    }
+    assert!(seen >= 3, "the kept rows must have a split");
+    // ... and it is not the c of the cut list: the cut before the common change would change it
+    let cut = common_from_rows(&kept, CommonMode::Median);
+    assert!(full[0].c.is_some() && cut[0].c.is_some() && (full[0].c.unwrap() - cut[0].c.unwrap()).abs() > 1e-6, "full {:?} cut {:?}", full[0].c, cut[0].c);
+}
+
+#[test]
+fn the_csv_with_the_reality_columns_has_the_old_columns_in_their_places() {
+    let r = row("A", 10.0, 8.0, 3, 10.0, 0.05);
+    let plain = csv_text(std::slice::from_ref(&r));
+    let tail = "x1,x2";
+    let cells = ["1,2".to_string()];
+    let with = csv_text_with(std::slice::from_ref(&r), Some((tail, &cells)));
+    let (p, w): (Vec<&str>, Vec<&str>) = (plain.lines().collect(), with.lines().collect());
+    assert_eq!(w[0], format!("{CSV_HEADER},{tail}"));
+    assert_eq!(w[1], format!("{},1,2", p[1]));
+    assert_eq!(p[0], CSV_HEADER);
 }

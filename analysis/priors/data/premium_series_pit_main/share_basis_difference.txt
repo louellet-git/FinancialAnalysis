@@ -1,0 +1,4 @@
+series CSV (base_2020-03-20.csv against dbasis_2020-03-20.csv):
+cells that differ: 5; largest absolute difference: 7.97e-17 (row,col 3,13); text or shape differences: 0
+per-ticker CSV (base_2020-03-20.tickers.csv against dbasis_2020-03-20.tickers.csv):
+cells that differ: 40; largest absolute difference: 1.11e-16 (row,col 17,5); text or shape differences: 0

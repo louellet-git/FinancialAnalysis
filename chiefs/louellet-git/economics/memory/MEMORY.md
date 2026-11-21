@@ -3,17 +3,18 @@ What the next session of this head must know. Keep this file below 60 lines. Sta
 Rules: `chiefs/ORIENTATION.md`, section 8. Decisions of the person: `../RECORD.md`.
 
 ## Goal now
-- Long-history test of the market-level DCF (owner word 2026-11-21, via Fundamental Research). The design is
-  frozen on main: `analysis/macro/2026-11-21-long-history-design.md` (2ffd392, records R1-R2 in #126).
-  Fundamental Research builds the scoring in `fa dcf market` (branch `claude/dcf-market-level`). My part:
-  check the output (auditor recalculation of X and P1 on sample months, via Quality and Risk), then write
-  the findings file with the hash 2ffd392. Any change after a result = a new dated record (section 9).
-- Done and on main: first brief (#116), stress windows (#118), design (#120), historian agent and note (#124).
+- JST cross-country replication (15 countries; local copy only, RECORD 14:37 UTC): design frozen at 31ed025
+  (#138). Fundamental Research builds the reader and the scoring. BEFORE any score: commit record R1 in
+  section 9 (convention check, excluded countries, m, dropped pairs, war-list removals, reader commit).
+  Local data: /home/user/jst-local (never in a repo; a new session must fetch it again from macrohistory.net).
+- Brief with the published cycle models (`T-20261121-economics-brief-cycle-models`), in progress.
+- Done on main: brief #116, stress windows #118, US design #120/#126, historian #124, US findings #129.
+  US result: P1 and the engine pass (engine p 0.011, OOS R2 0.119), weak (about 12 windows, effect after
+  1953). The stock-level DCF rule has NO edge after the split fix (Fundamental Research, 2026-11-21).
 
 ## Next steps
-- A new conditions brief with the published cycle models (NFCI, SAHMREALTIME, T10Y3M, payrolls), now in the
-  store (`macro/fred/`, store 8952a5a). Labor and GDP are latest values, not vintages: say so.
-- Scenario set for Quant Research (the stress dates are done), only if that head asks.
+- Scenario set for Quant Research, only if that head asks.
+- After the JST run: the findings file (name the run of record and any superseded run; R-8).
 
 ## Team
 - `macro-economist`: briefs. `market-historian` (new, owner word 2026-11-21): precedents of an unusual
@@ -31,6 +32,9 @@ Rules: `chiefs/ORIENTATION.md`, section 8. Decisions of the person: `../RECORD.m
   look-ahead rules, the sample end by a rule, a fixed Holm family). The review needs two cycles otherwise.
 - Agents overrun word limits (1,300 to 2,600 against 1,000 to 1,500). Give the limit; tables are accepted.
 - The head merges its own PR after the gate and a green check (orientation section 6).
+- A choice made after a result is seen: write it as a dated record, marked "after the run", with each
+  choice listed; the auditor checks git for it. Two scored runs: name the run of record and the superseded one.
+- Parallel work is allowed for independent files (orientation section 3, 2026-11-21).
 
 ## Pages
 - `../industry-2026-11-21.md`: what an economics team does at other firms; three proposals (all done).

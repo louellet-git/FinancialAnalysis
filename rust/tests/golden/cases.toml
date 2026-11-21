@@ -115,8 +115,8 @@ sha256 = "be087a66749ec746a5c8dc9bf7f80ed6ce84a6e43bf6ff653aa3bca482e21bc3"
 name = "dcf_attribute_panel32"
 args = ["dcf", "attribute", "--tickers-file", "rust/mapcheck/universe/panel32.txt", "--from", "2026-11-13", "--to", "2026-11-20"]
 store = "2a0d1f22b7741be47d035e46817715e29a86cb46"
-sha256 = "2b7f856ff520537451a40e83856b6eeeded64ad4b31aa7d90226708406f918ce"
-reason = "the store moved (e06070ce): AAPL prices.json changed"
+sha256 = "5d0a4b6d910c2bab7d847150c7f6255539e3785a87033a4c73a89ae1f0809150"
+reason = "attribution-reality: the default curve is auto (par at both dates when the GSW row is old); a missing beta is 1.0 with a flag"
 updated = "2026-11-21"
 
 [[case.mask]]
@@ -436,10 +436,6 @@ path = "data/raw/ORCL/prices.json"
 sha256 = "fb5b08628c97ee5d45fe497aaa94ce64b549d1f0474e1d0269e2402c80fb2547"
 
 [[case.inputs]]
-path = "data/raw/ORCL/sec_8k_earnings.json"
-sha256 = "0b50466cd77c859b1aab88fb693159541786a0a0e860b00743908feb9b2ed762"
-
-[[case.inputs]]
 path = "data/raw/PANW/company_facts.json.gz"
 sha256 = "e2012724c39ead209f737d263993234722055223bee92740b30e947cc71b4ce9"
 
@@ -534,6 +530,10 @@ sha256 = "6afbece4568293897c96aee93012107e04d441da9b2e6f850dca2996e29883af"
 [[case.inputs]]
 path = "data/raw/rates/gsw_feds200628.csv"
 sha256 = "96af2ea14f2f9a1881b9dbd43015c3def725e5123aed267d120e19475564f2f3"
+
+[[case.inputs]]
+path = "data/raw/rates/treasury_nominal_2026.csv"
+sha256 = "0707733bdc20fce9a21a1063c5b99dbfd3456acabb216f73e6d6b798f511243d"
 
 [[case.inputs]]
 path = "rust/mapcheck/universe/panel32.txt"

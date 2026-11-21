@@ -1,0 +1,135 @@
+curve (par fit) 2026-11-13: 10-year zero 5.1288%, fit error 1.23 bp (root mean square over the 8 par bonds; limit 5 bp)
+curve (par fit) 2026-11-20: 10-year zero 4.9029%, fit error 0.97 bp (root mean square over the 8 par bonds; limit 5 bp)
+ATTRIBUTION of the change of the price from 2026-11-13 to 2026-11-20, 16 tickers, no random part. Automatic model: a screen, not a reviewed valuation. A market-implied value is a measurement, not an input.
+  COMMON CHANGE c (the plug of each view is split in two engine steps, common and company): premium view c = +0.934 points, common (list median); growth view c = -4.822 points, common (list median).
+  The value is the value of the one path at the means (not the expected value). Order of the steps: facts, time, rates, plug (implied premium or implied growth), residual; the reverse order of rates and the plug is shown. This is an accounting split of the price change with the model; it is not a cause. Facts of each date: filed on or before it; the 10-K of the cache does not fill an input. Price: last close on or before the date. Curve: last GSW row on or before the date. With --curve par: the NSS fit to the Treasury par row on or before the date (1 to 30 years; do not read the fitted curve beyond 30 years).
+
+RESULT: 16 tickers with a value, 0 refused
+  new facts between the dates: 0 tickers; premium view: 10 tickers, growth view: 14 tickers
+  curve date at D1: {"2026-11-13"}; at D2: {"2026-11-20"}
+
+This is an accounting split of the price change with the model; it is not a cause. facts and time have a fixed position (first and second); rates and the plug are shown as the range of the two orders.
+
+WHOLE LIST: 15 tickers with two prices and a share count (the models need not have a value: banks, REITs, insurers and refused tickers are in; one weight for each company); market value at D1 8911.2B (price x shares); change -19.47% (value-weighted)
+  largest weights: NVDA 44.4%, AVGO 19.1%, MU 10.0%, AMD 10.0%, INTC 3.6%
+  left out of the sums (1 tickers): SWKS (stale price)
+  STALE PRICE (1 tickers: a close older than the SPY close of the same date). The own parts of these rows use the older price; each is out of every sum: SWKS (close of 2026-11-19 for 2026-11-20 (SPY 2026-11-20))
+  the same change over other sets:
+     -19.47%  15 tickers, 8911.2B at D1: all tickers with two prices, one weight for each company (the number above)
+     -19.47%  15 tickers, 8911.2B at D1: all tickers with two prices, every ticker its own weight (a company with two classes counted two times)
+     -19.47%  15 tickers, 8911.2B at D1: without banks, REITs, insurers and new filers (a template with no model)
+     -19.47%  15 tickers, 8911.2B at D1: only tickers with a model value
+     -19.47%  15 tickers, 8911.2B at D1: only tickers with a model value, every ticker its own weight
+  rows whose curve is more than 3 days older than the date: 0 at D1, 0 at D2 (the curve source lags)
+
+(2) COMMON SET: the tickers that have both views. Covered part only.
+  PREMIUM VIEW on the common set, covered part only (9 tickers, 61.8% of the market value of the list at D1): change -22.11%; the rest of the list (not in this set) -15.20%
+  largest weights: NVDA 71.8%, MU 16.2%, AMAT 5.4%, ADI 3.5%, NXPI 1.2%
+  part, as a share of the market value of the set at D1 (percent); for rates and the plug the range over the two orders; top 5 contributors in percentage points
+  facts                                   +0.00%  (fixed position)  top: ADI +0.00, AMAT +0.00, FSLR +0.00, MCHP +0.00, MU +0.00
+  time (roll of the valuation date)       +0.04%  (fixed position)  top: NVDA +0.02, MU +0.01, NXPI +0.00, MCHP +0.00, Q +0.00
+  rates                                   +1.89%  (+1.89..+2.35)  top: NVDA +1.23, MU +0.25, NXPI +0.13, AMAT +0.09, ADI +0.06
+  implied premium (plug)                 -24.04%  (-24.50..-24.04)  top: NVDA -17.70, MU -4.09, AMAT -1.07, ADI -0.52, NXPI -0.27
+  search residual                         -0.00%  (fixed position)  top: NVDA -0.00, MU +0.00, AMAT -0.00, ADI +0.00, MCHP +0.00
+  GROWTH VIEW on the common set, covered part only (9 tickers, 61.8% of the market value of the list at D1): change -22.11%; the rest of the list (not in this set) -15.20%
+  largest weights: NVDA 71.8%, MU 16.2%, AMAT 5.4%, ADI 3.5%, NXPI 1.2%
+  part, as a share of the market value of the set at D1 (percent); for rates and the plug the range over the two orders; top 5 contributors in percentage points
+  facts                                   +0.00%  (fixed position)  top: ADI +0.00, AMAT +0.00, FSLR +0.00, MCHP +0.00, MU +0.00
+  time (roll of the valuation date)       +0.20%  (fixed position)  top: NVDA +0.16, MU +0.03, NXPI +0.00, MCHP +0.00, ON +0.00
+  rates                                   +3.33%  (+2.41..+3.33)  top: NVDA +2.40, MU +0.46, AMAT +0.19, ADI +0.15, NXPI +0.06
+  implied growth (plug)                  -25.65%  (-25.65..-24.72)  top: NVDA -19.00, MU -4.32, AMAT -1.17, ADI -0.61, NXPI -0.20
+  search residual                         -0.00%  (fixed position)  top: NVDA -0.00, AMAT -0.00, MU +0.00, Q -0.00, NXPI +0.00
+
+(3) EACH VIEW ON ITS OWN SET. Covered part only.
+PREMIUM VIEW, covered part only (9 tickers, 61.8% of the market value of the list at D1): change -22.11%; the rest of the list (not in this set) -15.20%
+  largest weights: NVDA 71.8%, MU 16.2%, AMAT 5.4%, ADI 3.5%, NXPI 1.2%
+  part, as a share of the market value of the set at D1 (percent); for rates and the plug the range over the two orders; top 5 contributors in percentage points
+  facts                                   +0.00%  (fixed position)  top: ADI +0.00, AMAT +0.00, FSLR +0.00, MCHP +0.00, MU +0.00
+  time (roll of the valuation date)       +0.04%  (fixed position)  top: NVDA +0.02, MU +0.01, NXPI +0.00, MCHP +0.00, Q +0.00
+  rates                                   +1.89%  (+1.89..+2.35)  top: NVDA +1.23, MU +0.25, NXPI +0.13, AMAT +0.09, ADI +0.06
+  implied premium (plug)                 -24.04%  (-24.50..-24.04)  top: NVDA -17.70, MU -4.09, AMAT -1.07, ADI -0.52, NXPI -0.27
+  search residual                         -0.00%  (fixed position)  top: NVDA -0.00, MU +0.00, AMAT -0.00, ADI +0.00, MCHP +0.00
+  FLAGGED (9 tickers: the implied premium at D1 below 1% (premium view), or a part above 15% of P1): ADI (x1 -2.08%, premium -14.8%), AMAT (x1 -1.09%, premium -19.9%), FSLR (x1 1.23%, premium -29.5%), MCHP (x1 1.70%, premium -18.5%), MU (x1 -0.30%, premium -25.2%), NVDA (x1 -2.20%, premium -24.7%), NXPI (x1 1.02%, premium -21.7%), ON (x1 2.01%, premium -19.6%), Q (x1 3.37%, premium -19.2%)
+GROWTH VIEW, covered part only (13 tickers, 86.4% of the market value of the list at D1): change -19.58%; the rest of the list (not in this set) -18.82%
+  largest weights: NVDA 51.4%, AVGO 22.1%, MU 11.6%, AMAT 3.8%, TXN 3.6%
+  part, as a share of the market value of the set at D1 (percent); for rates and the plug the range over the two orders; top 5 contributors in percentage points
+  facts                                   +0.00%  (fixed position)  top: ADI +0.00, AMAT +0.00, AVGO +0.00, FSLR +0.00, MCHP +0.00
+  time (roll of the valuation date)       +0.16%  (fixed position)  top: NVDA +0.12, MU +0.02, TXN +0.01, MRVL +0.00, MPWR +0.00
+  rates                                   +3.46%  (+2.62..+3.46)  top: NVDA +1.71, AVGO +0.81, MU +0.33, TXN +0.17, AMAT +0.13
+  implied growth (plug)                  -23.20%  (-23.20..-22.36)  top: NVDA -13.60, AVGO -3.51, MU -3.09, AMAT -0.84, TXN -0.66
+  search residual                         -0.00%  (fixed position)  top: NVDA -0.00, AVGO -0.00, TXN +0.00, AMAT -0.00, MU +0.00
+  FLAGGED (12 tickers: the implied premium at D1 below 1% (premium view), or a part above 15% of P1): ADI (x1 29.74%, growth -17.4%), AMAT (x1 33.39%, growth -21.8%), AVGO (x1 42.10%, growth -15.9%), FSLR (x1 18.52%, growth -24.1%), MPWR (x1 57.84%, growth -21.7%), MRVL (x1 55.33%, growth -25.8%), MU (x1 36.23%, growth -26.7%), NVDA (x1 42.86%, growth -26.5%), NXPI (x1 16.86%, growth -16.1%), ON (x1 13.21%, growth -17.4%), Q (x1 4.11%, growth -18.1%), TXN (x1 40.38%, growth -18.1%)
+
+(4) FULL BRIDGE OF THE WHOLE LIST: two readings of the same change.
+FULL BRIDGE, PREMIUM view first: each ticker of the whole list once (premium view: 9 tickers, 61.8% of the value; growth view where the premium view has no value: 4, 24.6%; no model value: 2, 13.6%). The lines add to the change of the whole list. Points of the market value of the WHOLE list at D1; the other order of rates and the plugs is on the line below the table.
+  common change c of the premium view: +0.934 points, common (list median); of the growth view: -4.822 points, common (list median). Each plug is split in two engine steps: common (x1 to x1 + c) and company (the rest); the two add to the plug.
+  group                     n  weight   change |    facts    time   rates  premium-common premium-company   growth-common  growth-company   resid nomodel |      sum
+  all                      15  100.0%  -19.47% |    +0.00   +0.03   +2.10           -7.00           -7.87           -4.62           +0.43   -0.00   -2.55 |   -19.47
+  BusEq                    15  100.0%  -19.47% |    +0.00   +0.03   +2.10           -7.00           -7.87           -4.62           +0.43   -0.00   -2.55 |   -19.47
+  earnings 8-K in window    1   44.4%  -22.92% |    +0.00   +0.01   +0.76           -4.95           -6.00           +0.00           +0.00   -0.00   +0.00 |   -10.17
+  NVDA                      1   44.4%  -22.92% |    +0.00   +0.01   +0.76           -4.95           -6.00           +0.00           +0.00   -0.00   +0.00 |   -10.17
+  MU                        1   10.0%  -23.62% |    +0.00   +0.01   +0.15           -0.97           -1.56           +0.00           +0.00   +0.00   +0.00 |    -2.37
+  AVGO                      1   19.1%  -12.28% |    +0.00   +0.00   +0.70           +0.00           +0.00           -3.58           +0.54   -0.00   +0.00 |    -2.34
+  AMD                       1   10.0%  -20.54% |    +0.00   +0.00   +0.00           +0.00           +0.00           +0.00           +0.00   +0.00   -2.05 |    -2.05
+  AMAT                      1    3.3%  -18.32% |    +0.00   +0.00   +0.05           -0.31           -0.35           +0.00           +0.00   -0.00   +0.00 |    -0.61
+  INTC                      1    3.6%  -14.05% |    +0.00   +0.00   +0.00           +0.00           +0.00           +0.00           +0.00   +0.00   -0.51 |    -0.51
+  TXN                       1    3.1%  -13.13% |    +0.00   +0.01   +0.15           +0.00           +0.00           -0.63           +0.06   +0.00   +0.00 |    -0.41
+  MRVL                      1    1.6%  -22.00% |    +0.00   +0.00   +0.06           +0.00           +0.00           -0.28           -0.13   -0.00   +0.00 |    -0.36
+  ADI                       1    2.2%  -13.08% |    +0.00   +0.00   +0.04           -0.17           -0.15           +0.00           +0.00   +0.00   +0.00 |    -0.28
+  MPWR                      1    0.8%  -17.87% |    +0.00   +0.00   +0.03           +0.00           +0.00           -0.13           -0.04   -0.00   +0.00 |    -0.14
+  NXPI                      1    0.8%  -11.29% |    +0.00   +0.00   +0.08           -0.27           +0.11           +0.00           +0.00   -0.00   +0.00 |    -0.09
+  ON                        1    0.3%  -14.38% |    +0.00   +0.00   +0.02           -0.07           +0.01           +0.00           +0.00   +0.00   +0.00 |    -0.05
+  FSLR                      1    0.2%  -19.72% |    +0.00   +0.00   +0.02           -0.06           +0.00           +0.00           +0.00   +0.00   +0.00 |    -0.04
+  MCHP                      1    0.4%  -10.12% |    +0.00   +0.00   +0.03           -0.13           +0.06           +0.00           +0.00   +0.00   +0.00 |    -0.04
+  Q                         1    0.3%  -12.58% |    +0.00   +0.00   +0.02           -0.06           +0.00           +0.00           +0.00   -0.00   +0.00 |    -0.04
+  earnings 8-K in window: NVDA. This group is a set of the same rows; its line is not added to the lines above.
+  the other order (plug before rates), all: rates +2.23, premium-common -7.22, premium-company -7.93, growth-common -4.44, growth-company +0.41
+  largest contributions to the change (points): NVDA -10.17 (44.4% x -22.9%, premium), MU -2.37 (10.0% x -23.6%, premium), AVGO -2.34 (19.1% x -12.3%, growth), AMD -2.05 (10.0% x -20.5%, none), AMAT -0.61 (3.3% x -18.3%, premium), INTC -0.51 (3.6% x -14.0%, none), TXN -0.41 (3.1% x -13.1%, growth), MRVL -0.36 (1.6% x -22.0%, growth), ADI -0.28 (2.2% x -13.1%, premium), MPWR -0.14 (0.8% x -17.9%, growth)
+FULL BRIDGE, GROWTH view first: each ticker of the whole list once (growth view: 13 tickers, 86.4% of the value; premium view where the growth view has no value: 0, 0.0%; no model value: 2, 13.6%). The lines add to the change of the whole list. Points of the market value of the WHOLE list at D1; the other order of rates and the plugs is on the line below the table.
+  common change c of the premium view: +0.934 points, common (list median); of the growth view: -4.822 points, common (list median). Each plug is split in two engine steps: common (x1 to x1 + c) and company (the rest); the two add to the plug.
+  group                     n  weight   change |    facts    time   rates  premium-common premium-company   growth-common  growth-company   resid nomodel |      sum
+  all                      15  100.0%  -19.47% |    +0.00   +0.13   +2.99           +0.00           +0.00          -15.43           -4.61   -0.00   -2.55 |   -19.47
+  BusEq                    15  100.0%  -19.47% |    +0.00   +0.13   +2.99           +0.00           +0.00          -15.43           -4.61   -0.00   -2.55 |   -19.47
+  earnings 8-K in window    1   44.4%  -22.92% |    +0.00   +0.10   +1.48           +0.00           +0.00           -7.80           -3.95   -0.00   +0.00 |   -10.17
+  NVDA                      1   44.4%  -22.92% |    +0.00   +0.10   +1.48           +0.00           +0.00           -7.80           -3.95   -0.00   +0.00 |   -10.17
+  MU                        1   10.0%  -23.62% |    +0.00   +0.02   +0.29           +0.00           +0.00           -1.52           -1.15   +0.00   +0.00 |    -2.37
+  AVGO                      1   19.1%  -12.28% |    +0.00   +0.00   +0.70           +0.00           +0.00           -3.58           +0.54   -0.00   +0.00 |    -2.34
+  AMD                       1   10.0%  -20.54% |    +0.00   +0.00   +0.00           +0.00           +0.00           +0.00           +0.00   +0.00   -2.05 |    -2.05
+  AMAT                      1    3.3%  -18.32% |    +0.00   +0.00   +0.11           +0.00           +0.00           -0.63           -0.10   -0.00   +0.00 |    -0.61
+  INTC                      1    3.6%  -14.05% |    +0.00   +0.00   +0.00           +0.00           +0.00           +0.00           +0.00   +0.00   -0.51 |    -0.51
+  TXN                       1    3.1%  -13.13% |    +0.00   +0.01   +0.15           +0.00           +0.00           -0.63           +0.06   +0.00   +0.00 |    -0.41
+  MRVL                      1    1.6%  -22.00% |    +0.00   +0.00   +0.06           +0.00           +0.00           -0.28           -0.13   -0.00   +0.00 |    -0.36
+  ADI                       1    2.2%  -13.08% |    +0.00   +0.00   +0.09           +0.00           +0.00           -0.44           +0.07   +0.00   +0.00 |    -0.28
+  MPWR                      1    0.8%  -17.87% |    +0.00   +0.00   +0.03           +0.00           +0.00           -0.13           -0.04   -0.00   +0.00 |    -0.14
+  NXPI                      1    0.8%  -11.29% |    +0.00   +0.00   +0.03           +0.00           +0.00           -0.18           +0.05   +0.00   +0.00 |    -0.09
+  ON                        1    0.3%  -14.38% |    +0.00   +0.00   +0.01           +0.00           +0.00           -0.06           -0.00   +0.00   +0.00 |    -0.05
+  FSLR                      1    0.2%  -19.72% |    +0.00   +0.00   +0.01           +0.00           +0.00           -0.04           -0.01   +0.00   +0.00 |    -0.04
+  MCHP                      1    0.4%  -10.12% |    +0.00   +0.00   +0.02           +0.00           +0.00           -0.09           +0.04   +0.00   +0.00 |    -0.04
+  Q                         1    0.3%  -12.58% |    +0.00   +0.00   +0.01           +0.00           +0.00           -0.07           +0.02   -0.00   +0.00 |    -0.04
+  earnings 8-K in window: NVDA. This group is a set of the same rows; its line is not added to the lines above.
+  the other order (plug before rates), all: rates +2.27, premium-common +0.00, premium-company +0.00, growth-common -14.87, growth-company -4.45
+  largest contributions to the change (points): NVDA -10.17 (44.4% x -22.9%, growth), MU -2.37 (10.0% x -23.6%, growth), AVGO -2.34 (19.1% x -12.3%, growth), AMD -2.05 (10.0% x -20.5%, none), AMAT -0.61 (3.3% x -18.3%, growth), INTC -0.51 (3.6% x -14.0%, none), TXN -0.41 (3.1% x -13.1%, growth), MRVL -0.36 (1.6% x -22.0%, growth), ADI -0.28 (2.2% x -13.1%, growth), MPWR -0.14 (0.8% x -17.9%, growth)
+
+SETS (tickers with a weight): both views 9, premium only 0, growth only 4, neither 2 (a model refusal has neither)
+
+GROUPS, PREMIUM VIEW
+group                                  n  view    change |    facts     time    rates  premium residual |   x at D1   x at D2
+  medians over the tickers with the view; the parts are a share of P1 in percent (the median of a part is not the part of the median); x = the free variable in percent (premium, or growth shift)
+all                                   16    10    -13.73 |    +0.00    +0.10    +5.22   -19.76    +0.00 |      0.36      1.25
+size 1-10B                             7     5    -12.58 |    +0.00    +0.12    +6.47   -19.22    +0.00 |      1.70      2.19
+size 10-30B                            4     3    -13.08 |    +0.00    +0.00    +1.71   -19.93    -0.00 |     -1.09      0.78
+size 30-100B                           3     0       NaN |      NaN      NaN      NaN      NaN      NaN |       NaN       NaN
+size >100B                             2     2    -23.27 |    +0.00    +0.05    +1.63   -24.95    +0.00 |     -1.25      0.52
+sector BusEq                          16    10    -13.73 |    +0.00    +0.10    +5.22   -19.76    +0.00 |      0.36      1.25
+
+GROUPS, GROWTH VIEW
+group                                  n  view    change |    facts     time    rates   growth residual |   x at D1   x at D2
+  medians over the tickers with the view; the parts are a share of P1 in percent (the median of a part is not the part of the median); x = the free variable in percent (premium, or growth shift)
+all                                   16    14    -13.75 |    +0.00    +0.18    +3.93   -18.12    +0.00 |     31.57     26.64
+size 1-10B                             7     7    -14.38 |    +0.00    +0.18    +4.21   -18.13    +0.00 |     15.31     11.91
+size 10-30B                            4     4    -13.10 |    +0.00    +0.09    +4.45   -17.73    +0.00 |     31.57     26.71
+size 30-100B                           3     1    -12.28 |    +0.00    +0.00    +3.65   -15.93    -0.00 |     42.10     37.73
+size >100B                             2     2    -23.27 |    +0.00    +0.21    +3.10   -26.58    -0.00 |     39.55     31.60
+sector BusEq                          16    14    -13.75 |    +0.00    +0.18    +3.93   -18.12    +0.00 |     31.57     26.64
+
+TIME: mapping 0.46 s | attribution 0.21 s (4 threads) | total 0.87 s

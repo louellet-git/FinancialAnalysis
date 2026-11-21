@@ -2,13 +2,14 @@
 id: T-20261120-agent-teams-first-run
 title: Run the agent teams on one real ticket and correct what does not work
 area: planning
-status: backlog
+status: done
 owner: louellet-git
 head: quality
 order: 1
 branch:
 created: 2026-11-20
 acceptance: One code ticket and one document ticket went through their flow of `docs/TEAMS.md` with the agents of `.claude/agents/`, and each defect of an agent or a skill found in the runs is corrected.
+merged: 146, 149
 ---
 The agents and skills of `.claude/` passed a format check only. No agent ran on real work.
 
@@ -22,3 +23,5 @@ The agents and skills of `.claude/` passed a format check only. No agent ran on 
 
 Known limit: a QA agent has no edit tool, but its shell can write files. A hook can prevent this. Add it
 only if a run shows the problem.
+
+Closed 2026-11-21: the agent teams ran on more than 25 real gates on 2026-11-21 (code, data, model, document and design tickets; ledger `chiefs/louellet-git/quality/ledger.md`). Defects of the agent files found in the runs were corrected in pull requests 146 and 149 (the risk officer, the code reviewer, the strategy researcher, the rates quant).

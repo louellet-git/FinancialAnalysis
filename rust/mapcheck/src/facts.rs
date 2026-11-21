@@ -165,6 +165,8 @@ impl CompanyFacts {
 pub struct Selected {
     pub value: f64,
     pub filed: String,
+    /// The accession number of the filing of the fact (empty: not known, or a value made of two facts).
+    pub accn: String,
     pub note: &'static str,
 }
 
@@ -246,21 +248,21 @@ fn merge_near_ends(counts: &BTreeMap<String, usize>) -> Vec<String> {
 
 pub fn select_instant(entries: &[Fact], end: &str, forms: Forms) -> Option<Selected> {
     let best = latest(entries.iter().filter(|e| e.end == end && forms.has(e.form.as_deref())))?;
-    Some(Selected { value: best.val?, filed: best.filed().to_string(), note: "" })
+    Some(Selected { value: best.val?, filed: best.filed().to_string(), accn: best.accn.clone().unwrap_or_default(), note: "" })
 }
 
 pub fn select_annual(entries: &[Fact], end: &str) -> Option<Selected> {
     let best = latest(entries.iter().filter(|e| {
         e.end == end && Forms::Annual.has(e.form.as_deref()) && within(e.days(), ANNUAL_DAYS)
     }))?;
-    Some(Selected { value: best.val?, filed: best.filed().to_string(), note: "" })
+    Some(Selected { value: best.val?, filed: best.filed().to_string(), accn: best.accn.clone().unwrap_or_default(), note: "" })
 }
 
 pub fn select_quarter(entries: &[Fact], end: &str) -> Option<Selected> {
     let q = Forms::Quarterly;
     let here: Vec<&Fact> = entries.iter().filter(|e| e.end == end && q.has(e.form.as_deref())).collect();
     if let Some(best) = latest(here.iter().copied().filter(|e| within(e.days(), QUARTER_DAYS))) {
-        return Some(Selected { value: best.val?, filed: best.filed().to_string(), note: "" });
+        return Some(Selected { value: best.val?, filed: best.filed().to_string(), accn: best.accn.clone().unwrap_or_default(), note: "" });
     }
     let longest = here
         .iter()
@@ -278,7 +280,7 @@ pub fn select_quarter(entries: &[Fact], end: &str) -> Option<Selected> {
                 .unwrap_or(false)
     }))?;
     let filed = if ytd.filed() >= prior.filed() { ytd.filed() } else { prior.filed() };
-    Some(Selected { value: ytd.val? - prior.val?, filed: filed.to_string(), note: YTD_NOTE })
+    Some(Selected { value: ytd.val? - prior.val?, filed: filed.to_string(), accn: String::new(), note: YTD_NOTE })
 }
 
 pub fn select(entries: &[Fact], end: &str, forms: Forms, period: Period) -> Option<Selected> {

@@ -1,40 +1,40 @@
-# Week study: state on 2026-11-21 19:35 UTC
+# Week study: state on 2026-11-21 21:06 UTC
 
 Tickets: `T-20261121-sp100-week-attribution`, `T-20261121-premium-company-part`, `T-20261121-dcf-engine-integration`
 (in progress); `T-20261121-rates-balance-sheet`, `T-20261121-evaluator-captive-finance` (backlog).
 
 ## Branches
-- `claude/premium-series` (worktree `../wt-premium`): attribute (par curve, full bridge, stale price, columns beta1,
-  beta2, dur_premium1, earnings_8k, the common and company split, the economics view), `fa dcf premium-series`, the
-  documents A-027 to A-033. At the gate of Quality since a993e68 (code-reviewer, model-validator, document-reviewer):
-  NO verdict yet. Local commits after a993e68 are NOT pushed (record, ticket, the pit test results, the reality evidence).
-- `claude/attribution-reality` (worktree `../wt-reality`, from the local head of premium-series): `fa dcf baserates`,
-  `attribute --top N --reality --prior-window`, `--curve auto` (the default), `premium-series --per-ticker` and
-  `--windows-out`, the reader of the `fa macro view` file, documents A-034 to A-037. Pushed (38ab703 and later).
-  NOT at a gate yet: send the request after the verdict on the first branch. 3924a05 does not compile (fixed by 38ab703).
-- Plan: one pull request for all of it after both gates. Then the register rows of `assumptions.rs`.
+- MERGED to main: `claude/premium-series` (pull request 190, 7e88cfe) and `claude/attribution-reality` (pull request
+  199, 3fc1acc). Main has `fa dcf attribute` (par curve, the default curve auto, full bridge, stale price, the common
+  and company split, the economics view, `--top`, `--reality`, `--prior-window`), `fa dcf baserates`,
+  `fa dcf premium-series`, documents A-027 to A-037. Both gates of Quality passed (PASS-WITH-NOTES).
+- Release check from now on: `fa selftest golden` (the tool of Quant Research; data store of the case as data/raw,
+  FA_REPO = the repo root). Pull request 190 made its case `dcf_attribute_panel32` fail on main (corrected: 195).
 - Paused: `claude/t1-revenue-band`, `claude/trade-level-backtest` (the state is on each ticket).
 
-## Commands of the results (store 0340bc1 or later; binary of `../wt-reality`)
-- `fa dcf attribute --tickers-file rust/mapcheck/universe/sp100.txt --from 2026-11-13 --to 2026-11-20 --cache <store>
-  --prior-window` (S&P 100); add `--top 10 --reality --baserate-list rust/mapcheck/universe/sp500.txt
-  --premium-history <series csv>` for the S&P 10.
-- `fa dcf premium-series --tickers-file <list> --start 2019-01-04 --end 2026-11-20 --cache <store> --out F`.
+## The three pieces for the person (on main; PDFs in `analysis/priors/pdf/`)
+1. `sp10_week_page_v2_2026-11-21`: the days, the stocks, the press reason and the test for each day (Economics).
+2. `sp10_week_valuation_page_2026-11-21`: the valuation blocks, actual against implied; a row for each stock.
+3. `sp500_chips_week_page_2026-11-21`: the 16 chip companies of the S&P 500 against their expected fall.
+Each is one page. Quality passed all three. They are with the Head of Staff, who gives them to the person.
+Style: `chiefs/louellet-git/staff/memory/owner-report-style.md`. PDF method: pandoc to HTML with `pdf/style.css`, then
+a headless Chromium print (Letter); check the page count after each change.
 
-## Numbers (preliminary, not reviewed): `analysis/priors/sp100_week_prelim_results_2026-11-21.md`, sections 1 to 8
-- S&P 100 -9.22%, S&P 10 -9.96% (BRK-B in, WMT out). Premium first, S&P 100: rates +5.08, premium common -12.64,
-  premium company +1.79, growth common -1.22, growth company -0.39, no model -1.94; common change +0.76 points.
-- Two weeks (11-06 to 11-20): -7.01%, common change +0.13 points; the yields rose the week before (real 10-year +28 bp).
-- List premium, S&P 100: 1.20% (11-13, the lowest of 2019-2026), 1.67% (11-20, 2nd percentile); without the
-  technology sector 2.07% and 2.58%, the same path. Index dividend model: 1.64%, 24% of the months since 1871 are lower.
-- Base rate (revenue 50B or more, 10 years): median 3.9%, 90th 10.0%, maximum 21.0%; implied: NVDA 29.3%, AVGO 28.2%,
-  LLY 27.1%, META 22.8% (above every case), GOOG 17.5%, MSFT 16.1%, AAPL 15.0%, BRK-B 8.6%.
-- Economics (a248803): a rate rise of about two quarter-point steps in a year is priced; "late reaction" is one fair
-  reading, not proven. Rates on the balance sheet: small for the sums, material for 29 leveraged companies.
+## Numbers (store 0340bc1)
+- Runs of record: `analysis/priors/data/week_2026-11-20_record_main-7e88cfe/` (the bridge) and `..._main-3fc1acc/` (base rates, reality).
+  S&P 100 -9.22%, S&P 10 -9.96%. S&P 10 blocks, premium first: facts 0.00, time +0.08, rates +5.81, premium common
+  -15.89, premium company +3.09, growth common -1.01, growth company -0.65, no model -1.39.
+- Base rates of record on main e2557b6, after the revenue fix (50 companies of 50B or more, median 3.7%, maximum
+  21.0%). NOT of record: the list premium series (1.20% to 1.67%), the deviations and the fall by beta (one-time scripts in
+  `data/week_2026-11-20_chips/`; design R6 puts them in the engine).
+- Deviations against the equal-weight market: NVDA -2.7, AAPL +1.0, META -1.0; NVDA against the other chips 1.1.
+- Chips of the S&P 500: -16.4% on average against -9.4% (beta) and -4.3% (value); r -0.63 with the needed growth.
+- Economics (note `analysis/macro/2026-11-21-chip-fall-economics-view.md`, branch econ/rate-rise-question): one reason
+  through the week, a doubt about the AI build-out and its debt; a rate rise is not supported.
 
 ## Open
-- Luc's go-ahead for the report; then validator, document reviewer, auditor; then the Head of Staff; then Luc.
-- The premium-series run of record (S&P 500 from 2019-01-04) after the gate; send the commit and the switch week
-  (2026-11-20) to Economics for its frozen test (`fa macro premium-test`); the pit tests on 3 dates passed.
-- Technology: `claude/revenue-old-tags` (rerun the base rates after its merge); the daily collection decision.
-- Board: add the `story` field to my tickets; rewrite two old tickets that name Python; read `EPICS.md`.
+- The review of the person on the three pieces; then the S&P 100 part (the same tests on 100 companies).
+- Gate notes not done: a truncation test of the base rates in the suite; the long sentences of premium-series.md.
+- The series run of record: a review of the pit results of 61fe8de first, and a cut parameter table.
+- Technology: SWKS has no close of 2026-11-20 at the source (next try 2026-11-26); `claude/revenue-old-tags`.
+- Lesson of the audit: a shell sum goes into a file only after a second calculation (three sums were wrong).

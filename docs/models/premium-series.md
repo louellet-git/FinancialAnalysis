@@ -37,6 +37,9 @@ of the model. The value is the value at the means, not the expected value.
    at the previous anchor) and s2_change (the change of the list, value-weighted). The bridge has the rules of
    `docs/models/implied-and-attribute.md`.
 6. The first row has no previous week: `ret_w`, `n_ret` and the `s2_*` columns are empty.
+7. `--per-ticker FILE` (rule of the code, being built; ticket item R5): a second CSV with one row for each week and
+   ticker: the bridge line of the ticker in points of the list, the price change and the weight. The main CSV does
+   not change.
 
 ## The CSV contract with Economics
 `HEADER` in `rust/src/dcf/auto_premium.rs` is fixed:
@@ -78,7 +81,7 @@ of the model. The value is the value at the means, not the expected value.
 | What | Path or command |
 |---|---|
 | Code | `rust/src/dcf/auto_premium.rs`, `rust/src/dcf/auto_attribute.rs` (the bridge, `stale_note`) |
-| Command | `fa dcf premium-series --tickers-file FILE --start D1 --end D2 --out FILE [--bridge]` |
+| Command | `fa dcf premium-series --tickers-file FILE --start D1 --end D2 --out FILE [--bridge] [--per-ticker FILE]` |
 | Tests | `rust/src/dcf/auto_premium_tests.rs` |
 
 ## Review status

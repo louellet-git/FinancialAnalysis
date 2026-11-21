@@ -168,3 +168,41 @@ New rule (owner decision, PR 161): a Head of Staff is above the heads; send it o
 ## 2026-11-21 19:35 UTC (from the heads; dream pass)
 The Head of Staff: the order until 2026-11-25 11:00 Toronto time (agreed with the person, `PLANNING/board/EPICS.md`): the week report to its end, then the T1 correction, then new studies after the reset of the weekly token limit (71% used). The report still waits for the go-ahead of the person on the results (a message of the Head of Staff is not his approval).
 Dream pass done before the compaction: the dashboard is rewritten (no session ids in it), with the page `memory/attribution-state.md`.
+
+## 2026-11-21 19:24 UTC (words of the person, given in the session of the Head of Staff and relayed)
+Words: "I guess what I would like from the fundamental research is if we've explained the S&P 10 and we're pleased with our explanation, is there any stock where that explanation doesn't hold up? Was anything hit less? Was anything hit more? If S&P10 finished expand to S&P100. Have a one pager for the S&P10 for my review before moving on to the additional work."
+Done: one page for the S&P 10 (`analysis/priors/sp10_week_one_pager_2026-11-21.md`): the explanation, then for each of the 10 stocks whether it holds (hit more, hit less, or as expected), with the reason or "not explained". It goes to the Head of Staff first, then to the person. The S&P 100 part and the other work wait for his review.
+
+## 2026-11-21 19:29 UTC (review word of the person on the S&P 10 page, relayed by the Head of Staff)
+Words: "The report should include the entire week including 11-20. It's a huge drop."
+Done: the page now has the week by day (SPY, the equal weight of the S&P 500, each of the 10) and a block on 2026-11-20: the fall of that day was in the chip and AI-hardware companies, the yields fell, and the cause is not in our data; the missing data are named and asked (the Head of Economics: the daily view; the Head of Technology: the 8-K filings of 11-19 and 11-20).
+
+## 2026-11-21 19:30 UTC (second review word of the person on the S&P 10 page, relayed by the Head of Staff)
+Words: "And AAPL leaving something not yet proven isn't acceptable, same w the others"
+Done: a standing rule: no "possible reason, not proven" in a result; each reason is a claim with its test, and the result is proven, refuted, or "tested, no cause found" with the list of the tests. Applied: the evidence file `analysis/priors/sp10_week_tests_2026-11-21.md` (T1 to T5) and the page. Results: NVDA's fall is the fall of the chip sector (proven); the AAPL reason of this head is refuted; BRK-B and AMZN have no effect against a market that does not contain them; the cause of the chip fall of 2026-11-20 is tested with no cause found.
+
+## 2026-11-21 19:35 UTC (chat)
+Words: "Ensure that docs for me are in pdf format."
+Done: a standing rule: each document for the person has a PDF. The PDF is made from the Markdown file with pandoc (GitHub Markdown to HTML, style `analysis/priors/pdf/style.css`) and a headless Chromium print, and is kept in `analysis/priors/pdf/`. First: the S&P 10 page and its tests.
+
+## 2026-11-21 about 19:52 UTC (review of the person on the second S&P 10 page, 7e19e33; relayed by the Head of Staff)
+Words, on the status block at the top: "unnecessary for my reading."
+On "One thing is not explained: the cause of the chip fall of Friday": "this to me then becomes the job of economics to understand what the general consensus is on the street for WHY!"
+On the note below the table: "A disclosure beneath a table should be one or two lines MAX ... it should ideally say 'Table 1: ....' and a one liner of what I should note, not an essay."
+On "PROVEN: it is the fall of its sector": "it's actually not proven but instead consistent with it's sector." On the refuted report reason: "I dont need this, what does this help me answer the original quetion?"
+On the section of the reasons: "this section should overall not just be about my follow-up questions but about noticing things/trends that I should know about, mentionning for instance if there's a general agreement w other stocks, why some stocks are jumping, why some aren't, etc. This is about making a good report for the original question."
+On the Friday section: "dont come to me with 'no cause found', I dont care for that. I require an explanation that has been tested and backed by other data/observances. This section should be an economists view of the headlines and about what the market is implying going forward. using our engines. Also, showing me numbers of the valuation as a series of string is not ideal, I view a valuation as one block made of mini blocks, so it should be as bullet points or something or a table."
+On the title: "Also this is not a title: 'The S&P 10 in the week to 20261120 does the explanation hold for each stock?' it's a small sentence. A title and a subtitle are required."
+Done: the earlier rule of this head ("proven, refuted, or tested with no cause found") is replaced by the 9 points of `chiefs/louellet-git/staff/memory/owner-report-style.md`. The next version is a new file, `analysis/priors/sp10_week_page_v2_2026-11-21.md` (the file of 7e19e33 stays frozen for the audit of its numbers): a title and a subtitle, three tables with a title and one line each, the valuation as a table of blocks, the patterns of the week, no status block. The Friday section waits for the text of the Head of Economics (asked by the Head of Staff). Correction in the same version: AAPL does not have a low beta (1.09); only BRK-B and LLY do (0.7).
+
+## 2026-11-21 about 19:56 UTC (words of the person, relayed by the Head of Staff)
+Words: "Great, in combination I want a similar report for S&P10 but that shows me the breakdown of the valuation, not of the individual days of the weeks. It should show what the market valuation movement breaks into based on actual vs implied from the market."
+Done: a second page, `analysis/priors/sp10_week_valuation_page_2026-11-21.md`: Table 1 (the change of the market value in blocks: actual = facts, time, rates; implied = required return or growth, common and company; no model), Table 2 (a row for each stock; the rows add to Table 1), what the implied numbers mean, Table 3 (the implied numbers against history). The first page (`sp10_week_page_v2_2026-11-21.md`) keeps the days, the stocks and the view of the Head of Economics on Friday 11-20 (note `analysis/macro/2026-11-21-chip-fall-economics-view.md`, bed8e9e). Both go to the Head of Staff first.
+
+## 2026-11-21 19:56 UTC (from the heads)
+The Head of Quality and Risk: audit of the page of 7e19e33: REVISE, 0 critical; the facts pass; 5 major points on the tests (the NVDA deviation is 2.7 and 1.1, not 3.0 and 1.5; T1, T2 and T4 sums do not reproduce; "proven" and "refuted" are too strong). Done: a corrections block in the tests file; the two new pages use only corrected numbers. Lesson: a shell sum goes into a file only after a second calculation.
+
+## 2026-11-21 about 20:01 UTC (words of the person, relayed by the Head of Staff)
+Words: "Can you add a piece about the chip sector as a whole within the S&P500? One page or a half to see if they felt what was expected of them to feel"
+Words: "Also, I expect a small intro at the top of page 1,2, and 3 2-3 lines as an intro/necessary background"; then: "My bad, 1-3 lines".
+Done: a third piece, `analysis/priors/sp500_chips_week_page_2026-11-21.md`: the 16 companies of the S&P 500 with the industry code 3674; "expected" by the beta (times the equal-weight market) and by the model value with the change of the median S&P 500 company. Result: the chips fell 16.4% on average against 9.4% (beta) and 4.4% (value); 9 of 14 are more than 1 deviation below the beta line; the fall goes with the needed growth (r -0.63, 13 companies). Each of the three pieces now has a background intro of 1 to 3 lines after the subtitle. Runs and the one-time script: `analysis/priors/data/week_2026-11-20_chips/`. A standing rule for the dashboard: each piece for the person starts with the title, the subtitle, an intro of 1 to 3 lines, then the answer.
