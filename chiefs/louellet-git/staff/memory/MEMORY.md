@@ -38,8 +38,13 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
 ## 4. Open now
 - E6.S5: `T-20261121-board-check` (in progress, Technology), then `T-20261121-usage-log` (the backfill
   table of all heads comes to me), then `T-20261121-token-calculator` (on hold).
-- First numbers (Technology, to confirm: count a message id one time): the head itself reads far more cache
-  than its subagents, and no skill was used. No action until the table of all heads exists.
+- Count of all heads (2026-11-21, `get_session` cost in USD from each start): Technology 629, Fundamental
+  314, Quality 220, Quant 152, Economics 97, Staff 12. The heads make 70% of the cache reads (400k to 500k
+  for each head turn); 317 agent starts; 2 skill uses.
+- Context size: the person tested smaller contexts before and it did harm. Do NOT propose a compaction or
+  a smaller window as a saving. Only a real test, designed first, can change this. The automatic compaction
+  and the dream pass rule stay as they are.
+- Skills are almost not used: no action until some days of usage data exist.
 - The week report (E2.S1) comes to me before the person. My sense check went to that head; it agreed.
 - E1 (stock trades) is on hold: "No trades until T1 passes". PR 131 waits for the live run of 2026-11-23.
 - Say once at their next done message: Quant and Technology had tickets on a branch only, not on main.
