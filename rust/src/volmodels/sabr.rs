@@ -2,8 +2,9 @@
 //!
 //! Sources:
 //! - Hagan, Kumar, Lesniewski, Woodward (2002), "Managing smile risk", Wilmott Magazine, July 2002: the time term
-//!   `1 + [...] T` (eq. 2.17b = A.69b, ATM form eq. 2.18). The paper itself was NOT read for this code. The time term is
-//!   checked against eq. (3) of Obloj (2008), which repeats it as `I^1_H` and cites it as (A.65).
+//!   `1 + [...] T` and the ATM form. The paper itself was NOT read for this code. Its equation numbers (2.17b, 2.18, A.65,
+//!   A.69) are from memory, not checked. The time term is checked against eq. (3) of Obloj (2008), which repeats it as `I^1_H`.
+//! - The fixed answers of the tests come from an independent implementation (Quality and Risk, 2026-11-21), not from a paper.
 //! - Obloj (2008), "Fine-tune your smile: correction to Hagan et al.", arXiv:0708.0998v3 (read): the zero order term
 //!   `I^0(x) = nu x / ln[(sqrt(1 - 2 rho z + z^2) + z - rho) / (1 - rho)]`, `x = ln(F/K)`,
 //!   `z = (nu / alpha) (F^(1-beta) - K^(1-beta)) / (1 - beta)` (Table 1, row `I^0(x), beta < 1`, column "Berestycki et al.";
@@ -44,13 +45,13 @@ impl Sabr {
         let z = nu / alpha * g;
         let z_over_xz = if z.abs() < 1e-7 { 1.0 - 0.5 * rho * z } else { z / (((1.0 - 2.0 * rho * z + z * z).sqrt() + z - rho) / (1.0 - rho)).ln() };
         let i0 = alpha * x_over_g * z_over_xz;
-        // Obloj (2008) eq. (3) = Hagan et al. (A.65), (2.17b): (FK)^((1-beta)/2) = F^(1-beta) exp(-(1-beta) x / 2).
+        // Obloj (2008) eq. (3) (the time term of Hagan et al.; their equation number is from memory, not checked): (FK)^((1-beta)/2) = F^(1-beta) exp(-(1-beta) x / 2).
         let fk_half = fb * (-0.5 * bx).exp();
         let i1 = b * b / 24.0 * alpha * alpha / (fk_half * fk_half) + 0.25 * rho * nu * alpha * beta / fk_half + (2.0 - 3.0 * rho * rho) / 24.0 * nu * nu;
         i0 * (1.0 + i1 * t)
     }
 
-    /// The ATM volatility of Hagan et al. (2002) eq. (2.18).
+    /// The ATM volatility of Hagan et al. (2002) (eq. 2.18 from memory, not checked; the same as eq. (3) of Obloj at K = F).
     pub fn atm_vol(&self, f: f64, t: f64) -> f64 {
         let Sabr { alpha, beta, rho, nu } = *self;
         let b = 1.0 - beta;
@@ -76,7 +77,12 @@ pub struct SabrFit {
     pub loss: f64,
     pub rms_points: f64,
     pub max_points: f64,
+    /// The largest error is more than `POOR_FACTOR` times the median spread of the series.
+    pub poor: bool,
 }
+
+/// A fit is poor when its largest error (vol points) is more than this factor times the median spread (vol points).
+pub const POOR_FACTOR: f64 = 5.0;
 
 /// The bounds of alpha, rho, nu. Alpha scales with `F^(1-beta)` (alpha is about the volatility times `F^(1-beta)`).
 pub fn bounds(f: f64, beta: f64) -> Vec<(f64, f64)> {
@@ -96,6 +102,9 @@ pub fn residuals(s: &Series, beta: f64, p: &[f64]) -> Vec<f64> {
 
 /// Fit alpha, rho, nu of one series: LM from a fixed set of starts (rho and nu), the best final loss wins.
 pub fn fit_series(s: &Series, beta: f64, max_iter: usize) -> Result<SabrFit, String> {
+    if s.quotes.is_empty() {
+        return Err(format!("{} {}: no quotes", s.root, s.expiry));
+    }
     let b = bounds(s.forward, beta);
     let atm = s.quotes.iter().min_by(|a, c| (a.strike / s.forward).ln().abs().total_cmp(&(c.strike / s.forward).ln().abs())).map_or(0.2, |q| q.iv_mid);
     let a0 = atm * s.forward.powf(1.0 - beta);
@@ -114,8 +123,11 @@ pub fn fit_series(s: &Series, beta: f64, max_iter: usize) -> Result<SabrFit, Str
     let errs: Vec<f64> = s.quotes.iter().map(|q| 100.0 * (model.implied_vol(s.forward, q.strike, s.t) - q.iv_mid)).collect();
     let rms = (errs.iter().map(|e| e * e).sum::<f64>() / errs.len() as f64).sqrt();
     let max = errs.iter().fold(0.0f64, |a, e| a.max(e.abs()));
+    let mut sp: Vec<f64> = s.quotes.iter().map(|q| 100.0 * q.iv_spread()).collect();
+    sp.sort_by(|a, c| a.total_cmp(c));
+    let poor = max > POOR_FACTOR * sp[sp.len() / 2];
     let m = at_bound(&p, &b);
-    Ok(SabrFit { root: s.root.clone(), expiry: s.expiry.clone(), days: s.days, forward: s.forward, n: s.quotes.len(), model, status, at_bound: [m[0], m[1], m[2]], loss, rms_points: rms, max_points: max })
+    Ok(SabrFit { root: s.root.clone(), expiry: s.expiry.clone(), days: s.days, forward: s.forward, n: s.quotes.len(), model, status, at_bound: [m[0], m[1], m[2]], loss, rms_points: rms, max_points: max, poor })
 }
 
 /// All series in parallel (rayon). A series that fails is returned as an error text next to the others.

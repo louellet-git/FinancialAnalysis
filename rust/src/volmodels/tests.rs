@@ -454,3 +454,66 @@ fn sabr_4_a_fit_that_cannot_converge_is_reported() {
     let r = sabr_fit_series(&s, 1.0, 1).unwrap();
     assert_ne!(r.status, LmStatus::Converged);
 }
+
+#[test]
+fn sabr_5_fixed_answers_off_the_money() {
+    // Independent implementation (Obloj I0 with the time term), Quality and Risk, 2026-11-21. Not a published value.
+    // (alpha, beta, rho, nu, F, K, T, vol)
+    let cases = [
+        (0.2, 1.0, -0.5, 0.6, 100.0, 90.0, 1.0, 0.218281601470249),
+        (0.2, 1.0, -0.5, 0.6, 100.0, 100.0, 1.0, 0.200750000000000),
+        (2.0, 0.5, -0.3, 0.4, 100.0, 80.0, 0.5, 0.230258294758247),
+        (2.0, 0.5, -0.3, 0.4, 100.0, 130.0, 2.0, 0.184383689251854),
+        (20.0, 0.0, 0.2, 0.5, 100.0, 95.0, 0.25, 0.204208331704431),
+        (0.2, 1.0, 0.3, 0.6, 4500.0, 5200.0, 3.0, 0.240274639653655),
+    ];
+    for (alpha, beta, rho, nu, f, k, t, want) in cases {
+        let got = Sabr { alpha, beta, rho, nu }.implied_vol(f, k, t);
+        println!("beta {beta} K {k}: {got:.15} against {want:.15}");
+        assert!((got - want).abs() < 1e-12, "beta {beta} K {k}: {got} against {want}");
+    }
+}
+
+#[test]
+fn sabr_6_alpha_bounds_scale_with_the_forward() {
+    // beta 0.5, F 7000: alpha = 0.2 * 7000^0.5 = 16.7, above an unscaled upper bound of 10.
+    let f: f64 = 7000.0;
+    let alpha = 0.2 * f.sqrt();
+    assert!(alpha > 10.0);
+    let b = sabr_bounds(f, 0.5);
+    assert!((b[0].1 - 10.0 * f.sqrt()).abs() < 1e-9 && (b[0].0 - 1e-4 * f.sqrt()).abs() < 1e-12);
+    let truth = Sabr { alpha, beta: 0.5, rho: -0.8, nu: 1.0 };
+    let r = sabr_fit_series(&sabr_series(&truth, f, 60, 25), 0.5, 100).unwrap();
+    assert_eq!((r.status, r.at_bound), (LmStatus::Converged, [false, false, false]), "{:?}", r.model);
+    assert!((r.model.alpha - alpha).abs() / alpha < 1e-5, "{:?}", r.model);
+}
+
+#[test]
+fn sabr_7_beta_zero_nu_zero_is_bachelier() {
+    // beta = 0, nu = 0: alpha is a normal (Bachelier) volatility. Bachelier price, inverted with the Black inversion, against the SABR vol.
+    // At T = 1e-4 the two agree to the order T^2 (the time term of the formula is the O(T) conversion).
+    let (f, t, sn): (f64, f64, f64) = (100.0, 1e-4, 20.0);
+    for &k in &[99.6, 99.8, 100.0, 100.3] {
+        let sd: f64 = sn * t.sqrt();
+        let d = (f - k) / sd;
+        let ncdf = |x: f64| crate::trading::pricing::norm_cdf(x);
+        let price = (f - k) * ncdf(d) + sd * (-0.5 * d * d).exp() / (2.0 * PI).sqrt();
+        let black = implied_vol(true, price, f, k, t, 1.0).unwrap();
+        let sabr = Sabr { alpha: sn, beta: 0.0, rho: 0.3, nu: 0.0 }.implied_vol(f, k, t);
+        println!("K {k}: Bachelier->Black {black:.12}, SABR {sabr:.12}");
+        assert!((black - sabr).abs() < 1e-7, "K {k}: {black} against {sabr}");
+    }
+}
+
+#[test]
+fn sabr_8_poor_fit_mark_and_empty_series() {
+    // Quotes with a 10 vol point bump on one strike and a 0.2 point spread: the largest error is above 5 spreads.
+    let truth = Sabr { alpha: 0.18, beta: 1.0, rho: -0.65, nu: 0.8 };
+    let mut s = sabr_series(&truth, 100.0, 90, 25);
+    s.quotes[12].iv_mid += 0.10;
+    let r = sabr_fit_series(&s, 1.0, 100).unwrap();
+    assert!(r.poor, "max {} points", r.max_points);
+    assert!(!sabr_fit_series(&sabr_series(&truth, 100.0, 90, 25), 1.0, 100).unwrap().poor);
+    s.quotes.clear();
+    assert!(sabr_fit_series(&s, 1.0, 100).unwrap_err().contains("no quotes"));
+}

@@ -1,4 +1,4 @@
-//! `fa vol fit heston|bates --symbol T --date D [--time HHMM] [--rate R] [--expiry-max DAYS] [--max-spread V] [--starts N] [--seed S]`
+//! `fa vol fit heston|bates|sabr --symbol T --date D [--time HHMM] [--rate R] [--expiry-max DAYS] [--max-spread V] [--starts N] [--seed S] [--beta B]`
 
 use super::base::{iv_errors, CharModel, QuoteSet};
 use super::calib::{at_bound, fit, FitOptions, FitResult, LmStatus};
@@ -67,6 +67,21 @@ pub fn run(repo: &Path, rest: &[String]) -> Result<i32, String> {
         return Err(format!("unknown model '{model}': heston, bates or sabr"));
     }
     let get = |n: &str| flags.iter().find(|(k, _)| k == n).map(|(_, v)| v.clone());
+    let beta = num::<f64>(&flags, "--beta")?;
+    if let Some(b) = beta {
+        if !(0.0..=1.0).contains(&b) {
+            return Err(format!("bad --beta '{}': 0 to 1", get("--beta").unwrap_or_default()));
+        }
+    }
+    if model == "sabr" {
+        for n in ["--starts", "--seed"] {
+            if get(n).is_some() {
+                println!("warning: {n} has no effect with sabr (fixed starts)");
+            }
+        }
+    } else if beta.is_some() {
+        println!("warning: --beta has no effect with {model} (it is for sabr)");
+    }
     let symbol = get("--symbol").ok_or("give --symbol T")?.to_uppercase();
     let date = get("--date").ok_or("give --date D")?;
     let flat = get("--rate").map(|r| crate::market::options_cli::parse_rate(&r)).transpose()?;
@@ -99,11 +114,7 @@ pub fn run(repo: &Path, rest: &[String]) -> Result<i32, String> {
     }
     let start = Instant::now();
     if model == "sabr" {
-        let beta = num::<f64>(&flags, "--beta")?.unwrap_or(1.0);
-        if !(0.0..=1.0).contains(&beta) {
-            return Err(format!("bad --beta '{}': 0 to 1", get("--beta").unwrap_or_default()));
-        }
-        report_sabr(&set, beta, start);
+        report_sabr(&set, beta.unwrap_or(1.0), start);
     } else if model == "heston" {
         let r = fit::<Heston>(&set, &opts)?;
         report(&set, &r, start, &opts);
@@ -119,12 +130,15 @@ fn report_sabr(set: &QuoteSet, beta: f64, start: Instant) {
     let secs = start.elapsed().as_secs_f64();
     println!("\nSABR, beta = {beta} fixed, alpha rho nu fitted for each series (loss: model vol minus mid vol over the spread; error in vol points):");
     println!("  {:<6} {:<11} {:>5} {:>10} {:>9} {:>8} {:>8} {:>5} {:>8} {:>8}  status", "root", "expiry", "days", "forward", "alpha", "rho", "nu", "n", "rms", "max");
-    let (mut s2, mut n, mut mx, mut not_conv, mut bound, mut failed) = (0.0, 0usize, 0.0f64, 0usize, 0usize, 0usize);
+    let (mut s2, mut n, mut mx, mut not_conv, mut bound, mut failed, mut poor) = (0.0, 0usize, 0.0f64, 0usize, 0usize, 0usize, 0usize);
     for f in &fits {
         match f {
             Ok(f) => {
                 let marks: Vec<&str> = super::sabr::PARAM_NAMES.iter().zip(&f.at_bound).filter(|(_, b)| **b).map(|(n, _)| *n).collect();
                 let mut status = f.status.text().to_string();
+                if f.status == LmStatus::Converged && f.poor {
+                    status = "converged, poor fit".into();
+                }
                 if !marks.is_empty() {
                     status += &format!("; at bound: {}", marks.join(", "));
                 }
@@ -133,6 +147,7 @@ fn report_sabr(set: &QuoteSet, beta: f64, start: Instant) {
                 n += f.n;
                 mx = mx.max(f.max_points);
                 not_conv += (f.status != LmStatus::Converged) as usize;
+                poor += (f.status == LmStatus::Converged && f.poor) as usize;
                 bound += f.at_bound.iter().any(|b| *b) as usize;
             }
             Err(e) => {
@@ -142,7 +157,7 @@ fn report_sabr(set: &QuoteSet, beta: f64, start: Instant) {
         }
     }
     println!("  all    {:<11} {:>5} {:>10} {:>9} {:>8} {:>8} {:>5} {:>8.3} {:>8.3}", "", "", "", "", "", "", n, (s2 / n.max(1) as f64).sqrt(), mx);
-    println!("series: {} fitted, {} not converged, {} with a parameter at a bound (not identified: do not read it), {} failed", fits.len() - failed, not_conv, bound, failed);
+    println!("series: {} fitted, {} not converged, {} \"converged, poor fit\" (largest error above {} times the median spread), {} with a parameter at a bound (not identified: do not read it), {} failed", fits.len() - failed, not_conv, poor, super::sabr::POOR_FACTOR, bound, failed);
     println!("note: the error is a model vol against a mid vol of an indicative or stored quote: a measurement of the fit, not a tradable price. No dynamics between expiries.");
     println!("\ntime: {secs:.3} s (fit of {} series, {} quotes, {} threads)", set.series.len(), set.n_quotes(), rayon::current_num_threads());
 }
@@ -231,6 +246,8 @@ mod tests {
         assert!(run(&["fit", "heston", "--symbol", "IBM", "--date", "2026-11-19", "--max-spread", "nan"]).contains("bad --max-spread"));
         assert!(run(&["fit", "heston", "--symbol", "IBM", "--date", "2026-11-19", "--max-spread", "nan"]).contains("'nan'"), "the raw text");
         assert!(run(&["fit", "heston", "--symbol", "IBM", "--date", "2026-11-19", "--max-spread", "-1"]).contains("bad --max-spread"), "below 0");
+        assert!(run(&["fit", "sabr", "--symbol", "IBM", "--date", "2026-11-19", "--beta", "1.5"]).contains("bad --beta"), "checked before the snapshot loads");
+        assert!(run(&["fit", "sabr", "--symbol", "IBM", "--date", "2026-11-19", "--beta", "nan"]).contains("bad --beta"));
         assert!(run(&["fit", "merton", "--symbol", "IBM", "--date", "2026-11-19"]).contains("unknown model"));
     }
 }
