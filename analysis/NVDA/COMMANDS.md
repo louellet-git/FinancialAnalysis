@@ -67,7 +67,8 @@ Year-1 growth = 1.41 x (1 + beat) - 1. The beat of the base is half the all-pair
 
 ```bash
 fa dcf drivers NVDA --model $M $K --no-attribution --pset process.growth.start=0.167   # a miss like Q2 FY23 (-17.2%): P10 42.11, P50 72.86, P90 131.22, mean 81.76
-fa dcf drivers NVDA --model $M $K --no-attribution --pset process.growth.start=0.41    # the guide alone: P10 52.70, P50 98.60, P90 189.15, mean 112.87
+fa dcf drivers NVDA --model $M $K --no-attribution --pset process.growth.start=0.41    # the guide (+3.5% to +4% pace after Q4): P10 52.70, P50 98.60, P90 189.15, mean 112.87
+fa dcf drivers NVDA --model $M $K --no-attribution --pset process.growth.start=0.421   # a constant +4.2% a quarter after Q4 (+42.1%): P10 53.35, P50 100.04, P90 192.25, mean 114.60
 fa dcf drivers NVDA --model $M $K --no-attribution --pset process.growth.start=0.4885  # the full median: P10 57.21, P50 109.23, P90 212.65, mean 125.58
 fa dcf drivers NVDA --model $M $K --no-attribution --pset process.growth.half_life=0.58   # year 2 at the guide pace (+16.4%): P10 51.30, P25 67.64, P50 92.02, P75 126.35, P90 169.73, mean 103.84
 ```
@@ -205,8 +206,8 @@ tail -12 /tmp/nvda_pairs.txt | stats          # Q4 FY24 to Q3 FY27: n=12 beats=1
 ```
 
 The output has 19 lines (20 final releases; the last guide is for Q4 FY27 and is not reported; the store has no guide before the
-release of Q4 FY22). The rule (model file D2; ledger L26): the base is the guide alone unless the median of all pairs is above zero
-AND at least 15 of 20 are beats; then half the median. Both hold (+5.57%; 18 of 19), so the beat is +2.78% and year-1 growth is
+release of Q4 FY22). The rule (model file D2; ledger L26): the base is the guide (the +3.5% to +4% pace after Q4, 41.0%) unless the median of all pairs is above zero
+AND at least 15 of 19 (79%) are beats; then half the median. Both hold (+5.57%; 18 of 19), so the beat is +2.78% and year-1 growth is
 1.41 x 1.0278 - 1 = 44.9%. The sensitivity commands are in "The year-1 growth" above.
 
 ## 4. Base rates of scale and fade (section 4)

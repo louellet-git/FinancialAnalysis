@@ -34,7 +34,7 @@
 
 engine = "paths"
 ticker = "NVDA"
-notes = "NVDA path-engine model, DRAFT, not reviewed, version 4. Base: trailing four quarters to 2026-10-25 (Q4 FY26 68.127 + Q1 FY27 81.615 + Q2 FY27 96.221 + Q3 FY27 115.844 = $361.807B; Q3 from the 8-K of 2026-11-17, unaudited). Year 1 of the model is the twelve months after 2026-10-25. The bridge is the balance sheet of 2026-10-25 (8-K): debt $32.371B less cash $29.089B less marketable debt securities $24.423B = net debt -$21.141B (net cash). The marketable and non-marketable equity securities ($44.219B and $65.528B, $109.747B together) are in the bridge at r = 0.5 of the carrying value ($54.874B), so the net debt used is -$76.015B; the future purchases of equity securities are charged at (1 - r) = 0.5 of the four-quarter rate (process.charge), with the fade of the growth: see the ledger (L11) and the report. One segment: the 8-K gives Data Center 107.6B and Edge Computing 8.2B for Q3 only, with no history, so no segment process is possible."
+notes = "NVDA path-engine model, DRAFT, not reviewed, version 5. Base: trailing four quarters to 2026-10-25 (Q4 FY26 68.127 + Q1 FY27 81.615 + Q2 FY27 96.221 + Q3 FY27 115.844 = $361.807B; Q3 from the 8-K of 2026-11-17, unaudited). Year 1 of the model is the twelve months after 2026-10-25; its growth is 44.9% (the guide with a +3.5% to +4% pace after Q4, +41.0%, plus half the median beat of 19 pairs of guide and result, +2.78%). The bridge is the balance sheet of 2026-10-25 (8-K): debt $32.371B less cash $29.089B less marketable debt securities $24.423B = net debt -$21.141B (net cash); the marketable equity securities ($44.219B) are in the bridge at full value, and the non-marketable securities ($65.528B) at r = 0.5 of the carrying value ($32.764B); so the net debt used is -$98.124B. The future purchases of equity securities are charged at (1 - r) = 0.5 of the four-quarter rate (process.charge), with the fade of the growth: see the ledger (L11) and the report. One segment: the 8-K gives Data Center 107.6B and Edge Computing 8.2B for Q3 only, with no history, so no segment process is possible."
 # Net debt (balance sheet of 2026-10-25, 8-K of 2026-11-17, $ millions): long-term debt 32,371 (no short-term debt)
 # - cash and cash equivalents 29,089 - marketable debt securities 24,423 = -21,141. The debt securities are cash-like and their
 # interest is not in the margin (rule F15). The standard variable short_term_investments has no value for NVDA after
@@ -84,23 +84,24 @@ FORWARD DISCLOSURE (rule R1, ledger L2d): the outlook for Q4 FY27 is revenue $13
 quarter (the reported growth is +12.2%). The guidance is USED as evidence for the first quarter of year 1 and for the speed of
 the slow-down: the sequential growth falls from +20% to about +4% in one quarter. With 13-week quarters after Q4: flat at $120.7B
 gives year 1 of +33%; a constant +4.2% a quarter gives +42%; +4.2% that fades by a factor 0.8 each quarter gives +39.5%; +10% a
-quarter gives +55%. THE GUIDE ALONE: the four 13-week quarters of year 1 at the guided pace are 121 + 125 + 130 + 134 = $510B over
+quarter gives +55%. THE GUIDE: the four 13-week quarters of year 1 (Q4 at the guide, then about +3.3%, +4.0% and +3.1% a quarter) are 121 + 125 + 130 + 134 = $510B over
 $361.8B, that is +41.0% (the earlier text had 40.0%, a rounding of the faded path; +41.0% is the sum).
-THE RULE FOR THE BASE (decision of the Head of Fundamental Research, round 5; written before the base was run). The 8-K press
+THE RULE FOR THE BASE (decision of the Head of Fundamental Research, round 5; the order is not provable from git: the rule and the result are in one commit). The 8-K press
 releases in the store (store 1804f48, 21 releases, Q4 FY22 to Q3 FY27) give 19 pairs of a guided revenue and the reported revenue of
 the next quarter (the Q4 FY27 guide has no result yet, and the result of Q4 FY22 has no guide in the store). The beat is
 reported / guided - 1 (ledger L26; the preliminary release of 2022-08-08, accession 0001045810-22-000133, is NOT used: the reported
 value of Q2 FY23 is the final release of 2022-08-24, accession 0001045810-22-000136; the miss was pre-announced). THE RULE: the base is
-the guide alone, unless (a) the median of the beats of ALL pairs is above zero AND (b) the share of beats is at least 15 of 20
-(75%). If both hold, the base takes HALF of the all-pairs median beat (half, because the window holds one upswing and one bust, and a
-full median would rest on the upswing). Year-1 growth = 1.41 x (1 + beat) - 1.
+the guide (the +3.5% to +4% pace after Q4: quarters 2 to 4 are a judgment of about +3.3%, +4.0% and +3.1% a quarter; a constant
++4.2% a quarter gives +42.1%), unless (a) the median of the beats of ALL pairs is above zero AND (b) the share of beats is at least 15 of
+19 (79%). If both hold, the base takes HALF of the all-pairs median beat (half, because the window holds one upswing and one bust;
+the retrospective reason (from the validator, checked by the analyst on the 19 pairs): from the fourth pair on, the actual beat was at or above half of the median of the earlier pairs in 15 of 16 quarters, and at or above the full earlier median in only 9 of 16; so half is a conservative haircut against the company's own record). Year-1 growth = 1.41 x (1 + beat) - 1.
 THE NUMBERS. All 19 pairs: 18 beats and 1 miss (Q2 FY23: guide $8.10B, reported $6.704B, -17.2%, pre-announced); median +5.57%, mean
 +5.61%, minimum -17.23%, maximum +22.79%. The 7 pairs before Q4 FY24 (results Q1 FY23 to Q3 FY24): 6 beats, 1 miss, median +2.32%,
 mean +4.74%. The 12 pairs of Q4 FY24 to Q3 FY27: 12 beats, median +5.65%. Test (a): the median of 19 is +5.57%, above zero: holds.
-Test (b): 18 of 19 beats (94.7%) against 75%: holds. So the base takes half of +5.57%, that is +2.78%: year-1 growth = 1.41 x 1.0278
-- 1 = 44.9%. The sensitivity rows are: a miss like Q2 FY23 (-17.2%: 16.7%), the guide alone (41.0%), half the median (44.9%, the
+Test (b): 18 of 19 beats (94.7%) against 79%: holds. So the base takes half of +5.57%, that is +2.78%: year-1 growth = 1.41 x 1.0278
+- 1 = 44.9%. The sensitivity rows are: a miss like Q2 FY23 (-17.2%: 16.7%), the guide (41.0%), half the median (44.9%, the
 base) and the full median (+5.57%: 48.9%). Std 12%, cut at 10% (a fall of orders below the guided level) and at 75%: one std covers
-the guide alone (41.0%) and the full median (48.9%) and the width of the three quarters after the guided one (the guide itself is
+the guide (41.0%) and the full median (48.9%) and the width of the three quarters after the guided one (the guide itself is
 +-3%, wider than the +-2% of all earlier guides). No price and no consensus is used. Version 1 had mean 65% on the base of
 2026-07-26 and no guidance.
 TARGET 4.0% (fixed, CONVENTION, record A-001): L = min(10-year zero yield 5.13%, 4.0% = FOMC SEP 2026-09-16). This is the repo
@@ -117,11 +118,11 @@ median growth +44.7% (year 1, n 12), -13.3% (year 2, n 11), -5.5% (year 3, n 11)
 -0.5% (n 38), +3.3% (n 36). The model at the means has +44.9%, +24.5%, +14.2% (years 1 to 3). Year 1 is near the cell above $100B (the
 guide). Years 2 and 3 are above both cells. Why: (a) the cells are small (11 company-years) and mix the busts of a cycle (the cache
 has MU: revenue $30.8B in FY22, $15.5B in FY23, -49.5%, with an operating margin of -37%); the model has such busts as a part of
-the paths (the shock and the collapse table: 18.5% of the paths), not in the median; (b) NVDA reports +20% a quarter for five quarters
+the paths (the shock and the collapse table: 18.1% of the paths), not in the median; (b) NVDA reports +20% a quarter for five quarters
 and the guide is +4.2% in 13 weeks, not a fall. A model that follows the cell would use a half-life of 0.4 years (the cell phi
 0.161 gives 0.38; the cut of the draw is 0.4): P50 $88.75; at 0.6 years (the all-size panel): $92.45; base 1.0: $103.78. The
 survivor limit: the cache has the companies that exist now, so the cells are too high, not too low. The skeptic can say that D3
-is above the base rate by $9 to $13 of P50 (the cell above $100B is mostly oil of 2021-22); this is the price of reading the guide and the sequential growth as evidence.
+is above the base rate by $11.3 to $15.0 of P50 (the cell above $100B is mostly oil of 2021-22); this is the price of reading the guide and the sequential growth as evidence.
 SHOCK (the cycle; JUDGMENT with DATA). Yearly shock size = max(15%, 30% of the slow part); persistence 0 (a miss is not made up:
 the level of revenue keeps the loss). NVDA history (ledger L3): growth +21% (FY19), -7% (FY20), +53%, +61%, +0.2% (FY23), +126%,
 +114%, +65%. Two busts in ten years (FY20, FY23), of 28 and 61 points under the year before. A normal shock of 15% to 20% gives
@@ -161,7 +162,7 @@ cache, 10-K rows, GAAP operating income over revenue, company-years with revenue
 META 34.7% to 42.2% (FY23 to FY25), GOOGL up to 32.1%, AAPL up to 33.0%; only MU (74.6% in FY26, one year after a loss in FY23) and
 NVDA (60.4%, 62.4%) are above 47%. So the target of 45% is at the level of the best sustained large company of the cache (MSFT,
 META) and above all others. The largest operating profit in the cache is $158.1B (AAPL FY26), $155.2B (MSFT FY26), $130.4B (NVDA
-FY26); the model has $472B at the means in year 10. Sensitivity: --sensitivity
+FY26); the model has $509B at the means in year 10 (revenue $1,079.5B x (50.7% - 3.5%)). Sensitivity: --sensitivity
 process.margin.target=0.35,0.485,0.60 (a GAAP operating margin of 31%, 45%, 56%).
 HALF-LIFE 3 years (std 1; JUDGMENT): a moat of this kind erodes over years, not in one year; the margin of year 10 is about 51%
 at the means. Sensitivity: --sensitivity process.margin.half_life=1.5,3,5.
