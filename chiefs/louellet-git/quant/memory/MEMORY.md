@@ -16,6 +16,8 @@ Rules: `chiefs/ORIENTATION.md`, section 8. Decisions of the person: `../RECORD.m
 - Findings for the person: no tradable break so far; the SPX feed is indicative (not executable).
 
 ## Tested rules
+- A value factor for a past date: use `fa dcf implied --as-of D` or `fa dcf attribute` (SEC facts filed by D).
+  `fa dcf auto --as-of` and `fa dcf screen --as-of` read later filings: look-ahead (Fundamental, PR 107, 2026-11-21).
 - `fa recon bonds`, `fa recon explain` and `fa futures check` download each missing file (two agent downloads on
   2026-11-20). Brief: "check the cache first". Agent file `rates-credit-quant.md` changed for this.
 - An agent report can be wrong on one fact (vol-1: "converged" against the program's "NOT converged"):
