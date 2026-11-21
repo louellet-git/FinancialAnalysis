@@ -46,6 +46,7 @@ pub mod market;
 pub mod sync;
 pub mod report;
 pub mod macro_test;
+pub mod selftest;
 
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};

@@ -169,6 +169,28 @@ disk; `fa analyze --refresh` gets new data. Prices come from the Yahoo chart end
 often answers HTTP 429 (too many requests) to a cloud container: then the program says so and
 keeps the cache file. The forward consensus (EPS, price targets, ratings), the surprises and the earnings dates come from the Nasdaq site API (no key): `fa estimates get` and `fa earnings calendar` write the cache, `fa analyze` reads it (see `docs/HIDDEN-ASSUMPTIONS.md`, #215 to #229). Revenue estimates need `FMP_API_KEY`.
 
+### Golden cases (`fa selftest golden`)
+
+`rust/tests/golden/cases.toml` lists commands with the SHA-256 of their expected output. The author and the reviewer
+of a change to the engine run it (not in CI: the store is private).
+
+```bash
+rust/target/release/fa selftest golden                       # run all cases; exit 1 on a difference (first 20 lines)
+rust/target/release/fa selftest golden --case dcf_drivers_ibm
+rust/target/release/fa selftest golden --update "why the output changes" --case NAME   # or --all
+rust/target/release/fa selftest golden --record-inputs --case NAME   # write the input list of a case
+```
+
+Each case lists the input files that it reads, each with its SHA-256 (`fa selftest golden --record-inputs --case NAME`
+writes the list with `strace`, Linux only; without it, write the list by hand and add a `note`). A listed input that is
+missing or has another hash makes the case SKIPPED, with the file named; it is never a pass. An input that the list
+misses can only make the case FAIL (the output changes), never pass: then add the file to the list. A run where all cases
+are skipped says "0 of N cases ran" and exits 0. The `store` commit is information only. A mask hides only lines that vary (timing lines); any other mask needs a `why`. The command never downloads:
+it runs only commands of an allow list that read the cache, and a case whose command asks for the network FAILS and names the request. `--update` needs a reason; it rewrites the input hashes and the expected text together, and the reason and the date go
+into the case file, and the expected text goes into `rust/tests/golden/NAME.txt`, so the pull request shows the change.
+A case that runs longer than the deadline (default 30 minutes, `--timeout-mins N`) is killed and FAILS. The expected texts are public: a case must not print raw option quotes (the options case uses `--top 0`).
+`fa selftest golden --help` has the details.
+
 ## Standard input variables
 
 Companies use different XBRL tag names for the same line. For example, interest expense

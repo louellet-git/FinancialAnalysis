@@ -2,7 +2,7 @@
 id: T-20261121-selftest-golden
 title: fa selftest golden, stored commands with the hash of their expected output
 area: engine
-status: in-progress
+status: review
 owner: louellet-git
 head: quant
 story: E4.S4
