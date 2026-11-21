@@ -7,7 +7,7 @@ use crate::dcf::auto::{index_from_cache, DEFAULT_TABLE};
 use crate::dcf::auto_cli::load_table;
 use crate::dcf::auto_pit::parse_rules;
 use crate::dcf::auto_returns::RetParams;
-use crate::dcf::splits::Split;
+use crate::market::splits::Split;
 use mapcheck::registry::Registry;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
@@ -241,8 +241,8 @@ fn load_vr_parts(repo: &Path, args: &[String], cache: &Path, tickers: &[String])
     let registry = Registry::embedded()?;
     let rules = parse_rules("").map_err(|e| e.0)?;
     let curves = std::fs::read_to_string(cache.join("rates").join("gsw_feds200628.csv")).ok().and_then(|t| crate::forwards::parse_gsw(&t).ok());
-    let splits = crate::dcf::splits::load_splits(cache)?;
-    let split_note = crate::dcf::splits::check_report(&splits, tickers);
+    let splits = crate::market::splits::load_splits(cache)?;
+    let split_note = crate::dcf::share_basis::check_report(&splits, tickers);
     Ok(VrParts { table, fade, registry, rules, curves, splits, split_note })
 }
 

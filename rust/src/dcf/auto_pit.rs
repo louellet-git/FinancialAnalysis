@@ -649,9 +649,9 @@ LIMITS
   - The model of the test has no failure hazard, no price and a fixed default rate; the revenue and the free cash flow do not depend on them.";
 
 /// The fiscal years of a ticker. The share counts are on the basis of the price file of the ticker (`splits`, up to the
-/// last date of the price file: `splits::basis_to`).
-pub fn load_company_years(registry: &Registry, cache: &Path, ticker: &str, splits: &[super::splits::Split]) -> Option<(String, Vec<YearData>)> {
-    let to = if splits.is_empty() { String::new() } else { super::splits::basis_to(cache, ticker, false) };
+/// last date of the price file: `share_basis::basis_to`).
+pub fn load_company_years(registry: &Registry, cache: &Path, ticker: &str, splits: &[crate::market::splits::Split]) -> Option<(String, Vec<YearData>)> {
+    let to = if splits.is_empty() { String::new() } else { super::share_basis::basis_to(cache, ticker, false) };
     let path = mapcheck::run::facts_path(cache, ticker)?;
     let facts = mapcheck::run::read_facts(&path).ok()?;
     if !facts.has_us_gaap() {
@@ -660,7 +660,7 @@ pub fn load_company_years(registry: &Registry, cache: &Path, ticker: &str, split
     let ends = period_ends(&facts, &registry.anchors, Forms::Annual, None);
     let periods: Vec<_> = ends.iter().map(|e| resolve_period_with(registry, &facts, e, Forms::Annual, None)).collect();
     let template = periods.last().map(|p| filer_template(registry, p)).unwrap_or("standard").to_string();
-    Some((template, periods.iter().map(|p| YearData::from_period(registry, p, &super::splits::Basis { splits, ticker, to: &to })).collect()))
+    Some((template, periods.iter().map(|p| YearData::from_period(registry, p, &super::share_basis::Basis { splits, ticker, to: &to })).collect()))
 }
 
 /// The rules of a `--rules` text.

@@ -339,7 +339,7 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         tickers.truncate(limit as usize);
     }
     // the closes of the store are split-adjusted to the last date of each price file: the share counts must be on the same basis (a missing file is an error)
-    let splits = super::splits::load_splits(&cache).map_err(DcfError)?;
+    let splits = crate::market::splits::load_splits(&cache).map_err(DcfError)?;
     let curves = std::fs::read_to_string(cache.join("rates").join("gsw_feds200628.csv")).ok().and_then(|t| crate::forwards::parse_gsw(&t).ok());
     let index = index_from_cache(&cache);
     let p = RetParams { table: &table, fade: &fade, rules: &rules, curves: curves.as_ref(), index: index.as_deref(), lag, paths, seed };
@@ -371,7 +371,7 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         if curves.is_some() { "GSW" } else { "none (fixed rate)" },
         if index.is_some() { "SPY" } else { "none (beta 1)" }
     );
-    text.push_str(&super::splits::check_report(&splits, &tickers));
+    text.push_str(&super::share_basis::check_report(&splits, &tickers));
     let ratio: Vec<f64> = obs.iter().map(|o| o.ratio()).collect();
     let mut s = ratio.clone();
     s.sort_by(|a, b| a.total_cmp(b));

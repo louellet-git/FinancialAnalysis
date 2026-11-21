@@ -288,14 +288,14 @@ impl YearData {
         }
     }
 
-    /// The three share counts are multiplied by `F(ticker, s)` (`splits::Basis`), so that they are on the share basis of
+    /// The three share counts are multiplied by `F(ticker, s)` (`share_basis::Basis`), so that they are on the share basis of
     /// today, the basis of the split-adjusted closes of the store. `s` is the FILING date of the fact that the model
     /// takes for the count (the `filed` of the tag fact of the variable that gives the value: `PeriodData::filed_of`), not the period end: a filing issued
     /// after a split shows the counts already adjusted for it (ASC 260), so only the splits after the filing count. When
     /// the value has no tag fact (a formula value), `s` is the filing date of the period (`PeriodData::filed`), and
     /// when that is missing, the period end. The cover-page share count (dei) is not used by the model. This is the one
     /// place of the correction.
-    pub fn from_period(registry: &Registry, p: &PeriodData, basis: &super::splits::Basis) -> YearData {
+    pub fn from_period(registry: &Registry, p: &PeriodData, basis: &super::share_basis::Basis) -> YearData {
         // the filing date of the variable that gives the value, else the filing of the period, else the period end
         let factor = |name: &str| -> f64 { basis.factor(p.filed_of(registry, name).or(p.filed.as_deref()).unwrap_or(&p.end)) };
         // `shares` is the diluted count, and the count at the end of the period when there is no diluted count
@@ -355,7 +355,7 @@ pub struct BalanceData {
 }
 
 impl BalanceData {
-    pub fn from_period(registry: &Registry, p: &PeriodData, form: &str, basis: &super::splits::Basis) -> BalanceData {
+    pub fn from_period(registry: &Registry, p: &PeriodData, form: &str, basis: &super::share_basis::Basis) -> BalanceData {
         let y = YearData::from_period(registry, p, basis);
         BalanceData {
             end: p.end.clone(),
@@ -415,11 +415,11 @@ pub struct AutoInputs {
 
 /// The inputs of a mapping report of `mapcheck`.
 ///
-/// The share counts are on the share basis of the price file (`splits`, see `splits.rs`): each count gets the factor of
+/// The share counts are on the share basis of the price file (`splits`, see `market/splits.rs` and `share_basis.rs`): each count gets the factor of
 /// the splits after the filing date of its fact up to `to`, the last date of the price file of the ticker
-/// (`splits::basis_to`; the closes are adjusted only up to that date) (`YearData::from_period`).
-pub fn inputs_from_report(registry: &Registry, r: &mapcheck::run::TickerReport, splits: &[super::splits::Split], to: &str) -> AutoInputs {
-    let basis = super::splits::Basis { splits, ticker: &r.ticker, to };
+/// (`share_basis::basis_to`; the closes are adjusted only up to that date) (`YearData::from_period`).
+pub fn inputs_from_report(registry: &Registry, r: &mapcheck::run::TickerReport, splits: &[crate::market::splits::Split], to: &str) -> AutoInputs {
+    let basis = super::share_basis::Basis { splits, ticker: &r.ticker, to };
     let mut out = AutoInputs {
         ticker: r.ticker.clone(),
         name: r.name.clone(),

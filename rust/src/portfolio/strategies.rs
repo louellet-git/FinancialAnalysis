@@ -3,7 +3,8 @@
 
 use super::{Strategy, View};
 use crate::dcf::auto::YearData;
-use crate::dcf::splits::{Basis, Split};
+use crate::dcf::share_basis::Basis;
+use crate::market::splits::Split;
 use mapcheck::checks::filer_template;
 use mapcheck::facts::{period_ends, CompanyFacts, Forms};
 use mapcheck::mapper::resolve_period_with;
@@ -253,7 +254,7 @@ pub fn load_vintages(registry: &Registry, cache: &Path, ticker: &str, from: i64,
 pub fn load_vintages_with(registry: &Registry, cache: &Path, ticker: &str, from: i64, splits: &[Split], change: impl FnOnce(&mut CompanyFacts)) -> Option<(String, Vintages)> {
     let mut facts = mapcheck::run::read_facts(&mapcheck::run::facts_path(cache, ticker)?).ok()?;
     change(&mut facts);
-    let to = if splits.is_empty() { String::new() } else { crate::dcf::splits::basis_to(cache, ticker, false) };
+    let to = if splits.is_empty() { String::new() } else { crate::dcf::share_basis::basis_to(cache, ticker, false) };
     vintages_of(registry, ticker, &facts, from, splits, &to)
 }
 
@@ -623,7 +624,7 @@ mod tests {
             let t = format!("T{k:02}");
             let kk = kf.filter(|_| splitter(k));
             if let Some(f) = kk {
-                splits.push(Split { ticker: t.clone(), ex_date: D.into(), old_rate: 1.0, new_rate: f, factor: f, kind: "forward".into(), sec_check: "match".into(), ..Default::default() });
+                splits.push(Split { ticker: t.clone(), ex_date: D.into(), old_rate: 1.0, new_rate: f, factor: f, kind: "forward".into(), sec_check: "match".into() });
             }
             let v = Vintages(
                 vintages(k)
@@ -694,7 +695,7 @@ mod tests {
     #[test]
     fn the_share_count_takes_the_split_factor_of_the_filing_date_not_the_period_end() {
         let reg = Registry::embedded().unwrap();
-        let splits = [Split { ticker: "X".into(), ex_date: D.into(), old_rate: 1.0, new_rate: 25.0, factor: 25.0, kind: "forward".into(), sec_check: "match".into(), ..Default::default() }];
+        let splits = [Split { ticker: "X".into(), ex_date: D.into(), old_rate: 1.0, new_rate: 25.0, factor: 25.0, kind: "forward".into(), sec_check: "match".into() }];
         let basis = Basis { splits: &splits, ticker: "X", to: TODAY };
         let fy2020 = period_of(&reg, &fy(0, 8, 1.0)); // period end 2020-12-31, filed 2021-02-20 (before the split)
         let counts = |p: &mapcheck::mapper::PeriodData| {
