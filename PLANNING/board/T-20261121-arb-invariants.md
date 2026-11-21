@@ -27,3 +27,14 @@ then a fit to our systems (and new parts where needed).
    (Cboe method) against the published VIX (owner question, 2026-11-21).
 
 The breaks on indicative quotes are measurements, not trades (`docs/models/options-static-arbitrage-check.md`).
+
+## Capture plan (Head of Technology, 2026-11-21; research: `analysis/priors/continuous_option_data_2026-11-21.md`)
+- Design B: SPX expiries up to 45 days every 2 minutes, all of SPX, SPY and VIX every 30 minutes, one capture
+  near 16:14 ET for the VIX close. Alpaca indicative REST only. No Cboe source (automatic Cboe reads are stopped,
+  2026-11-21).
+- On the e2-micro, in its own process, separate from `fa algo`. One request budget for the Alpaca data host: both
+  processes together under 200 a minute, each with a fixed share (for example algo 120, capture 60).
+- The raw data stays on the VM (Alpaca terms: personal use, no distribution). Only the derived daily reports leave
+  it, into the private journal repo.
+- Store gzip CSV with the quote time `t` of each contract (the parser does not keep `t` today).
+- Build after PR 131 merges. A one-day smoke test on the VM first; the interval from the measured bytes.
