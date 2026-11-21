@@ -106,3 +106,10 @@ it waits for the look of the Head of Quant Research and the green check; then me
 TO DO in the pull request of claude/attribution-reality: run `fa selftest golden` (it needs the data store of the case
 as data/raw; FA_REPO names the repo root) and update each case that the new default curve and the beta flag change,
 with a reason. Rule from now on: `fa selftest golden` is a release check of each change of a command output.
+
+**Merged (21:06 UTC, 2026-11-21).** Pull requests 190, 195 and 199 are merged (main 3fc1acc); the code list of gate cycle 1
+is done. STILL OPEN on this ticket: (1) the series run of record (S&P 500 from 2019-01-04): first a review of the pit
+results of 61fe8de against the eight points of Quality, and a parameter table cut before 2019 (`--table`), or a header
+that states the look-ahead; then send the commit and the switch week (2026-11-20) to the Head of Economics; (2) a
+truncation test of the base rates in the suite; (3) the long sentences of `docs/models/premium-series.md`; (4) the
+register rows of `assumptions.rs` for A-027 to A-037.
