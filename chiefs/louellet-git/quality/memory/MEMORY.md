@@ -25,8 +25,7 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   https://github.com/louellet-git/fa-data /home/user/qa-fa-data`); for a second fixed commit use
   `git -C /home/user/qa-fa-data worktree add --detach <path> <commit>`. Name the store commit in each
   brief and verdict. A fetch that only adds files does not disturb a running review.
-- Alpaca with dummy keys gives 401. SEC: a zero-padded CIK gives 301 (use `curl -L`, `sec_contact.toml`).
-- Each brief: no bulk download, no network unless needed; a harness runs only in a scratch copy.
+- Alpaca dummy keys: 401. SEC padded CIK: 301 (`curl -L`). Briefs: no bulk download; harness in scratch only.
 - An agent's verdict can disagree with its own levels (PASS-WITH-NOTES with a MAJ). Set the verdict
   from the levels, after "Proportion".
 
