@@ -141,3 +141,4 @@
 | recon lasting | 2026-11-21 | claude/quant-recon-lasting (ac56687): code-reviewer PASS-WITH-NOTES (truncation and poison byte-identical; 2 MIN); verdict PASS-WITH-NOTES | measured with the batch | |
 | revenue tags | 2026-11-21 | claude/revenue-old-tags (91bcfa7): data-quality-analyst fit with conditions; code-reviewer (Haiku) not approved (scope of revenue_from_contracts); verdict REVISE, 5 MAJ (scope, ticket claims, Backtest row, HWM gross profit, excise traps) | about 104k + measured | |
 | S&P 10 pages v3 | 2026-11-21 | claude/attribution-reality (c363ffc): auditor (same agent) REVISE: page 3 numbers all reproduce; F1, F2 not fixed; P3 labels; verdict PASS WITH CONDITIONS (head checks) | about 50k more | for the owner |
+| S&P 10 pages, conditions | 2026-11-21 | claude/attribution-reality (087f13d): head check of F1, F2, P3 and the new numbers; PASS-WITH-NOTES; pieces may go to the owner | small (head only) | |
