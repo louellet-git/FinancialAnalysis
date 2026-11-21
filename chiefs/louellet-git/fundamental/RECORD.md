@@ -96,3 +96,7 @@ Done: two data defects found and sent to the Head of Technology, the owner of th
 ## 2026-11-21 about 16:50 UTC (chat)
 Words: "Can we break down higher implied risk premium? Is there any research work that can be done on this assumption for understanding it/quantifying it better / Hold off on writing the doc until I give my go ahead on the results / While you research that, please do the same break down analysis over the past 2 months for the S&P10"
 Done: the document is on hold (draft kept, no review started) until the owner approves the results. Research on the implied premium starts (a plan with literature, data and first measurements). The S&P 10 breakdown runs week by week over 2026-09-18 to 2026-11-20, plus one bridge over the whole period.
+
+## 2026-11-21 about 17:15 UTC (chat)
+Words: "Can the head of tech check if there are other problems like those"
+Done: request to the Head of Technology for a full data audit (one board ticket, an owner for each defect, the S&P 100 first), with a first list: 23 S&P 500 tickers fail the point-in-time mapping at 2026-11-13 but pass the normal mapping (WARN); BF-B has no price file; IBM and JNJ stop at 2026-11-18; and seven more checks to run.
