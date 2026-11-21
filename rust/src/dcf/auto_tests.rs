@@ -1494,4 +1494,61 @@ fn a_flat_par_curve_gives_a_flat_continuous_zero_curve_and_the_last_row_on_or_be
     let (d13, _) = par_row_on(&text, crate::curve::parse_iso("2026-11-19").unwrap()).unwrap().unwrap();
     assert_eq!(d13, "2026-11-13");
     assert!(par_row_on(&text, crate::curve::parse_iso("2026-11-01").unwrap()).unwrap().is_none());
+    // the root mean square error of a flat par curve is small, and it comes with the curve
+    let (c2, rmse) = par_fit_rmse(&date, &ys).unwrap();
+    assert_eq!(c2, c);
+    assert!((0.0..1.0).contains(&rmse), "rmse {rmse}");
+}
+
+#[test]
+fn a_par_curve_that_the_fit_cannot_follow_is_refused_with_its_error() {
+    // a zigzag of 1% and 9% yields: six parameters cannot follow it, the error is far above 5 bp
+    let ys = [1.0, 9.0, 1.0, 9.0, 1.0, 9.0, 1.0, 9.0];
+    let x = par_fit_rmse("2026-11-20", &ys).unwrap_err();
+    assert!(x.contains("root mean square error") && x.contains("above the limit of 5 bp") && x.contains("refused"), "{x}");
+    assert_eq!(PAR_FIT_MAX_RMSE_BP, 5.0);
+}
+
+fn scratch(name: &str) -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join(format!("fa_curve_{name}_{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("rates")).unwrap();
+    std::fs::create_dir_all(dir.join("prices")).unwrap();
+    dir
+}
+
+#[test]
+fn a_date_in_early_january_takes_the_december_par_row_of_the_year_before() {
+    let dir = scratch("par_jan");
+    let head = "Date,\"1 Yr\",\"2 Yr\",\"3 Yr\",\"5 Yr\",\"7 Yr\",\"10 Yr\",\"20 Yr\",\"30 Yr\"";
+    std::fs::write(dir.join("rates").join("treasury_nominal_2025.csv"), format!("{head}\n12/30/2025,5,5,5,5,5,5,5,5\n12/31/2025,5,5,5,5,5,5,5,5\n")).unwrap();
+    // the file of the new year has no row yet on or before 2026-01-03
+    std::fs::write(dir.join("rates").join("treasury_nominal_2026.csv"), format!("{head}\n01/05/2026,6,6,6,6,6,6,6,6\n")).unwrap();
+    let (c, rmse) = load_curve_par_rmse(&dir, "2026-01-03").unwrap();
+    assert_eq!(c.date, "2025-12-31");
+    assert!(rmse < 1.0 && (c.zero10 - 20.0 * (1.025f64).ln() / (3653.0 / 365.0)).abs() < 1e-3);
+    // from the 5th the row of the new year is the last one on or before the date
+    assert_eq!(load_curve_par_rmse(&dir, "2026-01-05").unwrap().0.date, "2026-01-05");
+    // no file at all for the date
+    assert!(load_curve_par_rmse(&dir, "2024-06-01").unwrap_err().contains("no Treasury par yield row on or before 2024-06-01"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_fedinvest_file_is_the_last_one_on_or_before_the_date_and_never_a_later_one() {
+    let dir = scratch("fedinvest");
+    // empty files: the load stops at the file that it chose, and the error names it
+    for d in ["2026-11-12", "2026-11-13", "2026-11-20"] {
+        std::fs::write(dir.join("prices").join(format!("fedinvest_{d}.csv")), "").unwrap();
+    }
+    std::fs::write(dir.join("prices").join("notes.txt"), "").unwrap();
+    let chosen = |as_of: &str| load_curve_fedinvest(&dir, as_of).unwrap_err();
+    assert!(chosen("2026-11-19").contains("fedinvest_2026-11-13.csv"), "{}", chosen("2026-11-19"));
+    assert!(chosen("2026-11-13").contains("fedinvest_2026-11-13.csv"));
+    assert!(chosen("2026-11-20").contains("fedinvest_2026-11-20.csv"));
+    assert!(chosen("2026-11-12").contains("fedinvest_2026-11-12.csv"));
+    // no file on or before the date: a later file is not used
+    let x = chosen("2026-11-11");
+    assert!(x.contains("no FedInvest price file on or before 2026-11-11"), "{x}");
+    let _ = std::fs::remove_dir_all(&dir);
 }

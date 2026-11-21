@@ -417,8 +417,8 @@ fn the_full_bridge_puts_each_ticker_in_once_and_adds_to_the_whole_change() {
     // the sectors add to the whole list, and the largest negative contribution comes first
     let mut sum = [0.0; N_BRIDGE];
     for l in &b.sectors {
-        for k in 0..N_BRIDGE {
-            sum[k] += l.parts[k];
+        for (s, p) in sum.iter_mut().zip(l.parts) {
+            *s += p;
         }
     }
     assert!((0..N_BRIDGE).all(|k| (sum[k] - b.all.parts[k]).abs() < 1e-12));
@@ -462,8 +462,64 @@ fn a_close_older_than_the_index_close_takes_the_row_out_of_every_sum() {
     assert_eq!(w.n, 2);
     assert!((w.change + 0.2).abs() < 1e-12, "{w:?}");
     assert_eq!(full_bridge(&rows, View::Premium).unwrap().all.n, 2);
-    assert!(list_text(&rows).contains("STALE PRICE, left out of every sum (1 tickers"));
+    let text = list_text(&rows);
+    assert!(text.contains("STALE PRICE (1 tickers") && text.contains("own parts of these rows use the older price; each is out of every sum: B ("), "{text}");
+    assert!(text.contains("  left out of the sums (1 tickers): B (stale price)\n"), "{text}");
     assert!(csv_line(&rows[1]).contains("price-stale(close of 2026-11-18 for 2026-11-20 (SPY 2026-11-20))"));
+}
+
+#[test]
+fn the_whole_list_names_the_tickers_left_out_of_the_sums_with_the_reason() {
+    let mut rows = vec![row("A", 10.0, 8.0, 3, 10.0, 0.05), row("BRK-B", 10.0, 8.0, 3, 10.0, 0.05), row("N", 10.0, 8.0, 3, 10.0, 0.05), row("G2", 10.0, 8.0, 3, 10.0, 0.05)];
+    rows[1].shares = None;
+    rows[2].prices = None;
+    rows[3].weight_of = Some("A".into());
+    let text = list_text(&rows);
+    // the second class of one company has its own line already; it is not named here
+    assert!(text.contains("  left out of the sums (2 tickers): BRK-B (no share count), N (no close at a date)\n"), "{text}");
+    // the line is in the WHOLE LIST block, before the first set
+    assert!(text.find("WHOLE LIST").unwrap() < text.find("left out of the sums").unwrap() && text.find("left out of the sums").unwrap() < text.find("(2) COMMON SET").unwrap());
+    // a list with every ticker in has no such line
+    assert!(!list_text(&[row("A", 10.0, 8.0, 3, 10.0, 0.05)]).contains("left out of the sums"));
+}
+
+#[test]
+fn the_curve_text_is_the_old_text_for_gsw_and_names_the_fit_for_the_others() {
+    assert_eq!(curve_sentence("gsw"), "");
+    assert!(curve_sentence("fedinvest").contains("FedInvest") && !curve_sentence("fedinvest").contains("par row"));
+    assert!(curve_sentence("par").contains("Treasury par row") && curve_sentence("par").contains("beyond 30 years"));
+    let c = CurveNumbers { date: "2025-12-31".into(), zero10: 0.0412345, ..curve(0.0, 1.0) };
+    assert_eq!(curve_line("par", &c, Some(0.4249)), "curve (par fit) 2025-12-31: 10-year zero 4.1235%, fit error 0.42 bp (root mean square over the 8 par bonds; limit 5 bp)");
+    assert_eq!(curve_line("fedinvest", &c, None), "curve (fedinvest fit) 2025-12-31: 10-year zero 4.1235%");
+}
+
+#[test]
+fn an_unknown_curve_value_is_an_error() {
+    let args: Vec<String> = ["--curve", "ois", "--from", "2026-11-13", "--to", "2026-11-20"].iter().map(|s| s.to_string()).collect();
+    let x = command_inner(Path::new("."), &args).unwrap_err();
+    assert!(x.0.contains("--curve 'ois': use gsw, fedinvest or par"), "{}", x.0);
+}
+
+#[test]
+fn the_two_readings_of_the_full_bridge_give_the_same_total() {
+    let rows = vec![row("A", 10.0, 8.0, 3, 10.0, 0.05), row("B", 30.0, 27.0, 2, 10.0, 0.05)];
+    // whole change: (100 x -0.2 + 300 x -0.1) / 400 = -0.125
+    let whole = whole_list(&rows).unwrap().change;
+    assert!((whole + 0.125).abs() < 1e-12);
+    for first in [View::Premium, View::Growth] {
+        let b = full_bridge(&rows, first).unwrap();
+        assert!((b.all.parts.iter().sum::<f64>() - whole).abs() < 1e-12, "{first:?}: {:?}", b.all.parts);
+    }
+}
+
+#[test]
+fn a_list_of_21_weighted_tickers_prints_no_ticker_lines_and_a_list_of_20_does() {
+    let rows_of = |n: usize| -> Vec<AttrRow> { (0..n).map(|i| row(&format!("T{i:02}"), 10.0, 8.0, 3, 10.0, 0.05)).collect() };
+    let text20 = bridge_text(&full_bridge(&rows_of(BRIDGE_TICKER_LINES), View::Premium).unwrap());
+    let text21 = bridge_text(&full_bridge(&rows_of(BRIDGE_TICKER_LINES + 1), View::Premium).unwrap());
+    assert_eq!(BRIDGE_TICKER_LINES, 20);
+    assert!(text20.contains("\n  T00 ") && text20.contains("\n  T19 "), "{text20}");
+    assert!(!text21.contains("\n  T00 ") && !text21.contains("\n  T20 "), "{text21}");
 }
 
 #[test]

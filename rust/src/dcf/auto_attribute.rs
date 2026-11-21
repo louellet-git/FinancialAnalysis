@@ -80,7 +80,9 @@ fa dcf attribute [--tickers-file FILE | TICKER ...] --from D1 --to D2 [OPTIONS]
   --curve SRC     gsw (default): the GSW row of the Federal Reserve Board (it lags about one week); fedinvest: the NSS
                   curve that `fa recon rich-cheap` fits to the FedInvest Treasury prices of the last file on or before each
                   date; par: the same NSS fit to the Treasury daily par yield curve (1 to 30 years, each tenor a par
-                  bond) of the last row on or before each date. One source is used at both dates.
+                  bond) of the last row on or before each date. The fit error (root mean square, basis points) is printed;
+                  a par curve with an error above 5 bp is refused. Do not read the fitted curve beyond 30 years.
+                  One source is used at both dates.
   --out FILE      write one CSV row for each ticker. The last four columns are:
                   beta1, beta2     the beta that the model uses at D1 and at D2 (the shrunk regression beta; empty with no beta)
                   dur_premium1     D = -(ln V(x1 + h) - ln V(x1 - h)) / (2 h), h = 0.001, where x1 is the premium that the price
@@ -943,7 +945,7 @@ pub fn close_date(series: &[(String, f64)], date: &str) -> Option<String> {
 /// close series. A ticker with no close at all is not stale (it has no prices and no weight already). Run it before
 /// `one_weight_for_one_company`, so that a stale class does not keep the weight of its company. Returns the number of
 /// stale rows.
-pub fn mark_stale(rows: &mut [AttrRow], closes: &dyn Fn(&str) -> Option<Vec<(String, f64)>>, d1: &str, d2: &str) -> usize {
+pub fn mark_stale(rows: &mut [AttrRow], closes: &dyn Fn(&str) -> Option<CloseSeries>, d1: &str, d2: &str) -> usize {
     let Some(index) = closes("SPY") else { return 0 };
     let (r1, r2) = (close_date(&index, d1), close_date(&index, d2));
     let mut n = 0;
@@ -1637,6 +1639,34 @@ fn whole_text(w: &WholeList) -> String {
     s
 }
 
+/// Why a row is not in the whole list (`None`: it is in, or it only has no weight because a class of the same company carries it).
+fn left_out_reason(r: &AttrRow) -> Option<&'static str> {
+    if r.weight_of.is_some() && r.stale.is_none() {
+        return None;
+    }
+    if r.weight().is_some() && r.change().is_some() {
+        return None;
+    }
+    Some(if r.stale.is_some() {
+        "stale price"
+    } else if r.prices.is_none() {
+        "no close at a date"
+    } else if r.shares.is_none() {
+        "no share count"
+    } else {
+        "no weight"
+    })
+}
+
+/// One line in the WHOLE LIST block: the tickers of the list that are out of the sums, each with its reason. Empty when none.
+fn left_out_text(rows: &[AttrRow]) -> String {
+    let v: Vec<String> = rows.iter().filter_map(|r| left_out_reason(r).map(|k| format!("{} ({k})", r.ticker))).collect();
+    if v.is_empty() {
+        return String::new();
+    }
+    format!("  left out of the sums ({} tickers): {}\n", v.len(), v.join(", "))
+}
+
 /// The text of one sum. `headline` names the set; "covered part only" is in each headline of a set that is not the list.
 fn set_text(headline: &str, w: &SetSum) -> String {
     let long = long_names(w.view);
@@ -1694,9 +1724,10 @@ pub fn list_text(rows: &[AttrRow]) -> String {
     let Some(whole) = whole_list(rows) else { return "WHOLE LIST: no ticker has two prices and a share count\n".to_string() };
     let mut s = String::from("\nThis is an accounting split of the price change with the model; it is not a cause. facts and time have a fixed position (first and second); rates and the plug are shown as the range of the two orders.\n\n");
     s.push_str(&whole_text(&whole));
+    s.push_str(&left_out_text(rows));
     let stale: Vec<String> = rows.iter().filter_map(|r| r.stale.as_ref().map(|n| format!("{} ({n})", r.ticker))).collect();
     if !stale.is_empty() {
-        s.push_str(&format!("  STALE PRICE, left out of every sum ({} tickers: a close older than the SPY close of the same date): {}\n", stale.len(), stale.join(", ")));
+        s.push_str(&format!("  STALE PRICE ({} tickers: a close older than the SPY close of the same date). The own parts of these rows use the older price; each is out of every sum: {}\n", stale.len(), stale.join(", ")));
     }
     s.push_str(&variants_text(rows));
     let old = |side: usize| rows.iter().filter(|r| r.outcome.as_ref().ok().is_some_and(|a| if side == 1 { a.curve_lag().0 } else { a.curve_lag().1 }.is_some())).count();
@@ -1746,6 +1777,21 @@ pub fn command(repo: &Path, args: &[String]) -> u8 {
     }
 }
 
+/// The text after "Curve: last GSW row on or before the date." for the source: empty for GSW (the text as before).
+fn curve_sentence(source: &str) -> &'static str {
+    match source {
+        "fedinvest" => " With --curve fedinvest: the NSS fit to the last FedInvest file on or before the date.",
+        "par" => " With --curve par: the NSS fit to the Treasury par row on or before the date (1 to 30 years; do not read the fitted curve beyond 30 years).",
+        _ => "",
+    }
+}
+
+/// The line of a fitted curve: the source, the date of the file or row used, the 10-year zero and (par) the fit error.
+fn curve_line(source: &str, c: &CurveNumbers, rmse_bp: Option<f64>) -> String {
+    let fit = rmse_bp.map_or(String::new(), |r| format!(", fit error {r:.2} bp (root mean square over the 8 par bonds; limit {} bp)", super::auto::PAR_FIT_MAX_RMSE_BP));
+    format!("curve ({source} fit) {}: 10-year zero {:.4}%{fit}", c.date, c.zero10 * 100.0)
+}
+
 fn date_of(o: &Opts, key: &str) -> R<(String, i64)> {
     match o.get(key) {
         Some(t) => match mapcheck::dates::parse(t) {
@@ -1785,12 +1831,19 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     let (mut curve1, index) = curve_and_index(&cache, &d1);
     let (mut curve2, _) = curve_and_index(&cache, &d2);
     if source != "gsw" {
-        let load = |d: &str| if source == "par" { super::auto::load_curve_par(&cache, d) } else { super::auto::load_curve_fedinvest(&cache, d) };
-        curve1 = Some(load(&d1).map_err(DcfError)?);
-        curve2 = Some(load(&d2).map_err(DcfError)?);
-        for c in [&curve1, &curve2].into_iter().flatten() {
-            println!("curve ({source} fit) {}: 10-year zero {:.4}%", c.date, c.zero10 * 100.0);
-        }
+        let load = |d: &str| -> Result<(CurveNumbers, Option<f64>), String> {
+            if source == "par" {
+                super::auto::load_curve_par_rmse(&cache, d).map(|(c, r)| (c, Some(r)))
+            } else {
+                super::auto::load_curve_fedinvest(&cache, d).map(|c| (c, None))
+            }
+        };
+        let (c1, r1) = load(&d1).map_err(DcfError)?;
+        let (c2, r2) = load(&d2).map_err(DcfError)?;
+        println!("{}", curve_line(&source, &c1, r1));
+        println!("{}", curve_line(&source, &c2, r2));
+        curve1 = Some(c1);
+        curve2 = Some(c2);
     }
     let market1_of = |t: &str| -> Market { market_at(&cache, t, &d1, None, Some(&d1), &rules, curve1.as_ref(), index.as_deref()) };
     let market2_of = |t: &str| -> Market { market_at(&cache, t, &d2, None, Some(&d2), &rules, curve2.as_ref(), index.as_deref()) };
@@ -1840,7 +1893,7 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     }
     println!("ATTRIBUTION of the change of the price from {d1} to {d2}, {} tickers, no random part. {BANNER} A market-implied value is a measurement, not an input.", rows.len());
     println!("  {common_line}");
-    println!("  The value is the value of the one path at the means (not the expected value). Order of the steps: facts, time, rates, plug (implied premium or implied growth), residual; the reverse order of rates and the plug is shown. This is an accounting split of the price change with the model; it is not a cause. Facts of each date: filed on or before it; the 10-K of the cache does not fill an input. Price: last close on or before the date. Curve: last GSW row on or before the date (with --curve fedinvest or par: the NSS fit to the last FedInvest file or Treasury par row on or before it).");
+    println!("  The value is the value of the one path at the means (not the expected value). Order of the steps: facts, time, rates, plug (implied premium or implied growth), residual; the reverse order of rates and the plug is shown. This is an accounting split of the price change with the model; it is not a cause. Facts of each date: filed on or before it; the 10-K of the cache does not fill an input. Price: last close on or before the date. Curve: last GSW row on or before the date.{}", curve_sentence(&source));
     if rows.len() == 1 {
         match &rows[0].outcome {
             Ok(a) => print!("{}", table_text(&rows[0].ticker, &d1, &d2, a)),

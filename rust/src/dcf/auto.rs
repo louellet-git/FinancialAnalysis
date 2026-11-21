@@ -527,13 +527,23 @@ pub const PAR_TENORS: [(&str, i64); 8] = [("1 Yr", 1), ("2 Yr", 2), ("3 Yr", 3),
 /// equal to the par yield, semiannual, clean price 100, maturity `n` years after the date); the NSS curve is fitted to these
 /// bonds with the fit of `fa recon rich-cheap` (`fit::fit_curve`). Use one source at both ends of a comparison.
 pub fn load_curve_par(cache: &std::path::Path, as_of: &str) -> Result<CurveNumbers, String> {
+    load_curve_par_rmse(cache, as_of).map(|x| x.0)
+}
+
+/// The largest root mean square error of the par fit that the program accepts (basis points of yield over the 8 par bonds).
+/// A curve with a larger error is refused, not used. Do not read the fitted curve beyond 30 years (the last par bond).
+pub const PAR_FIT_MAX_RMSE_BP: f64 = 5.0;
+
+/// `load_curve_par` with the root mean square error of the fit (basis points). In January the row can come from the file of
+/// the year before; the date of the row is `CurveNumbers::date`.
+pub fn load_curve_par_rmse(cache: &std::path::Path, as_of: &str) -> Result<(CurveNumbers, f64), String> {
     let limit = crate::curve::parse_iso(as_of.get(..10).unwrap_or(as_of)).ok_or_else(|| format!("'{as_of}' is not a date"))?;
     let year: i64 = as_of.get(..4).and_then(|y| y.parse().ok()).ok_or("bad year")?;
     for y in [year, year - 1] {
         let path = cache.join("rates").join(format!("treasury_nominal_{y}.csv"));
         let Ok(text) = std::fs::read_to_string(&path) else { continue };
         if let Some((date, yields)) = par_row_on(&text, limit)? {
-            return par_fit(&date, &yields);
+            return par_fit_rmse(&date, &yields);
         }
     }
     Err(format!("no Treasury par yield row on or before {as_of} in {}", cache.join("rates").display()))
@@ -563,6 +573,12 @@ pub fn par_row_on(text: &str, limit: crate::curve::Day) -> Result<Option<(String
 
 /// The NSS fit to the par bonds of one row (yields in percent).
 pub fn par_fit(date: &str, yields_pct: &[f64]) -> Result<CurveNumbers, String> {
+    par_fit_rmse(date, yields_pct).map(|x| x.0)
+}
+
+/// `par_fit` with the root mean square error in basis points (the residuals of the fit are yield errors in bp). An error when
+/// no start of the fit is finite, or when the error is above `PAR_FIT_MAX_RMSE_BP`.
+pub fn par_fit_rmse(date: &str, yields_pct: &[f64]) -> Result<(CurveNumbers, f64), String> {
     let settle = crate::curve::parse_iso(date).ok_or("bad date")?;
     let mut items = Vec::new();
     let mut points = Vec::new();
@@ -572,8 +588,12 @@ pub fn par_fit(date: &str, yields_pct: &[f64]) -> Result<CurveNumbers, String> {
         items.push(inst);
         points.push((*n as f64, yld));
     }
-    let (nss, _) = crate::fit::fit_curve(&items, &points);
-    Ok(curve_of_nss(date, &nss))
+    let (nss, sse) = crate::fit::try_fit_curve(&items, &points).ok_or_else(|| format!("par fit on {date}: no finite start"))?;
+    let rmse = (sse / items.len() as f64).sqrt();
+    if !rmse.is_finite() || rmse > PAR_FIT_MAX_RMSE_BP {
+        return Err(format!("par fit on {date}: root mean square error {rmse:.2} bp is above the limit of {PAR_FIT_MAX_RMSE_BP} bp; the curve is refused"));
+    }
+    Ok((curve_of_nss(date, &nss), rmse))
 }
 
 /// The curve numbers of a fitted NSS curve (decimal parameters) in the GSW units.
