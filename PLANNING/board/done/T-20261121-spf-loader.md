@@ -10,7 +10,7 @@ order: 2
 branch: claude/spf-loader
 created: 2026-11-21
 acceptance: `fa spf get` downloads medianLevel.xlsx of the Philadelphia Fed SPF into the cache with its download date; `fa spf show` gives the 35 Q1 values of RGDP10, STOCK10, BOND10 and BILL10 with the release date of each survey (or the documented upper bound, marked as such); a fixture test; the file goes into the private store only.
-merged: pull request 158 (branch claude/spf-loader)
+merged: pull request 160 (branch claude/spf-loader)
 ---
 The Head of Economics needs the long-run SPF medians for its engine. The site has no terms page
 (footer: "All rights reserved"). The owner approved a private copy, with only results in the repo
