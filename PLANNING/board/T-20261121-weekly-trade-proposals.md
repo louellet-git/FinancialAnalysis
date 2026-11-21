@@ -32,3 +32,9 @@ Plan of the Head of Fundamental Research (first Friday: 2026-11-27):
 Owner answers, 2026-11-21 about 03:55 UTC (relayed by the Head of Quality and Risk): "Paper 4 weeks, then live".
 So the first 4 Fridays (2026-11-27 to 2026-12-18) are paper; live from about 2026-12-25, only after Luc approves
 the sleeve limits ("Not sure" for now; the limits of the Head of Quality and Risk apply to paper as an interim rule).
+
+Disclosure in each weekly write-up (advice of the Head of Economics, 2026-11-21; from the blind projection test),
+word for word: "When the VIX closes at 25 or more (the trigger of analysis/macro/2026-11-21-stress-windows.md), the
+stated P10 and P5 are not reliable; in the three stress windows of 2024-2026 the tail below P10 was 20-33%." Also the
+backtested figures of the rule: hit rate 50.8% (+3.4 points over the base rate), 13-week P10 -15.2% and P5 -20.7%,
+the worst year 2025. No size rule for stress now (a rule fitted to three seen windows has no test).
