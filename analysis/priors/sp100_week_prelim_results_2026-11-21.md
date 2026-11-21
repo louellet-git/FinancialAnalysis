@@ -57,3 +57,29 @@ The Quality gate of the code; the premium series run of record; the economics vi
 and the reality check (`claude/attribution-reality`); the 2-month S&P 10 run on the new list with BRK-B.
 Sources: `analysis/priors/data/week_2026-11-20_main-b01b66a/`, `analysis/priors/sp10_reality_check_evidence_2026-11-21.md`,
 `analysis/priors/rates_balance_sheet_measure_2026-11-21.md`, `analysis/priors/data/premium_series_sp100_2019_not-of-record/`.
+
+## 6. Why the implied premium rose in one week: the two-week view (added 2026-11-21 about 19:40 UTC)
+Owner question: "why the sudden rise in the return investors are asking for? I've heard that people are expecting a rate
+rise too". Data of the store (Treasury par and real yields, VIX, credit spreads) and three more runs of the same command
+(`analysis/priors/data/week_2026-11-20_two-week-view/`; S&P 100, premium view first, points):
+
+| Window | Change | Rates | Premium common | Premium company | Growth common | Growth company | No model | Common change |
+|---|---|---|---|---|---|---|---|---|
+| 11-06 to 11-13 | +2.43% | -5.95 | +10.25 | -3.48 | +1.18 | -0.57 | +0.95 | -0.58 points |
+| 11-13 to 11-20 | -9.22% | +5.08 | -12.64 | +1.79 | -1.22 | -0.39 | -1.94 | +0.76 points |
+| 11-06 to 11-20 | -7.01% | -1.25 | -2.25 | +0.52 | -0.25 | -2.91 | -1.03 | +0.13 points |
+
+Facts: in the week to 11-13 the yields rose at each maturity (2-year 4.51% to 4.88%, 10-year 4.86% to 5.15%, real 10-year
+2.63% to 2.91%), and the stocks rose 2.4%; so the implied premium fell to its lowest value (1.20%). In the week to 11-20 the
+stocks fell 9.2% and the yields fell again (2-year 4.63%, 10-year 4.92%, real 10-year 2.77%). Over the two weeks together
+the common change of the premium is +0.13 points only. VIX: 25.6 (11-06), 19.3 (11-13), 28.4 (11-19). Credit spreads moved
+little (Baa less 10-year 1.56, 1.47, 1.52 on 11-18; BB 2.08, 1.86, 2.05). The 1-year yield (4.65% on 11-13) is above the
+3-month bill (4.32%): the curve prices a higher short rate.
+Reported by news sites (not checked against our data; the store has no policy rate and no futures on it): a high October
+CPI report on 2026-11-10; markets priced a rate increase of the Federal Reserve in December (about 70% to 80%); the first
+NVDA report under an interim CEO on 2026-11-17.
+Reading: most of the "sudden" premium rise of the last week reverses the fall of the premium in the week before, when the
+rates rose and the stocks did not follow. Over the two weeks the fall is: rates -1.25, a small common premium rise -2.25,
+company parts about -2.4 (most in the growth view: NVDA, AVGO and the other names with no premium view), no model -1.03.
+This fits a delayed reaction of stocks to higher rates plus company news in the large technology names. It is not proof
+of a cause.
