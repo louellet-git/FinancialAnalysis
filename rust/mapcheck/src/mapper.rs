@@ -626,6 +626,26 @@ mod tests {
     }
 
     #[test]
+    fn revenue_before_2018_uses_the_goods_and_services_sales_tags() {
+        // A filer with only SalesRevenueGoodsNet in 2015 (KO, MRK, SYY): the value is the revenue.
+        let (r, p) = resolve(vec![("SalesRevenueGoodsNet", flow(44294.0)), ("SalesAllowancesGoods", flow(6800.0))]);
+        assert_eq!(p.get(&r, "revenue"), Some(44294.0));
+        assert_eq!(p.source(&r, "revenue"), "= revenue_from_contracts");
+        assert_eq!(p.source(&r, "revenue_from_contracts"), "us-gaap/SalesRevenueGoodsNet");
+        // A seller of services (FIS, VRSK).
+        let (r, p) = resolve(vec![("SalesRevenueServicesNet", flow(6596.0))]);
+        assert_eq!(p.get(&r, "revenue"), Some(6596.0));
+        // The total tags come first: a later tag never replaces them.
+        let (r, p) = resolve(vec![("SalesRevenueNet", flow(100.0)), ("SalesRevenueGoodsNet", flow(60.0)), ("SalesRevenueServicesNet", flow(40.0))]);
+        assert_eq!(p.get(&r, "revenue"), Some(100.0));
+        let (r, p) = resolve(vec![("RevenueFromContractWithCustomerExcludingAssessedTax", flow(90.0)), ("SalesRevenueGoodsNet", flow(95.0))]);
+        assert_eq!(p.get(&r, "revenue"), Some(90.0));
+        // A refiner (VLO).
+        let (r, p) = resolve(vec![("RefiningAndMarketingRevenue", flow(87804.0))]);
+        assert_eq!(p.get(&r, "revenue"), Some(87804.0));
+    }
+
+    #[test]
     fn interest_income_is_revenue_only_for_an_unclassified_balance_sheet_and_a_large_share_of_assets() {
         // APTV, a biotech: a current-assets total, thus the interest income is not revenue.
         let (r, p) = resolve(vec![("InterestIncomeOperating", flow(5.0)), ("AssetsCurrent", balance(900.0)), ("Assets", balance(1000.0))]);

@@ -87,11 +87,17 @@ formulas = [
 [[variable]]
 name = "revenue_from_contracts"
 statement = "income_statement"
-note = "Revenue from contracts with customers (ASC 606). For most companies it is the full revenue. For a bank, a utility or a lessor it is a part of revenue. SalesRevenueNet is the tag for the same line before 2018; it is last, because a later filing gives the earlier years again with the contract tag."
+note = "Revenue from contracts with customers (ASC 606). For most companies it is the full revenue. For a bank, a utility or a lessor it is a part of revenue. SalesRevenueNet is the tag for the same line before 2018; it comes after the contract tags, because a later filing gives the earlier years again with the contract tag. After it come the other pre-2018 tags of a total line: SalesRevenueGoodsNet (a seller of goods) and SalesRevenueServicesNet (a seller of services) before 2018, then the total tags of an industry (refining, utility, hospital operator, landlord). No filer in the sp500 list has both the goods tag and the services tag with no total, so the goods tag never stands for a part. A tag after the first one never replaces a value: it fills a period that has no value."
 tags = [
     "us-gaap/RevenueFromContractWithCustomerExcludingAssessedTax",
     "us-gaap/RevenueFromContractWithCustomerIncludingAssessedTax",
     "us-gaap/SalesRevenueNet",
+    "us-gaap/SalesRevenueGoodsNet",
+    "us-gaap/SalesRevenueServicesNet",
+    "us-gaap/RefiningAndMarketingRevenue",
+    "us-gaap/UtilityRevenue",
+    "us-gaap/HealthCareOrganizationRevenue",
+    "us-gaap/RealEstateRevenueNet",
 ]
 
 [[variable]]
