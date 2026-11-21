@@ -156,3 +156,9 @@ hit less? Was anything hit more? If S&P10 finished expand to S&P100. Have a one 
 review before moving on to the additional work."
 Done: the exact words went to the Head of Fundamental Research. Next result: one page for the S&P 10, to
 me first, then to the person. The S&P 100 part waits for the review of the person.
+
+## 2026-11-21 about 19:29 UTC (chat; review of the one page for the S&P 10)
+Words: "The report should include the entire week including 11-20. It's a huge drop."
+Done: the exact words went to the Head of Fundamental Research, with my reading: the totals include 11-20,
+but the page says that the fall of that day is not explained; add the week by day and what the data shows
+for 11-20, on the same one page.
