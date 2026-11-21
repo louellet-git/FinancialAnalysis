@@ -135,3 +135,7 @@ Done: the scheduled task "Daily option price save (20-day test)" (15:27 New York
 ## 2026-11-21 00:37 UTC (chat)
 Words: "Is the lean method up to date? Can you move to a new repo called the-heads. I created it so it'll be separate from the chiefs."
 Done: it was not up to date (no model permission, no ask flow, no board area `ask`, no write-up row). `louellet-git/the-heads` has the general system with these rules (commit 6264abb). `lean/` is removed from `louellet-git/chiefs`, and its README points to the new repo (chiefs pull request 35).
+
+## 2026-11-21 03:00 UTC (chat)
+Words: "I think we should also get a head of economics which looks at current economic conditions/factors and is generally our economy guy. Supporting role."
+Done: a new row `Head of Economics` in `chiefs/ORIENTATION.md` (sections 1 and 2; folder `economics`, files `analysis/macro/`), the agent `macro-economist`, its row in `docs/TEAMS.md`. The person starts the session.
