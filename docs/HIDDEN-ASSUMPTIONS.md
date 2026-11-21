@@ -5,6 +5,8 @@ every entry below was re-verified against the code/docs on 2026-07-17. If you fi
 one, add it as a new file in `docs/traps/` (`docs/traps/README.md`): one file for each trap, so that
 parallel branches do not conflict. This file keeps the older traps; correct them here.
 
+- Split-adjusted store prices against as-filed SEC shares (a split look-ahead; BKNG): `docs/traps/2026-11-21-split-adjusted-prices-against-filed-shares.md`.
+
 **Deleted evidence files (2026-11-19).** The entries 1 to 135 name Python files as evidence. These
 files are deleted: `financial_analysis/{backtest,dcf,driver_dcf,scenarios,schema,store,market_data,options}.py`,
 `analysis/{IBM,JNJ,ANT}/driver_model.py` and `scripts/visualize_dcf.py`. A trap is still a trap; its

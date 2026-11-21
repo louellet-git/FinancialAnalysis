@@ -12,6 +12,7 @@
 //! | Intraday bars | Alpaca (key) | `intraday`, `alpaca` |
 //! | FRED series | FRED API (key), keyless CSV | `fred_api` (used by `rates`) |
 //! | Estimates, earnings surprises | Financial Modeling Prep (key in `FMP_API_KEY`) | `fmp` |
+//! | Stock splits (corporate actions) | Alpaca (key) | `splits`, `splits_cli` (`fa splits get`) |
 //! | Forward consensus snapshot, price targets, surprises, earnings dates | Nasdaq site API (no key) | `nasdaq_est`, `estimates_cache`, `earnings_dates` (`fa estimates`, `fa earnings`) |
 //!
 //! The cache files keep the formats of the Python code, so each reader of them still works:
@@ -39,6 +40,8 @@ pub mod price_check;
 pub mod price_cli;
 pub mod price_source;
 pub mod prices;
+pub mod splits;
+pub mod splits_cli;
 
 use serde::de::{MapAccess, Visitor};
 use serde::ser::SerializeMap;
