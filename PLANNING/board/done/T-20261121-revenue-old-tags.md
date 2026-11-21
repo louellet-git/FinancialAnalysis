@@ -2,7 +2,7 @@
 id: T-20261121-revenue-old-tags
 title: Map the old revenue tags (fiscal years before about 2017)
 area: importer
-status: in-progress
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: technology
@@ -10,6 +10,7 @@ order: 2
 branch: claude/revenue-old-tags
 created: 2026-11-21
 acceptance: The mapped `revenue` has a value for fiscal year 2015 for the sp500 tickers that have a revenue tag in that year; the count before and after; no change for a ticker that already had a value; IBM 83.84 / 151.84 / 258.03; a fixed-answer test.
+merged: pull request 196 (branch claude/revenue-old-tags)
 ---
 Found by the Head of Fundamental Research (2026-11-21): `revenue` has no value in fiscal year 2015
 for 51 sp500 tickers (for example JNJ, KR, VLO, SYY, PFE, MRK, KO). The raw tags exist (for example
@@ -49,7 +50,7 @@ companies go from -0.1/-1.4/-1.9% to -2.9/-4.1/-5.3% (299 -> 813). The run after
 Gross profit guard (mapper): no `gross_profit` from `revenue - cogs_total` when the filing of the one term has a
 different value for the other (a restatement: two bases). A negative result from one basis stays (a cruise line in
 2020-21, CPT, GIS can be real). HWM 2014 (-6.595B: revenue from the filing of 2017, cogs_total from the filing of
-2015) has no value now. Test: `gross_profit_needs_one_basis`. sp500, --periods 40: 93 values removed (default 12
+2015) has no value now. Test: `gross_profit_needs_one_basis`. sp500, --periods 40 (40 periods): 95 values removed (QA count; our first count was 93) (default 12
 periods: 42); 133 values are new, because revenue now exists. Operating income (formula with gross profit): 1 value
 lost, OXY 2014 Q2 (1.407B). It was a mixed basis: revenue 5.133B (restated in the filing of 2015-08-04, after the
 spin-off of California Resources, probably; not confirmed) less cogs 3.297B and opex 0.429B (the original filing of 2014-08-05 gave revenue
@@ -57,3 +58,6 @@ spin-off of California Resources, probably; not confirmed) less cogs 3.297B and 
 rule: it removes 241 good values, so the rule needs a different value in the other filing.
 
 IBM 83.84 / 151.84 / 258.03. Trap: docs/traps/2026-11-21-revenue-excise-before-2018.md (BF-B, STZ, TAP, PM).
+
+QA gate: PASS-WITH-NOTES (cycle 2, 2026-11-21). Limit: a quarter that the mapper makes from year-to-date
+differences has no accession, so the mixed-basis check does not test it (it keeps such values; it drops none).

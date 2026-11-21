@@ -98,7 +98,7 @@ tags = [
 [[variable]]
 name = "revenue_total_pre2018"
 statement = "income_statement"
-note = "A revenue total tag of filers before ASC 606. Use it only when no total tag exists for the period: the formula of revenue reads it after revenue_from_contracts, thus it fills an empty period only. It never replaces a value. The tags are the goods tag (a seller of goods), the services tag (a seller of services), and the total tags of an industry (refining, utility, hospital operator). RealEstateRevenueNet is the total revenue of a lessor. Excise taxes can be in these totals before 2018 (docs/traps/2026-11-21-revenue-excise-before-2018.md)."
+note = "A revenue tag of filers before ASC 606. This variable has a value for each period with one of these tags, also where it is only a part of revenue: do not read it as revenue. Only the formula of revenue uses it, after revenue_from_contracts, thus it fills an empty period of revenue only and never replaces a value. The tags are the goods tag (a seller of goods), the services tag (a seller of services), and the total tags of an industry (refining, utility, hospital operator). RealEstateRevenueNet is the total revenue of a lessor. Excise taxes can be in these totals before 2018 (docs/traps/2026-11-21-revenue-excise-before-2018.md)."
 tags = [
     "us-gaap/SalesRevenueGoodsNet",
     "us-gaap/SalesRevenueServicesNet",
