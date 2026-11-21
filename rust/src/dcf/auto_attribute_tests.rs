@@ -165,6 +165,9 @@ fn attribution(p1: f64, p2: f64, c: Chain, shares: f64) -> Attribution {
         new_facts: false,
         curve1: "2026-01-01".into(),
         curve2: "2026-01-01".into(),
+        beta1: None,
+        beta2: None,
+        dur_premium1: None,
         date1: "2026-01-01".into(),
         date2: "2026-01-02".into(),
     }
@@ -173,7 +176,7 @@ fn attribution(p1: f64, p2: f64, c: Chain, shares: f64) -> Attribution {
 /// `which` 3: all of the change is in the plug; 2: all in the rates.
 fn row(name: &str, p1: f64, p2: f64, which: usize, shares: f64, x1: f64) -> AttrRow {
     let c = chain((p2 / p1).ln(), which, x1);
-    AttrRow { ticker: name.into(), sector: "S".into(), industry: String::new(), prices: Some((p1, p2)), shares: Some(shares), shares_note: None, cik: None, weight_of: None, outcome: Ok(attribution(p1, p2, c, shares)), stale: None }
+    AttrRow { ticker: name.into(), sector: "S".into(), industry: String::new(), prices: Some((p1, p2)), shares: Some(shares), shares_note: None, cik: None, weight_of: None, outcome: Ok(attribution(p1, p2, c, shares)), earnings_8k: String::new(), stale: None }
 }
 
 #[test]
@@ -192,6 +195,7 @@ fn the_sums_have_the_hand_calculated_answers() {
         cik: None,
         weight_of: None,
         outcome: Err(("template bank: no model".into(), String::new())),
+        earnings_8k: String::new(),
         stale: None,
     });
     let whole = whole_list(&rows).unwrap();
@@ -365,6 +369,7 @@ fn the_list_text_names_the_tickers_with_no_model_value_and_a_missing_cik() {
         cik: None,
         weight_of: None,
         outcome: Err(("template bank: no model".into(), String::new())),
+        earnings_8k: String::new(),
         stale: None,
     });
     let w = whole_list(&rows).unwrap();
@@ -393,6 +398,7 @@ fn the_full_bridge_puts_each_ticker_in_once_and_adds_to_the_whole_change() {
         cik: None,
         weight_of: None,
         outcome: Err(("template bank: no model".into(), String::new())),
+        earnings_8k: String::new(),
         stale: None,
     });
     let b = full_bridge(&rows, View::Premium).unwrap();
@@ -458,4 +464,84 @@ fn a_close_older_than_the_index_close_takes_the_row_out_of_every_sum() {
     assert_eq!(full_bridge(&rows, View::Premium).unwrap().all.n, 2);
     assert!(list_text(&rows).contains("STALE PRICE, left out of every sum (1 tickers"));
     assert!(csv_line(&rows[1]).contains("price-stale(close of 2026-11-18 for 2026-11-20 (SPY 2026-11-20))"));
+}
+
+#[test]
+fn the_premium_duration_is_the_central_difference_of_ln_value() {
+    let t = table();
+    let model = rules_w1().erp.0;
+    let (h, x) = (DURATION_STEP, 0.04);
+    let m = mk(1.0, None);
+    // by hand: D = -(ln V(x + h) - ln V(x - h)) / (2 h), with the two values of the same engine at x +- h
+    let (up, down) = (value(&inputs(), &m, x + h), value(&inputs(), &m, x - h));
+    let by_hand = -(up.ln() - down.ln()) / (2.0 * h);
+    let d = premium_duration(&inputs(), &cfg(&t), &m, x, h).unwrap();
+    assert!((d - by_hand).abs() < 1e-12, "{d} {by_hand}");
+    assert!(d > 0.0, "the value falls with the premium: {d}");
+    // a price that is the value at the model premium: the attribution gives the duration at that premium
+    let p1 = value(&inputs(), &m, model);
+    let a = attribute_models(&inputs(), &mk(p1, None), &inputs(), &mk(p1 * 0.9, None), &cfg(&t)).unwrap();
+    let by_hand = -(value(&inputs(), &m, model + h).ln() - value(&inputs(), &m, model - h).ln()) / (2.0 * h);
+    assert!((a.dur_premium1.unwrap() - by_hand).abs() < 1e-6, "{:?} {by_hand}", a.dur_premium1);
+    // a step far outside the range has no value: no duration
+    assert!(premium_duration(&inputs(), &cfg(&t), &m, -5.0, h).is_none() || premium_duration(&inputs(), &cfg(&t), &m, 50.0, h).is_none());
+}
+
+#[test]
+fn the_betas_of_the_two_dates_are_the_adjusted_betas_or_empty() {
+    let t = table();
+    let model = rules_w1().erp.0;
+    let p1 = value(&inputs(), &mk(1.0, None), model);
+    let fit = |adjusted: f64| BetaFit { raw: 0.0, adjusted, weeks: 260, first: "a".into(), last: "b".into(), market: "SPY".into() };
+    let (mut m1, mut m2) = (mk(p1, None), mk(p1, None));
+    let a = attribute_models(&inputs(), &m1, &inputs(), &m2, &cfg(&t)).unwrap();
+    assert!(a.beta1.is_none() && a.beta2.is_none());
+    m1.beta = Some(fit(1.25));
+    m2.beta = Some(fit(1.5));
+    let a = attribute_models(&inputs(), &m1, &inputs(), &m2, &cfg(&t)).unwrap();
+    assert_eq!((a.beta1, a.beta2), (Some(1.25), Some(1.5)));
+}
+
+fn cache_with_8k(name: &str, filed: &[(&str, &str)]) -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join(format!("fa_attr_8k_{}_{name}", std::process::id()));
+    std::fs::create_dir_all(dir.join("ACME")).unwrap();
+    let list: Vec<String> = filed.iter().map(|(d, i)| format!(r#"{{"filed":"{d}","items":"{i}"}}"#)).collect();
+    std::fs::write(dir.join("ACME/sec_8k_earnings.json"), format!(r#"{{"filings":[{}]}}"#, list.join(","))).unwrap();
+    dir
+}
+
+#[test]
+fn the_8k_field_has_the_filings_after_d1_and_on_or_before_d2() {
+    let dir = cache_with_8k(
+        "window",
+        &[("2026-11-13", "2.02,9.01"), ("2026-11-17", "2.02,9.01"), ("2026-11-20", "2.02"), ("2026-11-21", "2.02"), ("2026-11-18", "5.02"), ("2026-11-19", "12.02")],
+    );
+    // D1 itself is out; the inside and D2 are in; after D2 is out; an item other than 2.02 is out (12.02 is not 2.02)
+    assert_eq!(earnings_8k_between(&dir, "ACME", "2026-11-13", "2026-11-20"), "2026-11-17;2026-11-20");
+    assert_eq!(earnings_8k_between(&dir, "ACME", "2026-11-20", "2026-11-21"), "2026-11-21");
+    assert_eq!(earnings_8k_between(&dir, "ACME", "2026-11-21", "2026-11-30"), "");
+    assert_eq!(earnings_8k_between(&dir, "NONE", "2026-11-13", "2026-11-20"), "");
+    std::fs::remove_dir_all(dir).ok();
+}
+
+#[test]
+fn the_csv_header_ends_with_the_four_new_columns_and_the_old_ones_keep_their_places() {
+    assert!(CSV_HEADER.ends_with(",refusal,beta1,beta2,dur_premium1,earnings_8k"));
+    assert!(CSV_HEADER.starts_with("ticker,size,sector,industry,price1,price2,change_pct,"));
+    assert_eq!(CSV_HEADER.split(',').position(|h| h == "flags"), Some(34));
+    let mut r = row("A", 10.0, 8.0, 3, 10.0, 0.05);
+    r.earnings_8k = "2026-11-17;2026-11-19".into();
+    if let Ok(a) = r.outcome.as_mut() {
+        a.beta1 = Some(1.1);
+        a.dur_premium1 = Some(21.5);
+    }
+    let line = csv_line(&r);
+    let cells: Vec<&str> = line.split(',').collect();
+    assert_eq!(cells.len(), CSV_HEADER.split(',').count());
+    assert_eq!(&cells[cells.len() - 4..], ["1.1000", "", "21.500", "2026-11-17;2026-11-19"]);
+}
+
+#[test]
+fn the_premium_series_csv_header_is_unchanged() {
+    assert_eq!(super::super::auto_premium::HEADER, "friday,anchor,curve_source,curve_date,zero10,s1,n_value,n_list,ret_w,n_ret,s2_facts,s2_time,s2_rates,s2_premium,s2_growth,s2_residual,s2_nomodel,s2_change");
 }

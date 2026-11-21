@@ -81,8 +81,16 @@ fa dcf attribute [--tickers-file FILE | TICKER ...] --from D1 --to D2 [OPTIONS]
                   curve that `fa recon rich-cheap` fits to the FedInvest Treasury prices of the last file on or before each
                   date; par: the same NSS fit to the Treasury daily par yield curve (1 to 30 years, each tenor a par
                   bond) of the last row on or before each date. One source is used at both dates.
-  --out FILE      write one CSV row for each ticker
-  --jobs N        threads (default: all); the result does not depend on N";
+  --out FILE      write one CSV row for each ticker. The last four columns are:
+                  beta1, beta2     the beta that the model uses at D1 and at D2 (the shrunk regression beta; empty with no beta)
+                  dur_premium1     D = -(ln V(x1 + h) - ln V(x1 - h)) / (2 h), h = 0.001, where x1 is the premium that the price
+                                   of D1 implies, and V is the value at the means with the facts, curve, beta and price weight
+                                   of D1. Unit: d ln V for a change of 1.00 of the premium as a decimal. A change of 0.01 of
+                                   the premium gives about -D x 0.01 in ln V. Empty with no premium view, or when a value at
+                                   x1 +- h does not exist
+                  earnings_8k      the filing dates of an SEC 8-K with item 2.02 after D1 and on or before D2, joined with
+                                   \";\" (from <cache>/<TICKER>/sec_8k_earnings.json; empty when there is none)
+  --jobs N       threads (default: all); the result does not depend on N";
 
 // ---------------------------------------------------------------------------------------------
 // One ticker
@@ -207,6 +215,11 @@ pub struct Attribution {
     pub new_facts: bool,
     pub curve1: String,
     pub curve2: String,
+    /// The beta that the model uses at D1 and at D2 (the shrunk regression beta of `Market.beta`; `None`: no beta).
+    pub beta1: Option<f64>,
+    pub beta2: Option<f64>,
+    /// `-d ln V / d premium` at the premium of D1 (`premium_duration`; `None`: no premium view, or no value at x1 +- h).
+    pub dur_premium1: Option<f64>,
     /// The dates of the two markets (the curve is the last row on or before them).
     pub date1: String,
     pub date2: String,
@@ -304,6 +317,21 @@ fn growth_search(inp: &AutoInputs, cfg: &ImpliedConfig, x: f64, market: &Market,
     Ok((f, cagr))
 }
 
+/// The step of the premium (a decimal: 0.001 is 0.1 point) of the central difference of `premium_duration`.
+pub const DURATION_STEP: f64 = 0.001;
+
+/// `D = -(ln V(x + h) - ln V(x - h)) / (2 h)`, the sensitivity of the value at the means to the premium at `x`, with the
+/// facts, the curve, the beta and the price weight of `inp` and `market` (the function of the premium search: `value_at`).
+/// Unit: d ln V for a change of 1.00 of the premium (a decimal). `None` when a value at `x +- h` does not exist.
+pub fn premium_duration(inp: &AutoInputs, cfg: &ImpliedConfig, market: &Market, x: f64, h: f64) -> Option<f64> {
+    let up = value_at(inp, cfg, market, x + h).ok()?;
+    let down = value_at(inp, cfg, market, x - h).ok()?;
+    if !(up.is_finite() && down.is_finite() && up > 0.0 && down > 0.0) {
+        return None;
+    }
+    Some(-(up.ln() - down.ln()) / (2.0 * h))
+}
+
 fn same_facts(a: &AutoInputs, b: &AutoInputs) -> bool {
     a.years == b.years && a.balance == b.balance
 }
@@ -350,9 +378,13 @@ pub fn attribute_models(inp1: &AutoInputs, m1: &Market, inp2: &AutoInputs, m2: &
         },
         Err(_) => (None, f64::NAN),
     };
+    let dur_premium1 = prem.as_ref().ok().and_then(|c| premium_duration(inp1, cfg, m1, c.x1.x, DURATION_STEP));
     Ok(Attribution {
         p1,
         p2,
+        beta1: m1.beta.as_ref().map(|b| b.adjusted),
+        beta2: m2.beta.as_ref().map(|b| b.adjusted),
+        dur_premium1,
         model_premium: model,
         prem,
         grow,
@@ -452,6 +484,8 @@ pub struct AttrRow {
     /// The ticker of the same company that carries the weight (one company, one weight): this ticker has none.
     pub weight_of: Option<String>,
     pub outcome: Result<Attribution, (String, String)>,
+    /// The filing dates of the SEC 8-K with item 2.02 after D1 and on or before D2, joined with ";" (`earnings_8k_between`).
+    pub earnings_8k: String,
     /// A close of this ticker is older than the close of the market index on the same date (`stale_note`): the row has
     /// no weight, so no sum mixes the dates. The text names the dates.
     pub stale: Option<String>,
@@ -502,7 +536,8 @@ pub fn attribute_list(
                 let primary = outcome.as_ref().ok().map(|x| x.shares1);
                 let (shares, shares_note) = guarded_shares(a, primary);
                 let cik = cfg.cache.and_then(|c| cik_of(c, &a.ticker));
-                AttrRow { ticker: a.ticker.clone(), sector, industry, prices, shares, shares_note, cik, weight_of: None, outcome, stale: None }
+                let earnings_8k = cfg.cache.map_or(String::new(), |c| earnings_8k_between(c, &a.ticker, &m1.as_of, &m2.as_of));
+                AttrRow { ticker: a.ticker.clone(), sector, industry, prices, shares, shares_note, cik, weight_of: None, outcome, earnings_8k, stale: None }
             })
             .collect()
     };
@@ -512,6 +547,21 @@ pub fn attribute_list(
     };
     one_weight_for_one_company(&mut rows);
     Ok(rows)
+}
+
+/// The filing dates of the SEC 8-K with item 2.02 of a ticker that are after `d1` and on or before `d2` (`YYYY-MM-DD`, the
+/// first 10 characters), oldest first, joined with ";". Empty when there is none or the cache has no list. No price is used.
+pub fn earnings_8k_between(cache: &Path, ticker: &str, d1: &str, d2: &str) -> String {
+    let (Some(d1), Some(d2)) = (d1.get(..10), d2.get(..10)) else { return String::new() };
+    let Ok(text) = std::fs::read(mapcheck::sec::earnings_filings_path(cache, ticker)) else { return String::new() };
+    let Ok(v) = serde_json::from_slice::<serde_json::Value>(&text) else { return String::new() };
+    let mut dates: Vec<&str> = v["filings"]
+        .as_array()
+        .map(|a| a.iter().filter(|f| f["items"].as_str().is_some_and(|s| s.split(',').any(|i| i.trim() == "2.02"))).filter_map(|f| f["filed"].as_str()).filter(|d| d.len() == 10 && *d > d1 && *d <= d2).collect())
+        .unwrap_or_default();
+    dates.sort_unstable();
+    dates.dedup();
+    dates.join(";")
 }
 
 /// The CIK of a ticker from the filing list of the cache (no network).
@@ -948,7 +998,7 @@ pub fn flagged_list(rows: &[AttrRow], view: View) -> Vec<(String, f64, f64, &'st
 // The output
 // ---------------------------------------------------------------------------------------------
 
-pub const CSV_HEADER: &str = "ticker,size,sector,industry,price1,price2,change_pct,p_facts_pct,p_time_pct,p_rates_pct,p_premium_pct,p_residual_pct,p_rev_rates_pct,p_rev_premium_pct,premium1,premium2,g_facts_pct,g_time_pct,g_rates_pct,g_growth_pct,g_residual_pct,g_rev_rates_pct,g_rev_growth_pct,growth_shift1,growth_shift2,growth10_1,growth10_2,growth_shift_at_premium1,growth10_at_premium1,shares,value1,curve1,curve2,new_facts,flags,refusal";
+pub const CSV_HEADER: &str = "ticker,size,sector,industry,price1,price2,change_pct,p_facts_pct,p_time_pct,p_rates_pct,p_premium_pct,p_residual_pct,p_rev_rates_pct,p_rev_premium_pct,premium1,premium2,g_facts_pct,g_time_pct,g_rates_pct,g_growth_pct,g_residual_pct,g_rev_rates_pct,g_rev_growth_pct,growth_shift1,growth_shift2,growth10_1,growth10_2,growth_shift_at_premium1,growth10_at_premium1,shares,value1,curve1,curve2,new_facts,flags,refusal,beta1,beta2,dur_premium1,earnings_8k";
 
 fn cell(s: &str) -> String {
     s.replace(',', ";")
@@ -1020,10 +1070,14 @@ pub fn csv_line(r: &AttrRow) -> String {
             f[idx("curve1")] = a.curve1.clone();
             f[idx("curve2")] = a.curve2.clone();
             f[idx("new_facts")] = a.new_facts.to_string();
+            f[idx("beta1")] = a.beta1.map_or(String::new(), |b| nm(b, 4));
+            f[idx("beta2")] = a.beta2.map_or(String::new(), |b| nm(b, 4));
+            f[idx("dur_premium1")] = a.dur_premium1.map_or(String::new(), |d| nm(d, 3));
             flags.push(a.flags());
         }
-        Err((key, _)) => f[n - 1] = cell(key),
+        Err((key, _)) => f[idx("refusal")] = cell(key),
     }
+    f[idx("earnings_8k")] = r.earnings_8k.clone();
     f[idx("flags")] = cell(&flags.iter().filter(|x| !x.is_empty()).cloned().collect::<Vec<_>>().join(" "));
     f.join(",")
 }
