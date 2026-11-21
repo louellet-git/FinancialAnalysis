@@ -8,7 +8,7 @@
 //! only when a critical input of the fiscal year has no value (`TRIGGERS`). Each value
 //! has a source text that starts with "filing", and the checks give a warning for it.
 
-use crate::filing::{capex_lines_in, has_investing_lines, load_filing, member_value, variable_of_tag, Filing, MemberFact, Statement, YearView};
+use crate::filing::{capex_lines_in, has_investing_lines, load_filing, member_value, outflow, variable_of_tag, Filing, Line, MemberFact, Statement, YearView};
 use crate::registry::Registry;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -18,7 +18,33 @@ pub const TRIGGERS: [&str; 3] = ["revenue", "capex", "shares_diluted"];
 /// The variables that can get a value from the filing.
 pub const FILLED: [&str; 4] = ["revenue", "capex", "shares_diluted", "shares_basic"];
 
+/// The variables whose value the lines of the 10-K replace, for each fiscal year that the 10-K holds.
+pub const FROM_LINES: [&str; 2] = ["capex", "capitalized_software"];
+
+/// What the mapper asks of the filing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FillMode {
+    /// A value for a critical input that the company facts do not have (`Supplement::fill`).
+    Gap,
+    /// The value from the capex lines of the 10-K, also if the company facts have a value (`Supplement::lines`).
+    Lines,
+}
+
+/// The answer of the filing to the mapper.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Filled {
+    /// A value with its source text.
+    Value(f64, String),
+    /// The filing has no such line: the variable has no value in this year (the company-facts value is cleared,
+    /// because both variables of one year come from one source).
+    Absent(String),
+    /// The lines of the filing are not reliable for this year: keep the company-facts value, and add the note to its source.
+    Keep(String),
+}
+
 pub const SOURCE_PREFIX: &str = "filing ";
+/// The source text of a value from the capex lines of the 10-K (not a gap fill, no warning).
+pub const LINES_PREFIX: &str = "10-K lines ";
 pub const NO_CAPEX_LINE: &str = "= 0 (filing ";
 
 /// True if the source text of a value says that the value came from the 10-K.
@@ -56,6 +82,39 @@ impl Supplement {
     pub fn load(registry: &Registry, cache: &Path, ticker: &str) -> Option<Supplement> {
         let folder = latest_filing_folder(cache, ticker)?;
         load_filing(ticker, &folder).ok().map(|filing| Supplement::new(registry, filing))
+    }
+
+    /// `capex` (equipment lines) or `capitalized_software` for the fiscal year that ends on `end`, from the
+    /// capex lines of the 10-K (calculation tree rule, `filing::capex_lines_in`). The source text lists the
+    /// lines that the value sums. Both variables of one year come from one source: if the equipment lines are
+    /// not reliable, both keep the company-facts value (`Filled::Keep`). None: the filing does not hold this year.
+    pub fn lines(&self, end: &str, name: &str) -> Option<Filled> {
+        if !FROM_LINES.contains(&name) {
+            return None;
+        }
+        let year = self.filing.year(end)?;
+        let cash = year.statements.iter().find(|s| s.kind == "cash")?;
+        let found = capex_lines_in(Some(cash), &self.variables);
+        let accession = &self.filing.accession;
+        let tag_list = |lines: &[(&Line, f64)]| lines.iter().map(|(l, _): &(&Line, f64)| l.tag.as_str()).collect::<Vec<_>>().join(" + ");
+        let line_list = |lines: &[&Line]| lines.iter().map(|l| l.tag.as_str()).collect::<Vec<_>>().join(", ");
+        if let Some(line) = found.unresolved.first() {
+            return Some(Filled::Keep(format!("10-K {accession} not used: the line {} has no consolidated value", line.tag)));
+        }
+        if found.equipment.is_empty() {
+            let why = if found.excluded.is_empty() {
+                "no capex line".to_string()
+            } else {
+                format!("only excluded lines: {}", line_list(&found.excluded))
+            };
+            return Some(Filled::Keep(format!("10-K {accession} not used: {why}")));
+        }
+        let lines = if name == "capex" { &found.equipment } else { &found.software };
+        let edge = if self.filing.is_oldest_year(end) { " [oldest year of this 10-K: earlier years use the company facts, with a different line definition]" } else { "" };
+        Some(match outflow(lines) {
+            Some(value) => Filled::Value(value, format!("{LINES_PREFIX}{accession}: {}{edge}", tag_list(lines))),
+            None => Filled::Absent(format!("{LINES_PREFIX}{accession}: no software line{edge}")),
+        })
     }
 
     /// The value of a variable for the fiscal year that ends on `end`, with its source.
@@ -96,17 +155,15 @@ impl Supplement {
         // 2. Capex: the lines of the investing section, company tags included.
         if name == "capex" {
             let cash: Option<&Statement> = statements.iter().find(|s| s.kind == "cash");
-            let lines: Vec<_> = capex_lines_in(cash)
-                .into_iter()
-                // A line that is a different standard variable (capitalized software) is not capex.
-                .filter(|line| self.variables.get(&line.tag).map(|v| v == name).unwrap_or(true))
-                .collect();
-            if !lines.is_empty() {
-                let total: f64 = lines.iter().map(|l| l.weight * l.value.unwrap_or(0.0)).sum();
-                let tags: Vec<&str> = lines.iter().map(|l| l.tag.as_str()).collect();
-                return Some((-total.abs(), format!("{SOURCE_PREFIX}{accession}: {}", tags.join(" + "))));
+            // Equipment lines only: capitalized software is a different standard variable.
+            let lines = capex_lines_in(cash, &self.variables).equipment;
+            if let Some(value) = outflow(&lines) {
+                let tags: Vec<&str> = lines.iter().map(|(l, _)| l.tag.as_str()).collect();
+                return Some((value, format!("{SOURCE_PREFIX}{accession}: {}", tags.join(" + "))));
             }
-            if has_investing_lines(cash) {
+            let found = capex_lines_in(cash, &self.variables);
+            // A line was left out (intangibles, a business purchase) or has no value: no explicit zero.
+            if has_investing_lines(cash) && found.excluded.is_empty() && found.unresolved.is_empty() {
                 // The filer does not show capex as a line: the amount is small for this
                 // filer, and it is in a different investing line.
                 return Some((0.0, format!("{NO_CAPEX_LINE}{accession}: the investing activities have no capital expenditure line)")));
@@ -239,6 +296,65 @@ mod tests {
         let (value, source) = supplement.fill(&registry, "2024-12-31", "revenue").unwrap();
         assert_eq!(value, 21865.0);
         assert!(source.contains("sum of 2 members of srt:ProductOrServiceAxis"));
+    }
+
+    fn value(f: Option<Filled>) -> (f64, String) {
+        match f {
+            Some(Filled::Value(v, s)) => (v, s),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn lines_value_lists_the_lines_and_only_the_fiscal_years_of_the_filing() {
+        let registry = Registry::embedded().unwrap();
+        let lines = vec![
+            line("us-gaap_PaymentsToAcquirePropertyPlantAndEquipment", -1.0, 60.0, vec![]),
+            line("acme_PaymentsForRentalEquipment", -1.0, 10.0, vec![]),
+            line("us-gaap_PaymentsToDevelopSoftware", -1.0, 9.0, vec![]),
+            line("us-gaap_PaymentsToAcquireIntangibleAssets", -1.0, 40.0, vec![]),
+            line("us-gaap_PaymentsToAcquireBusinessesNetOfCashAcquired", -1.0, 40.0, vec![]),
+        ];
+        let supplement = Supplement::new(&registry, filing(lines, HashMap::new()));
+        let (v, source) = value(supplement.lines("2024-12-31", "capex"));
+        assert_eq!(v, -70.0);
+        assert!(source.starts_with("10-K lines 0000000001-25-000001: us-gaap_PaymentsToAcquirePropertyPlantAndEquipment + acme_PaymentsForRentalEquipment"));
+        assert!(source.contains("oldest year"), "the filing holds one year: it is the edge");
+        assert!(!from_filing(&source), "a replaced value gives no filled_from_filing warning");
+        let (software, text) = value(supplement.lines("2024-12-31", "capitalized_software"));
+        assert_eq!(software, -9.0);
+        assert!(text.contains("us-gaap_PaymentsToDevelopSoftware"));
+        // An earlier year that the filing does not hold, and another variable: no answer (the company facts stay).
+        assert!(supplement.lines("2021-12-31", "capex").is_none());
+        assert!(supplement.lines("2024-12-31", "revenue").is_none());
+    }
+
+    #[test]
+    fn a_line_that_is_left_out_or_has_no_value_keeps_the_company_facts_for_both_variables() {
+        let registry = Registry::embedded().unwrap();
+        // VSAT: the only line is PP&E and intangibles in one amount with no "And" before "Equipment" is counted as equipment.
+        let vsat = vec![line("vsat_PaymentsToAcquirePropertyPlantEquipmentAndAcquireIntangibleAssets", -1.0, 993.0, vec![])];
+        let (v, source) = value(Supplement::new(&registry, filing(vsat, HashMap::new())).lines("2024-12-31", "capex"));
+        assert_eq!(v, -993.0);
+        assert!(source.contains("vsat_PaymentsToAcquirePropertyPlantEquipmentAndAcquireIntangibleAssets"));
+        // Only an intangibles-like line: no explicit zero, the company facts stay (and no gap zero).
+        let only = vec![line("acme_PaymentsToAcquireEquipmentAndIntangibleAssetsOfBusinesses", -1.0, 50.0, vec![])];
+        let supplement = Supplement::new(&registry, filing(only, HashMap::new()));
+        for name in ["capex", "capitalized_software"] {
+            assert!(matches!(supplement.lines("2024-12-31", name), Some(Filled::Keep(note)) if note.contains("only excluded lines")));
+        }
+        assert!(supplement.fill(&registry, "2024-12-31", "capex").is_none(), "no explicit 0 when a line was left out");
+        // RYN: a capex line of the tree has no consolidated value: keep the company facts, also for the sibling lines.
+        let mut missing = line("us-gaap_PaymentsToAcquireOtherPropertyPlantAndEquipment", -1.0, 0.0, vec![]);
+        missing.value = None;
+        let ryn = vec![missing, line("us-gaap_PaymentsToDevelopRealEstateAssets", -1.0, 22.0, vec![])];
+        let supplement = Supplement::new(&registry, filing(ryn, HashMap::new()));
+        assert!(matches!(supplement.lines("2024-12-31", "capex"), Some(Filled::Keep(note)) if note.contains("no consolidated value")));
+        // SYM: one line for equipment and software goes to capex, and software has no line of its own.
+        let sym = vec![line("sym_PaymentsToAcquirePropertyPlantAndEquipmentAndDevelopSoftware", -1.0, 79.0, vec![])];
+        let supplement = Supplement::new(&registry, filing(sym, HashMap::new()));
+        assert_eq!(value(supplement.lines("2024-12-31", "capex")).0, -79.0);
+        assert!(matches!(supplement.lines("2024-12-31", "capitalized_software"), Some(Filled::Absent(_))));
     }
 
     fn class(name: &str, value: f64) -> MemberFact {

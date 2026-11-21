@@ -1055,6 +1055,22 @@ tags = [
 ]
 
 [[variable]]
+name = "capex_companyfacts"
+statement = "cash_flow"
+memo = true
+companyfacts_of = "capex"
+note = "The company-facts value of capex, before the lines of the 10-K replace it (a fiscal year in the latest 10-K). It has no tag. Models do not read it."
+tags = []
+
+[[variable]]
+name = "capitalized_software_companyfacts"
+statement = "cash_flow"
+memo = true
+companyfacts_of = "capitalized_software"
+note = "The company-facts value of capitalized_software, before the lines of the 10-K replace it. It has no tag. Models do not read it."
+tags = []
+
+[[variable]]
 name = "capex_total"
 statement = "cash_flow"
 note = "Capital expenditure for free cash flow: equipment (capex) and capitalized software. Purchased intangibles are not included. Owner decision of 2026-11-19, PLANNING/RULES.md R2. It has no tag: the value comes from the formula."
