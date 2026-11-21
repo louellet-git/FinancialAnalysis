@@ -1,5 +1,12 @@
 # The DCF engine on the backtester: first stock-level result (2018 to 2026)
 
+> **INVALID (2026-11-21, CRIT F1 of the strategy gate): split look-ahead.** The prices of the store are split-adjusted
+> to today, and the model value per share uses the share count of each vintage. Every company that split later
+> (13% of the list, for example BKNG 25x, CMG 50x, AMZN 20x) got a value per share that was too high by the later split
+> factor. With an approximate fix the gate found: R1 +6.56 to +0.71 (t 0.39), B +2.85 to -2.12, D +3.42 to -0.51,
+> R2 -3.24 to -1.33. Do not use any number of this file until the fix (`T-20261121-split-basis-fix`) and the reruns.
+
+
 Ticket `T-20261121-dcf-engine-backtest`. Interim file: part 1 of the plan (stock level, the store window). The
 market-level part (with the Head of Economics) and the longer stock window (older prices) are not done yet.
 Rule: the price measures and ranks. No input of the model is set from the price, and no rule is chosen on the

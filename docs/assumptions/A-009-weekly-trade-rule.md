@@ -1,5 +1,6 @@
 # A-009: rule of the weekly fundamental trades (side, choice, size, exit)
-
+> **INVALID (2026-11-21, CRIT F1 of the strategy gate): split look-ahead in the backtest prices.** Its test results
+> (R1, R2) are not valid until `T-20261121-split-basis-fix` and the reruns. See the findings file.
 Updated: 2026-11-21. Written before any test of this exact rule. Do not tune it on a later result.
 
 ## Choice
