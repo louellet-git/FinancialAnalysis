@@ -49,3 +49,7 @@ Done: Ticket `T-20261121-arb-invariants` (branch `claude/quant-invariants`): res
 ## 2026-11-21 18:05 UTC
 Words: "I think for quant work, we're going to require as continuous as possible"
 Done: The arbitrage register ticket now aims at a continuous capture in market hours and a check on each new snapshot, not one daily copy. Research of the Alpaca limits and the e2-micro capacity first (`analysis/priors/continuous_option_data_2026-11-21.md`); then a recommendation to the Head of Technology (host and data plan are its area).
+
+## 2026-11-21 18:10 UTC (through the Head of Fundamental Research)
+Words (to the Head of Fundamental Research, about 18:50 UTC): "Great, make sure that whatever is repeatable/should be expected of future work like this is built into the correct engine." Then: "Send the same request of work to quant research for its engine/processes."
+Done: An inventory of the steps of the quant studies that a person, an agent or a shell did by hand; for each one, the engine and the owner; the table on the board before the code (ticket `T-20261121-quant-engine-integration`).
