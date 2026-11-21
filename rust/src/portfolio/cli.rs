@@ -27,7 +27,8 @@ fa portfolio backtest --strategy NAME --start D [--end D] [OPTIONS]
   --tickers-file F   the universe: one ticker at the start of each line (default: each ticker of the cache with a price file)
   --paths N (300)    value-rank: paths of each model (100 or more)     --seed S (7): a whole number
   --table FILE       value-rank: parameter table (default analysis/priors/process_priors_2026-11-19.toml)
-  --out FILE         write the daily value of the portfolio and of SPY as CSV
+  --out FILE         write the daily value of the portfolio, of SPY and of the equal-weight line as CSV
+  --holdings FILE    write the target weights of each rebalance date as CSV (date,ticker,weight)
   Survivorship: the lists of tickers are today's lists, so the result is too good. The output has an equal-weight line of
   the whole list for the comparison.";
 
@@ -80,7 +81,7 @@ pub fn run(repo: &Path, args: &[String]) -> u8 {
 }
 
 fn backtest(repo: &Path, args: &[String]) -> Result<(), String> {
-    let known = ["--strategy", "--cache", "--start", "--end", "--rebalance", "--cost-bp", "--tickers-file", "--paths", "--seed", "--table", "--out"];
+    let known = ["--strategy", "--cache", "--start", "--end", "--rebalance", "--cost-bp", "--tickers-file", "--paths", "--seed", "--table", "--out", "--holdings"];
     let mut i = 0;
     while i < args.len() {
         if !known.contains(&args[i].as_str()) {
@@ -167,9 +168,21 @@ fn backtest(repo: &Path, args: &[String]) -> Result<(), String> {
     let info = Info { n_tickers: tickers.len(), n_scored, late, seconds: t0.elapsed().as_secs_f64() };
     print!("{}", render(&report, &ew, &cfg, args, &info));
     if let Some(path) = opt(args, "--out") {
-        let mut csv = String::from("date,portfolio,spy\n");
+        // the equal-weight line of the list, on the dates of the strategy (empty where it has no value on that date)
+        let ew_at: BTreeMap<i64, f64> = ew.dates.iter().copied().zip(ew.nav.iter().copied()).collect();
+        let mut csv = String::from("date,portfolio,spy,equal_weight\n");
         for k in 0..report.dates.len() {
-            let _ = writeln!(csv, "{},{:.6},{:.6}", mapcheck::dates::format(report.dates[k]), report.nav[k], report.bench[k]);
+            let e = ew_at.get(&report.dates[k]).map_or(String::new(), |v| format!("{v:.6}"));
+            let _ = writeln!(csv, "{},{:.6},{:.6},{e}", mapcheck::dates::format(report.dates[k]), report.nav[k], report.bench[k]);
+        }
+        std::fs::write(path, csv).map_err(|e| format!("{path}: {e}"))?;
+    }
+    if let Some(path) = opt(args, "--holdings") {
+        let mut csv = String::from("date,ticker,weight\n");
+        for (d, w) in &report.holdings {
+            for (t, x) in w {
+                let _ = writeln!(csv, "{},{t},{x:.6}", mapcheck::dates::format(*d));
+            }
         }
         std::fs::write(path, csv).map_err(|e| format!("{path}: {e}"))?;
     }

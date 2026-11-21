@@ -179,6 +179,8 @@ pub struct Report {
     pub cash_days: usize,
     /// The number of scored tickers at each rebalance (empty if the strategy gives none).
     pub scored: Vec<usize>,
+    /// The target weights of each rebalance date that the series covers (after the targets with no fresh close are dropped).
+    pub holdings: Vec<(i64, Vec<(String, f64)>)>,
     pub fund: Perf,
     pub bench_perf: Perf,
 }
@@ -225,6 +227,7 @@ pub fn run(prices: &Prices, universe: &[String], strat: &dyn Strategy, cfg: &Con
     let (mut ri, mut turnover_total, mut cost_total, mut skipped, mut stale_sales) = (0usize, 0.0f64, 0.0f64, 0usize, 0usize);
     let (mut dates, mut nav, mut bench) = (Vec::new(), Vec::new(), Vec::new());
     let mut cash_days = 0usize;
+    let mut holdings: Vec<(i64, Vec<(String, f64)>)> = Vec::new();
     // The series starts on the first rebalance date with a position: a strategy with no data yet holds cash, and that
     // time is not in the result (it would be flat, and SPY would run alone).
     let mut spy_first = f64::NAN;
@@ -271,6 +274,9 @@ pub fn run(prices: &Prices, universe: &[String], strat: &dyn Strategy, cfg: &Con
             if spy_first.is_nan() && !shares.is_empty() {
                 spy_first = prices.asof("SPY", d).map_or(f64::NAN, |x| x.1);
             }
+            if !spy_first.is_nan() {
+                holdings.push((d, target.iter().map(|(t, x)| (t.clone(), x.0)).collect()));
+            }
         }
         if spy_first.is_nan() {
             cash = 1.0;
@@ -287,7 +293,7 @@ pub fn run(prices: &Prices, universe: &[String], strat: &dyn Strategy, cfg: &Con
         return Err("the strategy held no position on any rebalance date".into());
     }
     let (fund, bench_perf) = (perf(&nav, &dates), perf(&bench, &dates));
-    Ok(Report { strategy: strat.name().to_string(), dates, nav, bench, rebalances: rdays.len(), turnover_total, cost_total, skipped, stale_sales, cash_days, scored: strat.scored_counts(), fund, bench_perf })
+    Ok(Report { strategy: strat.name().to_string(), dates, nav, bench, rebalances: rdays.len(), turnover_total, cost_total, skipped, stale_sales, cash_days, scored: strat.scored_counts(), holdings, fund, bench_perf })
 }
 
 #[cfg(test)]
@@ -388,6 +394,12 @@ mod tests {
         near(r.fund.max_drawdown, 0.0);
         // turnover: start 1/2; second 1.05 sold and 0.525 bought: 1.575 / 1.05 / 2 = 0.75; third: B 0.5 -> 0.5 and A none: 0
         near(r.turnover_total, 0.5 + 0.75);
+        // the holdings are the targets of each rebalance date
+        let d = |s: &str| mapcheck::dates::parse(s).unwrap();
+        assert_eq!(
+            r.holdings,
+            vec![(d("2020-01-27"), vec![("A".to_string(), 1.0)]), (d("2020-02-01"), vec![("B".to_string(), 0.5)]), (d("2020-03-01"), vec![("B".to_string(), 0.5)])]
+        );
     }
 
     #[test]

@@ -415,6 +415,25 @@ impl Panel {
     pub fn company_years(&self) -> usize {
         self.companies.iter().map(|c| c.rows.len()).sum()
     }
+
+    /// The panel with only the rows of the fiscal years up to `year`; a company with no row left is dropped. It is the
+    /// data of an out-of-sample table (`fa dcf calibrate --cut`, `fa dcf pit --cut`). The filter is by fiscal year, not
+    /// by filing date: a later restatement of an old year stays (the values are today's facts).
+    pub fn up_to_year(&self, year: i32) -> Panel {
+        let companies = self
+            .companies
+            .iter()
+            .map(|c| CompanyPanel { rows: c.rows.iter().filter(|r| r.year <= year).cloned().collect(), ..c.clone() })
+            .filter(|c| !c.rows.is_empty())
+            .collect::<Vec<CompanyPanel>>();
+        // the counts of the kept rows; the counts of the rules (removed rows, jumps) stay those of the whole panel
+        let counts = RuleCounts {
+            companies: companies.len(),
+            growth_obs: companies.iter().flat_map(|c| &c.rows).filter(|r| r.growth.is_some()).count(),
+            ..self.counts
+        };
+        Panel { companies, counts, seconds: self.seconds }
+    }
 }
 
 #[cfg(test)]
@@ -435,6 +454,22 @@ mod tests {
         assert!((rows[2].growth.unwrap() + 0.10).abs() < 1e-12);
         assert_eq!((c.years_in, c.rows_out, c.growth_obs, c.jumps), (3, 3, 2, 0));
         assert_eq!(rows[1].year, 2022);
+    }
+
+    #[test]
+    fn up_to_year_keeps_the_years_up_to_the_cut_drops_an_empty_company_and_counts_again() {
+        let mut c = RuleCounts::default();
+        let a = clean_series(vec![raw("2015-12-31", "2016-02-01", 100.0), raw("2016-12-31", "2017-02-01", 110.0), raw("2017-12-31", "2018-02-01", 121.0)], &mut c);
+        let b = clean_series(vec![raw("2018-12-31", "2019-02-01", 50.0), raw("2019-12-31", "2020-02-01", 55.0)], &mut c);
+        let company = |t: &str, rows: Vec<PanelRow>| CompanyPanel { ticker: t.into(), name: t.into(), template: "standard".into(), rows };
+        let panel = Panel { companies: vec![company("A", a), company("B", b)], counts: c, seconds: 0.0 };
+        let cut = panel.up_to_year(2016);
+        assert_eq!(cut.companies.len(), 1); // B has no year up to 2016
+        assert_eq!(cut.companies[0].rows.iter().map(|r| r.year).collect::<Vec<_>>(), vec![2015, 2016]);
+        assert_eq!((cut.counts.companies, cut.counts.growth_obs), (1, 1));
+        assert_eq!(cut.company_years(), 2);
+        assert_eq!(cut.counts.years_in, panel.counts.years_in); // the counts of the rules stay those of the whole panel
+        assert_eq!(panel.up_to_year(2030).company_years(), 5);
     }
 
     #[test]

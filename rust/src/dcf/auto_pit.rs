@@ -710,13 +710,7 @@ pub fn pit_setup(cache: &Path, table_file: &Path, cut: Option<i32>, limit: Optio
             (t, f, format!("IN SAMPLE: parameter table {} (estimated on all years)", table_file.display()))
         }
         Some(y) => {
-            let panel = build_panel(cache, None).map_err(DcfError)?;
-            let trunc: Vec<CompanyPanel> = panel
-                .companies
-                .iter()
-                .map(|c| CompanyPanel { rows: c.rows.iter().filter(|r| r.year <= y).cloned().collect(), ..c.clone() })
-                .filter(|c| !c.rows.is_empty())
-                .collect();
+            let trunc = build_panel(cache, None).map_err(DcfError)?.up_to_year(y).companies;
             let cells = estimate_table(&trunc, 2);
             let fade = fade_cells(&trunc, &cells);
             let meta = TableMeta { date: String::new(), command: format!("estimated from the years up to {y}"), companies: trunc.len(), company_years: 0, growth_observations: 0, note: String::new() };
