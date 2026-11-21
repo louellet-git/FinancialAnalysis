@@ -415,10 +415,11 @@ pub struct AutoInputs {
 
 /// The inputs of a mapping report of `mapcheck`.
 ///
-/// The share counts are on the share basis of `today` (`splits`, see `splits.rs`): each count gets the factor of the
-/// splits after the filing date of its fact up to `today` (`YearData::from_period`).
-pub fn inputs_from_report(registry: &Registry, r: &mapcheck::run::TickerReport, splits: &[super::splits::Split], today: &str) -> AutoInputs {
-    let basis = super::splits::Basis { splits, ticker: &r.ticker, today };
+/// The share counts are on the share basis of the price file (`splits`, see `splits.rs`): each count gets the factor of
+/// the splits after the filing date of its fact up to `to`, the last date of the price file of the ticker
+/// (`splits::basis_to`; the closes are adjusted only up to that date) (`YearData::from_period`).
+pub fn inputs_from_report(registry: &Registry, r: &mapcheck::run::TickerReport, splits: &[super::splits::Split], to: &str) -> AutoInputs {
+    let basis = super::splits::Basis { splits, ticker: &r.ticker, to };
     let mut out = AutoInputs {
         ticker: r.ticker.clone(),
         name: r.name.clone(),

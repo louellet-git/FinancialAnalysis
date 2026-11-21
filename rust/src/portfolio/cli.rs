@@ -172,14 +172,13 @@ fn backtest(repo: &Path, args: &[String]) -> Result<(), String> {
             let rules = parse_rules("").map_err(|e| e.0)?;
             let curves = std::fs::read_to_string(cache.join("rates").join("gsw_feds200628.csv")).ok().and_then(|t| crate::forwards::parse_gsw(&t).ok());
             let index = index_from_cache(&cache);
-            // the closes are split-adjusted to today: the share counts of each vintage go to the same basis (a missing file is an error)
+            // the closes are split-adjusted to the last date of each price file: the share counts of each vintage go to the same basis (a missing file is an error)
             let splits = crate::dcf::splits::load_splits(&cache)?;
-            let today = crate::market::today_iso();
             split_note = crate::dcf::splits::check_report(&splits, &tickers);
             let years: BTreeMap<String, _> = tickers
                 .par_iter()
                 .filter_map(|t| {
-                    let (tpl, y) = load_vintages(&registry, &cache, t, start, &splits, &today)?;
+                    let (tpl, y) = load_vintages(&registry, &cache, t, start, &splits)?;
                     (tpl == "standard").then(|| (t.clone(), y))
                 })
                 .collect();

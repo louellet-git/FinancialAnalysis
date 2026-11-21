@@ -1340,3 +1340,43 @@ fn a_split_after_the_last_10k_does_not_change_the_value_over_the_price() {
     let ratio_defect = value(&none, p / 25.0) / (p / 25.0);
     assert!(ratio_defect / ratio_no_split > 20.0, "{ratio_defect} {ratio_no_split}");
 }
+
+/// The SNDK case: a 1:8 split with the ex-date 2026-11-20, the price file ends on 2026-11-19 and is not adjusted for it.
+/// The `to` date is the last date of the price file, so the split is not counted and the P50 / price is the same as with
+/// no split. With `to` = today (the defect) the shares are 8 times too high and the P50 / price 8 times too low.
+#[test]
+fn a_split_after_the_last_price_date_does_not_change_the_value_over_the_price() {
+    use super::super::auto_implied::deterministic_value;
+    use super::super::splits::{basis_to, Split};
+    let dir = std::env::temp_dir().join(format!("fa_sndk_like_{}", std::process::id()));
+    std::fs::remove_dir_all(&dir).ok();
+    std::fs::create_dir_all(dir.join("LIVE")).unwrap();
+    let row = |d: &str| format!(r#"{{"date":"{d}","open":20,"high":20,"low":20,"close":20,"volume":1}}"#);
+    std::fs::write(dir.join("LIVE").join("prices.json"), format!("[{},{}]", row("2026-11-18"), row("2026-11-19"))).unwrap();
+    std::fs::write(dir.join("LIVE").join("prices.meta.json"), r#"{"adjusted":"splits","last_date":"2026-11-19"}"#).unwrap();
+    let to = basis_to(&dir, "LIVE", false);
+    assert_eq!(to, "2026-11-19");
+
+    let reg = Registry::embedded().unwrap();
+    let day = mapcheck::dates::parse("2026-11-21").unwrap();
+    let report = mapcheck::run::check_facts(&reg, "LIVE", &live_facts(), 8, day, true);
+    let split = [Split { ticker: "LIVE".into(), ex_date: "2026-11-20".into(), old_rate: 1.0, new_rate: 8.0, factor: 8.0, kind: "forward".into(), sec_check: "match".into(), source: String::new() }];
+    let none = inputs_from_report(&reg, &report, &[], &to);
+    let with = inputs_from_report(&reg, &report, &split, &to);
+    assert_eq!(none.years, with.years);
+    assert_eq!(none.balance, with.balance);
+    let value = |i: &AutoInputs, price: f64| -> f64 {
+        let m = Market { as_of: "2026-11-21".into(), price: Some(price), ..Default::default() };
+        let model = build(i, &table(), &[], &m, &plain_rules(), BuildOptions::default()).unwrap_or_else(|e| panic!("{e:?}"));
+        deterministic_value(&spec_of(&model)).unwrap().0
+    };
+    let p = 20.0;
+    assert_eq!(value(&none, p) / p, value(&with, p) / p);
+    // the defect: `to` = today counts the split that is not in the closes
+    let wrong = inputs_from_report(&reg, &report, &split, "2026-11-21");
+    assert_eq!(wrong.balance.as_ref().unwrap().shares, Some(8e8));
+    let ratio_wrong = value(&wrong, p) / p;
+    let ratio_right = value(&with, p) / p;
+    assert!(ratio_wrong / ratio_right < 1.0 / 7.0, "{ratio_wrong} {ratio_right}");
+    std::fs::remove_dir_all(&dir).ok();
+}

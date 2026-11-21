@@ -211,7 +211,9 @@ fn auto_inner(repo: &Path, args: &[String]) -> R<u8> {
     let registry = Registry::embedded().map_err(DcfError)?;
     let report = mapcheck::run::check_ticker(&registry, &cache, &ticker, MAP_PERIODS, as_of_day, true);
     let splits = super::splits::load_or_warn(&cache);
-    let inputs = inputs_from_report(&registry, &report, &splits, &crate::market::today_iso());
+    // `to`: the last date of the price file (with no price file: today, with a warning)
+    let to = super::splits::basis_to(&cache, &ticker, true);
+    let inputs = inputs_from_report(&registry, &report, &splits, &to);
     let map_ms = t0.elapsed().as_secs_f64() * 1000.0;
     say(&format!("{ticker} automatic model - {BANNER}"));
     say(&format!("  company: {}; mapping status {}; template {}; {} fiscal years", if inputs.name.is_empty() { "(unknown)" } else { &inputs.name }, inputs.status, inputs.template, inputs.years.len()));
@@ -682,13 +684,14 @@ fn map_inputs_with(cache: &Path, tickers: &[String], as_of_day: i64, filed_cut: 
     let registry = Registry::embedded().map_err(DcfError)?;
     let t0 = Instant::now();
     let splits = super::splits::load_or_warn(cache);
-    let today = crate::market::today_iso();
     let run_map = || -> Vec<AutoInputs> {
         tickers
             .par_iter()
             .map(|t| {
                 let r = mapcheck::run::check_ticker_filed(&registry, cache, t, MAP_PERIODS, as_of_day, true, filed_cut);
-                inputs_from_report(&registry, &r, &splits, &today)
+                // `to`: the last date of the price file of the ticker; no warning here (a ticker with no price file has no price and no value)
+                let to = if splits.is_empty() { String::new() } else { super::splits::basis_to(cache, t, false) };
+                inputs_from_report(&registry, &r, &splits, &to)
             })
             .collect()
     };

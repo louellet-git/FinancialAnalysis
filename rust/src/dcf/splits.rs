@@ -96,21 +96,45 @@ pub fn mismatch_tickers(splits: &[Split]) -> Vec<String> {
     tickers_with(splits, |c| c == "mismatch")
 }
 
-/// The share basis for one ticker: `factor(s)` is `split_factor(splits, ticker, s, today)`. A model that reads a share
+/// The last date of the price file of a ticker: `last_date` of `prices.meta.json`, else the date of the last row of
+/// `prices.json`. `None` when the ticker has no price file. The price file is adjusted for the splits up to this date
+/// only: a split after it (an ex-date after the last close) is not in the closes (SNDK: 1:8 on 2026-11-20, prices to 2026-11-19).
+pub fn price_last_date(cache: &Path, ticker: &str) -> Option<String> {
+    let prices = crate::market::prices::cache_path(cache, ticker);
+    let meta = prices.with_file_name("prices.meta.json");
+    let from_meta = std::fs::read_to_string(meta).ok().and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok()).and_then(|v| v.get("last_date")?.as_str().map(str::to_string));
+    let date = from_meta.or_else(|| crate::market::prices::read_cache(&prices).ok()?.last().map(|p| p.date.clone()))?;
+    Some(date.get(..10).unwrap_or(&date).to_string())
+}
+
+/// The `to` date of the share basis of a ticker: the last date of its price file. With no price file: today, and a
+/// warning on stderr when `warn` (the model has no price then; a split after the last close cannot be told, so every
+/// split up to today counts).
+pub fn basis_to(cache: &Path, ticker: &str, warn: bool) -> String {
+    price_last_date(cache, ticker).unwrap_or_else(|| {
+        if warn {
+            eprintln!("fa: WARNING {ticker} has no price file: the share basis uses the splits up to today; a split after the last close of the market would be counted twice");
+        }
+        crate::market::today_iso()
+    })
+}
+
+/// The share basis for one ticker: `factor(s)` is `split_factor(splits, ticker, s, to)`. A model that reads a share
 /// count takes `s` = the FILING date of the share fact (see `YearData::from_period`): a filing that is issued after a
 /// split shows the share counts already adjusted for it (ASC 260), also for a period that ended before the split. Only
-/// the splits after the filing change the count.
+/// the splits after the filing change the count. `to` is the last date of the price file of the ticker (`basis_to`),
+/// not today: the closes are adjusted only up to their own last date.
 #[derive(Debug, Clone, Copy)]
 pub struct Basis<'a> {
     pub splits: &'a [Split],
     pub ticker: &'a str,
-    pub today: &'a str,
+    pub to: &'a str,
 }
 
 impl Basis<'_> {
     /// F for a share fact filed on `filed` (`YYYY-MM-DD`).
     pub fn factor(&self, filed: &str) -> f64 {
-        split_factor(self.splits, self.ticker, filed, self.today)
+        split_factor(self.splits, self.ticker, filed, self.to)
     }
 }
 
@@ -168,6 +192,46 @@ mod tests {
     fn split_before_the_date_is_one() {
         let s = [sp("NVDA", "2024-06-10", 10.0, "match")];
         assert_eq!(split_factor(&s, "NVDA", "2025-01-26", TODAY), 1.0);
+    }
+
+    fn price_dir(name: &str, rows: &[&str], meta: Option<&str>) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("fa_splits_{name}_{}", std::process::id()));
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::create_dir_all(dir.join("SNDK")).unwrap();
+        let body: Vec<String> = rows.iter().map(|d| format!(r#"{{"date":"{d}","open":1,"high":1,"low":1,"close":1,"volume":1}}"#)).collect();
+        std::fs::write(dir.join("SNDK").join("prices.json"), format!("[{}]", body.join(","))).unwrap();
+        if let Some(m) = meta {
+            std::fs::write(dir.join("SNDK").join("prices.meta.json"), m).unwrap();
+        }
+        dir
+    }
+
+    #[test]
+    fn the_to_date_is_the_last_date_of_the_price_file() {
+        // meta first, then the last row, then none
+        let a = price_dir("a", &["2026-11-18", "2026-11-19"], Some(r#"{"adjusted":"splits","last_date":"2026-11-19"}"#));
+        assert_eq!(price_last_date(&a, "SNDK").as_deref(), Some("2026-11-19"));
+        let b = price_dir("b", &["2026-11-18", "2026-11-19"], None);
+        assert_eq!(price_last_date(&b, "SNDK").as_deref(), Some("2026-11-19"));
+        let c = price_dir("c", &["2026-11-17"], Some(r#"{"rows":1}"#)); // meta with no last_date: the last row
+        assert_eq!(price_last_date(&c, "SNDK").as_deref(), Some("2026-11-17"));
+        assert_eq!(price_last_date(&a, "NOPE"), None);
+        // no price file: today (and a warning)
+        assert_eq!(basis_to(&a, "NOPE", false), crate::market::today_iso());
+        assert_eq!(basis_to(&a, "SNDK", false), "2026-11-19");
+        for d in [a, b, c] {
+            std::fs::remove_dir_all(d).ok();
+        }
+    }
+
+    #[test]
+    fn a_split_after_the_last_price_date_is_not_counted_and_one_on_it_is() {
+        // SNDK: 1:8 on 2026-11-20 (factor 8), prices to 2026-11-19
+        let s = [sp("SNDK", "2026-11-20", 8.0, "match")];
+        let basis = |to| Basis { splits: &s, ticker: "SNDK", to };
+        assert_eq!(basis("2026-11-19").factor("2026-02-15"), 1.0); // one day after the last price date
+        assert_eq!(basis("2026-11-20").factor("2026-02-15"), 8.0); // on the last price date
+        assert_eq!(basis("2026-11-21").factor("2026-02-15"), 8.0);
     }
 
     #[test]

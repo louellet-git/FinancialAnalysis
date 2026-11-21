@@ -201,8 +201,9 @@ impl Vintages {
 /// The vintages of a company from its facts, and its template. The vintages before the last one filed before `from`
 /// are not made: no decision from `from` on uses them.
 ///
-/// The share counts are on the basis of `today` (`splits`, see `dcf/splits.rs`), the basis of the closes of the store.
-pub fn vintages_of(registry: &Registry, ticker: &str, facts: &CompanyFacts, from: i64, splits: &[Split], today: &str) -> Option<(String, Vintages)> {
+/// The share counts are on the basis of the closes of the store (`splits`, see `dcf/splits.rs`): the splits up to `to`,
+/// the last date of the price file of the ticker.
+pub fn vintages_of(registry: &Registry, ticker: &str, facts: &CompanyFacts, from: i64, splits: &[Split], to: &str) -> Option<(String, Vintages)> {
     if !facts.has_us_gaap() {
         return None;
     }
@@ -212,7 +213,7 @@ pub fn vintages_of(registry: &Registry, ticker: &str, facts: &CompanyFacts, from
             .iter()
             .map(|e| {
                 let p = resolve_period_with(registry, f, e, Forms::Annual, None);
-                YearData::from_period(registry, &p, &Basis { splits, ticker, today })
+                YearData::from_period(registry, &p, &Basis { splits, ticker, to })
             })
             .collect()
     };
@@ -225,9 +226,10 @@ pub fn vintages_of(registry: &Registry, ticker: &str, facts: &CompanyFacts, from
 }
 
 /// The vintages of a ticker from the cache (see [`vintages_of`]).
-pub fn load_vintages(registry: &Registry, cache: &Path, ticker: &str, from: i64, splits: &[Split], today: &str) -> Option<(String, Vintages)> {
+pub fn load_vintages(registry: &Registry, cache: &Path, ticker: &str, from: i64, splits: &[Split]) -> Option<(String, Vintages)> {
     let facts = mapcheck::run::read_facts(&mapcheck::run::facts_path(cache, ticker)?).ok()?;
-    vintages_of(registry, ticker, &facts, from, splits, today)
+    let to = if splits.is_empty() { String::new() } else { crate::dcf::splits::basis_to(cache, ticker, false) };
+    vintages_of(registry, ticker, &facts, from, splits, &to)
 }
 
 /// The part of an ISO-dated series before `date` (text).
@@ -596,7 +598,7 @@ mod tests {
                                 raw.shares = raw.shares.map(|s| s * m);
                                 raw.shares_outstanding = raw.shares_outstanding.map(|s| s * m);
                                 let p = period_of(&reg, &raw);
-                                YearData::from_period(&reg, &p, &Basis { splits: &splits, ticker: &t, today: TODAY })
+                                YearData::from_period(&reg, &p, &Basis { splits: &splits, ticker: &t, to: TODAY })
                             })
                             .collect();
                         (day, ys)
@@ -650,7 +652,7 @@ mod tests {
     fn the_share_count_takes_the_split_factor_of_the_filing_date_not_the_period_end() {
         let reg = Registry::embedded().unwrap();
         let splits = [Split { ticker: "X".into(), ex_date: D.into(), old_rate: 1.0, new_rate: 25.0, factor: 25.0, kind: "forward".into(), sec_check: "match".into(), source: String::new() }];
-        let basis = Basis { splits: &splits, ticker: "X", today: TODAY };
+        let basis = Basis { splits: &splits, ticker: "X", to: TODAY };
         let fy2020 = period_of(&reg, &fy(0, 8, 1.0)); // period end 2020-12-31, filed 2021-02-20 (before the split)
         let counts = |p: &mapcheck::mapper::PeriodData| {
             let y = YearData::from_period(&reg, p, &basis);
