@@ -3,7 +3,8 @@
 Updated: 2026-11-21. Written before any test of this exact rule. Do not tune it on a later result.
 
 ## Choice
-Each Friday, with the closes of Thursday and the SEC facts filed by Thursday:
+Each Friday, with the last close before that Friday (Thursday; Wednesday when Thursday is a holiday, for
+example 2026-11-26) and the SEC facts filed by that day. Never a later close:
 1. **List.** The tickers of `rust/mapcheck/universe/sp500.txt` with the standard template and a model value.
 2. **Signal.** The P50 / price of the automatic model, point in time (`fa portfolio backtest --strategy
    value-rank`: the vintage of the facts filed before the date, the curve and the price of the day before).
@@ -16,7 +17,7 @@ Each Friday, with the closes of Thursday and the SEC facts filed by Thursday:
 6. **Side.** Buy. A short is not used before its test passes (see "When to examine it again").
 7. **Size.** Each trade is 1/39 of the value of the sleeve at entry (2.56%): 3 a week for 13 weeks gives at most
    39 open positions. A lower limit of the Head of Quality and Risk wins.
-8. **Exit.** At the Friday 13 weeks after the entry, at the Thursday close. Earlier only for a data fault found
+8. **Exit.** At the Friday 13 weeks after the entry (the last close before that Friday). Earlier only for a data fault found
    later or a sleeve limit. No price stop and no target (the backtest had none).
 9. **Hedge.** None. A short of SPY by the beta of the open positions is the first hedge, if a sleeve limit on
    market exposure needs it.
