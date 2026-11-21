@@ -31,9 +31,11 @@ form `FA-<tag> - <head>`, for example `FA-L - Head of Technology`.
 
 **The Head of Staff.** It is above the other heads, and it stays out of the details.
 
-- What goes up to it, as a short message (ticket, result, link): (1) a large task is done or
-  merged; (2) a head is blocked for more than about half a day; (3) a decision that only the person
-  can make; (4) two heads disagree, or need the same files or the same machine.
+- What goes up to it is rare (owner word, 2026-11-21): a result that is done. If the result goes to the
+  person, the Head of Staff reads it first ("does it make sense?"), then it goes to the person. One short
+  message: ticket, result, link.
+- No status report, and no message about work in progress. The only other messages are a decision that
+  only the person can make, and a conflict that two heads cannot settle.
 - Everything else stays between the heads. Heads still send messages to each other directly.
 - The person and the Head of Staff set the order of the work (the `order` field on the board).
   A head follows that order.
