@@ -61,10 +61,10 @@ For an attribution window D1 to D2:
 2. growth_change = Growth(D2) - Growth(D1), in decimals.
 3. ERP(t) = ERP_A(t) plus the sum of the layer B changes since the last survey release.
 4. If no survey is out at D1, the row for that window is absent. The engine does not fill it.
-7. A window with no survey release and no layer B change has a row with erp_change = 0 and growth_change = 0. Its source is "no release in window". The engine does not leave out that row.
-8. In a row with a release, `source` names the growth parts, for example "spf: RGDP10 2.0 + CPI10 2.3".
 5. The column source is "spf" when layer B is zero. It is "spf+macro" when layer B is on.
 6. Most windows contain no survey release. In those windows, erp_change comes from layer B only, or it is zero. The findings say how many windows have a release.
+7. A window with no survey release and no layer B change has a row with erp_change = 0 and growth_change = 0. Its source is "no release in window". The engine does not leave out that row.
+8. In a row with a release, `source` names the growth parts, for example "spf: RGDP10 2.0 + CPI10 2.3".
 
 ### Rule 4. Circularity
 
