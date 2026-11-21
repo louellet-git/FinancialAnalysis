@@ -122,3 +122,7 @@ Done: the ask form in `chiefs/ORIENTATION.md`, section 5 (Question, Why it matte
 ## 2026-11-20 23:52 UTC (chat)
 Words: "I need the question as a yes/no from the sessions to my phone"
 Done: an ask is a yes/no question; the session where the person answers pushes it to the phone ("Yes or no: ...? Recommended: ..."). `chiefs/ORIENTATION.md`, section 5; the three open asks written again.
+
+## 2026-11-21 00:08 UTC (chat)
+Words: "I need the question as an actual question I click y/n for, lean"
+Done: `chiefs/ORIENTATION.md`, section 5: the session where the person answers shows the question dialog (`AskUserQuestion`) with "Yes" and "No", plus a push notification to open the session.
