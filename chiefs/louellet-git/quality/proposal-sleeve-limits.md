@@ -25,6 +25,20 @@ before the owner approves limits.
 | Options | Defined risk only (the maximum loss is known at entry); the premium at risk is in the 10% limit | The bots use model prices; a naked short option has no loss limit |
 | Costs | The write-up states the spread and the fees; the result is reported after costs | `docs/QUALITY-STANDARDS.md`, section 6 |
 
+## Live pilot (owner word, 2026-11-21 03:47 UTC, relayed by the Head of Fundamental Research)
+Words: "And every week you will need to propose 3 trades to begin on the live trader, beginning next
+Friday." The backtest evidence is weak (+2.9 to +3.5 points a year over the equal weight, t 1.6 to 2.1,
+9 years, names of today). So the live limits are tighter than the paper limits above, until 12 weeks of
+live results exist:
+| Limit | Live pilot |
+|---|---|
+| One position | At most 5% of the live sleeve capital at entry (3 new names a week fill about 60% in 4 weeks) |
+| Gross exposure | At most 100%; no new position when the sum is at the limit |
+| Side and instrument | Long common stock only. No short sale and no option until a hedging engine passes its gate |
+| Loss in one day | 2% of the live sleeve: no new position next week until the head writes why |
+| Stop of the sleeve | A fall of 8% from the peak: close to cash; the owner decides the restart |
+| Orders | A person places each order. The repo sends no order (`CLAUDE.md`) |
+
 ## Checks
 - Before each trade: the head of the sleeve checks the limits in the write-up (`trading/journal/README.md`).
 - Each week: the Head of Quality and Risk checks the book against the limits (ticket, decision 3), and

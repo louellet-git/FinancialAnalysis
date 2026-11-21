@@ -31,3 +31,7 @@ Done: the records start with the next NVDA draft; the branch gets a document rev
 ## 2026-11-21 03:16 UTC (chat)
 Words: "I need the report to be a trade recommendation, based on fundamentals. Trade recommendations should be sub 3 pages."
 Done: a request to the Head of Fundamental Research for an NVDA trade recommendation of less than 3 pages, from the reviewed report (baf6358). A row for "Trade recommendation" in `docs/QUALITY-STANDARDS.md`, sections 4 and 5. A trade gets the strict levels (entry of 2026-11-20 21:44).
+
+## 2026-11-21 03:47 UTC (relayed verbatim by the Head of Fundamental Research; not yet confirmed to me in chat)
+Words: "And every week you will need to propose 3 trades to begin on the live trader, beginning next Friday. A valuation engine will be required. Potentially a hedging engine when and if that's needed."
+Done: live-pilot limits added to `proposal-sleeve-limits.md`; a gate form for the weekly proposal sent to the Head of Fundamental Research; a question to the owner on live against paper for the first weeks.
