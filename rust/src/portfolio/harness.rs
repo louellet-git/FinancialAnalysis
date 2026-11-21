@@ -44,8 +44,10 @@ pub struct Hypothesis {
     pub universe: String,
     /// The first day of the out-of-sample window (the window of the oldest ancestor is used: see `resolve`).
     pub oos_start: String,
-    /// The number of variants tried before this file (exploratory runs, other starts, other parameters). Needed, even if 0.
-    pub prior_variants: u32,
+    /// The number of variants tried before this file (exploratory runs, other starts, other parameters). Needed in the
+    /// file that runs, even if 0; an older ancestor file that has no value counts as 0.
+    #[serde(default)]
+    pub prior_variants: Option<u32>,
     /// The id of the hypothesis that this one changes (if any).
     #[serde(default)]
     pub parent: Option<String>,
@@ -72,7 +74,18 @@ pub struct Hypothesis {
 const PARAMS: [(&str, &str); 5] = [("paths", "--paths"), ("seed", "--seed"), ("table", "--table"), ("rebalance", "--rebalance"), ("cost_bp", "--cost-bp")];
 
 impl Hypothesis {
+    /// Parse the file that runs: `prior_variants` is needed.
     pub fn parse(text: &str) -> Result<Hypothesis, String> {
+        let h = Hypothesis::parse_lenient(text)?;
+        if h.prior_variants.is_none() {
+            return Err("hypothesis file: prior_variants is needed (the number of variants tried before this file, even if 0)".into());
+        }
+        Ok(h)
+    }
+
+    /// Parse an ancestor or another file of the folder: a file that was registered before `prior_variants` existed
+    /// stays readable (its value counts as 0).
+    pub fn parse_lenient(text: &str) -> Result<Hypothesis, String> {
         let h: Hypothesis = toml::from_str(text).map_err(|e| format!("hypothesis file: {e}"))?;
         if h.id.is_empty() || !h.id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.') || h.id.starts_with('.') {
             return Err(format!("hypothesis id '{}': letters, digits, '-', '_' and '.' only", h.id));
@@ -182,7 +195,7 @@ pub fn resolve(repo: &Path, h: &Hypothesis) -> Result<Resolved, String> {
         }
         let file = hypotheses_dir(repo).join(format!("{p}.toml"));
         let text = std::fs::read_to_string(&file).map_err(|e| format!("parent hypothesis '{p}': {}: {e}", file.display()))?;
-        cur = Hypothesis::parse(&text)?;
+        cur = Hypothesis::parse_lenient(&text)?;
         family = family.or_else(|| cur.family.clone());
         (window_start, window_id) = (cur.oos_day(), cur.id.clone());
         chain.push(p);
@@ -544,13 +557,13 @@ impl Counts {
 pub fn count_runs(repo: &Path, h: &Hypothesis, r: &Resolved) -> Counts {
     let mut family_of: BTreeMap<String, (String, u32)> = BTreeMap::new();
     for e in std::fs::read_dir(hypotheses_dir(repo)).into_iter().flatten().flatten() {
-        if let Some(other) = std::fs::read_to_string(e.path()).ok().and_then(|t| Hypothesis::parse(&t).ok()) {
+        if let Some(other) = std::fs::read_to_string(e.path()).ok().and_then(|t| Hypothesis::parse_lenient(&t).ok()) {
             if let Ok(res) = resolve(repo, &other) {
-                family_of.insert(other.id.clone(), (res.family, other.prior_variants));
+                family_of.insert(other.id.clone(), (res.family, other.prior_variants.unwrap_or(0)));
             }
         }
     }
-    family_of.insert(h.id.clone(), (r.family.clone(), h.prior_variants));
+    family_of.insert(h.id.clone(), (r.family.clone(), h.prior_variants.unwrap_or(0)));
     let (mut n_id, mut n_family, mut reads) = (0, 0, Vec::new());
     for rec in list_runs(repo) {
         n_id += usize::from(rec.id == h.id);
@@ -570,7 +583,7 @@ pub fn count_runs(repo: &Path, h: &Hypothesis, r: &Resolved) -> Counts {
         }
     }
     let prior_family = family_of.values().filter(|f| f.0 == r.family).map(|f| f.1).sum();
-    Counts { n_id: n_id + 1, n_family: n_family + 1, prior_id: h.prior_variants, prior_family, earlier_reads: reads }
+    Counts { n_id: n_id + 1, n_family: n_family + 1, prior_id: h.prior_variants.unwrap_or(0), prior_family, earlier_reads: reads }
 }
 
 /// Make the file `trading/runs/<id>/<stamp>.json` with the record "started". The record is there before any result. An
@@ -658,7 +671,7 @@ cost_bp = 10
     #[test]
     fn the_hypothesis_file_is_parsed_and_checked() {
         let h = Hypothesis::parse(GOOD).unwrap();
-        assert_eq!((h.id.as_str(), h.strategy.as_str(), h.oos_start.as_str(), h.parent.clone(), h.prior_variants), ("value-rank-sp500-v1", "value-rank", "2023-01-01", None, 4));
+        assert_eq!((h.id.as_str(), h.strategy.as_str(), h.oos_start.as_str(), h.parent.clone(), h.prior_variants), ("value-rank-sp500-v1", "value-rank", "2023-01-01", None, Some(4)));
         assert!(!h.oos_prior_exposure);
         assert_eq!(h.params["paths"].as_integer(), Some(300));
         assert!(Hypothesis::parse(&GOOD.replace("2023-01-01", "2023-13-45")).is_err());
@@ -715,6 +728,13 @@ cost_bp = 10
         assert!(!oos_read(d("2022-12-30"), d("2023-01-01")));
         assert!(oos_read(d("2023-01-01"), d("2023-01-01"))); // the series of the run has a point on this day
         assert!(oos_read(d("2023-01-02"), d("2023-01-01")));
+    }
+
+    #[test]
+    fn an_ancestor_without_prior_variants_is_readable_and_counts_as_zero() {
+        let old = GOOD.replace("prior_variants = 4\n", "");
+        assert!(Hypothesis::parse(&old).is_err());
+        assert_eq!(Hypothesis::parse_lenient(&old).unwrap().prior_variants, None);
     }
 
     #[test]

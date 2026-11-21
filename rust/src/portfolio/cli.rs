@@ -325,7 +325,7 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
         let _ = writeln!(h, "note: the equal-weight line is of the whole list ({} tickers), not of the scored names{}; the line on the scored names is part 2.", tickers.len(), n_scored.map_or(String::new(), |n| format!(" ({n})")));
         match (&hyp, &state) {
             (Some((hy, _)), Some((_, counts, read, clean, why, window))) => {
-                let _ = writeln!(h, "hypothesis {} (registered {}), prior variants {}; out-of-sample window from {}", hy.id, hy.date, hy.prior_variants, mapcheck::dates::format(*window));
+                let _ = writeln!(h, "hypothesis {} (registered {}), prior variants {}; out-of-sample window from {}", hy.id, hy.date, hy.prior_variants.unwrap_or(0), mapcheck::dates::format(*window));
                 if let Some(s) = &hy.success {
                     let _ = writeln!(h, "success criterion (written before the run): {s}");
                 }
