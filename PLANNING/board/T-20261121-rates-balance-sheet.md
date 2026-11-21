@@ -39,3 +39,16 @@ Design (Head of Fundamental Research, written before any measurement):
    that test passes.
 4. **Rules.** No input is set from the price; the measurement uses SEC facts and the Treasury curve only; banks, insurers and
    REITs (no template now) are listed with the size of their debt and investments, as the largest gap.
+
+**Measurement (2026-11-21 about 20:00 UTC; an agent, not reviewed):** `analysis/priors/rates_balance_sheet_measure_2026-11-21.md`.
+The curve change of the week moves the market value of the debt, the debt securities held and the pensions by: S&P 10
+-0.031 points (0.6% of its rates part +5.57), S&P 100 -0.093 points (1.9% of +4.93); range over the stated assumptions
+-0.021 to -0.037 and -0.067 to -0.109. Both groups are BELOW the threshold of item 3. But 29 of 86 non-financial S&P 100
+companies are ABOVE it, the largest leveraged ones: T -1.87, DUK -1.54, CMCSA -1.45, VZ -1.23, SO -1.15, NEE -0.89 points
+of their equity value. Gaps: no fixed or floating split is tagged for any company; 65 of 86 have no debt fair value at the
+date; 78 of 86 have no pension tags. Decision by the rule of item 3: a model change is needed for the company level (the
+bridge at market value), not for the S&P 10 or S&P 100 sums. It is item 4 of `T-20261121-dcf-engine-integration`, with
+an assumption record and a point-in-time backtest written before its run.
+Commit note: commit c347c62 ("Board: rates effect ...") also holds the code of the beta, premium-sensitivity and 8-K
+columns of `fa dcf attribute` (`T-20261121-premium-company-part`, an agent); the message does not say it. Tests pass
+(846 + 17 + 1).
