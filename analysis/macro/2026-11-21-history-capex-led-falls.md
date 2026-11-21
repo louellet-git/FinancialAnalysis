@@ -61,13 +61,13 @@ Store: `<TICKER>/prices.json`, `<TICKER>/company_facts.json.gz`, `vix/VIX_Histor
 [S1] https://pureadmin.qub.ac.uk/ws/files/18161511/RailwayCrisis.pdf (Campbell 2014, pp. 3-5, 9, 19)
 [S2] https://mpra.ub.uni-muenchen.de/61115/1/MPRA_paper_61115.pdf (Campbell 2012)
 [S3] https://mpra.ub.uni-muenchen.de/29839/1/MPRA_paper_29839.pdf (Campbell 2010, Table 4)
-[S4] https://fred.stlouisfed.org/data/A02082USA374NNBR (local file, not in the store; requested from the Head of Technology, 2026-11-21)
+[S4] https://fred.stlouisfed.org/data/A02082USA374NNBR (store `louellet-git/fa-data`, `macro/fred/`, added 2026-11-21)
 [S5] https://en.wikipedia.org/wiki/Pearl_Street_Station
 [S6] https://eh.net/encyclopedia/the-1929-stock-market-crash/ (Bierman)
-[S7] https://fred.stlouisfed.org/data/A0292AUSA380NNBR (local file, not in the store; requested from the Head of Technology, 2026-11-21)
+[S7] https://fred.stlouisfed.org/data/A0292AUSA380NNBR (store `louellet-git/fa-data`, `macro/fred/`, added 2026-11-21)
 [S8] https://en.wikipedia.org/wiki/Nifty_Fifty
 [S9] https://en.wikipedia.org/wiki/History_of_the_Internet
-[S10] https://fred.stlouisfed.org/graph/fredgraph.csv?id=C275RC1A027NBEA ; https://fred.stlouisfed.org/graph/fredgraph.csv?id=GDPA (local file, not in the store; requested from the Head of Technology, 2026-11-21)
+[S10] https://fred.stlouisfed.org/graph/fredgraph.csv?id=C275RC1A027NBEA ; https://fred.stlouisfed.org/graph/fredgraph.csv?id=GDPA (store `louellet-git/fa-data`, `macro/fred/`, added 2026-11-21)
 [S11] https://knowledge.wharton.upenn.edu/article/a-stumbling-lucent-tries-to-get-back-on-track/ (2001-02-22)
 [S12] https://en.wikipedia.org/wiki/Closing_milestones_of_the_S%26P_500 ; https://en.wikipedia.org/wiki/Closing_milestones_of_the_Nasdaq_Composite ; https://en.wikipedia.org/wiki/Dot-com_bubble
 [S13] https://lightwaveonline.com/business/earnings-statements/article/16648149/surviving-the-crunch-in-capital-expenditures (RHK)
