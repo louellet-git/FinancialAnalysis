@@ -201,3 +201,10 @@ breaks into based on actual vs implied from the market."
 Done: the exact words went to the Head of Fundamental Research. Two pages for the S&P 10 now: (1) the week
 and each stock, with the Economics section; (2) the valuation split, actual against implied. Both come to
 me, then to the person. The S&P 100 part waits.
+
+## 2026-11-21 about 20:01 UTC (chat)
+Words: "Can you add a piece about the chip sector as a whole within the S&P500? One page or a half to see if
+they felt what was expected of them to feel"
+Done: the exact words went to the Head of Fundamental Research. Three pieces come to me together, then to
+the person: S&P 10 page 1 (the week and each stock), page 2 (the valuation split), and the chip sector of
+the S&P 500 (one page or a half).
