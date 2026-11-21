@@ -148,3 +148,7 @@ Done: the list of the repeatable steps of this study, each with its engine and o
 ## 2026-11-21 about 19:05 UTC (chat)
 Words: "Send the same request of work to quant research for its engine/processes."
 Done: the request is sent to the Head of Quant Research with the owner words, the four steps as applied in this area, the example table (`T-20261121-dcf-engine-integration`) and the borders between the two areas.
+
+## 2026-11-21 about 19:20 UTC (chat)
+Words: "Give me the prelim results before the report, that's the general rule."
+Done: a standing rule of this head: the preliminary results go to the owner first (in the chat, with a results file on the branch); a report is written only after the owner has seen them and gives the go-ahead. First use: `analysis/priors/sp100_week_prelim_results_2026-11-21.md`.

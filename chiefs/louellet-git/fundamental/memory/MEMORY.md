@@ -36,6 +36,7 @@ person decided. Keep this file below 60 lines. Started 2026-11-20. Dream pass: 2
 - Do not edit code with a perl one-line substitution that has `|` in it: use the Edit tool.
 
 ## Standing words of the person
+- 2026-11-21: "Give me the prelim results before the report, that's the general rule": results first (chat + a results file), the report only after the go-ahead.
 - 2026-11-21: "Backtesting is integral to our work here": each model change and strategy has a point-in-time
   backtest written before its run; trades only from a backtested rule; blind projections tested (T1-T4).
 - The stochastic DCF engine, for stocks only; no option work in this area. Agents lean and of quality.
