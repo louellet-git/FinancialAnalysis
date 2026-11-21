@@ -42,9 +42,11 @@ file. They give the report in the final message. The orchestrator saves it if ne
 | Strategy or backtest | `strategy-researcher` → `model-validator` |
 | Investigation | the researcher → `auditor` |
 | Valuation report | `equity-analyst` → `model-validator` → `document-reviewer` → `auditor`; Luc approves a new ticker |
+| Trade recommendation | the head of the sleeve → `model-validator` → `auditor` → `risk-compliance-officer`; Luc decides the trade |
 
-A flow has at most two QA agents, but the valuation report has the four steps of
-`CLAUDE.md`. The orchestrator adds `test-engineer` or `risk-compliance-officer` only when
+A flow has at most two QA agents. The valuation report has the four steps of `CLAUDE.md`, and
+the trade recommendation has three QA agents (`docs/QUALITY-STANDARDS.md`, section 5). For
+other work, the orchestrator adds `test-engineer` or `risk-compliance-officer` only when
 the work needs it: a new engine, a new outside source with terms of use, a change in the
 use of keys, a valuation with a conflict of interest (ANT), or a first public release.
 
