@@ -25,3 +25,8 @@ Done: the role in the dashboard (autonomous, in the background; project manageme
 reason; lean; a cohesive system). A first look at the board, with one message to the Head of Fundamental
 Research. A frame for "cohesive" was proposed to the person (dashboard, "Frame"); the person has not
 agreed to it yet.
+
+## 2026-11-21 18:50 UTC (chat)
+Words: "Have your frame be a bit more lean"
+Done: the frame has three lines now (dashboard, "Frame"). The line about a date and the line about
+double work are part of lines 1 to 3.
