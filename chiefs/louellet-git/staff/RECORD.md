@@ -37,3 +37,13 @@ out the stories and the epics and the tickets so that it all kind of makes sense
 view, and just making sure that heads are following the rules."
 Done: `PLANNING/board/EPICS.md` (6 epics, each with the decision that it serves), ticket
 `T-20261121-board-epics`, the `story` field in `PLANNING/board/README.md`. One message to each head.
+
+## 2026-11-21 19:25 UTC (chat, from speech; the first words are not clear)
+Words: "... they'll say something like, oh, this is the implied growth and this is the implied premium. And
+I'm like, okay, great, but does that make sense? And that's kind of where I need you to be, that in between
+of me and them, where they should already be questioning, does this make sense? And going about it like
+that on their own. I don't want like a constricting method. I want to lean small amount of lines method,
+holistic."
+Done: one paragraph "Does it make sense?" in `chiefs/ORIENTATION.md` (end of section 1): a habit, no template,
+no gate. Line 4 of the frame. A first sense check of the preliminary week results went to the Head of
+Fundamental Research.

@@ -16,6 +16,8 @@ Rules: `chiefs/ORIENTATION.md`, sections 1, 5 and 8. Decisions of the person: `.
 1. Each large task serves a decision of the person.
 2. One question has one answer, and the output of one head is the input of the next.
 3. A head finishes before it starts.
+4. Each result that goes to the person answers "does it make sense?" (`chiefs/ORIENTATION.md`, end of
+   section 1). I stand between the person and the heads and ask it again, in a few lines, with no form.
 
 ## Main work (owner word 2026-11-21)
 - Keep `PLANNING/board/EPICS.md` (epic -> story -> ticket) true: each open ticket in one story, each epic
