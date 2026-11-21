@@ -113,3 +113,10 @@ results of 61fe8de against the eight points of Quality, and a parameter table cu
 that states the look-ahead; then send the commit and the switch week (2026-11-20) to the Head of Economics; (2) a
 truncation test of the base rates in the suite; (3) the long sentences of `docs/models/premium-series.md`; (4) the
 register rows of `assumptions.rs` for A-027 to A-037.
+
+**Point-in-time tests of the series on main (22:27 UTC, 2026-11-21).** The Head of Quality and Risk reviewed the first
+results (61fe8de): REVISE (P1 the split basis, P2 the par path, P3 the code of main, P4 the parameter table). New tests:
+`analysis/priors/data/premium_series_pit_main/` (result.md, cmp.txt, the scripts, the CSV files): 5 dates truncation
+and poison, the par path with a switch week, the share basis of D, six controls; all pass on main 99c5af6. Sent to
+Quality for its check. STILL OPEN before the series run of record: a parameter table cut before 2019 (none exists), or
+the label "parameters in-sample" in the header and the document.
