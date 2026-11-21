@@ -37,3 +37,8 @@ of Technology, 2026-11-20).
 Branch note, 2026-11-21: this branch starts from `claude/dcf-market-implied` (38b6460, in review), because it needs `fa dcf implied`. After that pull request merges, `main` is merged here and only the attribution diff stays.
 
 Change note (review cycle 1): `fa dcf implied --as-of` now filters the facts by filing date (before, `--as-of` set only the curve, the beta and the stale warning). `fa dcf auto` and `fa dcf screen` are unchanged.
+
+Status note, 2026-11-21: the command is in pull request 107 (gate cycle 2 of 2 passed). This ticket stays open for
+step 3 (the findings file with the closes of 2026-11-20, when the store has them). Open validator MIN items, for that
+step: the CRWD and REG "differs" counts; the guard band edge; the names of the excluded tickers; the beta cut for
+`returns`.
