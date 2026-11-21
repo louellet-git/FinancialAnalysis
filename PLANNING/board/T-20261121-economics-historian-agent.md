@@ -2,7 +2,7 @@
 id: T-20261121-economics-historian-agent
 title: Add a market-historian agent to the economics team
 area: docs
-status: in-progress
+status: review
 owner: louellet-git
 requested_by: louellet-git
 head: economics
