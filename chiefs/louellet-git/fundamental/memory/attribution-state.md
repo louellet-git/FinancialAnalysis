@@ -24,7 +24,7 @@ a headless Chromium print (Letter); check the page count after each change.
 - Runs of record: `analysis/priors/data/week_2026-11-20_record_main-7e88cfe/` (the bridge) and `..._main-3fc1acc/` (base rates, reality).
   S&P 100 -9.22%, S&P 10 -9.96%. S&P 10 blocks, premium first: facts 0.00, time +0.08, rates +5.81, premium common
   -15.89, premium company +3.09, growth common -1.01, growth company -0.65, no model -1.39.
-- Base rates of record (46 companies of 50B or more, median 3.9%, maximum
+- Base rates of record on main e2557b6, after the revenue fix (50 companies of 50B or more, median 3.7%, maximum
   21.0%). NOT of record: the list premium series (1.20% to 1.67%), the deviations and the fall by beta (one-time scripts in
   `data/week_2026-11-20_chips/`; design R6 puts them in the engine).
 - Deviations against the equal-weight market: NVDA -2.7, AAPL +1.0, META -1.0; NVDA against the other chips 1.1.
