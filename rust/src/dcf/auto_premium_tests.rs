@@ -203,3 +203,10 @@ fn the_per_ticker_rows_of_a_week_add_to_the_main_row() {
     assert_eq!(w.csv_line().split(',').count(), 18);
     let _ = std::fs::remove_dir_all(cache);
 }
+
+#[test]
+fn the_windows_file_has_the_fixed_header_and_one_row_of_two_anchors() {
+    // the input of `fa macro view --windows FILE` (the Head of Economics): header d1,date; d1 = the previous anchor
+    assert_eq!(WINDOWS_HEADER, "d1,date");
+    assert_eq!(windows_line("2026-11-13", "2026-11-20"), "2026-11-13,2026-11-20");
+}

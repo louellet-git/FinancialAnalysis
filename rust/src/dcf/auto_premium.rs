@@ -61,6 +61,9 @@ fa dcf premium-series --tickers-file FILE --start D1 --end D2 --out FILE [OPTION
                   of the ticker (the same parts as the s2_* columns), as shares of the market value of the LIST at the
                   previous anchor. So the rows of a week add to the s2_* columns of the main CSV (weight x change adds to
                   s2_change). The main CSV does not change
+  --windows-out FILE  write the windows of the weeks for `fa macro view --windows FILE`: header d1,date; one row for each
+                  week after the first: the previous anchor (d1) and the anchor (date). Then the economics view and this
+                  series use the same weeks
   --table FILE    parameter table
   --rules K=V,..  change a rule of the builder (the list: fa dcf auto --help)
   --jobs N        threads (default: all); the result does not depend on N";
@@ -309,12 +312,20 @@ fn date_of(o: &Opts, key: &str) -> R<i64> {
     }
 }
 
+/// The header of the windows file of `--windows-out` (the input of `fa macro view --windows`).
+pub const WINDOWS_HEADER: &str = "d1,date";
+
+/// One row of the windows file: the previous anchor (D1) and the anchor (D2) of a week.
+pub fn windows_line(prev_anchor: &str, anchor: &str) -> String {
+    format!("{prev_anchor},{anchor}")
+}
+
 fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     if args.iter().any(|a| a == "-h" || a == "--help") {
         println!("{PREMIUM_SERIES_USAGE}");
         return Ok(());
     }
-    let o = Opts::parse(args, &["--cache", "--out", "--jobs", "--table", "--start", "--end", "--tickers-file", "--rules", "--per-ticker"], &["--bridge"])?;
+    let o = Opts::parse(args, &["--cache", "--out", "--jobs", "--table", "--start", "--end", "--tickers-file", "--rules", "--per-ticker", "--windows-out"], &["--bridge"])?;
     if o.get("--per-ticker").is_some() && !o.flag("--bridge") {
         return e("--per-ticker needs --bridge");
     }
@@ -362,6 +373,15 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         }
         None => None,
     };
+    let mut windows_file = match o.get("--windows-out") {
+        Some(p) => {
+            let mut wf = std::fs::File::create(p).map_err(|x| DcfError(format!("{p}: {x}")))?;
+            writeln!(wf, "{WINDOWS_HEADER}").map_err(|x| DcfError(x.to_string()))?;
+            Some(wf)
+        }
+        None => None,
+    };
+    let mut prev_anchor: Option<String> = None;
     println!("PREMIUM SERIES {} to {}: {} Fridays, {} tickers, {}. No random part. A market-implied value is a measurement, not an input. The list is a list of today's names (survivorship).", fridays[0], fridays[fridays.len() - 1], fridays.len(), tickers.len(), if ctx.bridge { "with the bridge" } else { "no bridge" });
     let mut run = || -> R<()> {
         let t_all = Instant::now();
@@ -377,6 +397,10 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
                 }
                 pf.flush().map_err(|x| DcfError(x.to_string()))?;
             }
+            if let (Some(wf), Some(d1)) = (windows_file.as_mut(), prev_anchor.as_deref()) {
+                writeln!(wf, "{}", windows_line(d1, &row.anchor)).and_then(|_| wf.flush()).map_err(|x| DcfError(x.to_string()))?;
+            }
+            prev_anchor = Some(row.anchor.clone());
             if row.source == Some(CurveSource::Par) && switch.is_none() {
                 switch = Some(fr.clone());
                 println!("  SWITCH WEEK: {fr} is the first week with the par fit (curve date {})", row.curve_date);
