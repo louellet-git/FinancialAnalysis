@@ -1,0 +1,69 @@
+# Model: paper trader of the option bots
+
+Updated: 2026-11-21. Commit: not yet made.
+
+## Purpose
+WARNING: `fa trade paper` never sends an order to a broker. The repo has no broker code. The account is a
+simulation. The fills are model fills (`paper.rs:8`). Only the entry price of a new signal can come from
+a real quote, and that quote is about 15 minutes old.
+
+The command runs each bot again from a warm-up window, on the data up to now. It shows the paper account,
+and the entry price of the signals that the bot queued on the last bar. It is a forward test: the bars
+after the paper start are bars that the bot did not see when it was designed. It is for the two owners
+of the repo, to watch a bot before any real trade.
+
+## Inputs
+| Input | Source | Note |
+|---|---|---|
+| Bars and volatility indexes | data cache; refreshed from Yahoo unless `--no-refresh` | Same loader as the backtest (`docs/models/option-bot-backtest.md`) |
+| Live option chain | Cboe delayed quotes, `chain.rs:19` (`URL`) | One download for each underlying in a run, 3 s pause (`PAUSE_SECONDS`). `--no-live` skips it |
+| Paper start | `data/processed/trading/paper/<bot>.json`, field `paper_start` | The first run saves it: `--start D` or today (New York date) |
+| Clock | System time, converted to New York time (`Now`, `paper.rs:49`) | |
+| Account rules | `RiskConfig::default()`, `--equity`, `--max-risk`, `--risk` | No option for the commission: 0.65 |
+
+## Method (short)
+1. Read or save the paper start of the bot (`paper.rs:233`).
+2. Load the bars from a warm-up window before the start: 2 years for daily bots, 120 days for hourly
+   bots, 30 days for 5-minute bots (`paper.rs:164`). The bot start date, if any, sets a later limit.
+3. Run the backtest engine on these bars. An entry that would fill before the paper start is dropped
+   (`engine.rs:522`, `trade_start`). So the account starts empty at the paper start.
+4. Show the equity, the open positions, the last 5 closed trades and the rejections.
+5. Price the entries that the bot queued on the last bar (`paper.rs:260`). A leg that the live chain lists
+   gets the chain bid and ask (long at the ask, short at the bid). A leg not in the chain gets the model
+   price at the time now. With `--no-live`, all legs get the model price at the last bar close.
+   The `source` text of each signal says which one was used.
+6. Append a snapshot to the state file and keep the last 500 (`paper.rs:379`).
+
+## Outputs
+A text report for each bot. A state file for each bot (not in git). The trades and the open positions in
+the report come from the model price (the engine), not from the live chain. Only the line "SIGNAL (next bar)"
+can come from the chain.
+
+## Assumptions
+The model price of the legs has the records of `docs/models/option-bot-backtest.md` (A-140 to A-148).
+| Record | Name | Value | One line |
+|---|---|---|---|
+| A-149 | Paper signal price and warm-up | chain bid and ask, model for a missing leg; warm-up 2 years, 120 days, 30 days | Rule for the live price and the data window |
+
+## Limits
+- The account does not use the live price. A fill in the account is a model fill at the next bar open.
+  The live price shows only what the signal would cost now.
+- The chain is delayed about 15 minutes. Before the open it can be stale. Cboe can change the file.
+- The signal price is not the next-bar-open price that the engine will use.
+- The run depends on the schedule of the person: a missed run for a 5-minute bot is not a missed trade
+  (the engine runs again from the bars), but the live signal price is lost.
+- Warm-up is a window, so a bot with a long indicator can have too few bars at the start.
+- The state file holds `paper_start` and snapshots only. The account is recomputed at each run.
+- A result is a forward test of a few weeks of data at most. It does not show an edge.
+
+## Code and command
+| What | Path or command |
+|---|---|
+| Code | `rust/src/trading/paper.rs`, `chain.rs`, and the engine in `engine.rs` |
+| Parameter file | None. State: `data/processed/trading/paper/<bot>.json` |
+| Command | `fa trade paper [BOT]... [--start D] [--no-refresh] [--no-live] [--equity N] [--max-risk N] [--risk F]` |
+| Tests | `cargo test --manifest-path rust/Cargo.toml --locked` (the tests use a fixed chain and no network) |
+
+## Review status
+Not reviewed by the steps of `docs/QUALITY-STANDARDS.md`. A first chain check of the live data:
+`trading/research/arb-01-chain-check-2026-11-19.md` (stored chains of IBM and JNJ, not of SPY).
