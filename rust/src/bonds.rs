@@ -1,70 +1,57 @@
-//! US corporate bond yields and credit spreads from free, keyless sources (the Rust form of
-//! `financial_analysis/bonds.py`).
+//! US corporate bond yields and the cost of debt by rating, from public sources.
 //!
 //! The driver engine prices debt as `kd = rf + kd_spread`, with `rf` the Treasury 10Y. This
-//! module gives market values for `kd_spread` and the context around them.
+//! module gives a market value for `kd_spread` and the context around it.
 //!
-//! All sources come through the FRED public CSV (no key):
+//! The cost of debt of a rating is the Treasury HQM spot yield at the maturity (10 years by
+//! default) plus a fixed step for the rating bucket:
 //!
-//! - ICE BofA US corporate indexes by rating (AAA, AA, A, BBB, BB, B, CCC and lower):
-//!   option-adjusted spread (OAS) and effective yield, daily. FRED keeps only the last three
-//!   years (ICE licence), and ICE does not allow redistribution: the cache is local only
-//!   (`data/` is not in git).
-//! - Moody's seasoned Aaa and Baa corporate bond yields (20 years or more to maturity).
-//! - U.S. Treasury HQM corporate bond yield curve: monthly average spot rates, 1 to 100 years,
-//!   a blend of AAA, AA and A bonds. Read from the Treasury files (`fa bonds hqm get`, module `hqm`);
-//!   FRED `HQMCB<n>YR` has the same numbers.
+//! - HQM: U.S. Treasury high quality market corporate bond yield curve, monthly average spot
+//!   rates, 1 to 100 years, a blend of AAA, AA and A bonds. Read from the Treasury files
+//!   (`fa bonds hqm get`, module `hqm`).
+//! - Step: the default spread of the bucket minus the default spread of the HQM reference
+//!   bucket (`REFERENCE_BUCKET`, step 0). The spreads are the table of A. Damodaran, "Ratings,
+//!   Interest Coverage Ratios and Default Spread", data of January 2026,
+//!   <https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/ratings.html>. They are facts
+//!   written in this file, not a copy of a data file. Record: `docs/assumptions/A-200` to `A-203`.
 //!
-//! Two spread measures:
+//! The ICE BofA spreads and the Moody's Aaa/Baa yields are not used: their terms do not permit a
+//! stored copy.
 //!
-//! - `spread_over_10y` = index effective yield - UST 10Y on the same date. This is the
-//!   engine's `kd_spread` (kd = rf_10Y + kd_spread), so the verdict uses it.
-//! - OAS = spread over the Treasury curve at each bond's own maturity. It differs from
-//!   `spread_over_10y` by the slope of the curve between the index duration and 10 years.
+//! `spread_over_10y` = cost of debt - UST 10Y on the date. This is the engine's `kd_spread`
+//! (kd = rf_10Y + kd_spread), so the verdict uses it.
 //!
-//! UNITS: decimals (0.0067 = 0.67%). The cache is `data/raw/bonds/fred_<ID>.csv`.
+//! UNITS: decimals (0.0067 = 0.67%). The HQM rate is a spot rate (a zero rate), the UST 10Y is a
+//! par yield: the spread has this small basis.
 
-use crate::rates::{compare, is_fresh_file, iso, observation, parse_fred_csv, round6, save_cache, Rates, Res};
-use crate::{CheckResult, CreditSnapshot, HqmCurve, RateObservation, RatingQuote};
+use crate::rates::{is_fresh_file, iso, observation, parse_fred_csv, round6, save_cache, Rates, Res};
+use crate::{CreditSnapshot, HqmCurve, RateObservation, RatingQuote};
 use std::collections::BTreeMap;
 
 pub const RATINGS: [&str; 7] = ["AAA", "AA", "A", "BBB", "BB", "B", "CCC"];
-const ICE_OAS: [(&str, &str); 7] = [
-    ("AAA", "BAMLC0A1CAAA"),
-    ("AA", "BAMLC0A2CAA"),
-    ("A", "BAMLC0A3CA"),
-    ("BBB", "BAMLC0A4CBBB"),
-    ("BB", "BAMLH0A1HYBB"),
-    ("B", "BAMLH0A2HYB"),
-    ("CCC", "BAMLH0A3HYC"),
-];
-const MOODYS: [(&str, &str); 2] = [("Aaa", "DAAA"), ("Baa", "DBAA")];
-/// FRED: Moody's yield minus DGS10.
-const MOODYS_SPREAD_10Y: [(&str, &str); 2] = [("Aaa", "AAA10Y"), ("Baa", "BAA10Y")];
+/// The rating bucket of the HQM curve. Its step is 0. HQM holds AAA, AA and A bonds; A is the
+/// largest group of them (convention, record A-201).
+pub const REFERENCE_BUCKET: &str = "A";
+/// The maturity (years) of the cost of debt, as the `rf` of the engine (record A-202).
+pub const DEFAULT_MATURITY: i64 = 10;
 pub const HQM_MATURITIES: [i64; 8] = [1, 2, 3, 5, 7, 10, 20, 30];
 
-pub const ICE_SOURCE: &str = "ICE BofA via FRED";
-pub const MOODYS_SOURCE: &str = "Moody's via FRED";
-pub const HQM_SOURCE: &str = crate::hqm::SOURCE;
+/// Default spread over the risk-free rate by rating (decimals): Damodaran, January 2026, the
+/// middle notch of each letter grade (Aaa/AAA, Aa2/AA, A2/A, Baa2/BBB, Ba2/BB, B2/B, Caa/CCC).
+const DEFAULT_SPREAD: [(&str, f64); 7] = [("AAA", 0.0040), ("AA", 0.0055), ("A", 0.0078), ("BBB", 0.0111), ("BB", 0.0184), ("B", 0.0321), ("CCC", 0.0885)];
 
-/// Days: weekends, holidays and the one-day FRED lag.
-const DAILY_MAX_AGE: i64 = 7;
+pub const HQM_SOURCE: &str = crate::hqm::SOURCE;
+pub const STEP_SOURCE: &str = "Damodaran default spreads, Jan 2026";
+/// The date of the table (the site update of 2026-01-09).
+pub const STEP_DATE: &str = "2026-01-09";
+
 /// Days: a monthly average has the date of the 1st and is published after the month end.
 const MONTHLY_MAX_AGE: i64 = 70;
 
-/// The FRED series that the bond functions cache in `data/raw/bonds/fred_<ID>.csv`, in a stable order: the ICE
-/// option-adjusted spreads and yields of each rating, Moody's Aaa and Baa yields and their spreads over the 10-year
-/// Treasury, and the Treasury HQM corporate spot rates.
+/// The FRED series that the bond functions cache in `data/raw/bonds/fred_<ID>.csv`, in a stable order: the Treasury
+/// HQM corporate spot rates (the readers now use the Treasury files; the FRED copy is a cross-check).
 pub fn cached_series_ids() -> Vec<String> {
-    let mut ids: Vec<String> = Vec::new();
-    for (_, id) in ICE_OAS {
-        ids.push(id.to_string());
-        ids.push(format!("{id}EY"));
-    }
-    ids.extend(MOODYS.iter().map(|(_, id)| id.to_string()));
-    ids.extend(MOODYS_SPREAD_10Y.iter().map(|(_, id)| id.to_string()));
-    ids.extend(HQM_MATURITIES.iter().map(|n| format!("HQMCB{n}YR")));
-    ids
+    HQM_MATURITIES.iter().map(|n| format!("HQMCB{n}YR")).collect()
 }
 
 /// The cache file of one FRED series of the bond functions.
@@ -72,16 +59,18 @@ pub fn cached_series_path(cache: &std::path::Path, id: &str) -> std::path::PathB
     cache.join("bonds").join(format!("fred_{id}.csv"))
 }
 
-fn ice_oas_id(bucket: &str) -> &'static str {
-    ICE_OAS.iter().find(|(b, _)| *b == bucket).map(|(_, id)| *id).unwrap_or("")
+/// The default spread of a bucket over the risk-free rate (Damodaran), decimals.
+pub fn default_spread(bucket: &str) -> f64 {
+    DEFAULT_SPREAD.iter().find(|(b, _)| *b == bucket).map_or(f64::NAN, |(_, s)| *s)
 }
 
-fn ice_yield_id(bucket: &str) -> String {
-    format!("{}EY", ice_oas_id(bucket))
+/// The step of a bucket over the HQM reference bucket, decimals. The step of the reference is 0.
+pub fn rating_step(bucket: &str) -> f64 {
+    round6(default_spread(bucket) - default_spread(REFERENCE_BUCKET))
 }
 
 /// An S&P or Fitch rating (`A-`, `BBB+`, `AAA`) or a Moody's rating (`A3`, `Baa2`, `Aaa`) gives
-/// the ICE index. The notches (+/-, 1/2/3) are dropped: ICE indexes are by letter grade. CC and
+/// the bucket. The notches (+/-, 1/2/3) are dropped: the steps are by letter grade. CC and
 /// C go to CCC.
 pub fn rating_bucket(rating: &str) -> Res<&'static str> {
     let s = rating.trim();
@@ -113,7 +102,7 @@ fn bucket_note(rating: &str, bucket: &str) -> String {
     if rating.trim() == bucket {
         String::new()
     } else {
-        format!("{} uses the {bucket} index", rating.trim())
+        format!("{} uses the {bucket} step", rating.trim())
     }
 }
 
@@ -174,47 +163,44 @@ impl Rates {
         Ok(parsed)
     }
 
-    /// ICE BofA option-adjusted spread for the index of the rating.
-    pub fn credit_spread(&mut self, rating: &str, on: Option<i64>) -> Res<RateObservation> {
-        let b = rating_bucket(rating)?;
+    /// The HQM spot rate of `years` for the latest month on or before `on`.
+    pub fn hqm_spot(&mut self, years: i64, on: Option<i64>) -> Res<RateObservation> {
         let on = self.on_or_today(on);
-        let s = self.load_fred(ice_oas_id(b), false)?;
-        let (d, v) = latest(&s, on, DAILY_MAX_AGE, &format!("ICE {b} OAS"))?;
-        Ok(observation(format!("ICE BofA {b} OAS"), d, v, ICE_SOURCE, bucket_note(rating, b)))
+        let months = crate::hqm::load_monthly(&self.cache)?;
+        let s: BTreeMap<i64, f64> = months.iter().filter_map(|(d, m)| m.get(&years).map(|v| (*d, round6(v / 100.0)))).collect();
+        let (d, v) = latest(&s, on, MONTHLY_MAX_AGE, &format!("HQM {years}Y"))?;
+        Ok(observation(format!("HQM {years}Y spot"), d, v, HQM_SOURCE, "monthly average"))
     }
 
-    /// ICE BofA effective yield for the index of the rating.
+    /// The step of the bucket of the rating over the HQM reference bucket (a fixed table).
+    pub fn rating_step(&mut self, rating: &str) -> Res<RateObservation> {
+        let b = rating_bucket(rating)?;
+        let day = mapcheck::dates::parse(STEP_DATE).ok_or("bad date")?;
+        let note = if b == REFERENCE_BUCKET { format!("{b} is the HQM reference bucket") } else { bucket_note(rating, b) };
+        Ok(observation(format!("{b} step over HQM ({REFERENCE_BUCKET})"), day, rating_step(b), STEP_SOURCE, note))
+    }
+
+    /// The cost of debt of the rating: HQM spot at `DEFAULT_MATURITY` + the step of its bucket.
     pub fn corporate_yield(&mut self, rating: &str, on: Option<i64>) -> Res<RateObservation> {
         let b = rating_bucket(rating)?;
-        let on = self.on_or_today(on);
-        let s = self.load_fred(&ice_yield_id(b), false)?;
-        let (d, v) = latest(&s, on, DAILY_MAX_AGE, &format!("ICE {b} yield"))?;
-        Ok(observation(format!("ICE BofA {b} effective yield"), d, v, ICE_SOURCE, bucket_note(rating, b)))
+        let h = self.hqm_spot(DEFAULT_MATURITY, on)?;
+        let day = mapcheck::dates::parse(&h.date).ok_or("bad date")?;
+        let note = if b == rating.trim() { String::new() } else { format!("{} uses the {b} step", rating.trim()) };
+        Ok(observation(format!("HQM {DEFAULT_MATURITY}Y spot + {b} step"), day, round6(h.value + rating_step(b)), &format!("{HQM_SOURCE}; {STEP_SOURCE}"), note))
     }
 
-    /// Index effective yield minus the UST 10Y on the same date: the engine's `kd_spread`.
+    /// The cost of debt minus the UST 10Y on `on`: the engine's `kd_spread`.
     pub fn spread_over_10y(&mut self, rating: &str, on: Option<i64>) -> Res<RateObservation> {
         let y = self.corporate_yield(rating, on)?;
-        let y_day = mapcheck::dates::parse(&y.date).ok_or("bad date")?;
-        let t = self.treasury_yield("10Y", Some(y_day), false)?;
+        let t = self.treasury_yield("10Y", on, false)?;
+        let t_day = mapcheck::dates::parse(&t.date).ok_or("bad date")?;
         let mut notes: Vec<String> = Vec::new();
         if !y.note.is_empty() {
             notes.push(y.note.clone());
         }
-        if t.date != y.date {
-            notes.push(format!("UST 10Y from {}", t.date));
-        }
+        notes.push(format!("HQM month {}", y.date));
         let b = rating_bucket(rating)?;
-        Ok(observation(format!("{b} yield minus UST 10Y"), y_day, round6(y.value - t.value), &format!("{ICE_SOURCE}; U.S. Treasury"), notes.join("; ")))
-    }
-
-    /// Moody's seasoned corporate bond yield, "Aaa" or "Baa".
-    pub fn moodys_yield(&mut self, grade: &str, on: Option<i64>) -> Res<RateObservation> {
-        let id = MOODYS.iter().find(|(g, _)| *g == grade).map(|(_, id)| *id).ok_or("grade must be one of ['Aaa', 'Baa']")?;
-        let on = self.on_or_today(on);
-        let s = self.load_fred(id, false)?;
-        let (d, v) = latest(&s, on, DAILY_MAX_AGE, &format!("Moody's {grade}"))?;
-        Ok(observation(format!("Moody's seasoned {grade}"), d, v, MOODYS_SOURCE, ""))
+        Ok(observation(format!("{b} cost of debt minus UST 10Y"), t_day, round6(y.value - t.value), &format!("{}; U.S. Treasury", y.source), notes.join("; ")))
     }
 
     /// The Treasury HQM corporate spot curve for the latest month on or before `on`.
@@ -239,30 +225,10 @@ impl Rates {
         for b in RATINGS {
             ratings.insert(
                 b.to_string(),
-                RatingQuote { oas: self.credit_spread(b, on)?, effective_yield: self.corporate_yield(b, on)?, spread_over_10y: self.spread_over_10y(b, on)? },
+                RatingQuote { step: rating_step(b), effective_yield: self.corporate_yield(b, on)?, spread_over_10y: self.spread_over_10y(b, on)? },
             );
         }
-        let mut moodys = BTreeMap::new();
-        for (g, _) in MOODYS {
-            moodys.insert(g.to_string(), self.moodys_yield(g, on)?);
-        }
-        Ok(CreditSnapshot { ratings, moodys, hqm_curve: self.hqm_curve(on)? })
-    }
-
-    /// Moody's yield minus the Treasury 10Y (our join) against FRED AAA10Y and BAA10Y, which FRED
-    /// calculates from DGS10. Both inputs have 2 decimals, so they must agree exactly.
-    pub fn cross_check_bonds(&mut self, days: i64) -> Res<Vec<CheckResult>> {
-        let start = self.today - days;
-        let ust = self.treasury_history("10Y", Some(start), None, false)?;
-        let mut out = Vec::new();
-        for (grade, fid) in MOODYS_SPREAD_10Y {
-            let id = MOODYS.iter().find(|(g, _)| *g == grade).map(|(_, id)| *id).unwrap_or("");
-            let y = self.load_fred(id, false)?;
-            let ours: BTreeMap<i64, f64> = ust.iter().filter_map(|(d, u)| y.get(d).map(|v| (*d, round6(v - u)))).collect();
-            let fred: BTreeMap<i64, f64> = self.load_fred(fid, false)?.into_iter().filter(|(d, _)| *d >= start).collect();
-            out.push(compare(&format!("Moody's {grade} - UST 10Y"), &ours, &fred, fid, 0.5e-4 + 1e-9));
-        }
-        Ok(out)
+        Ok(CreditSnapshot { ratings, hqm_curve: self.hqm_curve(on)? })
     }
 }
 
@@ -288,15 +254,34 @@ mod tests {
     }
 
     #[test]
-    fn cached_series_ids_count_and_unique() {
-        // 7 ratings x (OAS + EY) = 14, + 2 Moody's + 2 spreads + 8 HQM maturities = 26.
+    fn cached_series_ids_are_the_hqm_series_only() {
         let ids = cached_series_ids();
-        assert_eq!(ids.len(), 26);
-        assert_eq!((ids[0].as_str(), ids[1].as_str()), ("BAMLC0A1CAAA", "BAMLC0A1CAAAEY"));
+        assert_eq!(ids.len(), 8);
+        assert_eq!(ids[0], "HQMCB1YR");
         assert_eq!(ids.last().unwrap(), "HQMCB30YR");
-        let mut u = ids.clone();
-        u.sort();
-        u.dedup();
-        assert_eq!(u.len(), 26);
+        assert!(ids.iter().all(|i| i.starts_with("HQMCB")), "no ICE and no Moody's id: {ids:?}");
+    }
+
+    #[test]
+    fn the_step_of_the_reference_bucket_is_zero_and_the_others_follow_the_table() {
+        // Hand arithmetic from the Damodaran table (percent): A 0.78 -> 0; AAA 0.40 - 0.78 = -0.38; BBB 1.11 - 0.78 = +0.33; CCC 8.85 - 0.78 = +8.07.
+        assert_eq!(rating_step(REFERENCE_BUCKET), 0.0);
+        assert_eq!(rating_step("AAA"), -0.0038);
+        assert_eq!(rating_step("AA"), -0.0023);
+        assert_eq!(rating_step("BBB"), 0.0033);
+        assert_eq!(rating_step("BB"), 0.0106);
+        assert_eq!(rating_step("B"), 0.0243);
+        assert_eq!(rating_step("CCC"), 0.0807);
+        // The steps rise with the risk.
+        let v: Vec<f64> = RATINGS.iter().map(|b| rating_step(b)).collect();
+        assert!(v.windows(2).all(|w| w[0] < w[1]), "{v:?}");
+    }
+
+    #[test]
+    fn the_buckets_of_the_two_rating_scales_agree() {
+        for (sp, mo) in [("AAA", "Aaa"), ("AA-", "Aa3"), ("A+", "A1"), ("A-", "A3"), ("BBB", "Baa2"), ("BB+", "Ba1"), ("B-", "B3"), ("CCC+", "Caa1"), ("CC", "Ca")] {
+            assert_eq!(rating_bucket(sp).unwrap(), rating_bucket(mo).unwrap(), "{sp} {mo}");
+        }
+        assert!(rating_bucket("ZZZ").is_err());
     }
 }

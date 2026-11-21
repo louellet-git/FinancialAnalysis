@@ -20,14 +20,12 @@ USAGE:
   fa rates fred --series ID [--start D] [--raw]   any FRED series
   fa rates derived --out DIR [--from-year Y] [--to-year Y]  T10Y3M, DFII10, T10YIE from the Treasury curves, FRED form
   fa rates check [--days N]                       cross-check against FRED (exit 1 on mismatch)
-  fa bonds [snapshot] [--date D]                  every rating, Moody's Aaa/Baa, HQM corporate curve
+  fa bonds [snapshot] [--date D]                  every rating (HQM + step), HQM corporate curve
   fa bonds hqm-compare --xls FILE... --fred-dir DIR  Treasury HQM spot files against FRED HQMCB*YR
-  fa bonds spread|yield|over10y --rating A- [--date D]
-                                                  ICE OAS, index yield, or yield minus UST 10Y
-  fa bonds moodys --grade Aaa|Baa [--date D]      Moody's seasoned corporate yield
+  fa bonds step|yield|over10y --rating A- [--date D]
+                                                  step over HQM, cost of debt (HQM 10Y + step), or cost of debt minus UST 10Y
   fa bonds hqm [--date D]                         Treasury HQM corporate spot curve (monthly)
   fa bonds hqm get [--force]                      download the Treasury HQM spot files into data/raw/bonds/treasury_hqm/
-  fa bonds check [--days N]                       Moody's - 10Y vs FRED (exit 1 on mismatch)
   fa forwards [--date D]                          GSW zero-coupon yields and forward rates (Federal Reserve Board)
   fa forwards check [--days N]                    GSW par yields against Treasury (exit 1 on mismatch)
   fa futures roots                                contract facts of each root
@@ -127,13 +125,9 @@ fn bonds(fa: &Fa, rest: &[String]) -> financial_analysis::Result<ExitCode> {
     let rating = flag(&args, "--rating").unwrap_or_else(|| "A".into());
     match sub.as_str() {
         "snapshot" => print_json(&fa.credit_snapshot(date)?),
-        "spread" => print_json(&fa.credit_spread(&rating, date)?),
+        "step" | "spread" => print_json(&fa.rating_step(&rating)?),
         "yield" => print_json(&fa.corporate_yield(&rating, date)?),
         "over10y" => print_json(&fa.spread_over_10y(&rating, date)?),
-        "moodys" => {
-            let grade = flag(&args, "--grade").unwrap_or_else(|| "Baa".into());
-            print_json(&fa.moodys(&grade, date)?)
-        }
         "hqm" if args.get(1).map(String::as_str) == Some("get") => {
             // fa bonds hqm get [--force]: the Treasury HQM spot files into data/raw/bonds/treasury_hqm/
             let cache = fa.repo.join("data").join("raw");
@@ -164,14 +158,6 @@ fn bonds(fa: &Fa, rest: &[String]) -> financial_analysis::Result<ExitCode> {
                     "larger": c.larger, "max_diff": c.max_diff, "first_treasury": c.first_ours, "first_fred": c.first_fred})).collect::<Vec<_>>()),
                 Err(e) => return Ok(usage_error(&e)),
             }
-        }
-        "check" => {
-            let results = match days_flag(&args, 90) {
-                Ok(d) => fa.check_bonds(d)?,
-                Err(m) => return Ok(usage_error(&m)),
-            };
-            print_json(&results);
-            return Ok(exit_on_mismatch(&results));
         }
         other => return Ok(usage_error(&format!("unknown bonds command '{other}'"))),
     }

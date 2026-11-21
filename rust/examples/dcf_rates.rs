@@ -39,8 +39,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     if let Some(c) = &today.credit {
         println!(
-            "  kd_spread {:+.2}% ({} index yield {:.2}% - UST 10Y; model {:+.2}%), pre-tax kd {:.2}%",
-            pct(c.kd_spread.value), c.index, pct(c.index_yield), pct(c.model_kd_spread), pct(c.kd_pretax)
+            "  kd_spread {:+.2}% (HQM 10Y {:.2}% + {} step {:+.2}% - UST 10Y; model {:+.2}%), pre-tax kd {:.2}%",
+            pct(c.kd_spread.value), pct(c.hqm_spot), c.index, pct(c.step), pct(c.model_kd_spread), pct(c.kd_pretax)
         );
     }
     println!(

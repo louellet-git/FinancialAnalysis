@@ -636,6 +636,7 @@ gives a sourced value.
 *Evidence:* `python -m scripts.verdict IBM --price 231.09 --rf-date 2026-11-18 --rating A-`.
 
 **46. The ICE data on FRED has only 3 years, and ICE does not allow redistribution.**
+*Since 2026-11-21 the code does not use ICE or Moody's series: the cost of debt of a rating is the Treasury HQM 10Y spot plus a fixed step (A-200 to A-203). The text below is the history.*
 The series start on 2023-11-20. A date before that gives an error, not an old value. Do
 not commit the cache (`data/raw/bonds/`) or put ICE values in a public file. For a
 longer history, use Moody's Aaa and Baa (from 1983 and 1986). Those are long bonds (20

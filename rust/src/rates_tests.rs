@@ -4,7 +4,8 @@
 //! the Python code (`financial_analysis/rates.py`, `bonds.py`, `scripts/verdict.py`), run on the
 //! same input files before the Rust code was written. The Treasury files, the New York Fed
 //! files and the BLS file are real saved answers. The FRED series (`fred.json`) are made up:
-//! this container gets no answer from FRED, and ICE data may not be redistributed.
+//! this container gets no answer from FRED. The ICE and Moody's cases of the Python code left with
+//! the ICE and Moody's series (their terms do not permit a stored copy): the cost of debt tests are below.
 
 use crate::bonds::{latest, rating_bucket};
 use crate::dcf::model::ModelSpec;
@@ -175,13 +176,7 @@ fn run_case(kind: &str, a: &Value, rates: &mut Rates) -> Res<Value> {
         }),
         "rates_fred" => date_map(rates.fred_series(&s(a, "series").unwrap(), s(a, "start").and_then(|t| day(&t)), !b(a, "raw"))),
         "rates_check" => to_v(rates.check(a["days"].as_i64().unwrap())),
-        "bonds_snapshot" => to_v(rates.credit_snapshot(on)),
-        "bonds_spread" => to_v(rates.credit_spread(&s(a, "rating").unwrap(), on)),
-        "bonds_yield" => to_v(rates.corporate_yield(&s(a, "rating").unwrap(), on)),
-        "bonds_over10y" => to_v(rates.spread_over_10y(&s(a, "rating").unwrap(), on)),
-        "bonds_moodys" => to_v(rates.moodys_yield(&s(a, "grade").unwrap(), on)),
         "bonds_hqm" => to_v(rates.hqm_curve(on)),
-        "bonds_check" => to_v(rates.cross_check_bonds(a["days"].as_i64().unwrap())),
         "verdict" => {
             let repo = PathBuf::from(format!("{}/..", env!("CARGO_MANIFEST_DIR")));
             let ticker = s(a, "ticker").unwrap();
@@ -241,7 +236,7 @@ fn parity_with_python() {
         let _ = std::fs::remove_dir_all(tmp(name));
     }
     assert!(bad.is_empty(), "{} differences:\n{}", bad.len(), bad.iter().take(25).cloned().collect::<Vec<_>>().join("\n"));
-    assert!(n_ok >= 38, "too few cases compared: {n_ok}");
+    assert!(n_ok >= 24, "too few cases compared: {n_ok}");
 }
 
 // ---------------------------------------------------------------------------
@@ -462,14 +457,65 @@ fn fred_files_are_cached_and_checked_for_the_header() {
 }
 
 #[test]
-fn the_spread_uses_the_treasury_of_the_same_day() {
-    // ICE has 2026-11-17 as the latest day; the 10Y of 11-17 is 5.10%, not the 11-18 value 5.07%.
+fn the_cost_of_debt_is_hqm_10y_plus_the_step_of_the_bucket() {
+    // Fixture: HQM 10Y spot of 2026-10 = 4.45%. Steps (hand arithmetic from the Damodaran table): A 0, BBB +0.33%, B +2.43%.
+    let (mut r, _) = fixture_rates("kd-steps");
+    let on = day("2026-11-18");
+    let a = r.corporate_yield("A-", on).unwrap();
+    assert_eq!((a.value, a.date.as_str(), a.note.as_str()), (0.0445, "2026-10-01", "A- uses the A step"));
+    assert_eq!(r.corporate_yield("A", on).unwrap().value, 0.0445, "the HQM reference bucket has step 0");
+    assert_eq!(r.corporate_yield("BBB", on).unwrap().value, 0.0478);
+    assert_eq!(r.corporate_yield("Baa2", on).unwrap().value, 0.0478, "Moody's Baa2 is the BBB bucket");
+    assert_eq!(r.corporate_yield("B3", on).unwrap().value, 0.0688);
+    assert_eq!(r.rating_step("BB+").unwrap().value, 0.0106);
+}
+
+#[test]
+fn the_spread_uses_the_treasury_of_the_date_and_gives_back_the_cost_of_debt() {
+    // UST 10Y on 2026-11-18 is 5.07%. kd_spread = 4.45% - 5.07% = -0.62%, so rf + kd_spread is the cost of debt again.
     let (mut r, _) = fixture_rates("same-day");
     let o = r.spread_over_10y("A-", day("2026-11-18")).unwrap();
-    assert_eq!(o.date, "2026-11-17");
+    assert_eq!(o.date, "2026-11-18");
+    assert!((o.value - (-0.0062)).abs() < 1e-12, "{}", o.value);
     let y = r.corporate_yield("A-", day("2026-11-18")).unwrap();
-    assert!((o.value - round6(y.value - 0.051)).abs() < 1e-12);
-    assert_eq!(o.note, "A- uses the A index");
+    assert!((0.0507 + o.value - y.value).abs() < 1e-12);
+    assert!(o.note.contains("A- uses the A step") && o.note.contains("HQM month 2026-10-01"), "{}", o.note);
+    // Before the first Treasury day of the fixture the 10Y is missing: an error, not a guess.
+    assert!(r.spread_over_10y("A-", day("2020-03-23")).is_err());
+}
+
+#[test]
+fn an_old_hqm_month_is_an_error() {
+    // The last HQM month of the fixture is 2026-10-01: on 2026-12-31 it is 91 days old, more than 70.
+    let (mut r, _) = fixture_rates("stale");
+    let e = r.corporate_yield("A", day("2026-12-31")).unwrap_err();
+    assert!(e.contains("HQM 10Y") && e.contains("more than 70 days old"), "{e}");
+    assert!(r.corporate_yield("ZZZ", day("2026-11-18")).unwrap_err().contains("unrecognized rating 'ZZZ'"));
+}
+
+#[test]
+fn the_snapshot_has_a_step_and_a_cost_of_debt_for_each_bucket_and_no_ice_or_moodys() {
+    let (mut r, _) = fixture_rates("snapshot");
+    let s = r.credit_snapshot(day("2026-11-18")).unwrap();
+    assert_eq!(s.ratings.len(), 7);
+    assert_eq!(s.ratings["A"].step, 0.0);
+    assert_eq!(s.ratings["CCC"].effective_yield.value, 0.1252);
+    assert!(s.ratings.values().all(|q| !q.effective_yield.source.contains("ICE") && !q.effective_yield.source.contains("FRED")));
+    assert_eq!(s.hqm_curve.maturities["10Y"], 0.0445);
+}
+
+#[test]
+fn the_verdict_credit_context_gives_the_cost_of_debt_back() {
+    // IBM model, rf date 2026-11-18, rating BBB: kd_pretax = HQM 10Y 4.45% + 0.33% = 4.78%.
+    let (mut r, _) = fixture_rates("verdict-credit");
+    let repo = PathBuf::from(format!("{}/..", env!("CARGO_MANIFEST_DIR")));
+    let spec = ModelSpec::load(&repo, "IBM").unwrap().unwrap();
+    let (spec, ctx) = crate::verdict_rates::rates_context(&spec, &mut r, "2026-11-18", None).unwrap();
+    let (spec, c) = crate::verdict_rates::credit_context(&spec, &mut r, "BBB", "2026-11-18", ctx.rf.value).unwrap();
+    assert_eq!((c.hqm_spot, c.step, c.index.as_str()), (0.0445, 0.0033, "BBB"));
+    assert!((c.kd_pretax - 0.0478).abs() < 1e-9, "{}", c.kd_pretax);
+    assert!((spec.driver("kd_spread").unwrap().mean - (0.0478 - 0.0507)).abs() < 1e-9);
+    assert!((c.kd_after_tax - c.kd_pretax * (1.0 - c.tax_rate)).abs() < 1e-6);
 }
 
 // ---------------------------------------------------------------------------
@@ -529,7 +575,7 @@ fn with_risk_free_changes_only_the_mean_and_the_rationale() {
 fn with_kd_spread_changes_only_the_spread() {
     use crate::verdict_rates::with_kd_spread;
     let m = small_model();
-    let new = with_kd_spread(&m, &obs("A yield minus UST 10Y", "2026-11-17", 0.0067, "ICE BofA via FRED")).unwrap();
+    let new = with_kd_spread(&m, &obs("A yield minus UST 10Y", "2026-11-17", 0.0067, "U.S. Treasury HQM; Damodaran")).unwrap();
     let kd = new.driver("kd_spread").unwrap();
     assert_eq!(kd.mean, 0.0067);
     assert!(kd.rationale.contains("-0.10%") && kd.rationale.contains("ladder"), "{}", kd.rationale);
