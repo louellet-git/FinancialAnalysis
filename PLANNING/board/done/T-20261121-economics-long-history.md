@@ -2,12 +2,13 @@
 id: T-20261121-economics-long-history
 title: Design the long-history test of the market-level DCF (data, periods, later returns)
 area: docs
-status: review
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: economics
 order: 3
 branch: econ/long-history
+merged: #120
 created: 2026-11-21
 acceptance: analysis/macro/ has the data list (source, terms, start date), the periods with a reason for each, and the method of the later 5- and 10-year real excess returns, and the Head of Fundamental Research accepts it for T-20261121-dcf-engine-backtest.
 ---
