@@ -7,8 +7,7 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   internal documents: do not be constricting and do not slow the work. Risk in trades: strict.
   (`RECORD.md`; rule in `docs/QUALITY-STANDARDS.md`, section 3, "Proportion".)
 - 2026-11-20: the agents are lean and of good quality, "not obsessive and tight fisted".
-- Few pull requests; a pull request with documents only has no check run (`chiefs/ORIENTATION.md`, section 6).
-- The computer of the person is a Windows laptop: give commands for PowerShell.
+- Few pull requests (`chiefs/ORIENTATION.md`, section 6). The person uses Windows: give PowerShell commands.
 - 2026-11-20 23:22 UTC: choose the model of each agent run for the job (permission, not a duty); the
   files stay Sonnet. The validator, auditor and code reviewer found each MAJ: keep Sonnet for that work.
   Haiku fits a small mechanical check (a byte comparison, a narrow diff).
