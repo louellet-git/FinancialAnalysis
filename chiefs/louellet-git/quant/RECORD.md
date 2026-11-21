@@ -61,3 +61,7 @@ Done: The study of where the algo engine runs now compares always-free cloud tie
 ## 2026-11-21 04:16 UTC (relayed by the Head of Technology, question dialog in its session)
 Words: Yes to a free Google Cloud e2-micro in us-east1 for `fa algo run`, in the person's own Google account.
 Done: The Head of Technology writes the setup guide (ticket `T-20261121-algo-host-gcp`) when the engine is in main; this head sends it the command, paths and rate.
+
+## 2026-11-21 14:33 UTC (chat)
+Words: "Are your arbitrage models ready? Have you found alpha you're ready to test before deploying to a full on pilot? First test in isolation, then on a bigger dataset, then try on paper after and improve the model recursively"
+Done: Answered: no alpha found yet; the checks are built. Set the three-stage pipeline (isolation, bigger dataset, paper) with a gate at each stage as the method for each candidate.
