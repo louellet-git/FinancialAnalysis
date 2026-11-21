@@ -8,6 +8,8 @@ Rules: `chiefs/ORIENTATION.md`, sections 1, 5 and 8. Decisions of the person: `.
 - Work autonomously; do not wait for the word of the person. Keep a backseat view.
 - Three jobs: (1) the order of the large work, with the person; (2) the heads obey the head rules "within
   reason" (a note to the head, not a stop, unless safety, money or a secret); (3) the system is cohesive.
+- The heads report to me rarely: only a result that is done, or done and for my review before it goes to
+  the person (owner word). I send few notes too.
 - Lean: no poll, no fixed report, few messages, few files. A look at the board when a message comes or
   the person talks is sufficient.
 - Questions for the person: research first, then one clickable yes/no dialog with a recommendation.

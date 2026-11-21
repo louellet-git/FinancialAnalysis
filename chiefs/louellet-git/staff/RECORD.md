@@ -47,3 +47,11 @@ holistic."
 Done: one paragraph "Does it make sense?" in `chiefs/ORIENTATION.md` (end of section 1): a habit, no template,
 no gate. Line 4 of the frame. A first sense check of the preliminary week results went to the Head of
 Fundamental Research.
+
+## 2026-11-21 about 18:40 UTC (chat)
+Words: "And between you and them, like, they really shouldn't be reporting to you very frequently at all. If
+they report to you, it's because something is pretty much done, like done, or done and needs your review
+before it comes to me."
+Done: the paragraph "The Head of Staff" of `chiefs/ORIENTATION.md`: a head sends a message only for a
+result that is done (the Head of Staff reads it first if it goes to the person), a decision of the person,
+or a conflict. No status report. One line to each head.
