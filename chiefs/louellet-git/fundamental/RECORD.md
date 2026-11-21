@@ -144,3 +144,7 @@ Done: the purpose is recorded: (1) what changed, (2) what contributed, (3) does 
 ## 2026-11-21 about 18:50 UTC (chat)
 Words: "Great, make sure that whatever is repeatable/should be expected of future work like this is built into the correct engine."
 Done: the list of the repeatable steps of this study, each with its engine and owner, is on `T-20261121-dcf-engine-integration` (written before the code); the build starts on branch `claude/attribution-reality` (from `claude/premium-series`, which is at the gate).
+
+## 2026-11-21 about 19:05 UTC (chat)
+Words: "Send the same request of work to quant research for its engine/processes."
+Done: the request is sent to the Head of Quant Research with the owner words, the four steps as applied in this area, the example table (`T-20261121-dcf-engine-integration`) and the borders between the two areas.
