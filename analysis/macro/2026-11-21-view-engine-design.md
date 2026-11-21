@@ -59,6 +59,7 @@ For an attribution window D1 to D2:
 
 1. erp_change = ERP(D2) - ERP(D1), in decimals.
 2. growth_change = Growth(D2) - Growth(D1), in decimals.
+   Unit of the file: erp_change and growth_change are decimals per year. The engine divides the SPF points by 100. Example: a change of 0.40 points is written 0.0040. The parts in `source` keep the SPF points, as published.
 3. ERP(t) = ERP_A(t) plus the sum of the layer B changes since the last survey release.
 4. If no survey is out at D1, the row for that window is absent. The engine does not fill it.
 5. The column source is "spf" when layer B is zero. It is "spf+macro" when layer B is on.
