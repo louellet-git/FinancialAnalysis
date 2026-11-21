@@ -45,8 +45,8 @@ the 3 refined starts after stage 1 (not final losses: only the best start goes o
 the error by expiry in vol points (root mean square and largest), and the run time.
 
 A bound hit means that the quotes do not identify the parameter: do not read the parameters. A fit that is not "converged"
-is not a result. Bates on a thin chain is not unique: the 3 refined starts can end at different losses, and a new seed
-gives other parameters (IBM, 40 quotes, final losses for seeds 1 to 5: 2.238, 2.141, 2.141, 2.141, 2.141; seed 7: 1.996; all "NOT converged: iteration cap", 2026-11-21, `--rate 0.04`). Heston and Bates are one-factor models and
+is not a result. Bates on a thin chain is not unique, and only a comparison of runs with other seeds shows it (one run does not
+check it; only the best start goes to the end). A new seed gives other parameters, and the final loss changes by about 11% (IBM, 40 quotes, final losses for seeds 1 to 5: 2.238, 2.141, 2.141, 2.141, 2.141; seed 7: 1.996; all "NOT converged: iteration cap", 2026-11-21, `--rate 0.04`). Heston and Bates are one-factor models and
 the jump parameters of Bates are weak on a short or thin chain.
 
 ## Assumptions
