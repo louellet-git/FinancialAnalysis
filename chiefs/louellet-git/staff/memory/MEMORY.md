@@ -46,7 +46,8 @@ Rules: `chiefs/ORIENTATION.md`, sections 1, 5 and 8. Decisions of the person: `.
   transcripts (the branch of a line gives the ticket). Design in `T-20261121-usage-log`. No estimates
   until some days of actual numbers exist.
 - The real weekly figure: `list_events` on my own session, kinds `rate_limit_event`, limit 100, read
-  `unifiedWindows.seven_day.utilization` and `resetsAt`. One call. 2026-11-21 18:49 UTC: 71%.
+  `unifiedWindows.seven_day.utilization` and `resetsAt`. One call.
+  Readings (add one when I look): 2026-11-21 18:49 UTC 71%.
 - Until they exist: the hand checks of the board-check ticket, when I look at the board.
 
 ## Watch list

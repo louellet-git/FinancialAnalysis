@@ -19,6 +19,9 @@ guess". The person wants "a calculator of sorts" that uses the data to estimate 
 **On hold.** It starts when `T-20261121-usage-log` has the actual numbers of some weeks. The Head of Staff
 says when; the person agrees to the start.
 
+Dependency: the table "The data that the calculator needs" of `T-20261121-usage-log`. Each row of it must
+be collected by a script, with no tokens and no step of a head, before this ticket starts.
+
 Notes for the start (not a design):
 - The data: the actual tokens of each closed ticket, by head, agent type and model (`T-20261121-usage-log`).
 - Possible inputs of the estimate: the head, the area and the story of the ticket, the kind of work (study,
