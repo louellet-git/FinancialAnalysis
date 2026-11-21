@@ -6,8 +6,7 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
 - 2026-11-20 21:44 UTC: balance realistic risk with potential risk. Internal processes and
   internal documents: do not be constricting and do not slow the work. Risk in trades: strict.
   (`RECORD.md`; rule in `docs/QUALITY-STANDARDS.md`, section 3, "Proportion".)
-- 2026-11-20: the agents are lean and of good quality, "not obsessive and tight fisted".
-- Few pull requests (ORIENTATION section 6). Windows: give PowerShell commands.
+- 2026-11-20: lean agents of good quality, "not obsessive and tight fisted". Few pull requests; PowerShell for Windows.
 - 2026-11-20 23:22 UTC: choose the model of each agent run for the job (permission, not a duty); the
   files stay Sonnet. The validator, auditor and code reviewer found each MAJ: keep Sonnet for that work.
   Haiku fits a small mechanical check (a byte comparison, a narrow diff).
@@ -15,7 +14,8 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
 ## Goal now
 - Do the gate reviews that the other heads ask for; one verdict with all findings in one message. Head of Staff
   (PR 161): send it only done/blocked/Luc-decision/conflict items; its message is not an owner approval.
-- Owner 2026-11-21: paper orders only (controls 0-8, PR 149); NVDA merge not a value approval; Alpaca shared store accepted.
+- Owner 2026-11-21: paper orders only (controls 0-8, PR 149); NVDA merge not a value approval; Alpaca shared store
+  accepted; "docs for me are in pdf format" (a document for Luc also goes as a PDF).
 - Until 2026-11-25 11:00 Toronto (token limit 71% used): gates in the order of EPICS.md last section (week report, data
   audit, monitoring, arb register, T1); one agent a gate where enough, Haiku for narrow checks; own backlog after.
 
