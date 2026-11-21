@@ -13,6 +13,7 @@
 //! the same to the last digits (`erf` comes from the `libm` crate; Python uses the C library).
 
 use super::calendar::{busday_count, Date};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 pub const SESSION_MINUTES: f64 = 390.0;
 pub const TRADING_DAYS: f64 = 252.0;
@@ -112,6 +113,20 @@ pub struct Quote {
     pub delta: f64,
 }
 
+// Research knobs of the model price (stage 1b of the alpha-1 ticket). The defaults (1, 1, false) keep
+// every old result. They are process-wide: set them once, before the run, with `set_price_knobs`.
+static SPREAD_MULT: AtomicU64 = AtomicU64::new(0x3FF0_0000_0000_0000); // 1.0
+static SKEW_MULT: AtomicU64 = AtomicU64::new(0x3FF0_0000_0000_0000); // 1.0
+static MID_FILL: AtomicBool = AtomicBool::new(false);
+
+/// Set the multiplier of the half-spread, the multiplier of the skew slope and curve, and the
+/// mid fill (bid and ask equal to the mid: a better price than the default, a reference only).
+pub fn set_price_knobs(spread_mult: f64, skew_mult: f64, mid_fill: bool) {
+    SPREAD_MULT.store(spread_mult.to_bits(), Ordering::Relaxed);
+    SKEW_MULT.store(skew_mult.to_bits(), Ordering::Relaxed);
+    MID_FILL.store(mid_fill, Ordering::Relaxed);
+}
+
 /// The model pricer with its default parameters.
 pub struct SyntheticPricer;
 
@@ -142,7 +157,8 @@ impl SyntheticPricer {
         let tt = t.max(1.0 / MINUTES_PER_YEAR);
         let z = (strike / spot).ln() / (atm * tt.sqrt());
         let z = z.max(-6.0).min(6.0);
-        let mult = 1.0 + SKEW_SLOPE * z + SKEW_CURVE * z * z;
+        let k = f64::from_bits(SKEW_MULT.load(Ordering::Relaxed));
+        let mult = 1.0 + SKEW_SLOPE * k * z + SKEW_CURVE * k * z * z;
         atm * mult.max(MULT_FLOOR).min(MULT_CAP)
     }
 
@@ -155,7 +171,8 @@ impl SyntheticPricer {
         }
         let iv = Self::implied_vol(spot, strike, t, vol);
         let mid = bs_price(call, spot, strike, t, vol.rate, iv);
-        let half = (SPREAD_REL * mid).max(SPREAD_MIN).min(SPREAD_MAX);
+        let m = f64::from_bits(SPREAD_MULT.load(Ordering::Relaxed));
+        let half = if MID_FILL.load(Ordering::Relaxed) { 0.0 } else { (SPREAD_REL * m * mid).max(SPREAD_MIN * m).min(SPREAD_MAX * m) };
         let bid = (mid - half).max(0.0);
         Quote { bid, ask: mid + half, mid, iv, delta: bs_delta(call, spot, strike, t, vol.rate, iv) }
     }

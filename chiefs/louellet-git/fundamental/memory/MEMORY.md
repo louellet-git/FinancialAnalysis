@@ -9,7 +9,7 @@ person decided. Keep this file below 60 lines. Started 2026-11-20. Dream pass: 2
 2. PAUSED, work committed, status on each ticket: the trade-level engine (`claude/trade-level-backtest`), the
    T1 revenue fix (`claude/t1-revenue-band`; the hold-out `--cut 2011 --base-to 2014` is still unused).
 3. Stock DCF rank: no evidence of an edge on split-corrected prices (PR 136); no weekly trade from it.
-4. NVDA (PR 106) waits for Luc. JST (18 countries) design frozen by Economics: the reader is next after item 2.
+4. NVDA (PR 106) merged: Luc approved the merge, NOT the value ("this doesnt mean I approve that the valuation is correct"). JST design frozen by Economics.
 5. Rule of the person: each pause puts the state on the board and the report says where the work is.
 
 ## Decisions of this head (records A-001 to A-003; no reason uses the price)
