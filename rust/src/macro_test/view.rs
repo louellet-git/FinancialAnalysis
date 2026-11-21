@@ -1,5 +1,5 @@
 //! `fa macro view`: the economics view engine, version 1, layer A only (the SPF level).
-//! Design (frozen at 3982324, records R1 and R2): `analysis/macro/2026-11-21-view-engine-design.md`.
+//! Design (frozen at 3982324, records R1 to R4): `analysis/macro/2026-11-21-view-engine-design.md`.
 //!
 //! - Survey of t: the latest first-quarter survey whose release date is on or before t (rule 1.1).
 //! - ERP_A(t) = median STOCK10 - GSW10 at the release date (points per year); Growth_A(t) = RGDP10 + CPI10 (rule 1).
@@ -12,9 +12,10 @@
 //! Continuously Compounded,SVENYXX"), as copied in the test fixture of `forwards.rs`, and docs/HIDDEN-ASSUMPTIONS.md
 //! #58. The real file is not in this checkout, so the header itself was not read here. The return form of STOCK10 is
 //! open (design rule 7): ERP_A may mix two units.
+//! A survey whose last GSW10 row is more than 10 days before the release is left out (R4.2); an older survey fills its place.
 //!
 //! The design does not say which windows the command writes. This command takes them from the caller (`--windows FILE`).
-//! The split of the plug (design rule 6.6, last item) belongs to the reader of Fundamental Research (`--view-file`).
+//! The split of the plug (design rule 6.6, last item) belongs to the reader of Fundamental Research (`fa dcf attribute --common file --common-file FILE`, record R4.1).
 //!
 //! The command reads files only. It starts no download and sends no order.
 
@@ -49,7 +50,12 @@ pub struct Level {
     pub stock10: f64,
     /// GSW10 at the release date, in points (percent per year).
     pub gsw10_points: f64,
+    /// Calendar days from the last GSW10 row on or before the release to the release (R4.2).
+    pub gsw_gap_days: i64,
 }
+
+/// A survey is left out when the last GSW10 row is more than this many calendar days before the release (R4.2).
+pub const GSW_MAX_GAP_DAYS: i64 = 10;
 
 impl Level {
     pub fn erp_points(&self) -> f64 {
@@ -66,6 +72,12 @@ pub fn gsw_on(days: &[i64], values: &[f64], day: i64) -> Option<f64> {
     n.checked_sub(1).map(|i| values[i])
 }
 
+/// The last GSW10 row on or before `day`: (its day, value in decimals).
+pub fn gsw_last(days: &[i64], values: &[f64], day: i64) -> Option<(i64, f64)> {
+    let n = days.partition_point(|&d| d <= day);
+    n.checked_sub(1).map(|i| (days[i], values[i]))
+}
+
 /// The levels, sorted by release date, from the Q1 rows of `fa spf show`. A row with a bound instead of a published
 /// release date, a missing RGDP10, CPI10 or STOCK10, or no GSW10 on or before the release is left out; the count of
 /// the left-out rows is the second value.
@@ -79,11 +91,11 @@ pub fn levels(rows: &[Row], gsw_days: &[i64], gsw_values: &[f64]) -> (Vec<Level>
             skipped += 1;
             continue;
         };
-        let Some(g) = gsw_on(gsw_days, gsw_values, release) else {
+        let Some((gday, g)) = gsw_last(gsw_days, gsw_values, release).filter(|&(gd, _)| release - gd <= GSW_MAX_GAP_DAYS) else {
             skipped += 1;
             continue;
         };
-        out.push(Level { release, rgdp10, cpi10, stock10, gsw10_points: g * 100.0 });
+        out.push(Level { release, rgdp10, cpi10, stock10, gsw10_points: g * 100.0, gsw_gap_days: release - gday });
     }
     out.sort_by_key(|l| l.release);
     (out, skipped)
@@ -218,6 +230,9 @@ pub fn command(repo: &Path, a: &[String]) -> Result<i32, CmdError> {
     let gsw = crate::forwards::parse_gsw(&gsw_text).map_err(Data)?;
     let (gd, gv) = gsw.history("SVENY10").map_err(Data)?;
     let (levels, skipped) = levels(&rows, &gd, &gv);
+    for l in &levels {
+        eprintln!("fa: survey {} GSW10 gap {} days", fmt_date(l.release), l.gsw_gap_days);
+    }
     let (view, covered) = build(&levels, &wins);
     let text = csv(&view);
     match out {
@@ -396,5 +411,88 @@ mod tests {
         assert_eq!(w, vec![(d("2019-01-04"), d("2019-01-11"))]);
         assert!(parse_windows("2019-01-11,2019-01-04\n").is_err());
         assert!(parse_windows("d1,date\n").is_err());
+    }
+
+    #[test]
+    fn gsw_gap_ten_days_is_kept_eleven_is_left_out() {
+        // Release 2020-03-20; GSW rows on 2020-03-10 (gap 10) and 2020-03-09 (gap 11).
+        let rows = vec![row(2020, 2.2, 2.0, 6.4, "2020-03-20", false)];
+        let (l, skipped) = levels(&rows, &[d("2020-03-10")], &[0.04]);
+        assert_eq!((l.len(), skipped, l[0].gsw_gap_days), (1, 0, 10));
+        let (l, skipped) = levels(&rows, &[d("2020-03-09")], &[0.04]);
+        assert_eq!((l.len(), skipped), (0, 1));
+    }
+
+    #[test]
+    fn a_left_out_survey_lets_the_older_survey_fill_its_place() {
+        let rows = base_rows();
+        // The 2020 survey has no GSW row within 10 days; 2019 and 2021 do.
+        let (g, v) = (vec![d("2019-03-01"), d("2021-03-01")], vec![0.04, 0.03]);
+        let (l, skipped) = levels(&rows, &g, &v);
+        assert_eq!((l.len(), skipped), (2, 1));
+        assert_eq!(survey_at(&l, d("2020-12-31")).unwrap().release, d("2019-03-01"));
+    }
+
+    fn xlsx_fixture() -> Vec<u8> {
+        use rust_xlsxwriter::Workbook;
+        let mut wb = Workbook::new();
+        let data: [(&str, [f64; 2]); 5] =
+            [("RGDP10", [2.0, 2.2]), ("CPI10", [2.3, 2.0]), ("STOCK10", [6.0, 6.4]), ("BOND10", [4.0, 4.0]), ("BILL10", [3.0, 3.0])];
+        for (name, v) in data {
+            let ws = wb.add_worksheet();
+            ws.set_name(name).unwrap();
+            ws.write_string(0, 0, "YEAR").unwrap();
+            ws.write_string(0, 1, "QUARTER").unwrap();
+            ws.write_string(0, 2, "VALUE").unwrap();
+            for (i, (y, x)) in [(2019.0, v[0]), (2020.0, v[1])].into_iter().enumerate() {
+                ws.write_number(i as u32 + 1, 0, y).unwrap();
+                ws.write_number(i as u32 + 1, 1, 1.0).unwrap();
+                ws.write_number(i as u32 + 1, 2, x).unwrap();
+            }
+        }
+        wb.save_to_buffer().unwrap()
+    }
+
+    fn gsw_csv() -> String {
+        let mut h = vec!["Date".to_string()];
+        h.extend(["BETA0", "BETA1", "BETA2", "BETA3", "TAU1", "TAU2"].map(String::from));
+        for n in [1, 4, 9] {
+            h.push(format!("SVEN1F{n:02}"));
+        }
+        for p in ["SVENF", "SVENPY", "SVENY"] {
+            for n in 1..=30 {
+                h.push(format!("{p}{n:02}"));
+            }
+        }
+        let mut t = format!("Zero-coupon yield,Continuously Compounded,SVENYXX\n\n{}\n", h.join(","));
+        for (day, y10) in [("2019-03-01", "4.0"), ("2020-03-20", "4.5")] {
+            let f: Vec<String> = h.iter().map(|c| if c == "Date" { day.into() } else if c == "SVENY10" { y10.into() } else { "1.0".into() }).collect();
+            t += &(f.join(",") + "\n");
+        }
+        t
+    }
+
+    /// The reader path of `command()`: synthetic xlsx, release dates and GSW in a temp dir; fixed answer.
+    #[test]
+    fn command_reads_the_cache_and_writes_the_rows() {
+        let root = std::env::temp_dir().join(format!("fa_view_test_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("macro/spf")).unwrap();
+        std::fs::create_dir_all(root.join("rates")).unwrap();
+        std::fs::write(root.join("macro/spf/medianLevel_2026-11-21.xlsx"), xlsx_fixture()).unwrap();
+        std::fs::write(root.join("macro/spf/spf-release-dates_2026-11-21.txt"), "2019 Q1 2/22/19 3/1/19\n2020 Q1 3/2/20 3/20/20\n").unwrap();
+        std::fs::write(root.join("rates/gsw_feds200628.csv"), gsw_csv()).unwrap();
+        std::fs::write(root.join("w.csv"), "d1,date\n2019-06-07,2019-06-14\n2019-06-07,2020-04-01\n").unwrap();
+        let out = root.join("out.csv");
+        let args: Vec<String> = ["--cache", root.to_str().unwrap(), "--windows", root.join("w.csv").to_str().unwrap(), "--out", out.to_str().unwrap()]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        assert_eq!(command(&root, &args).unwrap(), 0);
+        let text = std::fs::read_to_string(&out).unwrap();
+        // ERP 2019 = 6.0 - 4.0 = 2.0; ERP 2020 = 6.4 - 4.5 = 1.9; growth 4.3 to 4.2.
+        let want = "date,d1,erp_change,growth_change,source,growth_parts\n2019-06-14,2019-06-07,,,no release,\n2020-04-01,2019-06-07,-0.00100000,-0.00100000,spf,RGDP10 2.2 + CPI10 2.0\n";
+        assert_eq!(text, want);
+        let _ = std::fs::remove_dir_all(&root);
     }
 }

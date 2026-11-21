@@ -22,7 +22,7 @@ The SPF documentation does not say the return form (design section 2 and record 
 Record R3 gives an example: about 0.23 points at a 7% return (7% simple annual is ln(1.07) = 6.77% continuous). A change between two releases is less affected than the level. No run exists.
 
 ## Source
-`analysis/macro/2026-11-21-view-engine-design.md`, rule 7, record R1 and record R3 item 3 (uncommitted text at the time of this record); `docs/HIDDEN-ASSUMPTIONS.md` #58.
+`analysis/macro/2026-11-21-view-engine-design.md`, rule 7, record R1 and record R3 item 3; `docs/HIDDEN-ASSUMPTIONS.md` #58.
 
 ## Who decided and when
 The Head of Economics, record R3 (2026-11-21, about 18:50 UTC).

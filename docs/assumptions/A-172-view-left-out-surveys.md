@@ -3,7 +3,7 @@
 Updated: 2026-11-21. Code: branch econ/view-engine-cmd. Model document: `docs/models/economics-view-engine.md`.
 
 ## Choice
-A survey is left out when its release date is a bound (no published date), or when RGDP10, CPI10, STOCK10 or the GSW10 value at the release date is missing. The command counts the surveys left out and prints the count on stderr.
+A survey is left out when its release date is a bound (no published date), or when RGDP10, CPI10, STOCK10 or the GSW10 value at the release date is missing, or when the last GSW10 row on or before the release is more than 10 calendar days before it (record R4.2: the daily file has a gap of at most 4 days, so a longer gap is a missing file). The older survey then fills the place of the left-out survey: the step stays at the last used survey. The command prints the gap in days for each used survey. The command counts the surveys left out and prints the count on stderr.
 
 ## Where used
 | Model | File | Parameter name |
@@ -23,7 +23,7 @@ The design was silent on this point (record R3.2, written before any run on the 
 Not known. No run exists. A left-out survey makes the layer flat for one more year.
 
 ## Source
-`analysis/macro/2026-11-21-view-engine-design.md`, record R3 item 2 (uncommitted text at the time of this record), after R2.
+`analysis/macro/2026-11-21-view-engine-design.md`, record R3 item 2, after R2; R4 item 2 adds the 10-day GSW rule.
 
 ## Who decided and when
 The Head of Economics, record R3 (2026-11-21, about 18:50 UTC).
