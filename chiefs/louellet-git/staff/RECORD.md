@@ -122,3 +122,12 @@ overusing our GitHub usage / GitHub bills."
 Done: the data table and the GitHub cost section in `T-20261121-usage-log`; the dependency in
 `T-20261121-token-calculator`. One note to the Head of Technology: the transcript files are lost with the
 machine, so the backfill is urgent.
+
+## 2026-11-21 about 19:03 UTC (chat, from speech)
+Words: "my requests of you [and] our agreements should also be put into like your head of staff file. No
+more, no less of what we've agreed upon, and keep it lean. Make sure that your memory system is up and
+running, your compaction, your dreaming, because you still are a head. I just want to make sure that we have
+ways such that you can stay on track while not falling prey to over constriction, but also not overly like
+losing the plot. Again, we don't force things until we have adequate data ... our system is lean on purpose."
+Done: `memory/MEMORY.md` is the Head of Staff file now: part 1 is the 12 agreements; part 2 is how I stay
+on track (memory, the dream pass with its number). Context use checked: 286,508 of 784,000.
