@@ -141,3 +141,94 @@ release in the store): revenue $115.8B (+103% on the year; guidance $108.0B), gr
 $130.0B with a gross margin of 71.0% to 72.0%; the release names an "interim CEO" (the release of 2026-08-26 named the
 founder as CEO) and gives no reason. NVDA closes: 155.46 (11-17), 150.96, 145.98, 125.53 (11-20). The store gives no
 cause for 2026-11-20. Poison and truncation tests of the series: pass (`analysis/priors/data/premium_series_pit/`).
+
+**Direction of the owner (2026-11-21 19:24 UTC, relayed by the Head of Staff):** "... is there any stock where that
+explanation doesn't hold up? Was anything hit less? Was anything hit more? If S&P10 finished expand to S&P100. Have a one
+pager for the S&P10 for my review before moving on to the additional work." Done: the page
+`analysis/priors/sp10_week_one_pager_2026-11-21.md` (preliminary). Test: the change of each stock against its beta times the
+market (SPY -8.56%), the rest in units of its usual weekly deviation (104 weeks; a shell calculation, to build into
+`fa dcf attribute --reality` as step R6 of `T-20261121-dcf-engine-integration`). Result: the explanation holds for 6 of
+10; NVDA hit more (-8.6 points, 2.2 deviations); AAPL (+5.5), BRK-B (+2.4), AMZN (+3.6) hit less. STOP here: the S&P 100
+part and the other work wait for the review of the owner. The page goes to the Head of Staff first.
+
+**S&P 10 page: FROZEN at 7e19e33 for the audit (2026-11-21 19:36 UTC; request of the Head of Quality and Risk).** The
+review words of the owner so far: "The report should include the entire week including 11-20. It's a huge drop"; "AAPL
+leaving something not yet proven isn't acceptable, same w the others"; "Ensure that docs for me are in pdf format" (PDF:
+`analysis/priors/pdf/`). List for the NEXT version (after the audit verdict; do not change the page before):
+1. (Quality) Each table and each test names its market: SPY (-8.56%) or the equal weight of the S&P 500 (-6.56%).
+2. (Head of Staff) NVDA against the other 6 chips is -5.9 points, 1.5 weekly deviations: outside the rule of 1 deviation.
+   Say it. Test run (shell, daily closes): NVDA less the mean of the 6 chips by day: +1.3, -0.6, -4.0 (11-18, the day after
+   its report), -0.6, -3.1 (11-20); the daily deviation of this difference is 2.87% (259 days before). So 4.0 points came on
+   the day after the report (1.4 daily deviations). Result to write: the own part of NVDA is outside 1 deviation and inside
+   2; most of it came on the day after its report.
+3. (Head of Staff) "Monday to Thursday was a fall after the rise of the yields": no test on the page. Test run (S&P 100,
+   close 11-13 to close 11-19, 67 companies): the sensitivity to the premium against the change: r = -0.14 (t -1.2);
+   thirds -5.3%, -5.1%, -5.8%: the longest duration did not fall most. Beta against the change: r = -0.36 (t -3.1). Result
+   to write: REFUTED as a tested cause; state only what is shown: the fall of those four days was market-wide (SPY -5.1%,
+   equal weight of the S&P 500 -4.4%) and beta ranks it.
+4. (Head of Technology, SEC EDGAR, read 2026-11-21) All 8-K filings of 11-17 to 11-20 for NVDA, AVGO, MU, AMD, SNDK, TSLA,
+   META, AMZN, ANET, DELL, AMAT: the NVDA earnings release (11-17); AMD items 5.03 and 9.01 (bylaws; accepted after the
+   close of 11-20); SNDK 5.07 (11-18) and 5.03 (11-19). No item 5.02, 7.01 or 8.01. So the filings do not explain 11-20.
+   The VIX close of 11-20 is not in our data (no permitted automatic source).
+5. (Head of Economics, a7a18e6, `analysis/macro/2026-11-21-week-11-16-daily-view.md`) No rate day in the week: the yields
+   fell or stayed flat each day. 11-20: a chip basket -12.8%, defensive names +1.0%; a broad risk-off day and a sector event
+   both fit; the data does not show the cause. Calendar: FOMC minutes 11-18; Fed speeches 11-19 and 11-20; no major release
+   found for 11-20. To settle the cause: news, intraday prices, option data or VIX of 11-20; none is in the store.
+
+**Review of the person on the page of 7e19e33 (2026-11-21 19:52 UTC, relayed by the Head of Staff).** His words are in
+`chiefs/louellet-git/fundamental/RECORD.md`; the 9 style points are in `chiefs/louellet-git/staff/memory/owner-report-style.md`.
+The next version is a NEW file, `analysis/priors/sp10_week_page_v2_2026-11-21.md` (one page in the PDF print; the file of
+7e19e33 stays frozen for the audit of its numbers). State of the new file (2026-11-21 20:10 UTC): the title, Table 1 (the
+valuation blocks, S&P 10 and S&P 100), Table 2 (each stock by day, against the equal-weight market, the needed growth),
+the five patterns, Table 3 (what the prices imply after the fall) are written. OPEN: the section "Friday 2026-11-20 and
+the time after" is a placeholder; it waits for the text of the Head of Economics (the reason that the market gives, its
+test against our data, what the market implies after). Then: the PDF, then the Head of Staff, then the person. The numbers
+of the new file are the numbers of the frozen page and of the preliminary results; the audit of 7e19e33 applies to them.
+The S&P 100 part still waits for the review of the person.
+
+**Two pages for the S&P 10, version 2 (2026-11-21 20:03 UTC).** The person asked for a second page (the valuation split,
+actual against implied; his words are in the RECORD). Files: `analysis/priors/sp10_week_page_v2_2026-11-21.md` (page 1:
+the days, the stocks, the view of the Head of Economics on Friday 11-20 and the time after) and
+`analysis/priors/sp10_week_valuation_page_2026-11-21.md` (page 2: the blocks, a row for each stock, the implied numbers
+against history). PDF of each in `analysis/priors/pdf/`; each is one page. The audit of 7e19e33 (REVISE, 0 critical) is
+applied: a corrections block in `sp10_week_tests_2026-11-21.md`; NVDA is 2.7 deviations against the market and 1.1
+against the other chips. State: both pages are sent to the Head of Staff (with the audit verdict) and the commit to the
+Head of Quality and Risk for the check of the difference. NOT done: the audit of page 2 (its numbers come from the run
+`data/week_2026-11-20_main-b01b66a/`, code at the gate); the run of record; the S&P 100 part (waits for the person).
+Open point: the implied growth of the Economics note (NVDA 29.8% on 11-20, store 1e2739c, `fa dcf implied`) and of this
+head (29.3%, store 0340bc1, `fa dcf attribute`) differ by 0.5 points; page 1 gives the Economics numbers as "about".
+
+**Three pieces for the person (20:07 UTC, 2026-11-21).** A third piece is added (his words are in the RECORD):
+`analysis/priors/sp500_chips_week_page_2026-11-21.md` (the chip companies of the S&P 500 against their expected fall).
+Each of the three pieces has an intro of 1 to 3 lines and is one page in the PDF (`analysis/priors/pdf/`). Order: page 1
+`sp10_week_page_v2`, page 2 `sp10_week_valuation_page`, page 3 `sp500_chips_week_page`. Runs of page 3:
+`analysis/priors/data/week_2026-11-20_chips/` (README there). State: sent to the Head of Staff and to the Head of
+Quality and Risk. NOT done: the audit of pages 2 and 3; SWKS has no close of 2026-11-20 in the store (told to the Head
+of Technology); the expected fall by beta and the deviations are a one-time script, not engine code (design R6).
+
+**Review round of the three pieces (20:11 UTC, 2026-11-21).** Applied: the points of the Head of Staff (page 2: the meaning
+of a required return below zero, the two values of the yields block, the level 1.2% to 1.7% against the 4.41% of the
+model; page 1: the forecast sentence removed; one source for the needed growth, the run of page 2) and the conditions
+of Quality (F1: the base rates now come from `fa dcf baserates` on the S&P 500 list as of 2026-11-20, output in
+`analysis/priors/data/baserates_sp500_2026-11-20/`: 46 companies, median 3.9%, maximum 21.0%; F2: the labels of Table 3;
+P3: page 3 names AMD and INTC, "a description of one week", like-for-like means). OPEN: page 1 has no reason for Monday
+to Thursday (about 60% of the fall); the Head of Economics prepares a table of the press reasons with tests (its auditor
+first); when it comes, put it on page 1 as a table, keep one page, make the PDF, send the commit to the Head of Staff
+and to Quality. SWKS: the close of 11-20 is missing at the source (Technology tries again on 2026-11-26).
+
+**Page 1 complete (20:24 UTC, 2026-11-21).** Table 2 of page 1 now has the press reason and the test for each of the 5 days
+and for rates (the Head of Economics, note `analysis/macro/2026-11-21-chip-fall-economics-view.md`, d6e4049 on
+econ/rate-rise-question; its auditor passed it). The three pieces are complete and one page each. State: sent to the
+Head of Staff (who gives them to the person) and to Quality (it checks Table 2 only). Gate: claude/premium-series passed
+(ee82144, PASS-WITH-NOTES, "you can open the PR"); claude/attribution-reality is at the gate at a0e2480. NEXT: the pull
+request (after the second gate, or for the first branch alone), then the run of record of the week on main, then the
+S&P 100 part after the review of the person.
+
+**Run of record of the week (20:40 UTC, 2026-11-21).** Pull request 190 (claude/premium-series) is merged: main 7e88cfe. The
+week commands ran on main (`--curve par`, store 0340bc1) for the S&P 10, the S&P 100, the S&P 500 and the chip list:
+the four CSV files are byte-identical to the files that the pages used. Folder:
+`analysis/priors/data/week_2026-11-20_record_main-7e88cfe/` (README there). The status lines of the three pieces say
+what is of record (the valuation blocks and rows, the engine columns of page 3) and what is not (Table 3 of page 2: the
+base rates and the list premium series; the beta columns of page 3; the deviations of page 1). STILL OPEN: the gate of
+claude/attribution-reality (a0e2480), then its pull request (merge main 7e88cfe into it first); the series run of record
+(after a review of the pit results of 61fe8de and with a cut table); the S&P 100 part (waits for the person).

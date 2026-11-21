@@ -670,17 +670,23 @@ pub(super) fn tickers_of(o: &Opts, cache: &Path) -> R<Vec<String>> {
 /// Stage 1 of the screen: the mapping (company facts of the cache to the standard variables, with the checks). The
 /// result does not depend on the rules. Returns the inputs and the seconds.
 pub fn map_inputs(cache: &Path, tickers: &[String], as_of_day: i64, jobs: Option<usize>) -> R<(Vec<AutoInputs>, f64)> {
-    map_inputs_with(cache, tickers, as_of_day, None, jobs)
+    map_inputs_with(cache, tickers, as_of_day, None, MAP_PERIODS, jobs)
 }
 
 /// Like `map_inputs`, but the company facts are the facts that were public on `as_of` (`mapcheck::run::check_ticker_filed`:
 /// a fact is kept when its filing date is `as_of` or earlier). The 10-K of the cache fills a missing input only if its filing
 /// date (from the facts that carry its accession) is `as_of` or earlier. `fa dcf auto --as-of` and `fa dcf screen --as-of` do not filter the facts: they use `map_inputs`.
 pub fn map_inputs_pit(cache: &Path, tickers: &[String], as_of: &str, as_of_day: i64, jobs: Option<usize>) -> R<(Vec<AutoInputs>, f64)> {
-    map_inputs_with(cache, tickers, as_of_day, Some(as_of), jobs)
+    map_inputs_with(cache, tickers, as_of_day, Some(as_of), MAP_PERIODS, jobs)
 }
 
-fn map_inputs_with(cache: &Path, tickers: &[String], as_of_day: i64, filed_cut: Option<&str>, jobs: Option<usize>) -> R<(Vec<AutoInputs>, f64)> {
+/// `map_inputs_pit` with `periods` fiscal years (and quarters) in place of `MAP_PERIODS`: the base rates (`fa dcf baserates`) need
+/// the long history. The model builder does not use it.
+pub fn map_inputs_pit_periods(cache: &Path, tickers: &[String], as_of: &str, as_of_day: i64, periods: usize, jobs: Option<usize>) -> R<(Vec<AutoInputs>, f64)> {
+    map_inputs_with(cache, tickers, as_of_day, Some(as_of), periods, jobs)
+}
+
+fn map_inputs_with(cache: &Path, tickers: &[String], as_of_day: i64, filed_cut: Option<&str>, periods: usize, jobs: Option<usize>) -> R<(Vec<AutoInputs>, f64)> {
     let registry = Registry::embedded().map_err(DcfError)?;
     let t0 = Instant::now();
     let splits = super::share_basis::load_or_warn(cache);
@@ -688,7 +694,7 @@ fn map_inputs_with(cache: &Path, tickers: &[String], as_of_day: i64, filed_cut: 
         tickers
             .par_iter()
             .map(|t| {
-                let r = mapcheck::run::check_ticker_filed(&registry, cache, t, MAP_PERIODS, as_of_day, true, filed_cut);
+                let r = mapcheck::run::check_ticker_filed(&registry, cache, t, periods, as_of_day, true, filed_cut);
                 // `to`: the last date of the price file of the ticker; no warning here (a ticker with no price file has no price and no value)
                 let to = super::share_basis::to_for(cache, t, &splits);
                 inputs_from_report(&registry, &r, &splits, &to)

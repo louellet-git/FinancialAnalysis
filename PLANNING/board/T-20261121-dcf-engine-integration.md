@@ -79,3 +79,9 @@ both dates the output is the same as `--curve gsw`. `fa dcf premium-series` keep
 R5. `fa dcf premium-series --per-ticker FILE`: a second CSV with one row for each week and ticker (the bridge line of the
 ticker in points of the list, the price change, the weight), so the weekly table of a small list comes from one command.
 The main CSV contract with Economics does not change.
+
+R6 (design, 2026-11-21 19:45 UTC; not built). The stock test of the one page: in `fa dcf attribute --reality`, for each
+ticker: the expected change = beta of D1 times the change of the market index (SPY) over the window; the rest; the usual
+deviation of the rest over the 104 weekly windows before D1 (the same length as the window); the rest in deviations; the
+result "holds" below 1 deviation, else "hit more" or "hit less". Point in time: only closes on or before D1 for the
+deviation. Columns at the end of the CSV; a fixed-answer test; a record for the 104 weeks and the limit of 1 deviation.
