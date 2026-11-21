@@ -43,22 +43,17 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
   to the head only if the same head does it again and again.
 
 ## 4. Open now
+- Waits for the person: (1) his review of the three S&P pieces (sent 2026-11-21: the week by day and stock,
+  the valuation blocks, the chip sector; on main in `analysis/priors/pdf/`); the S&P 100 part starts after
+  it. (2) The start of the new session `FA-L - Head of Quality and Risk`: no gate works until then.
+- The one session test (agreed 2026-11-21): the old Quality session stays open as "FA-L - Quality and Risk
+  (fallback)". Baseline: 1,140 head turns, 451k cache read for each head turn, 144 agent starts, 220 USD.
+  Measures, some days: questions that the new session asks the old one (lost facts), repeated work, a
+  disputed verdict, cache read for each turn, cost for each gate. Report it before any other head changes.
+  The person tested smaller contexts before and it did harm: no other context change without a test.
 - E6.S5: `fa board check` is on main (I start no build: ask Technology for its output). Usage log, owner
-  word "Let's not get overly complicated": local only; a head runs `fa usage show` when I ask (a ticket
-  closes, or before the weekly reset). No push path. The calculator stays on hold.
-- Count of all heads (2026-11-21, `get_session` cost in USD from each start): Technology 629, Fundamental
-  314, Quality 220, Quant 152, Economics 97, Staff 12. The heads make 70% of the cache reads (400k to 500k
-  for each head turn); 317 agent starts; 2 skill uses.
-- Context size: the person tested smaller contexts before and it did harm. No change without a test.
-  ONE test is agreed (2026-11-21): a new Quality and Risk session takes the next gates; the old one stays
-  open as "FA-L - Quality and Risk (fallback)". Baseline of the old one: 1,140 head turns, 451k cache read
-  for each head turn, 144 agent starts, 220 USD. Measures, some days: questions that the new session must
-  ask the old one (lost facts), repeated work, a verdict that the heads dispute, cache read for each turn
-  and cost for each gate. Report the result to the person before any other head changes.
-- Skills are almost not used (2 uses): no action until some days of data exist.
-- Week study (E2.S1), owner words: three pieces, to me first, then to the person (also (3) the chip sector
-  of the S&P 500, a page or a half: did it fall as expected):
-  (1) the week and each stock, with the section of Economics (the market's reason for the chip fall of
-  11-20, tested, and the view after); (2) the valuation split, actual against implied. Read both against
-  `owner-report-style.md`. The S&P 100 part waits for his review.
+  word "Let's not get overly complicated": local only; a head runs `fa usage show` when I ask. No push
+  path. The calculator stays on hold.
+- Cost by head from each start (2026-11-21, `get_session`, USD): Technology 629, Fundamental 314, Quality
+  220, Quant 152, Economics 97. The heads make 70% of the cache reads; 317 agent starts; 2 skill uses.
 - E1 (stock trades) is on hold: "No trades until T1 passes". PR 131 waits for the live run of 2026-11-23.
