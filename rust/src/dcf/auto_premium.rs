@@ -273,7 +273,10 @@ pub fn week_row(ctx: &Ctx, friday: &str, prior: Option<&State>) -> R<(Row, State
         if ctx.bridge {
             let m1 = market_at_anchor(&p.anchor, &p.curve);
             let mut rows = attribute_list(&p.inputs, &inputs, &m1, &market_of, &HashMap::new(), &cfg, None)?;
-            finish_weights(&mut rows, &|t: &str| ctx.closes.get(t).cloned(), &p.anchor, &anchor);
+            // the stale-price rule compares each close with the SPY close: `ctx.closes` has the tickers of the list only,
+            // so SPY comes from `ctx.spy` (without it the rule did not run in the bridge of the series)
+            let closes = |t: &str| if t == "SPY" { Some(ctx.spy.clone()) } else { ctx.closes.get(t).cloned() };
+            finish_weights(&mut rows, &closes, &p.anchor, &anchor);
             if let Some(b) = full_bridge(&rows, View::Premium) {
                 let a = &b.all;
                 row.s2 = Some([a.parts[0], a.parts[1], a.parts[2], a.parts[3], a.parts[4], a.parts[5], a.parts[6], a.change]);

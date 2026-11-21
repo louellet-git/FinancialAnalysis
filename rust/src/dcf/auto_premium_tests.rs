@@ -210,3 +210,20 @@ fn the_windows_file_has_the_fixed_header_and_one_row_of_two_anchors() {
     assert_eq!(WINDOWS_HEADER, "d1,date");
     assert_eq!(windows_line("2026-11-13", "2026-11-20"), "2026-11-13,2026-11-20");
 }
+
+#[test]
+fn a_stale_close_at_an_anchor_leaves_the_bridge_of_the_series() {
+    let cache = write_cache("stale_bridge", false);
+    // T02 has no close on the second anchor: its last close is older than the SPY close of that anchor
+    let p = cache.join("T02").join("prices.json");
+    let text = std::fs::read_to_string(&p).unwrap();
+    let cut = text.rfind(",{\"date\":\"2026-11-20\"").unwrap();
+    std::fs::write(&p, format!("{}]", &text[..cut])).unwrap();
+    let rows = two_weeks(&cache, &Arc::new(Mutex::new(Vec::new())));
+    let w = &rows[1];
+    // ret_w leaves the stale name out (2 of 3). The bridge does the same: it is the rule of `fa dcf attribute`.
+    assert_eq!(w.n_ret, Some(2));
+    assert_eq!(w.per_ticker.iter().map(|t| t.ticker.as_str()).collect::<Vec<_>>(), vec!["T00", "T01"]);
+    assert!((w.per_ticker.iter().map(|t| t.weight).sum::<f64>() - 1.0).abs() < 1e-12);
+    let _ = std::fs::remove_dir_all(cache);
+}
