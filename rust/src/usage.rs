@@ -22,7 +22,7 @@ pub const USAGE: &str = "fa usage record --transcript F [--subagents DIR] [--boa
 fa usage show [--dir D] [--from-refs]\n\
   Print one table: ticket | head | tier/agent | input | output | cache read | cache write, and the sums\n\
   by ticket and by head. --dir D: the folder of usage files (default: FA_USAGE_DIR or the temp folder, fa-usage).\n\
-  --from-refs: run `git fetch origin +refs/usage/*:refs/usage/*` and read the files of the refs/usage/* refs.";
+  --from-refs: run `git fetch <USAGE_REMOTE, default the private store louellet-git/fa-data> +refs/usage/*:refs/usage/*` and read the files of the refs/usage/* refs.";
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tokens {
@@ -387,7 +387,8 @@ fn load_dir(dir: &Path) -> Vec<Summary> {
 
 fn load_refs(repo: &Path) -> Vec<Summary> {
     let git = |args: &[&str]| Command::new("git").arg("-C").arg(repo).args(args).output();
-    let _ = git(&["fetch", "--quiet", "origin", "+refs/usage/*:refs/usage/*"]);
+    let remote = std::env::var("USAGE_REMOTE").unwrap_or_else(|_| "https://github.com/louellet-git/fa-data".to_string());
+    let _ = git(&["fetch", "--quiet", &remote, "+refs/usage/*:refs/usage/*"]);
     let Ok(o) = git(&["for-each-ref", "--format=%(refname)", "refs/usage/"]) else { return vec![] };
     let mut v = vec![];
     for r in String::from_utf8_lossy(&o.stdout).lines() {

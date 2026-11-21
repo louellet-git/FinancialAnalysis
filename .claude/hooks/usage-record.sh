@@ -10,7 +10,8 @@
 #   - finds the repo root from "cwd" of the hook input (walk up to the folder with .git);
 #     if that fails, FA_REPO, then the folder of this script
 #   - runs at most one time in 10 minutes for each session (stamp file in /tmp)
-#   - USAGE_PUSH=1 pushes the file to refs/usage/<short session id> (plumbing only: no index, no work
+#   - USAGE_PUSH=1 pushes the file to refs/usage/<short session id> of the PRIVATE data store
+#     (louellet-git/fa-data; USAGE_REMOTE replaces it), never to this public repo (plumbing only: no index, no work
 #     tree, no branch). By default it does not push.
 trap 'exit 0' EXIT INT TERM
 [ "${FA_USAGE_RECORD:-0}" = "1" ] || exit 0
@@ -59,6 +60,6 @@ input=$(cat)
   tree=$(printf '100644 blob %s\tusage.json\n' "$blob" | git mktree) || exit 0
   commit=$(GIT_AUTHOR_NAME=usage GIT_AUTHOR_EMAIL=usage@localhost GIT_COMMITTER_NAME=usage GIT_COMMITTER_EMAIL=usage@localhost \
     git commit-tree "$tree" -m "usage $short") || exit 0
-  timeout 20 git push --quiet --force origin "$commit:refs/usage/$short" >/dev/null 2>&1
+  timeout 20 git push --quiet --force "${USAGE_REMOTE:-https://github.com/louellet-git/fa-data}" "$commit:refs/usage/$short" >/dev/null 2>&1
 ) </dev/null >/dev/null 2>&1 &
 exit 0

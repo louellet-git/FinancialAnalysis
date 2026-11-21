@@ -110,3 +110,5 @@ returns at once (about 5 ms); the count runs in the background (a cold read of a
 the folder where its session started, so the ticket of each line can be wrong; a session reads a new
 hook and a new environment variable only at its start. The push is off until the content review
 (`risk-compliance-officer`) and one test push.
+
+Push target: the refs go to the PRIVATE store `louellet-git/fa-data` (refs/usage/<id>), not to this public repo, so the dates and the token amounts are not public. The store has no workflow.
