@@ -1,0 +1,14 @@
+# S&P 10: the 10 largest companies of rust/mapcheck/universe/sp100.txt by market value (close x share count of the model) at the
+# close of 2026-11-13, from fa dcf attribute on main b01b66a (point-in-time 10-K fill), store 0340bc1. Alphabet has two classes
+# (GOOG carries the weight). BRK-B (10th, 1,279B) replaces WMT (11th, 1,022B) of the first list, which had no BRK-B share count.
+AAPL
+NVDA
+MSFT
+GOOG
+GOOGL
+AMZN
+AVGO
+META
+TSLA
+LLY
+BRK-B
