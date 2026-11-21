@@ -88,6 +88,17 @@ does not choose the strategy.
   itself are cut by the filing date.
 - The equal-weight line and the strategy use the same scored list, the same dates and the same cost.
 
+## Point-in-time checks
+
+- Parameter table of runs B, D and R1: `fa dcf calibrate --cache data/raw --cut 2016 --no-bands` (fiscal years up
+  to 2016 only; the first rebalance is 2018-01-02), SHA-256
+  `3a74b20f452f1878d692ab92262255a1811c21f0a057657da61d03c787e3acce`.
+- Truncation test (run D, 2026-11-21): a copy of the cache with the prices of SPY and of the scored list and the
+  GSW curve cut before 2022-01-31 (the facts are linked; the vintages cut them by filing date), and the run D
+  command with `--end 2022-01-31`. The 1,023 holding rows of the 17 rebalances before 2022-01-31 are the same
+  as in the full run (`cmp`). So the strategy reads no later close and no later curve. The poison check of the
+  harness is not used: it does not catch a read of a close one day later (harness gate, cycle 1).
+
 ## Variant log (each run of the value signal, in order; outside the harness)
 
 All on store `1804f48`, start 2018-01-01, seed 7, 300 paths. Exploratory (no committed hypothesis file). The
@@ -100,6 +111,7 @@ harness run after the harness gate counts if a number differs.
 6. B on `next500.txt` scored list (406): +3.22 (mean of years +2.11, t 0.25).
 7. B at 0 bp: +3.03. 8. B at 20 bp: +2.80.
 9. B again with `--holdings` (the same values, a check).
+11. D with `--end 2022-01-31` on the full cache, and on the cut cache (the truncation test; holdings only).
 10. D: B with `--neutral sector`: +3.45.
 Pre-registered next (A-009, committed 0360941 at 2026-11-21 03:54:55 UTC, before any of its runs): R1 the A-009
 rule weekly; R2 the bottom fifth inside each sector (the short side test). Results go here as they come.
