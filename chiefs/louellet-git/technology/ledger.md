@@ -21,3 +21,4 @@
 | Mapping test on 2,003 tickers | 2026-11-20 | `next1000.txt`; mortgage-REIT revenue tags, `DebtSecuritiesCurrent`, new variable `acquisitions_net_of_cash_second`; standard FAIL 33 of 1,574 (2.1%) | ~119k (1 Sonnet subagent) | SEC fetch 1,355 requests, 7 min 40 s; tests pass; IBM unchanged |
 | The-heads repo; daily option save; NVDA data; timing run | 2026-11-21 | the-heads 6264abb, chiefs PR 35; FA PR 96, 97; scheduled task; store a1dffb5, ba4cdab, c486b86; Quant timing run (no agent) | ~60k | Heston 5.3 to 5.8 s |
 | Mapping test reviews and fixes; filed-date test; NVDA releases | 2026-11-21 | mapping cycles 1 and 2 (2 Sonnet data-engineer runs, ~200k); PR 101; store 1696af8, 1804f48 (34 SEC requests) | ~260k | mapping PASS-WITH-NOTES with 2 conditions, both met |
+| Portfolio backtest merged | 2026-11-21 | review cycle 2 condition (1 Sonnet rust-engineer run, ~80k); merge of main; real run | ~100k | value-rank +19.02%, equal weight +14.56%, 0 cash days |
