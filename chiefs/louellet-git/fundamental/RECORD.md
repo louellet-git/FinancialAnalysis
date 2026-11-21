@@ -30,3 +30,11 @@ The rule of the entry above is in `chiefs/ORIENTATION.md`, section 6 ("Reviews a
 ## 2026-11-20 23:09 UTC (chat)
 Words: "I think you might have deleted an old ticket, that's not how we should handle those, speak w tech head"
 Done: question to the Head of Technology; the rule is now in `PLANNING/board/README.md` (a merged ticket moves to `PLANNING/board/done/` with `status: done` and `merged:`; never deleted). The two deletions on my branches are replaced by the move.
+
+## 2026-11-21 03:17 UTC (chat)
+Words: "I need you to begin working on testing your DCF engine on the back tester. That's the real value. You and the chief of economics will have to look for as long of data as you have, chief of economics could/should even consider periods of time that are outside the length of the stock market when that makes sense."
+Done: ticket `T-20261121-dcf-engine-backtest` (order 0.05); first runs of `fa portfolio backtest --strategy value-rank`; questions to the Head of Economics (market-level history) and the Head of Technology (older prices).
+
+## 2026-11-21 03:16 UTC (relayed by the Head of Quality and Risk)
+Words: "I need the report to be a trade recommendation, based on fundamentals. Trade recommendations should be sub 3 pages."
+Done: `analysis/NVDA/TRADE-RECOMMENDATION.md` (no trade), branch `claude/nvda-valuation` caa0082, in the gate.
