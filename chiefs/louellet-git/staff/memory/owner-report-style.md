@@ -18,4 +18,6 @@ document before it goes to the person. A head can read it; it is not a form.
    two lines at most.
 7. **Valuation numbers as blocks.** A value is one block made of small blocks: show it as a table or as
    bullet points, not as numbers in a sentence.
-8. Short, clear, ASD-STE100.
+8. **A title and a subtitle.** The title is a short name, not a sentence and not a question. The subtitle
+   says what the document covers.
+9. Short, clear, ASD-STE100.

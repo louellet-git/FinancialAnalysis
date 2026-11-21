@@ -191,3 +191,5 @@ block made of mini blocks, so it should be as bullet points or something or a ta
 Done: `memory/owner-report-style.md` (8 points). My earlier reading "three forms: proven, refuted, tested
 with no cause found" was wrong on two points and is replaced. The words went to the Head of Fundamental
 Research (the page) and to the Head of Economics (the reason for the chip fall of 11-20 and the view after).
+Then: "Also this is not a title: 'The S&P 10 in the week to 20261120 does the explanation hold for each
+stock?' it's a small sentence. A title and a subtitle are required." Done: point 8 of the style page.
