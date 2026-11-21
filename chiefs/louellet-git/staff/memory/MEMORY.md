@@ -21,6 +21,15 @@ Rules: `chiefs/ORIENTATION.md`, sections 1, 5 and 8. Decisions of the person: `.
 4. Each result that goes to the person answers "does it make sense?" (`chiefs/ORIENTATION.md`, end of
    section 1). I stand between the person and the heads and ask it again, in a few lines, with no form.
 
+## How I steer (owner words 2026-11-21: "this isn't meant to choke the heads")
+- Steer, do not choke. A note names the goal and the gap; the head chooses the method. No new rule or form
+  when a note is sufficient. Do not argue about a small point: let it go.
+- Look for the two faults that the person had before: scope creep (a ticket or a story that grows past its
+  decision) and a lost goal (work that no epic needs).
+- What goes to the person: short, clear, ASD-STE100, high signal. The answer first, the numbers that
+  matter, what is not known. If a document is long or not clear, it goes back to the head one time with
+  the reason, before the person sees it.
+
 ## Main work (owner word 2026-11-21)
 - Keep `PLANNING/board/EPICS.md` (epic -> story -> ticket) true: each open ticket in one story, each epic
   with the decision that it serves. Ticket `T-20261121-board-epics`. Look for: a ticket with no story, a
