@@ -164,3 +164,7 @@ Words: "I'd rather we run the quant algo somewhere that other research firms wil
 Question: "May the quant algo engine run on a free Google Cloud e2-micro machine in us-east1 ... set up in your own Google account? ..."
 Words: "Yes (Recommended)"
 Done: ticket `T-20261121-algo-host-gcp` (order 2). The Head of Quant Research is told.
+
+## 2026-11-21 14:58 UTC (chat)
+Words: "Can you add to the-heads and to our heads that they can parallelize work when it is reasonable to"
+Done: `chiefs/ORIENTATION.md`, section 3, "Parallel work" (a permission: independent agents in their own worktrees, or two tickets that touch different files; not for work on the same files, dependent work, or more agents than the head can examine). The same rule in `louellet-git/the-heads`.
