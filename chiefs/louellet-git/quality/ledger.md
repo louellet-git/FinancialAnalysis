@@ -149,3 +149,4 @@
 | board check | 2026-11-21 | claude/board-check (0604c1a): code-reviewer (Haiku) PASS (read-only proved; 2 MIN on check 7); verdict PASS-WITH-NOTES | measured with the batch | |
 | selftest golden cycle 2 | 2026-11-21 | claude/quant-selftest-golden (8579817): head check of G1-G3; PASS-WITH-NOTES | small (head only) | |
 | attribution-reality gate | 2026-11-21 | claude/attribution-reality (a0e2480, new part ee82144..a0e2480): code-reviewer + model-validator started | | week report, first in the work order |
+| macro view conditions; page 1 Table 2 | 2026-11-21 | econ/view-engine-cmd (a8780f3) C1, C2 met; claude/attribution-reality 493337b Table 2 against the note d6e4049: both PASS-WITH-NOTES (head checks) | small (head only) | |
