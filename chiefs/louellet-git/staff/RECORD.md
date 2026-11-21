@@ -95,3 +95,11 @@ out what the repo [chiefs] did, but note that it's going to have problems ... th
 constricting, but we want the lean, easy to use, easy to implement version of that." Also: "And keep it lean".
 Done: read `louellet-git/chiefs` (its usage tools). The design is in `T-20261121-usage-log`. Found the
 real weekly figure with one call: 71% used on 2026-11-21 18:49 UTC, reset 2026-11-25 16:00 UTC.
+
+## 2026-11-21 about 18:55 UTC (question dialog)
+Question: the weekly token limit is 71% used and resets 2026-11-25 11:00 Toronto time; shall the heads
+start nothing new until the reset, except the week report and the live run of Monday?
+Answer of the person: "No need to cancel work now, but maybe you and I think about what should get done
+with what % of tokens".
+Done: no stop and no message to the heads. A first split of the rest of the week was proposed to the
+person in the chat; it is not agreed yet.
