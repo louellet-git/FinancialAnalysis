@@ -66,8 +66,11 @@ OOS, rejection rule, families and periods follow the design.
 
 ## What stays open
 
+Closed: the model document `docs/models/market-level-dcf.md` now names the scoring and the run of record
+(`claude/dcf-market-level` d444206, Head of Fundamental Research).
+
+
 | Point | Owner |
 |---|---|
 | A second country (JST data) as an out-of-sample test: pre-register it before the download | Head of Economics; data: Head of Technology |
-| `docs/models/market-level-dcf.md` line 8 still says "the command does not score" | Head of Fundamental Research |
 | Any use of the premium for a decision: the person decides; this file sets no input | the person |
