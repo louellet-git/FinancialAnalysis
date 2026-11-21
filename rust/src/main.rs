@@ -64,6 +64,8 @@ USAGE:
   fa recon history [--from D] [--to D] [--out F]  the same difference over the cached dates: how long it lasts
   fa portfolio backtest --strategy value-rank|momentum --start D --end D [--rebalance monthly|quarterly] [--cost-bp N] [--tickers-file F] [--cache DIR]
                                                   portfolio backtest with costs, point-in-time, against SPY (fa portfolio --help)
+  fa portfolio calibrate --start D [--block-weeks N] [--ranks-out F] [--entries-out F] [--stress-file F]
+                                                  the weekly rule against the 13-week outcome: tests T2 to T4 (fa portfolio --help)
   fa trade fetch [--symbol S]... [--interval I]...  download the bars of the option bots (Yahoo) into the CSV cache
   fa trade backtest [--bot ID]... [--max-risk N] [--out FILE] [-v]   backtest the option bots (fa trade backtest --help)
   fa trade paper [BOT]... [--no-refresh] [--no-live]   forward paper trading, live Cboe option chain (fa trade paper --help)

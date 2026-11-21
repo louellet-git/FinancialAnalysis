@@ -63,3 +63,15 @@ Economics). It replaces the pass rules of T2 to T4 above. T1 does not change.
   - The automatic model reads no consensus estimate and no price target. The store has one snapshot only
     (2026-11-19).
   - The sector is today's SIC code.
+
+**Revision 2, before any run of T1 to T4** (choices of the build that Revision 1 does not give; the head accepts them):
+- The tail test of T3 uses a week only when 30 or more entries closed before it (closed = entry day + 91 days
+  before the week). A stated P10 from fewer outcomes is not a stated figure.
+- The stress windows are read from `analysis/macro/stress-windows.csv`, a copy of the table of
+  `analysis/macro/2026-11-21-stress-windows.md` (descriptive only).
+- The last 13 weeks of the data have no outcome and are not in the statistics.
+- One command runs T2 to T4: `fa portfolio calibrate --start 2018-01-01 --tickers-file <scored list> --cache
+  <store 1804f48> --table <table cut 2016, SHA-256 3a74b20f...> --block-weeks 26 --boot-seed 7 --reps 10000`.
+  T1 is `fa dcf pit --cut 2015` with the code of this branch (the acquisition rule of `main`; if the acquisition
+  change merges before the first trade, T1 runs again once with it, and both runs are reported).
+- The refactor of `fa portfolio backtest` for the shared code is checked: run D is byte-identical.
