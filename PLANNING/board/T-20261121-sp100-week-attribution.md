@@ -150,3 +150,27 @@ market (SPY -8.56%), the rest in units of its usual weekly deviation (104 weeks;
 `fa dcf attribute --reality` as step R6 of `T-20261121-dcf-engine-integration`). Result: the explanation holds for 6 of
 10; NVDA hit more (-8.6 points, 2.2 deviations); AAPL (+5.5), BRK-B (+2.4), AMZN (+3.6) hit less. STOP here: the S&P 100
 part and the other work wait for the review of the owner. The page goes to the Head of Staff first.
+
+**S&P 10 page: FROZEN at 7e19e33 for the audit (2026-11-21 19:36 UTC; request of the Head of Quality and Risk).** The
+review words of the owner so far: "The report should include the entire week including 11-20. It's a huge drop"; "AAPL
+leaving something not yet proven isn't acceptable, same w the others"; "Ensure that docs for me are in pdf format" (PDF:
+`analysis/priors/pdf/`). List for the NEXT version (after the audit verdict; do not change the page before):
+1. (Quality) Each table and each test names its market: SPY (-8.56%) or the equal weight of the S&P 500 (-6.56%).
+2. (Head of Staff) NVDA against the other 6 chips is -5.9 points, 1.5 weekly deviations: outside the rule of 1 deviation.
+   Say it. Test run (shell, daily closes): NVDA less the mean of the 6 chips by day: +1.3, -0.6, -4.0 (11-18, the day after
+   its report), -0.6, -3.1 (11-20); the daily deviation of this difference is 2.87% (259 days before). So 4.0 points came on
+   the day after the report (1.4 daily deviations). Result to write: the own part of NVDA is outside 1 deviation and inside
+   2; most of it came on the day after its report.
+3. (Head of Staff) "Monday to Thursday was a fall after the rise of the yields": no test on the page. Test run (S&P 100,
+   close 11-13 to close 11-19, 67 companies): the sensitivity to the premium against the change: r = -0.14 (t -1.2);
+   thirds -5.3%, -5.1%, -5.8%: the longest duration did not fall most. Beta against the change: r = -0.36 (t -3.1). Result
+   to write: REFUTED as a tested cause; state only what is shown: the fall of those four days was market-wide (SPY -5.1%,
+   equal weight of the S&P 500 -4.4%) and beta ranks it.
+4. (Head of Technology, SEC EDGAR, read 2026-11-21) All 8-K filings of 11-17 to 11-20 for NVDA, AVGO, MU, AMD, SNDK, TSLA,
+   META, AMZN, ANET, DELL, AMAT: the NVDA earnings release (11-17); AMD items 5.03 and 9.01 (bylaws; accepted after the
+   close of 11-20); SNDK 5.07 (11-18) and 5.03 (11-19). No item 5.02, 7.01 or 8.01. So the filings do not explain 11-20.
+   The VIX close of 11-20 is not in our data (no permitted automatic source).
+5. (Head of Economics, a7a18e6, `analysis/macro/2026-11-21-week-11-16-daily-view.md`) No rate day in the week: the yields
+   fell or stayed flat each day. 11-20: a chip basket -12.8%, defensive names +1.0%; a broad risk-off day and a sector event
+   both fit; the data does not show the cause. Calendar: FOMC minutes 11-18; Fed speeches 11-19 and 11-20; no major release
+   found for 11-20. To settle the cause: news, intraday prices, option data or VIX of 11-20; none is in the store.
