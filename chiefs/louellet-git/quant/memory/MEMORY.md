@@ -26,12 +26,13 @@ Rules: `chiefs/ORIENTATION.md` (sections 3 to 8). Decisions of the person: `../R
 - Then `vol-2` (SABR, local volatility) on the `volmodels` base.
 - About 2026-12-22: the Head of Technology asks me what the 20 days showed; then the person answers whether to
   get real quotes (laptop at 15:45 ET or a paid source). My recommendation so far: no.
-- Test audit: next after several more merges (last 2026-11-21: speed proposals refused, suite ~10 s).
 
 ## Lessons from this session (tested)
 - Reviews found what I missed in each code ticket: a fit that hid non-convergence (vol-1), an 80% check that
   could lock the archive for good (vol-7). For any fit or automatic job: print the status and the way to recover.
 - An agent report can be wrong on one fact (vol-1 "converged"): run the real command myself before I pass it on.
+- A defect report of a different head can be false (rates duplicate row, 2026-11-21): check it against the data
+  before an agent starts a fix. The fix branch `claude/quant-rates-dup` is dropped; it does not merge.
 - `fa recon bonds`, `fa recon explain`, `fa futures check` download each missing file (two agent downloads,
   2026-11-20): the brief says "check the cache first"; `rates-credit-quant.md` says it too.
 - One branch for each ticket (person, 2026-11-21): `claude/quant-<ticket>` from `origin/main`. Parallel agents
@@ -57,5 +58,4 @@ Rules: `chiefs/ORIENTATION.md` (sections 3 to 8). Decisions of the person: `../R
 - `responsibilities.md`: the split of work between Quant Research and Fundamental Research.
 - Stress windows for backtests: `analysis/macro/2026-11-21-stress-windows.md` (Head of Economics; 13 windows).
 
-## Dream pass
-Last pass: 2026-11-21 (context at 82% of the compaction threshold). Next: before the next compaction.
+Dream pass: last 2026-11-21 (82% of the threshold); next before the next compaction.

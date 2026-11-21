@@ -1,7 +1,7 @@
 //! `fa vol fit heston|bates --symbol T --date D [--time HHMM] [--rate R] [--expiry-max DAYS] [--max-spread V] [--starts N] [--seed S]`
 
 use super::base::{iv_errors, CharModel, QuoteSet};
-use super::calib::{at_bound, fit, FitOptions, FitResult};
+use super::calib::{at_bound, fit, FitOptions, FitResult, LmStatus};
 use super::chain::{build, Counts, Filters};
 use super::models::{Bates, Heston};
 use crate::market::option_history::index_info;
@@ -15,6 +15,11 @@ pub const USAGE: &str = "\
 fa vol - volatility models (Fourier pricing, calibration)
 
 USAGE:
+  fa vol fit sabr --symbol T --date D [--time HHMM] [--rate R] [--beta B] [--expiry-max DAYS] [--max-spread V]
+                          fit SABR (Hagan et al. 2002 with the Obloj 2008 correction) to each series: alpha, rho, nu with beta fixed
+                          (default 1). Loss (model vol - mid vol) / spread in vol. Prints, for each series, days, forward, the
+                          parameters, the fit status, the number of quotes, the error in vol points, and the time. One smile for
+                          each expiry: SABR has no dynamics between expiries. The parameters are calibrated values, not measurements.
   fa vol fit heston|bates --symbol T --date D [--time HHMM] [--rate R] [--expiry-max DAYS] [--max-spread V] [--starts N] [--seed S]
                           fit the model to the last stored snapshot of the date (data/raw/<T>/options/<D>.json or <D>T<hhmm>.json;
                           real bid and ask). --time HHMM (UTC) takes the file of that minute.
@@ -35,7 +40,7 @@ fn parse_args(rest: &[String]) -> Result<(String, Vec<(String, String)>), String
     let mut i = 1;
     while i < rest.len() {
         let k = &rest[i];
-        if !["--symbol", "--date", "--time", "--rate", "--expiry-max", "--max-spread", "--starts", "--seed"].contains(&k.as_str()) {
+        if !["--symbol", "--date", "--time", "--rate", "--expiry-max", "--max-spread", "--starts", "--seed", "--beta"].contains(&k.as_str()) {
             return Err(format!("unknown argument {k}; see fa vol --help"));
         }
         let v = rest.get(i + 1).filter(|v| !v.starts_with("--")).ok_or_else(|| format!("{k} needs a value"))?;
@@ -58,8 +63,8 @@ pub fn run(repo: &Path, rest: &[String]) -> Result<i32, String> {
         return Err(format!("unknown vol command '{}'; see fa vol --help", rest[0]));
     }
     let (model, flags) = parse_args(&rest[1..])?;
-    if model != "heston" && model != "bates" {
-        return Err(format!("unknown model '{model}': heston or bates"));
+    if !["heston", "bates", "sabr"].contains(&model.as_str()) {
+        return Err(format!("unknown model '{model}': heston, bates or sabr"));
     }
     let get = |n: &str| flags.iter().find(|(k, _)| k == n).map(|(_, v)| v.clone());
     let symbol = get("--symbol").ok_or("give --symbol T")?.to_uppercase();
@@ -93,7 +98,13 @@ pub fn run(repo: &Path, rest: &[String]) -> Result<i32, String> {
         return Err("no series left after the filters".into());
     }
     let start = Instant::now();
-    if model == "heston" {
+    if model == "sabr" {
+        let beta = num::<f64>(&flags, "--beta")?.unwrap_or(1.0);
+        if !(0.0..=1.0).contains(&beta) {
+            return Err(format!("bad --beta '{}': 0 to 1", get("--beta").unwrap_or_default()));
+        }
+        report_sabr(&set, beta, start);
+    } else if model == "heston" {
         let r = fit::<Heston>(&set, &opts)?;
         report(&set, &r, start, &opts);
     } else {
@@ -101,6 +112,39 @@ pub fn run(repo: &Path, rest: &[String]) -> Result<i32, String> {
         report(&set, &r, start, &opts);
     }
     Ok(0)
+}
+
+fn report_sabr(set: &QuoteSet, beta: f64, start: Instant) {
+    let fits = super::sabr::fit_all(&set.series, beta, 100);
+    let secs = start.elapsed().as_secs_f64();
+    println!("\nSABR, beta = {beta} fixed, alpha rho nu fitted for each series (loss: model vol minus mid vol over the spread; error in vol points):");
+    println!("  {:<6} {:<11} {:>5} {:>10} {:>9} {:>8} {:>8} {:>5} {:>8} {:>8}  status", "root", "expiry", "days", "forward", "alpha", "rho", "nu", "n", "rms", "max");
+    let (mut s2, mut n, mut mx, mut not_conv, mut bound, mut failed) = (0.0, 0usize, 0.0f64, 0usize, 0usize, 0usize);
+    for f in &fits {
+        match f {
+            Ok(f) => {
+                let marks: Vec<&str> = super::sabr::PARAM_NAMES.iter().zip(&f.at_bound).filter(|(_, b)| **b).map(|(n, _)| *n).collect();
+                let mut status = f.status.text().to_string();
+                if !marks.is_empty() {
+                    status += &format!("; at bound: {}", marks.join(", "));
+                }
+                println!("  {:<6} {:<11} {:>5} {:>10.2} {:>9.5} {:>8.4} {:>8.4} {:>5} {:>8.3} {:>8.3}  {status}", f.root, f.expiry, f.days, f.forward, f.model.alpha, f.model.rho, f.model.nu, f.n, f.rms_points, f.max_points);
+                s2 += f.rms_points * f.rms_points * f.n as f64;
+                n += f.n;
+                mx = mx.max(f.max_points);
+                not_conv += (f.status != LmStatus::Converged) as usize;
+                bound += f.at_bound.iter().any(|b| *b) as usize;
+            }
+            Err(e) => {
+                failed += 1;
+                println!("  FAILED: {e}");
+            }
+        }
+    }
+    println!("  all    {:<11} {:>5} {:>10} {:>9} {:>8} {:>8} {:>5} {:>8.3} {:>8.3}", "", "", "", "", "", "", n, (s2 / n.max(1) as f64).sqrt(), mx);
+    println!("series: {} fitted, {} not converged, {} with a parameter at a bound (not identified: do not read it), {} failed", fits.len() - failed, not_conv, bound, failed);
+    println!("note: the error is a model vol against a mid vol of an indicative or stored quote: a measurement of the fit, not a tradable price. No dynamics between expiries.");
+    println!("\ntime: {secs:.3} s (fit of {} series, {} quotes, {} threads)", set.series.len(), set.n_quotes(), rayon::current_num_threads());
 }
 
 fn print_counts(c: &Counts, f: &Filters) {
