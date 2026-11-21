@@ -52,3 +52,4 @@
 | sleeve limits proposal | 2026-11-21 | paper-desk ticket, decision 2: proposal written for the owner (`chiefs/louellet-git/quality/proposal-sleeve-limits.md`) | small (head only) | owner decides |
 | economics first brief, fix check | 2026-11-21 | econ/first-brief (40945f7): head check of the diff; PASS-WITH-NOTES | small (head only) | |
 | quant limits of use | 2026-11-21 | `claude/quant-limits-of-use` (53a9c8d): head check of two lines against the code; PASS-WITH-NOTES | small (head only) | |
+| economics stress windows | 2026-11-21 | econ/stress-windows (f2edb0c), store 1804f48: auditor PASS-WITH-NOTES (14 windows reproduced from the rule), document-reviewer (Haiku) REVISE (4 MAJ, two set to MIN); verdict REVISE (main finding; exact rule, the 2025 merge edge) | about 63k (37k + 26k measured) | an independent rebuild of the rule is the strong check |
