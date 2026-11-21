@@ -10,6 +10,7 @@
 //! the ticker lists are today's lists (survivorship, the result is too good); a ticker that stops trading keeps its last
 //! price in the portfolio (no failure loss); no tax, no short sale, no leverage, no market impact.
 
+pub mod calibrate;
 pub mod cli;
 pub mod strategies;
 

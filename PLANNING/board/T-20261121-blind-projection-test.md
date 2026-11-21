@@ -63,3 +63,49 @@ Economics). It replaces the pass rules of T2 to T4 above. T1 does not change.
   - The automatic model reads no consensus estimate and no price target. The store has one snapshot only
     (2026-11-19).
   - The sector is today's SIC code.
+
+**Revision 2, before any run of T1 to T4** (choices of the build that Revision 1 does not give; the head accepts them):
+- The tail test of T3 uses a week only when 30 or more entries closed before it (closed = entry day + 91 days
+  before the week). A stated P10 from fewer outcomes is not a stated figure.
+- The stress windows are read from `analysis/macro/stress-windows.csv`, a copy of the table of
+  `analysis/macro/2026-11-21-stress-windows.md` (descriptive only).
+- The last 13 weeks of the data have no outcome and are not in the statistics.
+- One command runs T2 to T4: `fa portfolio calibrate --start 2018-01-01 --tickers-file <scored list> --cache
+  <store 1804f48> --table <table cut 2016, SHA-256 3a74b20f...> --block-weeks 26 --boot-seed 7 --reps 10000`.
+  T1 is `fa dcf pit --cut 2015` with the code of this branch (the acquisition rule of `main`; if the acquisition
+  change merges before the first trade, T1 runs again once with it, and both runs are reported).
+- The refactor of `fa portfolio backtest` for the shared code is checked: run D is byte-identical.
+
+**Result of the one run (2026-11-21 04:49 UTC):** T1 FAILS (the free cash flow low tail is too thin, revenue at T+3
+too wide); T2 to T4 pass (`analysis/priors/blind_projection_test_2026-11-21.md`). Owner decision, 2026-11-21
+04:50 UTC: "No trades until T1 passes", paper included.
+
+**The test of the T1 fix (written before any run of a fix):**
+- Development on `fa dcf pit --cut 2015 --half 0` only. The agent may look at half 0 as often as needed. It
+  chooses ONE rule for the band of the free cash flow, and if needed ONE rule for the revenue band at T+2 and T+3.
+  Each rule has a reason that is not a score of half 1 (for example the size of the margin shocks seen in the
+  history of half 0, or a lower tail of the margin shock). The rule and its numbers are committed before step 2.
+- Score: `fa dcf pit --cut 2015 --half 1`, once. Pass: the T1 rule ("all" row, revenue and free cash flow, T+1 to
+  T+3: inside P10 to P90 75% to 85%, each tail 5% to 15%) holds on half 1.
+- Then T1 on the full sample (`fa dcf pit --cut 2015`), once, and T2 to T4 (`fa portfolio calibrate`, the same
+  command), once, with the fixed model. All must pass. If the score of half 1 fails, the fix fails: report it
+  to Luc; a second fix needs a new written test.
+- `fa dcf drivers IBM` stays $83.84 / $151.84 / $258.03; a changed value gets its record (`docs/assumptions/`).
+
+**Blindness of the T1 re-run (2026-11-21, before any score run of a fix; condition of the Head of Quality and Risk):**
+choice (a). The blind score of the fix is `fa dcf pit --cut 2015 --half 1` only (the fix is fitted and chosen on half
+0). The store has no year after the last year of the T1 data, so no fresher hold-out exists now. The full-sample T1
+and the T2 to T4 runs after the fix are reported as "not blind (designed after the first T1 failed; half 0 fitted
+the fix)", with the count of tries. The fix is a model change: it takes the gate of a model change and the
+Backtest row. The first live weeks give the fresh hold-out.
+
+**Result of the T1 fix (2026-11-21, `claude/t1-fcf-band` 49a1d82, A-010):** the blind score on half 1 FAILS on
+revenue only. Free cash flow passes at T+1 to T+3 (13.9 / 76.9 / 9.2; 11.2 / 79.6 / 9.3; 10.6 / 78.3 / 11.1).
+Revenue at T+3 fails (3.8 / 87.6 / 8.6; the band is too wide, an error on the safe side). Half 1 is now seen.
+
+**The test of a revenue fix (written before any run of it):** develop on `fa dcf pit --cut 2015 --half 0` only,
+one rule with a reason that is a fact of half 0. Score once on a hold-out that no run has scored alone: the earlier
+base years, `fa dcf pit --cut 2011` limited to base years 2011 to 2014 (a new option `--base-to 2014`), with
+`acq_cv=1` and the revenue rule, both halves. Label it "partly blind": earlier full-sample runs mixed these years
+with later years. Pass: the T1 rule on the "all" rows, revenue and free cash flow, T+1 to T+3. No fully blind
+fundamentals data exists in the store; the next 10-K filings are the only fresh data.

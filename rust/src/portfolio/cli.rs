@@ -42,6 +42,21 @@ fa portfolio backtest --strategy NAME --start D [--end D] [OPTIONS]
   Survivorship: the lists of tickers are today's lists, so the result is too good. The output has an equal-weight line of
   the whole list for the comparison.";
 
+pub const CALIBRATE_USAGE: &str = "\
+fa portfolio calibrate --start D [--end D] [OPTIONS]
+  The calibration of the weekly rule (A-009), tests T2 to T4 of PLANNING/board/T-20261121-blind-projection-test.md
+  (Revision 1). Each week (the Friday) each scored ticker gets the rank inside its sector, made from the prices before the
+  day and the SEC facts filed before it (the scorer of value-rank-weekly). Only then the outcome is read: the return from the
+  close of that day to the close 91 days later, less the equal weight of the scored list of that week. The entries are those
+  of value-rank-weekly (re-entries marked). The text on the screen has each test with its pass rule, its value, pass or
+  fail, and the headline. No network, no order. Price returns, today's list.
+  --cache DIR --tickers-file F --table FILE --paths N --seed S   as for backtest
+  --ranks-out FILE     one row for each week and scored ticker: date, ticker, sector, rank, ratio, fwd_13w, excess_13w (T2)
+  --entries-out FILE   the entries of the rule with the same columns and a reentry flag (T3)
+  --block-weeks N (26) block of the circular bootstrap, in weeks (the checks 13 and 52 are also printed)
+  --boot-seed S (7)    seed of the bootstrap          --reps N (10000): resamples
+  --stress-file FILE   stress windows, one line name,start,end (analysis/macro/stress-windows.csv); descriptive only";
+
 pub const LIMITS: &str = "\
 LIMITS
   - Survivorship: the ticker list is today's list. A company that failed, was bought or left the index is not in it, and
@@ -77,17 +92,148 @@ pub fn read_tickers(text: &str) -> Vec<String> {
 }
 
 pub fn run(repo: &Path, args: &[String]) -> u8 {
-    if args.first().map(String::as_str) != Some("backtest") || args.iter().any(|a| a == "-h" || a == "--help") {
-        println!("{USAGE}");
-        return u8::from(args.first().map(String::as_str) != Some("backtest") && !args.is_empty());
+    let sub = args.first().map(String::as_str);
+    if !matches!(sub, Some("backtest" | "calibrate")) || args.iter().any(|a| a == "-h" || a == "--help") {
+        println!("{USAGE}\n\n{CALIBRATE_USAGE}");
+        return u8::from(!matches!(sub, Some("backtest" | "calibrate")) && !args.is_empty());
     }
-    match backtest(repo, &args[1..]) {
+    let result = if sub == Some("calibrate") { calibrate(repo, &args[1..]) } else { backtest(repo, &args[1..]) };
+    match result {
         Ok(()) => 0,
         Err(e) => {
             eprintln!("fa: {e}");
             2
         }
     }
+}
+
+/// The tickers and the closes that a command reads (`--tickers-file`, the cache).
+struct Inputs {
+    /// The tickers with a price file (SPY is not in the list).
+    tickers: Vec<String>,
+    raw: BTreeMap<String, Vec<(String, f64)>>,
+    prices: Prices,
+}
+
+fn load_inputs(args: &[String], cache: &Path) -> Result<Inputs, String> {
+    let mut tickers = match opt(args, "--tickers-file") {
+        Some(f) => read_tickers(&std::fs::read_to_string(f).map_err(|e| format!("{f}: {e}"))?),
+        None => crate::dcf::panel::cache_tickers(cache)?,
+    };
+    tickers.retain(|t| t != "SPY");
+    let mut names = tickers.clone();
+    names.push("SPY".into());
+    let raw: BTreeMap<String, Vec<(String, f64)>> = names
+        .par_iter()
+        .filter_map(|t| {
+            let p = crate::market::prices::read_cache(&crate::market::prices::cache_path(cache, t)).ok()?;
+            Some((t.clone(), p.into_iter().map(|x| (x.date, x.close)).collect()))
+        })
+        .collect();
+    if !raw.contains_key("SPY") {
+        return Err(format!("no price file of SPY in {}", cache.display()));
+    }
+    tickers.retain(|t| raw.contains_key(t));
+    let prices = Prices::from_raw(&raw);
+    Ok(Inputs { tickers, raw, prices })
+}
+
+/// What the value-rank scorer needs. One setup for `backtest` and `calibrate`.
+struct ValueRankSetup<'a> {
+    repo: &'a Path,
+    args: &'a [String],
+    cache: &'a Path,
+    tickers: &'a [String],
+    raw: &'a BTreeMap<String, Vec<(String, f64)>>,
+    start: i64,
+    paths: usize,
+    seed: u64,
+    pick: Pick,
+    /// `Some("sector")`: the sector of each ticker is set.
+    sector_mode: Option<&'a str>,
+}
+
+/// Build the scorer (the table, the vintages, the curve, the sectors) and give it, with the scored universe, to `f`.
+fn with_value_rank<R>(v: &ValueRankSetup, f: impl FnOnce(ValueRank<'_>, &[String], &str) -> Result<R, String>) -> Result<R, String> {
+    let (repo, args, cache, tickers, raw, start) = (v.repo, v.args, v.cache, v.tickers, v.raw, v.start);
+    let table_file = opt(args, "--table").map(PathBuf::from).unwrap_or_else(|| repo.join(DEFAULT_TABLE));
+    let (table, fade) = load_table(&table_file).map_err(|e| e.0)?;
+    let registry = Registry::embedded()?;
+    let rules = parse_rules("").map_err(|e| e.0)?;
+    let curves = std::fs::read_to_string(cache.join("rates").join("gsw_feds200628.csv")).ok().and_then(|t| crate::forwards::parse_gsw(&t).ok());
+    let index = index_from_cache(cache);
+    // the closes are split-adjusted to the last date of each price file: the share counts of each vintage go to the same basis (a missing file is an error)
+    let splits = crate::dcf::splits::load_splits(cache)?;
+    let split_note = crate::dcf::splits::check_report(&splits, tickers);
+    let years: BTreeMap<String, _> = tickers
+        .par_iter()
+        .filter_map(|t| {
+            let (tpl, y) = load_vintages(&registry, cache, t, start, &splits)?;
+            (tpl == "standard").then(|| (t.clone(), y))
+        })
+        .collect();
+    let universe: Vec<String> = tickers.iter().filter(|t| years.contains_key(*t)).cloned().collect();
+    eprintln!("value-rank: {} of {} tickers have SEC facts with the standard template", universe.len(), tickers.len());
+    let params = RetParams { table: &table, fade: &fade, rules: &rules, curves: curves.as_ref(), index: None, lag: 100, paths: v.paths, seed: v.seed };
+    let sectors = match v.sector_mode {
+        None => None,
+        Some("sector") => Some(
+            universe
+                .iter()
+                .map(|t| (t.clone(), mapcheck::sec::company_sic(cache, t).map_or("Other", |(sic, _)| mapcheck::sec::ff12_sector(sic)).to_string()))
+                .collect::<BTreeMap<String, String>>(),
+        ),
+        Some(x) => return Err(format!("--neutral '{x}': sector")),
+    };
+    let s = ValueRank { years, series: raw, index: index.as_deref(), params, scored: Default::default(), sectors, pick: v.pick };
+    f(s, &universe, &split_note)
+}
+
+fn calibrate(repo: &Path, args: &[String]) -> Result<(), String> {
+    let known = ["--cache", "--start", "--end", "--tickers-file", "--paths", "--seed", "--table", "--ranks-out", "--entries-out", "--block-weeks", "--boot-seed", "--reps", "--stress-file"];
+    let mut i = 0;
+    while i < args.len() {
+        if !known.contains(&args[i].as_str()) {
+            return Err(format!("unknown option '{}' (fa portfolio --help)", args[i]));
+        }
+        match args.get(i + 1) {
+            Some(v) if !v.starts_with("--") => {}
+            _ => return Err(format!("option '{}' needs a value", args[i])),
+        }
+        i += 2;
+    }
+    let num = |name: &str, default: u64| -> Result<u64, String> { opt(args, name).map_or(Ok(default), |v| v.parse().map_err(|_| format!("{name} '{v}': a whole number"))) };
+    let cache: PathBuf = opt(args, "--cache").map(PathBuf::from).unwrap_or_else(|| repo.join("data").join("raw"));
+    let paths = num("--paths", 300)? as usize;
+    if paths < 100 {
+        return Err(format!("--paths {paths}: 100 or more"));
+    }
+    let seed = num("--seed", 7)?;
+    let params = super::calibrate::StatParams { block_weeks: num("--block-weeks", 26)?.max(1) as usize, seed: num("--boot-seed", 7)?, reps: num("--reps", 10_000)?.max(1) as usize };
+    let start = day_of(args, "--start")?.ok_or("--start is needed")?;
+    let windows = match opt(args, "--stress-file") {
+        Some(f) => super::calibrate::parse_windows(&std::fs::read_to_string(f).map_err(|e| format!("{f}: {e}"))?)?,
+        None => Vec::new(),
+    };
+    let Inputs { tickers, raw, prices } = load_inputs(args, &cache)?;
+    let spy_last = prices.0["SPY"].last().map(|x| x.0).ok_or("SPY has no prices")?;
+    let end = day_of(args, "--end")?.unwrap_or(spy_last);
+    let cal: Vec<i64> = prices.0["SPY"].iter().map(|x| x.0).filter(|d| *d >= start && *d <= end).collect();
+    let rdays = super::rebalance_days(&cal, start, end, Rebalance::Weekly);
+    let setup = ValueRankSetup { repo, args, cache: &cache, tickers: &tickers, raw: &raw, start, paths, seed, pick: Pick::Top, sector_mode: Some("sector") };
+    let (rows, entries, split_note) = with_value_rank(&setup, |s, universe, note| {
+        let sectors = s.sectors.clone().ok_or("the sector of each ticker is needed")?;
+        let (r, e) = super::calibrate::collect(&prices, universe, &|v, u| s.score(v, u), &sectors, &rdays, end.min(spy_last));
+        Ok((r, e, note.to_string()))
+    })?;
+    if let Some(f) = opt(args, "--ranks-out") {
+        std::fs::write(f, super::calibrate::ranks_csv(&rows)).map_err(|e| format!("{f}: {e}"))?;
+    }
+    if let Some(f) = opt(args, "--entries-out") {
+        std::fs::write(f, super::calibrate::entries_csv(&entries)).map_err(|e| format!("{f}: {e}"))?;
+    }
+    print!("{split_note}{}", super::calibrate::summary(&rows, &entries, &windows, &params));
+    Ok(())
 }
 
 fn backtest(repo: &Path, args: &[String]) -> Result<(), String> {
@@ -123,25 +269,7 @@ fn backtest(repo: &Path, args: &[String]) -> Result<(), String> {
     let start = day_of(args, "--start")?.ok_or("--start is needed")?;
 
     let t0 = std::time::Instant::now();
-    let mut tickers = match opt(args, "--tickers-file") {
-        Some(f) => read_tickers(&std::fs::read_to_string(f).map_err(|e| format!("{f}: {e}"))?),
-        None => crate::dcf::panel::cache_tickers(&cache)?,
-    };
-    tickers.retain(|t| t != "SPY");
-    let mut names = tickers.clone();
-    names.push("SPY".into());
-    let raw: BTreeMap<String, Vec<(String, f64)>> = names
-        .par_iter()
-        .filter_map(|t| {
-            let p = crate::market::prices::read_cache(&crate::market::prices::cache_path(&cache, t)).ok()?;
-            Some((t.clone(), p.into_iter().map(|x| (x.date, x.close)).collect()))
-        })
-        .collect();
-    if !raw.contains_key("SPY") {
-        return Err(format!("no price file of SPY in {}", cache.display()));
-    }
-    tickers.retain(|t| raw.contains_key(t));
-    let prices = Prices::from_raw(&raw);
+    let Inputs { tickers, raw, prices } = load_inputs(args, &cache)?;
     let end = match day_of(args, "--end")? {
         Some(d) => d,
         None => prices.0["SPY"].last().map(|x| x.0).ok_or("SPY has no prices")?,
@@ -166,42 +294,17 @@ fn backtest(repo: &Path, args: &[String]) -> Result<(), String> {
             if weekly && opt(args, "--neutral").is_some() {
                 return Err("value-rank-weekly ranks inside the sector by its own rule: no --neutral".into());
             }
-            let table_file = opt(args, "--table").map(PathBuf::from).unwrap_or_else(|| repo.join(DEFAULT_TABLE));
-            let (table, fade) = load_table(&table_file).map_err(|e| e.0)?;
-            let registry = Registry::embedded()?;
-            let rules = parse_rules("").map_err(|e| e.0)?;
-            let curves = std::fs::read_to_string(cache.join("rates").join("gsw_feds200628.csv")).ok().and_then(|t| crate::forwards::parse_gsw(&t).ok());
-            let index = index_from_cache(&cache);
-            // the closes are split-adjusted to the last date of each price file: the share counts of each vintage go to the same basis (a missing file is an error)
-            let splits = crate::dcf::splits::load_splits(&cache)?;
-            split_note = crate::dcf::splits::check_report(&splits, &tickers);
-            let years: BTreeMap<String, _> = tickers
-                .par_iter()
-                .filter_map(|t| {
-                    let (tpl, y) = load_vintages(&registry, &cache, t, start, &splits)?;
-                    (tpl == "standard").then(|| (t.clone(), y))
-                })
-                .collect();
-            let universe: Vec<String> = tickers.iter().filter(|t| years.contains_key(*t)).cloned().collect();
-            eprintln!("value-rank: {} of {} tickers have SEC facts with the standard template", universe.len(), tickers.len());
-            n_scored = Some(universe.len());
-            let params = RetParams { table: &table, fade: &fade, rules: &rules, curves: curves.as_ref(), index: None, lag: 100, paths, seed };
-            let sectors = match opt(args, "--neutral").or(weekly.then_some("sector")) {
-                None => None,
-                Some("sector") => Some(
-                    universe
-                        .iter()
-                        .map(|t| (t.clone(), mapcheck::sec::company_sic(&cache, t).map_or("Other", |(sic, _)| mapcheck::sec::ff12_sector(sic)).to_string()))
-                        .collect::<BTreeMap<String, String>>(),
-                ),
-                Some(x) => return Err(format!("--neutral '{x}': sector")),
-            };
-            let s = ValueRank { years, series: &raw, index: index.as_deref(), params, scored: Default::default(), sectors, pick };
-            if weekly {
-                super::run(&prices, &universe, &WeeklyValueRank { base: s, open: Default::default() }, &cfg)?
-            } else {
-                super::run(&prices, &universe, &s, &cfg)?
-            }
+            let sector_mode = opt(args, "--neutral").or(weekly.then_some("sector"));
+            let vr = ValueRankSetup { repo, args, cache: &cache, tickers: &tickers, raw: &raw, start, paths, seed, pick, sector_mode };
+            with_value_rank(&vr, |s, universe, note| {
+                n_scored = Some(universe.len());
+                split_note = note.to_string();
+                if weekly {
+                    super::run(&prices, universe, &WeeklyValueRank { base: s, open: Default::default() }, &cfg)
+                } else {
+                    super::run(&prices, universe, &s, &cfg)
+                }
+            })?
         }
         x => return Err(format!("unknown strategy '{x}': value-rank, value-rank-weekly or momentum")),
     };
