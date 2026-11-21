@@ -636,6 +636,7 @@ gives a sourced value.
 *Evidence:* `python -m scripts.verdict IBM --price 231.09 --rf-date 2026-11-18 --rating A-`.
 
 **46. The ICE data on FRED has only 3 years, and ICE does not allow redistribution.**
+*Since 2026-11-21 the code does not use ICE or Moody's series: the cost of debt of a rating is the Treasury HQM 10Y spot plus a fixed step (A-200 to A-203). The text below is the history.*
 The series start on 2023-11-20. A date before that gives an error, not an old value. Do
 not commit the cache (`data/raw/bonds/`) or put ICE values in a public file. For a
 longer history, use Moody's Aaa and Baa (from 1983 and 1986). Those are long bonds (20
@@ -724,6 +725,7 @@ could not run against the real site. The other `fa rates` commands do not need F
 FRED series in `rust/tests/fixtures/rates/fred.json` are made up (ICE data may not be
 copied into a public repo). On a network that FRED answers, run `fa bonds` and
 `fa bonds check` once before you trust a `--rating` result.
+**Changed 2026-11-21.** `fa bonds` and `--rating` no longer need FRED: the HQM curve comes from the Treasury files and the steps are a fixed table (A-200 to A-203). `fa bonds check` and `fa bonds moodys` are deleted. A HQM month is used only from its publication day (the first weekday after the 5th of the next month): the 1st-of-the-month date is the average, not the day it was known.
 **Changed 2026-11-20 (test of the orchestrator).** The refusal is for the address with no key only. With a FRED API key in
 the environment variable `FRED_API_KEY`, the FRED API answers the cloud container: 26 of 26 series in 57 seconds, and
 `fa bonds`, `fa bonds check` and `fa verdict --rating` then work on real data. With no key, the keyless address still
@@ -823,9 +825,8 @@ them in this work and we did not use TRACE. The Treasury and Fiscal Service file
 corporate bond prices. Thus the corporate comparison is at
 curve level only. The HQM curve is a monthly average (the date is the first day of the
 month; on 2026-11-17 the latest value was for 2026-10-01). Our Treasury zero curve is for
-one day. The ICE OAS is one number for the whole index (duration of about 6 to 7 years),
-and not a number for each maturity. The HQM blend of AAA, AA and A has unknown weights, so
-the mean of the three OAS is an arbitrary choice. We assume that the HQM spot rates are
+one day. The spread is one number for the whole curve (a fixed table), and not a number for each maturity. The HQM blend of AAA, AA and A has unknown weights. Since 2026-11-21 the
+comparison adds the default spread of A (the HQM reference bucket, A-201). We assume that the HQM spot rates are
 semi-annual (the Treasury slides say so; we did not read the full paper).
 *Evidence:* `fa recon bonds` output, section CORPORATE CURVE.
 

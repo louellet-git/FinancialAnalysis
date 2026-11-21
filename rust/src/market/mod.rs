@@ -21,6 +21,7 @@
 //! `estimates.json`, `surprises.json`.
 
 pub mod alpaca;
+pub mod arb_run;
 pub mod consensus;
 pub mod earnings_dates;
 pub mod estimates_cache;
@@ -45,6 +46,7 @@ pub mod splits;
 pub mod splits_rules;
 pub mod splits_cli;
 pub mod members_cli;
+pub mod spf;
 
 use serde::de::{MapAccess, Visitor};
 use serde::ser::SerializeMap;

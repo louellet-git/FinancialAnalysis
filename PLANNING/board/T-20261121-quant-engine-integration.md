@@ -5,8 +5,9 @@ area: engine
 status: in-progress
 owner: louellet-git
 head: quant
+story: E4.S4
 order: 0.85
-branch: claude/quant-engine-integration
+branch: claude/quant-trade-grids, claude/quant-recon-lasting, claude/quant-selftest-golden (the builds)
 created: 2026-11-21
 requested_by: louellet-git
 acceptance: Each row of the table below is a command with fixed-answer tests (a point-in-time test where history is used, the model document and records where a model moves), or a request to the head that owns it, or closed with a reason. One build ticket for each group of rows.
@@ -40,10 +41,11 @@ Source of the table: an inventory of the quant notes, tickets and commits (2026-
 | - | Planned, not done yet: B8, vol-1 day D to D + 1, arb-3 box regression, break persistence (`for: 2`) | in their own tickets; persistence in `fa arb run` | day | - |
 
 ## Rows of other heads (sent as requests, 2026-11-21)
-- Technology: 7 `--cache-only` (ticket exists), 8 `fa data audit --rates`, 28 `fa options archive --plan`, 29 `fa calendar open`
-  (and the bot calendar B3), 30 `fa options archive --report`, 31 `fa options snapshot --smoke`, 32 a start hook for the
-  one-session check.
-- Quality and Risk: 16 a pre-registration check, 23 `fa options check --legs-out`, 24 `fa vol check <model>` from the
+- Technology (answer 2026-11-21): takes 7 `--cache-only`, 8 `fa data audit --rates`, 29 `fa calendar open` (NYSE table;
+  also for the bot calendar B3), 31 `fa options snapshot --smoke`; gives back 28 `fa options archive --plan` and
+  30 `--report` (quant builds them with the continuous capture); refuses 32 for now (one call by hand is cheap).
+- Quality and Risk (answer 2026-11-21: one at a time; 25 first, built by quant as `T-20261121-selftest-golden`; then 26;
+  16 a written rule, no code; 23, 24, 27 later): 16 a pre-registration check, 23 `fa options check --legs-out`, 24 `fa vol check <model>` from the
   validator's reference cases, 25 `fa selftest golden` (the byte comparisons with main), 26 mutation tests on a pull
   request, 27 `fa repro NOTE.md`.
 - Economics owns `analysis/macro/stress-windows.csv` (row 9 reads it).

@@ -27,6 +27,8 @@ pub mod explain;
 pub mod billdiag;
 pub mod forwards;
 pub mod rates;
+pub mod rates_derived;
+pub mod hqm;
 pub mod refdata;
 pub mod verdict_rates;
 
@@ -43,6 +45,7 @@ pub mod hostnet;
 pub mod market;
 pub mod sync;
 pub mod report;
+pub mod macro_test;
 pub mod selftest;
 
 use serde::de::DeserializeOwned;
@@ -158,14 +161,15 @@ pub struct RatesContext {
     pub base: Option<BaseSplit>,
 }
 
-/// One rating index (ICE BofA): spread and yield, all decimals.
+/// One rating row: step, cost of debt and spread over the UST 10Y, all decimals.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RatingQuote {
-    /// Option-adjusted spread over the Treasury curve at each bond's maturity.
-    pub oas: RateObservation,
+    /// The fixed step of the bucket over the HQM reference bucket.
+    pub step: f64,
+    /// UST 10Y + HQM basis + the step: the cost of debt of the row.
     #[serde(rename = "yield")]
     pub effective_yield: RateObservation,
-    /// Index yield minus UST 10Y: the engine's `kd_spread` definition.
+    /// Cost of debt minus UST 10Y: the engine's `kd_spread` definition.
     pub spread_over_10y: RateObservation,
 }
 
@@ -190,8 +194,6 @@ impl HqmCurve {
 pub struct CreditSnapshot {
     /// Keyed by "AAA", "AA", "A", "BBB", "BB", "B", "CCC".
     pub ratings: BTreeMap<String, RatingQuote>,
-    /// Keyed by "Aaa" and "Baa".
-    pub moodys: BTreeMap<String, RateObservation>,
     pub hqm_curve: HqmCurve,
 }
 
@@ -199,15 +201,19 @@ pub struct CreditSnapshot {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CreditContext {
     pub rating: String,
-    /// The ICE index used: the rating without notches ("A-" -> "A").
+    /// The bucket used: the rating without notches ("A-" -> "A").
     pub index: String,
     pub kd_spread: RateObservation,
     pub model_kd_spread: f64,
     pub kd_spread_change_vs_model: f64,
-    pub index_yield: f64,
-    pub oas: f64,
-    pub moodys_aaa: f64,
-    pub moodys_baa: f64,
+    /// HQM spot yield at the default maturity (10 years), monthly average of the HQM month.
+    pub hqm_spot: f64,
+    /// Mean UST 10Y par yield of the same month.
+    pub ust_mean_10y: f64,
+    /// `hqm_spot - ust_mean_10y`.
+    pub basis: f64,
+    /// The step of the bucket over the HQM reference bucket.
+    pub step: f64,
     pub kd_pretax: f64,
     pub kd_after_tax: f64,
     pub tax_rate: f64,
@@ -352,6 +358,16 @@ impl Fa {
         })
     }
 
+    /// Write T10Y3M, DFII10 and T10YIE (computed from the Treasury curves) as FRED-form CSV files into `dir`.
+    /// Gives `(series, rows)`. `from_year` defaults to the first year of the nominal curves.
+    pub fn rates_derived(&self, dir: &std::path::Path, from_year: Option<i64>, to_year: Option<i64>) -> Result<Vec<(String, usize)>> {
+        data(|| {
+            let mut r = self.source();
+            let to = to_year.unwrap_or_else(|| curve::civil_from_days(r.today).0);
+            r.write_derived(dir, from_year.unwrap_or(rates::treasury_first_year(false)), to)
+        })
+    }
+
     /// Cross-check every source against FRED over the last `days`.
     pub fn check(&self, days: u32) -> Result<Vec<CheckResult>> {
         data(|| self.source().check(days as i64))
@@ -389,24 +405,19 @@ impl Fa {
         dcf::cli::verdict_for_spec(&spec, ticker, price, simulations, seed, rates_ctx, credit_ctx).map_err(|e| FaError::Data(e.0))
     }
 
-    /// ICE BofA option-adjusted spread for a rating ("A-", "Baa2", ...).
-    pub fn credit_spread(&self, rating: &str, date: Option<&str>) -> Result<RateObservation> {
-        data(|| self.source().credit_spread(rating, rates::parse_on(date)?))
+    /// The step of the bucket of a rating ("A-", "Baa2", ...) over the HQM reference bucket.
+    pub fn rating_step(&self, rating: &str) -> Result<RateObservation> {
+        data(|| self.source().rating_step(rating))
     }
 
-    /// ICE BofA effective yield for a rating.
+    /// The cost of debt of a rating: HQM 10Y spot + the step of its bucket.
     pub fn corporate_yield(&self, rating: &str, date: Option<&str>) -> Result<RateObservation> {
         data(|| self.source().corporate_yield(rating, rates::parse_on(date)?))
     }
 
-    /// Index yield minus UST 10Y on the same date: the engine's `kd_spread`.
+    /// Cost of debt minus UST 10Y: the engine's `kd_spread`.
     pub fn spread_over_10y(&self, rating: &str, date: Option<&str>) -> Result<RateObservation> {
         data(|| self.source().spread_over_10y(rating, rates::parse_on(date)?))
-    }
-
-    /// Moody's seasoned corporate yield: grade "Aaa" or "Baa".
-    pub fn moodys(&self, grade: &str, date: Option<&str>) -> Result<RateObservation> {
-        data(|| self.source().moodys_yield(grade, rates::parse_on(date)?))
     }
 
     pub fn hqm_curve(&self, date: Option<&str>) -> Result<HqmCurve> {
@@ -415,11 +426,6 @@ impl Fa {
 
     pub fn credit_snapshot(&self, date: Option<&str>) -> Result<CreditSnapshot> {
         data(|| self.source().credit_snapshot(rates::parse_on(date)?))
-    }
-
-    /// Moody's minus UST 10Y vs FRED AAA10Y / BAA10Y over the last `days`.
-    pub fn check_bonds(&self, days: u32) -> Result<Vec<CheckResult>> {
-        data(|| self.source().cross_check_bonds(days as i64))
     }
 }
 
@@ -522,16 +528,14 @@ mod tests {
     #[test]
     fn parses_credit_snapshot_and_orders_hqm() {
         let q = format!(
-            r#"{{"oas": {}, "yield": {}, "spread_over_10y": {}}}"#,
-            obs_json("A OAS", 0.0076, ""),
+            r#"{{"step": 0.0, "yield": {}, "spread_over_10y": {}}}"#,
             obs_json("A yield", 0.0577, ""),
             obs_json("A - 10Y", 0.0067, "")
         );
         let j = format!(
-            r#"{{"ratings": {{"A": {q}}}, "moodys": {{"Baa": {}}},
-                "hqm_curve": {{"date": "2026-10-01", "source": "U.S. Treasury HQM via FRED",
-                               "maturities": {{"10Y": 0.0602, "1Y": 0.048, "2Y": 0.0517, "30Y": 0.0681}}}}}}"#,
-            obs_json("Baa", 0.0663, "")
+            r#"{{"ratings": {{"A": {q}}},
+                "hqm_curve": {{"date": "2026-10-01", "source": "U.S. Treasury HQM",
+                               "maturities": {{"10Y": 0.0602, "1Y": 0.048, "2Y": 0.0517, "30Y": 0.0681}}}}}}"#
         );
         let s: CreditSnapshot = parse_output(&j).unwrap();
         assert_eq!(s.ratings["A"].effective_yield.value, 0.0577);
@@ -549,10 +553,10 @@ mod tests {
         assert!(v.credit.is_none());
         let credit = format!(
             r#"{{"rating": "A-", "index": "A", "kd_spread": {}, "model_kd_spread": -0.001,
-                "kd_spread_change_vs_model": 0.0077, "index_yield": 0.0577, "oas": 0.0076,
-                "moodys_aaa": 0.0618, "moodys_baa": 0.0663, "kd_pretax": 0.0574,
+                "kd_spread_change_vs_model": 0.0077, "hqm_spot": 0.0577, "ust_mean_10y": 0.0507, "basis": 0.007, "step": 0.0,
+                "kd_pretax": 0.0574,
                 "kd_after_tax": 0.045346, "tax_rate": 0.21}}"#,
-            obs_json("A - 10Y", 0.0067, "A- uses the A index")
+            obs_json("A - 10Y", 0.0067, "A- uses the A step")
         );
         let v: Verdict = parse_output(&format!("{{{base}, \"credit\": {credit}}}")).unwrap();
         let c = v.credit.unwrap();

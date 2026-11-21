@@ -2,12 +2,12 @@
 id: T-20261121-blind-projection-test
 title: Test the blind projections of the DCF engine on prior data before the first weekly trade
 area: engine
-status: in-progress
+status: backlog
 owner: louellet-git
 requested_by: louellet-git
 head: fundamental
 order: 0.02
-branch: claude/dcf-engine-backtest
+branch: claude/t1-revenue-band
 created: 2026-11-21
 acceptance: Before the first weekly trade (paper included, 2026-11-27), the four tests below run once as written, on point-in-time data only, and their results (pass or fail, each with its number and command) are in a findings file that passed the gate of the Head of Quality and Risk; each weekly write-up then states the backtested chance of a loss and the size of a bad outcome for its rule, so that a failed trade is one that the model gave a chance before the trade.
 ---
@@ -118,3 +118,5 @@ revenue diagnosis `--diag rev` (step 2, development on `--cut 2015 --half 0` onl
 No revenue rule is chosen, and the score run (`--cut 2011 --base-to 2014`) is NOT made: that hold-out is still unused.
 Not done: the fixed-answer test of `--base-to`, the build and test check of this commit, step 3 (write the rule into
 this ticket before the score). Next step: `cargo test`, then step 2 from the `--diag rev` output.
+
+**Board note (2026-11-21 about 20:50 UTC):** paused by the owner word "hold off on other work for now" (the week attribution is first); back to the backlog, with the work kept on its branch (see the status at the pause above).
