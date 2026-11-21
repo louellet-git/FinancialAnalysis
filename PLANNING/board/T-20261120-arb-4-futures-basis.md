@@ -2,12 +2,12 @@
 id: T-20261120-arb-4-futures-basis
 title: Compare futures with their spot and carry, and the VIX options with the VX futures
 area: trading
-status: backlog
+status: in-progress
 owner: louellet-git
 requested_by: louellet-git
 head: quant
 order: 3.2
-branch:
+branch: claude/upbeat-cori-a4ykf5
 created: 2026-11-20
 acceptance: `fa futures check` gives the VX future against the VIX option parity forward of the same expiry and the ZQ and SR3 strip against the New York Fed rates, each check has a test with a fixed answer, and one real day is in the findings note.
 ---
