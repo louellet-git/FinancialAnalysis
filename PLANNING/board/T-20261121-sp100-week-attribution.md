@@ -74,3 +74,10 @@ operating cash flow 111.5B to 145.1B), time +1.10, rates +1.39, premium -10.14, 
 view over the period), no model -0.51 (AMZN, TSLA). (b) Research on the implied premium: an agent writes
 `analysis/priors/implied_premium_research_plan_2026-11-21.md` (literature, data inventory, first measurements, 3 to 5
 proposals); the Head of Economics is asked whether it owns the market-level part.
+
+**Premium research split (2026-11-21 about 17:25 UTC):** the Head of Economics owns the market-level part (the premium
+common to all names against VIX, the variance risk premium, Baa-10Y, the real 10-year yield and NFCI; a design written
+and frozen before any regression). This head gives two weekly point-in-time series from 2018-01-05 (S1: the list premium
+of `fa dcf implied --price-date`; S2: the premium part of the `attribute` bridge), for the S&P 500 and the S&P 100, after
+the point-in-time mapping fix merges. This head keeps the stock-level part (common against stock-specific; growth news
+against discount-rate news). The data audit of the store is with the Head of Technology (owner request, 17:15 UTC).
