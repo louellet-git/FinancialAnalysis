@@ -145,7 +145,7 @@ rust/target/release/fa sync --status IBM      # what is old, for each data set (
 rust/target/release/fa sync IBM MSFT          # bring the old data sets up to date (one queue for each host; --only, --skip, --force, --max-minutes)
 rust/target/release/fa trade fetch            # option bots: download the bars (Yahoo) into the cache
 rust/target/release/fa trade backtest         # option bots, leaderboard
-rust/target/release/fa trade paper            # option bots: one paper-trade step (live Cboe chain)
+rust/target/release/fa trade paper            # option bots: one paper-trade step (model prices with --no-live; the live chain is refused until an Alpaca adapter exists, T-20261121-cboe-off)
 ```
 
 All commands: `README.md`.

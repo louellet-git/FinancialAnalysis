@@ -208,7 +208,7 @@ button.again:disabled { opacity: .6; cursor: progress; }
 <section class="view" id="view-bonds">
   <div class="card">
     <h2>Corporate bonds</h2>
-    <p class="help">ICE BofA index for each rating, Moody's seasoned yields and the Treasury HQM corporate spot curve. The data comes from FRED.</p>
+    <p class="help">Cost of debt for each rating (Treasury HQM 10Y spot plus a fixed step for the rating bucket) and the Treasury HQM corporate spot curve. The data comes from the Treasury; the steps are from Damodaran (January 2026).</p>
     <button class="go" id="bonds-refresh">Refresh</button>
     <div class="status" id="bonds-status"></div>
     <div id="bonds-out"></div>
@@ -400,7 +400,7 @@ function renderVerdict(v) {
   }
   if (v.credit) {
     const c = v.credit;
-    h += `<h3>Cost of debt (rating ${esc(c.rating)}, index ${esc(c.index)})</h3><div class="scroll"><table><tbody>
+    h += `<h3>Cost of debt (rating ${esc(c.rating)}, bucket ${esc(c.index)})</h3><div class="scroll"><table><tbody>
       <tr><td>Spread over the 10Y (market)</td><td class="num">${pct(c.kd_spread.value)}</td></tr>
       <tr><td>Spread over the 10Y (model)</td><td class="num">${pct(c.model_kd_spread)}</td></tr>
       <tr><td>Cost of debt before tax</td><td class="num">${pct(c.kd_pretax)}</td></tr>
@@ -495,11 +495,9 @@ $("rates-refresh").addEventListener("click", loadRates);
 function renderBonds(d) {
   const s = d.snapshot;
   const order = ["AAA", "AA", "A", "BBB", "BB", "B", "CCC"].filter((r) => s.ratings[r]);
-  let h = `<h3>ICE BofA index for each rating</h3><div class="scroll"><table><thead><tr><th>Rating</th><th class="num">Yield</th><th class="num">OAS</th><th class="num">Yield minus UST 10Y</th><th>Date</th></tr></thead><tbody>` +
-    order.map((r) => { const q = s.ratings[r]; return `<tr><td>${r}</td><td class="num">${pct(q.yield.value)}</td><td class="num">${pct(q.oas.value)}</td><td class="num">${pct(q.spread_over_10y.value)}</td><td>${esc(q.yield.date)}</td></tr>`; }).join("") +
+  let h = `<h3>Cost of debt for each rating (HQM 10Y + step)</h3><div class="scroll"><table><thead><tr><th>Rating</th><th class="num">Cost of debt</th><th class="num">Step</th><th class="num">Yield minus UST 10Y</th><th>Date</th></tr></thead><tbody>` +
+    order.map((r) => { const q = s.ratings[r]; return `<tr><td>${r}</td><td class="num">${pct(q.yield.value)}</td><td class="num">${pct(q.step)}</td><td class="num">${pct(q.spread_over_10y.value)}</td><td>${esc(q.yield.date)}</td></tr>`; }).join("") +
     `</tbody></table></div>`;
-  h += `<h3>Moody's seasoned corporate yields</h3><div class="tiles">` + Object.values(s.moodys).map((o) =>
-    `<div class="tile"><div class="k">${esc(o.series)}</div><div class="v">${pct(o.value)}</div><div class="s">${esc(o.date)}</div></div>`).join("") + `</div>`;
   const hq = d.hqm_ordered;
   h += `<h3>HQM corporate spot curve (${esc(s.hqm_curve.date)})</h3>` +
     lineChart(hq.map((p) => p[0]), [{name: "HQM spot", color: "var(--series-1)", points: hq}]) +

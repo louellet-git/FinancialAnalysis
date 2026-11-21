@@ -24,3 +24,4 @@
 | Portfolio backtest merged | 2026-11-21 | review cycle 2 condition (1 Sonnet rust-engineer run, ~80k); merge of main; real run | ~100k | value-rank +19.02%, equal weight +14.56%, 0 cash days |
 | Backtest harness part 1 merged | 2026-11-21 | 1 Sonnet rust-engineer agent over 4 rounds (~1.1M); two gate cycles plus conditions | ~1.2M | poison check, run log, variant count, oos lock |
 | Split table merged | 2026-11-21 | 1 Sonnet data-engineer agent over 3 rounds (~420k); three gate rounds | ~450k | 327 rows; store 58e54a2 |
+| sp500 members command | 2026-11-21 | fa members get (1 data-engineer agent, ~45k); fetch verified (SHA match, 2720 dates); gate pending | ~60k | kept out of the store, data/local |

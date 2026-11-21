@@ -7,7 +7,7 @@ owner: louellet-git
 requested_by: louellet-git
 head: fundamental
 order: 0.005
-branch: claude/sp100-week-attribution
+branch: claude/premium-series
 created: 2026-11-21
 acceptance: (1) One document of 3 pages or less gives the change of the S&P 100 (value-weighted, close of 2026-11-13 to close of 2026-11-20) as a sum of valuation parts (new facts, time, rates, implied premium or implied growth, the part with no model), by company and by sector, from `fa dcf attribute`; (2) the rates part uses one curve source at both dates (`--curve fedinvest`, because the GSW curve lags); (3) the four-step review of a document with numbers (validator, document reviewer, auditor) passes; (4) the commands and the store commit are in the document.
 ---

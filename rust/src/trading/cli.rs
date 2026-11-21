@@ -194,7 +194,7 @@ pub fn run_command(store: &Store, args: &[String]) -> Result<i32, String> {
                 failed += 1;
             }
             Ok(d) => {
-                println!("{}  ({:.1}s)", format_summary(&d.summary), d.secs);
+                println!("{}\n  time {:.1}s", format_summary(&d.summary), d.secs);
                 if !d.result.rejections.is_empty() {
                     let items: Vec<String> = d.result.rejections.iter().map(|(k, v)| format!("'{k}': {v}")).collect();
                     println!("  rejections: {{{}}}", items.join(", "));

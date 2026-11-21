@@ -1,0 +1,82 @@
+file 2026-11-20
+options check SPX 2026-11-20: spot 6929.78 (European index: no calendar test, no parity bound, no intrinsic test, no bound test), 32046 quotes, 28784 used (1071 with bid 0 and an ask above 0: buy legs only), 3262 dropped (no bid and no ask above 0: 0, ask missing: 1138, ask below bid: 0, bad symbol: 0, bad expiry: 0, expiry on or before the snapshot date: 2124, option type not call or put: 0); 0 used quotes have an ask below the intrinsic value and 0 have a bid above S or K: they are removed from the other checks. 32 quotes are marked (implied volatility more than 10 points from the median of the neighbours). Size floor: 0 USD. Strike filter on (default for a European index): only quotes out of the money or within 1 % of the forward of their series (call K >= 0.99 F, put K <= 1.01 F); 12996 quotes removed; 0 series had no forward and were not filtered. --all-strikes turns it off.
+source alpaca, feed Some("indicative"), quote_kind Some("indicative"): Alpaca indicative feed: modified quotes, not executable prices (#280). A break here is not a finding.
+
+Each cell is breaks/tests. int = ask below intrinsic value, bnd = bid above S or K (American options only; S is a last price, not a bid or ask; the quotes are not at one time), distinct = quotes in at least one break, marked = marked quotes, clean = breaks with no marked leg. mono = monotony, slope, bfly = butterfly, cal = calendar (counted on the later expiry), par = parity bound.
+root   expiry     days quotes       int     bnd      mono     slope      bfly       cal       par distinct marked  clean     max $   rate %     q %
+SPXW   2026-11-23    3    324       0/0     0/0   0/29926   0/29926     4/320       0/0       0/0       12      1      4      1.54     4.00    4.00
+SPXW   2026-11-24    4    325       0/0     0/0   0/30150   0/30150     4/321       0/0       0/0       12      1      4      0.98     4.00    6.26
+SPXW   2026-11-25    5    324       0/0     0/0   1/29803   1/29803     5/320       0/0       0/0       14      4      6      2.37     4.00    0.24
+SPXW   2026-11-27    7    386       0/0     0/0   0/39760   0/39760     5/382       0/0       0/0       14      1      5      1.38     4.00    2.55
+SPXW   2026-11-30   10    557       0/0     0/0   1/85116   0/85116     6/553       0/0       0/0       17      1      7      1.94     4.00    2.82
+SPXW   2026-12-01   11    288       0/0     0/0   0/24817   1/24817     2/284       0/0       0/0        5      0      3      0.99     4.00    3.27
+SPXW   2026-12-02   12    288       0/0     0/0   0/24817   0/24817     0/284       0/0       0/0        0      0      0      0.00     4.00    2.57
+SPXW   2026-12-03   13    281       0/0     0/0   0/23382   0/23382     0/277       0/0       0/0        0      1      0      0.00     4.00    2.45
+SPXW   2026-12-04   14    365       0/0     0/0   0/37156   1/37156     2/361       0/0       0/0        5      2      3      0.71     4.00    2.73
+SPXW   2026-12-07   17    238       0/0     0/0   0/16958   0/16958     0/234       0/0       0/0        0      0      0      0.00     4.00    3.16
+SPXW   2026-12-08   18    230       0/0     0/0   0/15610   0/15610     1/226       0/0       0/0        3      0      1      0.95     4.00    2.71
+SPXW   2026-12-09   19    229       0/0     0/0   0/15446   0/15446     0/225       0/0       0/0        0      0      0      0.00     4.00    1.71
+SPXW   2026-12-10   20    214       0/0     0/0   0/13106   0/13106     1/210       0/0       0/0        3      0      1      0.01     4.00    2.36
+SPXW   2026-12-11   21    290       0/0     0/0   0/23481   0/23481     1/286       0/0       0/0        3      1      1      0.32     4.00    1.92
+SPXW   2026-12-14   24    183       0/0     0/0    0/9403    0/9403     0/179       0/0       0/0        0      0      0      0.00     4.00    5.94
+SPXW   2026-12-15   25    184       0/0     0/0    0/9461    0/9461     0/180       0/0       0/0        0      1      0      0.00     4.00    3.52
+SPXW   2026-12-16   26    183       0/0     0/0    1/9471    0/9471     0/179       0/0       0/0        2      0      1      0.21     4.00    6.76
+SPXW   2026-12-17   27    179       0/0     0/0    0/8913    0/8913     0/175       0/0       0/0        0      0      0      0.00     4.00    4.76
+SPX    2026-12-18   28    617       0/0     0/0   0/95244   0/95244     0/613       0/0       0/0        0      1      0      0.00     4.00    1.92
+SPXW   2026-12-18   28    547       0/0     0/0   0/75789   0/75789     0/543       0/0       0/0        0      0      0      0.00     4.00    1.69
+SPXW   2026-12-21   31    141       0/0     0/0    0/5280    0/5280     0/137       0/0       0/0        0      0      0      0.00     4.00    3.53
+SPXW   2026-12-22   32    133       0/0     0/0    0/4628    0/4628     0/129       0/0       0/0        0      0      0      0.00     4.00    5.88
+SPXW   2026-12-23   33    132       0/0     0/0    0/4515    0/4515     0/128       0/0       0/0        0      0      0      0.00     4.00    3.06
+SPXW   2026-12-24   34    217       0/0     0/0   0/12420   0/12420     0/213       0/0       0/0        0      0      0      0.00     4.00    3.73
+SPXW   2026-12-28   38     74       0/0     0/0    0/1348    0/1348      0/70       0/0       0/0        0      0      0      0.00     4.00    2.96
+SPXW   2026-12-29   39     70       0/0     0/0    0/1199    0/1199      0/66       0/0       0/0        0      1      0      0.00     4.00    4.00
+SPXW   2026-12-31   41    657       0/0     0/0  0/108396  0/108396     0/653       0/0       0/0        0      0      0      0.00     4.00    0.92
+SPXW   2027-01-08   49    153       0/0     0/0    0/6706    0/6706     0/149       0/0       0/0        0      0      0      0.00     4.00    0.38
+SPX    2027-01-15   56    563       0/0     0/0   2/79423   3/79423     4/559       0/0       0/0       16      3      9      2.60     4.00    0.69
+SPXW   2027-01-15   56    501       0/0     0/0   1/63906   2/63906     2/497       0/0       0/0        8      0      5      1.75     4.00    0.57
+SPXW   2027-01-22   63    134       0/0     0/0    0/4863    0/4863     0/130       0/0       0/0        0      0      0      0.00     4.00    0.34
+SPXW   2027-01-29   70    536       0/0     0/0   1/80205   1/80205     1/532       0/0       0/0        4      0      3      2.68     4.00    0.70
+SPX    2027-02-19   91    509       0/0     0/0   0/64672   3/64672     1/505       0/0       0/0        7      0      4      1.88     4.00    0.38
+SPXW   2027-02-19   91    376       0/0     0/0   2/35172   1/35172     3/372       0/0       0/0       10      0      6      1.93     4.00    0.43
+SPXW   2027-02-26   98    252       0/0     0/0   0/16039   0/16039     0/248       0/0       0/0        0      0      0      0.00     4.00    0.17
+SPX    2027-03-19  119    437       0/0     0/0   3/47530   5/47530     3/433       0/0       0/0       20      1     11      2.95     4.00    0.48
+SPXW   2027-03-19  119    144       0/0     0/0    0/5256    0/5256     1/140       0/0       0/0        3      0      1      0.44     4.00    0.21
+SPXW   2027-03-31  131    558       0/0     0/0  11/78138   8/78138     7/554       0/0       0/0       33      0     26      5.00     4.00    0.56
+SPX    2027-04-16  147    228       0/0     0/0   0/13723   0/13723     0/224       0/0       0/0        0      1      0      0.00     4.00    0.31
+SPXW   2027-04-16  147    139       0/0     0/0    0/4791    0/4791     0/135       0/0       0/0        0      0      0      0.00     4.00    0.79
+SPXW   2027-04-30  161    219       0/0     0/0   0/12343   0/12343     0/215       0/0       0/0        0      0      0      0.00     4.00    0.37
+SPX    2027-05-21  182    225       0/0     0/0   0/12886   0/12886     1/221       0/0       0/0        3      2      1      2.68     4.00    0.40
+SPX    2027-06-17  209    246       0/0     0/0   0/15967   0/15967     0/242       0/0       0/0        0      1      0      0.00     4.00    0.21
+SPXW   2027-06-30  222    462       0/0     0/0   6/56494   1/56494     5/458       0/0       0/0       21      0     12      2.34     4.00    0.27
+SPX    2027-07-16  238    218       0/0     0/0   0/11836   0/11836     4/214       0/0       0/0       11      2      4      1.45     4.00    0.33
+SPX    2027-08-20  273    217       0/0     0/0   0/11754   0/11754     0/213       0/0       0/0        0      1      0      0.00     4.00    0.20
+SPX    2027-09-17  301    215       0/0     0/0   0/12205   0/12205     1/211       0/0       0/0        3      1      1      5.86     4.00    0.27
+SPXW   2027-09-30  314    459       0/0     0/0  10/59581   5/59581     4/455       0/0       0/0       30      0     19      5.45     4.00    0.25
+SPX    2027-10-15  329    210       0/0     0/0   0/10984   0/10984     1/206       0/0       0/0        3      0      1      1.94     4.00    0.19
+SPX    2027-11-19  364    218       0/0     0/0   0/11773   0/11773     2/214       0/0       0/0        6      0      2      1.92     4.00    0.15
+SPX    2027-12-17  392    147       0/0     0/0    0/5791    0/5791     1/143       0/0       0/0        3      1      1      4.34     4.00    0.17
+SPX    2028-01-21  427    210       0/0     0/0   0/11064   0/11064     0/206       0/0       0/0        0      0      0      0.00     4.00   -0.01
+SPX    2028-06-16  574    205       0/0     0/0   0/10586   0/10586     0/201       0/0       0/0        0      0      0      0.00     4.00    0.07
+SPX    2028-12-15  756    138       0/0     0/0    0/5092    0/5092     0/134       0/0       0/0        0      1      0      0.00     4.00    0.03
+SPX    2029-12-21 1127     91       0/0     0/0    0/2265    0/2265      0/87       0/0       0/0        0      1      0      0.00     4.00   -0.04
+SPX    2030-12-20 1491     96       0/0     0/0    0/2580    0/2580      0/92       0/0       0/0        0      1      0      0.00     4.00    0.63
+SPX    2031-12-19 1855     26       0/0     0/0     0/160     0/160      0/22       0/0       0/0        0      1      0      0.00     4.00       -
+
+breaks: 143 (intrinsic and bound: 0; checks 1 to 5 after the removal: 143, of which with a marked leg: 1, with no marked leg: 142)
+breaks with a removed leg: 10029 (breaks of the run without the strike filter that have a leg removed by the filter)
+size bands of the checks 1 to 5 (USD for one share): all breaks / breaks with no marked leg
+  below 0.10        12 /     12
+  0.10 to 1         72 /     71
+  1 to 10           59 /     59
+  10 and above       0 /      0
+the 0 largest of the checks 1 to 5 with no marked leg:
+the 0 largest of the checks 1 to 5 with a marked leg:
+the 0 largest intrinsic and bound breaks:
+
+Notes:
+  Prices are executable: buy at the ask, sell at the bid. A break is not a profit: no costs, no borrow, no time of the quotes, early exercise not priced.
+  A quote with bid 0 is a buy leg only (its ask), never a sell leg.
+  Ticks: size / tick, tick 0.01 below $3, else 0.05, by the highest price among the legs.
+  Monotony and slope use all strike pairs, so one bad quote makes many breaks. Butterfly uses consecutive strikes.
+  Marked quote: Black-76 implied volatility of the mid, forward from parity, against the median of up to 2 neighbours on each side (same series and type). A marked quote is flagged and still used. An American quote deep in the money can have a distorted volatility.
+  Parity: the stock price has no bid and no ask; S is the snapshot spot. q = r - ln(F / S) / t, F from the mids of the 3 strikes nearest the spot: an approximation for American options (early exercise and borrow are inside q).
