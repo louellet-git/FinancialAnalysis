@@ -215,3 +215,11 @@ P3: page 3 names AMD and INTC, "a description of one week", like-for-like means)
 to Thursday (about 60% of the fall); the Head of Economics prepares a table of the press reasons with tests (its auditor
 first); when it comes, put it on page 1 as a table, keep one page, make the PDF, send the commit to the Head of Staff
 and to Quality. SWKS: the close of 11-20 is missing at the source (Technology tries again on 2026-11-26).
+
+**Page 1 complete (20:24 UTC, 2026-11-21).** Table 2 of page 1 now has the press reason and the test for each of the 5 days
+and for rates (the Head of Economics, note `analysis/macro/2026-11-21-chip-fall-economics-view.md`, d6e4049 on
+econ/rate-rise-question; its auditor passed it). The three pieces are complete and one page each. State: sent to the
+Head of Staff (who gives them to the person) and to Quality (it checks Table 2 only). Gate: claude/premium-series passed
+(ee82144, PASS-WITH-NOTES, "you can open the PR"); claude/attribution-reality is at the gate at a0e2480. NEXT: the pull
+request (after the second gate, or for the first branch alone), then the run of record of the week on main, then the
+S&P 100 part after the review of the person.
