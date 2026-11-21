@@ -31,3 +31,19 @@ Plan:
    price by it (or multiply the shares). The k-test. A live guard: the current share basis against the last 10-K.
 3. A new test file (before the reruns), with the other gate findings: a no-rebalance mode (F2), the cut at each
    rebalance Friday (F3), a deflated t and a confirmation window that the design did not use (F4).
+
+## Rerun test (written 2026-11-21 before any rerun on corrected prices)
+Data store `f6e66fc` (the prices are the same as `1804f48`, plus `_corporate/splits.csv`). Table: cut at 2016
+(SHA-256 without the `command =` line: 41443b66...). List: the 431 scored tickers, less the 12 `mismatch` tickers
+and AA. Seed 7, 300 paths, 10 bp. Each run once, as new variants 15 and later of the variant log.
+1. Checks first: the k-test passes (k = 2, 25, 0.1); a truncation test at 20 rebalance Fridays (every 23rd from
+   2018-01-05), with the prices and the curve cut after that Friday and `--end` one trading day later, gives
+   the same weights at that Friday (F3).
+2. Runs: B (top fifth, quarterly), D (sector-neutral, quarterly), R1 (A-009, weekly) in two modes, R1-hold (no
+   trade back to 1/39; A-009 as written; the PRIMARY run) and R1-reb (the old mode), R2 (bottom fifth), and
+   T2 to T4 (`fa portfolio calibrate`, the same command as before).
+3. Reading (fixed now): the design sample 2018-2026 has been used, so these runs DESCRIBE; they do not confirm
+   (F4). Each states its t and a t deflated for the count of value-signal runs (Bonferroni over all variants,
+   15 and more). The weekly trades start on paper only if T1 passes (see the blind projection ticket) AND T2 to T4
+   pass on corrected prices. The paper weeks are the first window that the design did not use: they confirm or
+   not. Survivorship cannot be bounded with the store (F7).
