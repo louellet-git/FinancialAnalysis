@@ -2,13 +2,14 @@
 id: T-20261120-valuation-move-attribution
 title: Explain where the market value went in a price drop, one stock at a time, then the market
 area: engine
-status: in-progress
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: fundamental
 order: 0.2
 branch: claude/valuation-move-attribution
 created: 2026-11-20
+merged: pull request 107 (the command), 2026-11-21; step 3 (the findings) continues in T-20261121-sp100-week-attribution
 acceptance: For a ticker and two dates, a command splits the change of the price into the part that the rates explain, the part that a change of the implied premium explains and the part that a change of the implied growth explains, with the value engine; the same for a list of tickers by sector; a findings file gives the result for NVDA and for the S&P 500 list for the drop of November 2026.
 ---
 Owner word, 2026-11-20: "I need to know why the market crashed today and over past few days, generally what I'm
