@@ -176,3 +176,7 @@ Done: one page for the S&P 10 (`analysis/priors/sp10_week_one_pager_2026-11-21.m
 ## 2026-11-21 19:29 UTC (review word of the person on the S&P 10 page, relayed by the Head of Staff)
 Words: "The report should include the entire week including 11-20. It's a huge drop."
 Done: the page now has the week by day (SPY, the equal weight of the S&P 500, each of the 10) and a block on 2026-11-20: the fall of that day was in the chip and AI-hardware companies, the yields fell, and the cause is not in our data; the missing data are named and asked (the Head of Economics: the daily view; the Head of Technology: the 8-K filings of 11-19 and 11-20).
+
+## 2026-11-21 19:30 UTC (second review word of the person on the S&P 10 page, relayed by the Head of Staff)
+Words: "And AAPL leaving something not yet proven isn't acceptable, same w the others"
+Done: a standing rule: no "possible reason, not proven" in a result; each reason is a claim with its test, and the result is proven, refuted, or "tested, no cause found" with the list of the tests. Applied: the evidence file `analysis/priors/sp10_week_tests_2026-11-21.md` (T1 to T5) and the page. Results: NVDA's fall is the fall of the chip sector (proven); the AAPL reason of this head is refuted; BRK-B and AMZN have no effect against a market that does not contain them; the cause of the chip fall of 2026-11-20 is tested with no cause found.
