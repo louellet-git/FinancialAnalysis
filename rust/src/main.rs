@@ -36,6 +36,8 @@ USAGE:
   fa futures check [--date D]                     cross-checks of two sources (exit 1 on mismatch)
   fa models calibrate|rolling|frequencies|compare|simulate ...
                                                   stochastic rate models (Rust); see below
+  fa vol fit heston|bates --symbol T --date D [--rate R] [--expiry-max DAYS]
+                                                  fit Heston or Bates to a stored option snapshot (fa vol --help)
   fa dcf drivers|classic|scenarios|models ...     Monte Carlo DCF in Rust (fa dcf --help)
   fa backtest TICKER [--horizon Y] [--simulations N] [--seed S]
                                                   point-in-time vintage backtest of revenue and FCF projections (Rust)
@@ -273,6 +275,10 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
             Err(e) => Ok(usage_error(&e)),
         },
         Some("earnings") => match financial_analysis::market::estimates_cli::run_earnings(&fa.repo, &args[1..]) {
+            Ok(code) => Ok(ExitCode::from(code as u8)),
+            Err(e) => Ok(usage_error(&e)),
+        },
+        Some("vol") => match financial_analysis::volmodels::cli::run(&fa.repo, &args[1..]) {
             Ok(code) => Ok(ExitCode::from(code as u8)),
             Err(e) => Ok(usage_error(&e)),
         },
