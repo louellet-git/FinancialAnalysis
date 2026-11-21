@@ -208,3 +208,5 @@ they felt what was expected of them to feel"
 Done: the exact words went to the Head of Fundamental Research. Three pieces come to me together, then to
 the person: S&P 10 page 1 (the week and each stock), page 2 (the valuation split), and the chip sector of
 the S&P 500 (one page or a half).
+Then: "Also, I expect a small intro at the top of page 1,2, and 3 2-3 lines as an intro/necessary
+background". Done: point 9 of the style page; one line to the Head of Fundamental Research.

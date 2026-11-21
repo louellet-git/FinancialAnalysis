@@ -58,4 +58,3 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
   11-20, tested, and the view after); (2) the valuation split, actual against implied. Read both against
   `owner-report-style.md`. The S&P 100 part waits for his review.
 - E1 (stock trades) is on hold: "No trades until T1 passes". PR 131 waits for the live run of 2026-11-23.
-- Say once at their next done message: Quant and Technology had tickets on a branch only, not on main.

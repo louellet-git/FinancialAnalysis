@@ -20,4 +20,6 @@ document before it goes to the person. A head can read it; it is not a form.
    bullet points, not as numbers in a sentence.
 8. **A title and a subtitle.** The title is a short name, not a sentence and not a question. The subtitle
    says what the document covers.
-9. Short, clear, ASD-STE100.
+9. **A small intro at the top.** Two or three lines of necessary background, after the title and the
+   subtitle and before the answer.
+10. Short, clear, ASD-STE100.
