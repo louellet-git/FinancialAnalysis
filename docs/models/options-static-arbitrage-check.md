@@ -52,6 +52,24 @@ Each choice has one record in `docs/assumptions/`.
 | A-127 | Black-76 volatility | European model on American options | Used for the marker and the history. |
 | A-137 | Bounds of the checks | Slope with no discount; EPS 1e-9 | Sets which pairs break. |
 
+## Register and runner
+The relations of this check are in the register `arbitrage/register/` (one file for each relation, form in its README). Seven are `active`
+(OPT-MONOTONY, OPT-SLOPE, OPT-BUTTERFLY, OPT-CALENDAR, OPT-PARITY-UPPER, OPT-INTRINSIC, OPT-BOUND: one for each check of `CHECK_NAMES`);
+three are `planned` (OPT-PARITY-STRIKE, OPT-BOX-RATE, VIX-REPLICATION). A test reads the folder: each active file names a check id
+of `option_arb::CHECK_IDS`, and each id has an active file.
+
+Command: `fa arb run --symbol T --date D [--time HHMM] [--rate R] [--out PATH]` (`market/arb_run.rs`). It reads one stored snapshot,
+calls `option_arb::check_chain` with the defaults of `fa options check` (no size floor, strike filter for a European index, no marker), and prints
+one table: id, class, status, tested, pass, break, not tested, and the dropped legs by reason. It writes the same as JSON (default
+`data/processed/arb/<D>/<T>-<HHMM or close>.json`). Exit 0 also with breaks; a usage error exits 64.
+- Cache only. The rate is `--rate R` or the Treasury par curve file `data/raw/rates/treasury_nominal_<year>.csv` (read only). If the file is missing
+  the command says so and stops. It never downloads (a test reads the code for the live rate source).
+- Quote gate: a quote with no ask, bid above ask, or no bid and no ask above 0 is dropped and counted by reason. A bid of 0 with an ask above 0 is kept as a
+  buy leg only. A relation whose sold leg is buy-only is "not tested", not "pass" (`SeriesRow::not_tested`). A quote with bid = ask is counted
+  (`Report::locked`) and still used. A dropped quote has no relation, so it is counted as a dropped leg, not as a relation.
+- Status: `break` (one break or more), `pass` (tested, no break), `not tested` (no test could run), `n/a European` (the check is for American options).
+- Not used yet: the field `for` (2 snapshots). The checks run on one file.
+
 ## Limits
 - Limits of use: a break is not a profit. No costs, no borrow, no time of the quotes, no early exercise (`option_arb.rs`).
 - Limits of use: on Alpaca indicative quotes a break is a measurement, not a tradable price (the report prints this; Alpaca documentation, https://docs.alpaca.markets/docs/historical-option-data, read 2026-11-21).

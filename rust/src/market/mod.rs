@@ -20,6 +20,7 @@
 //! `estimates.json`, `surprises.json`.
 
 pub mod alpaca;
+pub mod arb_run;
 pub mod consensus;
 pub mod earnings_dates;
 pub mod estimates_cache;
