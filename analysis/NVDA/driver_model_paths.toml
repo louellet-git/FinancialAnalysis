@@ -10,15 +10,15 @@
 # guarantees) still wait for the 10-Q and are marked "WAITS" in the ledger. Version 1 (commit 9a2e6f0) had the base of 2026-07-26.
 # Model date 2026-11-20 (the date of the SEC data; the last close in the store is 2026-11-19).
 #
-# VERSION 5 of 2026-11-21 (answer to the skeptic, round 3; the text of version 4 follows). The base of D2 is the guide plus half the
-# all-pairs median beat (rule in D2); the marketable equity securities are in the bridge at full value (round 4). VERSION 4 (round 2): Version 3 had the stakes in the bridge at full value and a charge on
-# the purchases of equity securities that fell in a 10-year ramp. The skeptic found that the two choices were not one frame and that
-# the fade did not follow the growth. The Head of Fundamental Research decided (2026-11-21): ONE NUMBER r. A purchase of an equity
-# security is partly an investment that keeps its value (the share r) and partly a subsidy to buyers that buys credited revenue
-# (the share 1 - r). The SAME r applies to the stakes held (in the bridge at r x carrying value) and to the future purchases
-# (charged at (1 - r) x the four-quarter rate). Base r = 0.5: there are no terms and no data for r; 0.5 says that we do not know,
-# and the range of r (0 to 1) carries the uncertainty. The charge fades with the growth that it pays for (record A-002): the same
-# half-life as the growth fade (D3), not a ramp. The tax gross-up stays for the charged share.
+# VERSION 5 of 2026-11-21. The base of D2 is the guide plus half the all-pairs median beat (rule in D2). The marketable equity
+# securities are in the bridge at full value. Earlier versions had the stakes in the bridge at full value with a charge on a 10-year
+# ramp (version 3), and then ONE NUMBER r for all stakes (version 4). The Head of Fundamental Research decided (2026-11-21):
+# a purchase of an equity security is partly an investment that keeps its value (the share r) and partly a subsidy to buyers that
+# buys credited revenue (the share 1 - r). The SAME r applies to the non-marketable stakes held (in the bridge at r x carrying value)
+# and to the future purchases (charged at (1 - r) x the four-quarter rate). Base r = 0.5: there are no terms and no data for r.
+# The value 0.5 says that the value is not known. The range of r (0 to 1) carries the uncertainty. The charge fades with the growth
+# that it pays for (record A-002): the same half-life as the growth fade (D3), not a ramp. The tax gross-up stays for the charged
+# share.
 #
 # RULE FOR THE INPUTS. No input comes from the market price, from a price target, or from a wish to be near the
 # price. No consensus number sets a driver. Each driver has one of the tags DATA (a reported number or the
@@ -86,7 +86,7 @@ the slow-down: the sequential growth falls from +20% to about +4% in one quarter
 gives year 1 of +33%; a constant +4.2% a quarter gives +42%; +4.2% that fades by a factor 0.8 each quarter gives +39.5%; +10% a
 quarter gives +55%. THE GUIDE: the four 13-week quarters of year 1 (Q4 at the guide, then about +3.3%, +4.0% and +3.1% a quarter) are 121 + 125 + 130 + 134 = $510B over
 $361.8B, that is +41.0% (the earlier text had 40.0%, a rounding of the faded path; +41.0% is the sum).
-THE RULE FOR THE BASE (decision of the Head of Fundamental Research, round 5; the order is not provable from git: the rule and the result are in one commit). The 8-K press
+THE RULE FOR THE BASE (decision of the Head of Fundamental Research, 2026-11-21; for the order of the decision and the result see weak point W1 of the report). The 8-K press
 releases in the store (store 1804f48, 21 releases, Q4 FY22 to Q3 FY27) give 19 pairs of a guided revenue and the reported revenue of
 the next quarter (the Q4 FY27 guide has no result yet, and the result of Q4 FY22 has no guide in the store). The beat is
 reported / guided - 1 (ledger L26; the preliminary release of 2022-08-08, accession 0001045810-22-000133, is NOT used: the reported
@@ -113,7 +113,7 @@ too slow; companies of 30 to 100 $B revenue fade faster); (b) the own momentum: 
 (2.5 years); the guide for Q4 breaks that (+20% to +4% in one quarter), so (b) no longer bounds the half-life from above; one
 guide is one observation and may be low. 1.0 is above the panel and above the speed of the guide. Sensitivity:
 --sensitivity process.growth.half_life=0.6,1.0,1.25,2.5.
-BASE RATE OF SCALE (skeptic M2; fade table, threshold 0.5, `[[fade]]` of the priors file): size above $100B revenue, 14 starts,
+BASE RATE OF SCALE (fade table, threshold 0.5, `[[fade]]` of the priors file): size above $100B revenue, 14 starts,
 median growth +44.7% (year 1, n 12), -13.3% (year 2, n 11), -5.5% (year 3, n 11); size 30 to 100 $B, 42 starts: +12.5% (n 39),
 -0.5% (n 38), +3.3% (n 36). The model at the means has +44.9%, +24.5%, +14.2% (years 1 to 3). Year 1 is near the cell above $100B (the
 guide). Years 2 and 3 are above both cells. Why: (a) the cells are small (11 company-years) and mix the busts of a cycle (the cache
@@ -121,7 +121,7 @@ has MU: revenue $30.8B in FY22, $15.5B in FY23, -49.5%, with an operating margin
 the paths (the shock and the collapse table: 18.1% of the paths), not in the median; (b) NVDA reports +20% a quarter for five quarters
 and the guide is +4.2% in 13 weeks, not a fall. A model that follows the cell would use a half-life of 0.4 years (the cell phi
 0.161 gives 0.38; the cut of the draw is 0.4): P50 $88.75; at 0.6 years (the all-size panel): $92.45; base 1.0: $103.78. The
-survivor limit: the cache has the companies that exist now, so the cells are too high, not too low. The skeptic can say that D3
+survivor limit: the cache has the companies that exist now, so the cells are too high, not too low. D3
 is above the base rate by $11.3 to $15.0 of P50 (the cell above $100B is mostly oil of 2021-22); this is the price of reading the guide and the sequential growth as evidence.
 SHOCK (the cycle; JUDGMENT with DATA). Yearly shock size = max(15%, 30% of the slow part); persistence 0 (a miss is not made up:
 the level of revenue keeps the loss). NVDA history (ledger L3): growth +21% (FY19), -7% (FY20), +53%, +61%, +0.2% (FY23), +126%,
@@ -199,18 +199,18 @@ start = { mean = 0.13905, std = 0.02, lo = 0.015, hi = 0.40 }
 target = { mean = 0.015, std = 0.007, lo = 0.0, hi = 0.05 }
 half_life = { mean = 1.0, std = 0.40, lo = 0.40, hi = 3.00 }
 rationale = """
-THE CHARGE HAS TWO PARTS (rule F16; decision of the Head of Fundamental Research, 2026-11-21, round 2). The value of the year is
+THE CHARGE HAS TWO PARTS (rule F16; decision of the Head of Fundamental Research, 2026-11-21). The value of the year is
 TARGET + (START - TARGET) x phi^(t-1), phi = 2^(-1/half-life): the engine takes the START in year 1 and halves the excess over the
 TARGET each half-life (shape "ou"). With half-life 1.0 year: year 1 = START, year 2 = TARGET + 0.5 (START - TARGET), year 3 = 25%, and
 so on; the mean of years 1 to 3 is 58% of the START (checked: the engine formula, `paths.rs`, processes step 2).
 (A) PURCHASES OF EQUITY SECURITIES, share (1 - r) = 0.5 (fades with the growth). A purchase is partly an investment that keeps its
 value (the share r, in the bridge at r x carrying value) and partly a subsidy to buyers that buys credited revenue (the share
-1 - r, charged here). Same r for the past and the future. There are no terms and no data for r: 0.5 means that we do not know.
+1 - r, charged here). Same r for the past and the future. There are no terms and no data for r: The value 0.5 means that the value is not known.
 DATA (8-K page, cash flow table; ledger L2e): purchases of equity securities $15.696B in Q3 FY27, $58.100B in nine months
 (19.8% of revenue of $293.681B); Q4 FY26 $12.80B (= fiscal 2026 $17.502B less nine months $4.702B, company facts
 `PaymentsToAcquireEquitySecuritiesFvNi`; the page shows $4.952B for the same nine months, so the basis differs by $0.25B). Four
 quarters: 12.80 + 58.100 = $70.90B over revenue of $361.807B = 19.6% (Q3 alone is 13.5% and is not used). The purchases are not tax
-deductible, and the engine taxes EBIT after the charge, so the charged share is divided by (1 - 21%) (the skeptic accepted this):
+deductible, and the engine taxes EBIT after the charge, so the charged share is divided by (1 - 21%):
 (1 - r) x 19.6% / 0.79 = 12.4%. FADE: the charge falls with the credited growth that it pays for (record A-002), so it uses the
 SAME half-life as the growth fade (D3: mean 1.0 year, std 0.4, the same cuts; correlation 0.9 in [[corr]], because the engine
 cannot share one number between two processes). The panel cross-check (analysis/priors/dcf_conventions_study_2026-11-20.md, 2.1):

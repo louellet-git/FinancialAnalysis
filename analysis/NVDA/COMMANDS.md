@@ -280,9 +280,9 @@ sed 's|^net_debt = .*|net_debt = -130888000000.0|' $T/step6.toml > $T/step7.toml
 # step 8 = $T/v3.toml: 85.07
 sed -e 's|^net_debt = .*|net_debt = -76015000000.0|' \
     -e '/^\[process.charge\]/,/^ramp_years/ s|^start = .*|start = { mean = 0.13905, std = 0.02, lo = 0.015, hi = 0.40 }|' $T/v3.toml > $T/step9.toml   # 91.57
-# step 10 = version 4 (round 2) with the guide alone (40%): 97.74
+# step 10 = version 4 with the guide alone (40%): 97.74
 sed -e 's|^start = { mean = 0.449, std = 0.12, lo = 0.10, hi = 0.75 }|start = { mean = 0.40, std = 0.12, lo = 0.10, hi = 0.75 }|' -e 's|^net_debt = .*|net_debt = -76015000000.0|' $M > $T/step10.toml   # 97.74
-# step 11 = version 4 (round 3): year-1 growth 47.9% (the beat of 12 pairs) and net debt -76.015: 108.40
+# step 11 = version 4: year-1 growth 47.9% (the beat of 12 pairs) and net debt -76.015: 108.40
 sed -e 's|^start = { mean = 0.449, std = 0.12, lo = 0.10, hi = 0.75 }|start = { mean = 0.479, std = 0.12, lo = 0.10, hi = 0.75 }|' -e 's|^net_debt = .*|net_debt = -76015000000.0|' $M > $T/step11.toml   # 108.40
 # step 12 = back to the guide alone, 41.0%, net debt -76.015
 sed -e 's|^start = { mean = 0.449, std = 0.12, lo = 0.10, hi = 0.75 }|start = { mean = 0.41, std = 0.12, lo = 0.10, hi = 0.75 }|' -e 's|^net_debt = .*|net_debt = -76015000000.0|' $M > $T/step12.toml   # 99.06

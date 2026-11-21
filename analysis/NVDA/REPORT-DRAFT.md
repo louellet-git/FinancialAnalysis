@@ -2,7 +2,12 @@
 
 **Draft. It has not passed the four steps and has no approval of the owner. Do not use it alone for a trade.** The values are model values, not market prices.
 
-Version 5 of 2026-11-21. Model date 2026-11-20. Data store `1804f48`: SEC facts of 2026-11-20, NVDA prices to 2026-11-19, the 8-K of 2026-11-17 (quarter end 2026-10-25), and 21 earnings releases (Q4 FY22 to Q3 FY27). The 10-Q of that quarter is not filed. Files: `analysis/NVDA/driver_model_paths.toml` (the model), `analysis/NVDA/research-ledger.md` (the outside facts, L1 to L26) and `analysis/NVDA/COMMANDS.md` (the command for each number, in the order of this report, with seed, paths and store commit).
+Version 5 of 2026-11-21. Model date 2026-11-20. Data store `1804f48`: SEC facts of 2026-11-20, NVDA prices to 2026-11-19, the 8-K of 2026-11-17 (quarter end 2026-10-25), and 21 earnings releases (Q4 FY22 to Q3 FY27). The 10-Q of that quarter is not filed.
+
+Files:
+- `analysis/NVDA/driver_model_paths.toml`: the model.
+- `analysis/NVDA/research-ledger.md`: the outside facts (L1 to L26).
+- `analysis/NVDA/COMMANDS.md`: the command for each number, in the order of this report, with seed, paths and store commit.
 
 ## Result in brief
 
@@ -15,7 +20,8 @@ Version 5 of 2026-11-21. Model date 2026-11-20. Data store `1804f48`: SEC facts 
   5. The cost of capital. A premium of 3.5% gives $122.41 and 5.5% gives $88.29. A beta of 1.2 gives $132.05.
 - **Distance to the price.** The close was $145.98 on 2026-11-19. It is at about the P75. The P50 is 28.9% below it. The model value is below the close on 75.0% of the paths.
 - **Open points.** The 10-Q is not filed. The close of 2026-11-20 is not in the store.
-- **How firm the range is.** The rule for the year-1 growth was set after the earlier runs. Each change of the last rounds raised the P50 (weak point W15).
+- **How firm the range is.** The rule for the year-1 growth was set after the earlier runs (the order is not provable from git, W1). Most changes raised the P50 (step 11: +$10.7). The last change lowered it from 108.40 to 105.09 (10,000 paths). See W15.
+- **Other limits:** W5, W6, W13, W14.
 - **Purpose.** The owner can use this range to judge whether the price assumes more growth than the company's record and guide support. It is not a price target and not a signal to trade.
 
 ## 1. Result in detail
@@ -84,13 +90,13 @@ Tags: DATA is a reported number or the calibration table. CONVENTION is a record
 | D2 | Growth of year 1 | **44.9%**, std 12%, cut 10% to 75% | stoch. | Guide plus half the median beat. The rule is below this table. DATA + JUDGMENT |
 | D3 | Half-life of the growth fade | 1.0 year, std 0.4, cut 0.4 to 3.0 | stoch. | The panel (0.6 to 0.7 years, L19) is the lower bound. The guide shows the growth falling from +20% to +4% a quarter. JUDGMENT |
 | D4 | Long-run growth | 4.0% | fixed | Record A-001 (L18). CONVENTION |
-| D5 | Yearly shock of growth (the cycle) | max(15%, 30% of the slow part), persistence 0, cut -50% to +200% | yearly shock | Own history: two busts in ten years (L3). JUDGMENT + DATA |
+| D5 | Yearly shock of growth (the cycle) | 15% a year, or 30% of the slow part if that is larger; persistence 0; cut -50% to +200% | yearly shock | Own history: two busts in ten years (L3). JUDGMENT + DATA |
 | D6 | Margin before SBC, year 1 | 66%, std 3% | stoch. | GAAP margin Q3 66.9%, trailing 66.1%. The Q4 guide gives about 63.0% (L1c, L2b, L2d). DATA + guidance |
 | D7 | Long-run margin before SBC | 48.5%, std 8%, cut 25% to 65% (GAAP 45%) | stoch. | Middle of the own history: 31% (FY17 to FY22) and 59% (FY24 to FY26) (L3). JUDGMENT |
 | D8 | Half-life of the margin fade | 3 years, std 1 | stoch. | JUDGMENT |
 | D9 | Yearly shock of margin | 6 points, persistence 0.5, correlation 0.6 with the growth shock | yearly shock | Calibration table and own history (L3). JUDGMENT |
 | D10 | SBC (a cost, rule F5) | 2.12% in year 1, to 3.5% (std 1%) in year 10 | stoch. target | L6, L2c. DATA + JUDGMENT |
-| D11 | Charge (rule F16), two parts | (A) purchases of equity securities: (1 - r) x 19.6% / 0.79 = 12.4% (std 2%). (B) purchases of businesses: 1.5% (std 0.7%, cut 0 to 5%). Total 13.9% in year 1. It falls to (B) with the half-life of D3 (correlation 0.9) | stoch. | (A) $70.90B of purchases in four quarters (L2e). (B) Nine months of FY27: $3.031B for acquisitions and $2.944B for Groq, 2.0% of revenue (L2e, L7). JUDGMENT |
+| D11 | Charge (rule F16), two parts | Part A: purchases of equity securities, (1 - r) x 19.6% / 0.79 = 12.4% of revenue (std 2%). Part B: purchases of businesses, 1.5% (std 0.7%, cut 0 to 5%). Year 1 total: 13.9%. The charge falls to part B with the half-life of D3 (correlation 0.9) | stoch. | A: $70.90B of purchases in four quarters (L2e). B: $3.031B for acquisitions and $2.944B for Groq in nine months, 2.0% of revenue (L2e, L7). JUDGMENT |
 | D12 | Sales to capital (reinvestment, rule F16) | 3.0 in year 1, to 4.0 (std 1.0) in year 10 | stoch. target | L4a. DATA + JUDGMENT |
 | D13 | Tax rate | 21% | fixed | Statutory. The effective rate rose from 12.0% (FY24) to 17.4% (Q3). The guide is 16% to 18% for FY27 only (L5, L2d). CONVENTION |
 | D14 | Demand collapse | hazard 2% a year (std 1%), value 2.0 times the revenue of the year before | stoch. hazard | The engine has no regime state. JUDGMENT |
@@ -111,7 +117,7 @@ Cost of capital at the means: 12.55% in each year (risk-free 5.14% plus beta 1.6
 - The store has 19 pairs of a guide and the next result (section 4). 18 are beats and one is a miss (Q2 FY23, -17.2%, pre-announced). The median is +5.57%.
 - The base is the guide. If the median of all pairs is above zero and 15 or more of 19 (79%) are beats, the base adds half the median.
 - Both tests hold, so the base is 1.41 x 1.0278 - 1 = 44.9%.
-- Half is a conservative haircut. From the fourth pair on, the actual beat was at or above half of the earlier median in 15 of 16 quarters. It was at or above the full earlier median in only 9 of 16.
+- Half is a cut that keeps the base low against the company's record. From the fourth pair on, the actual beat was at or above half of the earlier median in 15 of 16 quarters. It was at or above the full earlier median in only 9 of 16.
 
 **The decision on the equity securities** (Head of Fundamental Research, 2026-11-21).
 - One frame and one number r apply to the stakes and the purchases (IBM rule F16).
@@ -184,7 +190,7 @@ The limits: the 19 pairs are from one company with one upswing and one bust. The
 
 The source is `[[fade]]` of `analysis/priors/process_priors_2026-11-19.toml` (companies with growth of 50% or more in the start year) and the facts of the cache (`mapcheck`, all 10-K rows, 1,976 companies). The cells have survivor bias. The cells are too high, not too low.
 
-The cell above $100B has 12 start years. Eight are oil in 2021 and 2022 (XOM, CVX, MPC, PSX, VLO). The others are CI 2019 (a merger), MU FY26 and NVDA FY25 and FY26. So this cell is not a base rate of organic demand. It is a base rate of a price jump, and the fall in years 2 and 3 is the end of the oil price.
+The cell above $100B has 12 start years. Eight are oil in 2021 and 2022 (XOM, CVX, MPC, PSX, VLO). The others are CI 2019 (a merger), MU FY26 and NVDA FY25 and FY26. So this cell is not a base rate of organic demand. It is a base rate of a price jump. The fall in years 2 and 3 is the end of the oil price.
 
 | Item | Cell above $100B | Cell $30B to $100B | Model at the means |
 |---|---|---|---|
@@ -257,7 +263,9 @@ Each row is one version. The P50 is for 10,000 paths. The step tables and the co
 | 4 | One number r = 0.5; the charge fades with the growth; year-1 growth from the guide times the beat of 12 pairs (47.9%) | 108.40 |
 | 5 | Marketable securities at full value; year-1 growth = guide plus half the median beat of 19 pairs (44.9%) | 105.09 (103.78 with 100,000 paths) |
 
-No step used the price. The Head of Fundamental Research decided r, the fade and the base of D2. The balance sheet of the page confirmed the start of D12 (3.0).
+The collapse table (D14) has this reason. The brief of the Head of Fundamental Research (2026-11-20, before the first run) asked for a downside of the cycle of the customers' capital spend. The check of the growth process alone found a year below -30% growth on only 5.1% of the paths (`COMMANDS.md`). So the collapse table was added. The first run gave P50 145.95. That value is near the close by chance, and no input was set from it.
+
+No input comes from the price (section 5). The Head of Fundamental Research decided r, the fade and the base of D2. The balance sheet of the page confirmed the start of D12 (3.0).
 
 ## 8. Forward disclosures (rule R1)
 
@@ -281,10 +289,13 @@ No step used the price. The Head of Fundamental Research decided r, the fade and
 - **W9. The terminal return (D20) is a judgment.** The P50 is $100.69 at 15% and $107.28 at 100%.
 - **W10. The timing is simple.** Year 1 has all cash flows after the balance sheet, discounted from the end of year 1 (0.93 years). Cash paid to holders since 2026-10-25 is not removed. The share count is the Q3 weighted diluted count. The period-end count is lower after the buyback of $22.1B (under 1%), so the count is conservative. The extra week of Q4 is removed. Mid-year timing gives P50 $109.65.
 - **W11. The right tail is long.** The P90 of year-10 revenue is $1.8T, far above the cache.
-- **W12. Three small judgments.** The panel that bounds D3 has survivor bias. The correlation 0.6 between the growth and margin shocks rests on two events (with 0.25 the P50 is $103.54). The correlation of the two half-lives is 0.9, because the engine cannot share one number between two processes and 0.95 is not positive definite.
+- **W12. Three small judgments.**
+  - The panel that bounds D3 has survivor bias.
+  - The correlation 0.6 between the growth and margin shocks rests on two events. With 0.25 the P50 is $103.54.
+  - The correlation of the two half-lives is 0.9. The engine cannot share one number between two processes. The value 0.95 is not positive definite.
 - **W13. The 10-Q is not filed.** The Q3 numbers are from the 8-K (unaudited). Convertible debt and accrued purchase consideration are not in net debt (L2i). The analyst did not read the 10-K text or the notes.
 - **W14. The press release names governance items.** They are a leadership change and an investigation by a committee of the board (L2h). The model has no input for them. They may raise the discount rate or the collapse hazard. The size is unknown.
-- **W15. The result is not stable, and the changes of the last rounds raised the P50.** One filing moved the P50 by $33 (version 1 to version 2). The decisions on the stakes moved it by -$12.6 and then +$12.7. The beat of 12 pairs added $10.7, and the marketable stakes at full value added $0.9. The change that lowered the P50 came from the longer window (half the median of 19 pairs in place of the full median of 12). Evidence that lowers the P50 and is not in the base:
+- **W15. The result is not stable. Most changes raised the P50, and the last one lowered it.** One filing moved the P50 by $33 (version 1 to version 2). The decisions on the stakes moved it by -$12.6 and then +$12.7. The beat of 12 pairs added $10.7, and the marketable stakes at full value added $0.9. The change that lowered the P50 came from the longer window (half the median of 19 pairs in place of the full median of 12). Evidence that lowers the P50 and is not in the base:
   - the base rate of years 2 and 3 (the model has +24% and +14%);
   - the guide pace for year 2 ($92.02);
   - a collapse milder than MU (a multiple of 1.0 gives P10 $46.83);
