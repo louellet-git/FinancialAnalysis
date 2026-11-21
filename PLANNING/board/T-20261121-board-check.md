@@ -28,3 +28,7 @@ The Head of Staff did these checks by hand on 2026-11-21, and each one found a f
 Limits: read-only; the output is one short table; a head sees it only if it wants to. Add a check only after
 a fault was seen by hand. The form (a Rust command of `fa`, or a small shell script) is the choice of the
 Head of Technology.
+
+Owner rule, 2026-11-21: a hook or a system that constricts a head (it stops, delays or forces a step) needs
+a few days of evidence that it is better than each alternative, before it starts. A tool that only reports
+and constricts nothing can start now. This ticket is of the second kind; keep it so.

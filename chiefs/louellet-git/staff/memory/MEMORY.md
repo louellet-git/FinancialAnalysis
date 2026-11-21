@@ -37,6 +37,8 @@ Rules: `chiefs/ORIENTATION.md`, sections 1, 5 and 8. Decisions of the person: `.
 - The order across the epics in `EPICS.md` is a proposal; the person has not agreed to it yet.
 
 ## Monitoring (owner word 2026-11-21: script only, no memory of a head, not token heavy, never a choke)
+- Test before you constrict (owner rule): a hook, a script or a way to manage the heads that constricts
+  them needs a few days of evidence that it is better than each alternative. Report-only tools can start.
 - Story E6.S5: `T-20261121-board-check` (the board rules from git) then `T-20261121-usage-log` (a Stop hook
   counts agents, skills and tokens from the transcript file). Technology builds; I read the output.
 - Until they exist: the hand checks of the board-check ticket, only when I look at the board for a
