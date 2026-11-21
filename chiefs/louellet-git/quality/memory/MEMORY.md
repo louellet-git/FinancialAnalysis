@@ -56,9 +56,5 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
 - Haiku did well on narrow checks with a fixed list (byte comparisons, a 5-point diff check); it found
   the same defect as the Sonnet validator in vol-1 cycle 2. Keep Sonnet for open attacks.
 
-## Pages
-- No page.
-
-## Dream pass
-Before a compaction (above about 75% of the threshold in `get_session`) or on "dream".
+## Dream pass (before a compaction, above about 75% in `get_session`, or on "dream")
 Last pass: 2026-11-21 01:25 UTC (context 81%); first pass 00:30 UTC.
