@@ -24,3 +24,12 @@ Plan:
    a check.
 4. Document: `analysis/priors/sp100_week_attribution_2026-11-20.md`. The parts are an accounting split with the model, not
    causes. The value at the means is not the expected value.
+
+Owner words, 2026-11-21 about 15:10 UTC: "Start w S&P10". The document starts with the 10 largest companies of the S&P
+100 by market value at the close of 2026-11-13 (one weight for each company), company by company; the S&P 100 follows.
+
+**State (2026-11-21 15:30 UTC):** the code is committed on the branch (`--curve par`, `--curve fedinvest`, the full bridge;
+both suites pass: 833 + 17 + 1). The list `rust/mapcheck/universe/sp100.txt` (101 tickers, from the Head of Technology).
+A first run to 2026-11-19 (the store ends there): S&P 100 -5.41%; premium-first bridge: rates +2.43, implied premium
+-6.10, implied growth -0.76, no model value -1.05 points. Waits for: the 2026-11-20 closes in the store (Head of
+Technology, refresh in progress). Next: the run to 2026-11-20, the document, the review.

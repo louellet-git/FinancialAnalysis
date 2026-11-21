@@ -77,6 +77,10 @@ fa dcf attribute [--tickers-file FILE | TICKER ...] --from D1 --to D2 [OPTIONS]
   --table FILE    parameter table
   --rules K=V,..  change a rule of the builder (the list: fa dcf auto --help)
   --groups FILE   CSV lines `ticker,sector,industry` (wins over the SIC code of the cache)
+  --curve SRC     gsw (default): the GSW row of the Federal Reserve Board (it lags about one week); fedinvest: the NSS
+                  curve that `fa recon rich-cheap` fits to the FedInvest Treasury prices of the last file on or before each
+                  date; par: the same NSS fit to the Treasury daily par yield curve (1 to 30 years, each tenor a par
+                  bond) of the last row on or before each date. One source is used at both dates.
   --out FILE      write one CSV row for each ticker
   --jobs N        threads (default: all); the result does not depend on N";
 
@@ -738,6 +742,132 @@ pub fn set_sum(rows: &[AttrRow], view: View, kind: SetKind, whole: &WholeList) -
     })
 }
 
+/// The number of lines of a full bridge: facts, time, rates, implied premium, implied growth, residual, no model value.
+pub const N_BRIDGE: usize = 7;
+pub const BRIDGE_NAMES: [&str; N_BRIDGE] =
+    ["facts", "time (roll of the valuation date)", "rates", "implied premium (plug)", "implied growth (plug)", "search residual", "no model value (price change only)"];
+
+/// One line of a full bridge: a group of the whole list (all, or one sector).
+#[derive(Debug, Clone, PartialEq)]
+pub struct BridgeLine {
+    pub name: String,
+    pub n: usize,
+    /// The share of the market value of the whole list at D1, and the change of the group (value-weighted).
+    pub share: f64,
+    pub change: f64,
+    /// The contributions in percentage points (as a share) of the market value of the WHOLE list at D1; they add to
+    /// `share x change`. `rev`: the same with the reverse order of rates and the plug.
+    pub parts: [f64; N_BRIDGE],
+    pub rev: [f64; N_BRIDGE],
+}
+
+/// The full bridge of the whole list: each ticker with a weight is in it once, with the view `first` where it exists, else the
+/// other view, else on the line "no model value" (its price change). So the lines add to the change of the whole list. It is
+/// one reading of the price: the two views give two readings of the same change (a higher return asked, or a lower growth
+/// expected), and the model cannot tell them apart.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Bridge {
+    pub first: View,
+    /// Tickers (and share of the market value of the list) with the first view, with the other view only, with no view.
+    pub n_view: [usize; 3],
+    pub share_view: [f64; 3],
+    pub all: BridgeLine,
+    pub sectors: Vec<BridgeLine>,
+    /// The largest contributions to the change of the list: ticker, share of the list, change, contribution (all shares), the view.
+    pub top: Vec<(String, f64, f64, f64, &'static str)>,
+}
+
+/// The contributions of one row to a bridge (shares of the row's own price), and which view it uses (0 first, 1 other, 2 none).
+fn bridge_row(r: &AttrRow, first: View) -> Option<([f64; N_BRIDGE], [f64; N_BRIDGE], usize)> {
+    let change = r.change()?;
+    let other = match first { View::Premium => View::Growth, View::Growth => View::Premium };
+    let a = r.outcome.as_ref().ok();
+    let (c, k, which) = match (a.and_then(|a| a.chain(first)), a.and_then(|a| a.chain(other))) {
+        (Some(c), _) => (c, first, 0),
+        (None, Some(c)) => (c, other, 1),
+        (None, None) => {
+            let mut p = [0.0; N_BRIDGE];
+            p[6] = change;
+            return Some((p, p, 2));
+        }
+    };
+    let plug = if k == View::Premium { 3 } else { 4 };
+    let put = |q: [f64; N_PARTS]| {
+        let mut p = [0.0; N_BRIDGE];
+        p[0] = q[0];
+        p[1] = q[1];
+        p[2] = q[2];
+        p[plug] = q[3];
+        p[5] = q[4];
+        p
+    };
+    Some((put(c.pct()), put(c.pct_rev()), which))
+}
+
+fn bridge_line(name: String, rows: &[(&AttrRow, [f64; N_BRIDGE], [f64; N_BRIDGE])], total: f64) -> BridgeLine {
+    let mut parts = [0.0; N_BRIDGE];
+    let mut rev = [0.0; N_BRIDGE];
+    let (mut v, mut dv) = (0.0, 0.0);
+    for (r, p, q) in rows {
+        let w = r.weight().unwrap_or(0.0);
+        v += w;
+        dv += w * r.change().unwrap_or(0.0);
+        for k in 0..N_BRIDGE {
+            parts[k] += w * p[k] / total;
+            rev[k] += w * q[k] / total;
+        }
+    }
+    BridgeLine { name, n: rows.len(), share: v / total, change: if v > 0.0 { dv / v } else { f64::NAN }, parts, rev }
+}
+
+pub fn full_bridge(rows: &[AttrRow], first: View) -> Option<Bridge> {
+    let whole = whole_list(rows)?;
+    let mut list = Vec::new();
+    let (mut n_view, mut share_view) = ([0usize; 3], [0.0; 3]);
+    let mut top = Vec::new();
+    for r in rows.iter().filter(|r| r.weight().is_some()) {
+        let Some((p, q, which)) = bridge_row(r, first) else { continue };
+        let w = r.weight().unwrap_or(0.0) / whole.value1;
+        n_view[which] += 1;
+        share_view[which] += w;
+        let view = match which { 0 => first.name(), 1 => match first { View::Premium => "growth", View::Growth => "premium" }, _ => "none" };
+        top.push((r.ticker.clone(), w, r.change().unwrap_or(0.0), w * r.change().unwrap_or(0.0), view));
+        list.push((r, p, q));
+    }
+    top.sort_by(|a, b| a.3.total_cmp(&b.3).then(a.0.cmp(&b.0)));
+    top.truncate(10);
+    let all = bridge_line("all".into(), &list, whole.value1);
+    let mut by: BTreeMap<&str, Vec<(&AttrRow, [f64; N_BRIDGE], [f64; N_BRIDGE])>> = BTreeMap::new();
+    for x in &list {
+        by.entry(if x.0.sector.is_empty() { "(none)" } else { x.0.sector.as_str() }).or_default().push(*x);
+    }
+    let mut sectors: Vec<BridgeLine> = by.into_iter().map(|(k, v)| bridge_line(k.to_string(), &v, whole.value1)).collect();
+    sectors.sort_by(|a, b| (a.share * a.change).total_cmp(&(b.share * b.change)).then(a.name.cmp(&b.name)));
+    Some(Bridge { first, n_view, share_view, all, sectors, top })
+}
+
+fn bridge_text(b: &Bridge) -> String {
+    let other = match b.first { View::Premium => "growth", View::Growth => "premium" };
+    let mut s = format!(
+        "FULL BRIDGE, {} view first: each ticker of the whole list once ({} view: {} tickers, {:.1}% of the value; {} view where the {} view has no value: {}, {:.1}%; no model value: {}, {:.1}%). The lines add to the change of the whole list. Points of the market value of the WHOLE list at D1; the other order of rates and the plugs is on the line below the table.\n",
+        b.first.name().to_uppercase(), b.first.name(), b.n_view[0], b.share_view[0] * 100.0, other, b.first.name(), b.n_view[1], b.share_view[1] * 100.0, b.n_view[2], b.share_view[2] * 100.0
+    );
+    let cells = |l: &BridgeLine| -> String { (0..N_BRIDGE).map(|k| format!("{:>8}", sgn(l.parts[k] * 100.0, 2))).collect::<Vec<_>>().join("") };
+    s.push_str(&format!("  {:<8} {:>4} {:>7} {:>8} | {:>8}{:>8}{:>8}{:>8}{:>8}{:>8}{:>8} | {:>8}\n", "group", "n", "weight", "change", "facts", "time", "rates", "premium", "growth", "resid", "nomodel", "sum"));
+    for l in std::iter::once(&b.all).chain(b.sectors.iter()) {
+        s.push_str(&format!("  {:<8} {:>4} {:>6.1}% {:>7}% | {} | {:>8}\n", l.name, l.n, l.share * 100.0, sgn(l.change * 100.0, 2), cells(l), sgn(l.parts.iter().sum::<f64>() * 100.0, 2)));
+    }
+    s.push_str(&format!(
+        "  the other order (plug before rates), all: rates {}, premium {}, growth {}\n",
+        sgn(b.all.rev[2] * 100.0, 2),
+        sgn(b.all.rev[3] * 100.0, 2),
+        sgn(b.all.rev[4] * 100.0, 2)
+    ));
+    let v: Vec<String> = b.top.iter().map(|(t, w, c, p, view)| format!("{t} {} ({:.1}% x {}%, {view})", sgn(p * 100.0, 2), w * 100.0, sgn(c * 100.0, 1))).collect();
+    s.push_str(&format!("  largest contributions to the change (points): {}\n", v.join(", ")));
+    s
+}
+
 /// The flagged tickers of a view: ticker, the premium at D1 (premium view), the largest part in percent of P1 and its name.
 pub fn flagged_list(rows: &[AttrRow], view: View) -> Vec<(String, f64, f64, &'static str)> {
     let names = part_names(view);
@@ -1025,6 +1155,12 @@ pub fn list_text(rows: &[AttrRow]) -> String {
             None => s.push_str(&format!("{} VIEW: no ticker has the view\n", view.name().to_uppercase())),
         }
     }
+    s.push_str("\n(4) FULL BRIDGE OF THE WHOLE LIST: two readings of the same change.\n");
+    for view in [View::Premium, View::Growth] {
+        if let Some(b) = full_bridge(rows, view) {
+            s.push_str(&bridge_text(&b));
+        }
+    }
     let count = |f: &dyn Fn(&Attribution) -> bool| rows.iter().filter(|r| r.weight().is_some() && r.outcome.as_ref().ok().is_some_and(f)).count();
     s.push_str(&format!(
         "\nSETS (tickers with a weight): both views {}, premium only {}, growth only {}, neither {} (a model refusal has neither)\n",
@@ -1062,7 +1198,11 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         println!("{ATTRIBUTE_USAGE}");
         return Ok(());
     }
-    let o = Opts::parse(args, &["--cache", "--out", "--jobs", "--table", "--from", "--to", "--tickers-file", "--rules", "--groups"], &[])?;
+    let o = Opts::parse(args, &["--cache", "--out", "--jobs", "--table", "--from", "--to", "--tickers-file", "--rules", "--groups", "--curve"], &[])?;
+    let source = o.get("--curve").unwrap_or("gsw").to_string();
+    if !["gsw", "fedinvest", "par"].contains(&source.as_str()) {
+        return e(format!("--curve '{source}': use gsw, fedinvest or par"));
+    }
     let cache = cache_dir(repo, &o);
     let (table, fade) = load_table(&table_path(repo, &o))?;
     let ((d1, day1), (d2, day2)) = (date_of(&o, "--from")?, date_of(&o, "--to")?);
@@ -1079,8 +1219,16 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     let t0 = Instant::now();
     let (inputs1, map1) = map_inputs_pit(&cache, &tickers, &d1, day1, jobs)?;
     let (inputs2, map2) = map_inputs_pit(&cache, &tickers, &d2, day2, jobs)?;
-    let (curve1, index) = curve_and_index(&cache, &d1);
-    let (curve2, _) = curve_and_index(&cache, &d2);
+    let (mut curve1, index) = curve_and_index(&cache, &d1);
+    let (mut curve2, _) = curve_and_index(&cache, &d2);
+    if source != "gsw" {
+        let load = |d: &str| if source == "par" { super::auto::load_curve_par(&cache, d) } else { super::auto::load_curve_fedinvest(&cache, d) };
+        curve1 = Some(load(&d1).map_err(DcfError)?);
+        curve2 = Some(load(&d2).map_err(DcfError)?);
+        for c in [&curve1, &curve2].into_iter().flatten() {
+            println!("curve ({source} fit) {}: 10-year zero {:.4}%", c.date, c.zero10 * 100.0);
+        }
+    }
     let market1_of = |t: &str| -> Market { market_at(&cache, t, &d1, None, Some(&d1), &rules, curve1.as_ref(), index.as_deref()) };
     let market2_of = |t: &str| -> Market { market_at(&cache, t, &d2, None, Some(&d2), &rules, curve2.as_ref(), index.as_deref()) };
     let cfg = ImpliedConfig { table: &table, fade: &fade, rules: rules.clone(), cache: Some(&cache) };
@@ -1091,7 +1239,7 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         std::fs::write(path, csv_text(&rows)).map_err(|x| DcfError(format!("{path}: {x}")))?;
     }
     println!("ATTRIBUTION of the change of the price from {d1} to {d2}, {} tickers, no random part. {BANNER} A market-implied value is a measurement, not an input.", rows.len());
-    println!("  The value is the value of the one path at the means (not the expected value). Order of the steps: facts, time, rates, plug (implied premium or implied growth), residual; the reverse order of rates and the plug is shown. This is an accounting split of the price change with the model; it is not a cause. Facts of each date: filed on or before it; the 10-K of the cache does not fill an input. Price: last close on or before the date. Curve: last GSW row on or before the date.");
+    println!("  The value is the value of the one path at the means (not the expected value). Order of the steps: facts, time, rates, plug (implied premium or implied growth), residual; the reverse order of rates and the plug is shown. This is an accounting split of the price change with the model; it is not a cause. Facts of each date: filed on or before it; the 10-K of the cache does not fill an input. Price: last close on or before the date. Curve: last GSW row on or before the date (with --curve fedinvest or par: the NSS fit to the last FedInvest file or Treasury par row on or before it).");
     if rows.len() == 1 {
         match &rows[0].outcome {
             Ok(a) => print!("{}", table_text(&rows[0].ticker, &d1, &d2, a)),

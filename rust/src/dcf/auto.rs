@@ -497,6 +497,90 @@ pub fn load_curve(cache: &std::path::Path, as_of: &str) -> Result<CurveNumbers, 
     curve_on(&ds, as_of)
 }
 
+/// The curve of the last FedInvest price file on or before `as_of` (`<cache>/prices/fedinvest_<date>.csv`): the NSS curve
+/// that `fa recon rich-cheap` fits to the end-of-day prices of the Treasury notes and bonds (`richcheap::analyse`, settlement
+/// one business day later). The same family as GSW, but a different fit: use one source at both ends of a comparison. The
+/// parameters are put in the GSW units (BETA in percent, TAU in years); the zero yields are continuous, as GSW.
+pub fn load_curve_fedinvest(cache: &std::path::Path, as_of: &str) -> Result<CurveNumbers, String> {
+    let limit = crate::curve::parse_iso(as_of.get(..10).unwrap_or(as_of)).ok_or_else(|| format!("'{as_of}' is not a date"))?;
+    let dir = cache.join("prices");
+    let mut days: Vec<String> = std::fs::read_dir(&dir)
+        .map_err(|e| format!("{}: {e}", dir.display()))?
+        .filter_map(|e| e.ok()?.file_name().into_string().ok())
+        .filter_map(|n| n.strip_prefix("fedinvest_")?.strip_suffix(".csv").map(str::to_string))
+        .filter(|d| crate::curve::parse_iso(d).is_some_and(|x| x <= limit))
+        .collect();
+    days.sort();
+    let date = days.pop().ok_or_else(|| format!("no FedInvest price file on or before {as_of} in {}", dir.display()))?;
+    let quotes = crate::richcheap::cached_quotes(cache, &date)?;
+    let day = crate::curve::parse_iso(&date).ok_or("bad date")?;
+    let a = crate::richcheap::analyse(&date, crate::curve::add_business_days(day, 1), &quotes)?;
+    Ok(curve_of_nss(&date, &a.nss))
+}
+
+/// The tenors of the Treasury par yield curve that enter the par fit (years). The bill tenors (1 to 6 months) are left out:
+/// the fit is of coupon securities only, as `fa recon rich-cheap` (life of 3 months or more).
+pub const PAR_TENORS: [(&str, i64); 8] = [("1 Yr", 1), ("2 Yr", 2), ("3 Yr", 3), ("5 Yr", 5), ("7 Yr", 7), ("10 Yr", 10), ("20 Yr", 20), ("30 Yr", 30)];
+
+/// The curve of the last row on or before `as_of` of the Treasury daily par yield curve
+/// (`<cache>/rates/treasury_nominal_<year>.csv`, the year of `as_of` and the year before). Each tenor is a par bond (a coupon
+/// equal to the par yield, semiannual, clean price 100, maturity `n` years after the date); the NSS curve is fitted to these
+/// bonds with the fit of `fa recon rich-cheap` (`fit::fit_curve`). Use one source at both ends of a comparison.
+pub fn load_curve_par(cache: &std::path::Path, as_of: &str) -> Result<CurveNumbers, String> {
+    let limit = crate::curve::parse_iso(as_of.get(..10).unwrap_or(as_of)).ok_or_else(|| format!("'{as_of}' is not a date"))?;
+    let year: i64 = as_of.get(..4).and_then(|y| y.parse().ok()).ok_or("bad year")?;
+    for y in [year, year - 1] {
+        let path = cache.join("rates").join(format!("treasury_nominal_{y}.csv"));
+        let Ok(text) = std::fs::read_to_string(&path) else { continue };
+        if let Some((date, yields)) = par_row_on(&text, limit)? {
+            return par_fit(&date, &yields);
+        }
+    }
+    Err(format!("no Treasury par yield row on or before {as_of} in {}", cache.join("rates").display()))
+}
+
+/// The last row on or before `limit` of a Treasury par yield file: the ISO date and the yields (percent) of `PAR_TENORS`.
+pub fn par_row_on(text: &str, limit: crate::curve::Day) -> Result<Option<(String, Vec<f64>)>, String> {
+    let mut lines = text.lines();
+    let head: Vec<String> = lines.next().ok_or("empty par yield file")?.split(',').map(|h| h.trim().trim_matches('"').to_string()).collect();
+    let cols: Vec<usize> = PAR_TENORS.iter().map(|(n, _)| head.iter().position(|h| h == n).ok_or_else(|| format!("par yield file has no column '{n}'"))).collect::<Result<_, _>>()?;
+    let mut best: Option<(crate::curve::Day, String, Vec<f64>)> = None;
+    for line in lines {
+        let f: Vec<&str> = line.split(',').map(|x| x.trim().trim_matches('"')).collect();
+        let mdy: Vec<i64> = f[0].split('/').filter_map(|x| x.parse().ok()).collect();
+        let [m, d, y] = mdy[..] else { continue };
+        let day = crate::curve::days_from_civil(y, m, d);
+        if day > limit || best.as_ref().is_some_and(|b| b.0 >= day) {
+            continue;
+        }
+        let ys: Option<Vec<f64>> = cols.iter().map(|&c| f.get(c).and_then(|x| x.parse::<f64>().ok())).collect();
+        if let Some(ys) = ys {
+            best = Some((day, format!("{y:04}-{m:02}-{d:02}"), ys));
+        }
+    }
+    Ok(best.map(|(_, d, y)| (d, y)))
+}
+
+/// The NSS fit to the par bonds of one row (yields in percent).
+pub fn par_fit(date: &str, yields_pct: &[f64]) -> Result<CurveNumbers, String> {
+    let settle = crate::curve::parse_iso(date).ok_or("bad date")?;
+    let mut items = Vec::new();
+    let mut points = Vec::new();
+    for ((_, n), y) in PAR_TENORS.iter().zip(yields_pct) {
+        let bond = crate::curve::Bond { coupon: y / 100.0, maturity: crate::curve::add_months(settle, 12 * n, false) };
+        let (inst, yld, _) = crate::fit::make_inst(&bond, settle, 100.0).ok_or_else(|| format!("par bond of {n} years on {date}: no yield"))?;
+        items.push(inst);
+        points.push((*n as f64, yld));
+    }
+    let (nss, _) = crate::fit::fit_curve(&items, &points);
+    Ok(curve_of_nss(date, &nss))
+}
+
+/// The curve numbers of a fitted NSS curve (decimal parameters) in the GSW units.
+pub fn curve_of_nss(date: &str, n: &crate::fit::Nss) -> CurveNumbers {
+    CurveNumbers { date: date.to_string(), beta0: n.b0 * 100.0, beta1: n.b1 * 100.0, beta2: n.b2 * 100.0, beta3: n.b3 * 100.0, tau1: n.tau1, tau2: n.tau2, zero10: n.zero(10.0) }
+}
+
 /// The curve numbers of the last row on or before `as_of` of a parsed GSW file.
 pub fn curve_on(ds: &crate::forwards::Dataset, as_of: &str) -> Result<CurveNumbers, String> {
     let (date, day) = crate::forwards::parse_date_arg(as_of)?;

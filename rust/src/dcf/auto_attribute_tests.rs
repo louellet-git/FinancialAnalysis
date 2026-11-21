@@ -375,3 +375,51 @@ fn the_list_text_names_the_tickers_with_no_model_value_and_a_missing_cik() {
     // a set with no tickers outside it prints "none", not NaN
     assert!(!text.contains("NaN"), "{text}");
 }
+
+#[test]
+fn the_full_bridge_puts_each_ticker_in_once_and_adds_to_the_whole_change() {
+    // A (value 100, -20%, all in the plug), B (value 300, -10%, all in the rates), C a bank (value 600, -5%, no model).
+    // Whole: (-20 - 30 - 30) / 1000 = -8 points. Premium first: premium -2, rates -3, no model -3.
+    let mut rows = vec![row("A", 10.0, 8.0, 3, 10.0, 0.05), row("B", 30.0, 27.0, 2, 10.0, 0.05)];
+    rows.push(AttrRow {
+        ticker: "C".into(),
+        sector: "Money".into(),
+        industry: String::new(),
+        prices: Some((60.0, 57.0)),
+        shares: Some(10.0),
+        shares_note: None,
+        cik: None,
+        weight_of: None,
+        outcome: Err(("template bank: no model".into(), String::new())),
+    });
+    let b = full_bridge(&rows, View::Premium).unwrap();
+    let p = b.all.parts;
+    assert!((p[3] + 0.02).abs() < 1e-12 && (p[2] + 0.03).abs() < 1e-12 && (p[6] + 0.03).abs() < 1e-12 && p[4].abs() < 1e-12, "{p:?}");
+    assert!((p.iter().sum::<f64>() + 0.08).abs() < 1e-12);
+    assert_eq!((b.n_view, b.all.n), ([2, 0, 1], 3));
+    assert!((b.share_view[2] - 0.6).abs() < 1e-12);
+    // A has no premium view: with the premium view first it is in the growth line, once.
+    if let Ok(a) = &mut rows[0].outcome {
+        a.prem = Err("none".into());
+    }
+    let b = full_bridge(&rows, View::Premium).unwrap();
+    assert!((b.all.parts[4] + 0.02).abs() < 1e-12 && b.all.parts[3].abs() < 1e-12, "{:?}", b.all.parts);
+    assert_eq!(b.n_view, [1, 1, 1]);
+    // the sectors add to the whole list, and the largest negative contribution comes first
+    let mut sum = [0.0; N_BRIDGE];
+    for l in &b.sectors {
+        for k in 0..N_BRIDGE {
+            sum[k] += l.parts[k];
+        }
+    }
+    assert!((0..N_BRIDGE).all(|k| (sum[k] - b.all.parts[k]).abs() < 1e-12));
+    // B and C both give -3 points; A gives -2 points and comes last
+    let names: Vec<&str> = b.top.iter().map(|t| t.0.as_str()).collect();
+    assert!(names[..2].contains(&"B") && names[..2].contains(&"C") && names[2] == "A", "{names:?}");
+    assert!((b.top[0].3 + 0.03).abs() < 1e-12);
+    // a second class of one company carries no weight and is not in the bridge
+    let mut d = row("D", 10.0, 5.0, 3, 10.0, 0.05);
+    d.weight_of = Some("A".into());
+    rows.push(d);
+    assert_eq!(full_bridge(&rows, View::Premium).unwrap().all.n, 3);
+}
