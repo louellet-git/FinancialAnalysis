@@ -1,0 +1,169 @@
+{
+  "ancestors": [
+    "a009-weekly-hold-v1"
+  ],
+  "build": {
+    "commit": "e321c3499f3147a4f17fc84b4e3a10b9ab411b92",
+    "dirty": false,
+    "is_head": true
+  },
+  "code": {
+    "commit": "e321c3499f3147a4f17fc84b4e3a10b9ab411b92",
+    "dirty": false
+  },
+  "config": {
+    "command": [
+      "--hypothesis",
+      "trading/hypotheses/a009-weekly-hold-v1.toml",
+      "--start",
+      "2018-01-01",
+      "--tickers-file",
+      "trading/hypotheses/data/a009_list.txt",
+      "--cache",
+      "<store>",
+      "--out",
+      "<path outside the repository>",
+      "--holdings",
+      "<path outside the repository>"
+    ],
+    "cost_bp": 10.0,
+    "effective_arguments": [
+      "--hypothesis",
+      "trading/hypotheses/a009-weekly-hold-v1.toml",
+      "--start",
+      "2018-01-01",
+      "--tickers-file",
+      "trading/hypotheses/data/a009_list.txt",
+      "--cache",
+      "<store>",
+      "--out",
+      "<path outside the repository>",
+      "--holdings",
+      "<path outside the repository>",
+      "--strategy",
+      "value-rank-weekly",
+      "--paths",
+      "300",
+      "--seed",
+      "7",
+      "--table",
+      "trading/hypotheses/data/process_priors_cut2016.toml",
+      "--rebalance",
+      "weekly",
+      "--cost-bp",
+      "10",
+      "--hold",
+      "true"
+    ],
+    "end": "2026-11-19",
+    "hold": true,
+    "n_tickers": 426,
+    "paths": 300,
+    "poison_check_days": [],
+    "rebalance": "Weekly",
+    "seed": 7,
+    "start": "2018-01-01",
+    "store": "<store>"
+  },
+  "family": "value-rank-weekly",
+  "hypothesis": {
+    "commit": "e321c3499f3147a4f17fc84b4e3a10b9ab411b92",
+    "commit_time": "2026-11-21T07:10:28+00:00",
+    "file": "trading/hypotheses/a009-weekly-hold-v1.toml",
+    "params": {
+      "cost_bp": 10,
+      "hold": true,
+      "paths": 300,
+      "rebalance": "weekly",
+      "seed": 7,
+      "table": "trading/hypotheses/data/process_priors_cut2016.toml"
+    },
+    "prior_variants": 19,
+    "registered": "2026-11-21",
+    "sha256": "0cc7cd81412002417497c5f221121dbf50497aa4da29cf48fe7cfd22a98084f0",
+    "success": null,
+    "text": "Rule A-009 (docs/assumptions/A-009-weekly-trade-rule.md), held with no rebalance (each entry keeps its shares for 13\nweeks): each Friday, the 3 tickers with the highest rank of the automatic model P50 / price inside their FF12 sector,\nnot held, at most one for each sector, each in the top fifth of its sector; 1/39 of the value each; exit after 13\nweeks. It has a higher annual return than the equal-weight line of the same list after 10 bp on each traded value.\nThe share counts are on the price basis (split table store 58e54a2). Decision rule (PLANNING/board/\nT-20261121-split-basis-fix.md, rerun test, item 4): a mean yearly excess above 0, a raw t of 2.0 or more, above 0 in at\nleast 7 of 9 years, and T2 to T4 of the blind projection test pass on corrected prices. The design sample 2018-2026 was\nused before (with the split defect), so this run describes; it does not confirm.\n",
+    "universe": "trading/hypotheses/data/a009_list.txt",
+    "universe_sha256": "26d5324a06d33baf7a804d8d39842c60228bfbee9b6b9e9e6574515cde4c93cc"
+  },
+  "id": "a009-weekly-hold-v1",
+  "labels": {
+    "prices": "prices: market prices (closes), not a model price",
+    "universe": "universe: names of today (survivor bias)"
+  },
+  "oos": {
+    "reasons_not_clean": [
+      "oos_prior_exposure: results of the window were seen before the hypothesis file",
+      "an earlier run of the family read the window (1 run(s), first: trading/runs/a009-weekly-hold-v1/20261121T071056Z.json)",
+      "not clean (exploratory read on 2026-11-21)",
+      "the parameter table was fitted on all years of the cache (through 2025): the window is in the fit sample of the model"
+    ],
+    "window_owner": "a009-weekly-hold-v1",
+    "window_start": "2018-01-01"
+  },
+  "oos_clean": false,
+  "oos_read": true,
+  "parent": null,
+  "poison_checks": [],
+  "poison_error": null,
+  "poison_not_covered": null,
+  "results": {
+    "cost_0x": {
+      "annual": 0.14123577906577411,
+      "max_drawdown": -0.3632709367327257,
+      "total": 2.2281680329082225,
+      "volatility": 0.1824616223760053
+    },
+    "cost_1x": {
+      "annual": 0.13836144872588596,
+      "max_drawdown": -0.3641396397597668,
+      "total": 2.156756032079741,
+      "volatility": 0.18283012068696317
+    },
+    "cost_2x": {
+      "annual": 0.13549204989219144,
+      "max_drawdown": -0.3650112156188693,
+      "total": 2.086868119985288,
+      "volatility": 0.18320219979182223
+    },
+    "cost_total": 0.04495476164570566,
+    "equal_weight_whole_list": {
+      "annual": 0.14804010242773824,
+      "max_drawdown": -0.37580283575548,
+      "total": 2.4029633900222747,
+      "volatility": 0.1947068532653898
+    },
+    "first_position": "2018-01-05",
+    "n_scored": 426,
+    "rebalances": 463,
+    "spy": {
+      "annual": 0.11460810586210113,
+      "max_drawdown": -0.34104746704498445,
+      "total": 1.6182064223538877,
+      "volatility": 0.19070099039985072
+    },
+    "trades": 961,
+    "turnover_total": 12.466299453636204
+  },
+  "run_time_utc": "20261121T071623Z",
+  "schema": 2,
+  "status": "done",
+  "store": {
+    "commit": "58e54a2a2ec0b748fb09fa5a08978d2247e1ff1e",
+    "dirty": false
+  },
+  "strategy": "value-rank-weekly",
+  "table": {
+    "file": "trading/hypotheses/data/process_priors_cut2016.toml",
+    "fit_window": "all fiscal years of the data store at the table date (2026-11-19), through 2025: in-sample for any window from 2023 on",
+    "sha256": "7ef838b06475b7b4be4a6431a705d95ce71c89aa9016d0525a6abaf0dccc75cd"
+  },
+  "variant_count": {
+    "family": 21,
+    "hypothesis": 21,
+    "logged_runs_family": 2,
+    "logged_runs_hypothesis": 2,
+    "prior_variants_family": 19,
+    "prior_variants_hypothesis": 19
+  }
+}
