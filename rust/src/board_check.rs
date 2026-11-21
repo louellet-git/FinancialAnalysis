@@ -235,12 +235,15 @@ fn git(repo: &Path, args: &[&str]) -> Result<String, String> {
 /// True when the work of `branch_ref` is on `main_ref` (the check 7 rule, see the top of the file).
 pub fn work_is_on_main(repo: &Path, main_ref: &str, branch_ref: &str) -> bool {
     let Ok(base) = git(repo, &["merge-base", main_ref, branch_ref]) else { return false };
-    let Ok(changed) = git(repo, &["diff", "--name-only", base.trim(), branch_ref]) else { return false };
+    // --no-renames: a rename lists the old and the new path, so a rename that main does not have reads "not merged".
+    let Ok(changed) = git(repo, &["diff", "--no-renames", "--name-only", base.trim(), branch_ref]) else { return false };
     let files: Vec<&str> = changed.lines().filter(|l| !l.is_empty()).collect();
-    if files.is_empty() {
+    // Limit: a branch that changed only board files (a ticket edit that main also has) proves no merged work,
+    // so at least one changed file must be outside PLANNING/board/.
+    if files.is_empty() || files.iter().all(|f| f.starts_with("PLANNING/board/")) {
         return false;
     }
-    let mut args = vec!["diff", "--name-only", main_ref, branch_ref, "--"];
+    let mut args = vec!["diff", "--no-renames", "--name-only", main_ref, branch_ref, "--"];
     args.extend(files);
     matches!(git(repo, &args), Ok(d) if d.trim().is_empty())
 }
