@@ -1,0 +1,68 @@
+CALIBRATION of the weekly rule (A-009). Block 26 weeks (checks [13, 52]), seed 7, 10000 resamples. Outcome = 13-week (91 days) return less the equal weight of the scored list of that week. Price returns, today's list (survivorship), today's SIC sector.
+151070 observations and 1323 entries with an outcome (of 155774 and 1362).
+
+T2. THE RANK AGAINST THE OUTCOME. Rule: mean(d_w) > 0 with one-sided p < 0.05 (block 26 weeks). d_w = mean excess of the top decile less that of the bottom decile of the week.
+  decile of the rank (0 = lowest): mean excess, count
+    0: -0.03% 14946
+    1: -0.01% 15026
+    2: +0.01% 15008
+    3: -0.54% 15628
+    4: -0.30% 13522
+    5: -0.50% 16332
+    6: -0.57% 15048
+    7: -0.23% 15588
+    8: +0.40% 14446
+    9: +1.76% 15526
+  d_w over 450 weeks, block 26: mean +1.79%, bootstrap se +0.63%, one-sided p 0.0016
+  check block 13: mean +1.79%, bootstrap se +0.59%, one-sided p 0.0008
+  check block 52: mean +1.79%, bootstrap se +0.66%, one-sided p 0.0022
+  13 phases (every 13th week): mean of the phase means +1.79%; phases above 0: 13 of 13
+  worst 13-week d_w: -10.55% on 2025-04-04
+  T2 PASS
+
+T3. THE ENTRIES OF THE RULE. Rule A: mean over the weeks of (hit rate of the entries less the share of all scored names with an excess above 0) > 0, one-sided p < 0.05.
+  all entries: n 1323, hit rate 50.8%, mean +1.81%, P10 -15.23%, P5 -20.74%
+  new tickers: n 422, hit rate 49.1%, mean +1.06%, P10 -14.86%, P5 -20.80%
+  re-entries: n 901, hit rate 51.6%, mean +2.17%, P10 -15.31%, P5 -20.40%
+  hit rate less base rate over 441 weeks: mean +3.38%, bootstrap se +1.35%, one-sided p 0.0056
+  Rule A PASS
+  Rule B (priced in): from 2019-01-01, the stated P10 and P5 are those of all entries that closed before the week (expanding window, at least 30). The later entries below the stated P10 must be 5% to 15%, below the stated P5 2% to 8%.
+  1167 entries in 389 weeks: below the stated P10 13.0% (95% interval 10.5% to 15.7%); below the stated P5 7.9% (95% interval 5.9% to 9.9%)
+  Rule B PASS
+  T3 PASS
+
+T4. AT ANY TIME. Rule: the mean entry excess and the mean d_w are above 0 in at least 7 of the calendar years, in both halves (ticker_half), and in at least 2 of the 3 periods 2018-2020, 2021-2023, 2024-2026.
+  by calendar year: entry mean (n), d_w mean (weeks)
+    2018: +1.28% (156), +1.30% (52)
+    2019: +1.86% (153), +2.75% (52)
+    2020: +2.79% (153), +1.04% (53)
+    2021: +0.31% (153), +2.20% (52)
+    2022: +3.70% (153), +4.72% (52)
+    2023: +2.99% (153), +2.59% (52)
+    2024: +2.01% (153), +0.97% (52)
+    2025: -0.71% (153), -1.33% (52)
+    2026: +2.28% (96), +1.96% (33)
+  years with entry mean above 0: 8 of 9; years with d_w above 0: 8 of 9
+    half 0: entry mean +1.92% (652), d_w mean +3.22% (450)
+    half 1: entry mean +1.71% (671), d_w mean +0.91% (450)
+    2018-2020: entry mean +1.97% (462), d_w mean +1.70% (157)
+    2021-2023: entry mean +2.33% (459), d_w mean +3.17% (156)
+    2024-2026: entry mean +1.04% (402), d_w mean +0.34% (137)
+  years 8/8 (need 7 and 7), halves 2/2 (need 2 and 2), periods 3/3 (need 2 and 2)
+  T4 PASS
+  Stress windows (descriptive only, no pass rule): d_w mean (weeks), entry mean (n), below stated P10 / P5 (entries)
+    2016-02 2016-01-05 to 2016-02-22: d_w NaN% (0), entries NaN% (0), tail 0.0% / 0.0% (0)
+    2018-02 2018-02-02 to 2018-02-14: d_w +4.20% (2), entries +5.73% (6), tail 0.0% / 0.0% (0)
+    2018-Q4 2018-12-03 to 2019-01-09: d_w +1.83% (5), entries +2.81% (15), tail 33.3% / 0.0% (3)
+    2020-03 2020-02-21 to 2021-03-16: d_w +2.47% (56), entries +3.11% (162), tail 12.3% / 7.4% (162)
+    2021-12 2021-11-24 to 2021-12-08: d_w +4.10% (2), entries -12.11% (6), tail 50.0% / 33.3% (6)
+    2022-Q1 2022-01-14 to 2022-03-28: d_w +3.42% (11), entries +3.77% (33), tail 3.0% / 0.0% (33)
+    2022-Q2/Q3 2022-04-04 to 2022-08-10: d_w +6.74% (18), entries +2.27% (51), tail 7.8% / 3.9% (51)
+    2022-H2 2022-08-18 to 2023-01-12: d_w +3.84% (21), entries +5.96% (63), tail 4.8% / 3.2% (63)
+    2023-03 2023-03-08 to 2023-03-28: d_w +3.50% (3), entries +4.25% (9), tail 33.3% / 33.3% (9)
+    2024-08 2024-08-01 to 2024-08-13: d_w -3.02% (2), entries -12.91% (6), tail 33.3% / 33.3% (6)
+    2025-04 2025-03-27 to 2025-05-12: d_w -6.28% (7), entries -2.53% (18), tail 27.8% / 11.1% (18)
+    2026-03 2026-02-27 to 2026-04-09: d_w -5.24% (6), entries -4.12% (15), tail 20.0% / 6.7% (15)
+    2026-11 (open) 2026-11-04 to 2026-11-19: d_w NaN% (0), entries NaN% (0), tail 0.0% / 0.0% (0)
+
+HEADLINE (T2 to T4; T1 is `fa dcf pit --cut 2015`): T2 PASS, T3 PASS, T4 PASS: ALL PASS
