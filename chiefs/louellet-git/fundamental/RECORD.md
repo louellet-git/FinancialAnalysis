@@ -135,3 +135,8 @@ Done: ticket `T-20261121-evaluator-captive-finance` (detection, then an industri
 ## 2026-11-21 about 17:10 UTC (in the session of the Head of Quality and Risk, relayed)
 Words: "yes approve the merge but this doesnt mean I approve that the valuation is correct"
 Done: pull request 106 (NVDA) merges. It is NOT an approval of the value: the report keeps "a range for a judgment, not a price target", and no later document or trade may say that the owner approved the NVDA value.
+
+## 2026-11-21 about 18:00 UTC (chat)
+Words: "Changing you to fable for this project, proceed" (the model of the session changed; no change of the work).
+Words: "The point of the attribution valuation is to understand any recent changes in prices of any given set of underlying, explain what contributed to the change, and whether those impacts make sense with reality/possibility. The point is to understand if we have a buy opportunity or a correction for this particular instance, but will be used more generally in the future for understanding/analysis from a fundamentals perspective. Do you have questions?"
+Done: the purpose is recorded: (1) what changed, (2) what contributed, (3) does each implied piece make sense against reality (history, fundamentals, the economics view), (4) a reading: buy opportunity or correction. Two questions asked (the form of the conclusion; the horizon).
