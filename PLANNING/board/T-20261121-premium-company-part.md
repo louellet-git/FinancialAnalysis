@@ -66,3 +66,12 @@ source`, decimals, the change over the window, matched on D2). The plug then spl
 "company (residual)". The list median and the value-weighted mean stay as measured comparators. Condition: the inputs of
 the economics view never come from the prices that the attribution explains (else the split is circular). Dependency: the
 Economics engine and its first file (asked 2026-11-21, answer open).
+
+**Design change 3 (2026-11-21 about 21:00 UTC; agreed with the Head of Economics, review REVISE of its view design):**
+for `--common file` (the economics view), the common step applies BOTH changes together, in BOTH views: the premium of
+the start node + erp_change, and G of A-001 + growth_change (`Rules.long_run`; L = min(10-year zero, G), so L moves only
+where G binds). The common part is that one value change; the company part is the rest of the plug. growth_change does not
+go to the growth-shift free variable (a shift of the growth path of years 1 to 10). An EMPTY field (no release in the
+window) means "no information": the plug of that view is labelled "not covered by the economics view", and the text gives
+the count of covered rows. The list median and the value-weighted mean keep the rule of design change 1 (c on the free
+variable of the view).
