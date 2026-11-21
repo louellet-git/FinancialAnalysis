@@ -2,6 +2,16 @@
 What the next session of this head must know. Keep this file below 60 lines. Started 2026-11-20.
 Rules: `chiefs/ORIENTATION.md` (sections 3 to 8). Decisions of the person: `../RECORD.md`.
 
+## State on 2026-11-21 15:00 UTC (before a compaction)
+- PR 131 (`fa algo`, branch claude/quant-algo-paper): gate passed; merge AFTER the person's first live run on the laptop,
+  Monday 2026-11-23; then send the merge commit to the Head of Technology (Google e2-micro guide, the person said yes).
+  Do not push to an open code PR (any push reruns the check). A reminder fires 2026-11-23 21:30 UTC.
+- alpha-1 (branch claude/quant-alpha-1, commit 23bd711): stage 1 says STOP (s05 t 1.35; premium t 1.97 in the
+  gate sample); in review by Quality and Risk; no push until the verdict. Then measure model vs real option prices.
+- Person, 2026-11-21: research before a question; questions go through the Head of Technology. Three-stage method:
+  isolation, bigger data, paper, then improve (each change a counted trial).
+- Split look-ahead is fixed in the automatic model (Fundamental PR 136); a value factor has low priority.
+
 ## Goal now
 - Find and measure arbitrage and reconcile our data (person, 2026-11-20). Done and merged: SPX/SPXW apart (76),
   `fa options check` (84, 100), rates reconciliation steps 1-2 (84, 100), `fa vol fit` Heston/Bates (100),
