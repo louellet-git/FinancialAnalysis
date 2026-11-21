@@ -10,7 +10,7 @@ order: 1.6
 story: E6.S5
 branch: claude/usage-log
 created: 2026-11-21
-acceptance: After a normal day of work with no action of a head, one command prints for each head session the agents that it started (by type), the skills that it used, and its tokens (input, output, cache), from data that a hook wrote; the hook adds less than 2 seconds to a turn, never stops a turn, and writes no text of the conversation.
+acceptance: (Changed 2026-11-21, owner word: local only.) On request, `fa usage record && fa usage show` prints for each head session the agents that it started (by type), the skills that it used, and its tokens (input, output, cache), from data that a hook wrote; the hook adds less than 2 seconds to a turn, never stops a turn, and writes no text of the conversation.
 ---
 Owner word, 2026-11-21 (through the Head of Staff): make sure that the heads use their teams and their skills,
 and watch the tokens, with a script that "just does what it has to do". No head has to remember it.
@@ -117,3 +117,9 @@ Push test (2026-11-21 21:2x UTC): a push of one usage file to `refs/usage/<id>` 
 failed ("unexpected disconnect while reading sideband packet"); the second try was refused by the
 permission system of the session. The push path does not work in a cloud session. The hook stays
 local only (USAGE_PUSH unset) until the owner chooses a different way out of the machine.
+
+Owner word, 2026-11-21 (through the Head of Staff): "Let's not get overly complicated". Result: local only,
+no hook, no push, no setting. A head runs `fa usage record && fa usage show` when the Head of Staff asks
+(for example when a ticket closes, or before the weekly reset) and sends the table. The push to a git ref
+is not possible from a cloud session (see the push test above). The cost by head comes from get_session.
+This command gives what get_session does not: tokens by ticket and by agent type.

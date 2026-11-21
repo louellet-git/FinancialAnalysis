@@ -12,17 +12,17 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
-pub const USAGE: &str = "fa usage record --transcript F [--subagents DIR] [--board DIR] [--head NAME] --out FILE\n\
+pub const USAGE: &str = "fa usage record [--transcript F] [--subagents DIR] [--board DIR] [--head NAME] [--out FILE]\n\
   Count the tokens of one session (numbers and names only, no text, no model) into one small JSON file.\n\
   --subagents DIR  the subagent files of the session (agent-*.jsonl, with agent-*.meta.json next to each)\n\
   --board DIR      the board folder for branch -> ticket (default: PLANNING/board of the repo)\n\
   --head NAME      the label of the head (default: the first 8 characters of the session id)\n\
-fa usage show [--dir D] [--from-refs]\n\
+fa usage show [--dir D]\n\
   Print one table: ticket | head | tier/agent | input | output | cache read | cache write, and the sums\n\
   by ticket and by head. --dir D: the folder of usage files (default: FA_USAGE_DIR or the temp folder, fa-usage).\n\
-  --from-refs: run `git fetch <USAGE_REMOTE, default the private store louellet-git/fa-data> +refs/usage/*:refs/usage/*` and read the files of the refs/usage/* refs.";
+  On request: `fa usage record && fa usage show` (record finds the transcript of this machine and its subagents).\n\
+  Local only: nothing leaves the machine (owner, 2026-11-21: \"Let's not get overly complicated\").";
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tokens {
@@ -385,27 +385,33 @@ fn load_dir(dir: &Path) -> Vec<Summary> {
     v
 }
 
-fn load_refs(repo: &Path) -> Vec<Summary> {
-    let git = |args: &[&str]| Command::new("git").arg("-C").arg(repo).args(args).output();
-    let remote = std::env::var("USAGE_REMOTE").unwrap_or_else(|_| "https://github.com/louellet-git/fa-data".to_string());
-    let _ = git(&["fetch", "--quiet", &remote, "+refs/usage/*:refs/usage/*"]);
-    let Ok(o) = git(&["for-each-ref", "--format=%(refname)", "refs/usage/"]) else { return vec![] };
-    let mut v = vec![];
-    for r in String::from_utf8_lossy(&o.stdout).lines() {
-        if let Ok(b) = git(&["show", &format!("{r}:usage.json")]) {
-            if let Ok(s) = serde_json::from_slice::<Summary>(&b.stdout) {
-                v.push(s);
+/// The transcript of this machine when none is given: the newest `*.jsonl` under `~/.claude/projects/*/`
+/// (the live session writes its file at each turn).
+fn default_transcript() -> Option<PathBuf> {
+    let home = std::env::var_os("HOME").map(PathBuf::from)?;
+    let mut best: Option<(std::time::SystemTime, PathBuf)> = None;
+    for d in std::fs::read_dir(home.join(".claude").join("projects")).ok()?.flatten() {
+        for f in std::fs::read_dir(d.path()).into_iter().flatten().flatten() {
+            let p = f.path();
+            if p.extension().and_then(|e| e.to_str()) == Some("jsonl") {
+                let n = f.metadata().and_then(|m| m.modified()).unwrap_or(std::time::UNIX_EPOCH);
+                if best.as_ref().is_none_or(|(m, _)| n > *m) {
+                    best = Some((n, p));
+                }
             }
         }
     }
-    v
+    best.map(|(_, p)| p)
+}
+
+fn default_dir() -> PathBuf {
+    std::env::var_os("FA_USAGE_DIR").map(PathBuf::from).unwrap_or_else(|| std::env::temp_dir().join("fa-usage"))
 }
 
 pub fn command(repo: &Path, args: &[String]) -> Result<i32, String> {
     let sub = args.first().map(String::as_str);
     let mut transcript = None;
     let (mut subagents, mut board, mut head, mut out, mut dir) = (None, None, None, None, None);
-    let mut from_refs = false;
     let mut i = 1;
     while i < args.len() {
         let opt = args[i].as_str();
@@ -420,7 +426,6 @@ pub fn command(repo: &Path, args: &[String]) -> Result<i32, String> {
             "--head" => head = Some(val()?),
             "--out" => out = Some(PathBuf::from(val()?)),
             "--dir" => dir = Some(PathBuf::from(val()?)),
-            "--from-refs" => from_refs = true,
             "-h" | "--help" => {
                 println!("{USAGE}");
                 return Ok(0);
@@ -431,8 +436,15 @@ pub fn command(repo: &Path, args: &[String]) -> Result<i32, String> {
     }
     match sub {
         Some("record") => {
-            let t = transcript.ok_or_else(|| format!("record needs --transcript\n{USAGE}"))?;
-            let o = out.ok_or_else(|| format!("record needs --out\n{USAGE}"))?;
+            let t = transcript.or_else(default_transcript).ok_or_else(|| format!("no transcript found; give --transcript\n{USAGE}"))?;
+            if subagents.is_none() {
+                let d = t.with_extension("").join("subagents");
+                if d.is_dir() {
+                    subagents = Some(d);
+                }
+            }
+            let short: String = t.file_stem().and_then(|x| x.to_str()).unwrap_or("session").chars().filter(|c| c.is_ascii_alphanumeric()).take(8).collect();
+            let o = out.unwrap_or_else(|| default_dir().join(format!("{short}.json")));
             let bm = branch_map(&board.unwrap_or_else(|| repo.join("PLANNING").join("board")));
             let s = count(&t, subagents.as_deref(), &bm, &Names::from_repo(repo), head.as_deref());
             let json = serde_json::to_string_pretty(&s).map_err(|e| e.to_string())?;
@@ -445,14 +457,7 @@ pub fn command(repo: &Path, args: &[String]) -> Result<i32, String> {
             Ok(0)
         }
         Some("show") => {
-            let sums = if from_refs {
-                load_refs(repo)
-            } else {
-                let d = dir
-                    .or_else(|| std::env::var_os("FA_USAGE_DIR").map(PathBuf::from))
-                    .unwrap_or_else(|| std::env::temp_dir().join("fa-usage"));
-                load_dir(&d)
-            };
+            let sums = load_dir(&dir.unwrap_or_else(default_dir));
             if sums.is_empty() {
                 println!("no usage files found");
             } else {
