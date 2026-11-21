@@ -233,7 +233,7 @@ fn fred_file_is_needed_from_1913_and_a_missing_month_gives_no_cpi() {
 
 #[test]
 fn cpiaucns_reader_skips_blank_values() {
-    let f = read_cpiaucns("observation_date,CPIAUCNS\n1913-01-01,9.800\n2025-10-01,\n2025-11-01,324.1\n").unwrap();
+    let f = read_fred_monthly("observation_date,CPIAUCNS\n1913-01-01,9.800\n2025-10-01,\n2025-11-01,324.1\n").unwrap();
     assert_eq!(f.get(&(1913, 1)), Some(&9.8));
     assert_eq!(f.get(&(2025, 10)), None);
     assert_eq!(f.get(&(2025, 11)), Some(&324.1));
