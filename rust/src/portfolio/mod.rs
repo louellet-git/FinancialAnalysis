@@ -13,7 +13,10 @@
 pub mod calibrate;
 pub mod cli;
 pub mod harness;
+pub mod panel;
 pub mod strategies;
+pub mod trades;
+pub mod walkforward;
 
 use std::collections::BTreeMap;
 

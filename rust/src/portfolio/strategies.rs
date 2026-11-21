@@ -10,7 +10,7 @@ use mapcheck::facts::{period_ends, CompanyFacts, Forms};
 use mapcheck::mapper::resolve_period_with;
 use mapcheck::registry::Registry;
 use std::path::Path;
-use crate::dcf::auto_returns::{model_p50, RetParams};
+use crate::dcf::auto_returns::{model_dist, ModelDist, RetParams};
 use rayon::prelude::*;
 use std::collections::BTreeMap;
 
@@ -194,6 +194,17 @@ pub struct ValueRank<'a> {
     pub signals: std::sync::Mutex<BTreeMap<(i64, String), (f64, String)>>,
 }
 
+/// The model of one ticker on one date, with the close of the day before and the filing of the vintage it used.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ModelRow {
+    /// The last close before the date of the view, and its day.
+    pub close_day: i64,
+    pub close: f64,
+    pub dist: ModelDist,
+    /// The accession number of the annual filing of the vintage (empty if unknown).
+    pub accession: String,
+}
+
 /// The fiscal years of one company as the SEC facts showed them after each annual filing: `(filing day, years)` in
 /// date order. The years of a vintage come from the facts filed on that day or before, so a later restatement is not in it.
 /// The second list has the accession number of the annual filing of each vintage (same order; it can be empty in a test).
@@ -296,20 +307,8 @@ impl ValueRank<'_> {
         let scored: Vec<(String, f64, String)> = universe
             .par_iter()
             .filter_map(|t| {
-                let vintages = self.years.get(t)?;
-                let years = vintages.known(view.date());
-                let end = mapcheck::dates::parse(years.last()?.end.get(..10)?)?;
-                if view.date() - end > 550 {
-                    return None; // the last known year is too old
-                }
-                let (day, p0) = view.last_close(t)?;
-                if view.date() - 1 - day > FRESH {
-                    return None;
-                }
-                let series = before(self.series.get(t)?, &date);
-                let (p50, _) = model_p50(t, years, &mapcheck::dates::format(day), p0, series, &params)?;
-                let ratio = p50 / p0;
-                (ratio.is_finite() && p50 > 0.0).then(|| (t.clone(), ratio, vintages.known_accession(view.date()).unwrap_or_default().to_string()))
+                let row = self.model_row_with(view, t, &date, &params)?;
+                Some((t.clone(), row.dist.q[2] / row.close, row.accession))
             })
             .collect();
         if let Ok(mut n) = self.scored.lock() {
@@ -321,6 +320,34 @@ impl ValueRank<'_> {
             }
         }
         scored.into_iter().map(|(t, x, _)| (t, x)).collect()
+    }
+
+    /// The model of one ticker on the date of the view: the one function under the score and under the signal panel
+    /// (`fa portfolio panel`). `None`: the ticker is not scored on that date (no vintage, the last known year is more
+    /// than 550 days old, no fresh close, the model refuses, or P50 is not above 0).
+    pub fn model_row(&self, view: &View, ticker: &str) -> Option<ModelRow> {
+        let date = mapcheck::dates::format(view.date());
+        let index = self.index.map(|m| before(m, &date));
+        let params = RetParams { index, ..self.params_copy() };
+        self.model_row_with(view, ticker, &date, &params)
+    }
+
+    /// As [`ValueRank::model_row`], with the date text and the parameters (the market index cut before the date) given.
+    fn model_row_with(&self, view: &View, t: &str, date: &str, params: &RetParams) -> Option<ModelRow> {
+        let vintages = self.years.get(t)?;
+        let years = vintages.known(view.date());
+        let end = mapcheck::dates::parse(years.last()?.end.get(..10)?)?;
+        if view.date() - end > 550 {
+            return None; // the last known year is too old
+        }
+        let (day, p0) = view.last_close(t)?;
+        if view.date() - 1 - day > FRESH {
+            return None;
+        }
+        let series = before(self.series.get(t)?, date);
+        let dist = model_dist(t, years, &mapcheck::dates::format(day), p0, series, params)?;
+        let ratio = dist.q[2] / p0;
+        (ratio.is_finite() && dist.q[2] > 0.0).then(|| ModelRow { close_day: day, close: p0, dist, accession: vintages.known_accession(view.date()).unwrap_or_default().to_string() })
     }
 
     fn params_copy(&self) -> RetParams<'_> {
@@ -843,6 +870,82 @@ mod tests {
         // ... and at the 13th week (91 days) the position is dropped; the same names rank first again and enter again that day
         assert!(weeks[13].1.values().all(|e| *e == start + 91), "{:?}", weeks[13].1);
         assert_eq!(weeks[13].1.keys().collect::<Vec<_>>(), first);
+    }
+
+    // ---- the signal panel (`fa portfolio panel`): the same model path, nothing read from the date or later ----
+
+    use crate::portfolio::panel::{build_rows, PanelRow};
+
+    /// The panel rows of the fixture on `dates` (two sectors, curve none, 100 paths, seed 7).
+    fn panel_of(years: &BTreeMap<String, Vintages>, series: &Closes, index: &[(String, f64)], dates: &[&str]) -> Vec<PanelRow> {
+        let sectors = two_sectors();
+        with_rank_full(years, series, index, Some(sectors.clone()), Pick::Top, dates[0], |s, _, u| {
+            let prices = crate::portfolio::Prices::from_raw(series);
+            let days: Vec<i64> = dates.iter().map(|x| d(x)).collect();
+            build_rows(&s, &prices, u, &days, &sectors)
+        })
+    }
+
+    fn clean_series() -> Closes {
+        (0..N).map(|k| (format!("T{k:02}"), closes(k, "2030-01-01"))).collect()
+    }
+
+    #[test]
+    fn a_panel_row_is_the_score_of_the_strategy_with_the_quantiles_in_order() {
+        let years = all_vintages();
+        let series = clean_series();
+        let at = "2020-09-04";
+        let rows = panel_of(&years, &series, &market(), &[at]);
+        let scores = with_rank(&years, &series, at, |s, v, u| s.score(v, u));
+        assert_eq!(rows.len(), N);
+        for (r, (t, ratio)) in rows.iter().zip(&scores) {
+            assert_eq!(&r.ticker, t);
+            assert_eq!(r.q[2] / r.close, *ratio, "{t}: the P50 over the close is the score of the strategy");
+            assert!(r.q.windows(2).all(|w| w[0] <= w[1]), "{t}: P10 <= P25 <= ... <= P90");
+            assert!(r.mean.is_finite());
+            assert_eq!((r.date, r.close_day < r.date), (d(at), true));
+            assert_eq!(r.sector, two_sectors()[t]);
+        }
+    }
+
+    #[test]
+    fn the_panel_rows_of_a_date_do_not_move_with_a_fact_or_a_price_of_the_date_or_later() {
+        let clean_years: BTreeMap<String, Vintages> = (0..N).map(|k| (format!("T{k:02}"), Vintages(vec![vintages(k).0.remove(0)], vec![]))).collect();
+        let (years, series) = (all_vintages(), clean_series());
+        // the dates: the Fridays before the date D = 2020-09-11; the facts of the second vintage (filed 2021-02-19) and the closes
+        // and the market index from D on are changed (a factor that differs by ticker, and 3 for the index)
+        let dd = "2020-09-11";
+        let dates = ["2020-09-04", dd];
+        let poisoned: Closes = (0..N).map(|k| (format!("T{k:02}"), closes(k, dd))).collect();
+        let cut: Vec<(String, f64)> = market().into_iter().map(|(day, c)| if day.as_str() >= dd { (day, 3.0 * c) } else { (day, c) }).collect();
+        let a = panel_of(&clean_years, &series, &market(), &dates);
+        let b = panel_of(&years, &poisoned, &cut, &dates);
+        assert_eq!(a.len(), 2 * N);
+        assert_eq!(a, b);
+        // truncation: the closes cut at the day before D give the same rows
+        let truncated: Closes = series.iter().map(|(t, s)| (t.clone(), s.iter().filter(|(x, _)| x.as_str() < dd).cloned().collect())).collect();
+        let trunc_index: Vec<(String, f64)> = market().into_iter().filter(|(x, _)| x.as_str() < dd).collect();
+        assert_eq!(a, panel_of(&clean_years, &truncated, &trunc_index, &dates));
+        // control: a row after the filing of the second vintage and after the price change does differ
+        let late = ["2021-09-03"];
+        assert_ne!(panel_of(&clean_years, &series, &market(), &late), panel_of(&years, &poisoned, &cut, &late));
+    }
+
+    #[test]
+    fn the_panel_does_not_move_with_a_split_after_its_date() {
+        // the k-test of the split basis: P50 over the close of a date before the split is the same for each k
+        let (years0, series0) = k_copy(None);
+        let a = panel_of(&years0, &series0, &market(), &["2020-09-04"]);
+        for kf in [2.0, 25.0, 0.1] {
+            let (years1, series1) = k_copy(Some(kf));
+            let b = panel_of(&years1, &series1, &market(), &["2020-09-04"]);
+            assert_eq!((a.len(), b.len()), (N, N));
+            for (x, y) in a.iter().zip(&b) {
+                assert_eq!(x.ticker, y.ticker);
+                assert!((x.q[2] / x.close / (y.q[2] / y.close) - 1.0).abs() < 1e-9, "k {kf} {}", x.ticker);
+                assert!((x.q[4] / x.close / (y.q[4] / y.close) - 1.0).abs() < 1e-9, "k {kf} {} P90", x.ticker);
+            }
+        }
     }
 
     // ---- the short side test and the weekly rule (A-009) ----

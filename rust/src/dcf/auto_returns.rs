@@ -118,7 +118,24 @@ pub fn beta_warning(index_missing: bool) -> Option<String> {
     }
 }
 
+/// The value of one model run for each share: the quantiles P10, P25, P50, P75, P90, the mean of the finite paths (NaN if
+/// there is none) and the base revenue.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ModelDist {
+    pub q: [f64; 5],
+    pub mean: f64,
+    pub base_revenue: f64,
+}
+
+/// The P50 and the base revenue of [`model_dist`]. The one model path is `model_dist`.
 pub fn model_p50(ticker: &str, years: &[YearData], as_of: &str, price: f64, prices: &[(String, f64)], p: &RetParams) -> Option<(f64, f64)> {
+    let d = model_dist(ticker, years, as_of, price, prices, p)?;
+    Some((d.q[2], d.base_revenue))
+}
+
+/// The automatic model of one company on `as_of` (see [`model_p50`]): the quantiles and the mean of the value for each
+/// share. `fa portfolio panel` (the signal panel of the trade-level backtest) uses it.
+pub fn model_dist(ticker: &str, years: &[YearData], as_of: &str, price: f64, prices: &[(String, f64)], p: &RetParams) -> Option<ModelDist> {
     let last = years.last()?;
     let inputs = AutoInputs {
         ticker: ticker.to_string(),
@@ -138,7 +155,7 @@ pub fn model_p50(ticker: &str, years: &[YearData], as_of: &str, price: f64, pric
     let spec = PathsSpec::from_toml(&model.toml).ok()?;
     let eng = PathEngine::new(&spec).ok()?;
     let sim = eng.simulate_serial(p.paths, p.seed, &Mods::default()).ok()?;
-    Some((sim.p50(), model.summary.base_revenue))
+    Some(ModelDist { q: sim.quantiles(), mean: sim.mean(), base_revenue: model.summary.base_revenue })
 }
 
 /// The observations of one company: one for each fiscal year with a model and a price on the date of the model.

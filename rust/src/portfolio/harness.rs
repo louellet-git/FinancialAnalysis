@@ -27,6 +27,9 @@ pub const BUILD_DIRTY: bool = match option_env!("FA_BUILD_DIRTY") {
     None => false,
 };
 
+/// The strategy name of a hypothesis file for `fa portfolio walkforward` (the walk-forward run of the trade-level backtest).
+pub const WALKFORWARD: &str = "trade-walkforward";
+
 // ---- the hypothesis file ----
 
 /// A registered hypothesis (`trading/hypotheses/<id>.toml`).
@@ -99,8 +102,8 @@ impl Hypothesis {
         if h.hypothesis.trim().is_empty() || h.universe.trim().is_empty() {
             return Err("hypothesis file: the text of the hypothesis and the universe are needed".into());
         }
-        if !["value-rank", "value-rank-weekly", "momentum"].contains(&h.strategy.as_str()) {
-            return Err(format!("hypothesis strategy '{}': value-rank, value-rank-weekly or momentum", h.strategy));
+        if !["value-rank", "value-rank-weekly", "momentum", WALKFORWARD].contains(&h.strategy.as_str()) {
+            return Err(format!("hypothesis strategy '{}': value-rank, value-rank-weekly, momentum or {WALKFORWARD}", h.strategy));
         }
         if let Some(k) = h.params.keys().find(|k| !PARAMS.iter().any(|p| p.0 == k.as_str())) {
             return Err(format!("hypothesis params: unknown key '{k}' (known: paths, seed, table, rebalance, cost_bp, hold)"));
@@ -244,7 +247,7 @@ pub struct FileProof {
 }
 
 /// The output of a git command (None if git fails or is not there).
-fn git(dir: &Path, args: &[&str]) -> Option<String> {
+pub fn git(dir: &Path, args: &[&str]) -> Option<String> {
     git_bytes(dir, args).map(|b| String::from_utf8_lossy(&b).trim().to_string())
 }
 

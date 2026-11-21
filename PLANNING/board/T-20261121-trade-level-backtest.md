@@ -42,3 +42,11 @@ Design (Head of Fundamental Research, written before any run):
    the costs and the borrow fee.
 Limits: prices from 2016-11 and SEC facts from about 2009 (no stock run before about 2018); today's lists
 (survivorship; no delisted names); price returns (a short also pays no dividend in the test).
+
+**Status at the pause (2026-11-21 15:15 UTC; owner word: "hold off on other work for now", for the S&P 100 week
+attribution).** The work of the build agent is committed as is, with no review: `rust/src/portfolio/panel.rs`,
+`trades.rs`, `walkforward.rs` (new, about 1,800 lines) and changes in `portfolio/cli.rs`, `harness.rs`, `mod.rs`,
+`strategies.rs` and `dcf/auto_returns.rs`. The agent stopped while it wrote the tests of the panel and of the walk-forward
+step. Not done: those tests, a build and test check of this commit, the code gate, the hypothesis file (rule grid and
+walk-forward, written before any run), the run of record. No run of the new commands was made. Next step: run
+`cargo test --manifest-path rust/Cargo.toml --locked`, complete the tests of item 5 of the design, then the gate.

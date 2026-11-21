@@ -92,11 +92,11 @@ LIMITS
     not read). The template of the filer and the list of tickers with facts come from today's facts. The parameter table
     was estimated on all years of the cache: an in-sample parameter table, not out of sample.";
 
-fn opt<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
+pub(super) fn opt<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
     args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).map(String::as_str)
 }
 
-fn day_of(args: &[String], name: &str) -> Result<Option<i64>, String> {
+pub(super) fn day_of(args: &[String], name: &str) -> Result<Option<i64>, String> {
     match opt(args, name) {
         None => Ok(None),
         Some(t) => mapcheck::dates::parse(t).map(Some).ok_or_else(|| format!("{name} '{t}' is not YYYY-MM-DD")),
@@ -113,11 +113,24 @@ pub fn read_tickers(text: &str) -> Vec<String> {
 
 pub fn run(repo: &Path, args: &[String]) -> u8 {
     let sub = args.first().map(String::as_str);
-    if !matches!(sub, Some("backtest" | "calibrate")) || args.iter().any(|a| a == "-h" || a == "--help") {
-        println!("{USAGE}\n\n{CALIBRATE_USAGE}");
-        return u8::from(!matches!(sub, Some("backtest" | "calibrate")) && !args.is_empty());
+    let known = matches!(sub, Some("backtest" | "calibrate" | "panel" | "trades" | "walkforward"));
+    if !known || args.iter().any(|a| a == "-h" || a == "--help") {
+        let text = match sub {
+            Some("panel") => super::panel::USAGE.to_string(),
+            Some("trades") => super::trades::USAGE.to_string(),
+            Some("walkforward") => super::walkforward::USAGE.to_string(),
+            _ => format!("{USAGE}\n\n{CALIBRATE_USAGE}\n\n{}\n\n{}\n\n{}", super::panel::USAGE, super::trades::USAGE, super::walkforward::USAGE),
+        };
+        println!("{text}");
+        return u8::from(!known && !args.is_empty());
     }
-    let result = if sub == Some("calibrate") { calibrate(repo, &args[1..]) } else { backtest(repo, &args[1..]) };
+    let result = match sub {
+        Some("calibrate") => calibrate(repo, &args[1..]),
+        Some("panel") => super::panel::command(repo, &args[1..]),
+        Some("trades") => super::trades::command(repo, &args[1..]),
+        Some("walkforward") => super::walkforward::command(repo, &args[1..]),
+        _ => backtest(repo, &args[1..]),
+    };
     match result {
         Ok(()) => 0,
         Err(e) => {
@@ -137,7 +150,7 @@ const KNOWN: [&str; 18] = [
 const CALIBRATE_KNOWN: [&str; 13] = ["--cache", "--start", "--end", "--tickers-file", "--paths", "--seed", "--table", "--ranks-out", "--entries-out", "--block-weeks", "--boot-seed", "--reps", "--stress-file"];
 
 /// An option that the command does not know (a typo, or `--option=value`), or an option with no value, is an error. It runs before any work.
-fn check_options(args: &[String], known: &[&str]) -> Result<(), String> {
+pub(super) fn check_options(args: &[String], known: &[&str]) -> Result<(), String> {
     let mut i = 0;
     while i < args.len() {
         if !known.contains(&args[i].as_str()) {
@@ -159,7 +172,7 @@ fn poison_days(args: &[String]) -> Result<Vec<(String, i64)>, String> {
 }
 
 /// The files that the command writes (`--trades`, `--out`, ...) must not exist: it does not replace a file. Runs before any work.
-fn refuse_existing(args: &[String], names: &[&str]) -> Result<(), String> {
+pub(super) fn refuse_existing(args: &[String], names: &[&str]) -> Result<(), String> {
     for name in names {
         if let Some(p) = opt(args, name) {
             if Path::new(p).exists() {
@@ -172,29 +185,29 @@ fn refuse_existing(args: &[String], names: &[&str]) -> Result<(), String> {
 
 /// Close the run log, and only then give the text to the writer. If the log cannot be closed, nothing is written: no result is
 /// visible that the log does not hold.
-fn publish(finish: impl FnOnce() -> Result<(), String>, text: &str, write: &mut dyn FnMut(&str)) -> Result<(), String> {
+pub(super) fn publish(finish: impl FnOnce() -> Result<(), String>, text: &str, write: &mut dyn FnMut(&str)) -> Result<(), String> {
     finish()?;
     write(text);
     Ok(())
 }
 
 /// Write a new file. A file that exists is never replaced.
-fn write_new(path: &str, text: &str) -> Result<(), String> {
+pub(super) fn write_new(path: &str, text: &str) -> Result<(), String> {
     use std::io::Write;
     std::fs::OpenOptions::new().write(true).create_new(true).open(path).and_then(|mut f| f.write_all(text.as_bytes())).map_err(|e| format!("{path}: {e} (the command does not replace a file)"))
 }
 
 /// The tickers and the closes that a command reads (`--tickers-file`, the cache).
-struct Inputs {
+pub(super) struct Inputs {
     /// The tickers with a price file (SPY is not in the list).
-    tickers: Vec<String>,
-    raw: BTreeMap<String, Vec<(String, f64)>>,
-    prices: Prices,
+    pub(super) tickers: Vec<String>,
+    pub(super) raw: BTreeMap<String, Vec<(String, f64)>>,
+    pub(super) prices: Prices,
     /// The text of `--tickers-file` (the run log holds its hash).
-    universe_text: Option<String>,
+    pub(super) universe_text: Option<String>,
 }
 
-fn load_inputs(args: &[String], cache: &Path) -> Result<Inputs, String> {
+pub(super) fn load_inputs(args: &[String], cache: &Path) -> Result<Inputs, String> {
     let universe_text = match opt(args, "--tickers-file") {
         Some(f) => Some(std::fs::read_to_string(f).map_err(|e| format!("{f}: {e}"))?),
         None => None,
@@ -222,24 +235,24 @@ fn load_inputs(args: &[String], cache: &Path) -> Result<Inputs, String> {
 }
 
 /// What a value-rank scorer needs besides the prices. One loader for `backtest`, the poison runs and `calibrate`.
-struct VrParts {
-    table: crate::dcf::calibrate::ProcessTable,
-    fade: Vec<crate::dcf::calibrate::FadeCell>,
-    registry: Registry,
-    rules: crate::dcf::auto::Rules,
-    curves: Option<crate::forwards::Dataset>,
+pub(super) struct VrParts {
+    pub(super) table: crate::dcf::calibrate::ProcessTable,
+    pub(super) fade: Vec<crate::dcf::calibrate::FadeCell>,
+    pub(super) registry: Registry,
+    pub(super) rules: crate::dcf::auto::Rules,
+    pub(super) curves: Option<crate::forwards::Dataset>,
     /// The split table: the closes are split-adjusted to the last date of each price file, and the share counts of each
     /// vintage go to the same basis. A missing file is an error.
-    splits: Vec<Split>,
+    pub(super) splits: Vec<Split>,
     /// The check report of the split table for the tickers of the run (print it before the result).
-    split_note: String,
+    pub(super) split_note: String,
 }
 
-fn table_file_of(repo: &Path, args: &[String]) -> PathBuf {
+pub(super) fn table_file_of(repo: &Path, args: &[String]) -> PathBuf {
     opt(args, "--table").map(PathBuf::from).unwrap_or_else(|| repo.join(DEFAULT_TABLE))
 }
 
-fn load_vr_parts(repo: &Path, args: &[String], cache: &Path, tickers: &[String]) -> Result<VrParts, String> {
+pub(super) fn load_vr_parts(repo: &Path, args: &[String], cache: &Path, tickers: &[String]) -> Result<VrParts, String> {
     let (table, fade) = load_table(&table_file_of(repo, args)).map_err(|e| e.0)?;
     let registry = Registry::embedded()?;
     let rules = parse_rules("").map_err(|e| e.0)?;
@@ -251,7 +264,7 @@ fn load_vr_parts(repo: &Path, args: &[String], cache: &Path, tickers: &[String])
 
 /// The vintages of the tickers with SEC facts of the standard template (split-corrected), and the scored universe.
 /// `poison`: the day from which each fact is multiplied by a factor of its ticker (the poison check).
-fn value_rank_years(p: &VrParts, cache: &Path, tickers: &[String], start: i64, poison: Option<&str>) -> (BTreeMap<String, Vintages>, Vec<String>) {
+pub(super) fn value_rank_years(p: &VrParts, cache: &Path, tickers: &[String], start: i64, poison: Option<&str>) -> (BTreeMap<String, Vintages>, Vec<String>) {
     let years: BTreeMap<String, Vintages> = tickers
         .par_iter()
         .filter_map(|t| {
@@ -267,7 +280,7 @@ fn value_rank_years(p: &VrParts, cache: &Path, tickers: &[String], start: i64, p
 }
 
 /// The Fama-French 12 sector of each ticker (today's SIC code of the cache); `None` mode: no sectors.
-fn sector_map(cache: &Path, universe: &[String], mode: Option<&str>) -> Result<Option<BTreeMap<String, String>>, String> {
+pub(super) fn sector_map(cache: &Path, universe: &[String], mode: Option<&str>) -> Result<Option<BTreeMap<String, String>>, String> {
     match mode {
         None => Ok(None),
         Some("sector") => Ok(Some(
@@ -338,6 +351,9 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
             let file = PathBuf::from(f);
             let proof = harness::prove_committed(repo, &file)?;
             let h = Hypothesis::parse(&proof.text)?;
+            if h.strategy == harness::WALKFORWARD {
+                return Err(format!("the hypothesis '{}' is for fa portfolio walkforward, not for backtest", h.id));
+            }
             let stem = file.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
             if stem != h.id {
                 return Err(format!("the id '{}' of the hypothesis is not the file name '{stem}'", h.id));
