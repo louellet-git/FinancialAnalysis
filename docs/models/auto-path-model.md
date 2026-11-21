@@ -50,11 +50,11 @@ value, 3 no value, 2 an error. `fa dcf screen` gives one CSV row for each ticker
 | A-001 | One long-run growth L | min(10-year zero yield, 4.0%); terminal std 0.75% | Fade level and terminal mean. 4.0% = FOMC SEP 2026-09-16 (2.0% + 2.0%). Decided 2026-11-20 |
 | A-002 | Acquisition charge | `w` x mean spend / revenue, 5 years | `w` = weight of the history in the growth mean; fades with the growth above L; second line of the purchases added when it differs (`acq_second`, proposed 2026-11-21). Decided 2026-11-20 |
 | A-003 | Floor on the growth of the base year | 0% | A base year with growth below 0% enters the company mean and the first step of the growth as 0% (`last_floor`) |
-| A-004 | Equity risk premium | 4.41% (std 0.75%, lower bound 2%) | Source of 4.41% not confirmed (the study could not match it to Damodaran). Decider: not known |
-| A-005 | Risk-free rate | 10-year zero yield of the GSW curve | Hull-White `a` 0.14, `sigma` 0.0075, `long_flat` (`HIDDEN-ASSUMPTIONS.md` #160) |
-| A-006 | Horizon | 10 years | The code says "owner rule"; no dated source |
-| A-007 | Beta | 2/3 regression beta + 1/3 | 260 weeks, at least 104, SPY with 520 rows or more: no source |
-| A-008 | SBC | A cost of the model | IBM review F5 |
+| A-022 | Equity risk premium | 4.41% (std 0.75%, lower bound 2%) | Source of 4.41% not confirmed (the study could not match it to Damodaran). Decider: not known |
+| A-023 | Risk-free rate | 10-year zero yield of the GSW curve | Hull-White `a` 0.14, `sigma` 0.0075, `long_flat` (`HIDDEN-ASSUMPTIONS.md` #160) |
+| A-024 | Horizon | 10 years | The code says "owner rule"; no dated source |
+| A-025 | Beta | 2/3 regression beta + 1/3 | 260 weeks, at least 104, SPY with 520 rows or more: no source |
+| A-026 | SBC | A cost of the model | IBM review F5 |
 | A-011 | Cost of debt spread | 1.50% | Judgment; no source. Equity weight limited to 0.2 to 1.0 |
 | A-012 | Age of a price | 10 days (curve flag: 3 days) | Conventions |
 | A-013 | Design of the process table | 60% jump, buckets, 150 obs | `docs/models/process-calibration.md` |

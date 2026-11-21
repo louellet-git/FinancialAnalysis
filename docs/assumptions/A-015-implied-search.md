@@ -1,6 +1,7 @@
 # A-015: search ranges and the list premium of `fa dcf implied`
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
+Updated: 2026-11-21. Commit: 90ed737 (base).
+Model document: `docs/models/implied-and-attribute.md`.
 
 ## Choice
 `fa dcf implied` shows what a price implies. It is a measurement; no input of the model reads it.
@@ -33,7 +34,7 @@ of the range (23 of 57 `premium<` rows of the S&P 500 list in that run).
 
 ## Effect on the result
 Run of 2026-11-20 with the defaults of that day: the list premium is 2.32% for the S&P 500 list and 3.12%
-for the next 500, against the 4.41% of the model (A-004). The median of value / price is below 1 for
+for the next 500, against the 4.41% of the model (A-022). The median of value / price is below 1 for
 most tickers (`docs/HIDDEN-ASSUMPTIONS.md`, #260). This run was before the share-basis rule (A-017).
 
 ## Who decided and when

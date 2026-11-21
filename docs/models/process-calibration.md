@@ -1,6 +1,6 @@
 # Model: calibration of the process table (`fa dcf calibrate`)
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
+Updated: 2026-11-21. Commit: 90ed737 (base).
 
 Backtest: `fa dcf pit --cut YEAR` (the table comes from the years up to the cut; the later years score it).
 

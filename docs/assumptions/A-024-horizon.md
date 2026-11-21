@@ -1,6 +1,7 @@
-# A-006: horizon of the automatic model
+# A-024: horizon of the automatic model
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
+Updated: 2026-11-21. Commit: 90ed737 (base).
+Model document: `docs/models/auto-path-model.md`.
 
 ## Choice
 The automatic model projects 10 years (`years` = 10 years), in annual steps. After year 10 the terminal value
@@ -22,9 +23,9 @@ uses the Gordon form (A-001). The classic engine has the same default: `projecti
 
 ## Why this choice
 The code gives "owner rule" as the source (`auto.rs`, explain row "horizon": "owner rule, annual
-steps, Gordon terminal value"). No file with the wording, the date or the name of the owner found.
+steps, Gordon terminal value"). The wording, the date and the owner are not in any file that was read. Earliest traces of the 10-year default: `docs/superpowers/plans/2026-06-03-financial-analysis-pipeline.md:1149` (`projection_years: int = 10`) and `PLANNING/board/done/T-20261120-dcf-assumption-register.md:32` ("the 10-year horizon").
 The study treats it as a "convention" (`analysis/priors/dcf_investigation_2026-11-20.md`).
-The IBM model also has 10 years (`analysis/IBM/REVIEW.md` and `DRIVER-REVIEW.md` do not change it).
+The IBM model also has 10 years. The IBM reviews do not change it.
 
 ## Effect on the result
 Median value / price, 438 tickers, 2026-11-19 (`dcf_investigation_2026-11-20.md`, section 2):

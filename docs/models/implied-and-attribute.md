@@ -1,6 +1,6 @@
 # Model: what the price implies, and where the price move went (`fa dcf implied`, `fa dcf attribute`)
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch). These two commands share one document: they share
+Updated: 2026-11-21. Commit: 90ed737 (base). These two commands share one document: they share
 the value at the means, the searches and the code in `auto_implied.rs`.
 
 Backtest: none applies, because these commands measure what a price implies and split a past change; they do not forecast. Their point-in-time checks apply (facts filed on or before each date, the stale-price check, the truncation test).
@@ -16,7 +16,7 @@ rates and the implied premium (or growth)? Both are measurements. No input of th
 |---|---|---|
 | The automatic model | `rust/src/dcf/auto.rs` and the table (`analysis/priors/process_priors_2026-11-19.toml`) | The builder runs again for each search step |
 | Price | `--prices FILE`, or the last close; with `--price-date`, the last close on or before it | At most 10 days older (A-012) |
-| Facts | With `--as-of` or `--from/--to`: facts filed on or before the date | A 10-K of the cache does not fill a missing input |
+| Facts | With `--as-of` or `--from/--to`: facts filed on or before the date | A 10-K of the cache does not fill a missing input (see the rule below) |
 | Curve, beta | GSW file and SPY of the date | A curve older than 3 days is flagged in `attribute` |
 | Groups | SIC code of the cache (today's code), or `--groups FILE` | Fama-French 12 sector; industry with 5 tickers or more |
 
@@ -27,9 +27,10 @@ rates and the implied premium (or growth)? Both are measurements. No input of th
 3. List premium: the premium for which the median of value / price of the list is 1. Then each group gets the
    median of its value at that premium over its price.
 4. `attribute`: the price of each date is the value of the model of that date at the premium that the price
-   implies (x1 at D1, x2 at D2). The change `ln(P2/P1)` moves in steps: facts, time (stub), rates, then the plug
-   (premium, with the equity weight and the beta of D2), and the search residual. Both orders of rates and plug
-   are printed; their range is the order effect.
+   implies (x1 at D1, x2 at D2).
+   - The change `ln(P2/P1)` moves in steps: facts, time (stub), rates, then the plug and the search residual.
+   - The plug is the premium, with the equity weight and the beta of D2.
+   - Both orders of rates and plug are printed. Their range is the order effect.
 5. Two chains: the premium view and the growth view (where the premium view has no value). A third line: the
    growth shift that P2 needs at the premium of D1.
 6. A list: the whole-list change weighted by price x shares at D1. The share count is guarded (A-016).
@@ -46,7 +47,7 @@ gives the same output for any `--jobs`.
 | A-015 | Search ranges and list premium | -4% to 20%; -30 to +60; -50 to +50 points | Design of 2026-11-20; ranges have no other source |
 | A-016 | Guard of the share count | 0.5x-2x note; 0.01x-100x replace | Used for the weight of a list |
 | A-012 | Age of a price or a curve | 10 days; 3 days | Conventions, no source |
-| A-004 | Equity risk premium | 4.41% | The model premium that the search moves |
+| A-022 | Equity risk premium | 4.41% | The model premium that the search moves |
 | A-017 | Share basis | filing date rule | Past price against filed shares |
 
 ## Limits
@@ -55,6 +56,9 @@ gives the same output for any `--jobs`.
 - The weight of a group is not a market weight unless the list is a market list. Sectors use today's SIC code.
 - The split of the move depends on the order of the steps (the order effect is printed). It is not a cause.
 - The run of 2026-11-20 (`analysis/priors/market_implied_2026-11-20.md`) was before the share-basis rule (A-017).
+- Rule of the change pit-supplement-fill (Technology, merge pending): with `--as-of`, a missing input is filled from
+  the 10-K supplement only when its SEC filing date is on or before the cut. The point-in-time test of this fill
+  is the planted test and the unit tests of `rust/mapcheck`. `fa dcf pit` does not use the supplement path.
 - Do not read a list premium or a ratio as a signal without a review (`HIDDEN-ASSUMPTIONS.md` #260).
 
 ## Code and command
@@ -66,5 +70,5 @@ gives the same output for any `--jobs`.
 | Tests | `rust/src/dcf/auto_implied_tests.rs`, `auto_attribute_tests.rs` |
 
 ## Review status
-Not reviewed. First run: `analysis/priors/market_implied_2026-11-20.md` (ticket `T-20261120-dcf-market-implied`).
-Attribution: ticket `T-20261120-valuation-move-attribution`. No skeptic, reviewer or auditor looked at either.
+Not reviewed. First run: `analysis/priors/market_implied_2026-11-20.md`. No skeptic, reviewer or auditor looked at
+either command. A-009 is INVALID until the reruns (see its header).

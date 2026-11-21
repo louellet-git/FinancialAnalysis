@@ -1,14 +1,18 @@
-# A-007: beta of the automatic model (weight and data rules)
+# A-025: beta of the automatic model (weight and data rules)
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
+Updated: 2026-11-21. Commit: 90ed737 (base).
+Model document: `docs/models/auto-path-model.md`.
 
 ## Choice
 Beta = 0.667 x raw regression beta + 0.333 x 1.0 (`beta_weight` = 2/3, the rest is 1.0). The raw beta is
 `cov / var` of the weekly returns of the stock against SPY. Rules of the data:
 - At most 260 weekly returns (5 years), up to the model date.
-- At least 104 weekly returns (2 years). With fewer, the model uses beta 1.0. The model prints a warning only when it has no price history at all.
-- A weekly return needs two weeks in sequence in both series. The week takes the last close on or before the date.
-- The SPY series is the price cache of SPY if it has at least 520 rows. Else the daily file `trading/SPY_1d.csv` of the cache.
+- At least 104 weekly returns (2 years). With fewer, the model uses beta 1.0.
+- The model prints a warning only when it has no price history at all.
+- A weekly return needs two weeks in sequence in both series.
+- The week takes the last close on or before the date.
+- The SPY series is the price cache of SPY if it has at least 520 rows.
+- Else the series is the daily file `trading/SPY_1d.csv` of the cache.
 - With no stock price file, beta is 1.0 and the equity weight is 1.0, with warnings.
 The beta is a constant for each path (not drawn).
 

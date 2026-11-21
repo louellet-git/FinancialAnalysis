@@ -1,15 +1,17 @@
 # A-013: design of the process table (panel rules and cells)
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
+Updated: 2026-11-21. Commit: 90ed737 (base).
+Model document: `docs/models/process-calibration.md`.
 
 ## Choice
 `fa dcf calibrate` makes the table of the AR(1) parameters of growth and margins from the company panel.
 Rules of the panel (`rust/src/dcf/panel.rs`):
 - Two fiscal years are in sequence only if their end dates are 350 to 380 days apart (`YEAR_DAYS`).
 - End dates 14 days or less apart are one year (`SAME_YEAR_DAYS`); the latest filing stays.
-- A growth jump: absolute growth above 60% (`JUMP_GROWTH`) with revenue of the year before at $1B or more
-  (`JUMP_MIN_REVENUE`). It is `acq_likely` with cash paid for businesses of 10% or more of the revenue
-  change (`ACQ_SHARE`). Two jumps that undo each other within 20% are a `glitch`.
+- A growth jump has an absolute growth above 60% (`JUMP_GROWTH`). The revenue of the year before is $1B or
+  more (`JUMP_MIN_REVENUE`).
+- A jump is `acq_likely` when the cash paid for businesses is 10% or more of the revenue change (`ACQ_SHARE`).
+- Two jumps that undo each other within 20% are a `glitch`.
 Rules of the estimate (`rust/src/dcf/calibrate.rs`):
 - Growth outside -80% to +300% (`GROWTH_LIMITS`) and a margin outside -1 to +1 (`MARGIN_LIMIT`) are not used.
 - Size buckets of the revenue of the year before: below $1B, 1-10B, 10-30B, 30-100B, above 100B

@@ -1,6 +1,7 @@
 # A-020: smaller conventions of the automatic model builder
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
+Updated: 2026-11-21. Commit: 90ed737 (base).
+Model document: `docs/models/auto-path-model.md`.
 
 ## Choice
 One record for the defaults of `Rules::default` that have no record of their own. Each is a convention that

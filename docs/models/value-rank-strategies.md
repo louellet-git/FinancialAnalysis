@@ -1,6 +1,6 @@
 # Model: value-rank strategies of the portfolio backtest (`fa portfolio backtest`, `fa portfolio calibrate`)
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch). This document is for the value strategies only.
+Updated: 2026-11-21. Commit: 90ed737 (base). This document is for the value strategies only.
 The strategy `momentum` belongs to the Head of Quant Research. No order goes to a broker.
 
 Backtest: the runs of record of pull request 136 (`analysis/priors/dcf_engine_backtest_rerun_2026-11-21.md`): no evidence of an edge.
@@ -29,9 +29,10 @@ to trade: a monthly or quarterly top quintile (`value-rank`) and the weekly rule
    sector, in the top fifth; 1/39 each; hold 13 weeks (91 days). Use `--rebalance weekly` and `--hold true`.
 4. The engine trades at the close of D, marks to the close each day, charges 10 basis points of each traded value,
    and compares with SPY and with the equal-weight line of the list.
-5. `calibrate`: for each Friday, the rank inside the sector from the data before it; then the outcome (return to
-   91 days later, less the equal weight of the scored list). T2 rank against outcome, T3 the entries, T4 at any time
-   (years and halves). The text gives each test with its pass rule, its value and PASS or FAIL.
+5. `calibrate` runs for each Friday. First, it ranks each name inside its sector from the data before that day.
+   Then it reads the outcome: the return to 91 days later, less the equal weight of the scored list.
+   - T2: the rank against the outcome. T3: the entries. T4: any time (years and halves).
+   - The text gives each test with its pass rule, its value and PASS or FAIL.
 6. The harness (`harness.rs`) reads a registered hypothesis file (`trading/hypotheses/<id>.toml`), writes the
    add-only run log (`trading/runs/<id>/`), the variant count, the out-of-sample flag and the poison check
    (`--poison-check D`: each close and fact from D on is changed; a target weight must not move).
@@ -69,5 +70,4 @@ line; `--out` (daily value), `--holdings`, `--trades` (CSV). The run log of a re
 | Tests | `cargo test --manifest-path rust/Cargo.toml --locked` (tests in `portfolio/`) |
 
 ## Review status
-Not reviewed as a valuation. Review of the weekly rule: not done (the gate of the Head of Quality and Risk before
-2026-11-27, A-009). The strategy gate found CRIT F1 on 2026-11-21 (A-009 header); the reruns are open.
+Not reviewed as a valuation. The weekly rule has no review. A-009 is INVALID until the reruns (see its header).

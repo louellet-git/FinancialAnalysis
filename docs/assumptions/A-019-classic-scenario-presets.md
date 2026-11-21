@@ -1,6 +1,7 @@
 # A-019: presets of the classic engine and the IBM version 3 entries
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
+Updated: 2026-11-21. Commit: 90ed737 (base).
+Model document: `docs/models/driver-and-classic-engines.md`.
 
 ## Choice
 `fa dcf classic` and `fa dcf scenarios` draw growth, margin, WACC and terminal growth directly, 10,000 paths,

@@ -1,6 +1,7 @@
-# A-005: risk-free rate of the automatic model
+# A-023: risk-free rate of the automatic model
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
+Updated: 2026-11-21. Commit: 90ed737 (base).
+Model document: `docs/models/auto-path-model.md`.
 
 ## Choice
 The risk-free rate is the GSW 10-year zero yield (`rf` default: GSW 10-year zero yield) of the model date.

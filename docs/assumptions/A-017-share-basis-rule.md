@@ -1,14 +1,18 @@
 # A-017: share basis of a past price (split factor by the filing date)
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
+Updated: 2026-11-21. Commit: 90ed737 (base).
+Model document: `docs/models/share-basis.md`.
 
 ## Choice
 The model multiplies each share count of the SEC facts by the product of the factors of the splits with
-`filing date of the fact < ex_date <= last date of the price file` (`to`). The price files of the store are
-adjusted for splits up to the last date of each file; the SEC counts are as filed. The filing date is used,
-not the period end: a filing issued after a split shows the counts already adjusted (ASC 260).
-- The split table: `<cache>/_corporate/splits.csv`, source Alpaca corporate actions, cleaned by
-  `rust/src/market/splits_rules.rs`. A row with `sec_check` other than `match` is not confirmed by the SEC facts.
+`filing date of the fact < ex_date <= last date of the price file` (`to`).
+- The price files of the store are adjusted for splits up to the last date of each file.
+- The SEC counts are as filed.
+- The model uses the filing date, not the period end. A filing after a split shows the counts already
+  adjusted (ASC 260).
+- The split table is `<cache>/_corporate/splits.csv` (source: Alpaca corporate actions, cleaned by
+  `rust/src/market/splits_rules.rs`).
+- A row with `sec_check` other than `match` is not confirmed by the SEC facts.
 - A spin-off and a class change are not splits.
 - A missing table: a warning in `fa dcf auto`, `screen`, `implied`, `attribute`; an error in `fa dcf returns`
   and `fa portfolio backtest`. `fa dcf pit` has no factor (it scores revenue and cash flow).

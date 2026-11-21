@@ -1,13 +1,13 @@
 # Model: share basis of a past price (split factor)
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
+Updated: 2026-11-21. Commit: 90ed737 (base).
 
 Backtest: the k-test (all prices before a date times k change no earlier decision) and the reruns of pull request 136.
 
 ## Purpose
-Put the share count of the SEC facts on the same date as the split-adjusted closes of the data store. Without
-this, a value per share that divides by a filed count is wrong by the split factor when a split came after the
-filing. It is a data rule inside the automatic model, not a valuation model.
+Put the share count of the SEC facts on the same date as the split-adjusted closes of the data store.
+Without this, a value per share is wrong by the split factor when a split came after the filing.
+The value divides by a filed count. This is a data rule inside the automatic model, not a valuation model.
 
 ## Inputs
 | Input | Source | Note |

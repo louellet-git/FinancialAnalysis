@@ -1,6 +1,6 @@
 # Model: point-in-time tests of the automatic model (`fa dcf pit`, `fa dcf returns`)
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch). One document for two tests of measurement.
+Updated: 2026-11-21. Commit: 90ed737 (base). One document for two tests of measurement.
 
 Backtest: these two commands are the point-in-time tests of the automatic model. Their own check is the truncation and poison test (skill `point-in-time-test`).
 
@@ -42,7 +42,7 @@ error 0.037 (`auto_returns_new_2026-11-20.txt`, a run before the share-basis rul
 | A-014 | Test design | 5 years before, 3 after, lag 100 days, 20 per year | The 100-day lag has a stated reason; others: no source |
 | A-013 | Design of the process table | see record | The table that the test uses |
 | A-003 | Floor on the base-year growth | 0% | Found with the test |
-| A-007 | Beta | 2/3 raw + 1/3 | Same rule in `returns` |
+| A-025 | Beta | 2/3 raw + 1/3 | Same rule in `returns` |
 | A-017 | Share basis | filing date rule | `returns` needs the split table |
 
 ## Limits

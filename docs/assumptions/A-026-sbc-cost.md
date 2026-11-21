@@ -1,12 +1,13 @@
-# A-008: stock-based compensation is a cost of the automatic model
+# A-026: stock-based compensation is a cost of the automatic model
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
+Updated: 2026-11-21. Commit: 90ed737 (base).
+Model document: `docs/models/auto-path-model.md`.
 
 ## Choice
 SBC is a cash cost (`sbc_cost` on, `--rules sbc_cost=1`). The free cash flow is after SBC. The charge is the
-mean of `abs(sbc_total) / revenue` of the last 3 fiscal years (`HIST_RATIO`), constant over the horizon
-(a ramp of 2 years from the same start to the same target). With no value in 3 years the ratio is 0 and the
-model prints a warning. The share count is the latest count plus the dilution (`shares_latest`).
+mean of `abs(sbc_total) / revenue` of the last 3 fiscal years (`HIST_RATIO`). It is constant over the horizon.
+The start and the target of the ramp of 2 years are the same number. With no value in 3 years, the ratio is 0
+and the model prints a warning. The share count is the latest count plus the dilution (`shares_latest`).
 
 ## Where used
 | Model | File | Parameter name |

@@ -1,6 +1,7 @@
 # A-018: verdict bands over the chance that the price is too high
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
+Updated: 2026-11-21. Commit: 90ed737 (base).
+Model document: `docs/models/driver-and-classic-engines.md`.
 
 ## Choice
 `fa verdict` and the report take the share of simulated values per share below the market price

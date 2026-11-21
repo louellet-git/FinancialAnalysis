@@ -1,14 +1,15 @@
 # A-012: how old a price or a curve row may be
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
+Updated: 2026-11-21. Commit: 90ed737 (base).
+Model document: `docs/models/implied-and-attribute.md`.
 
 ## Choice
 Four limits on the age of a data point. Unit: days.
-- Past price of a model (`fa dcf implied --price-date`, `fa dcf attribute`): the last close on or
-  before the date, and at most 10 days older (`PRICE_GAP_DAYS` = 10). Older: no price, no value.
-- A close in the portfolio backtest: at most 10 days old (`STALE_DAYS` = 10). Older: the ticker is not bought.
-- `fa dcf attribute`: a GSW curve row more than 3 days older than its date is flagged (`CURVE_LAG_DAYS` = 3).
-- The portfolio strategies: a price for a held or a new ticker is at most 7 days old (`FRESH` = 7).
+- Past price (`fa dcf implied --price-date`, `fa dcf attribute`): the last close on or before the date.
+  It is at most 10 days older (`PRICE_GAP_DAYS` = 10). Older: no price, no value.
+- A close in the portfolio backtest is at most 10 days old (`STALE_DAYS` = 10). Older: the ticker is not bought.
+- `fa dcf attribute` flags a GSW curve row that is more than 3 days older than its date (`CURVE_LAG_DAYS` = 3).
+- The portfolio strategies: a price for a held or new ticker is at most 7 days old (`FRESH` = 7).
 
 ## Where used
 | Model | File | Parameter name |

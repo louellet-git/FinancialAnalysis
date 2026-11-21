@@ -1,11 +1,13 @@
 # A-011: cost of debt spread of the automatic model
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
+Updated: 2026-11-21. Commit: 90ed737 (base).
+Model document: `docs/models/auto-path-model.md`.
 
 ## Choice
 The cost of debt is the risk-free rate plus a spread of 1.50% (`kd_spread` = 1.50%), constant. The tax shield
 uses the statutory rate 21% (`statutory_tax`) when the effective rate is not stable. The cost of debt
-counts only through the equity weight E / (E + debt). The code limits that weight to 0.2 to 1.0 (a clamp; its source is not known). The cost of equity is CAPM (A-004, A-005, A-007).
+counts only through the equity weight E / (E + debt). The code limits that weight to 0.2 to 1.0 (a clamp).
+The source of the clamp is not known. The cost of equity is CAPM (A-022, A-023, A-025).
 
 ## Where used
 | Model | File | Parameter name |

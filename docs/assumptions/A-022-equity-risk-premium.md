@@ -1,11 +1,12 @@
-# A-004: equity risk premium of the automatic model
+# A-022: equity risk premium of the automatic model
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
+Updated: 2026-11-21. Commit: 90ed737 (base).
+Model document: `docs/models/auto-path-model.md`.
 
 ## Choice
 The equity risk premium (ERP) is drawn for each path. Mean: 4.41%. Standard deviation: 0.75%.
-Lower bound of the draw: 2% (`lo = min(mean, 0.02)`). The cost of equity is the risk-free rate (A-005)
-plus the beta (A-007) times the premium. Unit: a yearly rate.
+Lower bound of the draw: 2% (`lo = min(mean, 0.02)`). The cost of equity is the risk-free rate (A-023)
+plus the beta (A-025) times the premium. Unit: a yearly rate.
 The reviewed IBM model has its own value: mean 4.5%, std 0.75%, lower bound 2%
 (`analysis/IBM/driver_model.toml`, driver `erp`). That value does not change.
 The JNJ first pass has 4.20% (Damodaran, 1 October 2026; `analysis/JNJ/driver_model.toml`).
@@ -30,7 +31,7 @@ The code gives the source as "repo convention: Damodaran implied ERP, 4.41% in
 `analysis/ANT/driver_model_paths.toml` (2026-11-19)" (`auto.rs`, explain row "equity risk premium").
 The study `analysis/priors/dcf_conventions_study_2026-11-20.md` could not match the value
 4.41% to a Damodaran publication. It finds 4.23% on 1 January 2026 (his post of 23 January 2026).
-**So the value has no confirmed source.** The standard deviation 0.75% is the IBM review value:
+The stated source is "Damodaran implied ERP 4.41%, 2026-11-01" (`analysis/ANT/driver_model.toml:140`, `analysis/ANT/FIRST-PASS.md:57`). It is not confirmed. **So the value has no confirmed source.** The standard deviation 0.75% is the IBM review value:
 "spans the post-2008 implied-ERP range" (`analysis/IBM/DRIVER-REVIEW.md`, row `erp`). The study also
 says that the Damodaran premium assumes a growth after year 5 that equals the risk-free rate.
 The automatic model grows below that rate (A-001). The model then values an average company

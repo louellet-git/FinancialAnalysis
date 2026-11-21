@@ -1,6 +1,7 @@
 # A-021: conventions of the portfolio backtest for the value-rank strategies
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
+Updated: 2026-11-21. Commit: 90ed737 (base).
+Model document: `docs/models/value-rank-strategies.md`.
 
 ## Choice
 `fa portfolio backtest --strategy value-rank` (monthly or quarterly; `value-rank-weekly` is A-009):
@@ -29,10 +30,12 @@ Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
 | Another cost level | The harness prints the cost levels 0x, 1x and 2x |
 
 ## Why this choice
-The hypothesis file says "after a cost of 10 bp on each traded value" and the test period from 2018-01-01. The
-top quintile, 10 bp and 300 paths have no other source in a file read. The parameter table is in sample (fitted on
-all years through 2025): the out-of-sample window from 2023 is not clean for value-rank (`trading/hypotheses/README.md`).
-The runs before the share-basis rule (A-017) have a split look-ahead (A-009 header). Momentum is not in this area.
+The hypothesis file says "after a cost of 10 bp on each traded value". Its test period starts on 2018-01-01.
+The top quintile, 10 bp and 300 paths have no other source in a file that was read.
+The parameter table is in sample (fitted on all years through 2025). So the out-of-sample window from 2023
+is not clean for value-rank (`trading/hypotheses/README.md`).
+The runs before the share-basis rule (A-017) have a split look-ahead (A-009 header).
+Momentum is not in this area.
 
 ## Effect on the result
 The exploratory run of 2018 to 2026-11: +19.02% a year against +14.56% for the equal weight (pull request 104;

@@ -1,6 +1,7 @@
 # A-014: design of the point-in-time test and of the return test
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
+Updated: 2026-11-21. Commit: 90ed737 (base).
+Model document: `docs/models/pit-and-returns-tests.md`.
 
 ## Choice
 `fa dcf pit` (revenue and free cash flow bands):

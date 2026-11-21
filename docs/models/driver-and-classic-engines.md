@@ -1,6 +1,6 @@
 # Model: driver engine and classic engine (reviewed IBM model, scenarios, verdict)
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
+Updated: 2026-11-21. Commit: 90ed737 (base).
 
 Backtest: `fa backtest TICKER` (point-in-time vintages of the revenue and free cash flow projections). None applies to the value of one reviewed model, because one ticker gives no sample; the four-step review applies. The classic IBM version 3 is frozen.
 
@@ -43,10 +43,10 @@ The choices of the IBM driver model are the closed decisions of the IBM reviews,
 | Record | Name | Value | One line |
 |---|---|---|---|
 | A-018 | Verdict bands | 25 / 40 / 60 / 75% | Cutoffs 25% and 75% follow Morningstar (proposal); 40% and 60%: no source |
-| A-019 | Classic presets, IBM version 3 | see record | IBM v3 entries are on purpose (`HIDDEN-ASSUMPTIONS.md` #13) |
-| A-004 | Equity risk premium | 4.41% (auto); 4.5% (IBM) | IBM value from its review; the auto value has no confirmed source |
-| A-007 | Beta | 2/3 raw + 1/3 (auto); 0.85 fixed (IBM) | IBM 0.85: DRIVER-REVIEW, row `beta` |
-| A-008 | SBC is a cost | on | IBM review F5 |
+| A-019 | Classic presets, IBM version 3 | bear / base / bull: growth 1 / 4 / 6%, WACC 9.5 / 8.5 / 8%, terminal 1.5 / 2.5 / 3% | IBM v3 entries (base 2.15% / 7.5% / 2.25%) are on purpose (`HIDDEN-ASSUMPTIONS.md` #13) |
+| A-022 | Equity risk premium | 4.41% (auto); 4.5% (IBM) | IBM value from its review; the auto value has no confirmed source |
+| A-025 | Beta | 2/3 raw + 1/3 (auto); 0.85 fixed (IBM) | IBM 0.85: DRIVER-REVIEW, row `beta` |
+| A-026 | SBC is a cost | on | IBM review F5 |
 | A-011 | Cost of debt spread | 1.50% (auto); -0.10% (IBM) | IBM: fair value of the debt ladder |
 
 ## Limits

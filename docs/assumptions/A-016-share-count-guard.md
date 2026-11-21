@@ -1,6 +1,7 @@
 # A-016: guard of the share count in the market value of a list
 
-Updated: 2026-11-21. Commit: 90ed737 (base of the branch).
+Updated: 2026-11-21. Commit: 90ed737 (base).
+Model document: `docs/models/share-basis.md`.
 
 ## Choice
 `fa dcf attribute` weights a list by the market value at D1 = price x shares. The share count is guarded
@@ -17,7 +18,7 @@ The strategy `value-rank-weekly` uses the same band 0.01x to 100x as a data chec
 | Model | File | Parameter name |
 |---|---|---|
 | Attribution of a list | `rust/src/dcf/auto_attribute.rs` | `SHARES_RATIO` (0.5, 2.0), `SHARES_SCALE` (0.01, 100.0), `guarded_shares` |
-| Weekly trade rule | `docs/assumptions/A-009-weekly-trade-rule.md` | data check, item 5 |
+| Weekly trade rule | `rust/src/portfolio/strategies.rs` | the same band as a data check (A-009, item 5) |
 
 ## Alternatives considered
 | Alternative | Why not chosen |
@@ -36,5 +37,5 @@ No sensitivity number is known. The guard changes the weight of a ticker in the 
 Not known by name. Code of `fa dcf attribute` (ticket `T-20261120-valuation-move-attribution`, 2026-11-20).
 
 ## When to examine it again
-When the table of share classes exists (ticket on the board: shares by class). When a flagged ticker
+When the table of share classes exists (shares by class). When a flagged ticker
 is a true count that the guard replaced.
