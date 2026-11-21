@@ -45,6 +45,10 @@ struct RawVariable {
     core: bool,
     #[serde(default)]
     memo: bool,
+    #[serde(default)]
+    unclassified_only: Vec<String>,
+    #[serde(default)]
+    scoped_min_assets_share: f64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -109,6 +113,12 @@ pub struct Variable {
     pub negate: bool,
     pub core: bool,
     pub memo: bool,
+    /// Tags (a subset of `tags`) that give a value only if the filer has no current-assets
+    /// total (an unclassified balance sheet: a fund or a mortgage REIT).
+    pub unclassified_only: Vec<String>,
+    /// The scoped tags give a value only if it is at least this share of total assets (0: no test).
+    /// An equity REIT has a small interest income on a classified-looking balance sheet.
+    pub scoped_min_assets_share: f64,
 }
 
 #[derive(Debug, Clone)]
@@ -207,6 +217,12 @@ impl Registry {
                 canonical.insert(full.clone());
                 tags.push(tag(full)?);
             }
+            if let Some(bad) = v.unclassified_only.iter().find(|t| !v.tags.contains(t)) {
+                return Err(format!("{}: unclassified_only tag '{bad}' is not in the tags", v.name));
+            }
+            if !(0.0..=1.0).contains(&v.scoped_min_assets_share) {
+                return Err(format!("{}: scoped_min_assets_share must be from 0 to 1", v.name));
+            }
             let mut formulas = Vec::new();
             for text in &v.formulas {
                 let formula = parse_formula(text, &index, &v.name)?;
@@ -233,6 +249,8 @@ impl Registry {
                 negate: v.negate,
                 core: v.core,
                 memo: v.memo,
+                unclassified_only: v.unclassified_only.clone(),
+                scoped_min_assets_share: v.scoped_min_assets_share,
             });
         }
 
@@ -375,6 +393,14 @@ tags = ["us-gaap/C"]
         assert!(tags("long_term_debt_total").contains(&"us-gaap/LongTermDebt"));
         assert_eq!(v("remaining_performance_obligation").statement, "disclosure");
         assert_eq!(tags("remaining_performance_obligation"), ["us-gaap/RevenueRemainingPerformanceObligation"]);
+        // The last tag of short_term_investments (NVDA: 10-Q rows only) and the second business-purchase line.
+        assert_eq!(tags("short_term_investments").last(), Some(&"us-gaap/DebtSecuritiesCurrent"));
+        assert_eq!(tags("acquisitions_net_of_cash_second"), ["us-gaap/PaymentsToAcquireBusinessTwoNetOfCashAcquired"]);
+        let investing = r.rollups.iter().find(|x| x.name == "investing_cash_flow").expect("investing rollup");
+        assert!(investing.parts.contains(&r.var("acquisitions_net_of_cash_second")));
+        // Tags with the scope of a fund or a mortgage REIT.
+        assert_eq!(v("investment_income_operating").unclassified_only.len(), 2);
+        assert!(!v("investment_income_operating").unclassified_only.iter().any(|t| t.ends_with("GrossInvestmentIncomeOperating")));
         assert!(!r.within.is_empty());
         assert!(r.excluded.iter().all(|(_, reason)| !reason.is_empty()));
         for rollup in &r.rollups {
@@ -398,6 +424,21 @@ tags = ["us-gaap/C"]
         let text = MINI.replace("us-gaap/C", "us-gaap/A");
         let error = Registry::load(&text).unwrap_err();
         assert!(error.contains("us-gaap/A"), "{error}");
+    }
+
+    #[test]
+    fn scoped_tag_that_is_not_in_the_tags_does_not_load() {
+        let text = MINI.replace("tags = [\"us-gaap/C\"]", "tags = [\"us-gaap/C\"]\nunclassified_only = [\"us-gaap/Z\"]");
+        assert_ne!(text, MINI);
+        let error = Registry::load(&text).unwrap_err();
+        assert!(error.contains("us-gaap/Z") && error.contains("unclassified_only"), "{error}");
+    }
+
+    #[test]
+    fn scoped_share_outside_zero_to_one_does_not_load() {
+        let text = MINI.replace("tags = [\"us-gaap/C\"]", "tags = [\"us-gaap/C\"]\nscoped_min_assets_share = 1.5");
+        let error = Registry::load(&text).unwrap_err();
+        assert!(error.contains("scoped_min_assets_share"), "{error}");
     }
 
     #[test]

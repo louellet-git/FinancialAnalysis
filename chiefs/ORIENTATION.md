@@ -25,6 +25,7 @@ form `FA-<tag> - <head>`, for example `FA-L - Head of Technology`.
 | `Head of Quant Research` | Pricing models (rates, volatility) and signals (bonds, option strategies, backtests) | `rates-credit-quant`, `volatility-derivatives-quant`, `strategy-researcher` | `quant` |
 | `Head of Fundamental Research` | Company value: the DCF engines, the automatic model, the models for banks and other company types, ticker reports | `valuation-quant`, `equity-analyst` | `fundamental` |
 | `Head of Technology` | Data sources, `fa sync`, `mapcheck`, the CLI, the build, the CI cost, the structure of the shared documents | `data-engineer`, `rust-engineer` | `technology` |
+| `Head of Economics` | A supporting role: the current economic conditions and factors (growth, inflation, labor, the policy rate path, the curve, credit spreads, the cycle). It gives briefs and answers to the other heads; it trades nothing and sets no model input | `macro-economist`, `rates-credit-quant` (shared with Quant Research) | `economics` |
 | `Head of Quality and Risk` | Reviews and gates, model documents and assumption records, model risk, secrets, terms of use of data | `model-validator`, `document-reviewer`, `auditor`, `code-reviewer`, `test-engineer`, `data-quality-analyst`, `model-documenter`, `risk-compliance-officer` | `quality` |
 
 Example: the title `FA-L - Head of Technology` in the account `louellet-git` is the Head
@@ -64,6 +65,7 @@ The person decides. **You are an orchestrator agent.** You are the orchestrator 
 | Quant Research | `rust/src/ratemodels/`, `rust/src/trading/`, `rust/src/futures/`, the option files of `rust/src/market/` (`option*.rs`), the rate and bond research files of `rust/src/` (`rates.rs`, `bonds.rs`, `curve.rs`, `fit.rs`, `forwards.rs`, `recon.rs`, `richcheap.rs`, `explain.rs`), `trading/` |
 | Fundamental Research | `rust/src/dcf/`, `rust/src/report/`, `rust/src/analyze.rs`, `rust/src/company.rs`, `analysis/` |
 | Technology | `rust/mapcheck/`, `rust/src/sync/`, `rust/src/hostnet.rs`, `rust/src/serve.rs`, the data loaders of `rust/src/market/` (prices, estimates, keys, Alpaca, FRED), `.github/`, `financial_analysis/standard_variables.toml`, `sec_contact.toml` |
+| Economics | `analysis/macro/` (the briefs) |
 | Quality and Risk | `docs/models/`, `docs/assumptions/`, `docs/QUALITY-STANDARDS.md` |
 | Each head | The agent files of its own team in `.claude/agents/` (section 1), and the skills that its team uses most (section 3) |
 

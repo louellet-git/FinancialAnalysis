@@ -92,6 +92,39 @@ impl CompanyFacts {
     pub fn has_us_gaap(&self) -> bool {
         self.facts.contains_key("us-gaap")
     }
+
+    /// The filing dates (text, YYYY-MM-DD) of all facts that come from an annual form (10-K, 10-K/A), oldest first.
+    pub fn annual_filing_dates(&self) -> Vec<String> {
+        let mut set = std::collections::BTreeSet::new();
+        for c in self.facts.values().flat_map(|ns| ns.values()) {
+            for f in c.units.values().flatten() {
+                if Forms::Annual.has(f.form.as_deref()) {
+                    if let Some(d) = f.filed.as_deref().and_then(|d| d.get(..10)) {
+                        set.insert(d.to_string());
+                    }
+                }
+            }
+        }
+        set.into_iter().collect()
+    }
+
+    /// The facts as they were on `cutoff` (YYYY-MM-DD): only the facts filed on that day or before. A fact with no filing
+    /// date is dropped (it cannot be shown to be known). A later filing that restates a value is not in the copy.
+    pub fn filed_up_to(&self, cutoff: &str) -> CompanyFacts {
+        let keep = |f: &Fact| f.filed.as_deref().and_then(|d| d.get(..10)).is_some_and(|d| d <= cutoff);
+        let facts = self
+            .facts
+            .iter()
+            .map(|(ns, m)| {
+                let m = m
+                    .iter()
+                    .map(|(name, c)| (name.clone(), Concept { units: c.units.iter().map(|(u, v)| (u.clone(), v.iter().filter(|f| keep(f)).cloned().collect())).collect() }))
+                    .collect();
+                (ns.clone(), m)
+            })
+            .collect();
+        CompanyFacts { cik: self.cik.clone(), entity_name: self.entity_name.clone(), facts }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -360,5 +393,45 @@ mod tests {
         let anchors = vec![Tag { full: "us-gaap/Revenues".into(), namespace: "us-gaap".into(), name: "Revenues".into() }];
         assert_eq!(period_ends(&facts, &anchors, Forms::Annual, None), vec!["2022-12-31", "2023-12-31", "2024-12-31"]);
         assert_eq!(period_ends(&facts, &anchors, Forms::Annual, Some(2)), vec!["2023-12-31", "2024-12-31"]);
+    }
+
+    #[test]
+    fn filed_up_to_drops_the_later_filing_and_the_fact_with_no_date() {
+        let mut undated = fact(Some("2022-01-01"), "2022-12-31", 7.0, "10-K", "");
+        undated.filed = None;
+        let facts = company(vec![(
+            "Revenues",
+            vec![
+                fact(Some("2022-01-01"), "2022-12-31", 100.0, "10-K", "2023-02-20"),
+                fact(Some("2022-01-01"), "2022-12-31", 900.0, "10-K/A", "2024-03-01"),
+                fact(Some("2022-01-01"), "2022-12-31", 50.0, "10-Q", "2023-05-01"),
+                undated,
+            ],
+        )]);
+        assert_eq!(facts.annual_filing_dates(), vec!["2023-02-20", "2024-03-01"]);
+        let tag = Tag { full: "us-gaap/Revenues".into(), namespace: "us-gaap".into(), name: "Revenues".into() };
+        let cut = facts.filed_up_to("2023-12-31");
+        let vals: Vec<f64> = cut.entries(&tag, "USD").iter().filter_map(|f| f.val).collect();
+        assert_eq!(vals, vec![100.0, 50.0]);
+        assert_eq!(select_annual(cut.entries(&tag, "USD"), "2022-12-31").unwrap().value, 100.0);
+        assert_eq!(select_annual(facts.entries(&tag, "USD"), "2022-12-31").unwrap().value, 900.0);
+    }
+
+    #[test]
+    fn filed_up_to_keeps_the_value_that_was_public_and_counts_the_day_of_the_filing() {
+        let facts = company(vec![(
+            "Revenues",
+            vec![
+                fact(Some("2023-01-01"), "2023-12-31", 90.0, "10-K", "2024-02-01"),
+                fact(Some("2024-01-01"), "2024-12-31", 100.0, "10-K", "2025-02-01"),
+                // a restatement of 2023 in the filing of 2025
+                fact(Some("2023-01-01"), "2023-12-31", 91.0, "10-K", "2025-02-01"),
+            ],
+        )]);
+        let tag = Tag { full: "us-gaap/Revenues".into(), namespace: "us-gaap".into(), name: "Revenues".into() };
+        let left: Vec<f64> = facts.filed_up_to("2025-01-31").entries(&tag, "USD").iter().filter_map(|f| f.val).collect();
+        assert_eq!(left, vec![90.0]);
+        assert_eq!(facts.filed_up_to("2024-02-01").entries(&tag, "USD").len(), 1);
+        assert!(facts.filed_up_to("2024-01-31").entries(&tag, "USD").is_empty());
     }
 }

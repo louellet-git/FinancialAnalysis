@@ -29,7 +29,7 @@ Free text.
 | `area` | `engine`, `importer`, `trading`, `docs`, `planning`, or `ticker:<TICKER>`, or `ask` (a question or a permission request for the person; `chiefs/ORIENTATION.md`, section 5). |
 | `status` | `backlog`, `in-progress`, `review`, or `done`. |
 | `owner` | A GitHub login. |
-| `head` | The head that is responsible for the ticket: `quant`, `fundamental`, `technology` or `quality` (`chiefs/ORIENTATION.md`). `owner` means that only a person can do the work. Each ticket has this field. |
+| `head` | The head that is responsible for the ticket: `quant`, `fundamental`, `technology`, `economics` or `quality` (`chiefs/ORIENTATION.md`). `owner` means that only a person can do the work. Each ticket has this field. |
 | `order` | The position of the ticket in the queue of its head. The lowest number is first. A person can change it. |
 | `requested_by` | The GitHub login of the person who asked for the work. A head offers only the tickets of its own person (`chiefs/ORIENTATION.md`, section 4). No field means `louellet-git`. |
 | `branch` | The git branch. Necessary when the status is `in-progress` or `review`. |

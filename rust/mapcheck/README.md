@@ -209,12 +209,13 @@ or incorrect; read the printed lines. Facts with two or more segment members are
 used. The standard variables use the filing values only for a critical input that has
 no value (see "Values from the 10-K").
 
-## Results (2026-11-19)
+## Results (2026-11-20)
 
 | Set | Companies | PASS | WARN | FAIL | N/A | ERROR |
 |---|---|---|---|---|---|---|
 | `universe/sp500.txt` (the S&P 500 members) | 503 | 68 | 433 | 0 | 2 | 0 |
-| `universe/next500.txt` (the 500 companies after them in the SEC list) | 500 | 20 | 457 | 7 | 16 | 0 |
+| `universe/next500.txt` (the 500 companies after them in the SEC list) | 500 | 20 | 459 | 5 | 16 | 0 |
+| `universe/next1000.txt` (the 1,000 companies after the first two lists) | 1000 | 42 | 840 | 30 | 88 | 0 |
 | `universe/panel32.txt` (used to build the registry) | 32 | 7 | 25 | 0 | 0 | 0 |
 | `universe/batch50.txt` (the first 50 new tickers) | 50 | 6 | 44 | 0 | 0 | 0 |
 | `universe/top500.txt` (the first 500 companies of the SEC list; 472 have data) | 472 | 49 | 310 | 0 | 54 | 59 |
@@ -227,15 +228,47 @@ has no capex line.
 
 Next 500: 37 companies get a critical input from the 10-K. The 16 `N/A`: 10 new
 companies, 5 companies with no revenue, 1 company that reports in Canadian dollars.
-The 7 `FAIL`, each with its cause:
+The 7 `FAIL` of 2026-11-19, each with its cause (5 stay `FAIL`):
 
 | Ticker | Finding | Cause |
 |---|---|---|
 | BWXT | `exceeds_total` | Error of the filer: the lease liability is tagged 1,000 times too large in three 10-Ks. |
 | PRAX, CYTK | `exceeds_total` | The filer uses the tag for cash and short-term investments for a total that includes long-term securities. |
-| NLY, AGNC | `core_missing_critical` | Mortgage REITs: no tag for a revenue total. A free-cash-flow DCF does not fit these companies. |
+| NLY, AGNC | (closed on 2026-11-20) | Mortgage REITs: the top line is the interest income. The registry has it as `investment_income_operating` (tag `InterestIncomeOperating`). Both are now `WARN` with the type `fund`. |
 | FWONA | `core_missing_critical` | A tracking stock: the share count has two segment members (group and share class). |
 | FPS | `core_missing_critical` | First 10-K after the public offering: the share count covers only a part of the fiscal year. |
+
+Next 1,000 (the SEC list of 2026-11-20, `mapcheck fetch --top 2600`: 2,467 tickers have
+company facts; the list leaves out 238 with no us-gaap data and 183 foreign filers):
+30 `FAIL` (28 with the standard template of 736, 3.8%), after the 10-K files of the 95
+companies with a gap (`fetch --filings --gaps`). Before these files: 78 `FAIL`. The causes:
+
+| Finding | Tickers | Cause |
+|---|---|---|
+| `core_missing_critical`: share count | LGN, VSNT, WBI, IMKTA | A new listing or spin-off (the first annual period is a stub), or only share-class members (IMKTA). |
+| `core_missing_critical`: capex | HASI, CRCT, KRSA, DMLP | The 10-K has no capex tag in the last year (HASI buys real estate and finance receivables). |
+| `core_missing_critical`: revenue | ARR, ENHA, FRNM, FRMI | A mortgage REIT with the tag for interest income on debt securities only; blank-check companies; a company with no revenue. |
+| `core_missing_critical`: other | KN, CNK, AB, PVLA | KN: no cash-flow value for the last year in the company facts. CNK: a combined filing of two registrants (all values have a legal-entity member). AB: a holding LP with income from an equity-method investment only. |
+| `exceeds_total` | HTFL, ZBIO, AGIO, KMTS, ORA, RUN, OPK, NBR | A filer tag that is larger than its total (the same cause as PRAX and CYTK, or an error of the filer). |
+| `no_annual_period` | SKT, XXI, AGLT | No fiscal year with an anchor fact in a 10-K. |
+| `sign`, `quarters_exceed_year` | AAMI, CLMT, FBNC | A negative share-based compensation value; a quarter sum larger than the year. |
+
+The tag for interest income on debt securities (`InterestIncomeDebtSecuritiesOperating`)
+is not in the registry as a revenue tag: a biotech with no revenue (BHVN) has it, and it
+would make the revenue of that company interest income.
+
+Standard template, FAIL share on 2026-11-20: S&P 500 0 of 432, next 500 5 of 406, next 1,000
+28 of 736, together 33 of 1,574 (2.1%; the base before this ticket: 37 of 1,578). The acceptance
+value (below 3%) is met for the 2,003 tickers together, not for the next 1,000 alone (3.8%).
+
+The two interest-income tags of `investment_income_operating` have a scope (registry keys
+`unclassified_only` and `scoped_min_assets_share`): they give a value only for a filer that has no
+current-assets total in any period, and with a value of 1% or more of total assets (a quarter:
+0.25%; a total assets of 0 or less, or none, counts as unknown: no share test). Before this scope,
+120 revenue rows (60 periods for each ticker) of 13 companies with another business had interest
+income as revenue (AGCO, APTV, ARE, ASTS, AVLN, DJT, DNTH, IMNM, LSTR, NGVT, PLSE, RARE, UMH). The
+FAIL counts did not change. Known limit: UMH FY2010 (2.817M, 1.49% of total assets) still has it;
+see `docs/traps/2026-11-21-interest-income-revenue-share-limit.md`.
 
 A `WARN` is not an error of the mapping. The most frequent warnings: more than 10% of a
 rollup total has no variable (`unmapped_lines`), an earlier fiscal year has a `FAIL`
