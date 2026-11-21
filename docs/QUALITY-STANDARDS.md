@@ -63,6 +63,7 @@ a row in the ledger of your own folder; no `data/`, `.env` or secret in the comm
 | Model change | The reason does not use the price. Fixed-answer tests pass. The IBM numbers are the same: $83.84 / $151.84 / $258.03 (`fa dcf drivers IBM`, seed 7). The model document and the assumption records are current. |
 | Investigation | One findings file (skill `investigation-report`). Each number was calculated again by the auditor. |
 | Valuation report | The four steps of `CLAUDE.md` were done in order (skill `valuation-report-review`). Luc approved a new ticker. |
+| Backtest (owner word, 2026-11-21: "Backtesting is integral to our work here") | A strategy or a trade rule has a point-in-time backtest before it is merged or used for a trade. A model change that moves a value has one too, or its record says why none applies. The test is written before its run and gives the variant count. Its parameter table is cut before its start. It passes a truncation test. |
 | Trade recommendation | Less than 3 pages (owner word, 2026-11-21). It rests on a value that passed the four steps of a valuation report. Its trade fields follow the form in `trading/journal/README.md`. The journal write-up of the trade (row below) stays a separate file of at most 2 pages. |
 | Trade (paper or live) | A write-up of at most 2 pages in `trading/journal/` (form in its `README.md`): the logic, the trade, the steps taken, the risks; the result after the close. |
 | Document | The text is about 85% STE (`CLAUDE.md`, "Language"). Each command and path exists. Each number has a source. |
