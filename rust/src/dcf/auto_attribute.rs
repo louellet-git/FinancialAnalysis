@@ -537,19 +537,32 @@ pub fn mark_stale(rows: &mut [AttrRow], closes: &dyn Fn(&str) -> Option<Vec<(Str
     let mut n = 0;
     for r in rows.iter_mut() {
         let Some(s) = closes(&r.ticker) else { continue };
-        let mut notes = Vec::new();
-        for (d, want) in [(d1, &r1), (d2, &r2)] {
-            if let (Some(own), Some(want)) = (close_date(&s, d), want) {
-                if own < *want {
-                    notes.push(format!("close of {own} for {d} (SPY {want})"));
-                }
-            }
-        }
+        let notes: Vec<String> = [(d1, &r1), (d2, &r2)].into_iter().filter_map(|(d, want)| stale_note(&s, d, want.as_deref())).collect();
         if !notes.is_empty() {
             r.stale = Some(notes.join("; "));
             n += 1;
         }
     }
+    n
+}
+
+/// A close series: `(date, close)`.
+pub type CloseSeries = Vec<(String, f64)>;
+
+/// The text of the stale close of one series at one date, or `None`: the close that `close_on_or_before` takes is older
+/// than the close of SPY (`want`, its date) for the same date. The one rule of `mark_stale` and of `fa dcf premium-series`.
+pub fn stale_note(series: &[(String, f64)], date: &str, want: Option<&str>) -> Option<String> {
+    let (own, want) = (close_date(series, date)?, want?);
+    (own.as_str() < want).then(|| format!("close of {own} for {date} (SPY {want})"))
+}
+
+/// After `attribute_list`: a stale close takes the row out of the sums, then the one-weight rule runs again.
+pub fn finish_weights(rows: &mut [AttrRow], closes: &dyn Fn(&str) -> Option<CloseSeries>, d1: &str, d2: &str) -> usize {
+    for r in rows.iter_mut() {
+        r.weight_of = None;
+    }
+    let n = mark_stale(rows, closes, d1, d2);
+    one_weight_for_one_company(rows);
     n
 }
 
@@ -1289,11 +1302,7 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     let t1 = Instant::now();
     let mut rows = attribute_list(&inputs1, &inputs2, &market1_of, &market2_of, &groups, &cfg, jobs)?;
     // a close older than the SPY close of the same date takes the row out of the sums; the one-weight rule runs again after it
-    for r in rows.iter_mut() {
-        r.weight_of = None;
-    }
-    mark_stale(&mut rows, &|t: &str| super::auto::price_series(&cache, t), &d1, &d2);
-    one_weight_for_one_company(&mut rows);
+    finish_weights(&mut rows, &|t: &str| super::auto::price_series(&cache, t), &d1, &d2);
     let attr_s = t1.elapsed().as_secs_f64();
     if let Some(path) = o.get("--out") {
         std::fs::write(path, csv_text(&rows)).map_err(|x| DcfError(format!("{path}: {x}")))?;

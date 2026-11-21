@@ -360,6 +360,24 @@ struct Base<'a> {
     base: Result<(Point, Summary), Failure>,
 }
 
+/// The value at the means of each ticker (stage 1 of `implied_models`).
+fn bases_of<'a>(inputs: &'a [AutoInputs], market_of: &(dyn Fn(&str) -> Market + Sync), cfg: &ImpliedConfig) -> Vec<Base<'a>> {
+    inputs
+        .par_iter()
+        .map(|inp| {
+            let market = market_of(&inp.ticker);
+            let base = point(inp, cfg.table, cfg.fade, &market, &cfg.rules);
+            Base { inp, market, base }
+        })
+        .collect()
+}
+
+/// The premium that the whole list implies, with no search for each ticker (stages 1 and 3 of `implied_models`: the same
+/// functions, so the same number). The rayon pool of the caller runs it. A market-implied value is a measurement.
+pub fn list_premium(inputs: &[AutoInputs], market_of: &(dyn Fn(&str) -> Market + Sync), cfg: &ImpliedConfig) -> R<Option<MarketPremium>> {
+    market_premium(&bases_of(inputs, market_of, cfg), cfg)
+}
+
 /// The rows for a list of company inputs. `market_of` gives the market inputs of a ticker. Each ticker runs on one thread
 /// (the median over the list is a sorted list), so the result does not depend on the number of threads.
 pub fn implied_models(
@@ -372,14 +390,7 @@ pub fn implied_models(
     let run = || -> R<(Vec<ImpliedRow>, Option<MarketPremium>, ImpliedTiming)> {
         // stage 1: the value at the means
         let t0 = Instant::now();
-        let bases: Vec<Base> = inputs
-            .par_iter()
-            .map(|inp| {
-                let market = market_of(&inp.ticker);
-                let base = point(inp, cfg.table, cfg.fade, &market, &cfg.rules);
-                Base { inp, market, base }
-            })
-            .collect();
+        let bases = bases_of(inputs, market_of, cfg);
         let model_s = t0.elapsed().as_secs_f64();
         // stage 2: the three searches of each ticker with a price
         let t1 = Instant::now();
