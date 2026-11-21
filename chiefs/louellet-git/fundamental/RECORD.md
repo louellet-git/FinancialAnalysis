@@ -38,3 +38,7 @@ Done: ticket `T-20261121-dcf-engine-backtest` (order 0.05); first runs of `fa po
 ## 2026-11-21 03:16 UTC (relayed by the Head of Quality and Risk)
 Words: "I need the report to be a trade recommendation, based on fundamentals. Trade recommendations should be sub 3 pages."
 Done: `analysis/NVDA/TRADE-RECOMMENDATION.md` (no trade), branch `claude/nvda-valuation` caa0082, in the gate.
+
+## 2026-11-21 03:47 UTC (chat)
+Words: "And every week you will need to propose 3 trades to begin on the live trader, beginning next Friday. A valuation engine will be required. Potentially a hedging engine when and if that's needed."
+Done: ticket `T-20261121-weekly-trade-proposals` (first Friday 2026-11-27); questions to the Head of Quality and Risk (the gate and the sleeve limits) and the Head of Technology (the live trader).
