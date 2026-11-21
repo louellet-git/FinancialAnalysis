@@ -97,3 +97,4 @@
 | split table conditions check | 2026-11-21 | `claude/split-table` (bab65c0), store 58e54a2: head check; PNFP, IDT, CORE dropped; PASS-WITH-NOTES; PR may open | small (head only) | reruns may start on 58e54a2 |
 | strategy gate cycle 2 | 2026-11-21 | `claude/split-basis-fix` (ecb1081, 6477145), store 58e54a2: model-validator PASS-WITH-NOTES; the negative result reproduces to the digit; robust to the exclusions and the split table; the SPY look-ahead was a false alarm (520-row rule) | about 170k (measured) | no weekly proposal uses A-009 |
 | portfolio branch code gate started | 2026-11-21 | `claude/split-basis-fix` (d3f9018, base 8d5ba57), rust/ only: code-reviewer | running | |
+| portfolio branch code gate | 2026-11-21 | `claude/split-basis-fix` (d3f9018): code-reviewer REVISE (2 MAJ: no test of the 1/39 weight and the Pick dispatch; no test of the `to` wiring) | about 150k (measured) | head checks the fix |
