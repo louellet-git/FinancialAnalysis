@@ -52,8 +52,9 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
   a smaller window as a saving. Only a real test, designed first, can change this. The automatic compaction
   and the dream pass rule stay as they are.
 - Skills are almost not used: no action until some days of usage data exist.
-- Week study (E2.S1), owner word: first ONE page for the S&P 10 (does the explanation hold for each stock;
-  which was hit more, which less). It comes to me, then to the person. The S&P 100 part and the other work
-  wait for the review of the person.
+- Week study (E2.S1), owner words: three pieces, to me first, then to the person (also (3) the chip sector
+  of the S&P 500, a page or a half: did it fall as expected):
+  (1) the week and each stock, with the section of Economics (the market's reason for the chip fall of
+  11-20, tested, and the view after); (2) the valuation split, actual against implied. Read both against
+  `owner-report-style.md`. The S&P 100 part waits for his review.
 - E1 (stock trades) is on hold: "No trades until T1 passes". PR 131 waits for the live run of 2026-11-23.
-- Say once at their next done message: Quant and Technology had tickets on a branch only, not on main.
