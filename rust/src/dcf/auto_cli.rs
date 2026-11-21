@@ -674,8 +674,8 @@ pub fn map_inputs(cache: &Path, tickers: &[String], as_of_day: i64, jobs: Option
 }
 
 /// Like `map_inputs`, but the company facts are the facts that were public on `as_of` (`mapcheck::run::check_ticker_filed`:
-/// a fact is kept when its filing date is `as_of` or earlier). The 10-K of the cache is NOT used to fill a missing input (it
-/// can be a later filing). `fa dcf auto --as-of` and `fa dcf screen --as-of` do not filter the facts: they use `map_inputs`.
+/// a fact is kept when its filing date is `as_of` or earlier). The 10-K of the cache fills a missing input only if its filing
+/// date (from the facts that carry its accession) is `as_of` or earlier. `fa dcf auto --as-of` and `fa dcf screen --as-of` do not filter the facts: they use `map_inputs`.
 pub fn map_inputs_pit(cache: &Path, tickers: &[String], as_of: &str, as_of_day: i64, jobs: Option<usize>) -> R<(Vec<AutoInputs>, f64)> {
     map_inputs_with(cache, tickers, as_of_day, Some(as_of), jobs)
 }

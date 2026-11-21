@@ -67,7 +67,7 @@ fa dcf attribute [--tickers-file FILE | TICKER ...] --from D1 --to D2 [OPTIONS]
     residual  the part that the exact searches do not leave (zero when both searches are exact)
   and the same with rates and plug in the reverse order (the range of the two orders is the order effect). A third line
   gives the growth shift that P2 needs at the premium of D1. The facts of each date are the facts that were public on it;
-  the 10-K of the cache does not fill a missing input. The price is the last close on or before the date (not more than
+  the 10-K of the cache fills a missing input only if its filing date is on or before the date. The price is the last close on or before the date (not more than
   10 days older); the curve is the last GSW row on or before the date (a curve more than 3 days older is flagged).
   One ticker: one table. A list: one CSV row for each ticker, the medians by size and sector, then the change of the WHOLE
   list (value-weighted by price x shares at D1, with a guard on the share count), the sum on the set that has both views,
