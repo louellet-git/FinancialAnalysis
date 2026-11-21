@@ -209,6 +209,8 @@ Given by the Head of Fundamental Research.
 - **Secondary family of the engine (Holm, m = 5, family-wise 0.05, one-sided):** erp_implied with
   L = 1%; with L = 3%; with N = 5; with N = 20; and erp_gordon = D_known_real(1 + L)/P + L - rr with L = 2%.
   The same statistic, bootstrap and sample as the primary test.
+- **Two families:** the P1 family (m = 6) and the engine family (m = 5) are corrected separately. The headline
+  of each is its primary test (P1; the engine premium at L = 2%, N = 10), not the best of the eleven tests.
 - **Disclosure (the words of the Head of Fundamental Research):** "Before the scoring, the engine ran three
   times: before the pre-1936 lag fix, after it, and after the C2 CPI change (a6c0175). Only the decade
   medians and the P10 / P90 of erp_implied were seen. No later return was computed, and nothing was scored."
