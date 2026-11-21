@@ -25,3 +25,6 @@ Decisions for the owner before the start:
 
 Entry condition for a strategy: it passed `T-20261120-portfolio-backtest` and a review. The option bots also
 need `T-20261119-options-paper-test` (live quotes against model prices) first.
+
+Owner word, 2026-11-20: each paper trade, and later each live trade, has a write-up of at most 2 pages
+that explains the logic of the trade and the steps taken (`trading/journal/README.md`).

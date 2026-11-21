@@ -680,6 +680,57 @@ fn opt<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
     args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).map(String::as_str)
 }
 
+/// The companies, the parameter table and the fade cells of one point-in-time test (they do not depend on the rules).
+pub struct PitSetup {
+    pub companies: Vec<(String, Vec<YearData>)>,
+    pub table: ProcessTable,
+    pub fade: Vec<FadeCell>,
+    pub label: String,
+    pub cut: Option<i32>,
+}
+
+/// Load the companies of the standard template and the table (`cut`: estimated again from the years up to `cut`). `only`: keep these tickers. `half`: one half of the tickers (`ticker_half`).
+pub fn pit_setup(cache: &Path, table_file: &Path, cut: Option<i32>, limit: Option<usize>, only: Option<&[String]>, half: Option<u64>) -> R<PitSetup> {
+    let registry = Registry::embedded().map_err(DcfError)?;
+    let mut tickers = super::panel::cache_tickers(cache).map_err(DcfError)?;
+    if let Some(o) = only {
+        tickers.retain(|t| o.contains(t));
+    }
+    if let Some(l) = limit {
+        tickers.truncate(l);
+    }
+    let companies: Vec<(String, Vec<YearData>)> = tickers
+        .par_iter()
+        .filter_map(|t| load_company_years(&registry, cache, t).filter(|(tpl, _)| tpl == "standard").map(|(_, y)| (t.clone(), y)))
+        .filter(|(t, _)| half.is_none_or(|h| ticker_half(t) == h))
+        .collect();
+    let (table, fade, label) = match cut {
+        None => {
+            let (t, f) = load_table(table_file)?;
+            (t, f, format!("IN SAMPLE: parameter table {} (estimated on all years)", table_file.display()))
+        }
+        Some(y) => {
+            let panel = build_panel(cache, None).map_err(DcfError)?;
+            let trunc: Vec<CompanyPanel> = panel
+                .companies
+                .iter()
+                .map(|c| CompanyPanel { rows: c.rows.iter().filter(|r| r.year <= y).cloned().collect(), ..c.clone() })
+                .filter(|c| !c.rows.is_empty())
+                .collect();
+            let cells = estimate_table(&trunc, 2);
+            let fade = fade_cells(&trunc, &cells);
+            let meta = TableMeta { date: String::new(), command: format!("estimated from the years up to {y}"), companies: trunc.len(), company_years: 0, growth_observations: 0, note: String::new() };
+            (ProcessTable { meta, cell: cells }, fade, format!("OUT OF SAMPLE: parameter table estimated from the years up to {y}; base years {y} and later"))
+        }
+    };
+    Ok(PitSetup { companies, table, fade, label, cut })
+}
+
+/// The observations of the test for one set of rules.
+pub fn pit_observations(setup: &PitSetup, paths: usize, seed: u64, rules: &Rules) -> Vec<PitObs> {
+    setup.companies.par_iter().flat_map(|(t, years)| company_observations(t, years, &setup.table, &setup.fade, &PitParams { rules, paths, seed, min_year: setup.cut })).collect()
+}
+
 /// `fa dcf pit`. Returns the exit code.
 pub fn command(repo: &Path, args: &[String]) -> u8 {
     match command_inner(repo, args) {
@@ -720,40 +771,12 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     }
 
     let t0 = Instant::now();
-    let registry = Registry::embedded().map_err(DcfError)?;
-    let mut tickers = super::panel::cache_tickers(&cache).map_err(DcfError)?;
-    if let Some(l) = limit {
-        tickers.truncate(l);
-    }
-    let companies: Vec<(String, Vec<YearData>)> = tickers
-        .par_iter()
-        .filter_map(|t| load_company_years(&registry, &cache, t).filter(|(tpl, _)| tpl == "standard").map(|(_, y)| (t.clone(), y)))
-        .filter(|(t, _)| half.is_none_or(|h| ticker_half(t) == h))
-        .collect();
+    let setup = pit_setup(&cache, &table_file, cut, limit, None, half)?;
     let load_s = t0.elapsed().as_secs_f64();
-
-    let (table, fade, label) = match cut {
-        None => {
-            let (t, f) = load_table(&table_file)?;
-            (t, f, format!("IN SAMPLE: parameter table {} (estimated on all years)", table_file.display()))
-        }
-        Some(y) => {
-            let panel = build_panel(&cache, None).map_err(DcfError)?;
-            let trunc: Vec<CompanyPanel> = panel
-                .companies
-                .iter()
-                .map(|c| CompanyPanel { rows: c.rows.iter().filter(|r| r.year <= y).cloned().collect(), ..c.clone() })
-                .filter(|c| !c.rows.is_empty())
-                .collect();
-            let cells = estimate_table(&trunc, 2);
-            let fade = fade_cells(&trunc, &cells);
-            let meta = TableMeta { date: String::new(), command: format!("estimated from the years up to {y}"), companies: trunc.len(), company_years: 0, growth_observations: 0, note: String::new() };
-            (ProcessTable { meta, cell: cells }, fade, format!("OUT OF SAMPLE: parameter table estimated from the years up to {y}; base years {y} and later"))
-        }
-    };
     let t1 = Instant::now();
-    let obs: Vec<PitObs> = companies.par_iter().flat_map(|(t, years)| company_observations(t, years, &table, &fade, &PitParams { rules: &rules, paths, seed, min_year: cut })).collect();
+    let obs = pit_observations(&setup, paths, seed, &rules);
     let run_s = t1.elapsed().as_secs_f64();
+    let (companies, label) = (&setup.companies, &setup.label);
     let header = format!(
         "POINT-IN-TIME TEST of the automatic model. {label}\nCommand: fa dcf pit {}\nRules: {:?}\n{} companies of the standard template; load {load_s:.1} s, models and paths {run_s:.1} s ({paths} paths each, seed {seed}).",
         args.join(" "),
@@ -768,7 +791,7 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         let panel = build_panel(&cache, None).map_err(DcfError)?;
         let comps: Vec<CompanyPanel> = panel.companies.into_iter().filter(|c| half.is_none_or(|h| ticker_half(&c.ticker) == h)).collect();
         let grid = NU_GRID;
-        let scan = sigma_nu_scan(&comps, &table, &rules, cut, &grid);
+        let scan = sigma_nu_scan(&comps, &setup.table, &rules, cut, &grid);
         text.push_str(&render_sigma_nu(&scan, &grid, &format!("{} companies, target years up to {}", comps.len(), cut.map_or("all".to_string(), |y| y.to_string()))));
     }
     text.push('\n');
