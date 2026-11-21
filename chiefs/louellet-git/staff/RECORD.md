@@ -95,3 +95,21 @@ out what the repo [chiefs] did, but note that it's going to have problems ... th
 constricting, but we want the lean, easy to use, easy to implement version of that." Also: "And keep it lean".
 Done: read `louellet-git/chiefs` (its usage tools). The design is in `T-20261121-usage-log`. Found the
 real weekly figure with one call: 71% used on 2026-11-21 18:49 UTC, reset 2026-11-25 16:00 UTC.
+
+## 2026-11-21 about 18:55 UTC (question dialog)
+Question: the weekly token limit is 71% used and resets 2026-11-25 11:00 Toronto time; shall the heads
+start nothing new until the reset, except the week report and the live run of Monday?
+Answer of the person: "No need to cancel work now, but maybe you and I think about what should get done
+with what % of tokens".
+Done: no stop and no message to the heads. A first split of the rest of the week was proposed to the
+person in the chat; it is not agreed yet.
+
+## 2026-11-21 about 18:57 UTC (chat, from speech)
+Words (on the split of the rest of the week): "That works." Then: "I would want to get an estimate for when
+work should be done or ... how many tokens it should be. And the agents always way over guess. And it's
+really a guess. So what I'd like to get from this monitoring and this token tracking is a calculator of
+sorts that should be able to use the data that we have available to accurately estimate how much tokens it
+should cost. This is a project on its own, and we can only/should only really work on it once we have
+enough data."
+Done: the order until the reset is in `PLANNING/board/EPICS.md`; one message to each head (an order, not a
+limit). Ticket `T-20261121-token-calculator`, on hold until the data exists.
