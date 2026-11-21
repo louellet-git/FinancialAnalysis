@@ -135,3 +135,7 @@ Done: the scheduled task "Daily option price save (20-day test)" (15:27 New York
 ## 2026-11-21 00:37 UTC (chat)
 Words: "Is the lean method up to date? Can you move to a new repo called the-heads. I created it so it'll be separate from the chiefs."
 Done: it was not up to date (no model permission, no ask flow, no board area `ask`, no write-up row). `louellet-git/the-heads` has the general system with these rules (commit 6264abb). `lean/` is removed from `louellet-git/chiefs`, and its README points to the new repo (chiefs pull request 35).
+
+## 2026-11-21 02:57 UTC (chat)
+Words: "Please get to work on the backtesting environment, ask the heads what they require."
+Done: ticket `T-20261121-backtest-environment` (order 1); a question to the Quant, Fundamental and Quality and Risk heads.
