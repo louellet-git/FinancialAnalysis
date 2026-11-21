@@ -14,6 +14,7 @@ pub mod auto_attribute;
 pub mod auto_cli;
 pub mod auto_implied;
 pub mod auto_pit;
+pub mod auto_premium;
 pub mod assumptions;
 pub mod auto_returns;
 pub mod backtest;

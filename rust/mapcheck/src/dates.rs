@@ -11,6 +11,16 @@ pub fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
     era * 146_097 + doe - 719_468
 }
 
+/// Days in a month of a proleptic Gregorian year (the month is 1 to 12).
+fn days_in_month(year: i64, month: i64) -> i64 {
+    match month {
+        2 if (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 => 29,
+        2 => 28,
+        4 | 6 | 9 | 11 => 30,
+        _ => 31,
+    }
+}
+
 /// "YYYY-MM-DD" -> day number. None if the text is not a date.
 pub fn parse(text: &str) -> Option<i64> {
     let bytes = text.as_bytes();
@@ -20,7 +30,7 @@ pub fn parse(text: &str) -> Option<i64> {
     let year: i64 = text[0..4].parse().ok()?;
     let month: i64 = text[5..7].parse().ok()?;
     let day: i64 = text[8..10].parse().ok()?;
-    if !(1..=12).contains(&month) || !(1..=31).contains(&day) {
+    if !(1..=12).contains(&month) || day < 1 || day > days_in_month(year, month) {
         return None;
     }
     Some(days_from_civil(year, month, day))
@@ -67,5 +77,16 @@ mod tests {
         assert_eq!(parse("2024-13-01"), None);
         assert_eq!(parse("20241231"), None);
         assert_eq!(parse(""), None);
+    }
+
+    #[test]
+    fn rejects_a_day_beyond_the_month_length() {
+        assert_eq!(parse("2026-02-31"), None);
+        assert_eq!(parse("2026-04-31"), None);
+        assert_eq!(parse("2026-02-29"), None);
+        assert_eq!(parse("1900-02-29"), None);
+        assert!(parse("2024-02-29").is_some() && parse("2000-02-29").is_some());
+        assert_eq!(parse("2026-02-28").map(|d| d + 1), parse("2026-03-01"));
+        assert_eq!(parse("2026-01-00"), None);
     }
 }

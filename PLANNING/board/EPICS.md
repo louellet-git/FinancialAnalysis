@@ -58,14 +58,15 @@ State: alpha-1 stopped at gate 1; no strategy goes to paper now.
 
 | Story | Lead | Tickets, in order | Mark |
 |---|---|---|---|
-| E4.S1 The algo engine runs each day | quant | pull request 131 (`fa algo`; waits for the live run of the person, 2026-11-23) → `T-20261121-algo-host-gcp` (technology) → `T-20261121-algo-paper-orders` | hold |
-| E4.S2 Checks of prices that must agree | quant | `T-20261120-arb-4-futures-basis` → `T-20261120-arb-3-index-parity-box` → the arbitrage register (`T-20261121-arb-invariants`, on its branch) | now |
-| E4.S3 Volatility models | quant | `T-20261120-vol-2-sabr-localvol` → `vol-3-bergomi-2f` → `vol-4-rough-bergomi` → `vol-5-quintic-pdv` → `vol-6-joint-spx-vix` | now |
-| E4.S4 The studies are engine code, and their defects are closed | quant | `T-20261121-quant-engine-integration`, `T-20261121-quant-doc-findings` (B1 to B4 before a new bot result) | now, next |
-| E4.S5 Paper desk | owner | `T-20261120-paper-desk` (decision 1 is old: the paper account is permitted now), `T-20261119-options-paper-test` | hold (no strategy passed) |
+| E4.S1 The algo engine runs each day | quant | pull request 131 (`fa algo`; waits for the live run of the person, 2026-11-23) → the continuous option capture (a part of `T-20261121-arb-invariants`) → `T-20261121-algo-host-gcp` (technology) → `T-20261121-algo-paper-orders` | hold |
+| E4.S2 Checks of prices that must agree | quant | the arbitrage register (`T-20261121-arb-invariants`, in review on its branch) → `T-20261120-arb-3-index-parity-box` → `T-20261120-arb-4-futures-basis` (steps 2 and 3); the two checks become relations of the register | now |
+| E4.S3 Volatility models | quant | `T-20261120-vol-2-sabr-localvol` (the SVI part; the bot leg prices need it) | next |
+| E4.S4 The studies are engine code, and their defects are closed | quant | `T-20261121-quant-engine-integration` with its builds (`T-20261121-trade-grids`, `T-20261121-recon-lasting`, `T-20261121-selftest-golden`, on their branches), `T-20261121-quant-doc-findings` (B1 to B4 before a new bot result) | now, next |
+| E4.S5 Paper desk | owner | `T-20261120-paper-desk` (decision 1 is decided: the Alpaca paper account), `T-20261119-options-paper-test`, `T-20261121-paper-alpaca-chain` (the chain source after the Cboe stop) | hold (no strategy passed) |
 
-Question for the frame: E4.S3 has five model tickets and no strategy that uses them yet. Each must name the
-check or the strategy that needs it before it starts.
+Wait list (no check and no strategy needs them now; each ticket says so): `vol-3-bergomi-2f`,
+`vol-4-rough-bergomi`, `vol-5-quintic-pdv`, `vol-6-joint-spx-vix`. They start when a strategy or a check
+names them.
 
 ## E5. Data that is correct and available
 
@@ -74,26 +75,35 @@ S&P 100, and each head runs its checks from the store with no network.
 
 | Story | Lead | Tickets, in order | Mark |
 |---|---|---|---|
-| E5.S1 The store has no known defect | technology | `T-20261121-data-audit` → `T-20261121-share-count-scale-guard`, `T-20261121-missing-price-files`, `T-20261119-filing-values-in-variables` | now |
-| E5.S2 Each source is permitted | technology | `T-20261121-fred-local` → `T-20261121-economics-data` → `T-20261121-daily-history` (a decision of the person) | now |
+| E5.S1 The store has no known defect | technology | `T-20261121-data-audit` → `T-20261121-revenue-old-tags` (on its branch), `T-20261121-share-count-scale-guard`, `T-20261121-missing-price-files`, `T-20261119-filing-values-in-variables` | now |
+| E5.S2 Each source is permitted | technology | `T-20261121-cboe-off` (done), `T-20261121-fred-local` → `T-20261121-economics-data` → `T-20261121-daily-history` (a decision of the person) | now |
 | E5.S3 Work with no network | technology | `T-20261121-cache-only-switch`, `T-20261120-store-arb-data-rest`, `T-20261120-sync-chains` | next |
 | E5.S4 Live view | technology | `T-20261119-live-data-stream` | next (last) |
 
 ## E6. Controls
 
 Decision: the person can trust a number and the repo is safe to show. Ends when: each model has its
-documents, the agent teams ran on real work, and the public repo has no private file in its history.
+documents, the order code passed its gate, and the public repo has no private file in its history.
 
 | Story | Lead | Tickets, in order | Mark |
 |---|---|---|---|
-| E6.S1 Each model has its documents | quality | `T-20261121-nvda-assumption-records` → `T-20261120-model-docs-backlog` | now |
-| E6.S2 The review teams work | quality | `T-20261120-agent-teams-first-run`, `T-20261025-bridge-per-ticker-rule`, `T-20261025-p1-validators-redteam` (names Pytest) | next, old |
+| E6.S1 Each model has its documents | each head for its models; quality is the gate | `T-20261120-model-docs-backlog` (the list of what is missing; each head marks its rows) | now |
+| E6.S2 The gates are repeatable | quality | `fa selftest golden` (row 25 of `T-20261121-quant-engine-integration`; Quant builds) → the mutation-test script (row 26), `T-20261025-bridge-per-ticker-rule` | next |
 | E6.S3 Work of the person | owner | `T-20261120-owner-first-run`, `T-20261120-delete-merged-branches` → `T-20261025-keep-private-frameworks-out-of-the-public-repo` | waits for the person |
+| E6.S4 Controls of orders and of data terms | quality (technology for the terms) | the gate "Order code (paper only)" before the first order (controls 0 to 8), a terms line for each source in `docs/DATA-SOURCES.md` | now (no ticket yet) |
+| E6.S5 The rules are checked by a script, not by memory | technology (the Head of Staff reads the output) | `T-20261121-board-check` (done; run `fa board check`) → `T-20261121-usage-log` → `T-20261121-token-calculator` (on hold: needs the data); also this page: `T-20261121-board-epics` (staff) | next |
 
-## Order across the epics (proposal of the Head of Staff; the person decides)
+To close (the Head of Quality and Risk reported them done or replaced on 2026-11-21; the files are still
+open on `main`): `T-20261121-nvda-assumption-records`, `T-20261120-agent-teams-first-run`,
+`T-20261025-p1-validators-redteam`.
 
-1. E2.S1, because the person asked for it first and paused other work for it.
-2. E5.S1, because each result of E1 and E2 reads this data.
-3. E1.S1, because it opens E1.S3 and E1.S4.
-4. E4.S1, on the date of the live run.
-5. The other stories, in the order of their heads.
+## Order across the epics
+
+Agreed with the person on 2026-11-21, until the reset of the weekly token limit (2026-11-25, 11:00 Toronto
+time; 71% was used on 2026-11-21). It is an order, not a limit: no work is stopped.
+
+1. E2.S1, the week report to its end.
+2. E5.S1 (the data audit) and E6.S5 (the two monitoring scripts).
+3. E4.S2 (the arbitrage register, in review) and E4.S1 after the live run of 2026-11-23.
+4. E1.S1, the T1 correction of the projection test.
+5. All other backlog (company types, volatility models, new studies) starts after the reset.

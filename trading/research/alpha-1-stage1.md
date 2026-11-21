@@ -137,6 +137,15 @@ at 2023-12-21, so the 70/30 cut falls three weeks earlier. A cut three weeks ear
 OOS Sharpe from 1.30 to 1.78 (same rules, same data). So the OOS result is not one number:
 report OOS Sharpe as a range, 1.30 to 1.78 for the baseline (R2 data), and note that a cut chosen
 by the date is a source of noise the size of the effect.
+CORRECTION (2026-11-21, review of the grids): the cause stated above is wrong. The store file
+`SPY_1h.csv` starts 2023-12-21, as the table of this note says ("2023-12-21 to 2026-11-18"); the start
+2023-11-10 is only in the old bot note `s05_ic_0dte.md`. The cut differs because the END of the data
+differs (R2 ends 2026-10-09, the leaderboard run 2026-11-18). The range also depends on the step and the
+span of the cuts: `fa trade backtest --bot s05_ic_0dte --cut-scan` (default cut +/- 42 days) gives, on
+`--end 2026-10-09`, 1.30 to 1.68 at step 7 and 1.30 to 1.81 at step 1 with span 28; on the full data
+(to 2026-11-18) 1.43 to 1.87 at step 1 with span 42 and 1.44 to 1.87 at step 7. No one of these is "the"
+range: each is a sensitivity of the OOS Sharpe to the cut, with its step and span. The text above stays
+as the history of the first reading.
 
 Reading: the return stays positive in every price run (OOS +10% at the lowest). The t of the
 mean trade P&L is below 2 in every OOS run, also in the baseline (1.35), so it is not a
@@ -173,7 +182,7 @@ the runs (see "Precision of the gate") and its t depends on the lag.
    the spread x2. The return stays positive (+10.1% worst). DSR is 0.32 (V = 1/T, the better figure) or 0.76 (V from the runs), at N = 20. N is too low
    (20 to more than 100), so these are upper bounds: under 0.95 in both. The researcher bar (t > 3) is far off.
 4. Limits: model prices; 57 OOS trades; one regime (2023-2026); a few large wins carry the P&L;
-   OOS Sharpe 1.30 to 1.78 by the choice of the cut. With the power given above, the result is
+   OOS Sharpe 1.30 to 1.78 by the choice of the cut (R2 data; see the CORRECTION: the range depends on the end of the data, the step and the span). With the power given above, the result is
    "not proven", not "no edge".
 If the owner still wants stage 2: measure on the real chain copies (a) the real credit of the
 $2-wide ATM iron fly at 10:30 against the model credit (gate 2: at least 80%; the model

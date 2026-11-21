@@ -30,7 +30,7 @@ pub const PAUSE: f64 = 3.0;
 /// The sheets of the 10-year medians, in output order.
 pub const SHEETS: [&str; 5] = ["RGDP10", "CPI10", "STOCK10", "BOND10", "BILL10"];
 
-fn spf_dir(cache: &Path) -> PathBuf {
+pub fn spf_dir(cache: &Path) -> PathBuf {
     cache.join("macro").join("spf")
 }
 
@@ -176,7 +176,7 @@ pub fn q1_release_bound(year: i32) -> String {
     format!("{year:04}-03-31")
 }
 
-fn newest(dir: &Path, prefix: &str, ext: &str) -> Option<PathBuf> {
+pub fn newest(dir: &Path, prefix: &str, ext: &str) -> Option<PathBuf> {
     let mut v: Vec<PathBuf> = std::fs::read_dir(dir)
         .ok()?
         .filter_map(|e| e.ok().map(|e| e.path()))

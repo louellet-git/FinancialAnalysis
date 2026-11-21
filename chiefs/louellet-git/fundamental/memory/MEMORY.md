@@ -1,59 +1,57 @@
 # Dashboard: fundamental (louellet-git)
 For the next session of this head: the judgments about value that are not in the code, and what the
-person decided. Keep this file below 60 lines. Started 2026-11-20. Dream pass: 2026-11-21 03:40 UTC.
+person decided. Keep this file below 60 lines. Started 2026-11-20. Dream pass: 2026-11-21 19:35 UTC.
 
-## Goal now and subsequent steps (`RECORD.md` has the words; the board has the state of each item)
-1. FIRST (2026-11-21 14:45, "hold off on other work"): valuation attribution of the week to 2026-11-20, 3 pages,
-   S&P 100 and S&P 10 (BRK-B in). Prelim results sent (`analysis/priors/sp100_week_prelim_results_2026-11-21.md`): a
-   correction of rich prices; the report waits for Luc's go-ahead. Branches `claude/premium-series` (gate), `claude/attribution-reality`.
-2. PAUSED, work committed, status on each ticket: the trade-level engine (`claude/trade-level-backtest`), the
-   T1 revenue fix (`claude/t1-revenue-band`; the hold-out `--cut 2011 --base-to 2014` is still unused).
-3. Stock DCF rank: no evidence of an edge on split-corrected prices (PR 136); no weekly trade from it.
-4. NVDA (PR 106) merged: Luc approved the merge, NOT the value ("this doesnt mean I approve that the valuation is correct"). JST design frozen by Economics.
-5. Rule of the person: each pause puts the state on the board and the report says where the work is.
+## Goal now and subsequent steps (`RECORD.md` has the words; the board and `EPICS.md` have the state)
+1. FIRST (order until 2026-11-25): the week report, 3 pages or less, S&P 100 then S&P 10. It WAITS for Luc's
+   go-ahead (he has the preliminary results). State, branches, commands, numbers: page `attribution-state.md`.
+2. Then the T1 revenue fix (`claude/t1-revenue-band`, paused; hold-out `--cut 2011 --base-to 2014` unused).
+3. After the reset: the trade-level engine (`claude/trade-level-backtest`, paused), company-type models, JST reader.
+4. No weekly trade: no rule has passed its backtest (PR 136); Luc: "No trades until T1 passes".
 
-## Decisions of this head (records A-001 to A-003; no reason uses the price)
-- One long-run growth L = min(10-year zero yield, 4.0%) (FOMC SEP). Acquisition charge = w x expected
-  spend, fading with the credited growth above L. A base-year decline enters as 0%.
-- 2026-11-21: `acq_second` on; `acq_persist` on (1.75% + 0.3925 x past, fit on pit half 0, scored on
-  half 1 and cut 2015 half 1); `acq_keep` off, open question: is growth at L paid by reinvestment only?
+## Decisions of this head (records in `docs/assumptions/`; no reason uses the price)
+- L = min(10-year zero yield, 4.0%), NOMINAL (A-001). Acquisition charge = w x expected spend (A-002).
 - The value at the means is deterministic and is NOT the expected value (the mean is higher).
-- Market (2026-11-18): S&P list implies a premium of 2.32%, next 500 3.12% (model 4.41%).
-- A trade side needs: close outside P25-P75; the side holds at a premium of 3.5% and 5.5%; the gap is
-  not a property of the whole list (same frame). Written after the NVDA price was known: gate checks it.
+- Attribution: math parts (facts, time, rates) in `fa dcf attribute`; implied parts (premium, growth) split
+  into common and company; the common view comes from the Economics engine (`fa macro view`), else the list median.
+- Reading of the week to 2026-11-20 (preliminary): a correction of prices that were expensive against 2019-2026;
+  not extreme against 1871 on (lowest quarter); no buy signal for the list. NVDA is company-specific.
+- NVDA (PR 106): Luc approved the MERGE, NOT the value. Never say that he approved the value.
 
 ## Lessons (tested)
-- A paired rule must stay paired in EACH year and in ONE frame. Check it year by year before a brief.
-- Check an in-sample error out of sample, and check whether a data window was selected.
-- A backtest of the model uses a parameter table cut before its first year (in-sample table: +0.9
-  points a year of look-ahead, 2026-11-21).
-- Compare a stock strategy with the equal weight of the SAME scored list, by year, with a t value.
-- 2026-11-21, after the split fix: the stock-level DCF rank shows NO EVIDENCE of an edge (A-009 R1-hold -1.10, t -0.58);
-  the market-level premium passes 1893-2016 (PR 133). Weekly stock trades have no backed rule.
-- The price files are split-adjusted to TODAY. A past value per share against a past price needs the share basis of
-  the vintage (CRIT F1, 2026-11-21: BKNG 25x; R1 +6.56 became +0.71). A truncation test cannot see it.
-- No claim before a run supports it; rerun two numbers of an agent before the gate.
-- Do not edit code with a perl one-line substitution that has `|` in it: use the Edit tool.
+- A one-week split between rates and premium misleads when stocks react late: run the prior window too.
+- Two supports from one price and one model are ONE fact; give a support that the model did not make.
+- A short history window overstates how rare a level is (8 years: lowest; 155 years: lowest quarter).
+- News numbers are not ours: cite them as reported, or leave them out (the December odds, the "hot" CPI).
+- The price files are split-adjusted to TODAY: a past value per share needs the share basis of the vintage.
+- A stale close (older than the SPY close of the date) mixes dates in a sum: leave the row out and name it.
+- Point-in-time mapping needs the 10-K fill only when its filing was public (PR 152); the engine never patches data.
+- A backtest uses a table cut before its first year; compare a strategy with the equal weight of the SAME list.
+- Commit only after the build and the tests pass in the same command chain (3924a05 did not compile).
+- Stage explicit paths while an agent works in the worktree (`git add -A` took an agent's code into a board commit).
+- Agents: say "Edit tool only"; check two numbers of each agent before a gate; clock times from `date -u`.
 
 ## Standing words of the person
-- 2026-11-21: prelim results first (chat + a results file), the report only after the go-ahead. Macro "why" questions go to the Head of Economics.
-- 2026-11-21: "Backtesting is integral to our work here": each model change and strategy has a point-in-time
-  backtest written before its run; trades only from a backtested rule; blind projections tested (T1-T4).
-- The stochastic DCF engine, for stocks only; no option work in this area. Agents lean and of quality.
-- Each analysis has COMMANDS.md with the store commit; each ticker judgment that can be a rule goes to
-  `T-20261121-dcf-engine-from-tickers`. Few pull requests (CI cost). Windows laptop: PowerShell.
-- The head merges its own PR after a gate pass and a green check (ORIENTATION section 6).
-- A merged ticket moves to `PLANNING/board/done/`; never delete a ticket.
-- Trade recommendations: fundamentals, under 3 pages, "paper" unless Luc says live.
-- From time to time: an industry-practice note (`industry-<date>.md`, 1 page, ORIENTATION section 3).
+- Preliminary results first (chat and a results file); a report only after his go-ahead; conclusion inside 3 pages.
+- Macro "why" questions go to the Head of Economics; give Luc that answer with its author.
+- Each head asks "does it make sense?" before a result goes to him.
+- What is repeatable goes into the correct engine (table on `T-20261121-dcf-engine-integration`).
+- Each pause puts the state on the board. A data problem is fixed by its owner (Technology), not left out.
+- "Backtesting is integral": a point-in-time backtest before each model change or strategy; trades only from it.
+- Each model has a model document with a Backtest line, and each assumption a record (A-001 to A-099 are mine).
+- The stochastic DCF engine, for stocks only. Agents lean and of quality; fewer agents (token limit, 71% used).
+- A merged ticket moves to `PLANNING/board/done/`; never delete a ticket. The head merges after a gate pass.
 
 ## Tested rules and contacts
-- Cache = data store (`GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 .../fa-data data/raw`); store 1804f48.
-- Heads (send_message): Technology session_015ReypMwF8aVDzTBhLCbEv1; Quality session_015ReypKkZtAZBTkhHTskxJg;
-  Quant session_015ReypKReqsgzkZY2hCsPdF; Economics session_015ReypPG2WmExK3KRHNj1e2.
-- No push to a branch under review until the verdict. Head of Staff (PR 161): only done-or-merged, a long block, an owner decision, a conflict.
-- Data length: SEC facts from about 2009; most prices from 2016-11-18; SPY and IBM from 1962; GSW from 1961.
-- cbo.gov refuses the cloud machine (HTTP 403); federalreserve.gov answers.
+- Heads by session title (send_message; the id comes from `list_sessions`, never in a file): FA-L - Head of
+  Technology, of Quality and Risk, of Economics, of Quant Research, of Staff.
+- Head of Staff: one short message when a result is done (it reads a result before Luc), an owner decision, a
+  conflict, a long block. No status reports. A permission refusal goes to Technology.
+- No push to a branch under review until the verdict. A documents-only pull request has no check run.
+- The data store is private: attach `louellet-git/fa-data` (add_repo, read), then clone. No Cboe automatic reads.
+- The push of `claude/sp100-week-attribution` was refused by the permission system: do not retry; its commits
+  are in `claude/premium-series`.
 
 ## Pages
+- `attribution-state.md`: the week study (branches, commits, commands, numbers, open items).
 - `responsibilities.md`: the area of this head and its boundary with the Head of Quant Research.

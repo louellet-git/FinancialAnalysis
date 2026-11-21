@@ -49,6 +49,49 @@ For a person who studies Treasury pricing. It is not an input of a DCF.
 | A-107 | z neighbours and groups | 20 securities, 1.25 pt coupon | Group is a label only. |
 | A-108 | Par curve conventions | monotone convex, T+1, BEY bills | Re-creation of the Treasury method. |
 | A-109 | HQM test | mean OAS of AAA, AA, A | One flat spread for all tenors. |
+| A-117 | Lasting residual rule | 38 dates, 90% same sign, above cost and 1.9 bp | Author choice, no study. |
+
+## Lasting residuals (`fa recon history --lasting`)
+The command replaces the `awk` script B5 of the step 2 note. It fits each stored price day with the code of
+`fit.rs` and `richcheap.rs` (no second fit), builds the panel of residuals, and lists each security that meets
+the rule A-117. Input: the stored files `data/raw/prices/fedinvest_<date>.csv` only. The command makes no
+request, reads no GSW or Treasury file, and writes no file. If fewer than `--min-dates` price files are in
+range, it stops with a message.
+
+| Test of a security | Default | Option |
+|---|---|---|
+| Dates | 38 or more | `--min-dates` |
+| Days with the sign of the mean | 90% or more (a zero day does not count) | `--same-sign` |
+| `|mean|` above the mean cost (A-106) | strict | none |
+| `|mean|` above the fit RMSE | 1.9 bp, strict | `--min-abs-bp` |
+
+Output: one row for each lasting security (CUSIP, maturity, days, share of the same sign, mean residual in bp,
+mean cost, standard deviation, half-life, group), sorted by `|mean|`. Then the counts: lasting of all securities,
+rich, cheap, and by group. The group is the label at the last date of the security.
+The half-life is of the deviation from the own mean: `ln(0.5)/ln(phi)` with `phi` from a regression
+through the origin of lag 1 (the function `coefficient`). It is `-` if `phi` is not in (0, 1).
+
+Point in time: `--to D` reads no file after `D`. A later day does not change the result of an earlier end date.
+Tests: fixed counts of a synthetic panel, the edges (38 and 37 dates; 36 of 40 days is exactly 90%), and a panel
+with poisoned later days. A run with `--to 2026-11-10` on the full store gave the same text as a run on a store
+that has only the files up to that day (52 days; 63 of 337 securities).
+
+Result on the 58 days (2026-08-27 to 2026-11-19): 60 of 340 securities are lasting: 29 rich, 31 cheap.
+Groups: old 30-year bond 9, low coupon 13, high coupon 5, recent issue 1, near coupon date 2, other 30.
+The 10 largest are rich (5.1 to 14.6 bp): the original 30-year bonds of 2036 to 2040.
+Against the note (section 3.4): the counts and the 10 table rows agree (mean, cost). Two differences:
+- The note says 61. The script rounds the share of the same sign to 2 decimals. 91282CAU5 has 89.7% (52 of 58),
+  which the script rounds to 0.90. The code uses the exact share, so it has 60 (the note says "60 with exact values").
+- The half-life differs (for 912810PW2: 2.4 days here, 1.6 in the note). The script divides by the sum of squares
+  of all 58 deviations; the regression through the origin leaves out the last day. The last deviation is large
+  for a trending series, so the two values differ. Here 912810FT0 has `phi` above 1 and no half-life.
+  The standard deviation here uses n-1, the script used n (0.87 against 0.86).
+
+## Limits of the lasting rule
+- A lasting residual is a candidate after cost, not a trade. The command sends no order.
+- 58 days, one regime. The rule values are set on the same days that they score (A-117). No unit-root test was run:
+  a `phi` near 1 shows that the level is close to a unit root.
+- The cost is one leg. A round trip is about two legs. Repo, borrow fee and tax are not in the data.
 
 ## Limits
 - A candidate is a security to study. It is not an arbitrage and not a trade (`richcheap.rs` `LIMITS_ALL`).
@@ -68,8 +111,8 @@ For a person who studies Treasury pricing. It is not an input of a DCF.
 |---|---|
 | Code | `rust/src/fit.rs`, `rust/src/curve.rs`, `rust/src/recon.rs`, `rust/src/richcheap.rs`, `rust/src/history.rs`, `rust/src/billdiag.rs` |
 | Model or parameter file | none (the values are in the code) |
-| Command | `fa recon bonds\|bills\|rich-cheap\|history\|explain [--date D] [--out FILE]` |
-| Tests | `rust/src/fit.rs`, `rust/src/recon.rs`, `rust/src/richcheap.rs` (`cargo test --manifest-path rust/Cargo.toml --lib fit`, `recon`, `richcheap`) |
+| Command | `fa recon bonds\|bills\|rich-cheap\|history\|explain [--date D] [--out FILE]`; `fa recon history --lasting [--to D] [--min-dates N] [--same-sign S] [--min-abs-bp B]` |
+| Tests | `rust/src/fit.rs`, `rust/src/recon.rs`, `rust/src/richcheap.rs`, `rust/src/history.rs` (`cargo test --manifest-path rust/Cargo.toml --lib fit`, `recon`, `richcheap`, `history`) |
 | Notes | `analysis/priors/rates_recon_2026-11-20.md`, `analysis/priors/rates_recon_step2_2026-11-20.md` |
 
 ## Review status

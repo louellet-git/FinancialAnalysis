@@ -31,9 +31,11 @@ form `FA-<tag> - <head>`, for example `FA-L - Head of Technology`.
 
 **The Head of Staff.** It is above the other heads, and it stays out of the details.
 
-- What goes up to it, as a short message (ticket, result, link): (1) a large task is done or
-  merged; (2) a head is blocked for more than about half a day; (3) a decision that only the person
-  can make; (4) two heads disagree, or need the same files or the same machine.
+- What goes up to it is rare (owner word, 2026-11-21): a result that is done. If the result goes to the
+  person, the Head of Staff reads it first ("does it make sense?"), then it goes to the person. One short
+  message: ticket, result, link.
+- No status report, and no message about work in progress. The only other messages are a decision that
+  only the person can make, and a conflict that two heads cannot settle.
 - Everything else stays between the heads. Heads still send messages to each other directly.
 - The person and the Head of Staff set the order of the work (the `order` field on the board).
   A head follows that order.
@@ -70,6 +72,13 @@ The person decides. **You are an orchestrator agent.** You are the orchestrator 
 - You examine the work of an agent and run the real command before you commit. Agents
   do not commit; you commit, push, and open the pull request.
 - You record the work and report to the person.
+
+**Does it make sense?** (owner word, 2026-11-21) Before a result goes to the person, ask this question
+yourself and answer it in a few lines in the result. Compare the number with something that the model did not
+make (history, a base rate, the number of a different head, simple arithmetic). Say what must be true in the
+world if the number is correct. Say also when two pieces of evidence are the same fact seen two times. This
+is a habit, not a form: no template and no gate. The Head of Staff asks the same question about what goes to
+the person.
 
 ## 2. What you own
 

@@ -355,7 +355,7 @@ xlsx file (default: data/processed/<TICKER>_financials.xlsx).
   --no-estimates  skip the forward consensus snapshot
 
 Sources (one request for each source, 2 seconds apart): prices from the Yahoo chart endpoint, the option
-chain from the Cboe delayed quotes, the revenue estimates from Financial Modeling Prep (key: FMP_API_KEY
+chain from the Alpaca option chain (keys: APCA_API_KEY_ID and APCA_API_SECRET_KEY; a snapshot of today in the cache is used first; no Cboe source), the revenue estimates from Financial Modeling Prep (key: FMP_API_KEY
 in the environment or in .env). The forward consensus (EPS, price targets, ratings), the earnings surprises
 and the earnings dates are read from the cache that `fa estimates get` and `fa earnings calendar` write
 (Nasdaq site API, no key); this command makes no request to that source. SEC requests use the contact in the file sec_contact.toml of the repo (the environment variable SEC_USER_AGENT replaces it).";
@@ -386,7 +386,8 @@ pub fn parse_args(args: &[String]) -> Result<(String, Options), String> {
 pub struct Sources<'a> {
     pub today: String,
     pub yahoo: &'a dyn Fn(&str) -> Result<Vec<u8>, String>,
-    pub cboe: &'a dyn Fn(&str) -> Result<Vec<u8>, String>,
+    /// Takes today's Alpaca option chain of a ticker into the cache (it gives a text line). No Cboe source.
+    pub alpaca: &'a dyn Fn(&str) -> Result<String, String>,
     pub fmp: Option<Fmp<'a>>,
 }
 
@@ -459,9 +460,9 @@ pub fn load_market(cache: &Path, ticker: &str, o: &Options, src: &Sources) -> Ma
     }
 
     if !o.no_options {
-        println!("Fetching option chain (Cboe delayed quotes)...");
-        match options::fetch_option_chain(cache, ticker, o.refresh, &src.today, src.cboe) {
-            Ok((snapshot, _)) => {
+        println!("Fetching option chain (Alpaca indicative feed; a snapshot of today in the cache is used first)...");
+        match option_chain_of_today(cache, ticker, o.refresh, &src.today, src.alpaca) {
+            Ok(snapshot) => {
                 let n_expiries = snapshot.quotes.iter().map(|q| q.expiry.as_str()).collect::<std::collections::BTreeSet<_>>().len();
                 println!("  {} option contracts across {n_expiries} expiries loaded", snapshot.quotes.len());
                 m.option_chain = Some(snapshot);
@@ -470,6 +471,15 @@ pub fn load_market(cache: &Path, ticker: &str, o: &Options, src: &Sources) -> Ma
         }
     }
     m
+}
+
+/// The option chain of today: the last snapshot file of today in the cache, or a new Alpaca snapshot (then read from the cache).
+/// A snapshot of an older day is no answer. The Cboe delayed quotes are not read (T-20261121-cboe-off).
+fn option_chain_of_today(cache: &Path, ticker: &str, refresh: bool, today: &str, alpaca: &dyn Fn(&str) -> Result<String, String>) -> Result<options::OptionChainSnapshot, String> {
+    if refresh || options::stems_of_date(cache, ticker, today).is_empty() {
+        alpaca(ticker)?;
+    }
+    options::load_snapshot(cache, ticker, Some(today))
 }
 
 /// `fa analyze`. Returns the exit code.
@@ -500,13 +510,14 @@ pub fn command(repo: &Path, args: &[String]) -> Result<i32, String> {
 
     let key = if o.no_market { None } else { fmp::api_key(repo) };
     let yahoo = |url: &str| crate::market::download(url);
-    let cboe = |url: &str| crate::market::download(url);
+    let today = crate::market::today_iso();
+    let alpaca = |t: &str| crate::market::options_cli::snapshot_alpaca(repo, &cache, t, &today, o.refresh);
     let http = key.as_deref().map(fmp::http_fetch);
     let fmp = match (&key, &http) {
         (Some(k), Some(h)) => Some(Fmp::new(k, h)),
         _ => None,
     };
-    let sources = Sources { today: crate::market::today_iso(), yahoo: &yahoo, cboe: &cboe, fmp };
+    let sources = Sources { today: today.clone(), yahoo: &yahoo, alpaca: &alpaca, fmp };
     let market = load_market(&cache, &ticker, &o, &sources);
 
     println!("Writing {} ...", out.display());
@@ -681,17 +692,39 @@ mod tests {
         let chart: Value = serde_json::from_str(&chart).unwrap();
         let reply = chart["chart"].to_string().into_bytes();
         let yahoo = |_: &str| -> Result<Vec<u8>, String> { Ok(reply.clone()) };
-        let cboe = |u: &str| -> Result<Vec<u8>, String> { Err(format!("HTTP 404 for {u}")) };
-        let sources = Sources { today: "2026-11-19".into(), yahoo: &yahoo, cboe: &cboe, fmp: None };
+        let alpaca = |t: &str| -> Result<String, String> { Err(format!("no Alpaca keys for {t}")) };
+        let sources = Sources { today: "2026-11-19".into(), yahoo: &yahoo, alpaca: &alpaca, fmp: None };
         let m = load_market(&dir, "TEST", &Options::default(), &sources);
         assert_eq!(m.prices.len(), 5);
         assert!(m.estimates.is_empty() && m.surprises.is_empty() && m.consensus.is_none() && m.option_chain.is_none());
         assert!(prices::cache_path(&dir, "TEST").is_file(), "the prices are cached");
         // --no-market: nothing is read, nothing is asked.
         let never = |_: &str| -> Result<Vec<u8>, String> { panic!("no request") };
-        let s2 = Sources { today: "2026-11-19".into(), yahoo: &never, cboe: &never, fmp: None };
+        let never_alpaca = |_: &str| -> Result<String, String> { panic!("no request") };
+        let s2 = Sources { today: "2026-11-19".into(), yahoo: &never, alpaca: &never_alpaca, fmp: None };
         let m2 = load_market(&dir, "TEST", &Options { no_market: true, ..Default::default() }, &s2);
         assert!(m2.prices.is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_option_chain_comes_from_the_cache_or_alpaca_never_from_a_cboe_address() {
+        let dir = std::env::temp_dir().join(format!("fa-analyze-chain-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let calls = std::cell::RefCell::new(Vec::<String>::new());
+        let fail = |t: &str| -> Result<String, String> {
+            calls.borrow_mut().push(t.to_string());
+            Err("no Alpaca keys".into())
+        };
+        // No file of today: the Alpaca function is asked (with the ticker, not an address); its failure is the answer.
+        assert!(option_chain_of_today(&dir, "TEST", false, "2026-11-21", &fail).is_err());
+        assert_eq!(*calls.borrow(), ["TEST"]);
+        assert!(calls.borrow().iter().all(|c| !c.contains("cboe")));
+        // A file of today: no request.
+        let snap = options::OptionChainSnapshot { ticker: "TEST".into(), snapshot_date: "2026-11-21".into(), spot_price: Some(1.0), quotes: vec![], source: Some("alpaca".into()), feed: None, quote_kind: None, note: None, snapshot_time: Some("2026-11-21T15:00Z".into()) };
+        options::save_snapshot(&snap, &dir).unwrap();
+        let never = |_: &str| -> Result<String, String> { panic!("no request") };
+        assert_eq!(option_chain_of_today(&dir, "TEST", false, "2026-11-21", &never).unwrap(), snap);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
