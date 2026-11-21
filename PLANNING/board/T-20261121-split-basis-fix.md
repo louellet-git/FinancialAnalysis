@@ -62,3 +62,10 @@ and AA. Seed 7, 300 paths, 10 bp. Each run once, as new variants 15 and later of
    estimated ex-date (`ex_date_estimated` = true) on or after 2016-01-01, because that date can be up to about 250
    days late, near the filings that the backtest uses: of the scored list, BALL, EW, EXE, GPN and HWM. A row with
    `status` = pending (SNDK) is after its last price date and is not counted (the `to` rule).
+6. The split table of record is store `58e54a2` (2026-11-21, before any rerun; PNFP 2026, IDT 2018 and CORE 2016
+   removed against `c422939`). The exclude list stays: GSAT (mismatch), BALL, EW, EXE, GPN and HWM (estimated
+   ex-dates on or after 2016). Check list in the output: PNFP, IDT and CORE have no split row.
+   R1-hold needs a no-rebalance mode of the engine (gate finding F2): a held position keeps its shares; only an
+   entry and an exit trade. It is built and tested before the reruns. Order of the code: the split code of the
+   Head of Technology (`market::splits`) merges first; this branch then uses it and deletes `dcf::splits`. If the
+   reruns run before that switch, they run again once after it, and the two outputs must be byte-identical.
