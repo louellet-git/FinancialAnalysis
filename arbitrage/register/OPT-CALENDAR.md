@@ -4,7 +4,7 @@ title: Longer expiry is worth at least as much (American)
 class: hard
 instruments: IBM and other American chains; not a European index
 statement: bid X(K,T1) <= ask X(K,T2), T1 < T2, same root, type, strike
-tolerance: executable prices; EPS 1e-9
+tolerance: executable prices; EPS 1e-9 USD for one share
 for: 2
 severity: report
 status: active

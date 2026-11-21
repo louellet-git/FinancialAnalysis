@@ -2,15 +2,16 @@
 id: OPT-BOX-RATE
 title: Box rate against the Treasury curve
 class: soft
-instruments: SPX with the Treasury par curve
-statement: K2 - K1 = df (C1 - C2 + P2 - P1); the implied rate is near the Treasury or SOFR rate
-tolerance: none yet; a spread, not a bound
+instruments: SPX box rate; Treasury par curve (data/raw/rates)
+statement: "the box rate from OPT-BOX-IDENTITY is near the Treasury rate of the same tenor"
+tolerance: none yet; a spread in basis points, not a bound
 for: 2
 severity: report
 status: planned
 check: none yet
-source: NY Fed method (regress put-minus-call mid on K); analysis/priors/arb_invariants_industry_2026-11-21.md
-limits: Alpaca indicative quotes (modified, not OPRA): a measurement, not a trade. Quotes of one file are not at one time. The Treasury curve is a different source and date; the box rate is not a Treasury rate.
+source: van Binsbergen, Diamond, Van Tassel, Liberty Street Economics, 2023-10-02 (as in chiefs/louellet-git/quant/industry-2026-11-21.md)
+limits: Alpaca indicative quotes (modified, not OPRA): a measurement, not a trade. Quotes of one file are not at one time. The Treasury curve is another source and another time. The box rate is not a Treasury rate.
 ---
-A soft relation: two sources. It tests the rate input of all the other checks.
-Compare as a separate relation, not as an input.
+Soft: it compares two sources. The source found the box rate about 35 bp above Treasuries (1996-2023).
+It tests the rate input of all other checks.
+Compare as a separate relation. Do not use it as an input.

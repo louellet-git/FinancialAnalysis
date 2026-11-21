@@ -213,6 +213,49 @@ mod tests {
         assert_eq!((b.tested, b.pass, b.breaks, b.not_tested, b.status), (0, 0, 0, 1, "not tested"));
     }
 
+    fn qe(call: bool, expiry: &str, strike: f64, bid: f64, ask: f64) -> OptionQuote {
+        let ymd = expiry.replace('-', "")[2..].to_string();
+        let mut x = q(call, strike, Some(bid), Some(ask));
+        x.contract_symbol = format!("XYZ{ymd}{}{:08}", if call { 'C' } else { 'P' }, (strike * 1000.0).round() as i64);
+        x.expiry = expiry.into();
+        x
+    }
+
+    /// One chain with one pair of legs whose sold leg has bid 0: the relation is "not tested" (1), never "pass".
+    fn only_not_tested(quotes: Vec<OptionQuote>, id: &str) {
+        let (_, ls) = run_chain(&snap(quotes), "XYZ", &mut zero).unwrap();
+        let l = get(&ls, id);
+        assert_eq!((l.tested, l.pass, l.breaks, l.not_tested, l.status), (0, 0, 0, 1, "not tested"), "{id}");
+    }
+
+    #[test]
+    fn zero_bid_sold_leg_is_not_tested_for_monotony() {
+        only_not_tested(vec![q(true, 90.0, Some(10.9), Some(11.0)), q(true, 100.0, Some(0.0), Some(7.1))], "OPT-MONOTONY");
+    }
+
+    #[test]
+    fn zero_bid_sold_leg_is_not_tested_for_slope() {
+        only_not_tested(vec![q(true, 90.0, Some(0.0), Some(11.0)), q(true, 100.0, Some(7.0), Some(7.1))], "OPT-SLOPE");
+    }
+
+    #[test]
+    fn zero_bid_sold_leg_is_not_tested_for_parity() {
+        only_not_tested(vec![q(true, 100.0, Some(0.0), Some(5.0)), q(false, 100.0, Some(4.9), Some(5.0))], "OPT-PARITY-UPPER");
+    }
+
+    #[test]
+    fn zero_bid_sold_leg_is_not_tested_for_calendar() {
+        only_not_tested(vec![qe(true, "2026-01-16", 100.0, 0.0, 4.0), qe(true, "2026-02-20", 100.0, 5.0, 5.1)], "OPT-CALENDAR");
+    }
+
+    #[test]
+    fn register_ids_pair_with_check_names() {
+        let want = [("monotony", "OPT-MONOTONY"), ("slope", "OPT-SLOPE"), ("butterfly", "OPT-BUTTERFLY"), ("calendar", "OPT-CALENDAR"), ("parity", "OPT-PARITY-UPPER"), ("intrinsic", "OPT-INTRINSIC"), ("bound", "OPT-BOUND")];
+        for (i, (name, id)) in want.iter().enumerate() {
+            assert_eq!((option_arb::CHECK_NAMES[i], CHECK_IDS[i]), (*name, *id));
+        }
+    }
+
     #[test]
     fn locked_quote_is_flagged_and_still_used() {
         let s = snap(vec![q(true, 90.0, Some(11.0), Some(11.0)), q(true, 100.0, Some(7.0), Some(7.1))]);

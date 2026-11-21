@@ -4,7 +4,7 @@ title: Convexity in strike
 class: hard
 instruments: SPX, SPXW, IBM, other chains
 statement: w = (K3-K2)/(K3-K1); bid X(K2) <= w ask X(K1) + (1-w) ask X(K3)
-tolerance: executable prices; EPS 1e-9
+tolerance: executable prices; EPS 1e-9 USD for one share
 for: 2
 severity: report
 status: active

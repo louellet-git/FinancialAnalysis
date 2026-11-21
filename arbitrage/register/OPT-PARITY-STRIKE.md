@@ -4,7 +4,7 @@ title: European put-call parity, spread of the forward across strikes
 class: hard
 instruments: SPX, SPXW, XSP
 statement: C - P = df (F - K) for each strike; F is the same for all strikes of one expiry
-tolerance: none yet; set from the observed spread of F, not before
+tolerance: none yet; set from the observed spread of F, not before. Unit: index points of F
 for: 2
 severity: report
 status: planned

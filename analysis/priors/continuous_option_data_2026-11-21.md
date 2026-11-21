@@ -1,6 +1,6 @@
 # Continuous option data: Alpaca limits, the e2-micro, and three designs (2026-11-21)
 
-Question: can we copy the SPX, SPY and VIX option chains during all market hours, and check the no-arbitrage
+Question: can we copy the SPX, SPY and VIX option chains during all market hours? Can we check the no-arbitrage
 relations on each new snapshot, on a free Google Cloud e2-micro in us-east1? A research agent read each source
 on 2026-11-21. It did not call an API. Sizes come from our stored file. "Not documented" means that the pages
 read do not give the value. `chiefs/louellet-git/quant/algo-host-2026-11-21.md` was not in either checkout: not used.
@@ -47,8 +47,10 @@ read do not give the value. `chiefs/louellet-git/quant/algo-host-2026-11-21.md` 
   to download delayed quote table data from this web site by using auto-extraction programs/queries and/or
   software" and "Cboe will block IP addresses" [C1]. The delay of the Cboe index value: not documented on [C1].
 - Finding for the owner: `rust/src/trading/chain.rs` (the paper trader) reads the Cboe delayed-quote file
-  automatically. The text of [C1] is about the quote table of the site; whether it also covers that JSON file is
-  not documented. Do not use it for a continuous capture.
+  automatically. So does `rust/src/market/options.rs` (the Cboe reader, also used by `fa analyze`).
+  The text of [C1] is about the quote table of the site. Whether it also covers that JSON file is not documented.
+- Since 2026-11-21 (Head of Technology, Cboe terms) no automatic Cboe delayed-quote read is allowed.
+  No code path may call `chain.rs`, `options.rs` or `fa analyze` for the capture. The capture reads Alpaca only.
 
 ## 4. The e2-micro (free tier)
 - Free: 1 non-preemptible e2-micro a month in us-west1, us-central1 or us-east1, for all hours of the month;
@@ -56,8 +58,8 @@ read do not give the value. `chiefs/louellet-git/quant/algo-host-2026-11-21.md` 
 - Machine: 2 vCPUs, each 12.5% of CPU time (25% in total); bursts of about 30 s at 100%; 1 GB memory [G2].
 - A process that runs all market day (or all day) is in the free hours, because the hours equal the hours of the
   month [G1]. Usage above a limit is billed at standard rates; Google can change the offer with 30 days notice [G1].
-- Inbound data is free ([G3], from a search summary, not a full read). The boot disk uses part of the 30 GB.
-  The price of an external IPv4 address: not checked here.
+- Inbound data is free ([G3], from a search summary, not a full read).
+  The boot disk uses part of the 30 GB. The price of an external IPv4 address: not checked here.
 
 ## 5. Size estimate (SPX only, measured on the 2026-11-20 file)
 | Form | One snapshot | gzip | 1 min (390/day) | 2 min (195) | 5 min (78) |
@@ -77,9 +79,10 @@ read do not give the value. `chiefs/louellet-git/quant/algo-host-2026-11-21.md` 
 | B. Mixed REST: SPX to 45 days every 2 min (17 pages) + full chains every 30 min (50) | about 10 / min average; 17 or 67 at one time | about 0.60 GB (estimate: bytes scale with contracts) + full sets 0.08 GB | indicative quotes are adjusted; check the `t` of each quote |
 | C. Stream of 200 fixed SPXW symbols + full REST chain every 15 min | 1 connection; REST 50 per 15 min | stream size not measured | 200 symbols only; one connection; MessagePack; index options on the indicative stream not documented |
 
-- All designs stay far below 200 / min. All designs use the same Alpaca key as `fa options archive`; whether the
-  limit is per key or per account is not documented, so one queue for the Alpaca host must stay.
-  `updated_since` [A2] can reduce B further (only changed contracts); the reduction is not measured.
+- All designs stay far below 200 / min.
+- All designs use the same Alpaca key as `fa options archive`.
+  The limit may be per key or per account: it is not documented. So one queue for the Alpaca host must stay.
+- `updated_since` [A2] can reduce B further (only changed contracts). The reduction is not measured.
 
 ## 7. Recommendation
 Design B. Start with a one-day smoke test on the VM: SPX to 45 days every 2 minutes, the full SPX, SPY and VIX

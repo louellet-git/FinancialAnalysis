@@ -4,7 +4,7 @@ title: Upper put-call parity bound (American)
 class: hard
 instruments: IBM and other American chains
 statement: bid C - ask P <= S - K df
-tolerance: executable prices; EPS 1e-9; S is a last price of the same file, no dividend (A-124)
+tolerance: executable prices; EPS 1e-9 USD for one share; S is a last price of the same file, no dividend (A-124)
 for: 2
 severity: report
 status: active

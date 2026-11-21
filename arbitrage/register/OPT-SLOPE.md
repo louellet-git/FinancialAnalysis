@@ -4,7 +4,7 @@ title: Price difference is not more than the strike difference
 class: hard
 instruments: SPX, SPXW, IBM, other chains
 statement: call: bid C(K1) - ask C(K2) <= K2 - K1; put: bid P(K2) - ask P(K1) <= K2 - K1
-tolerance: executable prices; EPS 1e-9; no discount in the bound (A-137), so the bound is loose
+tolerance: executable prices; EPS 1e-9 USD for one share; no discount in the bound (A-137), so the bound is loose
 for: 2
 severity: report
 status: active

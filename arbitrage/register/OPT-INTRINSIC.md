@@ -4,7 +4,7 @@ title: Ask is not below the intrinsic value (American)
 class: hard
 instruments: IBM and other American chains
 statement: ask C >= S - K; ask P >= K - S
-tolerance: EPS 1e-9 at the ask
+tolerance: EPS 1e-9 USD for one share at the ask
 for: 2
 severity: report
 status: active

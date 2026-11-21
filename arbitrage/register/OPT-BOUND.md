@@ -4,7 +4,7 @@ title: Bid is not above the upper bound (American)
 class: hard
 instruments: IBM and other American chains
 statement: bid C <= S; bid P <= K
-tolerance: EPS 1e-9 at the bid
+tolerance: EPS 1e-9 USD for one share at the bid
 for: 2
 severity: report
 status: active

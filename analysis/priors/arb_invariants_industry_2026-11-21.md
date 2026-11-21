@@ -10,7 +10,7 @@ Source tags [S1] to [S22] point to the list at the end. "Our synthesis" marks a 
 - The nearest public forms are rule files of monitoring tools. A Prometheus alerting rule has a name, an expression,
   a `for` duration, a `keep_firing_for` duration, labels and annotations [S8]. Deequ declares "unit tests for data":
   a constraint with a user threshold, computed as aggregation queries over the data set [S11].
-- A regulator asks for an inventory with "sufficient information to understand model risks" (SR 26-2, in N0).
+- A regulator asks for an inventory with "sufficient information to understand model risks" (SR 26-2, in N0; federalreserve.gov/supervisionreg/srletters/SR2602a1.pdf, read 2026-11-21).
   BCBS 239 (Basel Committee, 2013) asks banks for accurate risk data (Principle 3) [S12].
 - Our synthesis: the fields of the ticket (statement, formula, data, tolerance, source, check command, status) cover
   these forms. Add three fields from [S8]: a persistence count (`for`), a severity, and an owner.
@@ -94,8 +94,8 @@ Source tags [S1] to [S22] point to the list at the end. "Our synthesis" marks a 
 - [S17] van Binsbergen, Diamond, Grotteria, "Risk-free interest rates", JFE 143(1), 2022. https://lbsresearch.london.edu/id/eprint/1821/ (abstract).
 - [S18] Hu, Pan, Wang, "Noise as information for illiquidity", JF 68(6), 2013. https://www.nber.org/papers/w16468 (abstract; working paper extract).
 - [S19] Cboe, "VIX Options Product Specifications". https://www.cboe.com/tradable_products/vix/vix_options/specifications (page).
-- [S20] Merton, "Theory of rational option pricing", Bell Journal 4(1), 1973. https://ideas.repec.org/a/rje/bellje/v4y1973ispringp141-183.html (abstract only; the bound formula is the standard result).
-- [S20b] CME Group, "Understanding the CME Group FedWatch Tool Methodology", 2023. https://www.cmegroup.com/articles/2023/understanding-the-cme-group-fedwatch-tool-methodology.html (HTTP 503; search extract only).
+- [S20] Merton, "Theory of rational option pricing", Bell Journal 4(1), 1973. https://ideas.repec.org/a/rje/bellje/v4y1973ispringp141-183.html (read from an abstract only; the bound formula is the standard result, not checked in the paper).
+- [S20b] CME Group, "Understanding the CME Group FedWatch Tool Methodology", 2023. https://www.cmegroup.com/articles/2023/understanding-the-cme-group-fedwatch-tool-methodology.html (HTTP 503; the formula is from a search extract, not from the page).
 - [S21] SPDR S&P 500 ETF Trust, prospectus 485BPOS, 2024. https://sec.gov/Archives/edgar/data/884394/000119312524016801/d109104d485bpos.htm (first 100,000 characters).
 - [S22] Anbil, Anderson, Cordes, Ruprecht, "Repo markets and the Fed's balance sheet", FEDS Notes, 2026-08-26. https://www.federalreserve.gov/econres/notes/feds-notes/repo-markets-and-the-feds-balance-sheet-implications-for-monetary-policy-implementation-20260826.html (page).
 
@@ -107,8 +107,11 @@ Source tags [S1] to [S22] point to the list at the end. "Our synthesis" marks a 
 3. **Use the rate of the chain.** Take the median parity rate of pairs at moneyness 0.95 to 1.05 as the rate in the
    SPX bounds [S3]. Compare it with the Treasury fit as a separate relation, not as an input.
 4. **Separate hard and soft relations.** Relations inside one chain copy (strike, calendar, parity, box) are hard.
-   Relations across sources (SPX against SPY, our VIX against the published VIX, VX against VIX options) are soft. Our
-   15:27 ET copy has no underlying at the same minute, so a soft break is a measurement with a time-gap field [S2].
+   Relations across sources (SPX against SPY, our VIX against the published VIX, VX against VIX options) are soft.
+   The daily copy of the Head of Technology runs at 15:27 New York time (scheduled from 2026-11-23, not run yet:
+   `PLANNING/board/done/T-20261120-ask-chain-copy-schedule.md`). The file name uses UTC: `<date>T2027.json` in winter,
+   `<date>T1927.json` in summer (`options_archive.rs`). The copy has no index level at the same minute.
+   So a soft break is a measurement with a time-gap field [S2].
 5. **Persistence and false positives.** Call a break only after 2 consecutive daily copies (our synthesis, from [S8],
    [S16]). Report each class as a count against its own history. Use Benjamini-Hochberg when a rule needs a p-value [S10].
 6. **Report, do not page.** All breaks go into the dated report (a dashboard). An alert goes out only for a symptom:

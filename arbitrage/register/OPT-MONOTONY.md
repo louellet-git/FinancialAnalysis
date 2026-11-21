@@ -4,7 +4,7 @@ title: Call price falls and put price rises with strike
 class: hard
 instruments: SPX, SPXW, IBM, other chains
 statement: call: bid C(K2) <= ask C(K1); put: bid P(K1) <= ask P(K2); K1 < K2
-tolerance: executable prices (sell at bid, buy at ask); EPS 1e-9 in option_arb.rs; the same at bid and at ask
+tolerance: executable prices (sell at bid, buy at ask); EPS 1e-9 USD for one share in option_arb.rs; the same at bid and at ask
 for: 2
 severity: report
 status: active
