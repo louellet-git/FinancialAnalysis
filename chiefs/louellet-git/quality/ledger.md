@@ -99,3 +99,4 @@
 | portfolio branch code gate started | 2026-11-21 | `claude/split-basis-fix` (d3f9018, base 8d5ba57), rust/ only: code-reviewer | running | |
 | portfolio branch code gate | 2026-11-21 | `claude/split-basis-fix` (d3f9018): code-reviewer REVISE (2 MAJ: no test of the 1/39 weight and the Pick dispatch; no test of the `to` wiring) | about 150k (measured) | head checks the fix |
 | portfolio code gate fix check | 2026-11-21 | `claude/split-basis-fix` (b8bc40f): head check; F1 and F2 tests exist; PASS-WITH-NOTES; PR may open | small (head only) | |
+| JST licence view | 2026-11-21 | request of the Head of Economics: CC BY-NC-SA 4.0; view sent (local copy and results only; notices for a store copy; live use needs a permission); owner decides | small (head only) | not legal advice |
