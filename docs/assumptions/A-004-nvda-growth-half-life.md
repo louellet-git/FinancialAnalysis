@@ -20,14 +20,14 @@ P50 in $ a share, seed 7, 100,000 paths. Base: $103.78. Source: `COMMANDS.md`.
 | 0.4 year (the cut; a model that follows the cell above $100B) | 88.75 | 152 | Report: the cell is small and has busts (toml 116-125) |
 | 0.58 year (year 2 at +16.4%, the guide pace) | 92.02 | 75, 152 | Only D3 changes: the charge half-life stays at 1.0 (`COMMANDS.md` line 75) |
 | 0.6 year (the panel of all sizes) | 92.45 | 152 | Panel has survivor bias (toml 109-112) |
-| 1.25 years (version 1) | 112.75 | 152 | The upper bound of the old range (own momentum, 2.5 years) was void: the guided sequential growth fell from about +20% to +4% a quarter. 1.0 is the analyst judgment inside the range, accepted by the Head of Fundamental Research (version 2, 2026-11-21). |
+| 1.25 years (version 1) | 112.75 | 152 | The upper bound of the old range (own momentum, 2.5 years) was void: the guided sequential growth fell from about +20% to +4% a quarter. So the bound is void. 1.0 is the judgment of the analyst inside the range. The review accepted it (pull request 106). |
 | 2.5 years (own momentum, version 1) | 163.14 | 152 | The guide breaks that bound (toml 112-114) |
 
 ## Why this choice
 JUDGMENT, stochastic (report line 91; toml 109). The report gives two bounds (toml 109-115).
 1. The panel of 996 companies (L19, `analysis/priors/process_priors_2026-11-19.toml`): the excess over the long run halves in 0.6 to 0.7 years. This is a lower bound. It has survivor bias.
 2. The own momentum was an upper bound in version 1. The guide for Q4 FY27 (+20% to +4% in one quarter) breaks it.
-So 1.0 is above the panel and above the speed of the guide. The report says that D3 is above the base rate of scale by $11.3 to $15.0 of P50 (report line 211; toml 124-125) and above the guide pace for year 2 (+24.4% against +15% to +18%; report lines 52, 282). It calls this the price of reading the guide and the sequential growth as evidence.
+So 1.0 is above the panel and above the speed of the guide. The report says that D3 is above the base rate of scale by $11.3 to $15.0 of P50 (report line 211; toml 124-125). It is also above the guide pace for year 2 (+24.4% against +15% to +18%; report lines 52, 282). The report calls this the price of reading the guide and the sequential growth as evidence.
 
 ## Effect on the result
 - P50 at the base: $103.78. The range of the table above is $88.75 to $163.14.
@@ -38,11 +38,10 @@ So 1.0 is above the panel and above the speed of the guide. The report says that
 - Command for the table: `fa dcf drivers NVDA --model analysis/NVDA/driver_model_paths.toml --sims 100000 --no-attribution --sensitivity process.growth.half_life=0.4,0.58,0.6,1.0,1.25,2.5`
 
 ## Who decided and when
-The Head of Fundamental Research, in the NVDA review rounds of 2026-11-20 and 2026-11-21.
-Review: the four steps of the valuation review are complete (validator, document reviewer, auditor; commit baf6358). The owner approval of the new ticker is open.
+The analyst made the judgment: 1.0 year in version 2, 2026-11-21 (version 1 had 1.25; toml 109, 113). The review accepted it (pull request 106).
+Review: the content of baf6358 passed the four steps of the valuation review (validator, document reviewer, auditor; pull request 106). The file headers of that commit still say DRAFT. The owner approval of the new ticker is open (board ticket `T-20261120-nvda-valuation`).
 
 ## When to examine it again
-- After the skeptic and the reviewer (steps 2 and 3 of the review).
 - When the Q4 FY27 result exists: add the pair to the guide table (report line 309, L26) and read the sequential growth.
 - When the 10-Q of Q3 FY27 is in the data store, and for each new guide of NVDA.
 - At the next calibration of the panel (L19), and when a base rate without survivor bias exists.

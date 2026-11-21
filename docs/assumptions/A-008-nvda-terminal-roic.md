@@ -16,7 +16,7 @@ The terminal value reinvests growth / return. At the means: 4% / 35% = 11% of NO
 P50 in $ a share, seed 7, 100,000 paths. Base: $103.78. Source: `COMMANDS.md` lines 169-170; report line 177.
 | Alternative | P50 | Command | Why not chosen |
 |---|---|---|---|
-| 15% (the lower cut) | 100.69 | `--pset terminal.roic=0.15` | A bound of the range (author answer, 2026-11-21) |
+| 15% (the lower cut) | 100.69 | `--pset terminal.roic=0.15` | A bound of the range (answer of the Head of Fundamental Research, 2026-11-21, in the session; not in git) |
 | 100% (the upper cut) | 107.28 | `--pset terminal.roic=1.0` | Years 1 to 10 imply 110% to 150%: not a base rate for ever (toml 306-310) |
 Run: `fa dcf drivers NVDA --model analysis/NVDA/driver_model_paths.toml --sims 100000 --no-attribution --pset terminal.roic=0.15`
 
@@ -29,10 +29,9 @@ JUDGMENT, stochastic (toml 306-310; report line 108). In years 1 to 10 the model
 - The terminal value is 39.9% of the enterprise value at the means and 41.8% over the paths (`COMMANDS.md` line 48).
 
 ## Who decided and when
-The Head of Fundamental Research, in the NVDA review rounds of 2026-11-20 and 2026-11-21.
-Review: the four steps of the valuation review are complete (validator, document reviewer, auditor; commit baf6358). The owner approval of the new ticker is open.
+The analyst made the judgment (toml 306-310). The toml gives no version and no date for it: not known. The review accepted it (pull request 106).
+Review: the content of baf6358 passed the four steps of the valuation review (validator, document reviewer, auditor; pull request 106). The file headers of that commit still say DRAFT. The owner approval of the new ticker is open (board ticket `T-20261120-nvda-valuation`).
 
 ## When to examine it again
-- After the skeptic and the reviewer (steps 2 and 3 of the review).
 - When a measure of the return on new capital of large companies exists in the repo (the ledger has none).
 - When D2, D3 or D12 (sales to capital) change: the return of years 1 to 10 changes with them.
