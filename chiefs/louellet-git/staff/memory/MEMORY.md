@@ -17,7 +17,8 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
 7. The board has epics, stories and tickets (`PLANNING/board/EPICS.md`). I keep it true.
 8. The heads report to me rarely: a result that is done, or done and for my review before it goes to the
    person. Also a decision of the person, or a conflict. No status reports.
-9. What goes to the person: short, clear, ASD-STE100, high signal. No argument about small points.
+9. What goes to the person: short, clear, ASD-STE100, high signal. No argument about small points. A
+   reason is proven by a test, refuted, or "tested, no cause found"; never "possible, not proven".
 10. Monitoring is by script: no memory of a head, no model tokens, low GitHub cost, never a stop.
 11. Tokens: track the actual tokens by ticket, head, agent and model cost against the weekly limit. The
     calculator of estimates is its own project and starts only with sufficient data. Collect the data first.

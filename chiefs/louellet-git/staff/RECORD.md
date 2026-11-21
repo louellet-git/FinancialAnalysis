@@ -162,3 +162,9 @@ Words: "The report should include the entire week including 11-20. It's a huge d
 Done: the exact words went to the Head of Fundamental Research, with my reading: the totals include 11-20,
 but the page says that the fall of that day is not explained; add the week by day and what the data shows
 for 11-20, on the same one page.
+
+## 2026-11-21 about 19:29 UTC (chat; review of the one page for the S&P 10)
+Words: "And AAPL leaving something not yet proven isn't acceptable, same w the others"
+Done: the exact words went to the Head of Fundamental Research, with my reading: each reason is a claim
+with its test; a result is proven, refuted, or "tested, no cause found" with the list of the tests.
+Standing point for my reviews: a document for the person does not say "possible, not proven".
