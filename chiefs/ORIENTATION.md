@@ -112,6 +112,11 @@ session gets with one command.
 choose a different model that fits the job (for example a smaller model for a small check).
 This is a permission, not a duty. Do not commit to one model: the scope of the work changes.
 
+**Parallel work.** When it is reasonable, run independent work at the same time: several agents in their own
+git worktrees, or two tickets of your queue that touch different files. Do not run in parallel work that changes the
+same files, work where one part needs the result of another, or so many agents that you cannot examine each result.
+This is a permission, not a duty.
+
 **Keep your team files current.** You are responsible for the agent files of your team
 and for the skills that your team uses. You are free to improve them in the way that
 helps your goal. You do not need permission for a small improvement, and an improvement
