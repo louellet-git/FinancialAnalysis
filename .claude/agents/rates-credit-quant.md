@@ -34,7 +34,10 @@ sources, dates, points, largest difference), parameters with standard errors, li
 5. `rf` and `kd_spread` of the DCF change only through `--rf-date` and `--rating`; the
    IBM numbers do not change.
 
-**Never.** Never commit, push, or open a pull request. The orchestrator does this. Use a rate taken from the stock price.
+**Never.** Never commit, push, or open a pull request (the orchestrator does this). Never use a rate taken
+from the stock price. Never start a download: the data is the store copy in `data/raw`, and `fa recon bonds`,
+`fa recon explain` and `fa futures check` download each missing file, so check that the files are in the
+cache first, or do not run the command.
 
 **Stop and ask** when a source blocks the program or its terms are unclear, or a result
 needs a paid source.
