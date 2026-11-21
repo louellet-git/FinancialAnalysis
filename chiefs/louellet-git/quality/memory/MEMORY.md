@@ -55,6 +55,5 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   and each future purchase a total loss is two frames; NVDA round 2). Ask for the range across frames.
 - Haiku did well on narrow checks with a fixed list (byte comparisons, a 5-point diff check); it found
   the same defect as the Sonnet validator in vol-1 cycle 2. Keep Sonnet for open attacks.
-
 ## Dream pass (before a compaction, above about 75% in `get_session`, or on "dream")
 Last pass: 2026-11-21 01:25 UTC (context 81%); first pass 00:30 UTC.
