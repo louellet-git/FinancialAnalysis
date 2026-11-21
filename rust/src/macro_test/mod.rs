@@ -28,6 +28,7 @@ pub mod data;
 pub mod design;
 pub mod extras;
 pub mod stats;
+pub mod view;
 
 use data::{build_weeks, fmt_date, parse_date, parse_fred, parse_series, parse_vix, Counts, External};
 use design::{real_bei_rows, run_block, run_primary, s2_rows, test_rows, Block, Primary};
@@ -51,7 +52,10 @@ The frozen test of the weekly change of the implied premium S1 (design premium-d
   --list          label of the list of the series file (default sp500); run once for each list
 Models: M0 = intercept, ret_w, ret_w^2, dzero10. M1 = M0 + dVIX (records R1, R2). Expanding-window OLS,
 first fit on 104 kept weeks. One test: Clark-West (one-sided, Newey-West lag 8). Placebo: 80 circular shifts of the dVIX column.
-Answer: yes, or no share shown. Rates are decimals in the series file; y and dzero10 are in percentage points.";
+Answer: yes, or no share shown. Rates are decimals in the series file; y and dzero10 are in percentage points.
+
+fa macro view --windows FILE [--cache DIR] [--out FILE]
+                      the economics view engine, layer A (SPF level); see fa macro view --help";
 
 #[derive(Debug, Serialize)]
 pub struct Results {
@@ -320,11 +324,12 @@ fn command_inner(repo: &Path, args: &[String]) -> Result<i32, CmdError> {
     use CmdError::{Data, Usage};
     match args.first().map(String::as_str) {
         Some("premium-test") => {}
+        Some("view") => return view::command(repo, &args[1..]),
         Some("-h" | "--help") | None => {
             println!("{USAGE}");
             return Ok(0);
         }
-        Some(o) => return Err(Usage(format!("unknown macro command '{o}' (premium-test)"))),
+        Some(o) => return Err(Usage(format!("unknown macro command '{o}' (premium-test, view)"))),
     }
     let a = &args[1..];
     if a.iter().any(|x| x == "-h" || x == "--help") {
