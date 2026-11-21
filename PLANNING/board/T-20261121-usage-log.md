@@ -100,3 +100,13 @@ shows the faults). Tokens on a branch with no ticket go to "no ticket".
 - A maximum of one push in 10 minutes for each session, and no push when the counts did not change.
 - If a private place is better than this public repo, the private store `louellet-git/fa-data` is the
   alternative. The Head of Technology decides after the test.
+
+Gate: the hook runs only if the environment variable FA_USAGE_RECORD=1. The repo does not set it. The owner sets it in his own cloud environment. The repo holds no account id and no hash.
+
+Build (2026-11-21, branch claude/usage-log): `fa usage record` and `fa usage show` (rust/src/usage.rs);
+the hook `.claude/hooks/usage-record.sh` in `.claude/settings.json` (Stop). The hook reads its input and
+returns at once (about 5 ms); the count runs in the background (a cold read of a 25 MB transcript took
+24 s of disk wait, a warm read 0.06 s). Limits: a head that works in a git worktree gets the branch of
+the folder where its session started, so the ticket of each line can be wrong; a session reads a new
+hook and a new environment variable only at its start. The push is off until the content review
+(`risk-compliance-officer`) and one test push.

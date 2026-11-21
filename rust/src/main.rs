@@ -39,6 +39,7 @@ USAGE:
                                                   stochastic rate models (Rust); see below
   fa vol fit heston|bates --symbol T --date D [--rate R] [--expiry-max DAYS]
                                                   fit Heston or Bates to a stored option snapshot (fa vol --help)
+  fa usage record|show ...                        tokens by ticket, head and agent type from session transcripts (fa usage --help)
   fa dcf drivers|classic|scenarios|models ...     Monte Carlo DCF in Rust (fa dcf --help)
   fa selftest golden [--case NAME] [--cases PATH] [--update REASON [--case NAME | --all]]
                                                   stored commands with the SHA-256 of their expected output; an input file that changed makes a case SKIPPED (fa selftest golden --help)
@@ -376,6 +377,10 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
                 Err(e) => Ok(usage_error(&e)),
             },
             _ => Ok(usage_error("trade needs a command: backtest, fetch, paper or premium")),
+        },
+        Some("usage") => match financial_analysis::usage::command(&fa.repo, &args[1..]) {
+            Ok(code) => Ok(ExitCode::from(code as u8)),
+            Err(e) => Ok(usage_error(&e)),
         },
         Some("board") => match financial_analysis::board_check::command(&fa.repo, &args[1..]) {
             Ok(code) => Ok(ExitCode::from(code as u8)),
