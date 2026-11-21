@@ -2,7 +2,7 @@
 id: T-20261121-economics-brief-cycle-models
 title: Write a conditions brief with the published cycle models (NFCI, Sahm rule, term-spread probability, payrolls)
 area: docs
-status: in-progress
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: economics
