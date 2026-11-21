@@ -32,6 +32,7 @@ pub mod option_history;
 pub mod option_iv;
 pub mod nasdaq_est;
 pub mod options;
+pub mod options_archive;
 pub mod options_cli;
 pub mod price_cache;
 pub mod price_check;

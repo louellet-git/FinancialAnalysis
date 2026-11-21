@@ -9,7 +9,7 @@ head: quant
 order: 3.1
 branch:
 created: 2026-11-20
-acceptance: For one copied day, a table gives for each SPX expiry the box-spread rate at executable prices against the Treasury bill curve and SOFR, and the SPX parity forward against 10 times the SPY parity forward, with the implied dividend difference.
+acceptance: For one copied day, a table gives for each SPX expiry the box-spread rate at executable prices against the Treasury bill curve and SOFR, and the SPX parity forward against 10 times the SPY parity forward, with the implied dividend difference. Also `fa options check SPX --date D --compare D2` on two copied days (moved from arb-1b).
 ---
 Owner request, 2026-11-20: start to find arbitrage in our data.
 

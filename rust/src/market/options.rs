@@ -69,6 +69,10 @@ pub struct OptionChainSnapshot {
     /// A text of the method (how the implied volatility was calculated).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
+    /// The time of a live snapshot, UTC to the minute (`2026-11-20T15:42Z`). A file with no value (Cboe, closes, files before
+    /// 2026-11-21) has no time and the name `<date>.json`; a file with a time has the name `<date>T<hhmm>.json`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub snapshot_time: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -83,37 +87,126 @@ pub fn snapshot_path(cache: &Path, ticker: &str, date: &str) -> PathBuf {
     options_dir(cache, ticker).join(format!("{date}.json"))
 }
 
+/// The file of a live snapshot with a time: `<date>T<hhmm>.json` (hhmm in UTC).
+pub fn timed_path(cache: &Path, ticker: &str, date: &str, hhmm: &str) -> PathBuf {
+    options_dir(cache, ticker).join(format!("{date}T{hhmm}.json"))
+}
+
+/// The time stamp (`YYYY-MM-DDTHH:MMZ`) of a time in seconds since 1970 (UTC), and its `hhmm`.
+pub fn utc_stamp(secs: i64) -> (String, String) {
+    let day = secs.div_euclid(86_400);
+    let minute = secs.rem_euclid(86_400) / 60;
+    let (h, m) = (minute / 60, minute % 60);
+    (format!("{}T{h:02}:{m:02}Z", iso(day as i32)), format!("{h:02}{m:02}"))
+}
+
+/// `hhmm` of a time stamp `YYYY-MM-DDTHH:MMZ`; `None` for a text of another form.
+pub fn hhmm_of_stamp(stamp: &str) -> Option<String> {
+    let b = stamp.as_bytes();
+    let ok = b.len() == 17 && b[10] == b'T' && b[13] == b':' && b[16] == b'Z' && [11, 12, 14, 15].iter().all(|&i| b[i].is_ascii_digit());
+    ok.then(|| format!("{}{}", &stamp[11..13], &stamp[14..16]))
+}
+
+fn valid_hhmm(t: &str) -> bool {
+    t.len() == 4 && t.bytes().all(|c| c.is_ascii_digit()) && t[..2].parse::<u32>().is_ok_and(|h| h < 24) && t[2..].parse::<u32>().is_ok_and(|m| m < 60)
+}
+
+/// The path that `save_snapshot` writes: with a time in the snapshot, the timed name; else the date name.
+pub fn path_of(cache: &Path, snapshot: &OptionChainSnapshot) -> PathBuf {
+    match snapshot.snapshot_time.as_deref().and_then(hhmm_of_stamp) {
+        Some(hhmm) => timed_path(cache, &snapshot.ticker, &snapshot.snapshot_date, &hhmm),
+        None => snapshot_path(cache, &snapshot.ticker, &snapshot.snapshot_date),
+    }
+}
+
 pub fn save_snapshot(snapshot: &OptionChainSnapshot, cache: &Path) -> Result<PathBuf, String> {
-    let path = snapshot_path(cache, &snapshot.ticker, &snapshot.snapshot_date);
+    let path = path_of(cache, snapshot);
     write_atomic(&path, &serde_json::to_string_pretty(snapshot).map_err(|e| e.to_string())?)?;
     Ok(path)
 }
 
-/// The dates of the snapshots of a ticker, oldest first. A file with another name is ignored.
+/// The stem of a snapshot file name: `<date>` or `<date>T<hhmm>`. `None` for another name.
+fn parse_stem(stem: &str) -> Option<&str> {
+    match stem.split_once('T') {
+        None => super::parse_date(stem).map(|_| stem),
+        Some((d, t)) => (valid_hhmm(t) && super::parse_date(d).is_some()).then_some(d),
+    }
+}
+
+/// All snapshot files of a ticker: stem (`<date>` or `<date>T<hhmm>`) -> path, sorted by stem. A name `<stem>.json.gz`
+/// (the compact copy of `fa options archive`) counts when no `<stem>.json` exists. Another name is ignored.
+pub fn snapshot_files(cache: &Path, ticker: &str) -> BTreeMap<String, PathBuf> {
+    let mut out: BTreeMap<String, PathBuf> = BTreeMap::new();
+    let Ok(entries) = std::fs::read_dir(options_dir(cache, ticker)) else { return out };
+    for e in entries.filter_map(|e| e.ok()) {
+        let name = e.file_name().to_string_lossy().to_string();
+        let (stem, gz) = match (name.strip_suffix(".json"), name.strip_suffix(".json.gz")) {
+            (Some(s), _) => (s, false),
+            (_, Some(s)) => (s, true),
+            _ => continue,
+        };
+        if parse_stem(stem).is_none() {
+            continue;
+        }
+        if gz && out.contains_key(stem) {
+            continue;
+        }
+        out.insert(stem.to_string(), e.path());
+    }
+    out
+}
+
+/// The dates of the snapshots of a ticker, oldest first, each date once (a date with several files is one date).
 pub fn list_snapshots(cache: &Path, ticker: &str) -> Vec<String> {
-    let Ok(entries) = std::fs::read_dir(options_dir(cache, ticker)) else { return Vec::new() };
-    let mut dates: Vec<String> = entries
-        .filter_map(|e| e.ok())
-        .filter_map(|e| {
-            let name = e.file_name().to_string_lossy().to_string();
-            let stem = name.strip_suffix(".json")?;
-            super::parse_date(stem).map(|_| stem.to_string())
-        })
-        .collect();
-    dates.sort();
+    let mut dates: Vec<String> = snapshot_files(cache, ticker).keys().filter_map(|s| parse_stem(s).map(String::from)).collect();
+    dates.dedup();
     dates
 }
 
-/// A snapshot by date; `None` is the latest one.
+/// The stems of the files of one date, oldest first (`<date>` first, then `<date>T<hhmm>` by time).
+pub fn stems_of_date(cache: &Path, ticker: &str, date: &str) -> Vec<String> {
+    snapshot_files(cache, ticker).into_keys().filter(|s| parse_stem(s) == Some(date)).collect()
+}
+
+/// The text of a snapshot file; a `.gz` file is decoded.
+pub fn read_text(path: &Path) -> Result<String, String> {
+    let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    if path.extension().is_some_and(|x| x == "gz") {
+        use std::io::Read;
+        let mut text = String::new();
+        flate2::read::GzDecoder::new(&bytes[..]).read_to_string(&mut text).map_err(|e| format!("{}: {e}", path.display()))?;
+        Ok(text)
+    } else {
+        String::from_utf8(bytes).map_err(|e| format!("{}: {e}", path.display()))
+    }
+}
+
+/// The stem of the file that `load_snapshot_at` reads: `<date>T<time>`, or the last stem of the date (`<date>` if none exists).
+pub fn stem_of(cache: &Path, ticker: &str, date: &str, time: Option<&str>) -> Result<String, String> {
+    match time {
+        Some(t) if !valid_hhmm(t) => Err(format!("bad --time '{t}' (use HHMM in UTC, for example 1930)")),
+        Some(t) => Ok(format!("{date}T{t}")),
+        None => Ok(stems_of_date(cache, ticker, date).pop().unwrap_or_else(|| date.to_string())),
+    }
+}
+
+/// A snapshot by date; `None` is the latest date. A date with several files gives the LAST one (the latest time).
 pub fn load_snapshot(cache: &Path, ticker: &str, date: Option<&str>) -> Result<OptionChainSnapshot, String> {
+    load_snapshot_at(cache, ticker, date, None)
+}
+
+/// `load_snapshot` with a time: `time` is `hhmm` (UTC) and gives the file `<date>T<hhmm>`; `None` gives the last file of the date.
+pub fn load_snapshot_at(cache: &Path, ticker: &str, date: Option<&str>, time: Option<&str>) -> Result<OptionChainSnapshot, String> {
     let date = match date {
         Some(d) => d.to_string(),
         None => list_snapshots(cache, ticker)
             .pop()
             .ok_or_else(|| format!("No option-chain snapshots for {} under {}", ticker.to_uppercase(), options_dir(cache, ticker).display()))?,
     };
-    let path = snapshot_path(cache, ticker, &date);
-    let text = std::fs::read_to_string(&path).map_err(|e| format!("No option-chain snapshot for {} on {date} at {}: {e}", ticker.to_uppercase(), path.display()))?;
+    let files = snapshot_files(cache, ticker);
+    let stem = stem_of(cache, ticker, &date, time)?;
+    let path = files.get(&stem).cloned().unwrap_or_else(|| snapshot_path(cache, ticker, &stem));
+    let text = read_text(&path).map_err(|e| format!("No option-chain snapshot for {} on {date}{} at {}: {e}", ticker.to_uppercase(), time.map(|t| format!(" at {t} UTC")).unwrap_or_default(), path.display()))?;
     serde_json::from_str(&lenient_json(&text)).map_err(|e| format!("{}: {e}", path.display()))
 }
 
@@ -188,7 +281,7 @@ pub fn snapshot_from_cboe(bytes: &[u8], ticker: &str, snapshot_date: &str) -> Re
         });
     }
     quotes.sort_by(|a, b| (&a.expiry, &a.option_type).cmp(&(&b.expiry, &b.option_type)).then(a.strike.total_cmp(&b.strike)));
-    Ok(OptionChainSnapshot { ticker, snapshot_date: snapshot_date.to_string(), spot_price: spot, quotes, source: None, feed: None, quote_kind: None, note: None })
+    Ok(OptionChainSnapshot { ticker, snapshot_date: snapshot_date.to_string(), spot_price: spot, quotes, source: None, feed: None, quote_kind: None, note: None, snapshot_time: None })
 }
 
 #[derive(Debug, PartialEq)]
@@ -206,8 +299,11 @@ pub fn fetch_option_chain(
     fetch: &dyn Fn(&str) -> Result<Vec<u8>, String>,
 ) -> Result<(OptionChainSnapshot, Source), String> {
     let ticker = ticker.to_uppercase();
-    if !refresh && snapshot_path(cache, &ticker, today).is_file() {
-        match load_snapshot(cache, &ticker, Some(today)) {
+    // Only the plain `<date>.json` of the Cboe path is a cache hit: a timed Alpaca file of today is a different source
+    // (indicative quotes), and `fa analyze` expects the Cboe chain.
+    let plain = snapshot_path(cache, &ticker, today);
+    if !refresh && plain.is_file() {
+        match read_text(&plain).and_then(|t| serde_json::from_str::<OptionChainSnapshot>(&lenient_json(&t)).map_err(|e| e.to_string())) {
             Ok(snapshot) => return Ok((snapshot, Source::Cache)),
             Err(e) => eprintln!("fa: corrupt options snapshot for {ticker} ({e}); asking Cboe again"),
         }
@@ -475,5 +571,20 @@ mod tests {
            "ask": null, "volume": 5, "open_interest": 0, "implied_volatility": null, "in_the_money": true}]}"#;
         let s: OptionChainSnapshot = serde_json::from_str(text).unwrap();
         assert_eq!((s.quotes[0].volume, s.quotes[0].in_the_money, s.quotes[0].last_price), (Some(5), Some(true), None));
+    }
+
+    #[test]
+    fn a_timed_alpaca_file_of_today_is_not_a_cboe_cache_hit() {
+        let dir = std::env::temp_dir().join(format!("fa-options-timed-{}", std::process::id()));
+        let mut s = snapshot_from_cboe(&cboe_reply(), "TEST", "2026-11-21").unwrap();
+        s.source = Some("alpaca".into());
+        s.snapshot_time = Some("2026-11-21T15:27Z".into());
+        let timed = save_snapshot(&s, &dir).unwrap();
+        assert!(timed.to_string_lossy().ends_with("2026-11-21T1527.json"), "{}", timed.display());
+        let reply = cboe_reply();
+        let fetch = |_: &str| -> Result<Vec<u8>, String> { Ok(reply.clone()) };
+        let (_, source) = fetch_option_chain(&dir, "TEST", false, "2026-11-21", &fetch).unwrap();
+        assert_eq!(source, Source::Cboe, "the Cboe path asks Cboe; it does not read the Alpaca file");
+        std::fs::remove_dir_all(&dir).ok();
     }
 }
