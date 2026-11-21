@@ -2,7 +2,7 @@
 id: T-20261121-alpha-1-pipeline
 title: Put the best candidate through the three stages, isolation, bigger data, paper
 area: trading
-status: in-progress
+status: review
 owner: louellet-git
 requested_by: louellet-git
 head: quant

@@ -140,6 +140,20 @@ pub fn format_summary(r: &Summary) -> String {
     )
 }
 
+/// The daily returns of the equity curve for the bars from the in-sample cut to the end (the
+/// out-of-sample part of `summarize`), or of all bars when `oos` is false.
+pub fn daily_returns(r: &BacktestResult, is_fraction: f64, oos: bool) -> Vec<f64> {
+    let n = r.equity.len();
+    let from = if oos && n > 0 { (n as f64 * is_fraction) as usize } else { 0 };
+    let mut daily: Vec<f64> = Vec::new();
+    for k in from..n {
+        if k + 1 == n || r.date[k] != r.date[k + 1] {
+            daily.push(r.equity[k]);
+        }
+    }
+    daily.windows(2).map(|w| w[1] / w[0] - 1.0).filter(|x| !x.is_nan()).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
