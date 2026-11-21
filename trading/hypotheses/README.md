@@ -3,7 +3,12 @@
 A hypothesis file states what a backtest must show, before the first run. The command
 `fa portfolio backtest --hypothesis trading/hypotheses/<id>.toml` reads it. Without the file, the command
 runs as an exploratory run: no run log, no variant is counted, and the result is not usable for a decision. An exploratory
-run must not reach the out-of-sample window of a registered hypothesis of the same strategy (the command refuses it).
+run that reaches the out-of-sample window of a registered hypothesis of the same strategy is permitted, but it prints a
+WARNING that names the hypothesis; a later result of that hypothesis must report it.
+
+**Who uses it.** The harness is for a head whose result a person uses for a decision (for example a trade recommendation
+of the gate of `docs/QUALITY-STANDARDS.md`). Other heads do not need it: exploration runs as before (word of the person,
+2026-11-21: "The backtest harness and the hypothesis file are more for the heads that require it").
 
 ## Rules
 

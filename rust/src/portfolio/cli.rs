@@ -225,6 +225,7 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
     let (code, dirty) = harness::code_state(repo);
     let mut start_record = serde_json::Value::Null;
     let mut state: Option<(PathBuf, harness::Counts, bool, bool, Vec<String>, i64)> = None;
+    let mut explore_reads: Vec<String> = Vec::new();
     if let Some((hy, proof)) = &hyp {
         let res = harness::resolve(repo, hy)?;
         let counts = harness::count_runs(repo, hy, &res);
@@ -277,7 +278,7 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
         eprintln!("run log started: {} (no result is printed before the run ends)", harness::rel_path(repo, &path.to_string_lossy()));
         state = Some((path, counts, read, clean, why, res.window_start));
     } else {
-        harness::exploratory_guard(repo, strategy, end)?;
+        explore_reads = harness::exploratory_reads(repo, strategy, end);
     }
 
     let work = || -> Result<Body, String> {
@@ -360,6 +361,9 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
             }
             _ => {
                 let _ = writeln!(h, "exploratory run: no hypothesis file, not usable for a decision (not counted as a variant)");
+                if !explore_reads.is_empty() {
+                    let _ = writeln!(h, "WARNING: this exploratory run reads the out-of-sample window of {}: not counted; a later result of that hypothesis must report this run", explore_reads.join(", "));
+                }
             }
         }
         let (mut poison_lines, mut poison_error) = (Vec::new(), None);

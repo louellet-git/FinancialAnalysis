@@ -611,7 +611,10 @@ pub fn finalize(path: &Path, record: &Value) -> Result<(), String> {
 }
 
 /// A run with no hypothesis file must not reach the out-of-sample window of a registered hypothesis of the same strategy.
-pub fn exploratory_guard(repo: &Path, strategy: &str, end: i64) -> Result<(), String> {
+/// The registered windows that an exploratory run (no hypothesis file) reads. The run is permitted (a head that
+/// does not use the harness is not slowed), but each result line says that it is not counted and which window it read.
+pub fn exploratory_reads(repo: &Path, strategy: &str, end: i64) -> Vec<String> {
+    let mut out = Vec::new();
     for e in std::fs::read_dir(hypotheses_dir(repo)).into_iter().flatten().flatten() {
         let Some(h) = std::fs::read_to_string(e.path()).ok().and_then(|t| Hypothesis::parse(&t).ok()) else { continue };
         if h.strategy != strategy {
@@ -619,16 +622,11 @@ pub fn exploratory_guard(repo: &Path, strategy: &str, end: i64) -> Result<(), St
         }
         if let Ok(r) = resolve(repo, &h) {
             if oos_read(end, r.window_start) {
-                return Err(format!(
-                    "an exploratory run (no hypothesis file) must not reach the out-of-sample window of '{}' ({} from {}): use --end before it, or a hypothesis file",
-                    h.id,
-                    r.window_id,
-                    mapcheck::dates::format(r.window_start)
-                ));
+                out.push(format!("'{}' (window of '{}' from {})", h.id, r.window_id, mapcheck::dates::format(r.window_start)));
             }
         }
     }
-    Ok(())
+    out
 }
 
 #[cfg(test)]
@@ -824,14 +822,14 @@ cost_bp = 10
     }
 
     #[test]
-    fn an_exploratory_run_must_not_reach_the_window_of_a_registered_hypothesis() {
+    fn an_exploratory_run_that_reaches_a_registered_window_is_named() {
         let repo = scratch("explore");
         std::fs::create_dir_all(hypotheses_dir(&repo)).unwrap();
         std::fs::write(hypotheses_dir(&repo).join("value-rank-sp500-v1.toml"), GOOD).unwrap();
-        assert!(exploratory_guard(&repo, "value-rank", d("2022-12-31")).is_ok());
-        let e = exploratory_guard(&repo, "value-rank", d("2023-01-01")).unwrap_err();
+        assert!(exploratory_reads(&repo, "value-rank", d("2022-12-31")).is_empty());
+        let e = exploratory_reads(&repo, "value-rank", d("2023-01-01")).join(" ");
         assert!(e.contains("value-rank-sp500-v1") && e.contains("2023-01-01"), "{e}");
-        assert!(exploratory_guard(&repo, "momentum", d("2026-01-01")).is_ok()); // another strategy
+        assert!(exploratory_reads(&repo, "momentum", d("2026-01-01")).is_empty()); // another strategy
         let _ = std::fs::remove_dir_all(&repo);
     }
 

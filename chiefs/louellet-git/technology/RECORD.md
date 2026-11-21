@@ -151,3 +151,7 @@ Done: `chiefs/ORIENTATION.md`, section 3, "Industry practice" (from time to time
 Question: "May I subscribe to the Tiingo Power plan ($30 a month, with your Tiingo key) and keep its older daily prices (back to about 2009, for about 1,000 tickers) in a new private data store that only your sessions use? ..."
 Words: "No, please find a better source then if needed"
 Done: no Tiingo plan, no private store. Research of free sources whose terms permit a public copy (Quandl WIKI archive, Stooq, Alpaca, open datasets). Tiingo terms (read 2026-11-21, https://www.tiingo.com/tos section 1.6): the free plan forbids any persistent storage; paid plans are internal and personal use only.
+
+## 2026-11-21 05:04 UTC (chat)
+Words: "Remove the tests used for a decision I think that's overdoing it ?" and "The backtest harness and the hypothesis file are more for the heads that require it"
+Done: the row "Test or experiment that a person uses for a decision" removed from `louellet-git/the-heads` (commit 96eabd4). In this repo the harness is opt-in: `trading/hypotheses/README.md` says who uses it; an exploratory run that reaches a registered window is no longer refused (a WARNING names the hypothesis).
