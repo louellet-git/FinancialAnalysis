@@ -12,12 +12,10 @@ Rules: `chiefs/ORIENTATION.md`, sections 1, 5 and 8. Decisions of the person: `.
   the person talks is sufficient.
 - Questions for the person: research first, then one clickable yes/no dialog with a recommendation.
 
-## Frame for "cohesive" (proposed 2026-11-21; the person has NOT agreed yet)
-1. One goal chain: each large task serves a decision of the person (a value, a trade, a control).
-2. No task is done two times, and two heads do not give two answers to one question.
-3. The output of one head is the input that the next head reads (name, format, date rule).
-4. Work in progress is small: a head finishes before it starts.
-5. A date that the person gave has a visible path of tickets to it.
+## Frame for "cohesive" (lean form, owner word 2026-11-21: "a bit more lean")
+1. Each large task serves a decision of the person.
+2. One question has one answer, and the output of one head is the input of the next.
+3. A head finishes before it starts.
 
 ## Watch list
 - Fundamental Research: 8 tickets in progress, 4 of them on one branch (`claude/dcf-engine-backtest`).
