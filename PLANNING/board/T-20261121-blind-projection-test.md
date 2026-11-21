@@ -75,3 +75,19 @@ Economics). It replaces the pass rules of T2 to T4 above. T1 does not change.
   T1 is `fa dcf pit --cut 2015` with the code of this branch (the acquisition rule of `main`; if the acquisition
   change merges before the first trade, T1 runs again once with it, and both runs are reported).
 - The refactor of `fa portfolio backtest` for the shared code is checked: run D is byte-identical.
+
+**Result of the one run (2026-11-21 04:49 UTC):** T1 FAILS (the free cash flow low tail is too thin, revenue at T+3
+too wide); T2 to T4 pass (`analysis/priors/blind_projection_test_2026-11-21.md`). Owner decision, 2026-11-21
+04:55 UTC: "No trades until T1 passes", paper included.
+
+**The test of the T1 fix (written before any run of a fix):**
+- Development on `fa dcf pit --cut 2015 --half 0` only. The agent may look at half 0 as often as needed. It
+  chooses ONE rule for the band of the free cash flow, and if needed ONE rule for the revenue band at T+2 and T+3.
+  Each rule has a reason that is not a score of half 1 (for example the size of the margin shocks seen in the
+  history of half 0, or a lower tail of the margin shock). The rule and its numbers are committed before step 2.
+- Score: `fa dcf pit --cut 2015 --half 1`, once. Pass: the T1 rule ("all" row, revenue and free cash flow, T+1 to
+  T+3: inside P10 to P90 75% to 85%, each tail 5% to 15%) holds on half 1.
+- Then T1 on the full sample (`fa dcf pit --cut 2015`), once, and T2 to T4 (`fa portfolio calibrate`, the same
+  command), once, with the fixed model. All must pass. If the score of half 1 fails, the fix fails: report it
+  to Luc; a second fix needs a new written test.
+- `fa dcf drivers IBM` stays $83.84 / $151.84 / $258.03; a changed value gets its record (`docs/assumptions/`).
