@@ -285,7 +285,7 @@ pub fn check_period_as(registry: &Registry, p: &PeriodData, template: &str) -> P
             // A formula with one term is a fallback to a different number; a formula
             // with an optional term that has no value can be too small.
             // Contract revenue is the full revenue of most companies: not a fallback.
-            Some(s) => s.starts_with('=') && s != "= revenue_from_contracts" && (s.contains("no value:") || !(s.contains(" + ") || s.contains(" - "))),
+            Some(s) => s.starts_with('=') && s != "= revenue_from_contracts" && s != "= revenue_total_pre2018" && (s.contains("no value:") || !(s.contains(" + ") || s.contains(" - "))),
             None => false,
         })
         .map(|i| format!("{} [{}]", registry.variables[i].name, p.sources[i].as_deref().unwrap_or("")))
