@@ -1,0 +1,125 @@
+curve (par fit) 2026-10-02: 10-year zero 5.2706%
+curve (par fit) 2026-10-09: 10-year zero 5.2320%
+ATTRIBUTION of the change of the price from 2026-10-02 to 2026-10-09, 11 tickers, no random part. Automatic model: a screen, not a reviewed valuation. A market-implied value is a measurement, not an input.
+  The value is the value of the one path at the means (not the expected value). Order of the steps: facts, time, rates, plug (implied premium or implied growth), residual; the reverse order of rates and the plug is shown. This is an accounting split of the price change with the model; it is not a cause. Facts of each date: filed on or before it; the 10-K of the cache does not fill an input. Price: last close on or before the date. Curve: last GSW row on or before the date (with --curve fedinvest or par: the NSS fit to the last FedInvest file or Treasury par row on or before it).
+
+RESULT: 11 tickers with a value, 0 refused
+  new facts between the dates: 0 tickers; premium view: 6 tickers, growth view: 9 tickers
+  curve date at D1: {"2026-10-02"}; at D2: {"2026-10-09"}
+
+This is an accounting split of the price change with the model; it is not a cause. facts and time have a fixed position (first and second); rates and the plug are shown as the range of the two orders.
+
+WHOLE LIST: 10 tickers with two prices and a share count (the models need not have a value: banks, REITs, insurers and refused tickers are in; one weight for each company); market value at D1 28165.8B (price x shares); change +1.46% (value-weighted)
+  one company, one weight: the first ticker of the list carries the weight; no weight for GOOGL (weight with GOOG)
+  largest weights: NVDA 20.2%, AAPL 17.4%, GOOG 15.0%, MSFT 13.7%, AMZN 9.7%
+  the same change over other sets:
+      +1.46%  10 tickers, 28165.8B at D1: all tickers with two prices, one weight for each company (the number above)
+      +1.58%  11 tickers, 32421.1B at D1: all tickers with two prices, every ticker its own weight (a company with two classes counted two times)
+      +1.46%  10 tickers, 28165.8B at D1: without banks, REITs, insurers and new filers (a template with no model)
+      +1.46%  10 tickers, 28165.8B at D1: only tickers with a model value
+      +1.58%  11 tickers, 32421.1B at D1: only tickers with a model value, every ticker its own weight
+  rows whose curve is more than 3 days older than the date: 0 at D1, 0 at D2 (the curve source lags)
+
+(2) COMMON SET: the tickers that have both views. Covered part only.
+  PREMIUM VIEW on the common set, covered part only (5 tickers, 55.6% of the market value of the list at D1): change +1.91%; the rest of the list (not in this set) +0.90%
+  largest weights: AAPL 31.2%, GOOG 26.9%, MSFT 24.6%, META 11.9%, WMT 5.3%
+  part, as a share of the market value of the set at D1 (percent); for rates and the plug the range over the two orders; top 5 contributors in percentage points
+  facts                                   +0.00%  (fixed position)  top: AAPL +0.00, GOOG +0.00, META +0.00, MSFT +0.00, WMT +0.00
+  time (roll of the valuation date)       +0.07%  (fixed position)  top: MSFT +0.03, GOOG +0.03, META +0.01, WMT +0.01, AAPL +0.00
+  rates                                   +1.47%  (+1.45..+1.47)  top: AAPL +0.53, GOOG +0.49, MSFT +0.32, WMT +0.11, META +0.03
+  implied premium (plug)                  +0.36%  (+0.36..+0.38)  top: MSFT +0.48, WMT +0.25, AAPL -0.25, META -0.20, GOOG +0.08
+  search residual                         +0.00%  (fixed position)  top: AAPL +0.00, GOOG +0.00, MSFT +0.00, META +0.00, WMT -0.00
+  GROWTH VIEW on the common set, covered part only (5 tickers, 55.6% of the market value of the list at D1): change +1.91%; the rest of the list (not in this set) +0.90%
+  largest weights: AAPL 31.2%, GOOG 26.9%, MSFT 24.6%, META 11.9%, WMT 5.3%
+  part, as a share of the market value of the set at D1 (percent); for rates and the plug the range over the two orders; top 5 contributors in percentage points
+  facts                                   +0.00%  (fixed position)  top: AAPL +0.00, GOOG +0.00, META +0.00, MSFT +0.00, WMT +0.00
+  time (roll of the valuation date)       +0.12%  (fixed position)  top: GOOG +0.05, MSFT +0.04, META +0.02, WMT +0.01, AAPL +0.00
+  rates                                   +0.71%  (+0.71..+0.72)  top: AAPL +0.22, GOOG +0.18, MSFT +0.18, META +0.08, WMT +0.05
+  implied growth (plug)                   +1.08%  (+1.07..+1.08)  top: MSFT +0.61, GOOG +0.37, WMT +0.30, META -0.26, AAPL +0.06
+  search residual                         -0.00%  (fixed position)  top: AAPL -0.00, GOOG -0.00, MSFT +0.00, META +0.00, WMT -0.00
+
+(3) EACH VIEW ON ITS OWN SET. Covered part only.
+PREMIUM VIEW, covered part only (5 tickers, 55.6% of the market value of the list at D1): change +1.91%; the rest of the list (not in this set) +0.90%
+  largest weights: AAPL 31.2%, GOOG 26.9%, MSFT 24.6%, META 11.9%, WMT 5.3%
+  part, as a share of the market value of the set at D1 (percent); for rates and the plug the range over the two orders; top 5 contributors in percentage points
+  facts                                   +0.00%  (fixed position)  top: AAPL +0.00, GOOG +0.00, META +0.00, MSFT +0.00, WMT +0.00
+  time (roll of the valuation date)       +0.07%  (fixed position)  top: MSFT +0.03, GOOG +0.03, META +0.01, WMT +0.01, AAPL +0.00
+  rates                                   +1.47%  (+1.45..+1.47)  top: AAPL +0.53, GOOG +0.49, MSFT +0.32, WMT +0.11, META +0.03
+  implied premium (plug)                  +0.36%  (+0.36..+0.38)  top: MSFT +0.48, WMT +0.25, AAPL -0.25, META -0.20, GOOG +0.08
+  search residual                         +0.00%  (fixed position)  top: AAPL +0.00, GOOG +0.00, MSFT +0.00, META +0.00, WMT -0.00
+  FLAGGED (3 tickers: the implied premium at D1 below 1% (premium view), or a part above 15% of P1): AAPL (x1 0.15%, rates +1.7%), GOOG (x1 0.71%, rates +1.8%), META (x1 -1.50%, premium -1.6%)
+GROWTH VIEW, covered part only (8 tickers, 85.6% of the market value of the list at D1): change +1.04%; the rest of the list (not in this set) +3.99%
+  largest weights: NVDA 23.6%, AAPL 20.3%, GOOG 17.5%, MSFT 16.0%, META 7.7%
+  part, as a share of the market value of the set at D1 (percent); for rates and the plug the range over the two orders; top 5 contributors in percentage points
+  facts                                   +0.00%  (fixed position)  top: AAPL +0.00, AVGO +0.00, GOOG +0.00, LLY +0.00, META +0.00
+  time (roll of the valuation date)       +0.16%  (fixed position)  top: NVDA +0.05, GOOG +0.03, MSFT +0.03, AVGO +0.02, META +0.01
+  rates                                   +0.68%  (+0.68..+0.69)  top: AAPL +0.14, NVDA +0.13, GOOG +0.12, MSFT +0.11, META +0.05
+  implied growth (plug)                   +0.20%  (+0.19..+0.20)  top: NVDA -0.66, MSFT +0.40, GOOG +0.24, WMT +0.20, META -0.17
+  search residual                         -0.00%  (fixed position)  top: NVDA -0.00, AAPL -0.00, AVGO +0.00, GOOG -0.00, MSFT +0.00
+  FLAGGED (0 tickers: the implied premium at D1 below 1% (premium view), or a part above 15% of P1): 
+
+(4) FULL BRIDGE OF THE WHOLE LIST: two readings of the same change.
+FULL BRIDGE, PREMIUM view first: each ticker of the whole list once (premium view: 5 tickers, 55.6% of the value; growth view where the premium view has no value: 3, 30.0%; no model value: 2, 14.4%). The lines add to the change of the whole list. Points of the market value of the WHOLE list at D1; the other order of rates and the plugs is on the line below the table.
+  group       n  weight   change |    facts    time   rates premium  growth   resid nomodel |      sum
+  all        10  100.0%   +1.46% |    +0.00   +0.11   +1.01   +0.20   -0.43   +0.00   +0.58 |    +1.46
+  Hlth        1    3.6%   +3.19% |    +0.00   +0.01   +0.04   +0.00   +0.07   -0.00   +0.00 |    +0.12
+  Durbl       1    4.7%   +3.27% |    +0.00   +0.00   +0.00   +0.00   +0.00   +0.00   +0.15 |    +0.15
+  BusEq       6   79.0%   +0.72% |    +0.00   +0.10   +0.91   +0.06   -0.50   +0.00   +0.00 |    +0.57
+  Shops       2   12.7%   +4.91% |    +0.00   +0.00   +0.06   +0.14   +0.00   -0.00   +0.42 |    +0.62
+  NVDA        1   20.2%   -2.00% |    +0.00   +0.05   +0.11   +0.00   -0.56   -0.00   +0.00 |    -0.40
+  META        1    6.6%   -1.29% |    +0.00   +0.00   +0.02   -0.11   +0.00   +0.00   +0.00 |    -0.09
+  AVGO        1    6.2%   +1.80% |    +0.00   +0.01   +0.04   +0.00   +0.06   +0.00   +0.00 |    +0.11
+  LLY         1    3.6%   +3.19% |    +0.00   +0.01   +0.04   +0.00   +0.07   -0.00   +0.00 |    +0.12
+  TSLA        1    4.7%   +3.27% |    +0.00   +0.00   +0.00   +0.00   +0.00   +0.00   +0.15 |    +0.15
+  AAPL        1   17.4%   +0.88% |    +0.00   +0.00   +0.29   -0.14   +0.00   +0.00   +0.00 |    +0.15
+  WMT         1    3.0%   +6.80% |    +0.00   +0.00   +0.06   +0.14   +0.00   -0.00   +0.00 |    +0.20
+  GOOG        1   15.0%   +2.21% |    +0.00   +0.02   +0.27   +0.04   +0.00   +0.00   +0.00 |    +0.33
+  AMZN        1    9.7%   +4.34% |    +0.00   +0.00   +0.00   +0.00   +0.00   +0.00   +0.42 |    +0.42
+  MSFT        1   13.7%   +3.39% |    +0.00   +0.02   +0.18   +0.27   +0.00   +0.00   +0.00 |    +0.46
+  the other order (plug before rates), all: rates +1.00, premium +0.21, growth -0.43
+  largest contributions to the change (points): NVDA -0.40 (20.2% x -2.0%, growth), META -0.09 (6.6% x -1.3%, premium), AVGO +0.11 (6.2% x +1.8%, growth), LLY +0.12 (3.6% x +3.2%, growth), TSLA +0.15 (4.7% x +3.3%, none), AAPL +0.15 (17.4% x +0.9%, premium), WMT +0.20 (3.0% x +6.8%, premium), GOOG +0.33 (15.0% x +2.2%, premium), AMZN +0.42 (9.7% x +4.3%, none), MSFT +0.46 (13.7% x +3.4%, premium)
+FULL BRIDGE, GROWTH view first: each ticker of the whole list once (growth view: 8 tickers, 85.6% of the value; premium view where the growth view has no value: 0, 0.0%; no model value: 2, 14.4%). The lines add to the change of the whole list. Points of the market value of the WHOLE list at D1; the other order of rates and the plugs is on the line below the table.
+  group       n  weight   change |    facts    time   rates premium  growth   resid nomodel |      sum
+  all        10  100.0%   +1.46% |    +0.00   +0.13   +0.59   +0.00   +0.17   -0.00   +0.58 |    +1.46
+  Hlth        1    3.6%   +3.19% |    +0.00   +0.01   +0.04   +0.00   +0.07   -0.00   +0.00 |    +0.12
+  Durbl       1    4.7%   +3.27% |    +0.00   +0.00   +0.00   +0.00   +0.00   +0.00   +0.15 |    +0.15
+  BusEq       6   79.0%   +0.72% |    +0.00   +0.12   +0.52   +0.00   -0.07   -0.00   +0.00 |    +0.57
+  Shops       2   12.7%   +4.91% |    +0.00   +0.00   +0.03   +0.00   +0.17   -0.00   +0.42 |    +0.62
+  NVDA        1   20.2%   -2.00% |    +0.00   +0.05   +0.11   +0.00   -0.56   -0.00   +0.00 |    -0.40
+  META        1    6.6%   -1.29% |    +0.00   +0.01   +0.05   +0.00   -0.14   +0.00   +0.00 |    -0.09
+  AVGO        1    6.2%   +1.80% |    +0.00   +0.01   +0.04   +0.00   +0.06   +0.00   +0.00 |    +0.11
+  LLY         1    3.6%   +3.19% |    +0.00   +0.01   +0.04   +0.00   +0.07   -0.00   +0.00 |    +0.12
+  TSLA        1    4.7%   +3.27% |    +0.00   +0.00   +0.00   +0.00   +0.00   +0.00   +0.15 |    +0.15
+  AAPL        1   17.4%   +0.88% |    +0.00   +0.00   +0.12   +0.00   +0.03   -0.00   +0.00 |    +0.15
+  WMT         1    3.0%   +6.80% |    +0.00   +0.00   +0.03   +0.00   +0.17   -0.00   +0.00 |    +0.20
+  GOOG        1   15.0%   +2.21% |    +0.00   +0.03   +0.10   +0.00   +0.20   -0.00   +0.00 |    +0.33
+  AMZN        1    9.7%   +4.34% |    +0.00   +0.00   +0.00   +0.00   +0.00   +0.00   +0.42 |    +0.42
+  MSFT        1   13.7%   +3.39% |    +0.00   +0.02   +0.10   +0.00   +0.34   +0.00   +0.00 |    +0.46
+  the other order (plug before rates), all: rates +0.59, premium +0.00, growth +0.17
+  largest contributions to the change (points): NVDA -0.40 (20.2% x -2.0%, growth), META -0.09 (6.6% x -1.3%, growth), AVGO +0.11 (6.2% x +1.8%, growth), LLY +0.12 (3.6% x +3.2%, growth), TSLA +0.15 (4.7% x +3.3%, none), AAPL +0.15 (17.4% x +0.9%, growth), WMT +0.20 (3.0% x +6.8%, growth), GOOG +0.33 (15.0% x +2.2%, growth), AMZN +0.42 (9.7% x +4.3%, none), MSFT +0.46 (13.7% x +3.4%, growth)
+
+SETS (tickers with a weight): both views 5, premium only 0, growth only 3, neither 2 (a model refusal has neither)
+
+GROUPS, PREMIUM VIEW
+group                                  n  view    change |    facts     time    rates  premium residual |   x at D1   x at D2
+  medians over the tickers with the view; the parts are a share of P1 in percent (the median of a part is not the part of the median); x = the free variable in percent (premium, or growth shift)
+all                                   11     6     +2.29 |    +0.00    +0.11    +1.74    +0.37    +0.00 |      0.70      0.49
+size 30-100B                           3     0       NaN |      NaN      NaN      NaN      NaN      NaN |       NaN       NaN
+size >100B                             8     6     +2.29 |    +0.00    +0.11    +1.74    +0.37    +0.00 |      0.70      0.49
+sector BusEq                           7     5     +2.21 |    +0.00    +0.11    +1.68    +0.30    +0.00 |      0.69      0.66
+sector Durbl                           1     0       NaN |      NaN      NaN      NaN      NaN      NaN |       NaN       NaN
+sector Hlth                            1     0       NaN |      NaN      NaN      NaN      NaN      NaN |       NaN       NaN
+sector Shops                           2     1     +6.80 |    +0.00    +0.12    +1.98    +4.71    -0.00 |      1.12      0.32
+
+GROUPS, GROWTH VIEW
+group                                  n  view    change |    facts     time    rates   growth residual |   x at D1   x at D2
+  medians over the tickers with the view; the parts are a share of P1 in percent (the median of a part is not the part of the median); x = the free variable in percent (premium, or growth shift)
+all                                   11     9     +2.21 |    +0.00    +0.17    +0.69    +1.36    -0.00 |     24.86     25.26
+size 30-100B                           3     2     +2.49 |    +0.00    +0.19    +0.85    +1.46    +0.00 |     38.14     38.51
+size >100B                             8     7     +2.21 |    +0.00    +0.17    +0.69    +1.36    -0.00 |     24.48     24.84
+sector BusEq                           7     7     +1.80 |    +0.00    +0.18    +0.67    +0.97    -0.00 |     24.86     25.26
+sector Durbl                           1     0       NaN |      NaN      NaN      NaN      NaN      NaN |       NaN       NaN
+sector Hlth                            1     1     +3.19 |    +0.00    +0.16    +1.08    +1.95    -0.00 |     33.31     33.79
+sector Shops                           2     1     +6.80 |    +0.00    +0.16    +0.99    +5.65    -0.00 |     15.29     16.52
+
+TIME: mapping 0.27 s | attribution 0.12 s (4 threads) | total 0.59 s
