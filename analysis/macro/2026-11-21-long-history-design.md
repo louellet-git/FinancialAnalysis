@@ -222,3 +222,27 @@ month with no CPI value gives no predictor value at the month that needs it (the
 `no_cpi`), and a window whose outcome deflator needs that month (the end month 2025-10, start 2015-10
 for H = 120 and 2020-10 for H = 60) gives no outcome. These months drop out of the sample. No other
 value is filled. The count of dropped months is reported in the findings.
+
+### R3. Interpretations, written after the first run was seen (answers sent 2026-11-21 about 04:45 UTC; committed with the findings file)
+
+This record was **written after the first run (`claude/dcf-market-level` 1c4cb49) was seen**. Its
+results were known: P1 p 0.0319, the engine p 0.0115. The Head of Economics answered nine points of
+interpretation from the design text, and changed no rule on purpose. A reader must still count each
+choice below as made after a result. The run of record is the complete run 3f5a6e3, which applies them.
+
+- **D1. Sample end.** The text of section 4 gives 2016-10 / 2021-10. The run applies the general end rule
+  of section 4 (the last month with a value for each series, minus H). The Shiller rows of 2026-10 and
+  2026-11 are estimates with no dividend, so the last start months are 2016-09 (H = 120) and 2021-09
+  (H = 60). Counts: 1,484 pairs for H = 120 and 1,544 for H = 60 (after R2).
+- **D2. The January phase.** "Phase January alone" means the one phase that starts at 1893-01
+  (1893-01, 1903-01, ..., 2013-01). It is descriptive.
+- **D3. The build of P2.** CAPE10(t) = the real P(t) (deflated with CPIK(t)) / the mean of the real annual
+  E of the last 10 known years. E uses the step and lag rule of section 5; each annual E is deflated with
+  its own December CPI. This window is in the code only before this record.
+- **D4. Smaller readings.** The phase is the position in the sample modulo 120; the generator is PCG64
+  (`nprandom`) with the seed 20261121; "20 years of complete pairs" = 240 monthly pairs; the CPI ratio
+  1913-01 / 1912-12 comes from the Shiller CPI; S1 (H = 60) uses 120 phases and blocks of 120, as
+  section 4 says; the secondary tests use Holm on the bootstrap p only, with the OOS R2 descriptive; the
+  blocks B1-B4 of the engine are descriptive and not in a family.
+- **D5. The GS10 check.** The Shiller long rate and FRED GS10 differ only in 2018-05, 2019-06 and
+  2019-07, all after the sample end. So the check is empty for the sample. It is not a robustness test.
