@@ -43,7 +43,7 @@ Each item says "changes a value" (the fix changes a number that a model or a che
 - R3. Old comment in the header of `rust/src/recon.rs`: "through the Python interface" (checked). Text only.
 - R4. `MR_T_THRESHOLD` 2.86 (`rust/src/ratemodels/calib.rs`) is a Dickey-Fuller value. The code also applies it to an ML t-statistic. Changes a value (a warning flag).
 - R5. Hull-White mixes a real-world fit (a, sigma) with the market curve (theta) (`HullWhite` branch in `rust/src/ratemodels/calib.rs`). Text only (record the choice).
-- R6. The "lasting residual" rule of the step 2 note is in an `awk` script only (`analysis/priors/rates_recon_step2_2026-11-20.md`), not in code. Text only.
+- R6. The "lasting residual" rule of the step 2 note is in an `awk` script only (`analysis/priors/rates_recon_step2_2026-11-20.md`), not in code. Text only. FIXED 2026-11-21: `fa recon history --lasting` (A-117, ticket `T-20261121-recon-lasting`).
 
 ## Variance premium test (records A-150 to A-154; added 2026-11-21 from `docs/models/variance-premium-test.md`)
 - P1. The 2016-2026 block ends at a fixed date: `report` in `rust/src/trading/premium.rs` sets `w16` to 2016-01-05 to 2026-11-19 (checked). A day after 2026-11-19 goes into the row "1993 to 2015 (no windows defined)" with a wrong label. The window list is a hand copy of `analysis/macro/stress-windows.csv`, and no test links them. Changes a value (a row of the table).

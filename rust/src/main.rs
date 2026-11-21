@@ -62,6 +62,7 @@ USAGE:
   fa recon bills [--date D]                       tests of each cause of the bill difference of recon bonds
   fa recon rich-cheap [--date D] [--out FILE]     fitted NSS curve, difference of each security, rich and cheap candidates
   fa recon history [--from D] [--to D] [--out F]  the same difference over the cached dates: how long it lasts
+  fa recon history --lasting [--to D] [--min-dates N] [--same-sign S] [--min-abs-bp B]   the securities that stay rich or cheap (stored files only)
   fa portfolio backtest --strategy value-rank|momentum --start D --end D [--rebalance monthly|quarterly] [--cost-bp N] [--tickers-file F] [--cache DIR]
                                                   portfolio backtest with costs, point-in-time, against SPY (fa portfolio --help)
   fa portfolio calibrate --start D [--block-weeks N] [--ranks-out F] [--entries-out F] [--stress-file F]
