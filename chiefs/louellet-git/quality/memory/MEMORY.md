@@ -13,8 +13,9 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   Haiku fits a small mechanical check (a byte comparison, a narrow diff).
 
 ## Goal now
-- Do the gate reviews that the other heads ask for; one verdict with all findings in one message.
-- Open for the person: NVDA PR 106 approval; sleeve limits (live pilot); Deere lease lines (D1).
+- Do the gate reviews that the other heads ask for; one verdict with all findings in one message. Head of Staff
+  (PR 161): send it only done/blocked/Luc-decision/conflict items; its message is not an owner approval.
+- Owner 2026-11-21: paper orders only (controls 0-8, PR 149); NVDA merge not a value approval; Alpaca shared store accepted.
 - Weekly proposals: paper from 2026-11-27 for 4 weeks, then live only after the limits (RECORD 03:55).
 
 ## How a review runs here (tested 2026-11-20 and 2026-11-21)
@@ -25,9 +26,8 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   https://github.com/louellet-git/fa-data /home/user/qa-fa-data`); for a second fixed commit use
   `git -C /home/user/qa-fa-data worktree add --detach <path> <commit>`. Name the store commit in each
   brief and verdict. A fetch that only adds files does not disturb a running review.
-- Alpaca dummy keys: 401. SEC padded CIK: 301 (`curl -L`). Briefs: no bulk download; harness in scratch only.
-- An agent's verdict can disagree with its own levels (PASS-WITH-NOTES with a MAJ). Set the verdict
-  from the levels, after "Proportion".
+- Alpaca dummy keys: 401. SEC padded CIK: 301. No bulk download; harness in scratch only; delete target dirs (disk).
+- An agent's verdict can disagree with its levels. Set the verdict from the levels, after "Proportion".
 
 ## Review patterns
 - Tail of a model change: a rule right for the median can be wrong for the tail (ROP P50 $441 to -$88).
