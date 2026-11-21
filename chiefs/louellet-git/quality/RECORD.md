@@ -68,3 +68,6 @@ Also (my decision, 17:58 UTC): the Cboe delayed-quote reads stop (the Cboe page 
 
 ## 2026-11-21 about 21:05 UTC (owner answer, relayed by the Head of Staff)
 Question: a new session for the Head of Quality and Risk, as a test. Answer: "Yes, as a test". Effect: a new session takes the next gates; this session stays open as a fallback, titled "FA-L - Quality and Risk (fallback)", takes no new gate, and answers the new session's questions (each question is a fact that the handover lost; the Head of Staff counts them).
+
+## 2026-11-21 about 22:12 UTC (owner word, relayed by the Head of Staff)
+Words: "Ignore the new quality and risk session we'll stick to one". Effect: the test ends; no new session starts; this session is the Head of Quality and Risk again (title restored) and takes the gates.

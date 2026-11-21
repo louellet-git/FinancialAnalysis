@@ -17,8 +17,8 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   accepted; "docs for me are in pdf format" (a document for Luc also goes as a PDF).
 - Until 2026-11-25 11:00 Toronto (token limit 71% used): gates in the order of EPICS.md last section; one agent a gate
   where enough, Haiku for narrow checks; at most 2 builds at a time (15 GB machine; OOM on 2026-11-21).
-- HANDOVER (2026-11-21 21:10 UTC; Luc: "Yes, as a test"): every gate of 2026-11-21 has a verdict (ledger). Open: the
-  premium-series PIT results (61fe8de) before its run of record. Fallback session: "FA-L - Quality and Risk (fallback)".
+- HANDOVER (2026-11-21 21:10 UTC): every gate of 2026-11-21 has a verdict (ledger). Open: the premium-series PIT
+  results (61fe8de). Luc 22:12 UTC: "we'll stick to one" session for this role; this session continues.
 - Precedents: an author who moves the target mid-review: redirect the same agent by SendMessage (its context and cache
   stay; cheaper than a new agent); ask the author to freeze until the verdict. Resume a finished agent for cycle 2.
 
