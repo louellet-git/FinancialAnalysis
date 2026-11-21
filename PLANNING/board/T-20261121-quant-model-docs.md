@@ -2,7 +2,7 @@
 id: T-20261121-quant-model-docs
 title: Model documents and assumption records for the quant models
 area: docs
-status: in-progress
+status: review
 owner: louellet-git
 head: quant
 order: 2.9
