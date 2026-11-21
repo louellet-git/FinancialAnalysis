@@ -33,7 +33,7 @@ The quality assurance (QA) agents never review work from their own context.
 
 | Level | Meaning | Blocks |
 |---|---|---|
-| CRIT | A wrong number or rule in a result that a person can use; a secret in a file; code that sends an order; an input set from the price; a fabricated source | Merge and publication |
+| CRIT | A wrong number or rule in a result that a person can use; a secret in a file; code that sends a live order, or a paper order outside the controls of section 8; an input set from the price; a fabricated source | Merge and publication |
 | MAJ | A defect that changes a value or hides a risk; new logic with no test; a claim with no evidence; a binding rule broken | Merge and publication |
 | MIN | A defect with no effect on a value (a weak test, an unclear sentence, a style point) | Nothing. List it with an owner. |
 
@@ -82,10 +82,11 @@ The orchestrator does not merge before the listed QA agents pass the work.
 | Code change | `rust-engineer` | `code-reviewer` | Correct, tested, repo rules |
 | Data source or mapping | `data-engineer` | `data-quality-analyst`, `code-reviewer` | Cross-check, freshness, terms, keys |
 | Model change (DCF, rates, volatility) | the quant of the area | `model-validator`, `code-reviewer` | Numbers reproduced; no fit to the price; records current; the Backtest row of section 4 |
-| Strategy or backtest | `strategy-researcher` | `model-validator` | Costs, out of sample, model prices, no orders; the Backtest row of section 4 |
+| Strategy or backtest | `strategy-researcher` | `model-validator` | Costs, out of sample, model prices, no live orders; the Backtest row of section 4 |
 | Investigation | the researcher who owns it | `auditor` | Numbers calculated again |
 | Valuation report | `equity-analyst` | `model-validator`, `document-reviewer`, `auditor` | The four steps, in order |
 | Trade recommendation | the head of the sleeve | `model-validator`, `auditor`, `risk-compliance-officer` | The value supports the side and the size. The auditor calculates each number again. The price is not an input. The repo sends no order. |
+| Order code (paper only) | `rust-engineer`, `strategy-researcher` | `code-reviewer`, `risk-compliance-officer` | The six controls of section 8, each with a test |
 | Document or model record | the author, `model-documenter` | `document-reviewer` | Purpose, evidence, STE |
 
 A small change (a typing error, a count, a ticket, a ledger row) has no gate: the
@@ -111,6 +112,19 @@ backtest with model prices is not a result with market prices.
 
 ## 8. Hard limits
 
-No order code. No secret in a file, a commit or a chat (skill `secrets-and-privacy`). No
+Orders (owner word, 2026-11-21: "programs can and will place orders"; scope chosen by the owner: paper first).
+A program may send orders to the Alpaca paper account only. Each control has a test, and the gate
+"Order code" of section 5 passes before the first run:
+1. The endpoint is the paper endpoint (`paper-api.alpaca.markets`), fixed in the code. The code refuses any
+   other order endpoint, also when a setting or an environment variable names one.
+2. The code checks the sleeve limits (`chiefs/louellet-git/quality/proposal-sleeve-limits.md`) before each
+   order and refuses an order that breaks one.
+3. A kill file and a daily loss stop end the run and send no new order.
+4. The keys are in the environment only (skill `secrets-and-privacy`).
+5. Each order, fill and refusal is written to a log with its time.
+6. A short has a written borrow cost and a maximum loss before entry.
+
+No live order. A live order needs a new owner approval and a review of the same weight as this one.
+No secret in a file, a commit or a chat (skill `secrets-and-privacy`). No
 change to `analysis/IBM/report/*`, `REVIEW.md` or `DRIVER-REVIEW.md`. The engines, the trading code and the data loaders are in Rust (`CLAUDE.md`, "Work rules").
 A subagent does not commit. A client name is honest; no program imitates a browser.

@@ -20,7 +20,9 @@ investment decisions and to trade options. The repo has two parts:
 2. **Options trading research** (`trading/`). A backtester and a paper trader for
    SPY/QQQ option strategies. All backtest option prices are model prices.
 
-The repo gives analysis. It does not send orders to a broker.
+The repo gives analysis. A program may send orders to the Alpaca **paper** account only, under the
+controls of `docs/QUALITY-STANDARDS.md` section 8 (owner word, 2026-11-21). No program sends a live
+order. A live order needs a new owner approval and a review of the same weight.
 
 ## Where the status is
 

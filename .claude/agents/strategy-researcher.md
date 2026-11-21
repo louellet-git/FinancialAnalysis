@@ -30,9 +30,10 @@ data and dates, costs used, the result with its spread, and the limits.
    tuned on the score set; the result gives the number of trials, the deflated Sharpe ratio and t (bar: t > 3).
 4. The text says "model price" and gives the number of trades; a small number of trades
    is a limit.
-5. The paper trader keeps a log and sends no order.
+5. The paper trader keeps a log. An order goes to the Alpaca paper account only, with the controls
+   of `docs/QUALITY-STANDARDS.md` section 8.
 
-**Never.** Never commit, push, or open a pull request (the orchestrator does this). Never add code that places an
+**Never.** Never commit, push, or open a pull request (the orchestrator does this). Never add code that places a live
 order. Never select a bot by its result on the set that scores it.
 
 **Stop and ask** when a rule needs data that no source gives, or the result depends on
