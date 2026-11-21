@@ -83,3 +83,15 @@ have like a few days worth of evidence to prove that it's actually better than a
 had too much issue with overly constricting hooks. So unless there's a hook or system that has no
 constrictions, then you can implement that. But just make sure that you're testing before constricting."
 Done: the rule is in the two monitoring tickets and in the dashboard. Both tickets are report-only.
+
+## 2026-11-21 about 18:53 UTC (chat, from speech)
+Words: "How are we planning to evaluate the tokens of the delegated subagents and how they contribute to
+the tickets being worked on? Note that different tickets will have different tokens estimates. And we need
+to make sure that the ticket's actual token usage is tracked, again, in a non-invasive way. That should
+account for ... how much of it was done by the head of economics, how much by the head of tech ... it
+should obviously track the sub-agents. And note that different models have different costs ... I personally
+only have so many tokens per week. There is a way to know how much tokens per week is used. You can check
+out what the repo [chiefs] did, but note that it's going to have problems ... that was way over
+constricting, but we want the lean, easy to use, easy to implement version of that." Also: "And keep it lean".
+Done: read `louellet-git/chiefs` (its usage tools). The design is in `T-20261121-usage-log`. Found the
+real weekly figure with one call: 71% used on 2026-11-21 18:49 UTC, reset 2026-11-25 16:00 UTC.

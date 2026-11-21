@@ -41,6 +41,11 @@ Rules: `chiefs/ORIENTATION.md`, sections 1, 5 and 8. Decisions of the person: `.
   them needs a few days of evidence that it is better than each alternative. Report-only tools can start.
 - Story E6.S5: `T-20261121-board-check` (the board rules from git) then `T-20261121-usage-log` (a Stop hook
   counts agents, skills and tokens from the transcript file). Technology builds; I read the output.
+- Tokens (owner word): actual tokens by ticket, head, agent type and model, weighted by price, from the
+  transcripts (the branch of a line gives the ticket). Design in `T-20261121-usage-log`. No estimates
+  until some days of actual numbers exist.
+- The real weekly figure: `list_events` on my own session, kinds `rate_limit_event`, limit 100, read
+  `unifiedWindows.seven_day.utilization` and `resetsAt`. One call. 2026-11-21 18:49 UTC: 71%.
 - Until they exist: the hand checks of the board-check ticket, only when I look at the board for a
   different reason.
 
