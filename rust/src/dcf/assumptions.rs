@@ -31,6 +31,8 @@ pub enum Record {
 }
 
 pub const DECIDED_2026_11_20: &str = "decided 2026-11-20";
+pub const DECIDED_2026_11_21: &str = "decided 2026-11-21";
+pub const OPEN_2026_11_21: &str = "measured 2026-11-21; off, the pairing at L is open";
 pub const CONVENTION: &str = "convention, not studied";
 
 /// One assumption.
@@ -79,7 +81,10 @@ macro_rules! row {
 pub static TABLE: &[Assumption] = &[
     row!("A-001", "one long-run growth (fade level and terminal mean)", "long_run", |r| r.long_run.map_or("off".into(), pct1), "long_run", Record::File("A-001-terminal-growth.md"), DECIDED_2026_11_20, &["growth: long run", "terminal growth"]),
     row!("A-002", "acquisition charge (share w of the mean spend)", "acq_w", |r| flag_text("acq_w", r.acq_w), "acq_w", Record::File("A-002-acquisition-charge.md"), DECIDED_2026_11_20, &["acquisition charge"]),
+    row!("A-002", "acquisition spend has the second line (when its value differs)", "acq_second", |r| flag_text("acq_second", r.acq_second), "acq_second", Record::File("A-002-acquisition-charge.md"), DECIDED_2026_11_21, &[]),
     row!("A-002", "acquisition charge fades with the credited growth", "acq_fade", |r| flag_text("acq_fade", r.acq_fade), "acq_fade", Record::File("A-002-acquisition-charge.md"), DECIDED_2026_11_20, &[]),
+    row!("A-002", "acquisition charge base is the persistence fit of the past spend", "acq_persist_b", |r| r.acq_persist.map_or("off (the past spend)".into(), |(a, b)| format!("{} + {} x past", pct2(a), b)), "acq_persist", Record::File("A-002-acquisition-charge.md"), DECIDED_2026_11_21, &[]),
+    row!("A-002", "acquisition charge keeps the share L / mean when the mean is above L", "acq_keep", |r| flag_text("acq_keep", r.acq_keep), "acq_keep", Record::File("A-002-acquisition-charge.md"), OPEN_2026_11_21, &[]),
     row!("A-003", "floor on the growth of a base year that fell", "last_floor", |r| r.last_floor.map_or("off".into(), |x| format!("{:.0}%", x * 100.0)), "last_floor", Record::File("A-003-base-year-decline-floor.md"), DECIDED_2026_11_20, &[]),
     row!("none", "margin: weight of the table in the shock size (an option, off)", "margin_sigma_nu", |r| r.margin_sigma_nu.map_or("off".into(), |x| format!("{x}")), "margin_sigma_nu", Record::None, CONVENTION, &[]),
     row!("none", "statutory tax rate (when the effective rate is not stable)", "none", |r| pct2(r.statutory_tax), "statutory_tax", Record::None, CONVENTION, &[]),
@@ -454,7 +459,7 @@ mod tests {
             assert!(block.contains(&format!("{}:", a.field)), "the field '{}' is not set in the block `impl Default for Rules` of {}", a.field, a.file);
             assert_eq!(a.id == "none", !matches!(a.record, Record::File(_)));
             if a.id != "none" {
-                assert_eq!(a.state, DECIDED_2026_11_20);
+                assert!([DECIDED_2026_11_20, DECIDED_2026_11_21, OPEN_2026_11_21].contains(&a.state), "{}", a.state);
             }
         }
     }
