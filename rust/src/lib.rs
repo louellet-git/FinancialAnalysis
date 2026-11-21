@@ -16,6 +16,7 @@
 //! ```
 
 pub mod dcf;
+pub mod board_check;
 pub mod bonds;
 pub mod curve;
 pub mod prices;
