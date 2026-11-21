@@ -278,7 +278,7 @@ pub fn check_ticker(registry: &Registry, cache: &Path, ticker: &str, n_periods: 
 
 /// `check_ticker` with a filing date. `filed_cut = None`: all facts of the cache, and the 10-K of the cache fills a missing
 /// input (`check_cached`). `Some(date)`: only the facts that a filing of `date` or an earlier date reported
-/// (`CompanyFacts::filed_up_to`), and no fill from the 10-K of the cache (it can be a later filing).
+/// (`CompanyFacts::filed_up_to`). The 10-K fills only if its filing date, from the facts that carry its accession, is `date` or earlier (`Supplement::with_cut`); with no date it does not fill.
 pub fn check_ticker_filed(registry: &Registry, cache: &Path, ticker: &str, n_periods: usize, as_of: i64, keep_values: bool, filed_cut: Option<&str>) -> TickerReport {
     let start = Instant::now();
     let Some(path) = facts_path(cache, ticker) else {
@@ -289,8 +289,24 @@ pub fn check_ticker_filed(registry: &Registry, cache: &Path, ticker: &str, n_per
             let mut report = match filed_cut {
                 None => check_cached(registry, cache, ticker, &facts, n_periods, as_of, keep_values),
                 Some(date) => {
+                    // The 10-K of the cache fills only if it was public on `date` (its date comes from the full facts).
+                    let supplement = Supplement::load(registry, cache, ticker).map(|s| {
+                        let filed = facts.filing_date(s.accession());
+                        s.with_cut(filed, date)
+                    });
+                    let note = supplement.as_ref().and_then(|s| s.blocked());
                     facts = facts.filed_up_to(date);
-                    check_facts(registry, ticker, &facts, n_periods, as_of, keep_values)
+                    let fill = |end: &str, name: &str, mode: FillMode| {
+                        supplement.as_ref().and_then(|s| match mode {
+                            FillMode::Gap => s.fill(registry, end, name).map(|(v, t)| Filled::Value(v, t)),
+                            FillMode::Lines => s.lines(end, name),
+                        })
+                    };
+                    let mut report = check_facts_with(registry, ticker, &facts, n_periods, as_of, keep_values, Some(&fill));
+                    if let Some(detail) = note {
+                        report.findings.push(Finding { severity: Severity::Info, code: "pit_supplement_not_used".to_string(), detail });
+                    }
+                    report
                 }
             };
             report.seconds = start.elapsed().as_secs_f64();

@@ -55,6 +55,8 @@ pub fn from_filing(source: &str) -> bool {
 pub struct Supplement {
     filing: Filing,
     variables: HashMap<String, String>,
+    /// Point in time: (filing date of the 10-K, cut date). None: no limit.
+    cut: Option<(Option<String>, String)>,
 }
 
 /// The folder of the latest filing of a ticker in the cache (None: no filing).
@@ -75,7 +77,37 @@ pub fn latest_filing_folder(cache: &Path, ticker: &str) -> Option<PathBuf> {
 
 impl Supplement {
     pub fn new(registry: &Registry, filing: Filing) -> Supplement {
-        Supplement { filing, variables: variable_of_tag(registry) }
+        Supplement { filing, variables: variable_of_tag(registry), cut: None }
+    }
+
+    /// Limit the supplement to a date. It fills only if the 10-K was public on `cut` or before (`filed`, YYYY-MM-DD;
+    /// None: the date is not known, no fill), and only for a fiscal year that ends on `cut` or before.
+    pub fn with_cut(mut self, filed: Option<String>, cut: &str) -> Supplement {
+        self.cut = Some((filed, cut.to_string()));
+        self
+    }
+
+    /// The accession number of the 10-K.
+    pub fn accession(&self) -> &str {
+        &self.filing.accession
+    }
+
+    /// With a cut: the reason why the supplement gives no value at all (None: it can fill).
+    pub fn blocked(&self) -> Option<String> {
+        let (filed, cut) = self.cut.as_ref()?;
+        match filed {
+            None => Some(format!("10-K {} not used: its filing date is not in the company facts or the filing folder", self.filing.accession)),
+            Some(d) if d.as_str() > cut.as_str() => Some(format!("10-K {} not used: filed {d}, after the date {cut}", self.filing.accession)),
+            Some(_) => None,
+        }
+    }
+
+    /// False if the cut forbids a value for the fiscal year that ends on `end`.
+    fn open(&self, end: &str) -> bool {
+        match &self.cut {
+            None => true,
+            Some((_, cut)) => self.blocked().is_none() && end.get(..10).is_some_and(|e| e <= cut.as_str()),
+        }
     }
 
     /// The latest filing of the ticker in the cache (None: no filing, or it cannot be read).
@@ -90,6 +122,9 @@ impl Supplement {
     /// not reliable, both keep the company-facts value (`Filled::Keep`). None: the filing does not hold this year.
     pub fn lines(&self, end: &str, name: &str) -> Option<Filled> {
         if !FROM_LINES.contains(&name) {
+            return None;
+        }
+        if !self.open(end) {
             return None;
         }
         let year = self.filing.year(end)?;
@@ -120,6 +155,9 @@ impl Supplement {
     /// The value of a variable for the fiscal year that ends on `end`, with its source.
     pub fn fill(&self, registry: &Registry, end: &str, name: &str) -> Option<(f64, String)> {
         if !FILLED.contains(&name) {
+            return None;
+        }
+        if !self.open(end) {
             return None;
         }
         let year = self.filing.year(end)?;
@@ -260,6 +298,42 @@ mod tests {
         // A different fiscal year, and a variable that is not in the list: no value.
         assert!(supplement.fill(&registry, "2021-12-31", "capex").is_none());
         assert!(supplement.fill(&registry, "2024-12-31", "net_income").is_none());
+    }
+
+    fn capex_supplement() -> (Registry, Filing) {
+        let registry = Registry::embedded().unwrap();
+        let lines = vec![line("acme_CapitalExpendituresAndInvestments", -1.0, 70.0, vec![])];
+        (registry, filing(lines, HashMap::new()))
+    }
+
+    #[test]
+    fn cut_supplement_filed_after_the_cut_gives_no_fill() {
+        let (registry, f) = capex_supplement();
+        let s = Supplement::new(&registry, f).with_cut(Some("2025-02-20".into()), "2025-02-19");
+        assert!(s.fill(&registry, "2024-12-31", "capex").is_none());
+        assert!(s.lines("2024-12-31", "capex").is_none());
+        assert!(s.blocked().unwrap().contains("after the date 2025-02-19"));
+    }
+
+    #[test]
+    fn cut_supplement_filed_on_or_before_the_cut_fills() {
+        let (registry, f) = capex_supplement();
+        for cut in ["2025-02-20", "2025-06-30"] {
+            let s = Supplement::new(&registry, f.clone()).with_cut(Some("2025-02-20".into()), cut);
+            assert!(s.blocked().is_none());
+            assert_eq!(s.fill(&registry, "2024-12-31", "capex").unwrap().0, -70.0);
+        }
+        // A fiscal year that ends after the cut: no fill.
+        let s = Supplement::new(&registry, f).with_cut(Some("2024-01-01".into()), "2024-06-30");
+        assert!(s.fill(&registry, "2024-12-31", "capex").is_none());
+    }
+
+    #[test]
+    fn cut_supplement_with_no_filing_date_gives_no_fill() {
+        let (registry, f) = capex_supplement();
+        let s = Supplement::new(&registry, f).with_cut(None, "2030-01-01");
+        assert!(s.fill(&registry, "2024-12-31", "capex").is_none());
+        assert!(s.blocked().unwrap().contains("filing date is not"));
     }
 
     #[test]
