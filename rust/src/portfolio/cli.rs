@@ -33,8 +33,9 @@ fa portfolio backtest --strategy NAME --start D [--end D] [OPTIONS]
                      file (a value of the command that differs from the file is an error); the run writes the add-only log
                      trading/runs/<id>/<UTC time>.json and prints the variant counts. No file: an exploratory run, no log.
   --trades FILE      write the trades as CSV: date, ticker, action, weight before and after, price, signal, filing accession
-  --poison-check D   run again with each fact filed after D and each close after D multiplied by a factor that differs by
-                     ticker; fail if a target weight or a trade before D differs (D is YYYY-MM-DD)
+  --poison-check D[,D2]  run again with each close and each fact from D on multiplied by a factor that differs by ticker (D: a
+                     rebalance day; use one in Feb-Mar and one in the second half of the year); fail if a target weight of a rebalance up to
+                     D (D included) or a trade before D differs
   Each run prints the result at 0x, 1x and 2x the cost, and the flag oos-read (the end is after oos_start of the hypothesis).
   Survivorship: the lists of tickers are today's lists, so the result is too good. The output has an equal-weight line of
   the whole list for the comparison.";
@@ -87,12 +88,63 @@ pub fn run(repo: &Path, args: &[String]) -> u8 {
     }
 }
 
+/// Each option that the command knows. Each takes one value.
+const KNOWN: [&str; 14] = [
+    "--strategy", "--cache", "--start", "--end", "--rebalance", "--cost-bp", "--tickers-file", "--paths", "--seed", "--table", "--out", "--hypothesis", "--trades", "--poison-check",
+];
+
+/// An option that the command does not know (a typo, or `--option=value`), or an option with no value, is an error. It runs before any work.
+fn check_options(args: &[String]) -> Result<(), String> {
+    let mut i = 0;
+    while i < args.len() {
+        if !KNOWN.contains(&args[i].as_str()) {
+            return Err(format!("unknown option '{}' (fa portfolio --help)", args[i]));
+        }
+        match args.get(i + 1) {
+            Some(v) if !v.starts_with("--") => {}
+            _ => return Err(format!("option '{}' needs a value", args[i])),
+        }
+        i += 2;
+    }
+    Ok(())
+}
+
+/// The days of `--poison-check D1,D2`: (text, day number).
+fn poison_days(args: &[String]) -> Result<Vec<(String, i64)>, String> {
+    let Some(list) = opt(args, "--poison-check") else { return Ok(Vec::new()) };
+    list.split(',').map(|t| mapcheck::dates::parse(t).map(|d| (t.to_string(), d)).ok_or_else(|| format!("--poison-check '{t}' is not YYYY-MM-DD (a list: D1,D2)"))).collect()
+}
+
+/// Write a new file. A file that exists is never replaced.
+fn write_new(path: &str, text: &str) -> Result<(), String> {
+    use std::io::Write;
+    std::fs::OpenOptions::new().write(true).create_new(true).open(path).and_then(|mut f| f.write_all(text.as_bytes())).map_err(|e| format!("{path}: {e} (the command does not replace a file)"))
+}
+
+/// What a finished run gives, to print and to log, after the log record exists.
+struct Body {
+    out: String,
+    results: serde_json::Value,
+    poison_lines: Vec<String>,
+    poison_error: Option<String>,
+    trades_csv: String,
+    series_csv: String,
+}
+
 fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
+    check_options(args_in)?;
+    for name in ["--trades", "--out"] {
+        if let Some(p) = opt(args_in, name) {
+            if Path::new(p).exists() {
+                return Err(format!("{name} {p}: the file exists; the command does not replace a file"));
+            }
+        }
+    }
     let hyp: Option<(Hypothesis, harness::FileProof)> = match opt(args_in, "--hypothesis") {
         Some(f) => {
             let file = PathBuf::from(f);
             let proof = harness::prove_committed(repo, &file)?;
-            let h = Hypothesis::parse(&std::fs::read_to_string(&file).map_err(|e| format!("{f}: {e}"))?)?;
+            let h = Hypothesis::parse(&proof.text)?;
             let stem = file.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
             if stem != h.id {
                 return Err(format!("the id '{}' of the hypothesis is not the file name '{stem}'", h.id));
@@ -123,11 +175,15 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
     }
     let seed: u64 = opt(args, "--seed").map_or(Ok(7), |v| v.parse().map_err(|_| format!("--seed '{v}': a whole number")))?;
     let start = day_of(args, "--start")?.ok_or("--start is needed")?;
-    let poison_day = day_of(args, "--poison-check")?;
+    let poisons = poison_days(args)?;
 
     let t0 = std::time::Instant::now();
-    let mut tickers = match opt(args, "--tickers-file") {
-        Some(f) => read_tickers(&std::fs::read_to_string(f).map_err(|e| format!("{f}: {e}"))?),
+    let universe_text = match opt(args, "--tickers-file") {
+        Some(f) => Some(std::fs::read_to_string(f).map_err(|e| format!("{f}: {e}"))?),
+        None => None,
+    };
+    let mut tickers = match &universe_text {
+        Some(t) => read_tickers(t),
         None => crate::dcf::panel::cache_tickers(&cache)?,
     };
     tickers.retain(|t| t != "SPY");
@@ -152,9 +208,9 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
     let cfg = Config { start, end, rebalance, cost_bp };
     let late = tickers.iter().filter(|t| prices.0.get(*t).and_then(|s| s.first()).is_some_and(|f| f.0 > start)).count();
 
-    // What a value-rank run needs besides the prices (loaded once; the poison run uses the same).
+    // What a value-rank run needs besides the prices (loaded once; the poison runs use the same).
+    let table_file = opt(args, "--table").map(PathBuf::from).unwrap_or_else(|| repo.join(DEFAULT_TABLE));
     let vr = if strategy == "value-rank" {
-        let table_file = opt(args, "--table").map(PathBuf::from).unwrap_or_else(|| repo.join(DEFAULT_TABLE));
         let (table, fade) = load_table(&table_file).map_err(|e| e.0)?;
         let registry = Registry::embedded()?;
         let rules = parse_rules("").map_err(|e| e.0)?;
@@ -164,138 +220,227 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
         None
     };
     let index = if vr.is_some() { index_from_cache(&cache) } else { None };
-    // One run of the strategy on the given closes. `poison`: the day after which each fact is multiplied by a factor of its ticker.
-    let run_with = |raw: &BTreeMap<String, Vec<(String, f64)>>, prices: &Prices, index: Option<&[(String, f64)]>, poison: Option<&str>, cfg: &Config| -> Result<(Report, Option<usize>, Vec<String>), String> {
-        match (strategy, &vr) {
-            ("momentum", _) => Ok((super::run(prices, &tickers, &Momentum, cfg)?, None, tickers.clone())),
-            ("value-rank", Some((table, fade, registry, rules, curves))) => {
-                let years: BTreeMap<String, _> = tickers
-                    .par_iter()
-                    .filter_map(|t| {
-                        let (tpl, y) = match poison {
-                            None => load_vintages(registry, &cache, t, start)?,
-                            Some(day) => load_vintages_with(registry, &cache, t, start, |f| harness::poison_facts(f, day, harness::fact_factor(t)))?,
-                        };
-                        (tpl == "standard").then(|| (t.clone(), y))
-                    })
-                    .collect();
-                let universe: Vec<String> = tickers.iter().filter(|t| years.contains_key(*t)).cloned().collect();
-                if poison.is_none() {
-                    eprintln!("value-rank: {} of {} tickers have SEC facts with the standard template", universe.len(), tickers.len());
-                }
-                let params = RetParams { table, fade, rules, curves: curves.as_ref(), index: None, lag: 100, paths, seed };
-                let s = ValueRank { years, series: raw, index, params, scored: Default::default(), signals: Default::default() };
-                let n = universe.len();
-                Ok((super::run(prices, &universe, &s, cfg)?, Some(n), universe))
-            }
-            (x, _) => Err(format!("unknown strategy '{x}': value-rank or momentum")),
-        }
-    };
-    let (report, n_scored, universe) = run_with(&raw, &prices, index.as_deref(), None, &cfg)?;
-    let ew = super::run(&prices, &tickers, &EqualWeight, &cfg)?;
-    let info = Info { n_tickers: tickers.len(), n_scored, late, seconds: t0.elapsed().as_secs_f64() };
-    print!("{}", render(&report, &ew, &cfg, args_in, &info));
 
-    // The harness: the cost levels, the labels, the out-of-sample flag, the poison check, the run log.
-    let (zero, two) = harness::cost_levels(&prices, &universe, &report, &cfg)?;
-    let mut h = String::new();
-    let _ = writeln!(h, "\nRUN HARNESS");
-    let _ = writeln!(h, "{}; {}", harness::UNIVERSE_LABEL, harness::PRICE_LABEL);
-    let _ = writeln!(h, "costs (the same strategy, the same target weights and dates; cost {} bp is 1x):", cost_bp);
-    for (name, r) in [("cost 0x", &zero), ("cost 1x", &report), ("cost 2x", &two)] {
-        let _ = writeln!(h, "{}", perf_line(name, &r.fund));
-    }
-    let oos = hyp.as_ref().map(|(hy, _)| harness::oos_read(end, hy.oos_day()));
-    match (&hyp, oos) {
-        (Some((hy, _)), Some(read)) => {
-            let _ = writeln!(h, "hypothesis {} (registered {}), out-of-sample window from {}", hy.id, hy.date, hy.oos_start);
-            let _ = writeln!(h, "oos-read: {read}");
-            if read {
-                let _ = writeln!(h, "WARNING: the run ends after oos_start ({}): it reads the out-of-sample window. Do not tune on this result.", hy.oos_start);
-            }
-        }
-        _ => {
-            let _ = writeln!(h, "exploratory run: no hypothesis file, not usable for a decision");
-        }
-    }
-    let mut poison_text = None;
-    let mut poison_error = None;
-    if let (Some(pd), Some(day)) = (poison_day, opt(args, "--poison-check")) {
-        let poisoned_raw: BTreeMap<String, Vec<(String, f64)>> = raw.iter().map(|(t, s)| (t.clone(), harness::poison_series(s, day, t))).collect();
-        let poisoned_index = index.as_ref().map(|s| harness::poison_series(s, day, "SPY"));
-        let pcfg = Config { end: end.min(pd - 1), ..cfg.clone() };
-        let result = run_with(&poisoned_raw, &Prices::from_raw(&poisoned_raw), poisoned_index.as_deref(), Some(day), &pcfg).and_then(|(p, _, _)| harness::poison_compare(&report, &p, pd));
-        match result {
-            Ok(n) => {
-                let t = format!("poison check {day}: PASS ({n} rebalances before {day} identical)");
-                let _ = writeln!(h, "{t}");
-                poison_text = Some(t);
-            }
-            Err(e) => {
-                let t = format!("poison check {day}: FAIL: {e}");
-                let _ = writeln!(h, "{t}");
-                poison_text = Some(t);
-                poison_error = Some(e);
-            }
-        }
-    }
-    if let Some(path) = opt(args, "--trades") {
-        std::fs::write(path, harness::trades_csv(&report.trades, None)).map_err(|e| format!("{path}: {e}"))?;
-        let _ = writeln!(h, "trades: {} written to {path}", report.trades.len());
-    }
-    let mut log_path = None;
+    // The record of the run is written BEFORE the first result exists: a run that stops leaves its trace (a counted variant).
+    let (code, dirty) = harness::code_state(repo);
+    let mut start_record = serde_json::Value::Null;
+    let mut state: Option<(PathBuf, harness::Counts, bool, bool, Vec<String>, i64)> = None;
     if let Some((hy, proof)) = &hyp {
-        let (code, dirty) = harness::code_state(repo);
+        let res = harness::resolve(repo, hy)?;
+        let counts = harness::count_runs(repo, hy, &res);
+        let read = harness::oos_read(end, res.window_start);
+        let (clean, why) = harness::oos_clean(hy, &res.window_id, &counts.earlier_reads, strategy == "value-rank");
         let (store, store_dirty) = harness::store_state(&cache);
-        let level = |r: &Report| harness::perf_json(&r.fund);
         let stamp = harness::utc_stamp(harness::now_secs());
-        let (path, n_id, n_strategy) = harness::write_run_log(&repo.join("trading").join("runs"), &hy.id, &hy.strategy, &stamp, |n_id, n_strategy| {
+        let hash_of = |p: &Path| std::fs::read(p).ok().map(|b| harness::sha256_hex(&b));
+        let table_json = (strategy == "value-rank").then(|| {
             serde_json::json!({
-                "id": hy.id,
-                "strategy": hy.strategy,
-                "parent": hy.parent,
-                "run_time_utc": stamp,
-                "labels": { "universe": harness::UNIVERSE_LABEL, "prices": harness::PRICE_LABEL },
-                "code_commit": code,
-                "code_dirty": dirty,
-                "store_commit": store,
-                "store_dirty": store_dirty,
-                "hypothesis": {
-                    "file": proof.path, "sha256": proof.sha256, "commit": proof.commit, "commit_time": proof.commit_time,
-                    "registered": hy.date, "oos_start": hy.oos_start, "universe": hy.universe, "params": hy.params, "text": hy.hypothesis,
-                },
-                "oos_read": oos,
-                "variant_count": { "hypothesis": n_id, "strategy": n_strategy },
-                "config": {
-                    "command": args_in, "effective_arguments": args, "cache": cache.display().to_string(),
-                    "start": mapcheck::dates::format(start), "end": mapcheck::dates::format(end), "rebalance": format!("{rebalance:?}"),
-                    "cost_bp": cost_bp, "paths": paths, "seed": seed, "n_tickers": tickers.len(), "n_scored": n_scored,
-                    "first_position": report.dates.first().map(|d| mapcheck::dates::format(*d)), "rebalances": report.rebalances, "trades": report.trades.len(),
-                },
-                "results": {
-                    "cost_0x": level(&zero), "cost_1x": level(&report), "cost_2x": level(&two),
-                    "spy": harness::perf_json(&report.bench_perf), "equal_weight": harness::perf_json(&ew.fund),
-                    "turnover_total": report.turnover_total, "cost_total": report.cost_total,
-                },
-                "poison_check": poison_text,
+                "file": harness::rel_path(repo, &table_file.to_string_lossy()), "sha256": hash_of(&table_file),
+                "fit_window": "all fiscal years of the data store at the table date (2026-11-19), through 2025: in-sample for any window from 2023 on",
             })
-        })?;
-        let _ = writeln!(h, "runs of this hypothesis: {n_id}; runs of strategy {}: {n_strategy}", hy.strategy);
-        let _ = writeln!(h, "run log: {}", path.display());
-        log_path = Some(path);
+        });
+        start_record = serde_json::json!({
+            "schema": 2,
+            "status": "started",
+            "id": hy.id,
+            "strategy": hy.strategy,
+            "family": res.family,
+            "parent": hy.parent,
+            "ancestors": res.chain,
+            "run_time_utc": stamp,
+            "labels": { "universe": harness::UNIVERSE_LABEL, "prices": harness::PRICE_LABEL },
+            "code": { "commit": code, "dirty": dirty },
+            "build": { "commit": harness::BUILD_COMMIT, "dirty": harness::BUILD_DIRTY, "is_head": !harness::BUILD_COMMIT.is_empty() && code.as_deref() == Some(harness::BUILD_COMMIT) },
+            "store": { "commit": store, "dirty": store_dirty },
+            "hypothesis": {
+                "file": proof.path, "sha256": proof.sha256, "commit": proof.commit, "commit_time": proof.commit_time,
+                "registered": hy.date, "universe": hy.universe, "universe_sha256": universe_text.as_ref().map(|t| harness::sha256_hex(t.as_bytes())),
+                "params": hy.params, "text": hy.hypothesis, "success": hy.success, "prior_variants": hy.prior_variants,
+            },
+            "oos_read": read,
+            "oos_clean": clean,
+            "oos": { "window_start": mapcheck::dates::format(res.window_start), "window_owner": res.window_id, "reasons_not_clean": why },
+            "variant_count": {
+                "hypothesis": counts.variants_id(), "family": counts.variants_family(),
+                "logged_runs_hypothesis": counts.n_id, "logged_runs_family": counts.n_family,
+                "prior_variants_hypothesis": counts.prior_id, "prior_variants_family": counts.prior_family,
+            },
+            "table": table_json,
+            "config": {
+                "command": harness::log_args(repo, args_in), "effective_arguments": harness::log_args(repo, args), "store": "<store>",
+                "start": mapcheck::dates::format(start), "end": mapcheck::dates::format(end), "rebalance": format!("{rebalance:?}"),
+                "cost_bp": cost_bp, "paths": paths, "seed": seed, "n_tickers": tickers.len(),
+                "poison_check_days": poisons.iter().map(|p| p.0.clone()).collect::<Vec<_>>(),
+            },
+        });
+        let path = harness::write_started(repo, &hy.id, &stamp, &start_record)?;
+        eprintln!("run log started: {} (no result is printed before the run ends)", harness::rel_path(repo, &path.to_string_lossy()));
+        state = Some((path, counts, read, clean, why, res.window_start));
+    } else {
+        harness::exploratory_guard(repo, strategy, end)?;
     }
-    print!("{h}");
-    let _ = log_path;
-    if let Some(path) = opt(args, "--out") {
-        let mut csv = String::from("date,portfolio,spy\n");
-        for k in 0..report.dates.len() {
-            let _ = writeln!(csv, "{},{:.6},{:.6}", mapcheck::dates::format(report.dates[k]), report.nav[k], report.bench[k]);
+
+    let work = || -> Result<Body, String> {
+        // One run of the strategy on the given closes. `poison`: the day from which each fact is multiplied by a factor of its ticker.
+        let run_with = |raw: &BTreeMap<String, Vec<(String, f64)>>, prices: &Prices, index: Option<&[(String, f64)]>, poison: Option<&str>, cfg: &Config| -> Result<(Report, Option<usize>, Vec<String>), String> {
+            match (strategy, &vr) {
+                ("momentum", _) => Ok((super::run(prices, &tickers, &Momentum, cfg)?, None, tickers.clone())),
+                ("value-rank", Some((table, fade, registry, rules, curves))) => {
+                    let years: BTreeMap<String, _> = tickers
+                        .par_iter()
+                        .filter_map(|t| {
+                            let (tpl, y) = match poison {
+                                None => load_vintages(registry, &cache, t, start)?,
+                                Some(day) => load_vintages_with(registry, &cache, t, start, |f| harness::poison_facts(f, day, harness::fact_factor(t)))?,
+                            };
+                            (tpl == "standard").then(|| (t.clone(), y))
+                        })
+                        .collect();
+                    let universe: Vec<String> = tickers.iter().filter(|t| years.contains_key(*t)).cloned().collect();
+                    if poison.is_none() {
+                        eprintln!("value-rank: {} of {} tickers have SEC facts with the standard template", universe.len(), tickers.len());
+                    }
+                    let params = RetParams { table, fade, rules, curves: curves.as_ref(), index: None, lag: 100, paths, seed };
+                    let s = ValueRank { years, series: raw, index, params, scored: Default::default(), signals: Default::default() };
+                    let n = universe.len();
+                    Ok((super::run(prices, &universe, &s, cfg)?, Some(n), universe))
+                }
+                (x, _) => Err(format!("unknown strategy '{x}': value-rank or momentum")),
+            }
+        };
+        let (report, n_scored, universe) = run_with(&raw, &prices, index.as_deref(), None, &cfg)?;
+        let ew = super::run(&prices, &tickers, &EqualWeight, &cfg)?;
+        let info = Info { n_tickers: tickers.len(), n_scored, late, seconds: t0.elapsed().as_secs_f64() };
+        let mut out = render(&report, &ew, &cfg, args_in, &info);
+
+        let (zero, two) = harness::cost_levels(&prices, &universe, &report, &cfg)?;
+        let mut h = String::new();
+        let _ = writeln!(h, "\nRUN HARNESS");
+        let _ = writeln!(h, "{}; {}", harness::UNIVERSE_LABEL, harness::PRICE_LABEL);
+        let _ = writeln!(h, "costs (the same strategy, the same target weights and dates; cost {cost_bp} bp is 1x):");
+        for (name, r) in [("cost 0x", &zero), ("cost 1x", &report), ("cost 2x", &two)] {
+            let _ = writeln!(h, "{}", perf_line(name, &r.fund));
         }
-        std::fs::write(path, csv).map_err(|e| format!("{path}: {e}"))?;
-    }
-    match poison_error {
-        Some(e) => Err(format!("poison check failed: {e}")),
-        None => Ok(()),
+        let _ = writeln!(h, "{}", harness::cost_note(&zero, &report, ew.fund.annual));
+        let _ = writeln!(h, "note: the equal-weight line is of the whole list ({} tickers), not of the scored names{}; the line on the scored names is part 2.", tickers.len(), n_scored.map_or(String::new(), |n| format!(" ({n})")));
+        match (&hyp, &state) {
+            (Some((hy, _)), Some((_, counts, read, clean, why, window))) => {
+                let _ = writeln!(h, "hypothesis {} (registered {}), prior variants {}; out-of-sample window from {}", hy.id, hy.date, hy.prior_variants, mapcheck::dates::format(*window));
+                if let Some(s) = &hy.success {
+                    let _ = writeln!(h, "success criterion (written before the run): {s}");
+                }
+                let _ = writeln!(h, "oos-read: {read}");
+                let _ = writeln!(h, "oos_clean: {clean}");
+                for w in why {
+                    let _ = writeln!(h, "  - not clean: {w}");
+                }
+                if *read {
+                    let _ = writeln!(h, "WARNING: the run ends on or after the start of the out-of-sample window ({}): it reads the window. Do not tune on this result.", mapcheck::dates::format(*window));
+                }
+                let _ = writeln!(
+                    h,
+                    "runs of this hypothesis: {} (prior variants {} + {} logged runs, this run included); runs of family {}: {} (prior {} + {} logged runs of all ids, git history included)",
+                    counts.variants_id(),
+                    counts.prior_id,
+                    counts.n_id,
+                    start_record["family"].as_str().unwrap_or("?"),
+                    counts.variants_family(),
+                    counts.prior_family,
+                    counts.n_family
+                );
+                let build = &start_record["build"];
+                if build["commit"].as_str().is_none_or(str::is_empty) {
+                    let _ = writeln!(h, "WARNING: the commit of the build is unknown.");
+                } else if build["is_head"] != true {
+                    let _ = writeln!(h, "WARNING: this binary was built from commit {}, not from HEAD {}.", build["commit"].as_str().unwrap_or(""), code.as_deref().unwrap_or("?"));
+                }
+                if dirty {
+                    let _ = writeln!(h, "WARNING: the code has changes that are not committed (code_dirty).");
+                }
+            }
+            _ => {
+                let _ = writeln!(h, "exploratory run: no hypothesis file, not usable for a decision (not counted as a variant)");
+            }
+        }
+        let (mut poison_lines, mut poison_error) = (Vec::new(), None);
+        for (day, pd) in &poisons {
+            let line = if !report.targets.iter().any(|(d, _)| d == pd) {
+                poison_error = Some(format!("{day} is not a rebalance day of the run"));
+                format!("poison check {day}: FAIL: {day} is not a rebalance day of the run (use the first trading day of a month)")
+            } else {
+                let poisoned_raw: BTreeMap<String, Vec<(String, f64)>> = raw.iter().map(|(t, s)| (t.clone(), harness::poison_series(s, day, t))).collect();
+                let poisoned_index = index.as_ref().map(|s| harness::poison_series(s, day, "SPY"));
+                let pcfg = Config { end: *pd, ..cfg.clone() };
+                let result = run_with(&poisoned_raw, &Prices::from_raw(&poisoned_raw), poisoned_index.as_deref(), Some(day), &pcfg).and_then(|(p, _, _)| harness::poison_compare(&report, &p, *pd));
+                match result {
+                    Ok(n) => format!("poison check {day}: PASS ({n} rebalances up to {day}, the day included, identical; closes and facts from {day} on were changed)"),
+                    Err(e) => {
+                        poison_error.get_or_insert(e.clone());
+                        format!("poison check {day}: FAIL: {e}")
+                    }
+                }
+            };
+            let _ = writeln!(h, "{line}");
+            poison_lines.push(line);
+        }
+        if !poison_lines.is_empty() {
+            let _ = writeln!(h, "{}", harness::POISON_NOT_COVERED);
+        }
+        out.push_str(&h);
+        let level = |r: &Report| harness::perf_json(&r.fund);
+        let results = serde_json::json!({
+            "cost_0x": level(&zero), "cost_1x": level(&report), "cost_2x": level(&two),
+            "spy": harness::perf_json(&report.bench_perf), "equal_weight_whole_list": harness::perf_json(&ew.fund),
+            "turnover_total": report.turnover_total, "cost_total": report.cost_total,
+            "n_scored": n_scored, "first_position": report.dates.first().map(|d| mapcheck::dates::format(*d)),
+            "rebalances": report.rebalances, "trades": report.trades.len(),
+        });
+        let mut series_csv = String::from("date,portfolio,spy\n");
+        for k in 0..report.dates.len() {
+            let _ = writeln!(series_csv, "{},{:.6},{:.6}", mapcheck::dates::format(report.dates[k]), report.nav[k], report.bench[k]);
+        }
+        Ok(Body { out, results, poison_lines, poison_error, trades_csv: harness::trades_csv(&report.trades, None), series_csv })
+    };
+    let outcome = work();
+
+    // The same file gets the final record; then the result is printed.
+    let finish = |extra: serde_json::Value| -> Result<(), String> {
+        let Some((path, ..)) = &state else { return Ok(()) };
+        let mut rec = start_record.clone();
+        if let (Some(r), Some(e)) = (rec.as_object_mut(), extra.as_object()) {
+            r.extend(e.clone());
+        }
+        harness::finalize(path, &rec)
+    };
+    match outcome {
+        Err(e) => {
+            if let Err(f) = finish(serde_json::json!({ "status": "failed", "error": e })) {
+                eprintln!("fa: the run log: {f}");
+            }
+            Err(e)
+        }
+        Ok(b) => {
+            let status = if b.poison_error.is_some() { "failed" } else { "done" };
+            finish(serde_json::json!({
+                "status": status, "results": b.results, "poison_checks": b.poison_lines, "poison_error": b.poison_error,
+                "poison_not_covered": (!b.poison_lines.is_empty()).then_some(harness::POISON_NOT_COVERED),
+            }))?;
+            print!("{}", b.out);
+            if let Some((path, ..)) = &state {
+                println!("run log ({status}): {}", harness::rel_path(repo, &path.to_string_lossy()));
+            }
+            if let Some(path) = opt(args, "--trades") {
+                write_new(path, &b.trades_csv)?;
+                println!("trades written to {path}");
+            }
+            if let Some(path) = opt(args, "--out") {
+                write_new(path, &b.series_csv)?;
+            }
+            match b.poison_error {
+                Some(e) => Err(format!("poison check failed: {e}")),
+                None => Ok(()),
+            }
+        }
     }
 }
 
@@ -373,7 +518,28 @@ pub fn render(r: &Report, ew: &Report, cfg: &Config, args: &[String], info: &Inf
 
 #[cfg(test)]
 mod tests {
-    use super::spread;
+    use super::{check_options, poison_days, spread};
+
+    fn a(v: &[&str]) -> Vec<String> {
+        v.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn an_unknown_option_or_a_missing_value_is_an_error_before_any_work() {
+        assert!(check_options(&a(&["--strategy", "momentum", "--start", "2018-01-01", "--hypothesis", "f.toml", "--trades", "t.csv", "--poison-check", "2022-03-01,2022-09-01"])).is_ok());
+        assert!(check_options(&a(&["--cost_bp", "99"])).unwrap_err().contains("unknown option"));
+        assert!(check_options(&a(&["--hypothesis=trading/hypotheses/x.toml", "--strategy", "momentum"])).unwrap_err().contains("--hypothesis="));
+        assert!(check_options(&a(&["--strategy"])).unwrap_err().contains("needs a value"));
+        assert!(check_options(&a(&["--strategy", "--start"])).is_err());
+        assert!(check_options(&a(&["momentum"])).is_err());
+    }
+
+    #[test]
+    fn the_poison_days_are_a_list_of_dates() {
+        assert_eq!(poison_days(&a(&["--poison-check", "2022-03-01,2022-09-01"])).unwrap().len(), 2);
+        assert!(poison_days(&a(&["--poison-check", "2022-03-01,x"])).is_err());
+        assert!(poison_days(&a(&[])).unwrap().is_empty());
+    }
 
     #[test]
     fn the_spread_of_the_scored_counts_is_min_median_max() {

@@ -93,7 +93,7 @@ Build on `fa portfolio backtest`, no new engine:
 5. Trade log: `--trades FILE` (CSV: date, ticker, action, weight, price, signal value, filing accession).
 6. `--poison-check D`: the run is done two times, the second with each fact filed after D and each close
    after D changed by a factor that differs by ticker; the command fails if a weight before D moves.
-Part 2 (after part 1): total return with dividends, then the risk outputs. Part 3: point-in-time members and
+Part 2 (after part 1): total return with dividends, then the risk outputs, the deflated Sharpe ratio (the variant count of part 1 is a warning, not a multiple-testing control), and the equal-weight line on the scored names (part 1 prints the line of the whole list). Part 3: point-in-time members and
 delisted prices (a new source, terms first). The model-value strategy (a) of Fundamental Research and the
 option strategies of Quant Research use the harness when they are ready; the option fills wait for enough
 days of saved chains.

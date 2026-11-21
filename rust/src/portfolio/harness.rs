@@ -1,12 +1,12 @@
-//! The run harness of `fa portfolio backtest`: the hypothesis file, the add-only run log with the variant count, the
-//! out-of-sample flag, the cost levels, the trade list and the poison check. It adds no engine: the runs use
+//! The run harness of `fa portfolio backtest`: the hypothesis file, the add-only run log with the variant counts, the
+//! out-of-sample lock, the cost levels, the trade list and the poison check. It adds no engine: the runs use
 //! `portfolio::run` and the strategies as they are.
 
 use super::{Config, Perf, Report, Strategy, Trade, View};
 use mapcheck::facts::CompanyFacts;
 use serde::Deserialize;
 use serde_json::{json, Value};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -15,6 +15,17 @@ use std::process::Command;
 pub const UNIVERSE_LABEL: &str = "universe: names of today (survivor bias)";
 /// The label of the price type of a stock run.
 pub const PRICE_LABEL: &str = "prices: market prices (closes), not a model price";
+/// What the poison check does not cover (the inputs that it does not change).
+pub const POISON_NOT_COVERED: &str = "not covered by the poison check: the GSW curve, the parameter table and the tickers file (they are not changed)";
+/// The commit and the state of the code at the time of the build (build.rs).
+pub const BUILD_COMMIT: &str = match option_env!("FA_BUILD_COMMIT") {
+    Some(c) => c,
+    None => "",
+};
+pub const BUILD_DIRTY: bool = match option_env!("FA_BUILD_DIRTY") {
+    Some(s) => s.len() == 4, // "true"
+    None => false,
+};
 
 // ---- the hypothesis file ----
 
@@ -31,11 +42,30 @@ pub struct Hypothesis {
     pub params: BTreeMap<String, toml::Value>,
     /// The tickers file (a path from the repository root, or an absolute path).
     pub universe: String,
-    /// The first day of the out-of-sample window.
+    /// The first day of the out-of-sample window (the window of the oldest ancestor is used: see `resolve`).
     pub oos_start: String,
+    /// The number of variants tried before this file (exploratory runs, other starts, other parameters). Needed, even if 0.
+    pub prior_variants: u32,
     /// The id of the hypothesis that this one changes (if any).
     #[serde(default)]
     pub parent: Option<String>,
+    /// The family of the variants (default: the family of the parent, else the name of the strategy).
+    #[serde(default)]
+    pub family: Option<String>,
+    /// True if the person or an agent saw results of the out-of-sample window before this file.
+    #[serde(default)]
+    pub oos_prior_exposure: bool,
+    /// The id of the hypothesis whose window this one uses (it must be the parent): the window was read before.
+    #[serde(default)]
+    pub oos_inherits: Option<String>,
+    /// The first and the last day of the test (YYYY-MM-DD). If present, the command takes them from the file.
+    #[serde(default)]
+    pub start: Option<String>,
+    #[serde(default)]
+    pub end: Option<String>,
+    /// The success criterion, written before the run.
+    #[serde(default)]
+    pub success: Option<String>,
 }
 
 /// The parameters that a hypothesis file can set, and the option of the command for each.
@@ -47,7 +77,8 @@ impl Hypothesis {
         if h.id.is_empty() || !h.id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.') || h.id.starts_with('.') {
             return Err(format!("hypothesis id '{}': letters, digits, '-', '_' and '.' only", h.id));
         }
-        for (name, v) in [("date", &h.date), ("oos_start", &h.oos_start)] {
+        let dates = [("date", Some(&h.date)), ("oos_start", Some(&h.oos_start)), ("start", h.start.as_ref()), ("end", h.end.as_ref())];
+        for (name, v) in dates.iter().filter_map(|(n, v)| v.map(|v| (n, v))) {
             if mapcheck::dates::parse(v).is_none() {
                 return Err(format!("hypothesis {name} '{v}' is not YYYY-MM-DD"));
             }
@@ -60,6 +91,9 @@ impl Hypothesis {
         }
         if let Some(k) = h.params.keys().find(|k| !PARAMS.iter().any(|p| p.0 == k.as_str())) {
             return Err(format!("hypothesis params: unknown key '{k}' (known: paths, seed, table, rebalance, cost_bp)"));
+        }
+        if h.oos_inherits.is_some() && h.oos_inherits != h.parent {
+            return Err("hypothesis: oos_inherits must be the id of the parent".into());
         }
         Ok(h)
     }
@@ -84,18 +118,27 @@ impl Hypothesis {
         let get = |name: &str| args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).cloned();
         let mut out = args.to_vec();
         let same = |a: &str, b: &str| a == b || matches!((a.parse::<f64>(), b.parse::<f64>()), (Ok(x), Ok(y)) if x == y);
-        if let Some(s) = get("--strategy") {
-            if s != self.strategy {
-                return Err(format!("--strategy {s} conflicts with the hypothesis file ({})", self.strategy));
+        let mut put = |opt: &str, key: &str, value: String| -> Result<(), String> {
+            match get(opt) {
+                Some(c) if !same(&c, &value) => Err(format!("{opt} {c} conflicts with the hypothesis file ({key} = {value})")),
+                Some(_) => Ok(()),
+                None => {
+                    out.extend([opt.to_string(), value]);
+                    Ok(())
+                }
             }
-        } else {
-            out.extend(["--strategy".to_string(), self.strategy.clone()]);
-        }
+        };
+        put("--strategy", "strategy", self.strategy.clone())?;
         let universe = self.universe_path(repo).to_string_lossy().into_owned();
         match get("--tickers-file") {
-            Some(t) if t != universe && t != self.universe => return Err(format!("--tickers-file {t} conflicts with the hypothesis file ({})", self.universe)),
+            Some(t) if t != universe && t != self.universe => return Err(format!("--tickers-file {t} conflicts with the hypothesis file (universe = {})", self.universe)),
             Some(_) => {}
-            None => out.extend(["--tickers-file".to_string(), universe]),
+            None => put("--tickers-file", "universe", universe)?,
+        }
+        for (key, value) in [("start", &self.start), ("end", &self.end)] {
+            if let Some(v) = value {
+                put(if key == "start" { "--start" } else { "--end" }, key, v.clone())?;
+            }
         }
         for (key, opt) in PARAMS {
             let Some(v) = self.params.get(key) else { continue };
@@ -105,14 +148,64 @@ impl Hypothesis {
                 toml::Value::Float(f) => f.to_string(),
                 _ => return Err(format!("hypothesis params.{key}: a number or a text")),
             };
-            match get(opt) {
-                Some(c) if !same(&c, &text) => return Err(format!("{opt} {c} conflicts with the hypothesis file (params.{key} = {text})")),
-                Some(_) => {}
-                None => out.extend([opt.to_string(), text]),
-            }
+            put(opt, &format!("params.{key}"), text)?;
         }
         Ok(out)
     }
+}
+
+/// The hypothesis with its ancestors: the family and the out-of-sample window.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Resolved {
+    pub family: String,
+    /// The first day of the window: the `oos_start` of the oldest ancestor.
+    pub window_start: i64,
+    /// The id that owns the window.
+    pub window_id: String,
+    /// The ids from this hypothesis to the oldest ancestor.
+    pub chain: Vec<String>,
+}
+
+fn hypotheses_dir(repo: &Path) -> PathBuf {
+    repo.join("trading").join("hypotheses")
+}
+
+/// Follow `parent` to the oldest ancestor (the files are read from the working tree).
+pub fn resolve(repo: &Path, h: &Hypothesis) -> Result<Resolved, String> {
+    let mut chain = vec![h.id.clone()];
+    let mut family = h.family.clone();
+    let (mut window_start, mut window_id) = (h.oos_day(), h.id.clone());
+    let mut cur = h.clone();
+    while let Some(p) = cur.parent.clone() {
+        if chain.contains(&p) || chain.len() > 20 {
+            return Err(format!("hypothesis parents form a loop at '{p}'"));
+        }
+        let file = hypotheses_dir(repo).join(format!("{p}.toml"));
+        let text = std::fs::read_to_string(&file).map_err(|e| format!("parent hypothesis '{p}': {}: {e}", file.display()))?;
+        cur = Hypothesis::parse(&text)?;
+        family = family.or_else(|| cur.family.clone());
+        (window_start, window_id) = (cur.oos_day(), cur.id.clone());
+        chain.push(p);
+    }
+    Ok(Resolved { family: family.unwrap_or_else(|| h.strategy.clone()), window_start, window_id, chain })
+}
+
+/// Whether the out-of-sample window is clean, and the reasons if it is not.
+pub fn oos_clean(h: &Hypothesis, window_id: &str, earlier_family_reads: &[String], table_in_sample: bool) -> (bool, Vec<String>) {
+    let mut why = Vec::new();
+    if h.oos_prior_exposure {
+        why.push("oos_prior_exposure: results of the window were seen before the hypothesis file".to_string());
+    }
+    if h.oos_inherits.is_some() || window_id != h.id {
+        why.push(format!("the window is inherited from '{window_id}', which was read before"));
+    }
+    if !earlier_family_reads.is_empty() {
+        why.push(format!("an earlier run of the family read the window ({} run(s), first: {})", earlier_family_reads.len(), earlier_family_reads[0]));
+    }
+    if table_in_sample {
+        why.push("the parameter table was fitted on all years of the cache (through 2025): the window is in the fit sample of the model".to_string());
+    }
+    (why.is_empty(), why)
 }
 
 /// What the git history says about a hypothesis file.
@@ -123,25 +216,31 @@ pub struct FileProof {
     pub commit: String,
     pub commit_time: String,
     pub sha256: String,
+    /// The text of the file in HEAD (the run uses this text).
+    pub text: String,
 }
 
 /// The output of a git command (None if git fails or is not there).
 fn git(dir: &Path, args: &[&str]) -> Option<String> {
-    let o = Command::new("git").arg("-C").arg(dir).args(args).output().ok()?;
-    o.status.success().then(|| String::from_utf8_lossy(&o.stdout).trim().to_string())
+    git_bytes(dir, args).map(|b| String::from_utf8_lossy(&b).trim().to_string())
 }
 
-/// The hypothesis file must be in HEAD and have no change: the file existed before the run (proof of order).
+fn git_bytes(dir: &Path, args: &[&str]) -> Option<Vec<u8>> {
+    let o = Command::new("git").arg("-C").arg(dir).args(args).output().ok()?;
+    o.status.success().then_some(o.stdout)
+}
+
+/// The hypothesis file must be in HEAD, with the same bytes in the working tree: the file existed before the run (proof of order).
 pub fn prove_committed(repo: &Path, file: &Path) -> Result<FileProof, String> {
     let bytes = std::fs::read(file).map_err(|e| format!("{}: {e}", file.display()))?;
     let canon = file.canonicalize().map_err(|e| format!("{}: {e}", file.display()))?;
     let root = repo.canonicalize().map_err(|e| format!("{}: {e}", repo.display()))?;
     let rel = canon.strip_prefix(&root).map_err(|_| format!("{} is not inside the repository {}", file.display(), root.display()))?;
     let rel = rel.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect::<Vec<_>>().join("/");
-    if git(&root, &["cat-file", "-e", &format!("HEAD:{rel}")]).is_none() {
+    let Some(head) = git_bytes(&root, &["show", &format!("HEAD:{rel}")]) else {
         return Err(format!("{rel} is not committed (in HEAD): commit the hypothesis file before the first run"));
-    }
-    if !git(&root, &["status", "--porcelain", "--", &rel]).ok_or("git status failed")?.is_empty() {
+    };
+    if head != bytes || !git(&root, &["status", "--porcelain", "--", &rel]).ok_or("git status failed")?.is_empty() {
         return Err(format!("{rel} has a change that is not committed: a changed hypothesis is a new id"));
     }
     let log = git(&root, &["log", "-1", "--format=%H %cI", "--", &rel]).ok_or("git log failed")?;
@@ -150,7 +249,7 @@ pub fn prove_committed(repo: &Path, file: &Path) -> Result<FileProof, String> {
     if commit.is_empty() {
         return Err(format!("{rel}: no commit found"));
     }
-    Ok(FileProof { path: rel, commit, commit_time, sha256: sha256_hex(&bytes) })
+    Ok(FileProof { path: rel, commit, commit_time, sha256: sha256_hex(&head), text: String::from_utf8_lossy(&head).into_owned() })
 }
 
 /// The commit of the code and whether the code has a change that is not committed (the run logs are not counted).
@@ -167,6 +266,24 @@ pub fn store_state(cache: &Path) -> (Option<String>, Option<bool>) {
         return (None, None);
     }
     (git(cache, &["rev-parse", "HEAD"]), git(cache, &["status", "--porcelain"]).map(|s| !s.is_empty()))
+}
+
+/// A path for the log: from the repository root if it is inside the repository, else only a marker (no path of a machine).
+pub fn rel_path(repo: &Path, p: &str) -> String {
+    let path = Path::new(p);
+    if !path.is_absolute() {
+        return p.to_string();
+    }
+    let root = repo.canonicalize().unwrap_or_else(|_| repo.to_path_buf());
+    match path.canonicalize().unwrap_or_else(|_| path.to_path_buf()).strip_prefix(&root) {
+        Ok(r) => r.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect::<Vec<_>>().join("/"),
+        Err(_) => "<path outside the repository>".to_string(),
+    }
+}
+
+/// The arguments for the log: no absolute path. The value of `--cache` is "<store>".
+pub fn log_args(repo: &Path, args: &[String]) -> Vec<String> {
+    args.iter().enumerate().map(|(i, a)| if i > 0 && args[i - 1] == "--cache" { "<store>".to_string() } else { rel_path(repo, a) }).collect()
 }
 
 // ---- SHA-256 ----
@@ -212,6 +329,7 @@ pub fn sha256_hex(data: &[u8]) -> String {
     h.iter().map(|x| format!("{x:08x}")).collect()
 }
 
+
 // ---- time, out-of-sample, costs ----
 
 /// `YYYYMMDDTHHMMSSZ` (UTC) of a Unix time in seconds.
@@ -224,9 +342,10 @@ pub fn now_secs() -> i64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64)
 }
 
-/// A run that ends after the first day of the out-of-sample window has read that window.
+/// A run that ends on or after the first day of the out-of-sample window has read that window (the last day of the run
+/// is a day of the series).
 pub fn oos_read(end: i64, oos_start: i64) -> bool {
-    end > oos_start
+    end >= oos_start
 }
 
 /// A strategy that gives the target weights of an earlier run of the same strategy (the weights do not depend on the cost).
@@ -258,6 +377,17 @@ pub fn cost_levels(prices: &super::Prices, universe: &[String], one: &Report, cf
     Ok((at(0.0)?, at(2.0)?))
 }
 
+/// A note on the size of the cost: the drag of the cost for each year, and the multiple of the cost at which the annual return
+/// falls to the equal-weight line (None if it never does, or if the strategy is not above the line at 0x).
+pub fn cost_note(zero: &Report, one: &Report, ew_annual: f64) -> String {
+    let drag = zero.fund.annual - one.fund.annual;
+    let years = one.years();
+    let turnover = if years > 0.0 { one.turnover_total / years } else { f64::NAN };
+    let breakeven = ((zero.fund.annual - ew_annual) / drag).is_finite().then(|| (zero.fund.annual - ew_annual) / drag).filter(|k| *k > 0.0);
+    let be = breakeven.map_or("no break-even".to_string(), |k| format!("the excess over the equal-weight line of the list is zero at about {k:.0}x the cost"));
+    format!("cost note: turnover {turnover:.2} a year, the cost takes {:.2}% a year at 1x; {be}. If this multiple is large, 2x is not a stress for this strategy.", 100.0 * drag)
+}
+
 pub fn perf_json(p: &Perf) -> Value {
     json!({ "total": p.total, "annual": p.annual, "volatility": p.vol, "max_drawdown": p.max_drawdown })
 }
@@ -280,7 +410,7 @@ fn tick_hash(t: &str) -> u64 {
     t.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3))
 }
 
-/// The factor of the closes after the poison day. It differs by ticker: a uniform factor keeps a rank. One ticker in four
+/// The factor of the closes from the poison day on. It differs by ticker: a uniform factor keeps a rank. One ticker in four
 /// gets 1000, so one huge return enters the beta and the momentum of a strategy that reads past the date.
 pub fn price_factor(ticker: &str) -> f64 {
     let h = tick_hash(ticker);
@@ -291,33 +421,35 @@ pub fn price_factor(ticker: &str) -> f64 {
     }
 }
 
-/// The factor of the facts filed after the poison day. It differs by ticker.
+/// The factor of the facts filed from the poison day on. It differs by ticker.
 pub fn fact_factor(ticker: &str) -> f64 {
     1.0 + 400.0 * (1 + (tick_hash(ticker) >> 16) % 11) as f64
 }
 
-/// A series (ISO date, close) with each close after `day` (YYYY-MM-DD) multiplied by the factor of the ticker.
+/// A series (ISO date, close) with each close on `day` (YYYY-MM-DD) or later multiplied by the factor of the ticker.
 pub fn poison_series(series: &[(String, f64)], day: &str, ticker: &str) -> Vec<(String, f64)> {
     let f = price_factor(ticker);
-    series.iter().map(|(d, c)| (d.clone(), if d.get(..10).unwrap_or("") > day { c * f } else { *c })).collect()
+    series.iter().map(|(d, c)| (d.clone(), if d.get(..10).unwrap_or("") >= day { c * f } else { *c })).collect()
 }
 
-/// Each fact filed after `day` (YYYY-MM-DD): its value multiplied by `factor`.
+/// Each fact filed on `day` (YYYY-MM-DD) or later: its value multiplied by `factor`.
 pub fn poison_facts(facts: &mut CompanyFacts, day: &str, factor: f64) {
     for f in facts.facts.values_mut().flat_map(|ns| ns.values_mut()).flat_map(|c| c.units.values_mut()).flatten() {
-        if f.filed.as_deref().and_then(|d| d.get(..10)).is_some_and(|d| d > day) {
+        if f.filed.as_deref().and_then(|d| d.get(..10)).is_some_and(|d| d >= day) {
             f.val = f.val.map(|v| v * factor);
         }
     }
 }
 
-/// Compare the run and the poison run for the rebalances before `before`: the target weights, then the trade list as text.
-/// Gives the number of rebalances, or the first difference.
-pub fn poison_compare(clean: &Report, poisoned: &Report, before: i64) -> Result<usize, String> {
-    let early = |r: &Report| r.targets.iter().filter(|(d, _)| *d < before).cloned().collect::<Vec<_>>();
+/// Compare the run and the poison run. The poison day `through` is a rebalance day; the poison run changed each close and each
+/// fact from that day on. The target weights of each rebalance up to `through` (included) must be equal: the strategy decides
+/// on `through` with the closes before it. The trade list is compared for the days before `through` (the trade of that day is at
+/// its own close, which the poison changed). Gives the number of rebalances, or the first difference.
+pub fn poison_compare(clean: &Report, poisoned: &Report, through: i64) -> Result<usize, String> {
+    let early = |r: &Report| r.targets.iter().filter(|(d, _)| *d <= through).cloned().collect::<Vec<_>>();
     let (a, b) = (early(clean), early(poisoned));
-    if a.is_empty() {
-        return Err("no rebalance before the poison day: nothing to compare".into());
+    if !a.iter().any(|(d, _)| *d == through) {
+        return Err(format!("{} is not a rebalance day of the run: the poison day must be one", mapcheck::dates::format(through)));
     }
     for i in 0..a.len().max(b.len()) {
         match (a.get(i), b.get(i)) {
@@ -327,10 +459,10 @@ pub fn poison_compare(clean: &Report, poisoned: &Report, before: i64) -> Result<
                 let t = mx.keys().chain(my.keys()).find(|k| mx.get(*k) != my.get(*k)).cloned().unwrap_or_default();
                 return Err(format!("rebalance {}: target weight of {t} is {:?} in the run and {:?} in the poison run", mapcheck::dates::format(*d), mx.get(&t), my.get(&t)));
             }
-            _ => return Err(format!("the number of rebalances before the poison day differs: {} and {}", a.len(), b.len())),
+            _ => return Err(format!("the number of rebalances up to the poison day differs: {} and {}", a.len(), b.len())),
         }
     }
-    let (ta, tb) = (trades_csv(&clean.trades, Some(before)), trades_csv(&poisoned.trades, Some(before)));
+    let (ta, tb) = (trades_csv(&clean.trades, Some(through)), trades_csv(&poisoned.trades, Some(through)));
     if ta != tb {
         let line = ta.lines().zip(tb.lines()).find(|(x, y)| x != y).map_or_else(|| format!("{} and {} lines", ta.lines().count(), tb.lines().count()), |(x, y)| format!("'{x}' against '{y}'"));
         return Err(format!("the trade list before the poison day differs: {line}"));
@@ -340,43 +472,158 @@ pub fn poison_compare(clean: &Report, poisoned: &Report, before: i64) -> Result<
 
 // ---- the run log ----
 
-/// The number of run files of one id, and of all the ids that name the same strategy, in `runs_dir`.
-pub fn count_runs(runs_dir: &Path, id: &str, strategy: &str) -> Result<(usize, usize), String> {
-    let (mut by_id, mut by_strategy) = (0, 0);
-    let Ok(dirs) = std::fs::read_dir(runs_dir) else { return Ok((0, 0)) };
-    for dir in dirs.flatten().filter(|d| d.path().is_dir()) {
-        let is_id = dir.file_name().to_string_lossy() == id;
-        for f in std::fs::read_dir(dir.path()).map_err(|e| format!("{}: {e}", dir.path().display()))?.flatten() {
-            let path = f.path();
-            if path.extension().is_none_or(|e| e != "json") {
-                continue;
-            }
-            by_id += usize::from(is_id);
-            let v: Value = serde_json::from_slice(&std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?).map_err(|e| format!("{}: not a run log ({e})", path.display()))?;
-            by_strategy += usize::from(v.get("strategy").and_then(Value::as_str) == Some(strategy));
-        }
-    }
-    Ok((by_id, by_strategy))
+/// One run file (a run of the same id or of the family).
+#[derive(Debug, Clone)]
+pub struct RunRecord {
+    pub id: String,
+    /// The path from the repository root.
+    pub path: String,
+    /// The content (None if it cannot be read: the run is counted all the same).
+    pub value: Option<Value>,
 }
 
-/// Write the run log `runs_dir/<id>/<stamp>.json`. `make` gets the variant counts (this run included: runs of the id, runs of
-/// the strategy) and gives the log. An existing file is never replaced.
-pub fn write_run_log(runs_dir: &Path, id: &str, strategy: &str, stamp: &str, make: impl FnOnce(usize, usize) -> Value) -> Result<(PathBuf, usize, usize), String> {
+/// The run files of the working tree and of the whole git history (all branches, also the files that were deleted). A deleted
+/// file is a hidden variant: it stays in the count.
+pub fn list_runs(repo: &Path) -> Vec<RunRecord> {
+    let mut paths: BTreeSet<String> = BTreeSet::new();
+    if let Ok(dirs) = std::fs::read_dir(repo.join("trading").join("runs")) {
+        for d in dirs.flatten().filter(|d| d.path().is_dir()) {
+            let id = d.file_name().to_string_lossy().into_owned();
+            for f in std::fs::read_dir(d.path()).into_iter().flatten().flatten() {
+                let name = f.file_name().to_string_lossy().into_owned();
+                if name.ends_with(".json") {
+                    paths.insert(format!("trading/runs/{id}/{name}"));
+                }
+            }
+        }
+    }
+    for l in git(repo, &["log", "--all", "--name-only", "--format=", "--", "trading/runs"]).unwrap_or_default().lines() {
+        let l = l.trim();
+        if l.starts_with("trading/runs/") && l.ends_with(".json") && l.matches('/').count() == 3 {
+            paths.insert(l.to_string());
+        }
+    }
+    paths
+        .into_iter()
+        .map(|path| {
+            let id = path.split('/').nth(2).unwrap_or_default().to_string();
+            let from_tree = std::fs::read(repo.join(&path)).ok().and_then(|b| serde_json::from_slice(&b).ok());
+            let from_git = || {
+                let c = git(repo, &["log", "--all", "--diff-filter=A", "-1", "--format=%H", "--", &path])?;
+                serde_json::from_slice(&git_bytes(repo, &["show", &format!("{c}:{path}")])?).ok()
+            };
+            let value = from_tree.or_else(from_git);
+            RunRecord { id, path, value }
+        })
+        .collect()
+}
+
+/// The variant counts of a hypothesis. `n_*` count the run files, this run included.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Counts {
+    pub n_id: usize,
+    pub n_family: usize,
+    pub prior_id: u32,
+    /// The `prior_variants` of each hypothesis file of the family.
+    pub prior_family: u32,
+    /// The earlier runs of the family that read the window.
+    pub earlier_reads: Vec<String>,
+}
+
+impl Counts {
+    /// The variants of the hypothesis: the prior variants and the runs.
+    pub fn variants_id(&self) -> usize {
+        self.prior_id as usize + self.n_id
+    }
+    pub fn variants_family(&self) -> usize {
+        self.prior_family as usize + self.n_family
+    }
+}
+
+/// Count the earlier runs and add this run. A run file with no readable content counts for the family and as a read of the window.
+pub fn count_runs(repo: &Path, h: &Hypothesis, r: &Resolved) -> Counts {
+    let mut family_of: BTreeMap<String, (String, u32)> = BTreeMap::new();
+    for e in std::fs::read_dir(hypotheses_dir(repo)).into_iter().flatten().flatten() {
+        if let Some(other) = std::fs::read_to_string(e.path()).ok().and_then(|t| Hypothesis::parse(&t).ok()) {
+            if let Ok(res) = resolve(repo, &other) {
+                family_of.insert(other.id.clone(), (res.family, other.prior_variants));
+            }
+        }
+    }
+    family_of.insert(h.id.clone(), (r.family.clone(), h.prior_variants));
+    let (mut n_id, mut n_family, mut reads) = (0, 0, Vec::new());
+    for rec in list_runs(repo) {
+        n_id += usize::from(rec.id == h.id);
+        let fam = family_of.get(&rec.id).map(|f| f.0.clone()).or_else(|| rec.value.as_ref().and_then(|v| v.get("family").or_else(|| v.get("strategy"))).and_then(Value::as_str).map(str::to_string));
+        if fam.as_deref().is_some_and(|f| f != r.family) {
+            continue;
+        }
+        n_family += 1;
+        let end = rec.value.as_ref().and_then(|v| v["config"]["end"].as_str()).and_then(mapcheck::dates::parse);
+        let read = match (end, &rec.value) {
+            (Some(e), _) => oos_read(e, r.window_start),
+            (None, Some(v)) => v["oos_read"].as_bool().unwrap_or(true),
+            (None, None) => true,
+        };
+        if read {
+            reads.push(rec.path.clone());
+        }
+    }
+    let prior_family = family_of.values().filter(|f| f.0 == r.family).map(|f| f.1).sum();
+    Counts { n_id: n_id + 1, n_family: n_family + 1, prior_id: h.prior_variants, prior_family, earlier_reads: reads }
+}
+
+/// Make the file `trading/runs/<id>/<stamp>.json` with the record "started". The record is there before any result. An
+/// existing file is never replaced.
+pub fn write_started(repo: &Path, id: &str, stamp: &str, record: &Value) -> Result<PathBuf, String> {
     use std::io::Write;
-    let (n_id, n_strategy) = count_runs(runs_dir, id, strategy)?;
-    let dir = runs_dir.join(id);
+    let dir = repo.join("trading").join("runs").join(id);
     std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     let path = dir.join(format!("{stamp}.json"));
     let mut file = std::fs::OpenOptions::new().write(true).create_new(true).open(&path).map_err(|e| format!("{}: {e} (a run log is never replaced; wait one second)", path.display()))?;
-    let text = serde_json::to_string_pretty(&make(n_id + 1, n_strategy + 1)).map_err(|e| e.to_string())?;
+    let text = serde_json::to_string_pretty(record).map_err(|e| e.to_string())?;
     file.write_all(text.as_bytes()).and_then(|_| file.write_all(b"\n")).map_err(|e| format!("{}: {e}", path.display()))?;
-    Ok((path, n_id + 1, n_strategy + 1))
+    Ok(path)
+}
+
+/// Replace the record "started" of this run by the final record. A file with any other status is never replaced.
+pub fn finalize(path: &Path, record: &Value) -> Result<(), String> {
+    let old: Value = serde_json::from_slice(&std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?).map_err(|e| format!("{}: {e}", path.display()))?;
+    if old["status"].as_str() != Some("started") {
+        return Err(format!("{}: the status is not 'started': a finished run log is never changed", path.display()));
+    }
+    let tmp = path.with_extension("tmp");
+    let text = serde_json::to_string_pretty(record).map_err(|e| e.to_string())?;
+    std::fs::write(&tmp, format!("{text}\n")).and_then(|_| std::fs::rename(&tmp, path)).map_err(|e| format!("{}: {e}", path.display()))
+}
+
+/// A run with no hypothesis file must not reach the out-of-sample window of a registered hypothesis of the same strategy.
+pub fn exploratory_guard(repo: &Path, strategy: &str, end: i64) -> Result<(), String> {
+    for e in std::fs::read_dir(hypotheses_dir(repo)).into_iter().flatten().flatten() {
+        let Some(h) = std::fs::read_to_string(e.path()).ok().and_then(|t| Hypothesis::parse(&t).ok()) else { continue };
+        if h.strategy != strategy {
+            continue;
+        }
+        if let Ok(r) = resolve(repo, &h) {
+            if oos_read(end, r.window_start) {
+                return Err(format!(
+                    "an exploratory run (no hypothesis file) must not reach the out-of-sample window of '{}' ({} from {}): use --end before it, or a hypothesis file",
+                    h.id,
+                    r.window_id,
+                    mapcheck::dates::format(r.window_start)
+                ));
+            }
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::portfolio::strategies::{vintages_of, Vintages};
     use crate::portfolio::{run, Prices, Rebalance, Series};
+    use mapcheck::registry::Registry;
 
     const GOOD: &str = r#"
 id = "value-rank-sp500-v1"
@@ -385,6 +632,7 @@ hypothesis = "The top quintile by model value over price beats the equal-weight 
 strategy = "value-rank"
 universe = "rust/mapcheck/universe/sp500.txt"
 oos_start = "2023-01-01"
+prior_variants = 4
 [params]
 paths = 300
 seed = 7
@@ -403,10 +651,15 @@ cost_bp = 10
         p
     }
 
+    fn d(s: &str) -> i64 {
+        mapcheck::dates::parse(s).unwrap()
+    }
+
     #[test]
     fn the_hypothesis_file_is_parsed_and_checked() {
         let h = Hypothesis::parse(GOOD).unwrap();
-        assert_eq!((h.id.as_str(), h.strategy.as_str(), h.oos_start.as_str(), h.parent), ("value-rank-sp500-v1", "value-rank", "2023-01-01", None));
+        assert_eq!((h.id.as_str(), h.strategy.as_str(), h.oos_start.as_str(), h.parent.clone(), h.prior_variants), ("value-rank-sp500-v1", "value-rank", "2023-01-01", None, 4));
+        assert!(!h.oos_prior_exposure);
         assert_eq!(h.params["paths"].as_integer(), Some(300));
         assert!(Hypothesis::parse(&GOOD.replace("2023-01-01", "2023-13-45")).is_err());
         assert!(Hypothesis::parse(&GOOD.replace("value-rank-sp500-v1", "../x")).is_err());
@@ -414,6 +667,11 @@ cost_bp = 10
         assert!(Hypothesis::parse(&GOOD.replace("paths = 300", "pathz = 300")).is_err());
         assert!(Hypothesis::parse(&format!("{GOOD}\nextra = 1")).is_err());
         assert!(Hypothesis::parse(&GOOD.replace("oos_start = \"2023-01-01\"", "")).is_err());
+        // prior_variants is needed
+        assert!(Hypothesis::parse(&GOOD.replace("prior_variants = 4", "")).unwrap_err().contains("prior_variants"));
+        // oos_inherits must name the parent
+        assert!(Hypothesis::parse(&GOOD.replace("prior_variants = 4", "prior_variants = 4\noos_inherits = \"x\"")).is_err());
+        assert!(Hypothesis::parse(&GOOD.replace("prior_variants = 4", "prior_variants = 4\nstart = \"2018-13-01\"")).is_err());
     }
 
     #[test]
@@ -432,6 +690,11 @@ cost_bp = 10
         assert_eq!(get("--seed").as_deref(), Some("7"));
         assert_eq!(get("--rebalance").as_deref(), Some("monthly"));
         assert_eq!(get("--tickers-file").as_deref(), Some("/repo/rust/mapcheck/universe/sp500.txt"));
+        // start and end from the file
+        let h2 = Hypothesis::parse(&GOOD.replace("prior_variants = 4", "prior_variants = 4\nstart = \"2018-01-01\"\nend = \"2024-12-31\"\nsuccess = \"x\"")).unwrap();
+        let m = h2.merge_args(&[], repo).unwrap();
+        assert!(m.windows(2).any(|w| w == ["--start", "2018-01-01"]) && m.windows(2).any(|w| w == ["--end", "2024-12-31"]));
+        assert!(h2.merge_args(&args(&["--end", "2025-01-01"]), repo).is_err());
     }
 
     #[test]
@@ -448,34 +711,45 @@ cost_bp = 10
     }
 
     #[test]
-    fn the_oos_flag_is_set_when_the_end_is_after_the_start_of_the_window() {
-        let d = |s: &str| mapcheck::dates::parse(s).unwrap();
+    fn the_oos_flag_is_set_when_the_end_is_on_or_after_the_start_of_the_window() {
         assert!(!oos_read(d("2022-12-30"), d("2023-01-01")));
-        assert!(!oos_read(d("2023-01-01"), d("2023-01-01")));
+        assert!(oos_read(d("2023-01-01"), d("2023-01-01"))); // the series of the run has a point on this day
         assert!(oos_read(d("2023-01-02"), d("2023-01-01")));
     }
 
     #[test]
-    fn a_run_log_is_never_overwritten_and_the_counts_increase() {
-        let dir = scratch("runs");
-        let log = |id: &str, strategy: &str| json!({ "id": id, "strategy": strategy });
-        let (p1, n1, m1) = write_run_log(&dir, "h1", "momentum", "20261121T100000Z", |n, m| json!({ "id": "h1", "strategy": "momentum", "n": n, "m": m })).unwrap();
-        assert_eq!((n1, m1), (1, 1));
-        assert!(p1.ends_with("h1/20261121T100000Z.json"));
-        // the same name: refused, and the first file keeps its text
-        let before = std::fs::read_to_string(&p1).unwrap();
-        assert!(write_run_log(&dir, "h1", "momentum", "20261121T100000Z", |_, _| json!({ "id": "h1", "strategy": "momentum", "n": 99 })).is_err());
-        assert_eq!(std::fs::read_to_string(&p1).unwrap(), before);
-        assert!(before.contains("\"n\": 1"));
-        // a new time: the count of the id is 2; another id of the same strategy: the family count counts both
-        let (_, n2, m2) = write_run_log(&dir, "h1", "momentum", "20261121T100001Z", |_, _| log("h1", "momentum")).unwrap();
-        assert_eq!((n2, m2), (2, 2));
-        let (_, n3, m3) = write_run_log(&dir, "h2", "momentum", "20261121T100002Z", |_, _| log("h2", "momentum")).unwrap();
-        assert_eq!((n3, m3), (1, 3));
-        let (_, n4, m4) = write_run_log(&dir, "h3", "value-rank", "20261121T100003Z", |_, _| log("h3", "value-rank")).unwrap();
-        assert_eq!((n4, m4), (1, 1));
-        assert_eq!(count_runs(&dir, "h1", "momentum").unwrap(), (2, 3));
-        let _ = std::fs::remove_dir_all(&dir);
+    fn the_window_and_the_family_come_from_the_oldest_ancestor() {
+        let repo = scratch("anc");
+        std::fs::create_dir_all(hypotheses_dir(&repo)).unwrap();
+        let put = |id: &str, extra: &str, oos: &str| {
+            let t = GOOD.replace("value-rank-sp500-v1", id).replace("2023-01-01", oos).replace("prior_variants = 4", &format!("prior_variants = 4\n{extra}"));
+            std::fs::write(hypotheses_dir(&repo).join(format!("{id}.toml")), t).unwrap();
+        };
+        put("a", "family = \"vr\"", "2023-01-01");
+        put("b", "parent = \"a\"\noos_inherits = \"a\"", "2025-06-01");
+        put("c", "parent = \"b\"", "2026-01-01");
+        let load = |id: &str| Hypothesis::parse(&std::fs::read_to_string(hypotheses_dir(&repo).join(format!("{id}.toml"))).unwrap()).unwrap();
+        let r = resolve(&repo, &load("c")).unwrap();
+        assert_eq!((r.family.as_str(), r.window_start, r.window_id.as_str(), r.chain.len()), ("vr", d("2023-01-01"), "a", 3));
+        let a = resolve(&repo, &load("a")).unwrap();
+        assert_eq!((a.family.as_str(), a.window_id.as_str(), a.chain.len()), ("vr", "a", 1));
+        // no family in the file or in the ancestors: the strategy name
+        std::fs::write(hypotheses_dir(&repo).join("z.toml"), GOOD.replace("value-rank-sp500-v1", "z")).unwrap();
+        assert_eq!(resolve(&repo, &load("z")).unwrap().family, "value-rank");
+        // a loop is an error
+        put("p", "parent = \"q\"", "2023-01-01");
+        put("q", "parent = \"p\"", "2023-01-01");
+        assert!(resolve(&repo, &load("p")).is_err());
+        // the clean flag: an inherited window is not clean; a prior exposure is not clean; an earlier read is not clean
+        let (ok, why) = oos_clean(&load("c"), &r.window_id, &[], false);
+        assert!(!ok && why.len() == 1, "{why:?}");
+        let (ok, _) = oos_clean(&load("a"), "a", &[], false);
+        assert!(ok);
+        let h = Hypothesis::parse(&GOOD.replace("prior_variants = 4", "prior_variants = 4\noos_prior_exposure = true")).unwrap();
+        assert!(!oos_clean(&h, &h.id, &[], false).0);
+        assert!(!oos_clean(&load("a"), "a", &["trading/runs/a/x.json".to_string()], false).0);
+        assert!(!oos_clean(&load("a"), "a", &[], true).0);
+        let _ = std::fs::remove_dir_all(&repo);
     }
 
     fn git_in(dir: &Path, args: &[&str]) {
@@ -483,8 +757,78 @@ cost_bp = 10
         assert!(ok, "git {args:?}");
     }
 
+    fn started(strategy: &str, end: &str) -> Value {
+        json!({ "status": "started", "strategy": strategy, "config": { "end": end } })
+    }
+
     #[test]
-    fn a_hypothesis_file_that_is_not_committed_is_refused() {
+    fn a_run_log_is_never_overwritten_and_the_counts_include_the_files_in_the_git_history() {
+        let repo = scratch("runs");
+        git_in(&repo, &["init", "-q"]);
+        std::fs::create_dir_all(hypotheses_dir(&repo)).unwrap();
+        let h = Hypothesis::parse(GOOD).unwrap();
+        std::fs::write(hypotheses_dir(&repo).join("value-rank-sp500-v1.toml"), GOOD).unwrap();
+        let r = resolve(&repo, &h).unwrap();
+        let c = count_runs(&repo, &h, &r);
+        assert_eq!((c.n_id, c.n_family, c.variants_id(), c.variants_family()), (1, 1, 5, 5)); // 4 prior + this run
+        let p1 = write_started(&repo, &h.id, "20261121T100000Z", &started("value-rank", "2022-12-31")).unwrap();
+        assert!(p1.ends_with("value-rank-sp500-v1/20261121T100000Z.json"));
+        // the same name: refused, and the first file keeps its text
+        let before = std::fs::read_to_string(&p1).unwrap();
+        assert!(write_started(&repo, &h.id, "20261121T100000Z", &json!({ "status": "started", "n": 99 })).is_err());
+        assert_eq!(std::fs::read_to_string(&p1).unwrap(), before);
+        // the count of the id and of the family grows; the run ended before the window: no read
+        let c = count_runs(&repo, &h, &r);
+        assert_eq!((c.n_id, c.n_family, c.variants_id(), c.earlier_reads.len()), (2, 2, 6, 0));
+        // another run of the same family under another id, and one of another strategy
+        write_started(&repo, "other", "20261121T100001Z", &started("value-rank", "2026-01-01")).unwrap();
+        write_started(&repo, "mom", "20261121T100002Z", &started("momentum", "2026-01-01")).unwrap();
+        let c = count_runs(&repo, &h, &r);
+        assert_eq!((c.n_id, c.n_family), (2, 3)); // the unknown id 'other' counts through its strategy field; momentum does not
+        assert_eq!(c.earlier_reads, ["trading/runs/other/20261121T100001Z.json"]); // it read the window (end 2026 >= 2023)
+        // the final record replaces a 'started' record once; a finished log is never changed
+        finalize(&p1, &json!({ "status": "done", "strategy": "value-rank" })).unwrap();
+        assert!(std::fs::read_to_string(&p1).unwrap().contains("done"));
+        assert!(finalize(&p1, &json!({ "status": "done", "strategy": "value-rank", "x": 1 })).is_err());
+        assert!(!std::fs::read_to_string(&p1).unwrap().contains("\"x\""));
+        // a deleted file that was committed is still counted
+        git_in(&repo, &["add", "-A"]);
+        git_in(&repo, &["commit", "-q", "-m", "runs"]);
+        std::fs::remove_file(&p1).unwrap();
+        git_in(&repo, &["add", "-A"]);
+        git_in(&repo, &["commit", "-q", "-m", "delete a run"]);
+        assert!(!p1.exists());
+        let c = count_runs(&repo, &h, &r);
+        assert_eq!((c.n_id, c.n_family), (2, 3), "the deleted run file is a hidden variant: it stays in the count");
+        let _ = std::fs::remove_dir_all(&repo);
+    }
+
+    #[test]
+    fn an_exploratory_run_must_not_reach_the_window_of_a_registered_hypothesis() {
+        let repo = scratch("explore");
+        std::fs::create_dir_all(hypotheses_dir(&repo)).unwrap();
+        std::fs::write(hypotheses_dir(&repo).join("value-rank-sp500-v1.toml"), GOOD).unwrap();
+        assert!(exploratory_guard(&repo, "value-rank", d("2022-12-31")).is_ok());
+        let e = exploratory_guard(&repo, "value-rank", d("2023-01-01")).unwrap_err();
+        assert!(e.contains("value-rank-sp500-v1") && e.contains("2023-01-01"), "{e}");
+        assert!(exploratory_guard(&repo, "momentum", d("2026-01-01")).is_ok()); // another strategy
+        let _ = std::fs::remove_dir_all(&repo);
+    }
+
+    #[test]
+    fn paths_in_the_log_are_relative_and_the_store_has_no_path() {
+        let repo = scratch("rel");
+        std::fs::create_dir_all(repo.join("trading")).unwrap();
+        let inside = repo.join("trading").join("x.toml");
+        std::fs::write(&inside, "").unwrap();
+        let a = args(&["--hypothesis", &inside.to_string_lossy(), "--cache", "/home/user/fa-data", "--trades", "/tmp/t.csv", "--start", "2018-01-01"]);
+        let l = log_args(&repo, &a);
+        assert_eq!(l, ["--hypothesis", "trading/x.toml", "--cache", "<store>", "--trades", "<path outside the repository>", "--start", "2018-01-01"]);
+        let _ = std::fs::remove_dir_all(&repo);
+    }
+
+    #[test]
+    fn a_hypothesis_file_that_is_not_committed_or_not_equal_to_head_is_refused() {
         let repo = scratch("git");
         git_in(&repo, &["init", "-q"]);
         let f = repo.join("h.toml");
@@ -494,10 +838,13 @@ cost_bp = 10
         assert!(prove_committed(&repo, &f).unwrap_err().contains("not committed")); // added, not committed
         git_in(&repo, &["commit", "-q", "-m", "x"]);
         let p = prove_committed(&repo, &f).unwrap();
-        assert_eq!((p.path.as_str(), p.sha256.as_str()), ("h.toml", sha256_hex(GOOD.as_bytes()).as_str()));
+        assert_eq!((p.path.as_str(), p.sha256.as_str(), p.text.as_str()), ("h.toml", sha256_hex(GOOD.as_bytes()).as_str(), GOOD));
         assert_eq!(p.commit.len(), 40);
         assert!(p.commit_time.contains('T'));
         std::fs::write(&f, format!("{GOOD}\n# changed")).unwrap();
+        assert!(prove_committed(&repo, &f).unwrap_err().contains("change"));
+        // skip-worktree hides the change from `git status`: the bytes of HEAD are compared all the same
+        git_in(&repo, &["update-index", "--skip-worktree", "h.toml"]);
         assert!(prove_committed(&repo, &f).unwrap_err().contains("change"));
         let _ = std::fs::remove_dir_all(&repo);
     }
@@ -505,7 +852,7 @@ cost_bp = 10
     // ---- the cost levels on a fixture ----
 
     fn series(n: i64, f: impl Fn(i64) -> f64) -> Series {
-        let d0 = mapcheck::dates::parse("2020-01-27").unwrap();
+        let d0 = d("2020-01-27");
         (0..n).map(|i| (d0 + i, f(i))).collect()
     }
 
@@ -515,16 +862,15 @@ cost_bp = 10
         fn name(&self) -> &str {
             "switch"
         }
-        fn weights(&self, v: &View, _: &[String]) -> Result<Vec<(String, f64)>, String> {
+        fn weights(&self, _: &View, _: &[String]) -> Result<Vec<(String, f64)>, String> {
             let i = self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            let _ = v;
             Ok(vec![(if i.is_multiple_of(2) { "A" } else { "B" }.to_string(), 1.0)])
         }
     }
 
     fn fixture() -> (Prices, Vec<String>, Config) {
         let items = vec![("SPY", series(200, |_| 50.0)), ("A", series(200, |i| 100.0 + i as f64)), ("B", series(200, |i| 100.0 + 0.5 * i as f64))];
-        let d0 = mapcheck::dates::parse("2020-01-27").unwrap();
+        let d0 = d("2020-01-27");
         (Prices(items.into_iter().map(|(t, s)| (t.to_string(), s)).collect()), vec!["A".into(), "B".into()], Config { start: d0, end: d0 + 199, rebalance: Rebalance::Monthly, cost_bp: 50.0 })
     }
 
@@ -540,6 +886,8 @@ cost_bp = 10
         assert_eq!(two.dates, one.dates);
         assert!((two.cost_total - 2.0 * one.cost_total).abs() < 0.2 * one.cost_total); // about twice
         assert_eq!(zero.targets, one.targets);
+        let note = cost_note(&zero, &one, one.fund.annual - 0.01);
+        assert!(note.starts_with("cost note: turnover") && note.contains("x the cost"), "{note}");
     }
 
     #[test]
@@ -558,68 +906,122 @@ cost_bp = 10
 
     // ---- the poison check ----
 
-    /// A strategy that reads the closes of the whole series, past the date (a look-ahead): the weight of the ticker with the
-    /// highest last close.
-    struct Peek<'a>(&'a BTreeMap<String, Vec<(String, f64)>>, bool);
+    /// A strategy that reads the close `offset` days from the rebalance day in the whole series (a look-ahead if the offset is 0
+    /// or more; honest at -1): it holds the ticker with the highest close on that day.
+    struct Peek<'a>(&'a BTreeMap<String, Vec<(String, f64)>>, i64);
     impl Strategy for Peek<'_> {
         fn name(&self) -> &str {
             "peek"
         }
         fn weights(&self, v: &View, universe: &[String]) -> Result<Vec<(String, f64)>, String> {
-            let date = mapcheck::dates::format(v.date());
-            let last = |t: &String| {
-                let s = &self.0[t];
-                // the honest one reads the days before the date; the cheat reads the end of the series
-                if self.1 { s.last().unwrap().1 } else { s[..s.partition_point(|(d, _)| *d < date)].last().map_or(0.0, |x| x.1) }
-            };
-            let best = universe.iter().max_by(|a, b| last(a).total_cmp(&last(b))).unwrap();
+            let day = mapcheck::dates::format(v.date() + self.1);
+            let at = |t: &String| self.0[t].iter().find(|(d, _)| *d == day).map_or(0.0, |x| x.1);
+            let best = universe.iter().max_by(|a, b| at(a).total_cmp(&at(b))).unwrap();
             Ok(vec![(best.clone(), 1.0)])
         }
     }
 
     #[test]
-    fn the_poison_check_passes_for_a_strategy_that_keeps_to_the_date_and_fails_for_one_that_looks_ahead() {
+    fn the_poison_check_fails_for_a_look_ahead_of_one_day_and_of_twenty_days_and_passes_for_an_honest_strategy() {
         let raw: BTreeMap<String, Vec<(String, f64)>> = [("SPY", 50.0, 0.0), ("A", 100.0, 1.0), ("B", 100.0, 0.7), ("C", 100.0, 0.4), ("D", 100.0, 0.1)]
             .iter()
             .map(|(t, base, slope)| (t.to_string(), series(200, |i| base + slope * i as f64).iter().map(|(d, c)| (mapcheck::dates::format(*d), *c)).collect()))
             .collect();
-        let day = "2020-04-01";
-        let before = mapcheck::dates::parse(day).unwrap();
+        let day = "2020-04-01"; // a rebalance day (the first day of the month)
+        let through = d(day);
         let poisoned: BTreeMap<String, Vec<(String, f64)>> = raw.iter().map(|(t, s)| (t.clone(), poison_series(s, day, t))).collect();
         let u: Vec<String> = ["A", "B", "C", "D"].iter().map(|s| s.to_string()).collect();
-        let d0 = mapcheck::dates::parse("2020-01-27").unwrap();
-        let cfg = Config { start: d0, end: before - 1, rebalance: Rebalance::Monthly, cost_bp: 10.0 };
-        for (cheat, ok) in [(false, true), (true, false)] {
-            let a = run(&Prices::from_raw(&raw), &u, &Peek(&raw, cheat), &cfg).unwrap();
-            let b = run(&Prices::from_raw(&poisoned), &u, &Peek(&poisoned, cheat), &cfg).unwrap();
-            let r = poison_compare(&a, &b, before);
-            assert_eq!(r.is_ok(), ok, "{r:?}");
+        let cfg = Config { start: d("2020-01-27"), end: through, rebalance: Rebalance::Monthly, cost_bp: 10.0 };
+        // the offset -1 is the last close before the day: honest. 0 is the close of the day, 1 the day after, 20 twenty days after.
+        for (offset, ok) in [(-1, true), (0, false), (1, false), (20, false)] {
+            let a = run(&Prices::from_raw(&raw), &u, &Peek(&raw, offset), &cfg).unwrap();
+            let b = run(&Prices::from_raw(&poisoned), &u, &Peek(&poisoned, offset), &cfg).unwrap();
+            let r = poison_compare(&a, &b, through);
+            assert_eq!(r.is_ok(), ok, "offset {offset}: {r:?}");
             if ok {
-                assert_eq!(r, Ok(3)); // Jan 27, Feb 1, Mar 1
+                assert_eq!(r, Ok(4)); // Jan 27, Feb 1, Mar 1, Apr 1: the day itself is compared
             } else {
-                assert!(r.unwrap_err().contains("target weight"));
+                assert!(r.unwrap_err().contains("target weight"), "offset {offset}");
             }
         }
-        // no rebalance before the day: an error, not a pass
-        let a = run(&Prices::from_raw(&raw), &u, &Peek(&raw, false), &cfg).unwrap();
-        assert!(poison_compare(&a, &a, d0).is_err());
+        // a poison day that is not a rebalance day is an error, not a pass
+        let a = run(&Prices::from_raw(&raw), &u, &Peek(&raw, -1), &cfg).unwrap();
+        assert!(poison_compare(&a, &a, through + 1).is_err());
+    }
+
+    /// Holds the ticker with the highest revenue of the latest fiscal year in the vintage known `offset` days from the day.
+    struct FactPeek(BTreeMap<String, Vintages>, i64);
+    impl Strategy for FactPeek {
+        fn name(&self) -> &str {
+            "fact-peek"
+        }
+        fn weights(&self, v: &View, universe: &[String]) -> Result<Vec<(String, f64)>, String> {
+            let rev = |t: &String| self.0[t].known(v.date() + self.1).last().and_then(|y| y.revenue).unwrap_or(0.0);
+            Ok(vec![(universe.iter().max_by(|a, b| rev(a).total_cmp(&rev(b))).unwrap().clone(), 1.0)])
+        }
     }
 
     #[test]
-    fn poison_factors_differ_by_ticker_and_poison_only_what_is_after_the_day() {
-        let f: std::collections::BTreeSet<u64> = ["AAPL", "IBM", "JNJ", "MSFT", "XOM", "KO", "PG", "T"].iter().map(|t| fact_factor(t).to_bits()).collect();
+    fn the_poison_check_fails_for_a_look_ahead_in_the_facts_of_twenty_days() {
+        let reg = Registry::embedded().unwrap();
+        let day = "2021-02-01"; // a rebalance day; the 10-K of 2020 is filed on 2021-02-19, 18 days later
+        let mut names: Vec<String> = (0..8).map(|i| format!("N{i}")).collect();
+        names.sort_by(|a, b| fact_factor(b).total_cmp(&fact_factor(a)));
+        let (hi, lo) = (fact_factor(&names[0]), fact_factor(&names[7]));
+        assert!(hi > 1.2 * lo, "the test needs different factors: {hi} {lo}");
+        // revenue of 2020: the ticker with the highest factor has the lowest revenue; the poisoned ranking is the factor ranking
+        let json = |i: usize| {
+            format!(
+                r#"{{"facts":{{"us-gaap":{{"Revenues":{{"units":{{"USD":[
+            {{"start":"2019-01-01","end":"2019-12-31","val":100,"form":"10-K","filed":"2020-02-20"}},
+            {{"start":"2020-01-01","end":"2020-12-31","val":{},"form":"10-K","filed":"2021-02-19"}}]}}}}}}}}}}"#,
+                100 + i
+            )
+        };
+        let years = |poison: bool| -> BTreeMap<String, Vintages> {
+            names
+                .iter()
+                .enumerate()
+                .map(|(i, t)| {
+                    let mut facts: CompanyFacts = serde_json::from_str(&json(i)).unwrap();
+                    if poison {
+                        poison_facts(&mut facts, day, fact_factor(t));
+                    }
+                    (t.clone(), vintages_of(&reg, &facts, 0).unwrap().1)
+                })
+                .collect()
+        };
+        let items: Vec<(String, Series)> = names.iter().map(|t| (t.clone(), series(150, |_| 10.0))).chain([("SPY".to_string(), series(150, |_| 50.0))]).collect();
+        let shift = |s: Series| -> Series { s.into_iter().map(|(x, c)| (x - d("2020-01-27") + d("2020-12-01"), c)).collect() };
+        let prices = Prices(items.into_iter().map(|(t, s)| (t, shift(s))).collect());
+        let cfg = Config { start: d("2020-12-01"), end: d(day), rebalance: Rebalance::Monthly, cost_bp: 10.0 };
+        for (offset, ok) in [(0, true), (20, false)] {
+            let a = run(&prices, &names, &FactPeek(years(false), offset), &cfg).unwrap();
+            let b = run(&prices, &names, &FactPeek(years(true), offset), &cfg).unwrap();
+            let r = poison_compare(&a, &b, d(day));
+            assert_eq!(r.is_ok(), ok, "offset {offset}: {r:?}");
+        }
+    }
+
+    #[test]
+    fn poison_factors_differ_by_ticker_and_poison_the_day_itself_and_later() {
+        let f: BTreeSet<u64> = ["AAPL", "IBM", "JNJ", "MSFT", "XOM", "KO", "PG", "T"].iter().map(|t| fact_factor(t).to_bits()).collect();
         assert!(f.len() >= 5);
         let s = vec![("2020-03-31".to_string(), 10.0), ("2020-04-01".to_string(), 10.0), ("2020-04-02".to_string(), 10.0)];
         let p = poison_series(&s, "2020-04-01", "IBM");
-        assert_eq!((p[0].1, p[1].1), (10.0, 10.0));
-        assert_eq!(p[2].1, 10.0 * price_factor("IBM"));
+        assert_eq!(p[0].1, 10.0);
+        assert_eq!((p[1].1, p[2].1), (10.0 * price_factor("IBM"), 10.0 * price_factor("IBM")));
         assert!(price_factor("IBM") > 1.0);
-        let mut facts: CompanyFacts = serde_json::from_str(r#"{"facts":{"us-gaap":{"Revenues":{"units":{"USD":[
+        let mut facts: CompanyFacts = serde_json::from_str(
+            r#"{"facts":{"us-gaap":{"Revenues":{"units":{"USD":[
             {"end":"2019-12-31","val":100,"form":"10-K","filed":"2020-02-20"},
-            {"end":"2020-12-31","val":120,"form":"10-K","filed":"2021-02-19"},
-            {"end":"2020-12-31","val":130,"form":"10-K"}]}}}}}"#).unwrap();
+            {"end":"2020-12-31","val":120,"form":"10-K","filed":"2020-12-31"},
+            {"end":"2020-12-31","val":130,"form":"10-K","filed":"2021-02-19"},
+            {"end":"2020-12-31","val":140,"form":"10-K"}]}}}}}"#,
+        )
+        .unwrap();
         poison_facts(&mut facts, "2020-12-31", 1000.0);
         let v: Vec<Option<f64>> = facts.facts["us-gaap"]["Revenues"].units["USD"].iter().map(|f| f.val).collect();
-        assert_eq!(v, [Some(100.0), Some(120_000.0), Some(130.0)]);
+        assert_eq!(v, [Some(100.0), Some(120_000.0), Some(130_000.0), Some(140.0)]);
     }
 }
