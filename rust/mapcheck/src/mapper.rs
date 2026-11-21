@@ -5,7 +5,7 @@
 
 use crate::facts::{period_ends, select, CompanyFacts, Forms};
 use crate::registry::{Period, Registry};
-use crate::supplement::{FillMode, FILLED, FROM_LINES, TRIGGERS};
+use crate::supplement::{Filled, FillMode, FILLED, FROM_LINES, TRIGGERS};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone)]
@@ -195,7 +195,7 @@ fn correct_share_scale(registry: &Registry, values: &mut [Option<f64>], sources:
 /// A source of values from the 10-K: (period end, variable, mode) -> (value, source text).
 /// `Gap`: a critical input that the company facts do not have. `Lines`: the capex lines of the
 /// 10-K replace the company-facts value. See supplement.rs.
-pub type Fill<'a> = &'a dyn Fn(&str, &str, FillMode) -> Option<(f64, String)>;
+pub type Fill<'a> = &'a dyn Fn(&str, &str, FillMode) -> Option<Filled>;
 
 /// A formula value can be larger than its total by this share (rounding).
 pub const FORMULA_OVER_TOTAL: f64 = 0.02;
@@ -325,9 +325,21 @@ pub fn resolve_period_with(registry: &Registry, facts: &CompanyFacts, end: &str,
     if let (Forms::Annual, Some(fill)) = (forms, fill) {
         for name in FROM_LINES {
             let Some(i) = registry.try_var(name) else { continue };
-            if let Some((value, source)) = fill(end, name, FillMode::Lines) {
-                tag_values[i] = Some(value);
-                tag_sources[i] = Some(source);
+            match fill(end, name, FillMode::Lines) {
+                Some(Filled::Value(value, source)) => {
+                    tag_values[i] = Some(value);
+                    tag_sources[i] = Some(source);
+                }
+                Some(Filled::Absent(source)) => {
+                    tag_values[i] = None;
+                    tag_sources[i] = Some(source);
+                }
+                Some(Filled::Keep(note)) => {
+                    if let Some(source) = tag_sources[i].as_mut() {
+                        source.push_str(&format!(" ({note})"));
+                    }
+                }
+                None => {}
             }
         }
     }
@@ -363,7 +375,7 @@ pub fn resolve_period_with(registry: &Registry, facts: &CompanyFacts, end: &str,
             for name in FILLED {
                 let Some(i) = registry.try_var(name) else { continue };
                 if period.values[i].is_none() {
-                    if let Some((value, source)) = fill(end, name, FillMode::Gap) {
+                    if let Some(Filled::Value(value, source)) = fill(end, name, FillMode::Gap) {
                         values[i] = Some(value);
                         sources[i] = Some(source);
                         changed = true;
@@ -708,18 +720,18 @@ mod tests {
         let facts = company(vec![("Revenues", flow(1000.0)), ("PaymentsToDevelopSoftware", flow(30.0))]);
         let fill = |end: &str, name: &str, mode: FillMode| {
             assert_eq!(end, FY.1);
-            if name == "capex" && mode == FillMode::Gap { Some((-50.0, "filing 0000000001-25-000001: acme_Capex".to_string())) } else { None }
+            if name == "capex" && mode == FillMode::Gap { Some(Filled::Value(-50.0, "filing 0000000001-25-000001: acme_Capex".to_string())) } else { None }
         };
         let p = resolve_period_with(&registry, &facts, FY.1, Forms::Annual, Some(&fill));
         assert_eq!(p.get(&registry, "capex"), Some(-50.0));
         assert_eq!(p.get(&registry, "capex_total"), Some(-80.0));
         assert_eq!(p.from_filing(&registry), vec![("capex", "filing 0000000001-25-000001: acme_Capex")]);
         // A quarter, and a year with all critical inputs: the filing is not used.
-        let never = |_: &str, _: &str, mode: FillMode| -> Option<(f64, String)> {
+        let never = |_: &str, _: &str, mode: FillMode| -> Option<Filled> {
             assert_eq!(mode, FillMode::Lines, "a year with all critical inputs needs no gap fill");
             None
         };
-        let never_quarter = |_: &str, _: &str, _: FillMode| -> Option<(f64, String)> { panic!("the filing must not be read") };
+        let never_quarter = |_: &str, _: &str, _: FillMode| -> Option<Filled> { panic!("the filing must not be read") };
         let mut full = company(vec![("Revenues", flow(1000.0)), ("PaymentsToAcquirePropertyPlantAndEquipment", flow(50.0))]);
         let mut units = std::collections::HashMap::new();
         units.insert("shares".to_string(), flow(10.0));
@@ -738,8 +750,8 @@ mod tests {
                 return None;
             }
             match name {
-                "capex" => Some((-70.0, "10-K lines 0000000001-25-000001: us-gaap_A + acme_B".to_string())),
-                "capitalized_software" => Some((-20.0, "10-K lines 0000000001-25-000001: acme_S".to_string())),
+                "capex" => Some(Filled::Value(-70.0, "10-K lines 0000000001-25-000001: us-gaap_A + acme_B".to_string())),
+                "capitalized_software" => Some(Filled::Value(-20.0, "10-K lines 0000000001-25-000001: acme_S".to_string())),
                 _ => None,
             }
         };

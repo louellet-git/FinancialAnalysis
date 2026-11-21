@@ -147,14 +147,36 @@ warning. `fa` reads the values from the store file that `mapcheck import` writes
 The rule on the calculation tree (`filing::capex_lines_in`): go down from the investing
 total (with discontinued operations, from the total of the continuing operations).
 
-1. A line with the standard variable `capex` or `capitalized_software` is a capex line.
+1. A line with the standard variable `capex` or `capitalized_software` is a capex line, if it
+   is a payment (its contribution to the total is negative) and its label does not say
+   "business" or "acquisition" (MCD labels `PaymentsToAcquireOtherProductiveAssets` "Purchases of restaurant businesses").
 2. A line with any other standard variable (purchased intangibles, businesses, investments,
    proceeds) is not, and its parts are not.
 3. A line with no standard variable (a company tag, or a standard tag that the registry
-   does not have) is a capex line if it is a payment (its effect on the total is negative)
-   and its tag name or label says equipment, property, capital expenditure or software.
-   Only this last step uses words.
-4. A line below a capex line is not counted again.
+   does not have) is a capex line if it is a payment and its tag name or label says
+   equipment, property, capital expenditure or software. Only this last step uses words.
+   The words are substring matches. A line that combines equipment and software (SYM) is
+   equipment. A line for equipment and intangibles together (VSAT, URI) is equipment (a limit:
+   it can hold some intangibles). Lines that are left out by name: a business acquisition,
+   intangibles and licenses, and lease lines of DE ("equipment on lease") and CNH ("assets under
+   lease"), until the owner decides; the rental fleet of URI stays in (rule R2).
+4. A line below a capex line is not counted again; the parts of a line with a different standard
+   variable are not counted.
+
+Both variables of one fiscal year come from one source. The company-facts value stays for that
+year (the source text says why) if a capex line of the tree has no consolidated value (RYN: the
+value has a segment member only), or if the walk found no equipment line and left a line out
+(no explicit zero). If the filing has equipment lines and no software line, capitalized software
+has no value in that year. The oldest year of a 10-K has the note "oldest year of this 10-K":
+the years before it use the company facts, with a different line definition (software or lease
+lines can be in the 10-K years only), thus a growth rate across this edge is not clean.
+
+Known limits: a company tag with an unusual name and no standard variable is missed
+(`eqr_NonRealEstateCapitalAdditions`). Real estate development counts as capex for a REIT
+(VMRK, MAC): these companies had no capex value before. `crosscheck` maps the company facts
+without the filing (`main.rs`, `cmd_crosscheck`), thus its capex agreement does not measure
+these values. The warning `filled_from_filing` is gone for CI, COP, DTE, NEE, PSX, TPL and URI,
+because their value is now a replaced value, not a gap fill.
 
 ## The checks
 

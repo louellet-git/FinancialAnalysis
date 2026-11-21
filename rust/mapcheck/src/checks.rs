@@ -855,7 +855,7 @@ mod tests {
             ("ShortTermInvestments", balance(2000.0)),
             ("AssetsCurrent", balance(2459.0)),
         ]);
-        let fill = |_: &str, name: &str, mode: crate::supplement::FillMode| if name == "capex" && mode == crate::supplement::FillMode::Gap { Some((0.0, "= 0 (filing 0000000001-25-000001: no line)".to_string())) } else { None };
+        let fill = |_: &str, name: &str, mode: crate::supplement::FillMode| if name == "capex" && mode == crate::supplement::FillMode::Gap { Some(crate::supplement::Filled::Value(0.0, "= 0 (filing 0000000001-25-000001: no line)".to_string())) } else { None };
         let p = crate::mapper::resolve_period_with(&registry, &facts, "2024-12-31", crate::facts::Forms::Annual, Some(&fill));
         let warnings = codes(&check_period(&registry, &p), Severity::Warn);
         assert!(warnings.contains(&"filled_from_filing".to_string()), "{warnings:?}");

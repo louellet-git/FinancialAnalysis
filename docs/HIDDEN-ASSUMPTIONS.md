@@ -154,9 +154,12 @@ missing (a capex line with an unusual name) or incorrect
 (FDX and DUK: debt is counted two times; V and MA: a line that is not depreciation).
 The printed lines show what the value contains. (Update 2026-11-21: the capex lines now come
 from the calculation tree: a standard variable of the line decides, and words decide only for a
-line with no standard variable; AMD discontinued capex, MA software and MCD other productive
-assets are correct. Depreciation and debt lines still use words. Open: a company tag with an
-unusual name and no standard variable is missed; one line of URI holds PP&E and intangibles.)
+line with no standard variable; the AMD discontinued capex and the MA software line are correct.
+MCD "other productive assets" is a purchase of restaurant businesses: it is out, by its label.
+Depreciation and debt lines still use words. Open: a company tag with an unusual name and no
+standard variable is missed; one line of VSAT and URI holds PP&E and intangibles; DE and CNH
+lease lines are out until the owner decides; the oldest year of a 10-K is a change of definition,
+because the older years use the company facts. See `rust/mapcheck/README.md`, "Capex lines of the 10-K".)
 
 **44. A share count can have no scale.** McDonald's tags 716.4 for 716.4 million shares.
 The importer and the Rust mapper correct a factor of 1,000 or 1,000,000 when net income

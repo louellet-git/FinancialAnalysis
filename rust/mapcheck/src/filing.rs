@@ -41,6 +41,7 @@ struct Patterns {
     capex: Regex,
     capex_label: Regex,
     not_capex: Regex,
+    not_capex_label: Regex,
     intangibles: Regex,
     not_a_payment: Regex,
     da: Regex,
@@ -65,7 +66,11 @@ fn patterns() -> &'static Patterns {
             // A filer can use a tag with a different name for its capex line. The label
             // of the line in the statement says what the line is.
             capex_label: re("capital expenditure|purchases? of property|additions to property"),
-            not_capex: re("Businesses|Acquisitions?Net|IntangibleAssets|Spectrum|Licenses"),
+            // Names of lines that are not capex. Lease lines are out until the owner decides (equipment
+            // that the filer leases to others: DE, CNH); the rental fleet of a rental company stays in.
+            not_capex: re("Businesses|Acquisitions?Net|IntangibleAssets|Spectrum|Licenses|^Acquisitions?|BusinessCombination|Company|Subsidiar|EquipmentOnLease|^ExpendituresForAssetsUnderLease"),
+            // A filer can use a capex tag for the purchase of businesses (MCD: "Purchases of restaurant businesses").
+            not_capex_label: re("business(es)?\\b|acquisition"),
             intangibles: re("IntangibleAssets|Spectrum|Licenses"),
             not_a_payment: re("^Proceeds|Businesses|Acquisitions?Net"),
             da: re("Depreciation|Amortization|Depletion"),
@@ -193,6 +198,15 @@ pub struct Filing {
 impl Filing {
     pub fn statement(&self, kind: &str) -> Option<&Statement> {
         self.statements.iter().find(|s| s.kind == kind)
+    }
+
+    /// True if `end` is the oldest fiscal year that this filing holds.
+    pub fn is_oldest_year(&self, end: &str) -> bool {
+        let oldest = self.earlier.last().map(|y| y.end.as_str()).or(self.fiscal_year_end.as_deref());
+        match (oldest, dates::parse(end)) {
+            (Some(o), Some(e)) => dates::parse(o).map(|o| (o - e).abs() <= NEAR_DAYS).unwrap_or(false),
+            _ => false,
+        }
     }
 
     /// The statements and the member facts of the fiscal year that ends on `end`
@@ -437,7 +451,8 @@ pub fn build_statements(meta: &Value, values: &HashMap<String, f64>) -> Vec<Stat
     let label = |tag: &str| -> String {
         let roles = tags.get(tag).and_then(|t| t.pointer("/lang/en-us/role"));
         roles
-            .and_then(|r| r.get("terseLabel").or_else(|| r.get("label")))
+            // The label that the filer shows on the statement first (a negated label is the same line with its own words).
+            .and_then(|r| r.get("terseLabel").or_else(|| r.get("negatedTerseLabel")).or_else(|| r.get("label")))
             .and_then(Value::as_str)
             .unwrap_or(tag)
             .to_string()
@@ -602,10 +617,14 @@ pub fn lines_matching_label<'a>(statement: Option<&'a Statement>, pattern: &Rege
 /// A line is an amount with its effect on the investing total (negative: cash out).
 #[derive(Debug, Default)]
 pub struct CapexLines<'a> {
-    /// Equipment, plant and property (standard variable `capex`).
+    /// Equipment, plant and property, and a line that combines them with software (standard variable `capex`).
     pub equipment: Vec<(&'a Line, f64)>,
-    /// Capitalized software (standard variable `capitalized_software`).
+    /// Capitalized software alone (standard variable `capitalized_software`).
     pub software: Vec<(&'a Line, f64)>,
+    /// Lines that look like capex but were left out (intangibles in the name, a business purchase, a lease line).
+    pub excluded: Vec<&'a Line>,
+    /// Capex lines of the tree that have no value in the consolidated facts (for example a value with a segment member only).
+    pub unresolved: Vec<&'a Line>,
 }
 
 impl<'a> CapexLines<'a> {
@@ -648,18 +667,56 @@ fn visit_capex<'a>(line: &'a Line, sign_above: f64, variables: &HashMap<String, 
     let effect = sign_above * line.weight;
     let p = patterns();
     let name = local(&line.tag);
+    // A payment: its contribution to the investing total is negative.
+    let payment = line.value.map(|v| effect * v < 0.0).unwrap_or(false);
     match line.variable(variables) {
-        Some("capex") if line.value.is_some() => return out.equipment.push((line, effect)),
-        Some("capitalized_software") if line.value.is_some() => return out.software.push((line, effect)),
-        Some("capex") | Some("capitalized_software") => {}
+        Some(kind @ ("capex" | "capitalized_software")) => {
+            if line.value.is_none() {
+                if line.children.is_empty() {
+                    out.unresolved.push(line);
+                }
+            } else if p.not_capex_label.is_match(&line.label) {
+                out.excluded.push(line);
+                return;
+            } else if payment {
+                if kind == "capex" { out.equipment.push((line, effect)) } else { out.software.push((line, effect)) }
+                return;
+            } else {
+                return;
+            }
+        }
         Some(_) => return,
         None => {
-            // A line for "property, plant and equipment and intangible assets" is one amount that the
-            // filer does not split: it counts as equipment (a limit: it can hold some intangibles).
-            let excluded = p.not_capex.is_match(name) && !name.contains("PropertyPlantAndEquipment");
-            let named = (p.capex.is_match(name) || p.capex_label.is_match(&line.label)) && !excluded;
-            if line.value.is_some() && effect < 0.0 && named {
-                if name.contains("Software") {
+            let candidate = p.capex.is_match(name) || p.capex_label.is_match(&line.label);
+            if candidate && line.children.is_empty() {
+                // A line for "property, plant and equipment and intangible assets" is one amount that the
+                // filer does not split: it counts as equipment (a limit: it can hold some intangibles).
+                let ppe = name.contains("PropertyPlant") || name.contains("Equipment");
+                let excluded = (p.not_capex.is_match(name) && !(ppe && !name.contains("EquipmentOnLease") && !name.starts_with("Acquisition")))
+                    || p.not_capex_label.is_match(&line.label);
+                if line.value.is_none() {
+                    if !excluded {
+                        out.unresolved.push(line);
+                    }
+                    return;
+                }
+                if excluded {
+                    out.excluded.push(line);
+                    return;
+                }
+                if payment {
+                    // A line that combines equipment and software is equipment.
+                    if name.contains("Software") && !ppe {
+                        out.software.push((line, effect));
+                    } else {
+                        out.equipment.push((line, effect));
+                    }
+                }
+                return;
+            }
+            if candidate && line.value.is_some() && payment && !p.not_capex.is_match(name) {
+                // A subtotal that is named like capex: it holds its parts.
+                if name.contains("Software") && !(name.contains("PropertyPlant") || name.contains("Equipment")) {
                     out.software.push((line, effect));
                 } else {
                     out.equipment.push((line, effect));
@@ -1114,5 +1171,82 @@ mod tests {
         all.children = vec![continuing, leaf("us-gaap_PaymentsForProceedsFromProductiveAssets", -1.0, 5.0)];
         let cash = cash_of(all);
         assert_eq!(outflow(&capex_lines_in(Some(&cash), &variables).equipment), Some(-60.0));
+    }
+
+    fn investing_with(children: Vec<Line>) -> Statement {
+        let mut total = leaf("us-gaap_NetCashProvidedByUsedInInvestingActivities", 1.0, -999.0);
+        total.children = children;
+        cash_of(total)
+    }
+
+    fn equipment_tags(cash: &Statement) -> Vec<String> {
+        let variables = variable_of_tag(&Registry::embedded().unwrap());
+        capex_lines_in(Some(cash), &variables).equipment.iter().map(|(l, _)| l.tag.clone()).collect()
+    }
+
+    #[test]
+    fn the_parts_of_a_line_that_is_not_capex_are_not_counted() {
+        // Intangibles and businesses have a standard variable: their parts are a detail inside them.
+        let mut intangibles = leaf("us-gaap_PaymentsToAcquireIntangibleAssets", -1.0, 50.0);
+        intangibles.children = vec![leaf("us-gaap_PaymentsToAcquireMachineryAndEquipment", 1.0, 20.0)];
+        let mut businesses = leaf("us-gaap_PaymentsToAcquireBusinessesNetOfCashAcquired", -1.0, 80.0);
+        businesses.children = vec![leaf("acme_PaymentsToAcquireEquipmentInAcquisition", 1.0, 30.0)];
+        // A capex line that holds a part: the parent already counts it.
+        let mut capex = leaf("us-gaap_PaymentsToAcquirePropertyPlantAndEquipment", -1.0, 70.0);
+        capex.children = vec![leaf("acme_PaymentsForFurnitureAndFixtures", 1.0, 10.0)];
+        let cash = investing_with(vec![intangibles, businesses, capex]);
+        assert_eq!(equipment_tags(&cash), vec!["us-gaap_PaymentsToAcquirePropertyPlantAndEquipment"]);
+    }
+
+    #[test]
+    fn names_that_look_like_capex_but_are_not() {
+        // Words are substring matches: an acquisition of a software company and intellectual property are not capex.
+        let mut fixed = leaf("tpl_PaymentsToAcquireEquipmentAndOtherAcquisitionOfRealEstate", -1.0, 60.0);
+        fixed.label = "Purchase of fixed assets".into();
+        let cash = investing_with(vec![
+            leaf("acme_AcquisitionOfSoftwareCompanyNetOfCash", -1.0, 40.0),
+            leaf("acme_PaymentsToAcquireIntellectualProperty", -1.0, 15.0),
+            fixed,
+            leaf("us-gaap_PaymentsToAcquireEquipmentOnLease", -1.0, 90.0),
+            leaf("acme_ExpendituresForAssetsUnderLeaseOrSoldWithBuyBack", -1.0, 60.0),
+            leaf("acme_ProceedsFromSaleOfEquipment", 1.0, 5.0),
+            leaf("uri_PaymentsToAcquirePropertySubjectToOrAvailableForOperatingLease", -1.0, 70.0),
+        ]);
+        // The rental fleet stays in; the lease lines of DE and CNH are out.
+        assert_eq!(
+            equipment_tags(&cash),
+            vec!["tpl_PaymentsToAcquireEquipmentAndOtherAcquisitionOfRealEstate", "uri_PaymentsToAcquirePropertySubjectToOrAvailableForOperatingLease"]
+        );
+        let variables = variable_of_tag(&Registry::embedded().unwrap());
+        let found = capex_lines_in(Some(&cash), &variables);
+        assert_eq!(found.excluded.len(), 2); // the CNH line has no capex word: it is not a candidate
+    }
+
+    #[test]
+    fn a_line_labeled_as_a_business_purchase_is_not_capex_and_a_pp_and_e_intangibles_line_is() {
+        let mut mcd = leaf("us-gaap_PaymentsToAcquireOtherProductiveAssets", -1.0, 354.0);
+        mcd.label = "Purchases of restaurant businesses".into();
+        let vsat = leaf("vsat_PaymentsToAcquirePropertyPlantEquipmentAndAcquireIntangibleAssets", -1.0, 993.0);
+        let cash = investing_with(vec![mcd, vsat, leaf("us-gaap_PaymentsToAcquirePropertyPlantAndEquipment", -1.0, 3365.0)]);
+        assert_eq!(
+            equipment_tags(&cash),
+            vec!["vsat_PaymentsToAcquirePropertyPlantEquipmentAndAcquireIntangibleAssets", "us-gaap_PaymentsToAcquirePropertyPlantAndEquipment"]
+        );
+    }
+
+    #[test]
+    fn a_statement_with_no_investing_total_has_no_capex_lines() {
+        let variables = variable_of_tag(&Registry::embedded().unwrap());
+        let cash = cash_of(leaf("us-gaap_NetCashProvidedByUsedInOperatingActivities", 1.0, 10.0));
+        let found = capex_lines_in(Some(&cash), &variables);
+        assert!(found.equipment.is_empty() && found.software.is_empty() && found.excluded.is_empty());
+        assert!(capex_lines_in(None, &variables).equipment.is_empty());
+    }
+
+    #[test]
+    fn a_line_that_is_not_a_payment_is_not_capex() {
+        // A capex tag with a positive contribution (net proceeds) is not a payment.
+        let cash = investing_with(vec![leaf("us-gaap_PaymentsForProceedsFromProductiveAssets", 1.0, 38.0)]);
+        assert!(equipment_tags(&cash).is_empty());
     }
 }
