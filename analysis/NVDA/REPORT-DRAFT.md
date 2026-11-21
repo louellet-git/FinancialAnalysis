@@ -17,7 +17,7 @@ Files:
   2. The share r of the equity purchases that keeps its value. It runs from $98.42 (r = 0) to $109.08 (r = 1). The base is r = 0.5. No data supports it.
   3. The speed of the growth fade (D3). The base rates give $88.75 to $92.45. The base gives $103.78. A year 2 at the guide pace gives $92.02.
   4. The collapse of demand (D14). Its multiple of 2.0 has no source and sets the low tail. The P10 runs from $41.46 to $64.31 for a multiple of 0.5 to 4.0.
-  5. The cost of capital. A premium of 3.5% gives $122.41 and 5.5% gives $88.29. A beta of 1.2 gives $132.05.
+  5. The cost of capital. The premium of 4.41% is a convention of the repo (REPO tier: the implied premium of Damodaran, from `analysis/ANT/driver_model_paths.toml`). The auditor could not open its primary source. It is the second-largest driver. A premium of 3.5% gives $122.41 and 5.5% gives $88.29. A beta of 1.2 gives $132.05.
 - **Distance to the price.** The close was $145.98 on 2026-11-19. It is at about the P75. The P50 is 28.9% below it. The model value is below the close on 75.0% of the paths.
 - **Open points.** The 10-Q is not filed. The close of 2026-11-20 is not in the store.
 - **How firm the range is.** The rule for the year-1 growth was set after the earlier runs (W1). Most steps raised the P50 (`COMMANDS.md`, section 7). The last change lowered it from 108.40 to 105.09 (10,000 paths). See W15.
