@@ -131,3 +131,4 @@
 | premium-test cycle 2 | 2026-11-21 | econ/premium-test-cmd (cc5e0d5): code-reviewer PASS-WITH-NOTES (full checks, 8 mutants caught), document-reviewer (Haiku) REVISE (8 MAJ); head decision: code PASS, documents PASS WITH CONDITIONS D1-D6 (head checks the diff) | about 300k (code 3 rounds + 108k docs, measured) | |
 | cost of debt cycle 2 | 2026-11-21 | claude/fred-primary (952c689): model-validator PASS-WITH-NOTES (K1, K2 closed by hand); verdict PASS-WITH-NOTES | 110k measured (both cycles) | |
 | trade grids; recon lasting; Cboe stop; revenue tags | 2026-11-21 | started: 790348a (validator + Haiku code-reviewer), ac56687 (code-reviewer + PIT), 4b3548e (Haiku code-reviewer), 91bcfa7 (data-quality + Haiku code-reviewer) | | |
+| premium test D1-D6 | 2026-11-21 | econ/premium-test-cmd (647b461): head check of the conditions; PASS-WITH-NOTES | small (head only) | |
