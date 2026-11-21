@@ -83,3 +83,18 @@ rates rose and the stocks did not follow. Over the two weeks the fall is: rates 
 company parts about -2.4 (most in the growth view: NVDA, AVGO and the other names with no premium view), no model -1.03.
 This fits a delayed reaction of stocks to higher rates plus company news in the large technology names. It is not proof
 of a cause.
+
+## 7. The answer of the Head of Economics to the rate question (added 2026-11-21 about 20:40 UTC)
+Author: the Head of Economics (note `analysis/macro/2026-11-21-rate-rise-question.md`, branch `econ/rate-rise-question`,
+a248803; checked by an auditor, PASS-WITH-NOTES). It replaces the news items of section 6 where they differ.
+1. A rate rise is priced, roughly: the bill forwards for 3 to 12 months ahead are about 4.4% to 4.6% on 2026-11-20, against
+   an effective federal funds rate of 3.88% (target 3.75% to 4.00%): about two quarter-point steps in a year, plus or minus
+   25 bp or more (term premium, the gap of bills to the funds rate). The bills cannot show December alone. The "70% to 80%
+   for December" of section 6 is NOT a number of this repo (no fed funds or SOFR futures in the store). The next FOMC
+   meeting is December 8 to 9; the November CPI comes on December 10, after it. The October CPI (out 2026-11-10): +0.17% in
+   the month, core +0.19% (not seasonally adjusted): not visibly "high" in the data of the store.
+2. The week to 11-13: the 10-year yield rose 29 bp, of which the real yield +28 bp and the breakeven +1 bp: a real-rate
+   rise, which raises the discount rate directly. The week to 11-20: nominal -23 bp, real -14 bp, breakeven -9 bp.
+3. "A late reaction of stocks to rates" is one fair reading and is not proven. In the second week the yields fell while the
+   stocks fell most and VIX rose: this also fits a risk-off shock (a flight to safety) or a company event. Daily stock and
+   sector returns against the daily yields would separate the readings.

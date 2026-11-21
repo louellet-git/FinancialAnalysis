@@ -160,3 +160,7 @@ Done: three more runs (11-06 to 11-13, 11-06 to 11-20, 10-30 to 11-20) and the y
 ## 2026-11-21 about 19:50 UTC (chat)
 Words: "You should generally be asking the head of economics these questions"
 Done: a standing rule: each macro "why" question (rates, the central bank, inflation, the required return of the market) goes to the Head of Economics; this head gives the owner that answer with its source. The question on the rate rise is sent with the data of section 6.
+
+## 2026-11-21 about 20:40 UTC (from the heads)
+The Head of Economics answered the rate question (a248803, audited): a rate rise of about two quarter-point steps in a year is priced in the bill curve; the December odds of the news are not ours; the yield rise of the week to 11-13 was a real-rate rise; "a late reaction" is one fair reading, not proven. Section 7 of the preliminary results. Correction by this head: the "high October CPI" of the news is not visible in the data of the store.
+New rule (owner decision, PR 161): a Head of Staff is above the heads; send it only: a large task done or merged, a block of more than half a day, a decision that only the owner can make, a conflict with a head. A permission refusal still goes to the Head of Technology.
