@@ -72,3 +72,6 @@
 | strategy gate, risk officer | 2026-11-21 | `claude/dcf-engine-backtest` (f24f518): risk-compliance-officer REVISE (7 MAJ: in-sample design, live rule not the tested rule, gross base, stops, timing, risk header, paper tests no exit) | about 45k (measured) | validator and auditor running |
 | algo paper engine gate | 2026-11-21 | `claude/quant-algo-paper` (c1854de): code-reviewer PASS-WITH-NOTES (order-ban test weak), model-validator REVISE (4 MAJ), risk officer PASS with conditions; verdict REVISE, 5 MAJ; Monday checklist to the owner | about 205k (72k + 75k + 58k measured) | |
 | harness cycle 2 started | 2026-11-21 | `claude/backtest-environment` (aaa1ba1): model-validator and code-reviewer (Haiku) | running | |
+| long-history test audit | 2026-11-21 | `claude/dcf-market-level` (3f5a6e3), store 8952a5a (hashes checked on 4358fed): auditor; numbers PASS (byte-identical rerun, 7 months by hand); record REVISE (R3 not in git; two scored runs) | about 90k (measured) | |
+| acquisition charge cycle 2, validator | 2026-11-21 | `claude/dcf-acq-charge-limits` (4566c41): PASS-WITH-NOTES | about 45k (measured) | code check running |
+| strategy gate, auditor | 2026-11-21 | `claude/dcf-engine-backtest` (f24f518): PASS-WITH-NOTES (each number reproduces; commit order consistent) | about 52k (measured) | |
