@@ -2,7 +2,7 @@
 id: T-20261121-recon-lasting
 title: The lasting-residual rule of the rates reconciliation as a command
 area: engine
-status: in-progress
+status: review
 owner: louellet-git
 head: quant
 story: E4.S4
