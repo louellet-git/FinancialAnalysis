@@ -23,3 +23,7 @@ Done: the three agent files are Sonnet again; `docs/TEAMS.md` line 4 gives the p
 ## 2026-11-21 01:47 UTC (dialog)
 Words: two answers: "Yes, start" (the model-documenter writes the 5 NVDA assumption records from the next draft) and "Open it" (one pull request for the document changes of this branch).
 Done: the records start with the next NVDA draft; the branch gets a document review, then one pull request.
+
+## 2026-11-21 01:49 UTC (correction and source note; no new words of the person)
+- Correction of the entry of 2026-11-20 21:44: the words of that entry do not mention the terms check. The decision that the data store stays public is the owner's word in `chiefs/louellet-git/technology/RECORD.md` (2026-11-20 20:01). To drop my own recommendation of a terms check of the store was my decision under "Proportion"; check 3 of the risk officer (terms of a new source) is unchanged.
+- Source of the four new checks of the skill `model-validation` (steps 3 and 7): the findings of my gate reviews of 2026-11-20 and 2026-11-21 (the conventions, accuracy, portfolio and vol-1 verdicts; the ledger rows), recorded in my dashboard under "Review patterns". No word of the person.

@@ -42,10 +42,11 @@ listed), **REVISE** (a MAJ is open), **REJECT** (a CRIT is open). "Pass" means P
 PASS-WITH-NOTES. A reviewer passes work that is correct and usable.
 
 **Proportion** (owner word, 2026-11-20). Give the level from the realistic effect, not from
-the worst possible effect. For an internal process, an internal document or a tool of the
-team, a risk that is only possible is a note (MIN): do not slow the work for it. For a
-result that a person can use for a trade, and for money, keys and orders, apply the levels
-strictly.
+the worst possible effect. In an internal process or an internal document, a risk that is
+only possible is a note (MIN), if no value, data or trade can change. Do not slow the work
+for it. A defect that is present keeps the level of the table. Apply the levels strictly to
+a result that a person can use for a decision or a trade. Section 8 and the rules of
+`CLAUDE.md` keep their level in each case.
 
 Review cycles: at most two for one piece of work. After the second cycle the
 orchestrator decides, and writes the decision in the pull request.
