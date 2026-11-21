@@ -67,5 +67,5 @@ See: the required return is still low; 5 of 9 stocks need more growth than a lar
 
 Reading: the split is consistent with a correction of expensive prices; it is not a buy signal for the group. The reason: page 1.
 
-Status: preliminary numbers (code in review; a screen model). An implied number is a measurement, not an input. Sources:
-`data/week_2026-11-20_main-b01b66a/`, `data/baserates_sp500_2026-11-20/`.
+Status: Tables 1 and 2 are a run of record (a screen model); Table 3 is preliminary. An implied number is a measurement,
+not an input. Sources: `data/week_2026-11-20_record_main-7e88cfe/`, `data/baserates_sp500_2026-11-20/`.

@@ -223,3 +223,12 @@ Head of Staff (who gives them to the person) and to Quality (it checks Table 2 o
 (ee82144, PASS-WITH-NOTES, "you can open the PR"); claude/attribution-reality is at the gate at a0e2480. NEXT: the pull
 request (after the second gate, or for the first branch alone), then the run of record of the week on main, then the
 S&P 100 part after the review of the person.
+
+**Run of record of the week (20:40 UTC, 2026-11-21).** Pull request 190 (claude/premium-series) is merged: main 7e88cfe. The
+week commands ran on main (`--curve par`, store 0340bc1) for the S&P 10, the S&P 100, the S&P 500 and the chip list:
+the four CSV files are byte-identical to the files that the pages used. Folder:
+`analysis/priors/data/week_2026-11-20_record_main-7e88cfe/` (README there). The status lines of the three pieces say
+what is of record (the valuation blocks and rows, the engine columns of page 3) and what is not (Table 3 of page 2: the
+base rates and the list premium series; the beta columns of page 3; the deviations of page 1). STILL OPEN: the gate of
+claude/attribution-reality (a0e2480), then its pull request (merge main 7e88cfe into it first); the series run of record
+(after a review of the pit results of 61fe8de and with a cut table); the S&P 100 part (waits for the person).

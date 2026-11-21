@@ -50,5 +50,5 @@ Expected by value: the lower yields, and the cut of expected growth of the media
 - **The same fall outside the code.** Chip equipment and AI hardware fell as much: LRCX -18.9%, KLAC -16.7%,
   DELL -19.3%, SMCI -19.4%, ANET -15.0%. This is consistent with the reason on page 1 (the AI build-out).
 
-Status: preliminary numbers; the deviations come from a one-time script. An implied number is a measurement, not an
-input. SWKS has no close of 11-20 at the source and is left out. Sources: `data/week_2026-11-20_chips/`.
+Status: the engine columns are a run of record; the beta columns come from a one-time script. An implied number is a
+measurement, not an input. SWKS has no close of 11-20 at the source and is left out. Sources: `data/week_2026-11-20_record_main-7e88cfe/`.
