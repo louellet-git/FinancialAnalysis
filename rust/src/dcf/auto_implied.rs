@@ -50,7 +50,7 @@ fa dcf implied [--tickers-file FILE | TICKER ...] [OPTIONS]
   value at that premium over the price. Without a ticker: all tickers of the cache.
   --cache DIR     as for `fa dcf auto`
   --as-of DATE    date of the model and of the yield curve (default today). With a date, the facts are the facts that were
-                  public on it (filed on or before it); the 10-K of the cache does not fill a missing input then
+                  public on it (filed on or before it); the 10-K of the cache fills a missing input only if its filing date is on or before the date
   --price-date D  a past date: the price is the last close on or before D (not more than 10 days older), the yield curve,
                   the beta and the model date are those of D, and the facts are those of D unless --as-of is given
   --prices FILE   CSV `ticker,price`; else the last close of the price cache (fa prices get)

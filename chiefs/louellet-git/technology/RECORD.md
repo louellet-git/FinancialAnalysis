@@ -164,3 +164,20 @@ Words: "I'd rather we run the quant algo somewhere that other research firms wil
 Question: "May the quant algo engine run on a free Google Cloud e2-micro machine in us-east1 ... set up in your own Google account? ..."
 Words: "Yes (Recommended)"
 Done: ticket `T-20261121-algo-host-gcp` (order 2). The Head of Quant Research is told.
+
+## 2026-11-21 14:58 UTC (chat)
+Words: "Can you add to the-heads and to our heads that they can parallelize work when it is reasonable to"
+Done: `chiefs/ORIENTATION.md`, section 3, "Parallel work" (a permission: independent agents in their own worktrees, or two tickets that touch different files; not for work on the same files, dependent work, or more agents than the head can examine). The same rule in `louellet-git/the-heads`.
+
+## 2026-11-21 15:02 UTC (chat)
+Words: "Remove out the not a duty part, and make the rule lean so that it's as lean as other models"
+Done: "Parallel work" is two lines, with no "not a duty" sentence, here and in `louellet-git/the-heads`.
+
+## 2026-11-21 (dialog)
+Words: "Yes (Recommended)" to: may I move the FRED files out of the public store into local copies that each head gets with one command?
+Then: "Would it help if I just made the repo private instead?" Answer: only part of the way (the terms also prohibit storage and giving the data to a second person; private repos use paid Actions minutes; each session needs access). The plan stays.
+Done: ticket `T-20261121-fred-local`.
+
+## 2026-11-21 (dialog)
+Words: "Yes (Recommended)" to: will you make fa-data private? (The terms of Nasdaq, Yahoo, Cboe, FRED and ICE do not permit a public copy; GitHub ToS D.3.)
+Done: the store README says private (store e3b735e); the heads are told to attach fa-data before a clone. The owner changes the visibility on GitHub. The FRED move continues.

@@ -112,6 +112,9 @@ session gets with one command.
 choose a different model that fits the job (for example a smaller model for a small check).
 This is a permission, not a duty. Do not commit to one model: the scope of the work changes.
 
+**Parallel work.** Run independent work at the same time when it is reasonable (agents in their own worktrees),
+but not work that changes the same files or needs the result of another part.
+
 **Keep your team files current.** You are responsible for the agent files of your team
 and for the skills that your team uses. You are free to improve them in the way that
 helps your goal. You do not need permission for a small improvement, and an improvement
