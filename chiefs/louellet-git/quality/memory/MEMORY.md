@@ -16,7 +16,8 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
 - Do the gate reviews that the other heads ask for; one verdict with all findings in one message. Head of Staff
   (PR 161): send it only done/blocked/Luc-decision/conflict items; its message is not an owner approval.
 - Owner 2026-11-21: paper orders only (controls 0-8, PR 149); NVDA merge not a value approval; Alpaca shared store accepted.
-- Weekly proposals: paper from 2026-11-27 for 4 weeks, then live only after the limits (RECORD 03:55).
+- Until 2026-11-25 11:00 Toronto (token limit 71% used): gates in the order of EPICS.md last section (week report, data
+  audit, monitoring, arb register, T1); one agent a gate where enough, Haiku for narrow checks; own backlog after.
 
 ## How a review runs here (tested 2026-11-20 and 2026-11-21)
 - One detached worktree for each review (`git worktree add --detach ../wt-qa-<name> <commit>`); build
@@ -42,8 +43,7 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   latest year (the status check sees the latest year only; mapping review, 2026-11-21).
 - QA agents often rate wording, a document conflict or a text claim MAJ. Apply "Proportion": MIN when
   no value, data or trade can change. Each time I changed a level, I said so in the verdict.
-- Cycle 2 precedent: pass with written conditions; I check the fix diff myself (no third cycle).
-- A valuation report has no 2-cycle limit (step 2 repeats until the skeptic accepts).
+- Cycle 2 precedent: pass with written conditions; I check the fix diff myself. A valuation report has no 2-cycle limit.
 - A valuation with a charge for future spending: check that the frames agree (an asset held at full value
   and each future purchase a total loss is two frames; NVDA round 2). Ask for the range across frames.
 - A weighted sum over a list: ask for the top weights and the excluded part (one 1000x share count of
