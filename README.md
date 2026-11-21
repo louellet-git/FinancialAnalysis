@@ -133,6 +133,7 @@ fa dcf assumptions [--md]   # the register of the assumptions of the automatic m
 fa dcf assumptions --effect K=V[,K=V] --tickers-file F --cache DIR --as-of D [--cut Y] [--half H]   # the screen and the point-in-time test with the default rules and with the rules: one block for a record
 fa dcf returns [--cache DIR] [--rules K=V,..] [--lag DAYS] [--out FILE]   # the point-in-time model value (P50 / price) against the later 1-year and 3-year returns
 fa dcf screen ... --implied [--rules K=V,..]      # also the cost of capital that gives the price; --rules: an alternative rule (list: fa dcf auto --help)
+fa dcf implied [--tickers-file FILE | TICKER ...] [--cache DIR] [--as-of D] [--groups FILE] [--prices FILE] [--rules K=V,..] [--out FILE] [--jobs N]   # what the price implies: cost of capital, growth, margin; medians by size, sector, industry; the premium of the whole list; no random part
 fa prices get IBM MSFT [--tickers-file rust/mapcheck/universe/sp500.txt] [--source tiingo|yahoo|nasdaq] [--full]   # price history into data/raw (network)
 fa prices show IBM [--from D] [--to D]            # rows of the cache
 fa prices last IBM JNJ                            # last close, date, source; warns when older than 5 weekdays

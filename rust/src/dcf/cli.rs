@@ -23,6 +23,7 @@ USAGE:
   fa dcf calibrate [--cache DIR] [--out FILE]   AR(1) parameters of growth and margins from the company cache (fa dcf calibrate --help)
   fa dcf auto TICKER [OPTIONS]               automatic path model of a ticker from the cache (a screen, not a reviewed valuation); fa dcf auto --help
   fa dcf screen [--tickers-file FILE | TICKER ...] [OPTIONS]   one row for each ticker, parallel; fa dcf screen --help
+  fa dcf implied [--tickers-file FILE | TICKER ...] [OPTIONS]  what the price implies (cost of capital, growth, margin) and group medians, no random part; fa dcf implied --help
   fa dcf pit [OPTIONS]                            point-in-time test of the automatic model; fa dcf pit --help
   fa dcf assumptions [--md | --effect K=V,..]       the register of the assumptions of the automatic model; the effect of an alternative; --help
   fa dcf returns [OPTIONS]                        the automatic model value (P50 / price) against the later stock returns; fa dcf returns --help
@@ -634,6 +635,7 @@ pub fn run(repo: &Path, args: &[String]) -> u8 {
         Some("calibrate") => super::calib_report::command(repo, &args[1..]).map(|_| ()),
         Some("auto") => return super::auto_cli::auto(repo, &args[1..]),
         Some("screen") => return super::auto_cli::screen(repo, &args[1..]),
+        Some("implied") => return super::auto_implied::command(repo, &args[1..]),
         Some("pit") => return super::auto_pit::command(repo, &args[1..]),
         Some("assumptions") => return super::assumptions::command(repo, &args[1..]),
         Some("returns") => return super::auto_returns::command(repo, &args[1..]),
