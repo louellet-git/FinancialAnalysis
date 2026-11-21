@@ -17,3 +17,11 @@ particularly unique scenarios. So if your historian team ever has like something
 I don't know when you should use it or how to go about it. It's not a rule or anything. I just think
 it's a good lens to have."
 Done: New agent `market-historian` (ticket `T-20261121-economics-historian-agent`, branch `econ/historian`).
+
+## 2026-11-21 14:37 UTC (question dialog in the session of the Head of Technology)
+Question: "May we use the 17-country stock market history (Jordà-Schularick-Taylor database) as a private
+local copy, and put only the test results (no data) in the repo?" Answer of the person: Yes (relayed by the
+Head of Technology). Conditions from the terms: non-commercial use only (a research check, not a trade);
+no JST file in any repo; a source note with the citation that JST asks for; a live trade of real money
+that rests on a JST result needs the permission of the JST team first.
+Done: ticket `T-20261121-economics-jst-design`; local copy only.

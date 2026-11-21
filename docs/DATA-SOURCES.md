@@ -14,8 +14,9 @@ The data cache (`data/raw`) is not in this repo. A copy of it is in the repo
 request to the sources. Only the Head of Technology writes the store and starts a bulk
 download (`chiefs/ORIENTATION.md`, section 2). Command:
 `git clone --depth 1 https://github.com/louellet-git/fa-data data/raw`.
-The store has each data set of the cache. The owner decided on 2026-11-20 that the store repo
-is public for now. Its `README.md` lists the data sets and their sources, and its `SNAPSHOT.md`
+The store has each data set of the cache. The store repo is private (owner decision, 2026-11-21):
+the terms of the price, estimate and option sources do not permit a public copy. In a cloud session,
+attach `louellet-git/fa-data` (read access) before the clone. Do not copy store files to a public place. Its `README.md` lists the data sets and their sources, and its `SNAPSHOT.md`
 gives the date of each download.
 
 ## Words in the table
@@ -81,6 +82,34 @@ Data sets with no source for the past, with no payment:
 9. Two connection failures in a row (a timeout, a closed connection) stop a host for the run, as a block does. The summary says it one time. The time limit of one request is 30 seconds (60 seconds for the hosts with large files, 90 for the Atlanta Fed).
 10. A data set that the source has not published yet (FedInvest at the end of the day) is "not available yet". It is not a failure and does not set the exit code.
 11. The exit code is 0 when no data set failed as a whole. A block of a fallback source alone is not a failure.
+
+## Alpaca paper trading (control 0 of QUALITY-STANDARDS section 8)
+
+Read on 2026-11-21: the Alpaca Terms and Conditions (PDF, files.alpaca.markets, "Alpaca Terms and
+Conditions"), the disclosures page (alpaca.markets/disclosures) and the documentation
+(docs.alpaca.markets: paper-trading, authentication, orders).
+
+- **Paper host.** `https://paper-api.alpaca.markets`. The paper account has its own keys: "Your paper
+  trading account will have a different API key from your live account." Headers: `APCA-API-KEY-ID`
+  and `APCA-API-SECRET-KEY`.
+- **Automated orders.** Permitted. The disclosures say that the brokerage services are for customers
+  "who can write automated investment code and self-direct their own investments". The terms define
+  the Service to include the API.
+- **Personal use only.** "you agree to use the Services and Content solely for your own personal and
+  non-commercial purposes." To make the Service "available to others through your own application"
+  needs 30 days of written notice to Alpaca. Thus each person uses an own paper account and own keys.
+  Do not give one account or one key to the other person.
+- **Our own account data (orders, fills, positions).** The terms count them as Content. Content may not
+  be "copied, reproduced, republished ... or distributed ... to any other computer, server, web site or
+  other medium for publication or distribution". A private log on the person's own machine is not a
+  publication. Keep the order log out of git and out of the data store (control 7).
+- **client_order_id.** At most 128 characters; "a unique identifier for the order". The documents do not say
+  if Alpaca refuses a duplicate. Thus the program must keep its own duplicate guard (control 5).
+- **Paper limits.** Paper trading has no market impact, slippage, fees or dividends. Paper has short sales
+  and margin. Not found in the documents: the orders a minute and the request limit of the Trading
+  API, the paper buying power, and the pattern day trader rule on paper. The program must not depend
+  on them: it uses the caps of control 6.
+- **Market data of a paper-only account.** IEX data only.
 
 ## Facts not confirmed
 

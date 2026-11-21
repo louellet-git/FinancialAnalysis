@@ -109,3 +109,12 @@ base years, `fa dcf pit --cut 2011` limited to base years 2011 to 2014 (a new op
 `acq_cv=1` and the revenue rule, both halves. Label it "partly blind": earlier full-sample runs mixed these years
 with later years. Pass: the T1 rule on the "all" rows, revenue and free cash flow, T+1 to T+3. No fully blind
 fundamentals data exists in the store; the next 10-K filings are the only fresh data.
+
+**Status at the pause (2026-11-21 15:15 UTC; owner word: "hold off on other work for now", for the S&P 100 week
+attribution).** The work of the agent is committed as is, with no review (branch `claude/t1-revenue-band`): step 0 (the
+port of `acq_cv` from 49a1d82 by hand, with A-010 and the register row), step 1 (`fa dcf pit --base-to YEAR`) and a
+revenue diagnosis `--diag rev` (step 2, development on `--cut 2015 --half 0` only). Runs made: four half-0 runs (base,
+`--diag fcf`, two `--diag rev`) and one half-1 run with `acq_cv=1` (the port check of step 0, asked by the brief).
+No revenue rule is chosen, and the score run (`--cut 2011 --base-to 2014`) is NOT made: that hold-out is still unused.
+Not done: the fixed-answer test of `--base-to`, the build and test check of this commit, step 3 (write the rule into
+this ticket before the score). Next step: `cargo test`, then step 2 from the `--diag rev` output.

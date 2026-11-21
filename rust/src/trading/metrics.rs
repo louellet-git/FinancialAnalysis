@@ -88,9 +88,14 @@ fn part(r: &BacktestResult, from: usize, to: usize, trades: &[&Trade]) -> Stats 
     Stats { return_pct, cagr_pct, max_dd_pct, sharpe, trades: n, win_rate_pct, profit_factor, avg_pnl }
 }
 
+/// Index of the first out-of-sample bar. At most the last bar, so a fraction of 1 cannot index past the end.
+pub fn cut_index(n: usize, is_fraction: f64) -> usize {
+    ((n as f64 * is_fraction) as usize).min(n.saturating_sub(1))
+}
+
 pub fn summarize(r: &BacktestResult, interval: &'static str, is_fraction: f64) -> Summary {
     let n = r.equity.len();
-    let cut_pos = if n == 0 { None } else { Some((n as f64 * is_fraction) as usize) };
+    let cut_pos = if n == 0 { None } else { Some(cut_index(n, is_fraction)) };
     let cut_key = cut_pos.map(|p| r.date[p] as i64 * 1440 + r.minute[p] as i64);
     let all_trades: Vec<&Trade> = r.trades.iter().collect();
     let is_trades: Vec<&Trade> = r.trades.iter().filter(|t| cut_key.is_none_or(|c| t.entry_time.key() < c)).collect();
@@ -138,6 +143,20 @@ pub fn format_summary(r: &Summary) -> String {
         r.oos_start, r.oos.return_pct, r.oos.max_dd_pct, r.oos.sharpe, r.oos.trades, r.oos.win_rate_pct, r.oos.profit_factor,
         r.rejected, r.pdt_blocks
     )
+}
+
+/// The daily returns of the equity curve for the bars from the in-sample cut to the end (the
+/// out-of-sample part of `summarize`), or of all bars when `oos` is false.
+pub fn daily_returns(r: &BacktestResult, is_fraction: f64, oos: bool) -> Vec<f64> {
+    let n = r.equity.len();
+    let from = if oos && n > 0 { cut_index(n, is_fraction) } else { 0 };
+    let mut daily: Vec<f64> = Vec::new();
+    for k in from..n {
+        if k + 1 == n || r.date[k] != r.date[k + 1] {
+            daily.push(r.equity[k]);
+        }
+    }
+    daily.windows(2).map(|w| w[1] / w[0] - 1.0).filter(|x| !x.is_nan()).collect()
 }
 
 #[cfg(test)]
@@ -220,6 +239,16 @@ mod tests {
         let flat = summarize(&result(&[100.0; 5], &[]), "1d", 0.7);
         assert_eq!(flat.all.sharpe, 0.0);
         assert_eq!(flat.all.return_pct, 0.0);
+    }
+
+    #[test]
+    fn a_fraction_of_one_does_not_index_past_the_end() {
+        assert_eq!(cut_index(10, 0.7), 7);
+        assert_eq!(cut_index(10, 1.0), 9);
+        assert_eq!(cut_index(0, 0.7), 0);
+        let s = summarize(&result(&[100.0, 101.0, 102.0], &[]), "1d", 1.0);
+        assert_eq!(s.oos_start, s.end);
+        assert_eq!(daily_returns(&result(&[100.0, 101.0, 102.0], &[]), 1.0, true).len(), 0);
     }
 
     #[test]
