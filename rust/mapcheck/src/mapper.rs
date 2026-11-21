@@ -265,8 +265,29 @@ pub fn resolve_period_with(registry: &Registry, facts: &CompanyFacts, end: &str,
     let mut sources: Vec<Option<String>> = vec![None; n];
     let mut filed_dates: Vec<Option<String>> = vec![None; n];
 
+    // A tag with the scope of a fund or a mortgage REIT (`unclassified_only`) gives no value to a
+    // filer that has a current-assets total, or whose value is a very small share of total assets.
+    let first_value = |name: &str| {
+        let i = registry.try_var(name)?;
+        let v = &registry.variables[i];
+        v.tags.iter().find_map(|t| select(facts.entries(t, &v.unit), end, forms, v.period)).map(|s| s.value)
+    };
+    let classified = first_value("total_current_assets").is_some();
+    let assets = first_value("total_assets").filter(|a| *a > 0.0);
     for (i, variable) in registry.variables.iter().enumerate() {
         for tag in &variable.tags {
+            if variable.unclassified_only.contains(&tag.full) {
+                if classified {
+                    continue;
+                }
+                // The share is for a year; a quarter has about a quarter of it.
+                let year_share = if forms == Forms::Annual { 1.0 } else { 0.25 };
+                let small = |v: f64| assets.is_some_and(|a| v.abs() < year_share * variable.scoped_min_assets_share * a);
+                let Some(sel) = select(facts.entries(tag, &variable.unit), end, forms, variable.period) else { continue };
+                if small(sel.value) {
+                    continue;
+                }
+            }
             let Some(sel) = select(facts.entries(tag, &variable.unit), end, forms, variable.period) else {
                 continue;
             };
@@ -554,6 +575,22 @@ mod tests {
         // A company with no revenue and only a small interest income on debt securities (BHVN): no revenue.
         let (r, p) = resolve(vec![("InterestIncomeDebtSecuritiesOperating", flow(5.0))]);
         assert_eq!(p.get(&r, "revenue"), None);
+    }
+
+    #[test]
+    fn interest_income_is_revenue_only_for_an_unclassified_balance_sheet_and_a_large_share_of_assets() {
+        // APTV, a biotech: a current-assets total, thus the interest income is not revenue.
+        let (r, p) = resolve(vec![("InterestIncomeOperating", flow(5.0)), ("AssetsCurrent", balance(900.0)), ("Assets", balance(1000.0))]);
+        assert_eq!(p.get(&r, "revenue"), None);
+        // ARE, UMH: no current-assets total, but the interest income is 0.05% of total assets.
+        let (r, p) = resolve(vec![("InterestIncomeOperating", flow(5.0)), ("Assets", balance(10000.0))]);
+        assert_eq!(p.get(&r, "revenue"), None);
+        // A mortgage REIT: 5% of total assets.
+        let (r, p) = resolve(vec![("InterestAndDividendIncomeOperating", flow(50.0)), ("Assets", balance(1000.0))]);
+        assert_eq!((p.get(&r, "revenue"), p.source(&r, "revenue")), (Some(50.0), "= investment_income_operating"));
+        // The total of investment income of a fund has no scope.
+        let (r, p) = resolve(vec![("GrossInvestmentIncomeOperating", flow(5.0)), ("AssetsCurrent", balance(900.0)), ("Assets", balance(100000.0))]);
+        assert_eq!(p.get(&r, "revenue"), Some(5.0));
     }
 
     #[test]

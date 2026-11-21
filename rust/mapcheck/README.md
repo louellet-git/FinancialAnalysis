@@ -258,8 +258,14 @@ is not in the registry as a revenue tag: a biotech with no revenue (BHVN) has it
 would make the revenue of that company interest income.
 
 Standard template, FAIL share on 2026-11-20: S&P 500 0 of 432, next 500 5 of 406, next 1,000
-28 of 736, together 33 of 1,574 (2.1%). The acceptance value (below 3%) is met for the
-2,003 tickers together, not for the next 1,000 alone (3.8%).
+28 of 736, together 33 of 1,574 (2.1%; the base before this ticket: 37 of 1,578). The acceptance
+value (below 3%) is met for the 2,003 tickers together, not for the next 1,000 alone (3.8%).
+
+The two interest-income tags of `investment_income_operating` have a scope (registry keys
+`unclassified_only` and `scoped_min_assets_share`): they give a value only for a filer with no
+current-assets total and with a value of 1% or more of total assets (a quarter: 0.25%). Before
+this scope, 21 revenue rows of 9 companies with another business had interest income as revenue
+(APTV, AGCO, ARE, UMH, NGVT, DNTH, IMNM, PLSE, AVLN). The FAIL counts did not change.
 
 A `WARN` is not an error of the mapping. The most frequent warnings: more than 10% of a
 rollup total has no variable (`unmapped_lines`), an earlier fiscal year has a `FAIL`
