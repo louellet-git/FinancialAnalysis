@@ -112,3 +112,8 @@ hook and a new environment variable only at its start. The push is off until the
 (`risk-compliance-officer`) and one test push.
 
 Push target: the refs go to the PRIVATE store `louellet-git/fa-data` (refs/usage/<id>), not to this public repo, so the dates and the token amounts are not public. The store has no workflow.
+
+Push test (2026-11-21 21:2x UTC): a push of one usage file to `refs/usage/<id>` of the private store
+failed ("unexpected disconnect while reading sideband packet"); the second try was refused by the
+permission system of the session. The push path does not work in a cloud session. The hook stays
+local only (USAGE_PUSH unset) until the owner chooses a different way out of the machine.

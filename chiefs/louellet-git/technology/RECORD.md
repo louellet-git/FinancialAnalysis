@@ -197,3 +197,6 @@ Words: "Yes (Recommended)" to: may we keep the Philadelphia Fed SPF file as a pr
 Done: ticket `T-20261121-spf-loader`.
 Words: "Can you send a blast ensuring that models should be properly documented as per the rules?"
 Done: a message to the four heads with the rule (CLAUDE.md "Model documents"; QUALITY-STANDARDS section 4): each head lists the models of its area without a document or a record and writes them; the Quality and Risk head refuses a model change without a current document.
+
+## 2026-11-21 (refusal)
+- My own session: the permission system refused a second `git push` of a usage file to `refs/usage/<id>` of louellet-git/fa-data (reason given: undermining oversight). The first try had failed with a disconnect. Not tried again in any form; the owner decides the way out (ticket T-20261121-usage-log).
