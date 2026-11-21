@@ -2,7 +2,7 @@
 id: T-20261121-economics-long-history
 title: Design the long-history test of the market-level DCF (data, periods, later returns)
 area: docs
-status: in-progress
+status: review
 owner: louellet-git
 requested_by: louellet-git
 head: economics
