@@ -96,3 +96,10 @@ Nasdaq split basis to 2026-11-20). Run on 652dc28: S&P 100 -9.42% (98 companies,
 `T-20261121-data-audit`) found share counts by class wrong in the SEC cover tag for 10 S&P 100 names; `attribute`
 weights by the model count (the diluted weighted average of the last 10-K), and for 8 of them it looks right (label in
 the result); V and BRK-B have no count until `T-20261121-shares-by-class` merges (after the pit fix). Not final.
+
+**Premium series built (2026-11-21 about 18:45 UTC):** `fa dcf premium-series` on branch `claude/premium-series`
+(5671612, pushed; not reviewed; suites 841 + 17 + 1; the fixed CSV contract with Economics has a test). Smoke run S&P
+100, store 0340bc1: S1 1.55% (11-06), 1.18% (11-13), 1.66% (11-20); the 11-20 row gives the same list change as
+`attribute` (-9.42%); switch week 2026-11-20. Timing S&P 500: about 6.6 s a week (10.8 s with --bridge). Not done: a
+poison test of a fact filed after the anchor (needs a real facts cache), the poison and truncation runs on 3 dates, the
+code gate, the run of record (after the Technology fixes). Economics builds `fa macro premium-test` against the CSV.
