@@ -13,7 +13,7 @@ Done: the Head of Staff row and rules in `chiefs/ORIENTATION.md` (#161). This se
 with the title `FA-L - Head of Staff`. The start check found no other session with this title. This
 folder was made.
 
-## 2026-11-21 18:40 UTC (chat)
+## 2026-11-21 about 18:33 UTC (chat)
 Words: "You don't need to wait for my word. You pretty much can work autonomously, but I do want you to have
 like a backseat view. What you're kind of working on is overall like project management ... ensuring that
 heads are abiding by the head rules within reason. You know, I found that it's better to have like a lean
@@ -26,19 +26,19 @@ reason; lean; a cohesive system). A first look at the board, with one message to
 Research. A frame for "cohesive" was proposed to the person (dashboard, "Frame"); the person has not
 agreed to it yet.
 
-## 2026-11-21 18:50 UTC (chat)
+## 2026-11-21 about 18:35 UTC (chat)
 Words: "Have your frame be a bit more lean"
 Done: the frame has three lines now (dashboard, "Frame"). The line about a date and the line about
 double work are part of lines 1 to 3.
 
-## 2026-11-21 19:10 UTC (chat)
+## 2026-11-21 about 18:37 UTC (chat)
 Words: "I think where you'd be helpful is fleshing out the board into epics, stories, tickets, and fleshing
 out the stories and the epics and the tickets so that it all kind of makes sense from a holistic point of
 view, and just making sure that heads are following the rules."
 Done: `PLANNING/board/EPICS.md` (6 epics, each with the decision that it serves), ticket
 `T-20261121-board-epics`, the `story` field in `PLANNING/board/README.md`. One message to each head.
 
-## 2026-11-21 19:25 UTC (chat, from speech; the first words are not clear)
+## 2026-11-21 about 18:39 UTC (chat, from speech; the first words are not clear)
 Words: "... they'll say something like, oh, this is the implied growth and this is the implied premium. And
 I'm like, okay, great, but does that make sense? And that's kind of where I need you to be, that in between
 of me and them, where they should already be questioning, does this make sense? And going about it like
