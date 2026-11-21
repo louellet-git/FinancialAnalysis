@@ -18,7 +18,10 @@ USAGE:
                                   and sp500_history.meta.json. Default --cache data/local (never data/raw: it is the clone of the public store).
   fa members check [--cache DIR]  read the local file again: sorted and unique dates, 400 to 520 names a date,
                                   the last date. No request.
-  fa members on DATE [--cache DIR]  the members on DATE (YYYY-MM-DD), one ticker on each line.
+  fa members on DATE [--cache DIR]  the members on DATE (YYYY-MM-DD), one ticker on each line (class shares as BRK-B).
+                                  A date after the last row is refused (survivor-bias risk).
+Each read checks the file against the pinned SHA-256 and writes the commit and the hash to stderr.
+The default folder is under the repository root: the environment variable FA_REPO (else the repo of the build).
 
 Source: github.com/fja05680/sp500, a pinned commit. The file is not in the data store (licence: docs/DATA-SOURCES.md).";
 
@@ -66,7 +69,13 @@ pub fn verify_sha256(bytes: &[u8], expected: &str) -> Result<String, String> {
     }
 }
 
-/// The rows of the file: (date, sorted tickers), in file order. A header line is skipped.
+/// True for a real calendar date written YYYY-MM-DD.
+pub fn valid_date(s: &str) -> bool {
+    use crate::trading::calendar::{iso, parse_iso};
+    s.len() == 10 && parse_iso(s).is_some_and(|d| iso(d) == s)
+}
+
+/// The rows of the file: (date, sorted tickers; a class share `BRK.B` is written `BRK-B`, the form of the repo and the store), in file order. A header line is skipped.
 pub fn parse_history(text: &str) -> Result<Vec<(String, Vec<String>)>, String> {
     let mut rows = Vec::new();
     for (i, line) in text.lines().enumerate() {
@@ -75,11 +84,10 @@ pub fn parse_history(text: &str) -> Result<Vec<(String, Vec<String>)>, String> {
             continue;
         }
         let (date, rest) = line.split_once(',').ok_or_else(|| format!("line {}: no comma", i + 1))?;
-        let ok = date.len() == 10 && crate::trading::calendar::parse_iso(date).is_some();
-        if !ok {
+        if !valid_date(date) {
             return Err(format!("line {}: bad date '{date}'", i + 1));
         }
-        let mut names: Vec<String> = rest.trim().trim_matches('"').split(',').map(|t| t.trim().to_string()).filter(|t| !t.is_empty()).collect();
+        let mut names: Vec<String> = rest.trim().trim_matches('"').split(',').map(|t| t.trim().replace('.', "-")).filter(|t| !t.is_empty()).collect();
         names.sort();
         rows.push((date.to_string(), names));
     }
@@ -91,6 +99,13 @@ pub fn parse_history(text: &str) -> Result<Vec<(String, Vec<String>)>, String> {
 
 /// The members on `date`: the tickers of the latest row with row date <= `date`.
 pub fn members_on(rows: &[(String, Vec<String>)], date: &str) -> Result<Vec<String>, String> {
+    if !valid_date(date) {
+        return Err(format!("'{date}' is not a date in the form YYYY-MM-DD"));
+    }
+    let last = &rows[rows.len() - 1].0;
+    if date > last.as_str() {
+        return Err(format!("{date} is after the last row of the member history ({last}); the file has no list for it. Today's list would carry survivor bias: use it only with that label"));
+    }
     let n = rows.partition_point(|(d, _)| d.as_str() <= date);
     if n == 0 {
         return Err(format!("{date} is before the first row of the member history ({})", rows[0].0));
@@ -98,10 +113,21 @@ pub fn members_on(rows: &[(String, Vec<String>)], date: &str) -> Result<Vec<Stri
     Ok(rows[n - 1].1.clone())
 }
 
-fn read_rows(cache: &Path) -> Result<Vec<(String, Vec<String>)>, String> {
+/// Read the cache file, check it against `expected` (SHA-256), log the commit and the hash to stderr.
+fn read_rows_with(cache: &Path, expected: &str) -> Result<Vec<(String, Vec<String>)>, String> {
     let p = history_path(cache);
-    let text = std::fs::read_to_string(&p).map_err(|_| format!("{} is missing; run `fa members get` first", p.display()))?;
+    let bytes = std::fs::read(&p).map_err(|_| format!("{} is missing; run `fa members get` first", p.display()))?;
+    let sha = sha256_hex(&bytes);
+    if sha != expected {
+        return Err(format!("{} does not match the pinned SHA-256 (expected {expected}, actual {sha}); the file was changed. Run `fa members get` again", p.display()));
+    }
+    eprintln!("fa: members: {REPO} commit {COMMIT}, SHA-256 {sha}");
+    let text = String::from_utf8(bytes).map_err(|e| format!("not UTF-8: {e}"))?;
     parse_history(&text)
+}
+
+fn read_rows(cache: &Path) -> Result<Vec<(String, Vec<String>)>, String> {
+    read_rows_with(cache, EXPECTED_SHA256)
 }
 
 /// The S&P 500 members on `date` (YYYY-MM-DD) from the local cache file.
@@ -166,8 +192,9 @@ pub fn store(cache: &Path, bytes: &[u8], run_date: &str) -> Result<Check, String
     let sha = verify_sha256(bytes, EXPECTED_SHA256)?;
     let text = String::from_utf8(bytes.to_vec()).map_err(|e| format!("not UTF-8: {e}"))?;
     let check = check_rows(&parse_history(&text)?);
-    write_atomic(&history_path(cache), &text)?;
+    // meta first: a file without a record is never left
     write_atomic(&meta_path(cache), &(serde_json::to_string_pretty(&meta_json(&sha, run_date, &check)).map_err(|e| e.to_string())? + "\n"))?;
+    write_atomic(&history_path(cache), &text)?;
     Ok(check)
 }
 
@@ -193,16 +220,41 @@ fn git_config_of(dot_git: &Path) -> Option<PathBuf> {
     Some(common.join("config"))
 }
 
-/// Refuse a target folder inside a git work tree whose remote is `fa-data` (the public store).
+/// The absolute path with the nearest existing ancestor resolved (symlinks followed).
+fn resolve(dir: &Path) -> Result<PathBuf, String> {
+    let abs = if dir.is_absolute() { dir.to_path_buf() } else { std::env::current_dir().map_err(|e| e.to_string())?.join(dir) };
+    let mut tail = Vec::new();
+    let mut cur = abs.as_path();
+    loop {
+        if let Ok(c) = cur.canonicalize() {
+            let mut out = c;
+            for part in tail.iter().rev() {
+                out.push(part);
+            }
+            return Ok(out);
+        }
+        match (cur.file_name(), cur.parent()) {
+            (Some(n), Some(p)) => {
+                tail.push(n.to_os_string());
+                cur = p;
+            }
+            _ => return Err(format!("cannot resolve {}", dir.display())),
+        }
+    }
+}
+
+/// Refuse a target folder inside a git work tree whose remote is `fa-data` (the shared data store).
+/// The path is resolved first (symlinks), and a `.git` entry that cannot be read refuses the target.
 pub fn guard_not_store(dir: &Path) -> Result<(), String> {
-    let mut cur = Some(if dir.is_absolute() { dir.to_path_buf() } else { std::env::current_dir().map_err(|e| e.to_string())?.join(dir) });
+    let mut cur = Some(resolve(dir)?);
     while let Some(d) = cur {
         let dot_git = d.join(".git");
         if dot_git.exists() {
-            if let Some(cfg) = git_config_of(&dot_git).and_then(|c| std::fs::read_to_string(c).ok()) {
-                if remote_urls(&cfg).iter().any(|u| u.contains("fa-data")) {
-                    return Err(format!("{} is inside the work tree {} of the public store fa-data; a file here would be published. Use data/local (the default).", dir.display(), d.display()));
-                }
+            let cfg = git_config_of(&dot_git)
+                .and_then(|c| std::fs::read_to_string(c).ok())
+                .ok_or_else(|| format!("cannot read the git config of {}; refused (it may be the public store fa-data)", d.display()))?;
+            if remote_urls(&cfg).iter().any(|u| u.contains("fa-data")) {
+                return Err(format!("{} is inside the work tree {} of the public store fa-data; a file here would be published. Use data/local (the default).", dir.display(), d.display()));
             }
         }
         cur = d.parent().map(Path::to_path_buf);
@@ -245,7 +297,12 @@ pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
         }
         Some("on") => {
             let date = args.get(1).ok_or("fa members on DATE")?;
-            for t in sp500_members_on(&cache_of(repo, &args[2..])?, date)? {
+            let rows = read_rows(&cache_of(repo, &args[2..])?)?;
+            let c = check_rows(&rows);
+            for w in &c.warnings {
+                eprintln!("WARN: {w}");
+            }
+            for t in members_on(&rows, date)? {
                 println!("{t}");
             }
             Ok(0)
@@ -258,7 +315,7 @@ pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
 mod tests {
     use super::*;
 
-    const FIXTURE: &str = "date,tickers\n2020-12-14,\"AAPL,MSFT,TSLA_NOT,XOM\"\n2020-12-18,\"AAPL,MSFT,XOM\"\n2020-12-22,\"AAPL,MSFT,TSLA,XOM\"\n";
+    const FIXTURE: &str = "date,tickers\n2020-12-14,\"AAPL,MSFT,TSLA_NOT,XOM\"\n2020-12-18,\"AAPL,MSFT,XOM\"\n2020-12-21,\"AAPL,MSFT,TSLA,XOM\"\n";
 
     #[test]
     fn reader_cases() {
@@ -268,13 +325,30 @@ mod tests {
         assert_eq!(members_on(&rows, "2020-12-20").unwrap(), ["AAPL", "MSFT", "XOM"]);
         // on a row date
         assert_eq!(members_on(&rows, "2020-12-14").unwrap(), ["AAPL", "MSFT", "TSLA_NOT", "XOM"]);
-        // after the last row: the last row
-        assert_eq!(members_on(&rows, "2030-01-01").unwrap().len(), 4);
+        // on the last row date: allowed; after it: refused, with the last date named
+        assert_eq!(members_on(&rows, "2020-12-21").unwrap().len(), 4);
+        let e = members_on(&rows, "2030-01-01").unwrap_err();
+        assert!(e.contains("after the last row") && e.contains("2020-12-21") && e.contains("survivor bias"));
         // before the first row
         assert!(members_on(&rows, "2020-12-13").unwrap_err().contains("before the first row"));
-        // TSLA out on 2020-12-18, in on 2020-12-22
+        // TSLA out on 2020-12-18, in on 2020-12-21
         assert!(!members_on(&rows, "2020-12-18").unwrap().contains(&"TSLA".to_string()));
-        assert!(members_on(&rows, "2020-12-22").unwrap().contains(&"TSLA".to_string()));
+        assert!(members_on(&rows, "2020-12-21").unwrap().contains(&"TSLA".to_string()));
+    }
+
+    #[test]
+    fn bad_date_strings_are_refused() {
+        let rows = parse_history(FIXTURE).unwrap();
+        for bad in ["garbage", "20201215", "2020-1-5", "2020-02-30", "2020-13-45", "", "2020-12-1x", "+020-12-15"] {
+            assert!(members_on(&rows, bad).unwrap_err().contains("YYYY-MM-DD"), "{bad}");
+        }
+        assert!(parse_history("2020-02-30,\"A\"\n").is_err());
+    }
+
+    #[test]
+    fn class_share_dot_becomes_dash() {
+        let rows = parse_history("2020-01-02,\"BRK.B,AAPL,BF.B\"\n").unwrap();
+        assert_eq!(rows[0].1, ["AAPL", "BF-B", "BRK-B"]);
     }
 
     #[test]
@@ -298,13 +372,42 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         assert!(store(&dir, FIXTURE.as_bytes(), "2026-11-21").is_err());
         assert!(!history_path(&dir).exists());
+        assert!(!meta_path(&dir).exists());
+    }
+
+    #[test]
+    fn an_edited_file_is_refused_on_read() {
+        let dir = std::env::temp_dir().join(format!("fa-members-edit-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        write_atomic(&history_path(&dir), FIXTURE).unwrap();
+        // the right pin passes; one changed byte does not
+        let pin = sha256_hex(FIXTURE.as_bytes());
+        assert!(read_rows_with(&dir, &pin).is_ok());
+        write_atomic(&history_path(&dir), &FIXTURE.replace("XOM", "XOX")).unwrap();
+        assert!(read_rows_with(&dir, &pin).unwrap_err().contains("does not match"));
+        // the public reader uses the real pin, so the fixture is refused
+        assert!(sp500_members_on(&dir, "2020-12-15").unwrap_err().contains("SHA-256"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn count_rule_boundaries() {
+        let mk = |n: usize| {
+            let names: Vec<String> = (0..n).map(|i| format!("T{i}")).collect();
+            vec![("2020-01-02".to_string(), names)]
+        };
+        assert_eq!(check_rows(&mk(399)).warnings.len(), 1);
+        assert!(check_rows(&mk(400)).warnings.is_empty());
+        assert!(check_rows(&mk(520)).warnings.is_empty());
+        assert_eq!(check_rows(&mk(521)).warnings.len(), 1);
     }
 
     #[test]
     fn reader_reads_the_cache_file() {
         let dir = std::env::temp_dir().join(format!("fa-members-read-{}", std::process::id()));
         write_atomic(&history_path(&dir), FIXTURE).unwrap();
-        assert!(sp500_members_on(&dir, "2020-12-22").unwrap().contains(&"TSLA".to_string()));
+        let pin = sha256_hex(FIXTURE.as_bytes());
+        assert!(members_on(&read_rows_with(&dir, &pin).unwrap(), "2020-12-21").unwrap().contains(&"TSLA".to_string()));
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -332,6 +435,18 @@ mod tests {
         let plain = base.join("plain");
         std::fs::create_dir_all(&plain).unwrap();
         assert!(guard_not_store(&plain.join("_members")).is_ok());
+        // a symlink to a subfolder of the store clone is refused
+        std::fs::create_dir_all(store.join("sub")).unwrap();
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(store.join("sub"), plain.join("link")).unwrap();
+            assert!(guard_not_store(&plain.join("link/_members")).is_err());
+        }
+        // a .git file that cannot be read fails closed
+        let broken = base.join("broken");
+        std::fs::create_dir_all(&broken).unwrap();
+        std::fs::write(broken.join(".git"), "gitdir: /nonexistent/x\n").unwrap();
+        assert!(guard_not_store(&broken.join("_members")).is_err());
         let _ = std::fs::remove_dir_all(&base);
     }
 
