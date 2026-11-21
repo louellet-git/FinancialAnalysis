@@ -5,6 +5,7 @@ area: engine
 status: backlog
 owner: louellet-git
 head: quant
+story: E4.S3
 order: 8
 branch:
 created: 2026-11-20
@@ -57,3 +58,5 @@ and no arbitrage test on closes of different times.
 ## Commands
 
 `fa vol joint --model M --date D`, `fa vol compare [--dates D1,D2,...]`, `fa vol check joint`.
+
+Needed by (2026-11-21): none; the model-free VIX relations of the register (VIX-REPLICATION, VX against the variance swap) do not need a model. No check or strategy of the owner needs this model now, so it goes after the work that serves a decision of the owner (Head of Staff, 2026-11-21).

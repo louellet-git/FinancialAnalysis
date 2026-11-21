@@ -65,3 +65,9 @@ Step 2 done (commit 01383b4, examined after the agent finished; tests 838+17+1, 
 same except the source label. NFCI: the Chicago Fed legal notice says "Users may not reproduce ...
 except as expressly authorized"; its permission covers written materials, not for private gain.
 So NFCI is not stored; the Head of Economics decides (drop it, or the owner asks for permission).
+
+Steps 1 to 3 merged (2026-11-21, QA PASS-WITH-NOTES cycle 2): the Treasury derived series, the Treasury
+HQM files, and the cost of debt on HQM + a Damodaran notch step (records A-200 to A-203). Open: step 4,
+CPIAUCNS (BLS), TB3MS and GS10 (Fed Board H.15) for `fa dcf market`; the NBER series (the users decide:
+the JST bill rate as a variant); then the removal of the FRED code and files. QA note: record the
+Last-Modified of each new HQM file at `hqm get`, and check the availability rule again after three months.

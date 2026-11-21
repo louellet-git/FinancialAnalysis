@@ -56,6 +56,8 @@ USAGE:
   fa estimates get TICKER... [--tickers-file F] [--endpoints LIST] [--momentum] [--refresh]
                                                   analyst consensus EPS, price targets, surprises into data/raw (Nasdaq site, no key)
   fa estimates show TICKER [--price P]            consensus by period, revisions, forward P/E, target against the last close
+  fa spf get [--cache DIR]                        Philadelphia Fed SPF medianLevel.xlsx into DIR/macro/spf (dated copy)
+  fa spf show [--cache DIR] [--file F]            Q1 long-run medians (RGDP10, CPI10, STOCK10, BOND10, BILL10), release dates
   fa earnings calendar [TICKER...] [--tickers-file F] [--from D] [--days N]
                                                   Nasdaq earnings calendar scan, then the next report date of each ticker
   fa earnings dates TICKER... [--tolerance N]     past report dates against the SEC filing list (8-K item 2.02), next date
@@ -70,6 +72,7 @@ USAGE:
   fa trade fetch [--symbol S]... [--interval I]...  download the bars of the option bots (Yahoo) into the CSV cache
   fa trade backtest [--bot ID]... [--max-risk N] [--out FILE] [-v]   backtest the option bots (fa trade backtest --help)
   fa trade paper [BOT]... [--no-refresh] [--no-live]   forward paper trading, live Cboe option chain (fa trade paper --help)
+  fa trade premium [--horizon N] [--lag N]   implied against realised variance of SPY (VIX 21 days, VIX1D 1 day)
   fa sync [TICKER...] [--tickers-file F] [--only A,B] [--skip A,B] [--force] [--dry-run] [--max-minutes N]
                                                   bring all cached data sets up to date, only the old ones, one queue for each host (fa sync --help)
   fa sync --status [TICKER...]                    age of each data set from the cache files, no request
@@ -307,7 +310,15 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
             Ok(code) => Ok(ExitCode::from(code as u8)),
             Err(e) => Ok(usage_error(&e)),
         },
+        Some("spf") => match financial_analysis::market::spf::run(&fa.repo, &args[1..]) {
+            Ok(code) => Ok(ExitCode::from(code as u8)),
+            Err(e) => Ok(usage_error(&e)),
+        },
         Some("splits") => match financial_analysis::market::splits_cli::run(&fa.repo, &args[1..]) {
+            Ok(code) => Ok(ExitCode::from(code as u8)),
+            Err(e) => Ok(usage_error(&e)),
+        },
+        Some("members") => match financial_analysis::market::members_cli::run(&fa.repo, &args[1..]) {
             Ok(code) => Ok(ExitCode::from(code as u8)),
             Err(e) => Ok(usage_error(&e)),
         },
@@ -333,11 +344,15 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
                 Ok(code) => Ok(ExitCode::from(code as u8)),
                 Err(e) => Ok(usage_error(&e)),
             },
+            Some("premium") => match financial_analysis::trading::premium::command(&fa.repo, &args[2..]) {
+                Ok(code) => Ok(ExitCode::from(code as u8)),
+                Err(e) => Ok(usage_error(&e)),
+            },
             Some("paper") => match financial_analysis::trading::paper::command(&fa.repo, &args[2..]) {
                 Ok(code) => Ok(ExitCode::from(code as u8)),
                 Err(e) => Ok(usage_error(&e)),
             },
-            _ => Ok(usage_error("trade needs a command: backtest, fetch or paper")),
+            _ => Ok(usage_error("trade needs a command: backtest, fetch, paper or premium")),
         },
         Some("sync") => match financial_analysis::sync::command(&fa.repo, &args[1..]) {
             Ok(code) => Ok(ExitCode::from(code as u8)),

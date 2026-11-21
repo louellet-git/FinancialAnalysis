@@ -653,7 +653,7 @@ cache gives the last close, not the close of `--as-of`. Two runs give the same b
 (`auto_attribute.rs`, ticket `T-20261120-valuation-move-attribution`). It splits the change of a price between two dates. It has no random part and
 uses the value at the means (not the expected value). A market-implied value is a measurement, not an input. The price of each date is the value of the
 model of that date at the implied premium. The steps run in a fixed order: facts of D2 (facts filed on or before the date, `map_inputs_pit`; the 10-K of
-the cache does not fill an input), rates (curve of D2), the free variable of the price (premium, with the equity weight and the beta of D2; or, in a second
+the cache fills an input only if its filing date is on or before the date), rates (curve of D2), the free variable of the price (premium, with the equity weight and the beta of D2; or, in a second
 chain, the growth shift at the model premium), and the rest (the roll of the valuation date and the search residual). The reverse order of rates and free
 variable is printed. A chain exists only when both searches have an exact solution. A list gives one CSV row for each ticker, medians by size and sector,
 and the sum weighted by price x shares at D1 (only tickers with the view). `fa dcf implied --price-date D` uses the close of D, the curve, the beta and

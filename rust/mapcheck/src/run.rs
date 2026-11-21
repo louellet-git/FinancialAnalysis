@@ -278,7 +278,7 @@ pub fn check_ticker(registry: &Registry, cache: &Path, ticker: &str, n_periods: 
 
 /// `check_ticker` with a filing date. `filed_cut = None`: all facts of the cache, and the 10-K of the cache fills a missing
 /// input (`check_cached`). `Some(date)`: only the facts that a filing of `date` or an earlier date reported
-/// (`CompanyFacts::filed_up_to`), and no fill from the 10-K of the cache (it can be a later filing).
+/// (`CompanyFacts::filed_up_to`). The 10-K fills only if its filing date, from the facts that carry its accession, is `date` or earlier (`Supplement::with_cut`); with no date it does not fill.
 pub fn check_ticker_filed(registry: &Registry, cache: &Path, ticker: &str, n_periods: usize, as_of: i64, keep_values: bool, filed_cut: Option<&str>) -> TickerReport {
     let start = Instant::now();
     let Some(path) = facts_path(cache, ticker) else {
@@ -289,8 +289,16 @@ pub fn check_ticker_filed(registry: &Registry, cache: &Path, ticker: &str, n_per
             let mut report = match filed_cut {
                 None => check_cached(registry, cache, ticker, &facts, n_periods, as_of, keep_values),
                 Some(date) => {
+                    // The 10-K of the cache fills only if it was public on `date` (its date comes from the full facts).
+                    let supplement = pit_supplement(Supplement::load(registry, cache, ticker), &facts, date);
+                    let note = supplement.as_ref().and_then(|s| s.blocked());
                     facts = facts.filed_up_to(date);
-                    check_facts(registry, ticker, &facts, n_periods, as_of, keep_values)
+                    let fill = pit_fill(registry, supplement.as_ref());
+                    let mut report = check_facts_with(registry, ticker, &facts, n_periods, as_of, keep_values, Some(&*fill));
+                    if let Some(detail) = note {
+                        report.findings.push(Finding { severity: Severity::Info, code: "pit_supplement_not_used".to_string(), detail });
+                    }
+                    report
                 }
             };
             report.seconds = start.elapsed().as_secs_f64();
@@ -298,6 +306,26 @@ pub fn check_ticker_filed(registry: &Registry, cache: &Path, ticker: &str, n_per
         }
         Err(message) => error_report(ticker, message, start.elapsed().as_secs_f64()),
     }
+}
+
+/// The supplement with the cut of a date. The filing date of the 10-K comes from the full facts (before `filed_up_to`).
+fn pit_supplement(supplement: Option<Supplement>, facts: &CompanyFacts, date: &str) -> Option<Supplement> {
+    supplement.map(|s| {
+        let filed = facts.filing_date(s.accession());
+        s.with_cut(filed, date)
+    })
+}
+
+type PitFill<'a> = Box<dyn Fn(&str, &str, FillMode) -> Option<Filled> + 'a>;
+
+/// The fill function of a point-in-time check: the gap mode and the lines mode, both from the cut supplement.
+fn pit_fill<'a>(registry: &'a Registry, supplement: Option<&'a Supplement>) -> PitFill<'a> {
+    Box::new(move |end: &str, name: &str, mode: FillMode| {
+        supplement.and_then(|s| match mode {
+            FillMode::Gap => s.fill(registry, end, name).map(|(v, t)| Filled::Value(v, t)),
+            FillMode::Lines => s.lines(end, name),
+        })
+    })
 }
 
 /// All tickers, in parallel. The result has the sequence of the input.
@@ -417,5 +445,53 @@ mod tests {
         let report = check_facts(&registry, "X", &facts(us_gaap), 12, 0, false);
         assert_eq!((report.status, report.template.as_str()), (Status::Template, "new"));
         assert!(report.findings.iter().all(|f| f.code != "no_xbrl_values"));
+    }
+
+    fn capex_filing() -> crate::filing::Filing {
+        use crate::filing::{Filing, Line, Statement};
+        let line = |tag: &str, value: f64, children: Vec<Line>| Line { tag: tag.into(), label: tag.into(), weight: 1.0, value: Some(value), children };
+        let capex = Line { weight: -1.0, ..line("acme_CapitalExpendituresAndInvestments", 70.0, vec![]) };
+        let total = line("us-gaap_NetCashProvidedByUsedInInvestingActivities", -70.0, vec![capex]);
+        let cash = Statement { kind: "cash".into(), name: "Cash flows".into(), role: "r".into(), roots: vec![total] };
+        Filing {
+            ticker: "ACME".into(),
+            accession: "0000000001-25-000001".into(),
+            fiscal_year_end: Some("2024-12-31".into()),
+            statements: vec![cash],
+            values: Default::default(),
+            members: Default::default(),
+            earlier: Vec::new(),
+            facts_total: 0,
+            facts_with_segment: 0,
+        }
+    }
+
+    /// Facts in which the 10-K (accession above) was filed on 2025-02-20.
+    fn filed_facts() -> CompanyFacts {
+        facts(r#"{"cik":1,"entityName":"ACME","facts":{"us-gaap":{"Assets":{"units":{"USD":[
+            {"end":"2024-12-31","val":5,"form":"10-K","filed":"2025-02-20","accn":"0000000001-25-000001"},
+            {"end":"2025-03-31","val":6,"form":"10-Q","filed":"2025-05-01","accn":"0000000001-25-000009"}]}}}}}"#)
+    }
+
+    #[test]
+    fn the_cut_path_fills_from_the_supplement_only_when_it_was_filed_on_or_before_the_cut() {
+        let registry = Registry::embedded().unwrap();
+        let all = filed_facts();
+        for (cut, fills) in [("2025-02-19", false), ("2025-02-20", true), ("2025-12-31", true), ("bad", false)] {
+            let supplement = pit_supplement(Some(Supplement::new(&registry, capex_filing())), &all, cut);
+            assert_eq!(supplement.as_ref().unwrap().blocked().is_none(), fills, "{cut}");
+            let fill = pit_fill(&registry, supplement.as_ref());
+            // Gap mode and lines mode.
+            let gap = fill("2024-12-31", "capex", FillMode::Gap);
+            let lines = fill("2024-12-31", "capex", FillMode::Lines);
+            assert_eq!(matches!(gap, Some(Filled::Value(v, _)) if v == -70.0), fills, "gap {cut}");
+            assert_eq!(matches!(lines, Some(Filled::Value(v, _)) if v == -70.0), fills, "lines {cut}");
+            if !fills {
+                assert!(gap.is_none() && lines.is_none());
+            }
+        }
+        // No supplement in the cache: no fill and no error.
+        assert!(pit_fill(&registry, None)("2024-12-31", "capex", FillMode::Gap).is_none());
+        assert!(pit_supplement(None, &all, "2025-12-31").is_none());
     }
 }

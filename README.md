@@ -10,7 +10,8 @@ parts:
 - **Options trading research.** A backtester and a paper trader for SPY/QQQ option
   strategies.
 
-The repo gives analysis only. It does not send orders to a broker. It is not investment
+The repo gives analysis. A program may send orders to the Alpaca paper account only (controls in
+`docs/QUALITY-STANDARDS.md`, section 8). No program sends a live order. It is not investment
 advice.
 
 Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`. The agent teams: `docs/TEAMS.md`. The head sessions: `chiefs/ORIENTATION.md`. The quality standards: `docs/QUALITY-STANDARDS.md`.
