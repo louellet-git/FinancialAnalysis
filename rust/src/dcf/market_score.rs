@@ -405,6 +405,9 @@ pub fn run(obs: &[Obs], inp: &Inputs) -> R<Report> {
     let start = mi(1893, 1);
     let end120 = latest - H_MAIN;
     let end60 = latest - H_SEC;
+    if end120 < start + 2 * H_MAIN {
+        return Err(DcfError(format!("the data end at {}: the sample (from {}, H = 120) is too short", label(latest), label(start))));
+    }
 
     // the engine: the primary premium and the four variants (record R1)
     let fred = Some(inp.cpi);

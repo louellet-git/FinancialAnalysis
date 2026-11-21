@@ -9,8 +9,7 @@ input of the search, and no model input comes from the price. With `--score` it 
 
 ## Data
 `macro/shiller/shiller_monthly.csv` of the data store (Shiller, `ie_data.xls`). Columns used:
-price, dividend (annual rate), cpi, gs10 (percent), estimate. Also `macro/fred/CPIAUCNS.csv`
-(from 1913-01). The command has one reader for each file.
+price, dividend (annual rate), cpi, gs10 (percent), estimate. Also `macro/fred/CPIAUCNS.csv` (from 1913-01).
 
 ## Design (fixed before the first run)
 All values are real. The money unit is the money of month t (the CPI known at t, CPIK(t)).
@@ -32,10 +31,11 @@ All values are real. The money unit is the money of month t (the CPI known at t,
    Defaults: L = 2.0% (`--long-real`, record A-001), N = 10 (`--fade-years`, at least 2).
 7. Value: V = sum of D_k / (1 + r)^k for k = 1 to N, plus D_N (1 + L) / (r - L) / (1 + r)^N, with
    r = rr + erp.
-8. Implied erp: the root of V = price by bisection on -10% to +30%, with r > L. Without a root the
-   row has erp_implied = "none" and a status code: `no_root_low` (the price is above the value at
-   the lowest erp of the range), `no_root_high` (below the value at 30%), `no_root_rate` (no erp in
-   the range gives r > L), `no_dividend` (the dividend is not positive).
+8. Implied erp: the root of V = price by bisection on -10% to +30%. The lower bound is raised to
+   L - rr + 1e-9, so that r > L. Without a root the row has erp_implied = "none" and a status
+   code: `no_root_low` (the price is above the value at the lower bound), `no_root_high` (below
+   the value at 30%), `no_root_rate` (the raised bound is 30% or more), `no_dividend` (the
+   dividend is not positive).
 9. Gordon baseline: erp_gordon = D_real (1 + L) / price + L - rr. With g0 = L the DCF value equals
    the Gordon value, so the two premiums are equal.
 
