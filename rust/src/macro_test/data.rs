@@ -1,4 +1,4 @@
-//! Loades and the weekly data rules of the pre-registered premium test
+//! Loads and the weekly data rules of the pre-registered premium test
 //! (design `premium-design-55f2e92`, rule 4 and its data rules 1 to 10).
 //!
 //! Units: `s1`, `zero10` and `ret_w` of the series file are decimals. The outcome `y` and `dzero10`

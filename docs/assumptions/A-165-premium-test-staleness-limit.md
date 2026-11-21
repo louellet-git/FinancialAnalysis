@@ -1,6 +1,6 @@
 # A-165: staleness limit of the daily series
 
-Updated: 2026-11-21. Code: branch econ/premium-test-cmd.
+Updated: 2026-11-21. Code: branch econ/premium-test-cmd. Model document: `docs/models/premium-macro-test.md`.
 
 ## Choice
 For VIX, DFII10 and T10YIE: the last non-missing value on or before the anchor of the week, if it is at

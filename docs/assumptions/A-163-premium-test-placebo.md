@@ -1,10 +1,10 @@
 # A-163: placebo shifts and the limit of 4 of 80
 
-Updated: 2026-11-21. Code: branch econ/premium-test-cmd.
+Updated: 2026-11-21. Code: branch econ/premium-test-cmd. Model document: `docs/models/premium-macro-test.md`.
 
 ## Choice
 The block dVIX (one series since R2) shifts circularly in time, as one block, by every shift from 13 to 52 weeks in both
-directions: 80 runs. y, ret_w, ret_w^2 and dzero10 stay in place. The real "yes" stands only if at most 4
+directions: 80 runs. y, ret_w, ret_w^2 and dzero10 stay in place. The main result "yes" stands only if at most 4
 of the 80 runs give "yes" (5% of 80). Otherwise: "no share shown".
 
 ## Where used

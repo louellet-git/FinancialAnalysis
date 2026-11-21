@@ -403,6 +403,18 @@ impl RealRunner {
                 }
             }
             self.refreshed(item, &paths, &before, "Treasury nominal and real curves of the year")
+        } else if item.key == "hqm" {
+            let mut fetch = |url: &str| hostnet::get(url, &[], crate::rates::DELAY_SECONDS);
+            match crate::hqm::get(&self.ctx.cache, false, self.ctx.today, &mut fetch) {
+                Ok(rows) => match rows.iter().find(|(_, w)| w.starts_with("failed")) {
+                    Some((n, w)) => self.fail(item, &format!("{n}: {w}")),
+                    None => {
+                        let n = rows.iter().filter(|(_, w)| w.starts_with("downloaded")).count();
+                        self.done(item, Status::Updated, format!("Treasury HQM spot files, {n} downloaded"), n)
+                    }
+                },
+                Err(e) => self.fail(item, &e),
+            }
         } else {
             let path = self.ctx.cache.join("rates").join("bls_cpi.json");
             let before = [modified(&path)];

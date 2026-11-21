@@ -5,6 +5,7 @@ area: engine
 status: backlog
 owner: louellet-git
 head: quant
+story: E4.S4
 order: 3.05
 branch:
 created: 2026-11-21
