@@ -49,6 +49,7 @@ Rules: `chiefs/ORIENTATION.md`, section 8. Decisions of the person: `../RECORD.m
 - The computer of the person is a Windows laptop. Give commands for PowerShell.
 
 ## Pages
+- `../industry-2026-11-21.md`: industry practice (SR 26-2, overfitting bar, NBBO data, box rate method).
 - `responsibilities.md`: the split of work between Quant Research and Fundamental Research.
 
 ## Dream pass
