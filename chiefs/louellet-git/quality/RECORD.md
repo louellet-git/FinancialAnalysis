@@ -39,3 +39,16 @@ Done: live-pilot limits added to `proposal-sleeve-limits.md`; a gate form for th
 ## 2026-11-21 ~03:55 UTC (dialog)
 Words (four answers): live start "Paper 4 weeks, then live"; sleeve limits "Not sure"; PR 102 "Merge now"; Deere lease equipment "I'm not sure".
 Done: the weekly process runs on paper from 2026-11-27 for 4 weeks; live from about 2026-12-25 only after the owner approves limits. The proposed limits apply to paper as an interim rule (no real money). The Deere and CNH lease lines stay out (the interim rule) until the owner decides. PR 102 merged.
+
+## 2026-11-21 04:29 and 04:30 UTC (relayed verbatim by the Head of Fundamental Research)
+Words: "Ensure that before you have trades and we begin the weekly trades, that you have effectively back tested your future state blind projections using the DCF engine and using prior data. A recommendation should work at any time and point and when it doesn't, the model should have already priced it in such that it does work." And: "Backtesting is integral to our work here".
+Done: the blind-projection tests T1 to T4 (ticket `T-20261121-blind-projection-test`) are a condition of the strategy gate before the first weekly trade, paper included. A row "Backtest" in `docs/QUALITY-STANDARDS.md`, section 4.
+
+## 2026-11-21 05:33 UTC (my decision; no word of the person)
+The public copy of a split table from the Alpaca corporate-actions API: allowed as derived facts only (ticker, ex_date, ratio, factor, kind, sec_check, source), each checked against the SEC split tag where one exists; no raw Alpaca payload and no Alpaca-only field in the public store. Alpaca terms for redistribution are not read; this is written in `docs/DATA-SOURCES.md`. The person can reverse this.
+
+## 2026-11-21 14:37 UTC (my decision; no word of the person)
+Point-in-time S&P 500 members (fja05680/sp500): kept out of the public store (the base file comes from a book with no stated redistribution right); each head fetches a pinned commit into a local cache, checked by SHA-256 and logged in each run. The person can reverse this.
+
+## 2026-11-21 15:27 UTC (owner word, relayed by the Head of Fundamental Research)
+Words: "Hold off on writing the doc until I give my go ahead on the results". Effect: the document gate of the sp100 week attribution (validator, document reviewer, auditor) waits for Luc's go-ahead. The code gate of `fa dcf attribute` (1019078) continues.
