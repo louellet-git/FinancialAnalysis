@@ -19,3 +19,7 @@ Done: Haiku for `document-reviewer`, `data-quality-analyst` and `test-engineer` 
 ## 2026-11-20 23:22 UTC (chat)
 Words: "Don't over commit to one model, since the scope of the job will change is what I meant. Tell the tech that. Keep the rule lean and not a need but permission to."
 Done: the three agent files are Sonnet again; `docs/TEAMS.md` line 4 gives the permission to choose a different model for one run. A message to the Head of Technology for `chiefs/ORIENTATION.md`, section 3.
+
+## 2026-11-21 01:47 UTC (dialog)
+Words: two answers: "Yes, start" (the model-documenter writes the 5 NVDA assumption records from the next draft) and "Open it" (one pull request for the document changes of this branch).
+Done: the records start with the next NVDA draft; the branch gets a document review, then one pull request.
