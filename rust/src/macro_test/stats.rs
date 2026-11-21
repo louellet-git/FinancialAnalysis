@@ -270,4 +270,10 @@ mod tests {
         }
         assert!((p[3] - p2[3]).abs() > 1.0);
     }
+
+    /// The design value of the Newey-West lag is 8 (rule 5; record A-161).
+    #[test]
+    fn nw_lag_is_the_design_value() {
+        assert_eq!(NW_LAG, 8);
+    }
 }

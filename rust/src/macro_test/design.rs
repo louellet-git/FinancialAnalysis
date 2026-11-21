@@ -31,16 +31,16 @@ fn m0_names() -> Vec<String> {
     ["intercept", "ret_w", "ret_w^2", "dzero10"].map(String::from).to_vec()
 }
 
-/// Main test rows: M1 block is dVIX, dNFCI. `y` is the S1 change.
+/// Main test rows: M1 block is dVIX (record R2: no NFCI). `y` is the S1 change.
 pub fn test_rows(weeks: &[Week]) -> Rows {
     let ks: Vec<&Week> = weeks.iter().filter(|w| w.test_ok()).collect();
     Rows {
         fridays: ks.iter().map(|w| w.friday).collect(),
         y: ks.iter().map(|w| w.y.unwrap_or(f64::NAN)).collect(),
         x0: ks.iter().map(|w| m0_row(w)).collect(),
-        block: ks.iter().map(|w| vec![w.dvix.unwrap_or(f64::NAN), w.dnfci.unwrap_or(f64::NAN)]).collect(),
+        block: ks.iter().map(|w| vec![w.dvix.unwrap_or(f64::NAN)]).collect(),
         x0_names: m0_names(),
-        block_names: ["dVIX", "dNFCI"].map(String::from).to_vec(),
+        block_names: ["dVIX"].map(String::from).to_vec(),
     }
 }
 
@@ -77,12 +77,18 @@ pub struct Eval {
 }
 
 /// `y`, `p0`, `p1` are for the OOS weeks only.
-pub fn evaluate(y: &[f64], p0: &[f64], p1: &[f64]) -> Eval {
+pub fn evaluate(y: &[f64], p0: &[f64], p1: &[f64]) -> Result<Eval, String> {
     let sse = |p: &[f64]| y.iter().zip(p).map(|(a, b)| (a - b).powi(2)).sum::<f64>();
     let (sse0, sse1) = (sse(p0), sse(p1));
+    if sse0 <= 0.0 || !sse0.is_finite() {
+        return Err(format!("M0 has an out-of-sample SSE of {sse0}: the gain is not defined; the test stops, no verdict"));
+    }
     let gain = 1.0 - sse1 / sse0;
+    if !gain.is_finite() {
+        return Err(format!("the gain of M1 over M0 is not finite (SSE M0 {sse0}, SSE M1 {sse1}); the test stops, no verdict"));
+    }
     let (cw_t, cw_p) = clark_west(y, p0, p1, NW_LAG);
-    Eval { sse0, sse1, gain, cw_t, cw_p, yes: cw_p < CW_P_MAX && gain >= GAIN_MIN }
+    Ok(Eval { sse0, sse1, gain, cw_t, cw_p, yes: cw_p < CW_P_MAX && gain >= GAIN_MIN })
 }
 
 fn join(x0: &[Vec<f64>], block: &[Vec<f64>]) -> Vec<Vec<f64>> {
@@ -113,7 +119,7 @@ pub fn placebo(rows: &Rows, start: usize, p0: &[f64]) -> Result<Placebo, String>
     for s in (SHIFT_MIN..=SHIFT_MAX).flat_map(|s| [s, -s]) {
         let x1 = join(&rows.x0, &shifted(&rows.block, s));
         let p1 = expanding_preds(&x1, &rows.y, start).ok_or("placebo fit failed (singular)")?;
-        let e = evaluate(yo, p0, &p1);
+        let e = evaluate(yo, p0, &p1)?;
         gains.push(e.gain);
         if e.yes {
             yes_shifts.push(s);
@@ -151,11 +157,14 @@ fn insample(x: &[Vec<f64>], y: &[f64], names: &[String]) -> Result<InSample, Str
     Ok(InSample { r2: f.r2, coefs: names.iter().enumerate().map(|(i, n)| Coef { name: n.clone(), beta: f.beta[i], t_nw: f.beta[i] / se[i] }).collect() })
 }
 
-fn top5_share(e: &[f64]) -> f64 {
+fn top5_share(e: &[f64]) -> Result<f64, String> {
     let mut s: Vec<f64> = e.iter().map(|v| v * v).collect();
     let tot: f64 = s.iter().sum();
+    if tot <= 0.0 || !tot.is_finite() {
+        return Err(format!("the out-of-sample SSE is {tot}: the share of the largest weeks is not defined; the test stops, no verdict"));
+    }
     s.sort_by(|a, b| b.total_cmp(a));
-    s.iter().take(5).sum::<f64>() / tot
+    Ok(s.iter().take(5).sum::<f64>() / tot)
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -195,7 +204,7 @@ pub fn run_block(rows: &Rows) -> Result<Block, String> {
     let p0 = expanding_preds(&rows.x0, &rows.y, TRAIN).ok_or("M0 expanding fit failed (singular)")?;
     let p1 = expanding_preds(&x1, &rows.y, TRAIN).ok_or("M1 expanding fit failed (singular)")?;
     let yo = &rows.y[TRAIN..];
-    let ev = evaluate(yo, &p0, &p1);
+    let ev = evaluate(yo, &p0, &p1)?;
     let sse_zero: f64 = yo.iter().map(|v| v * v).sum();
     let mut csum: f64 = rows.y[..TRAIN].iter().sum();
     let mut sse_mean = 0.0;
@@ -224,8 +233,8 @@ pub fn run_block(rows: &Rows) -> Result<Block, String> {
             gain_m1_over_m0: ev.gain,
             cw_t: ev.cw_t,
             cw_p_one_sided: ev.cw_p,
-            top5_sse_share_m0: top5_share(&e0),
-            top5_sse_share_m1: top5_share(&e1),
+            top5_sse_share_m0: top5_share(&e0)?,
+            top5_sse_share_m1: top5_share(&e1)?,
         },
     })
 }
@@ -259,7 +268,6 @@ mod tests {
         let ret = z(n);
         let dz = z(n);
         let mut dvix = z(n);
-        let dnfci = z(n);
         let noise = z(n);
         let y: Vec<f64> = (0..n).map(|t| 0.3 * ret[t] + 0.2 * dz[t] + link * dvix[t] + 0.5 * noise[t]).collect();
         if shuffle {
@@ -270,9 +278,9 @@ mod tests {
             fridays: (0..n as i64).map(|t| 17_900 + 7 * t).collect(),
             y,
             x0: (0..n).map(|t| vec![1.0, ret[t], ret[t] * ret[t], dz[t]]).collect(),
-            block: (0..n).map(|t| vec![dvix[t], dnfci[t]]).collect(),
+            block: (0..n).map(|t| vec![dvix[t]]).collect(),
             x0_names: m0_names(),
-            block_names: vec!["dVIX".into(), "dNFCI".into()],
+            block_names: vec!["dVIX".into()],
         }
     }
 
@@ -319,5 +327,42 @@ mod tests {
         assert_eq!((b.oos.n_kept, b.oos.n_train, b.oos.n_oos), (320, 104, 216));
         assert!(b.oos.m0_r2_vs_zero > 0.1);
         assert!(b.oos.top5_sse_share_m0 > 5.0 / 216.0);
+    }
+
+    /// If M0 fits the OOS weeks exactly (SSE 0), the gain is not defined: an error, no verdict.
+    #[test]
+    fn zero_sse_stops_without_verdict() {
+        let y = [1.0, 2.0, 3.0];
+        let e = evaluate(&y, &y, &[1.5, 2.5, 3.5]).unwrap_err();
+        assert!(e.contains("no verdict"), "{e}");
+        assert!(top5_share(&[0.0, 0.0]).unwrap_err().contains("no verdict"));
+        // A normal case still works: SSE0 = 3 x 0.25 = 0.75, SSE1 = 0, gain 1.
+        let ok = evaluate(&y, &[1.5, 2.5, 3.5], &y).unwrap();
+        assert!((ok.gain - 1.0).abs() < 1e-12 && (ok.sse0 - 0.75).abs() < 1e-12);
+    }
+
+    /// A dVIX that is the same in every week is collinear with the intercept: a clear error, no verdict.
+    #[test]
+    fn constant_dvix_is_singular() {
+        let mut r = make(5, 320, 0.0, false);
+        r.block = vec![vec![0.7]; 320];
+        let e = run_primary(&r).unwrap_err();
+        assert!(e.contains("singular"), "{e}");
+    }
+
+    /// The placebo block has one column (dVIX): the shifted M1 has the 4 columns of M0 plus 1,
+    /// and the 80 shifts all run.
+    #[test]
+    fn placebo_block_has_one_column() {
+        let r = make(9, 320, 0.0, false);
+        assert_eq!(r.block[0].len(), 1);
+        assert_eq!(r.block_names, ["dVIX"]);
+        let s = shifted(&r.block, 13);
+        assert!(s.iter().all(|row| row.len() == 1));
+        assert_eq!(join(&r.x0, &s)[0].len(), 5);
+        // Row 0 gets the block of row 13.
+        assert_eq!(s[0][0], r.block[13][0]);
+        let p0 = expanding_preds(&r.x0, &r.y, TRAIN).unwrap();
+        assert_eq!(placebo(&r, TRAIN, &p0).unwrap().runs, 80);
     }
 }

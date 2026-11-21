@@ -4,7 +4,7 @@
 //! Choices where the design is unclear (accepted by the coordinator, 2026-11-21):
 //! 1. `--list` is a label only; run the command once for each list with its series file.
 //! 2. A missing `ret_w` drops only its own week. Rule 6 (drop w and w+1) is applied to the levels
-//!    s1, zero10, VIX, NFCI, DFII10, T10YIE (and SPY for rule 6.7).
+//!    s1, zero10, VIX, DFII10, T10YIE (and SPY for rule 6.7).
 //! 3. DFII10 and T10YIE use the daily rule of VIX: last non-missing value on or before the anchor, at most 3 days old.
 //! 4. The switch week is the row whose `curve_source` differs from the row before; week w+1 stays.
 //! 5. The sensitivity run flags the weeks of the window as dropped; neighbouring changes still use the levels.
@@ -13,7 +13,8 @@
 //! 7. Clark-West p from the normal, upper tail; a variance that is not positive gives p = 1. The placebo
 //!    shifts over the kept weeks in time order, applied to all kept weeks.
 //! 8. Columns are scaled inside the OLS for numerics only.
-//! 9. The test has no credit spread: M1 = M0 + dVIX + dNFCI (decision of 2026-11-21, before any run).
+//! 9. M1 = M0 + dVIX. No credit spread (record R1) and no NFCI (record R2: the Chicago Fed terms do not permit a
+//!    stored copy). Records: `analysis/macro/2026-11-21-premium-macro-design.md`.
 //!
 //! Added with rules 7.2, 6.3, 6.4, 6.7 (also accepted): the stress R2 uses the residuals of one full-sample fit
 //! (R2 of a subset = 1 - SSE/SST of the subset); the variance split uses the kept weeks with all 8 S2 columns
@@ -36,21 +37,20 @@ use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
 pub const USAGE: &str = "\
-fa macro premium-test --series FILE --nfci FILE [--dfii10 FILE] [--t10yie FILE]
+fa macro premium-test --series FILE [--dfii10 FILE] [--t10yie FILE]
                       [--cache DIR] [--out FILE]
                       [--exclude-from YYYY-MM-DD --exclude-to YYYY-MM-DD] [--list sp500|sp100]
 
 The frozen test of the weekly change of the implied premium S1 (design premium-design-55f2e92).
   --series FILE   CSV of `fa dcf premium-series` (fixed header; decimals; empty field = missing)
   --cache DIR     data store, default data/raw (vix/VIX_History.csv, SPY/prices.json)
-  --nfci FILE     FRED NFCI CSV (required)
   --dfii10 FILE, --t10yie FILE  FRED CSV (optional; without them the descriptive block prints 'not run')
                   FRED files: header observation_date,<ID> or DATE,value; '.' or an empty value is missing
   --out FILE      JSON of the results only (no weekly series)
   --exclude-from/--exclude-to  also run the sensitivity without the seen weeks (both flags, closed window)
   --list          label of the list of the series file (default sp500); run once for each list
-Models: M0 = intercept, ret_w, ret_w^2, dzero10. M1 = M0 + dVIX, dNFCI. Expanding-window OLS,
-first fit on 104 kept weeks. One test: Clark-West (one-sided, Newey-West lag 8). Placebo: 80 circular shifts.
+Models: M0 = intercept, ret_w, ret_w^2, dzero10. M1 = M0 + dVIX (records R1, R2). Expanding-window OLS,
+first fit on 104 kept weeks. One test: Clark-West (one-sided, Newey-West lag 8). Placebo: 80 circular shifts of the dVIX column.
 Answer: yes, or no share shown. Rates are decimals in the series file; y and dzero10 are in percentage points.";
 
 #[derive(Debug, Serialize)]
@@ -180,8 +180,8 @@ fn counts_text(out: &mut String, c: &Counts) {
     let _ = writeln!(out, "  sample weeks {} | kept {} | dropped {}", c.sample_weeks, c.kept, c.dropped);
     let _ = writeln!(
         out,
-        "  drop reasons (overlap): switch {} | excluded {} | no y {} | no ret {} | no dzero10 {} | no dVIX {} | no dNFCI {}",
-        c.drop_switch, c.drop_excluded, c.drop_no_y, c.drop_no_ret, c.drop_no_dzero10, c.drop_no_vix, c.drop_no_nfci
+        "  drop reasons (overlap): switch {} | excluded {} | no y {} | no ret {} | no dzero10 {} | no dVIX {}",
+        c.drop_switch, c.drop_excluded, c.drop_no_y, c.drop_no_ret, c.drop_no_dzero10, c.drop_no_vix
     );
     let _ = writeln!(out, "  switch weeks (dropped from all models): {}", if c.switch_weeks.is_empty() { "none".into() } else { c.switch_weeks.join(", ") });
     for s in &c.series {
@@ -192,7 +192,7 @@ fn counts_text(out: &mut String, c: &Counts) {
 pub fn report_text(r: &Results) -> String {
     let mut o = String::new();
     let _ = writeln!(o, "Premium test ({}) | list {} | file {} | Fridays {} to {}", r.design, r.list, r.series_file, r.first_friday, r.last_friday);
-    let _ = writeln!(o, "A statistical link, not a cause and not a trade signal. Survivorship: the lists are today's lists. NFCI is the latest vintage.");
+    let _ = writeln!(o, "A statistical link, not a cause and not a trade signal. Survivorship: the lists are today's lists.");
     let _ = writeln!(o, "\nSANITY CHECK (rule 7.2): correlation of s2_rates with the change of zero10 over {} kept weeks = {} (must be below {})", r.sanity.n, f(r.sanity.corr_s2_rates_dzero10), extras::SANITY_MAX_CORR);
     let Some(primary) = &r.primary else {
         let _ = writeln!(o, "sanity check failed: the bridge has a defect; the test stops");
@@ -268,26 +268,71 @@ pub fn report_text(r: &Results) -> String {
     o
 }
 
+/// An optional file that cannot be used is named in the report next to the item it feeds. The exit code
+/// stays 0: the main test does not use these files.
+fn mark_optional_not_run(r: &mut Results, errors: &[String]) {
+    if errors.is_empty() {
+        return;
+    }
+    r.real_bei_description = None;
+    r.real_bei_note = Some(format!("NOT RUN: {}. The exit code stays 0 because the main test is still valid.", errors.join("; ")));
+}
+
 fn flag(args: &[String], name: &str) -> Option<String> {
     args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).cloned()
 }
 
+/// The flags that take a value.
+const VALUE_FLAGS: [&str; 8] = ["--series", "--cache", "--out", "--exclude-from", "--exclude-to", "--list", "--dfii10", "--t10yie"];
+
+/// An error of the command. A usage error prints the usage and exits 64; a data error prints its own
+/// message and exits 65 (EX_DATAERR).
+#[derive(Debug, PartialEq)]
+pub enum CmdError {
+    Usage(String),
+    Data(String),
+}
+
+/// Reject an unknown flag, a stray word, a flag without a value, and a flag whose value is another flag.
+fn check_args(a: &[String]) -> Result<(), String> {
+    let mut i = 0;
+    while i < a.len() {
+        let x = &a[i];
+        if !VALUE_FLAGS.contains(&x.as_str()) {
+            return Err(if x.starts_with('-') { format!("unknown flag '{x}'") } else { format!("unexpected argument '{x}'") });
+        }
+        match a.get(i + 1) {
+            None => return Err(format!("{x} needs a value")),
+            Some(v) if v.starts_with("--") => return Err(format!("{x} needs a value, but the next word is the flag '{v}'")),
+            Some(_) => {}
+        }
+        i += 2;
+    }
+    Ok(())
+}
+
 /// `fa macro premium-test ...` (the arguments after `macro`). Returns the exit code.
-pub fn command(repo: &Path, args: &[String]) -> Result<i32, String> {
+pub fn command(repo: &Path, args: &[String]) -> Result<i32, CmdError> {
+    command_inner(repo, args)
+}
+
+fn command_inner(repo: &Path, args: &[String]) -> Result<i32, CmdError> {
+    use CmdError::{Data, Usage};
     match args.first().map(String::as_str) {
         Some("premium-test") => {}
         Some("-h" | "--help") | None => {
             println!("{USAGE}");
             return Ok(0);
         }
-        Some(o) => return Err(format!("unknown macro command '{o}' (premium-test)")),
+        Some(o) => return Err(Usage(format!("unknown macro command '{o}' (premium-test)"))),
     }
     let a = &args[1..];
     if a.iter().any(|x| x == "-h" || x == "--help") {
         println!("{USAGE}");
         return Ok(0);
     }
-    let Some(series) = flag(a, "--series") else { return Err("premium-test needs --series FILE".into()) };
+    check_args(a).map_err(Usage)?;
+    let Some(series) = flag(a, "--series") else { return Err(Usage("premium-test needs --series FILE".into())) };
     let path = |name: &str, default: &str| -> PathBuf {
         let p = PathBuf::from(flag(a, name).unwrap_or_else(|| default.into()));
         if p.is_absolute() {
@@ -299,38 +344,36 @@ pub fn command(repo: &Path, args: &[String]) -> Result<i32, String> {
     let cache = path("--cache", "data/raw");
     let list = flag(a, "--list").unwrap_or_else(|| "sp500".into());
     if list != "sp500" && list != "sp100" {
-        return Err(format!("bad --list '{list}' (sp500 or sp100)"));
+        return Err(Usage(format!("bad --list '{list}' (sp500 or sp100)")));
     }
     let excl = match (flag(a, "--exclude-from"), flag(a, "--exclude-to")) {
         (None, None) => None,
         (Some(x), Some(y)) => {
-            let (x, y) = (parse_date(&x)?, parse_date(&y)?);
+            let (x, y) = (parse_date(&x).map_err(Usage)?, parse_date(&y).map_err(Usage)?);
             if x > y {
-                return Err("--exclude-from is after --exclude-to".into());
+                return Err(Usage("--exclude-from is after --exclude-to".into()));
             }
             Some((x, y))
         }
-        _ => return Err("--exclude-from and --exclude-to go together".into()),
+        _ => return Err(Usage("--exclude-from and --exclude-to go together".into())),
     };
     let series_path = {
         let p = PathBuf::from(&series);
         if p.is_absolute() {
             p
         } else {
-            std::env::current_dir().map_err(|e| e.to_string())?.join(p)
+            std::env::current_dir().map_err(|e| Data(e.to_string()))?.join(p)
         }
     };
-    let text = read(&series_path)?;
-    let need = |name: &str, id: &str| -> Result<data::Daily, String> {
-        let p = flag(a, name).ok_or(format!("premium-test needs {name} FILE"))?;
-        read(&PathBuf::from(flag(a, name).unwrap_or_default())).and_then(|t| parse_fred(&t, id)).map_err(|e| format!("{name} {p}: {e}"))
-    };
-    let optional = |name: &str, id: &str| -> Option<data::Daily> {
-        flag(a, name)?;
-        match read(&PathBuf::from(flag(a, name).unwrap_or_default())).and_then(|t| parse_fred(&t, id)) {
+    let text = read(&series_path).map_err(Data)?;
+    let mut optional_errors: Vec<String> = Vec::new();
+    let mut optional = |name: &str, id: &str| -> Option<data::Daily> {
+        let file = flag(a, name)?;
+        match read(&PathBuf::from(&file)).and_then(|t| parse_fred(&t, id)) {
             Ok(d) => Some(d),
             Err(e) => {
                 eprintln!("note: {e}; the descriptive block is not run");
+                optional_errors.push(format!("{name} {file}: {e}"));
                 None
             }
         }
@@ -345,17 +388,17 @@ pub fn command(repo: &Path, args: &[String]) -> Result<i32, String> {
     };
     let ext = External {
         spy,
-        vix: read(&cache.join("vix/VIX_History.csv")).and_then(|t| parse_vix(&t))?,
-        nfci: need("--nfci", "NFCI")?,
+        vix: read(&cache.join("vix/VIX_History.csv")).and_then(|t| parse_vix(&t)).map_err(Data)?,
         dfii,
         bei,
     };
     let name = series_path.file_name().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
-    let res = run(&text, &ext, &list, &name, excl)?;
+    let mut res = run(&text, &ext, &list, &name, excl).map_err(Data)?;
+    mark_optional_not_run(&mut res, &optional_errors);
     print!("{}", report_text(&res));
     if let Some(out) = flag(a, "--out") {
-        let json = serde_json::to_string_pretty(&res).map_err(|e| e.to_string())?;
-        std::fs::write(&out, json + "\n").map_err(|e| format!("cannot write {out}: {e}"))?;
+        let json = serde_json::to_string_pretty(&res).map_err(|e| Data(e.to_string()))?;
+        std::fs::write(&out, json + "\n").map_err(|e| Data(format!("cannot write {out}: {e}")))?;
         println!("\nwrote {out}");
     }
     Ok(if res.primary.is_some() { 0 } else { 1 })
@@ -374,10 +417,53 @@ mod tests {
 2019-01-11,2019-01-11,gsw,x,0.0255,0.0207,,,0.01,,,,,,,,,
 ";
         let e = parse_vix("DATE,OPEN,HIGH,LOW,CLOSE\n").unwrap();
-        let ext = External { vix: e, nfci: parse_fred("observation_date,NFCI\n", "NFCI").unwrap(), dfii: None, bei: None, spy: None };
+        let ext = External { vix: e, dfii: None, bei: None, spy: None };
         let r = run(text, &ext, "sp500", "t.csv", None).unwrap();
         assert!(r.primary.is_none() && !r.sanity.passed && r.sanity.n == 0);
         assert!(report_text(&r).contains("sanity check failed: the bridge has a defect; the test stops"));
         assert!(serde_json::to_string(&r).unwrap().contains("\"primary\":null"));
+    }
+
+    fn args(v: &[&str]) -> Vec<String> {
+        v.iter().map(|s| s.to_string()).collect()
+    }
+
+    /// Item 2: unknown flag, flag without a value (last or before another flag), a stray word.
+    #[test]
+    fn flags_are_checked() {
+        assert!(check_args(&args(&["--series", "a.csv", "--list", "sp100"])).is_ok());
+        assert!(check_args(&args(&["--series", "a.csv", "--bogus", "x"])).unwrap_err().contains("unknown flag '--bogus'"));
+        assert!(check_args(&args(&["--series", "a.csv", "--nfci", "n.csv"])).unwrap_err().contains("unknown flag"));
+        assert!(check_args(&args(&["--series", "a.csv", "--out"])).unwrap_err().contains("--out needs a value"));
+        assert!(check_args(&args(&["--series", "--out", "o.json"])).unwrap_err().contains("next word is the flag '--out'"));
+        assert!(check_args(&args(&["--series", "a.csv", "stray"])).unwrap_err().contains("unexpected argument 'stray'"));
+    }
+
+    /// Item 4: a bad flag is a usage error; a missing file is a data error.
+    #[test]
+    fn usage_and_data_errors_differ() {
+        let repo = std::env::temp_dir();
+        let u = command(&repo, &args(&["premium-test", "--series", "a.csv", "--bogus", "1"])).unwrap_err();
+        assert!(matches!(u, CmdError::Usage(_)), "{u:?}");
+        let u = command(&repo, &args(&["premium-test"])).unwrap_err();
+        assert!(matches!(u, CmdError::Usage(_)), "{u:?}");
+        let d = command(&repo, &args(&["premium-test", "--series", "/no/such/file.csv"])).unwrap_err();
+        assert!(matches!(d, CmdError::Data(ref m) if m.contains("cannot read")), "{d:?}");
+    }
+
+    /// Item 6: a bad optional file is named in the report next to its item; the main result stays.
+    #[test]
+    fn bad_optional_file_is_named_in_the_report() {
+        let text = "friday,anchor,curve_source,curve_date,zero10,s1,n_value,n_list,ret_w,n_ret,s2_facts,s2_time,s2_rates,s2_premium,s2_growth,s2_residual,s2_nomodel,s2_change
+2019-01-04,2019-01-04,gsw,x,0.0260,0.0210,,,0.01,,,,,,,,,
+";
+        let ext = External { vix: parse_vix("DATE,OPEN,HIGH,LOW,CLOSE\n").unwrap(), dfii: None, bei: None, spy: None };
+        let mut r = run(text, &ext, "sp500", "t.csv", None).unwrap();
+        let err = parse_fred("bad,header\n", "DFII10").unwrap_err();
+        mark_optional_not_run(&mut r, &[format!("--dfii10 d.csv: {err}")]);
+        let note = r.real_bei_note.clone().unwrap();
+        assert!(note.contains("NOT RUN: --dfii10 d.csv: DFII10 file: unexpected header 'bad,header'"), "{note}");
+        assert!(note.contains("exit code stays 0"));
+        assert!(serde_json::to_string(&r).unwrap().contains("NOT RUN: --dfii10"));
     }
 }
