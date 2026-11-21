@@ -49,3 +49,6 @@ The public copy of a split table from the Alpaca corporate-actions API: allowed 
 
 ## 2026-11-21 14:37 UTC (my decision; no word of the person)
 Point-in-time S&P 500 members (fja05680/sp500): kept out of the public store (the base file comes from a book with no stated redistribution right); each head fetches a pinned commit into a local cache, checked by SHA-256 and logged in each run. The person can reverse this.
+
+## 2026-11-21 15:27 UTC (owner word, relayed by the Head of Fundamental Research)
+Words: "Hold off on writing the doc until I give my go ahead on the results". Effect: the document gate of the sp100 week attribution (validator, document reviewer, auditor) waits for Luc's go-ahead. The code gate of `fa dcf attribute` (1019078) continues.
