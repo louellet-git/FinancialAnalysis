@@ -12,6 +12,14 @@ created: 2026-11-21
 requested_by: louellet-git
 acceptance: (1) A research note on how quant firms keep and monitor no-arbitrage relations, with sources. (2) A register (one file for each relation: statement, formula, data, tolerance at bid and ask, source, check command, status). (3) One command runs every relation on the newest stored data, writes one dated report, and marks each break; it runs each market day without a person. Each step is small and shows value before the next.
 ---
+## What the break count means (first; Head of Staff question, 2026-11-21)
+The 143 breaks of SPX 2026-11-20 are a measure of the quote data, not of the market. The check already uses
+executable prices (it buys at the ask and sells at the bid). A cost for each break removes few of them
+(`fa options check SPX --date 2026-11-20 --rate 0.04`, size bands, USD for one share): 143 with no cost; 131
+above $0.10 a share ($10 a contract); 59 above $1 a share. The largest are in long-dated, deep in-the-money series
+(2027 expiries, prices above $400). The quotes are Alpaca indicative, not exchange quotes (NBBO), and have no quote
+time. Thus a break is a measurement of the feed. A real arbitrage claim needs exchange quotes at one moment.
+
 Owner request, 2026-11-21 (`chiefs/louellet-git/quant/RECORD.md`): a list of arbitrage relations "that should
 generally always be true", code that runs autonomously to check them, research of how quant firms do this first,
 then a fit to our systems (and new parts where needed).
