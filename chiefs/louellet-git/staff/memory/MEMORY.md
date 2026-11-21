@@ -46,8 +46,7 @@ Rules: `chiefs/ORIENTATION.md`, sections 1, 5 and 8. Decisions of the person: `.
   until some days of actual numbers exist.
 - The real weekly figure: `list_events` on my own session, kinds `rate_limit_event`, limit 100, read
   `unifiedWindows.seven_day.utilization` and `resetsAt`. One call. 2026-11-21 18:49 UTC: 71%.
-- Until they exist: the hand checks of the board-check ticket, only when I look at the board for a
-  different reason.
+- Until they exist: the hand checks of the board-check ticket, when I look at the board.
 
 ## Watch list
 - E1 (stock trades) is on hold: no rule passed, T1 fails, and the person paused the fix for the week study.
@@ -58,4 +57,3 @@ Rules: `chiefs/ORIENTATION.md`, sections 1, 5 and 8. Decisions of the person: `.
 - Rule point, seen 2026-11-21: six tickets are on a branch only, not on main (arb-invariants, cboe-off,
   recon-lasting, revenue-old-tags, selftest-golden, trade-grids). "Ticket first" asks for the ticket on
   main before the work. Say it once to Quant and Technology at their next done message; no separate note.
-- E6.S4 (controls of orders and of data terms) has no ticket yet (proposal of Quality and Risk).
