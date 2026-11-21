@@ -1,10 +1,13 @@
 # A-162: the "yes" thresholds of the premium test
 
-Updated: 2026-11-21. Code: branch econ/premium-test-cmd.
+Updated: 2026-11-21. Code: branch econ/premium-test-cmd. Model document: `docs/models/premium-macro-test.md`.
 
 ## Choice
-The answer is "yes" only if the one-sided Clark-West p is below 0.05 AND the gain of M1 over M0 is at
-least 0.05 (5%, no unit: 1 - SSE(M1) / SSE(M0)). If not, the answer is "no share shown".
+The answer is "yes" only if both rules hold:
+1. The one-sided Clark-West p is below 0.05.
+2. The gain of M1 over M0 is at least 0.05 (5%, no unit: 1 - SSE(M1) / SSE(M0)).
+
+If one rule does not hold, the answer is "no share shown".
 
 ## Where used
 | Model | File | Parameter name |

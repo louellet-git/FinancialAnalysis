@@ -1,6 +1,6 @@
 # A-160: training window of the premium test
 
-Updated: 2026-11-21. Code: branch econ/premium-test-cmd.
+Updated: 2026-11-21. Code: branch econ/premium-test-cmd. Model document: `docs/models/premium-macro-test.md`.
 
 ## Choice
 The first fit uses the first 104 kept weeks from 2019-01-04. The first out-of-sample week is the 105th kept
@@ -20,8 +20,8 @@ week (about 2021-01). Later weeks use all earlier kept weeks (expanding window).
 
 ## Why this choice
 The sample starts on 2019-01-04 (design rule 3). The reason: the beta is 1 for each name until about 2018-11.
-Design rule 3 and rule 5.1 (frozen at 55f2e92). The design states 104 weeks (two years) and that March
-2020 is in training only, so the OOS window has about 310 weeks.
+See design rule 3 and rule 5.1 (frozen at 55f2e92). The design states 104 weeks (two years).
+It also states that March 2020 is in training only. So the OOS window has about 310 weeks.
 
 ## Effect on the result
 Not known. No sensitivity run is recorded. To test: change `TRAIN`, rebuild, run the same command on the same

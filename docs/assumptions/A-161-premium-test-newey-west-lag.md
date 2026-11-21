@@ -1,6 +1,6 @@
 # A-161: Newey-West lag of the premium test
 
-Updated: 2026-11-21. Code: branch econ/premium-test-cmd.
+Updated: 2026-11-21. Code: branch econ/premium-test-cmd. Model document: `docs/models/premium-macro-test.md`.
 
 ## Choice
 Lag 8 weeks, with Bartlett weights 1 - j/(lag+1). It sets the variance of the Clark-West statistic. The

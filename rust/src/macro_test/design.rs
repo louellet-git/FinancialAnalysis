@@ -350,6 +350,32 @@ mod tests {
         assert!(e.contains("singular"), "{e}");
     }
 
+    /// With p0 = 0 and p1 = 1 the Clark-West term is f = 2y. The expected t is computed with a double sum
+    /// over all pairs and the Bartlett weight (a different method from `nw_mean_t`), at lag 8 and at lag 4.
+    #[test]
+    fn evaluate_uses_lag_8() {
+        let y = [1.0, 2.0, 1.5, 0.5, -1.0, -2.0, -1.5, 0.0, 1.0, 2.5, 2.0, 0.5, -0.5, -1.5];
+        let n = y.len();
+        let t_at = |lag: usize| {
+            let f: Vec<f64> = y.iter().map(|v| 2.0 * v).collect();
+            let m = f.iter().sum::<f64>() / n as f64;
+            let mut var = 0.0;
+            for s in 0..n {
+                for t in 0..n {
+                    let k = s.abs_diff(t);
+                    if k <= lag {
+                        var += (1.0 - k as f64 / (lag as f64 + 1.0)) * (f[s] - m) * (f[t] - m);
+                    }
+                }
+            }
+            m / (var / (n * n) as f64).sqrt()
+        };
+        let (t8, t4) = (t_at(8), t_at(4));
+        assert!((t8 - t4).abs() > 0.05, "{t8} {t4}");
+        let e = evaluate(&y, &vec![0.0; n], &vec![1.0; n]).unwrap();
+        assert!((e.cw_t - t8).abs() < 1e-9, "{} {t8}", e.cw_t);
+    }
+
     /// The placebo block has one column (dVIX): the shifted M1 has the 4 columns of M0 plus 1,
     /// and the 80 shifts all run.
     #[test]

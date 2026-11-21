@@ -1,6 +1,6 @@
 # A-164: ret_w squared in the base model M0
 
-Updated: 2026-11-21. Code: branch econ/premium-test-cmd.
+Updated: 2026-11-21. Code: branch econ/premium-test-cmd. Model document: `docs/models/premium-macro-test.md`.
 
 ## Choice
 M0 = intercept, ret_w, ret_w^2, dzero10. ret_w is the median weekly price return of the list names

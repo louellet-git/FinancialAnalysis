@@ -1,6 +1,6 @@
 # A-167: sanity limit of the bridge in the premium test
 
-Updated: 2026-11-21. Code: branch econ/premium-test-cmd.
+Updated: 2026-11-21. Code: branch econ/premium-test-cmd. Model document: `docs/models/premium-macro-test.md`.
 
 ## Choice
 Before the primary test, the correlation of `s2_rates` with the change of the 10-year zero yield (zero10)

@@ -42,9 +42,10 @@ fa macro premium-test --series FILE [--dfii10 FILE] [--t10yie FILE]
                       [--exclude-from YYYY-MM-DD --exclude-to YYYY-MM-DD] [--list sp500|sp100]
 
 The frozen test of the weekly change of the implied premium S1 (design premium-design-55f2e92).
-  --series FILE   CSV of `fa dcf premium-series` (fixed header; decimals; empty field = missing)
-  --cache DIR     data store, default data/raw (vix/VIX_History.csv, SPY/prices.json)
+  --series FILE   CSV of `fa dcf premium-series` (branch claude/premium-series, not yet on main; fixed header; decimals; empty field = missing)
+  --cache DIR     data store, default <repo>/data/raw (repo = FA_REPO, else the repository that holds the crate; a relative path is joined to it) (vix/VIX_History.csv, SPY/prices.json)
   --dfii10 FILE, --t10yie FILE  FRED CSV (optional; without them the descriptive block prints 'not run')
+                  --series, --dfii10 and --t10yie are paths relative to the current directory.
                   FRED files: header observation_date,<ID> or DATE,value; '.' or an empty value is missing
   --out FILE      JSON of the results only (no weekly series)
   --exclude-from/--exclude-to  also run the sensitivity without the seen weeks (both flags, closed window)
@@ -135,7 +136,14 @@ pub fn run(series_text: &str, ext: &External, list: &str, series_name: &str, exc
             Err(e) => (None, Some(format!("descriptive block not run: {e}"))),
         }
     } else {
-        (None, Some("descriptive block not run: DFII10 or T10YIE file not usable".into()))
+        let mut missing = Vec::new();
+        if ext.dfii.is_none() {
+            missing.push("DFII10 (--dfii10 FILE not given or not usable)");
+        }
+        if ext.bei.is_none() {
+            missing.push("T10YIE (--t10yie FILE not given or not usable)");
+        }
+        (None, Some(format!("descriptive block not run: {}", missing.join(", "))))
     };
     let sensitivity = excl.map(|(a, b)| {
         let (w2, c2) = build_weeks(&rows, ext, Some((a, b)));

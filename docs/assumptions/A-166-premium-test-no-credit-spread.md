@@ -1,11 +1,11 @@
 # A-166: BAA10Y and NFCI excluded, no credit spread and no financial-conditions index in the premium test
 
-Updated: 2026-11-21. Code: branch econ/premium-test-cmd.
+Updated: 2026-11-21. Code: branch econ/premium-test-cmd. Model document: `docs/models/premium-macro-test.md`.
 
 ## Choice
 M1 = M0 + dVIX. The credit spread (BAA10Y) and the index NFCI are not regressors. The placebo block is dVIX only.
-This follows design record R1 (2026-11-21, about 16:20 UTC, before any run; BAA10Y) and R2 (2026-11-21, about
-17:15 UTC, before any run; dNFCI). Before R2, M1 = M0 + dVIX + dNFCI.
+This follows two design records. R1 (2026-11-21, about 16:20 UTC, before any run) excludes BAA10Y.
+R2 (2026-11-21, about 17:15 UTC, before any run) excludes dNFCI. Before R2, M1 = M0 + dVIX + dNFCI.
 
 ## Where used
 | Model | File | Parameter name |
@@ -23,8 +23,8 @@ This follows design record R1 (2026-11-21, about 16:20 UTC, before any run; BAA1
 | Ask the Chicago Fed for written permission (R2) | An outward action of the owner. It delays the test. |
 
 ## Why this choice
-Design section 6, records R1 (commits e77f089 and bc7da33) and R2. The Head of Technology gave the data facts on
-2026-11-21 (the FRED terms; the Chicago Fed legal notice). No value of S1, y or a regressor was seen for this choice.
+`analysis/macro/2026-11-21-premium-macro-design.md`, section 6: R1 (main, e43eb9c, PR #145), R2 (this PR, cc5e0d5).
+The Head of Technology gave the data facts on 2026-11-21 (the FRED terms; the Chicago Fed legal notice). No value of S1, y or a regressor was seen for this choice.
 
 ## Effect on the result
 Not known. The limit that follows: "no share shown" says nothing about credit risk or about financial conditions.
