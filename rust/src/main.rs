@@ -275,6 +275,10 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
             Ok(code) => Ok(ExitCode::from(code as u8)),
             Err(e) => Ok(usage_error(&e)),
         },
+        Some("splits") => match financial_analysis::market::splits_cli::run(&fa.repo, &args[1..]) {
+            Ok(code) => Ok(ExitCode::from(code as u8)),
+            Err(e) => Ok(usage_error(&e)),
+        },
         Some("estimates") => match financial_analysis::market::estimates_cli::run_estimates(&fa.repo, &args[1..]) {
             Ok(code) => Ok(ExitCode::from(code as u8)),
             Err(e) => Ok(usage_error(&e)),
