@@ -20,7 +20,7 @@ quarterly rebalance, 10 bp on each traded value, price returns (no dividends). B
 
 ```bash
 C=data/raw; F=rust/target/release/fa; S=/tmp/bt; mkdir -p $S
-# the scored list: the tickers with the standard template (432 of 503 in sp500.txt)
+# the scored list: the tickers with the standard template (432 of 503 in sp500.txt; 431 run, because one has no SEC facts)
 $F dcf screen --tickers-file rust/mapcheck/universe/sp500.txt --cache $C --as-of 2026-11-19 --out $S/screen.csv
 awk -F, 'NR>1 && $3=="standard"{print $1}' $S/screen.csv > $S/scored.txt
 # the out-of-sample parameter table: fiscal years up to 2016 only (new option --cut)
@@ -92,7 +92,9 @@ does not choose the strategy.
 
 - Parameter table of runs B, D and R1: `fa dcf calibrate --cache data/raw --cut 2016 --no-bands` (fiscal years up
   to 2016 only; the first rebalance is 2018-01-02), SHA-256
-  `3a74b20f452f1878d692ab92262255a1811c21f0a057657da61d03c787e3acce`.
+  `3a74b20f452f1878d692ab92262255a1811c21f0a057657da61d03c787e3acce` (the file; it holds a `command =` line with the
+  `--out` path). Without that line (`grep -v "^command = " FILE | sha256sum`):
+  `41443b661454247292bfb217c65d17b214e0672b0d03d4cf2c6a136555233665`.
 - Truncation test (run D, 2026-11-21): a copy of the cache with the prices of SPY and of the scored list and the
   GSW curve cut before 2022-01-31 (the facts are linked; the vintages cut them by filing date), and the run D
   command with `--end 2022-01-31`. The 1,023 holding rows of the 17 rebalances before 2022-01-31 are the same
@@ -105,7 +107,7 @@ All on store `1804f48`, start 2018-01-01, seed 7, 300 paths. Exploratory (no com
 harness run after the harness gate counts if a number differs.
 1. value-rank, quarterly, `sp500.txt` (502 tickers), in-sample table: +4.86 a year over the equal weight of the 502.
 2. momentum, quarterly, `sp500.txt` (502): reference, not a variant of the value signal.
-3. A: value-rank, quarterly, scored list (432), in-sample table: +3.80.
+3. A: value-rank, quarterly, scored list (432 listed, 431 run), in-sample table: +3.80.
 4. momentum, quarterly, scored list: reference.
 5. B: value-rank, quarterly, scored list, table cut 2016: +2.91.
 6. B on `next500.txt` scored list (406): +3.22 (mean of years +2.11, t 0.25).
