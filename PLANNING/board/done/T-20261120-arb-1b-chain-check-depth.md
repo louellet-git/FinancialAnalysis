@@ -2,12 +2,13 @@
 id: T-20261120-arb-1b-chain-check-depth
 title: Make the chain check separate real breaks from bad quotes
 area: trading
-status: review
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: quant
 order: 1.3
 branch: claude/upbeat-cori-a4ykf5
+merged: 100
 created: 2026-11-20
 acceptance: `fa options check` gives the breaks in size bands, marks each quote that is far from its neighbours, uses the ask of a quote with bid 0, has the bounds call <= S and put <= K, and `--compare` has fixture tests (the real two-day run is in `T-20261120-arb-3-index-parity-box`, because the store has one day).
 ---
