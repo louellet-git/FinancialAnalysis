@@ -17,10 +17,11 @@ fn e<T>(m: impl Into<String>) -> R<T> {
 }
 
 pub const MARKET_USAGE: &str = "\
-fa dcf market --shiller FILE --out FILE [--long-real G] [--fade-years N]
+fa dcf market --shiller FILE --cpi FILE --out FILE [--long-real G] [--fade-years N]
   The equity risk premium that the S&P composite price implies under a dividend DCF with a linear fade, for each month.
   A measurement: the price is the input of the search, no model input comes from the price. Real terms (CPI).
   --shiller FILE   shiller_monthly.csv of the data store (macro/shiller)
+  --cpi FILE       CPIAUCNS.csv of the data store (macro/fred); needed for the rows from 1913 (the command fails without it)
   --out FILE       CSV: month, price_real, d_known_real, g0, rr, erp_implied, erp_gordon, estimate, status
   --long-real G    real growth after the fade (default 0.02, record A-001; the cap at the 10-year yield is not used)
   --fade-years N   years of the linear fade from g0 to G (default 10, at least 2)
@@ -139,26 +140,105 @@ pub fn solve_erp(d0: f64, g0: f64, l: f64, n: usize, rr: f64, price: f64) -> Res
     Ok(0.5 * (lo + hi))
 }
 
-/// The rows of the measurement. Point in time: see the model document.
-pub fn compute(obs: &[Obs], l: f64, n: usize) -> Vec<MarketRow> {
-    let idx: HashMap<(i32, u32), usize> = obs.iter().enumerate().map(|(i, o)| ((o.year, o.month), i)).collect();
-    let dec = |y: i32| -> Option<(f64, f64)> {
-        let o = &obs[*idx.get(&(y, 12))?];
-        Some((o.dividend?, o.cpi))
-    };
-    let mut rows = Vec::new();
-    for (t, o) in obs.iter().enumerate() {
-        if t < 121 {
-            continue; // 120 months of CPI up to t-1 need the month t-121
+/// The CPIAUCNS series of FRED, by month. A blank value is not stored.
+pub type Fred = HashMap<(i32, u32), f64>;
+
+/// The reader of `CPIAUCNS.csv` (observation_date,CPIAUCNS; a blank or "." value is a month without a value).
+pub fn read_cpiaucns(text: &str) -> R<Fred> {
+    let mut out = Fred::new();
+    for (i, line) in text.lines().enumerate() {
+        if i == 0 || line.trim().is_empty() {
+            continue;
         }
+        let (d, v) = line.split_once(',').ok_or_else(|| DcfError(format!("cpi line {}: no comma", i + 1)))?;
+        let mut p = d.split('-');
+        let (Some(ys), Some(ms)) = (p.next(), p.next()) else {
+            return e(format!("cpi line {}: bad date '{d}'", i + 1));
+        };
+        let (Ok(y), Ok(m)) = (ys.parse::<i32>(), ms.parse::<u32>()) else {
+            return e(format!("cpi line {}: bad date '{d}'", i + 1));
+        };
+        if let Some(x) = opt_f(v) {
+            out.insert((y, m), x);
+        }
+    }
+    Ok(out)
+}
+
+/// First month for which the CPI comes from FRED.
+const FRED_START: (i32, u32) = (1913, 1);
+
+/// Why a CPI is not there: `Skip` (no Shiller month: no row), `NoValue` (FRED has no value for the month: row with
+/// status `no_cpi`), `NoFile` (a row needs FRED and `--cpi` was not given: the command fails).
+enum Miss {
+    Skip,
+    NoValue,
+    NoFile,
+}
+
+struct CpiSource<'a> {
+    obs: &'a [Obs],
+    idx: HashMap<(i32, u32), usize>,
+    fred: Option<&'a Fred>,
+}
+
+impl CpiSource<'_> {
+    fn shiller(&self, y: i32, m: u32) -> Result<f64, Miss> {
+        self.idx.get(&(y, m)).map(|i| self.obs[*i].cpi).ok_or(Miss::Skip)
+    }
+    fn fred_at(&self, y: i32, m: u32) -> Result<f64, Miss> {
+        let f = self.fred.ok_or(Miss::NoFile)?;
+        f.get(&(y, m)).copied().ok_or(Miss::NoValue)
+    }
+    /// The CPI of December of year y, for the deflation of its dividend: Shiller before 1913, FRED from 1913.
+    fn december(&self, y: i32) -> Result<f64, Miss> {
+        if (y, 12) < FRED_START {
+            self.shiller(y, 12)
+        } else {
+            self.fred_at(y, 12)
+        }
+    }
+    /// CPIK(month): the CPI known at the month. Before 1913-01 the Shiller December of the last ended year (a step);
+    /// at 1913-01 the Shiller December 1912; from 1913-02 the FRED value of the month before.
+    fn known(&self, y: i32, m: u32) -> Result<f64, Miss> {
+        if (y, m) < FRED_START {
+            self.shiller(y - 1, 12)
+        } else if (y, m) == FRED_START {
+            self.shiller(1912, 12)
+        } else {
+            let (py, pm) = if m == 1 { (y - 1, 12) } else { (y, m - 1) };
+            self.fred_at(py, pm)
+        }
+    }
+}
+
+/// The rows of the measurement. Point in time: see the model document. `fred` is CPIAUCNS; without it the call fails
+/// if a row needs it (a month from 1913-02, or a December from 1913).
+pub fn compute(obs: &[Obs], fred: Option<&Fred>, l: f64, n: usize) -> R<Vec<MarketRow>> {
+    let src = CpiSource { obs, idx: obs.iter().enumerate().map(|(i, o)| ((o.year, o.month), i)).collect(), fred };
+    let dec_div = |y: i32| -> Option<f64> { obs[*src.idx.get(&(y, 12))?].dividend };
+    let mut rows = Vec::new();
+    for o in obs.iter() {
         // before 1936 the annual figures were published late: always December of Y-2; from 1936 the April rule
         let yk = if o.year >= LATE_PUBLICATION_END && o.month >= 4 { o.year - 1 } else { o.year - 2 };
-        let (Some((d_k, cpi_k)), Some((d_b, cpi_b))) = (dec(yk), dec(yk - 10)) else {
+        let (Some(d_k), Some(d_b)) = (dec_div(yk), dec_div(yk - 10)) else {
             continue;
         };
-        let cpi_now = obs[t - 1].cpi;
-        let rr = o.gs10 / 100.0 - (cpi_now / obs[t - 121].cpi).powf(0.1) + 1.0;
-        let d_real = d_k * cpi_now / cpi_k;
+        let (by, bm) = (o.year - 10, o.month);
+        let cpis = (|| -> Result<(f64, f64, f64, f64), Miss> {
+            Ok((src.known(o.year, o.month)?, src.known(by, bm)?, src.december(yk)?, src.december(yk - 10)?))
+        })();
+        let (cpik_now, cpik_back, cpi_k, cpi_b) = match cpis {
+            Ok(x) => x,
+            Err(Miss::Skip) => continue,
+            Err(Miss::NoFile) => return e("--cpi FILE (CPIAUCNS) is needed: a row from 1913 uses it"),
+            Err(Miss::NoValue) => {
+                rows.push(MarketRow { year: o.year, month: o.month, price_real: o.price, d_known_real: f64::NAN, g0: f64::NAN, rr: f64::NAN, erp_implied: None, erp_gordon: f64::NAN, estimate: o.estimate, status: "no_cpi" });
+                continue;
+            }
+        };
+        let rr = o.gs10 / 100.0 - ((cpik_now / cpik_back).powf(0.1) - 1.0);
+        let d_real = d_k * cpik_now / cpi_k;
         let price = o.price;
         let mk = |g0: f64, d: f64, erp: Option<f64>, gordon: f64, status: &'static str| MarketRow {
             year: o.year,
@@ -183,7 +263,7 @@ pub fn compute(obs: &[Obs], l: f64, n: usize) -> Vec<MarketRow> {
             Err(code) => rows.push(mk(g0, d_real, None, gordon, code)),
         }
     }
-    rows
+    Ok(rows)
 }
 
 fn num(x: f64) -> String {
@@ -242,7 +322,7 @@ fn command_inner(args: &[String]) -> R<()> {
         println!("{MARKET_USAGE}");
         return Ok(());
     }
-    let o = Opts::parse(args, &["--shiller", "--out", "--long-real", "--fade-years"], &[])?;
+    let o = Opts::parse(args, &["--shiller", "--cpi", "--out", "--long-real", "--fade-years"], &[])?;
     let file = o.get("--shiller").ok_or_else(|| DcfError("--shiller FILE is needed".into()))?;
     let out = o.get("--out").ok_or_else(|| DcfError("--out FILE is needed".into()))?;
     let l: f64 = o.num("--long-real", 0.02)?;
@@ -252,7 +332,11 @@ fn command_inner(args: &[String]) -> R<()> {
     }
     let text = std::fs::read_to_string(file).map_err(|x| DcfError(format!("{file}: {x}")))?;
     let obs = read_shiller(&text)?;
-    let rows = compute(&obs, l, n);
+    let fred = match o.get("--cpi") {
+        Some(p) => Some(read_cpiaucns(&std::fs::read_to_string(p).map_err(|x| DcfError(format!("{p}: {x}")))?)?),
+        None => None,
+    };
+    let rows = compute(&obs, fred.as_ref(), l, n)?;
     std::fs::write(out, csv_text(&rows)).map_err(|x| DcfError(format!("{out}: {x}")))?;
     println!("MARKET level: dividend DCF, real terms, L = {:.2}%, fade {n} years, {} months, {file}. A measurement: the price is the input of the search.", l * 100.0, rows.len());
     print!("{}", summary(&rows));
