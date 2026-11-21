@@ -33,8 +33,10 @@ pub const CHECK_NAMES: [&str; 7] = ["monotony", "slope", "butterfly", "calendar"
 pub const REMOVING: [usize; 2] = [5, 6];
 const EPS: f64 = 1e-9;
 
+// This list is the single source: `option_history::index_info` names (SPX, VIX) are in it (a test checks this). OEX is American and is not in it.
+// The options on VIX settle on a VIX future, not on the index, so S (and the forward from the spot) is not the underlying of a VIX option: the VIX checks are untested.
 /// The indexes with European options (cash settled): no calendar test, no parity bound, no intrinsic test, no bound.
-pub const EUROPEAN_INDEXES: [&str; 5] = ["SPX", "XSP", "NDX", "RUT", "VIX"];
+pub const EUROPEAN_INDEXES: [&str; 12] = ["SPX", "SPXW", "XSP", "NDX", "NDXP", "XND", "RUT", "RUTW", "VIX", "VIXW", "DJX", "XEO"];
 
 pub fn is_european(ticker: &str) -> bool {
     EUROPEAN_INDEXES.contains(&ticker.to_uppercase().as_str())
@@ -111,6 +113,8 @@ pub struct Break {
     pub symbols: Vec<String>,
     /// A leg is a marked quote (far from its neighbours in implied volatility).
     pub marked: bool,
+    /// The earliest expiry among the legs (a calendar break has two expiries).
+    pub min_expiry: String,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -174,6 +178,10 @@ pub struct Report {
     /// The marked quotes (symbols).
     pub marked: BTreeSet<String>,
     pub opts: Option<CheckOpts>,
+    /// The symbols removed by the strike filter.
+    pub removed: BTreeSet<String>,
+    /// With the strike filter: the breaks of the run without the filter that have a removed leg (set by the caller).
+    pub removed_leg_breaks: Option<usize>,
 }
 
 impl Report {
@@ -191,7 +199,7 @@ type StrikeMap<'a> = BTreeMap<(String, bool, u64), Vec<(&'a String, &'a Used)>>;
 
 fn push_break(out: &mut Vec<Break>, check: usize, root: &str, expiry: &str, size: f64, legs: &[(&str, f64)], text: String) {
     let top = legs.iter().map(|l| l.1).fold(0.0, f64::max);
-    out.push(Break { check, root: root.into(), expiry: expiry.into(), size, ticks: size / tick_of(top), text, symbols: legs.iter().map(|l| l.0.to_string()).collect(), marked: false });
+    out.push(Break { check, root: root.into(), expiry: expiry.into(), size, ticks: size / tick_of(top), text, symbols: legs.iter().map(|l| l.0.to_string()).collect(), marked: false, min_expiry: expiry.into() });
 }
 
 fn kind(call: bool) -> &'static str {
@@ -296,6 +304,7 @@ pub fn check_chain(snap: &OptionChainSnapshot, american: bool, rate: &mut dyn Fn
                 Some(f) => {
                     filtered = all.iter().filter(|q| if q.call { q.strike >= 0.99 * f } else { q.strike <= 1.01 * f }).cloned().collect();
                     rep.otm_removed += all.len() - filtered.len();
+                    rep.removed.extend(all.iter().filter(|q| !filtered.iter().any(|k| k.symbol == q.symbol)).map(|q| q.symbol.clone()));
                     &filtered
                 }
                 None => {
@@ -436,6 +445,9 @@ pub fn check_chain(snap: &OptionChainSnapshot, american: bool, rate: &mut dyn Fn
                     let size = q1.bid - q2.ask;
                     if !q1.buy_only() && size > EPS {
                         push_break(&mut breaks, 3, &root, e2, size, &[(&q1.symbol, q1.bid), (&q2.symbol, q2.ask)], format!("{}: bid {} of {} ({e1}) is above ask {} of {} ({e2})", kind(call), q1.bid, q1.symbol, q2.ask, q2.symbol));
+                        if let Some(b) = breaks.last_mut() {
+                            b.min_expiry = e1.clone();
+                        }
                     }
                 }
             }
@@ -470,6 +482,11 @@ pub fn check_chain(snap: &OptionChainSnapshot, american: bool, rate: &mut dyn Fn
     Ok(rep)
 }
 
+/// The breaks of a run without the strike filter (`all`) that have a leg removed by the strike filter of the run `filtered`.
+pub fn breaks_with_removed_leg(all: &Report, filtered: &Report) -> usize {
+    all.breaks.iter().filter(|b| b.symbols.iter().any(|s| filtered.removed.contains(s))).count()
+}
+
 /// The result of the comparison of two days of one chain.
 #[derive(Debug, Clone)]
 pub struct Compare {
@@ -499,7 +516,7 @@ pub fn compare(a: &Report, b: &Report, date1: &str, date2: &str) -> Compare {
             continue;
         }
         c.total += 1;
-        if x.expiry.as_str() <= date2 {
+        if x.min_expiry.as_str() <= date2 {
             c.expired += 1;
         }
         if let Some(sz) = hit {
@@ -520,6 +537,7 @@ pub fn render_compare(ticker: &str, c: &Compare, top: usize) -> String {
     for (b, sz2) in stay.iter().take(top).map(|x| (&x.0, x.1)) {
         s.push_str(&format!("  {:>9.2} $ on {}, {:>9.2} $ on {}  {} {} {}{}: {}\n", b.size, c.date1, sz2, c.date2, b.root, b.expiry, CHECK_NAMES[b.check], if b.marked { " (marked leg)" } else { "" }, b.text));
     }
+    s.push_str(&format!("  Day 2 ({}) is read with no size floor, so a small break of day 1 can stay.\n", c.date2));
     s.push_str("  A break that stays is more likely a quote that is kept, or a price. It is not shown to be tradable: the time of the quotes and the costs are not known.\n");
     s
 }
@@ -551,7 +569,7 @@ pub fn render(ticker: &str, snap: &OptionChainSnapshot, rep: &Report, american: 
         opts.iv_mark * 100.0,
         opts.min_size,
         if opts.otm {
-            format!("Strike filter on (--otm): only quotes out of the money or within 1 % of the forward of their series (call K >= 0.99 F, put K <= 1.01 F); {} quotes removed; {} series had no forward and were not filtered. --all-strikes turns it off.", rep.otm_removed, rep.otm_no_forward)
+            format!("Strike filter on ({}): only quotes out of the money or within 1 % of the forward of their series (call K >= 0.99 F, put K <= 1.01 F); {} quotes removed; {} series had no forward and were not filtered. --all-strikes turns it off.", if american { "--otm" } else { "default for a European index" }, rep.otm_removed, rep.otm_no_forward)
         } else {
             "Strike filter off: all strikes.".to_string()
         }
@@ -596,6 +614,9 @@ pub fn render(ticker: &str, snap: &OptionChainSnapshot, rep: &Report, american: 
         rest.len() - clean.len(),
         clean.len()
     ));
+    if let Some(n) = rep.removed_leg_breaks {
+        s.push_str(&format!("breaks with a removed leg: {n} (breaks of the run without the strike filter that have a leg removed by the filter)\n"));
+    }
     let (all, cl) = (rep.bands(false), rep.bands(true));
     s.push_str("size bands of the checks 1 to 5 (USD for one share): all breaks / breaks with no marked leg\n");
     for i in 0..4 {
@@ -638,6 +659,7 @@ mod tests {
     fn snap(quotes: Vec<OptionQuote>) -> OptionChainSnapshot {
         OptionChainSnapshot { ticker: "XYZ".into(), snapshot_date: "2026-01-02".into(), spot_price: Some(100.0), quotes, source: None, feed: None, quote_kind: None, note: None, snapshot_time: None }
     }
+    #[allow(clippy::too_many_arguments)]
     fn add(v: &mut Vec<OptionQuote>, root: &str, ymd: &str, expiry: &str, call: bool, strike: f64, bid: f64, ask: f64) {
         v.push(q(&sym(root, ymd, call, strike), call, expiry, strike, bid, ask));
     }
@@ -1037,6 +1059,7 @@ mod tests {
         assert_eq!((f.otm_removed, f.otm_no_forward, f.quotes_used), (4, 0, 10));
         assert_eq!(f.rows[0].quotes_used, 6);
         assert_eq!(f.breaks.len(), 0);
+        assert_eq!(breaks_with_removed_leg(&all, &f), 2, "both breaks of the run without the filter have the removed call 90");
     }
 
     #[test]
@@ -1049,5 +1072,49 @@ mod tests {
         let text = render("XYZ", &s, &r, true, 3);
         assert!(text.contains("Alpaca indicative feed: modified quotes, not executable prices (#280)"));
         assert!(!text.contains("Cboe delayed snapshot"));
+    }
+
+    #[test]
+    fn index_info_names_are_in_the_european_list() {
+        for name in ["SPX", "VIX"] {
+            assert!(crate::market::option_history::index_info(name).is_some() && is_european(name), "{name}");
+        }
+        for name in ["NDXP", "XND", "RUTW", "VIXW", "DJX", "XEO", "SPXW"] {
+            assert!(is_european(name), "{name}");
+        }
+        assert!(!is_european("OEX"), "OEX is American");
+    }
+
+    #[test]
+    fn a_calendar_break_expires_with_its_earlier_leg() {
+        let mut d1 = clean();
+        let i = pos(&d1, 100.0, false, "2026-01-16");
+        d1[i].bid = Some(5.5);
+        d1[i].ask = Some(5.6);
+        let a = run(d1.clone());
+        let b = run(d1);
+        let cal: Vec<_> = a.breaks.iter().filter(|x| x.check == 3).collect();
+        assert_eq!(cal.len(), 1);
+        assert_eq!((cal[0].expiry.as_str(), cal[0].min_expiry.as_str()), ("2026-02-20", "2026-01-16"));
+        // Day 2 is 2026-01-20: the first leg has expired, so the break cannot stay, although its series (2026-02-20) is alive.
+        let c = compare(&a, &b, "2026-01-02", "2026-01-20");
+        assert_eq!(c.expired, 1, "{:?}", c.expired);
+    }
+
+    #[test]
+    fn a_quote_with_no_bid_is_never_a_sell_leg_of_the_parity_bound() {
+        // A negative rate (df above 1) makes S - K df negative for K above S. The call 110 has no bid (bid 0, ask 1.0).
+        // Sold at bid 0, it would give 0 - ask 12.0 put - (100 - 110 x 1.13) = 12.4 above 0: a false break. The guard stops it.
+        let mut v = Vec::new();
+        add(&mut v, "XYZ", "260402", "2026-04-02", true, 110.0, 0.0, 1.0);
+        add(&mut v, "XYZ", "260402", "2026-04-02", false, 110.0, 11.5, 12.0);
+        let mut negative = |_: &str, _: f64| -> Result<f64, String> { Ok(-0.5) };
+        let r = check_chain(&snap(v.clone()), true, &mut negative, &CheckOpts::default()).unwrap();
+        assert_eq!((r.buy_only, r.rows[0].tests[4]), (1, 1));
+        assert_eq!(count(&r, 4), 0, "{:?}", r.breaks);
+        // With a bid of 0.5 the same quote is a sell leg and the break is there (0.5 - 12.0 + 24.4).
+        v[0].bid = Some(0.5);
+        let r2 = check_chain(&snap(v), true, &mut negative, &CheckOpts::default()).unwrap();
+        assert_eq!(count(&r2, 4), 1, "{:?}", r2.breaks);
     }
 }

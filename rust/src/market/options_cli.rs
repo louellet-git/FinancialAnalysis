@@ -73,7 +73,7 @@ fa options check SYMBOL --date D [--time HHMM] [--rate R] [--top N] [--min-size 
   more). 0 turns it off. The output counts the breaks with and without a marked leg.
   --otm: keep only quotes out of the money or within 1 % of the forward of their series (call K >= 0.99 F, put K <= 1.01 F; the rule of the volatility fit).
   Default for a European index chain (SPX, XSP, NDX, RUT, VIX): its deep in-the-money quotes of the indicative feed are modified and wide. --all-strikes turns it off.
-  --compare D2: the breaks of day D that stay on day D2 (same check, same legs). Both days must be stored; the command downloads nothing.
+  --compare D2: the breaks of day D that stay on day D2 (same check, same legs). Both days must be stored (the days are read from the store). Day 2 is read with no size floor. Without --rate the rate step can download one file.
   A quote with bid 0 and an ask above 0 is a buy leg only. A bid above S (call) or K (put) is a break (bound).
   European indexes (SPX, XSP, NDX, RUT, VIX): no calendar, parity, intrinsic or bound test.
   A break is not a profit: no costs, no borrow, no time of the quotes, early exercise not priced.";
@@ -395,17 +395,27 @@ fn check(repo: &Path, rest: &[String]) -> Result<i32, String> {
     let top = a.flag("--top").map(|n| n.parse::<usize>().map_err(|_| format!("bad --top '{n}'"))).transpose()?.unwrap_or(10);
     let cache = super::price_cli::cache_dir(repo);
     let snap = options::load_snapshot_at(&cache, &ticker, Some(date), a.flag("--time"))?;
-    let american = option_history::index_info(&ticker).is_none() && !super::option_arb::is_european(&ticker);
+    let american = !super::option_arb::is_european(&ticker);
     let min_size = a.flag("--min-size").map(|n| n.parse::<f64>().map_err(|_| format!("bad --min-size '{n}'"))).transpose()?.unwrap_or(0.0);
+    if !(min_size.is_finite() && min_size >= 0.0) {
+        return Err(format!("bad --min-size {min_size}: give a finite number of 0 or more"));
+    }
     let iv_mark = a.flag("--iv-mark").map(|n| n.parse::<f64>().map_err(|_| format!("bad --iv-mark '{n}'"))).transpose()?.map_or(0.10, |p| p / 100.0);
+    if !iv_mark.is_finite() {
+        return Err("bad --iv-mark: give a finite number of points".into());
+    }
     let otm = !a.has("--all-strikes") && (a.has("--otm") || !american);
     let opts = super::option_arb::CheckOpts { min_size, iv_mark, otm };
+    let snap2 = a.flag("--compare").map(|d2| options::load_snapshot(&cache, &ticker, Some(d2))).transpose()?; // a missing day 2 fails before the report of day 1
     let mut rate = rate_fn(repo, flat);
-    let rep = super::option_arb::check_chain(&snap, american, &mut rate, &opts)?;
+    let mut rep = super::option_arb::check_chain(&snap, american, &mut rate, &opts)?;
+    if opts.otm {
+        let all = super::option_arb::check_chain(&snap, american, &mut rate, &super::option_arb::CheckOpts { otm: false, ..opts })?;
+        rep.removed_leg_breaks = Some(super::option_arb::breaks_with_removed_leg(&all, &rep));
+    }
     print!("{}", super::option_arb::render(&ticker, &snap, &rep, american, top));
-    if let Some(d2) = a.flag("--compare") {
-        let snap2 = options::load_snapshot(&cache, &ticker, Some(d2))?;
-        let rep2 = super::option_arb::check_chain(&snap2, american, &mut rate, &opts)?;
+    if let (Some(d2), Some(snap2)) = (a.flag("--compare"), snap2) {
+        let rep2 = super::option_arb::check_chain(&snap2, american, &mut rate, &super::option_arb::CheckOpts { min_size: 0.0, ..opts })?;
         print!("{}", super::option_arb::render_compare(&ticker, &super::option_arb::compare(&rep, &rep2, date, d2), top));
     }
     Ok(0)

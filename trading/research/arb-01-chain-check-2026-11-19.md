@@ -77,7 +77,7 @@ What changed:
 - New check "bound": bid of a call above S, or bid of a put above K. IBM and JNJ have 0 of them.
 - European indexes are a list (SPX, XSP, NDX, RUT, VIX). `--min-size USD` removes small breaks. The output gives four size bands.
 - A quote is marked when its Black-76 implied volatility is more than 10 points from the median of its 2 neighbours on each side.
-  The default is 10 points. A smile moves a few points between strikes, so 10 points is a clear jump. I chose it before I saw the counts.
+  The default is 10 points. 10 points is a convention: the clean count depends on it (IBM 12 / 61 / 152 at 5 / 10 / 20 points). I chose it before I saw the counts.
   `--iv-mark POINTS` changes it. A marked quote stays in the checks. The output counts the breaks with and without a marked leg.
 - `--compare D2` gives the breaks of day D that stay on day D2 (same check, same legs). The store has one day only. The command was not run on two days.
 
@@ -109,20 +109,20 @@ The five largest breaks with no marked leg, and my judgment:
 
 Limits:
 - No second day is stored, so `--compare` is tested on fixtures only. I did not judge the other breaks.
-- The implied volatility of a deep in-the-money American quote is distorted by early exercise. The marker compares quotes of one type only.
+- The implied volatility of a deep in-the-money American quote is distorted by early exercise. The marker compares quotes of one type only. It also marks liquid penny quotes (IBM261120C250, bid 0.02, ask 0.04, volume 431).
 
 ## SPX 2026-11-20
 
 Command: `fa options check SPX --date 2026-11-20 --rate 0.04 --top 5` (default) and the same with `--all-strikes`.
 The file is the Alpaca indicative feed (SPX and SPXW, 57 series, spot 6929.78 from the forward of the nearest series).
 The indicative feed gives modified quotes, not executable prices (trap #280). SPX options are European: no calendar, parity, intrinsic or bound test.
-No SPX break can be a finding until a feed with real quotes exists. The filter removes 99 % of the breaks; the 143 that stay are below 6 USD.
+No SPX break can be a finding until a feed with real quotes exists. The filter removes 98.6 % of the breaks (10172 to 143) and 94 % of the distinct quotes in a break (4439 to 271). The 143 that stay are below 6 USD.
 For a European index the strike filter is the default: a call with K >= 0.99 F and a put with K <= 1.01 F (F is the parity forward of the series).
 
 | Item | `--all-strikes` | Default (strike filter) |
 |---|---|---|
 | Quotes in file / used (1071 are buy legs; 3262 dropped) | 32046 / 28784 | 28784, of which 12996 removed by the filter |
-| Breaks (monotony, slope, butterfly) | 10172 | 143 |
+| Breaks (monotony, slope, butterfly) | 10172 | 143 (10029 breaks of the unfiltered run have a removed leg) |
 | With a marked leg / none (marked quotes) | 3686 / 6486 (956) | 1 / 142 (32) |
 | Band below 0.10 USD (all / no marked leg) | 93 / 76 | 12 / 12 |
 | Band 0.10 to 1 USD | 826 / 633 | 72 / 71 |
@@ -134,6 +134,6 @@ The five largest breaks with no marked leg:
   All are deep in-the-money quotes. Judgment: modified quotes of the indicative feed. Not a finding.
 - Default: 5.86 USD (butterfly, calls 7100, 7125, 7150 of 2027-09-17), 5.45 (put monotony, SPXW 2027-09-30, puts 6830 and 6840), 5.00, 4.51 and 4.34 (butterflies).
   Example: the bid of the call 7125 is 564.76; the asks of the calls 7100 and 7150 are 569.96 and 547.85. The spreads are 8 to 19 USD wide.
-  The put 6830 of 2027-09-30 has bid 442.55, and its last trade is 209.62. Judgment: wide and modified quotes. The breaks are 0.5 % to 1 % of the price, inside the spread.
+  The put 6830 of 2027-09-30 has bid 442.55, and its last trade is 209.62. The put monotony 5.45 is more than the 4.96 spread of its sold leg (bid 442.55, ask 447.51). The breaks are 0.8 % to 1.2 % of the price. Judgment: wide and modified quotes.
   No break is shown to be tradable. Limits: one day, one feed, no time of the quotes; the other 138 breaks are not judged.
 
