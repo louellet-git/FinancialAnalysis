@@ -131,3 +131,11 @@ ways such that you can stay on track while not falling prey to over constriction
 losing the plot. Again, we don't force things until we have adequate data ... our system is lean on purpose."
 Done: `memory/MEMORY.md` is the Head of Staff file now: part 1 is the 12 agreements; part 2 is how I stay
 on track (memory, the dream pass with its number). Context use checked: 286,508 of 784,000.
+
+## 2026-11-21 about 19:09 UTC (chat)
+Context: the count of all heads showed that each head turn reads 400,000 to 500,000 cached tokens; I
+proposed a trial of a compaction in two head sessions.
+Words: "I've tested smaller contexts and shortening the context window and frankly it's blown up in my
+face, I feel like it's harmful. Not refuting the entire idea but that it's something to really be tested
+before turning the [knob]."
+Done: the proposal is withdrawn. No change to the context of a head. A test design comes first, if at all.
