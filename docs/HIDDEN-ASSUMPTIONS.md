@@ -1935,6 +1935,14 @@ which is more than 2 points under the target. The rule stays off by default. The
 Note of the merge with pull request 77: the numbers of (2) are on the defaults before it. On the merged defaults (`acq_w`, `acq_fade`, `long_run`) the free cash flow of the stable class is inside the band in 83.0 / 83.4 / 83.6% (half 1; `--cut 2015`: 78.5 / 79.2 / 78.2%), so the bands are no longer too wide; `margin_sigma_nu=1` gives 73.8 / 77.4 / 78.0% (half 1). The rule is not needed.
 *Evidence:* `fa dcf pit --half 0|1 --diag decline`, `--diag nu`, `--rules last_floor=-1`, `--rules margin_sigma_nu=1`; the tests `a_decline_in_the_base_year_enters_the_growth_mean_and_the_first_step_as_zero`.
 
+**287. The member list uses the ticker of its date, not the ticker of today (2026-11-21).**
+The file `fa members on DATE` reads gives the ticker that the index used on that date. A company that changed its ticker has the old name in the list, for example FB (now META). ANTM (now ELV) and HRS (now LHX) are not verified against a filing.
+The data store has a folder for the new ticker only, so the old name finds no data.
+A ticker can also belong to two companies at different dates (DD is a possible case: not verified against a filing). A join by ticker can join the wrong company.
+A run must map the old name to the company, or drop the name and count the drops.
+The first rows (1996-01-02 to 2004-04-01) have 487 to 496 names a date. Use the list from 2004-04-02.
+*Evidence:* `rust/src/market/members_cli.rs` (`fa members on`); the row in `docs/DATA-SOURCES.md`.
+
 ## Could not verify
 
 - (none of the named traps failed verification — all located in current code/docs; the
