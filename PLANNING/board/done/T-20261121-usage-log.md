@@ -2,7 +2,7 @@
 id: T-20261121-usage-log
 title: Record the agents, the skills and the tokens of each head session with a hook (no model tokens)
 area: planning
-status: in-progress
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: technology
@@ -11,6 +11,7 @@ story: E6.S5
 branch: claude/usage-log
 created: 2026-11-21
 acceptance: (Changed 2026-11-21, owner word: local only.) On request, `fa usage record && fa usage show` prints for each head session the agents that it started (by type), the skills that it used, and its tokens (input, output, cache), from data that a hook wrote; the hook adds less than 2 seconds to a turn, never stops a turn, and writes no text of the conversation.
+merged: pull request PRNUM (branch claude/usage-log)
 ---
 Owner word, 2026-11-21 (through the Head of Staff): make sure that the heads use their teams and their skills,
 and watch the tokens, with a script that "just does what it has to do". No head has to remember it.
@@ -111,7 +112,7 @@ the folder where its session started, so the ticket of each line can be wrong; a
 hook and a new environment variable only at its start. The push is off until the content review
 (`risk-compliance-officer`) and one test push.
 
-Push target: the refs go to the PRIVATE store `louellet-git/fa-data` (refs/usage/<id>), not to this public repo, so the dates and the token amounts are not public. The store has no workflow.
+Push target (superseded 2026-11-21: no push; the tool is local only).
 
 Push test (2026-11-21 21:2x UTC): a push of one usage file to `refs/usage/<id>` of the private store
 failed ("unexpected disconnect while reading sideband packet"); the second try was refused by the
@@ -123,3 +124,7 @@ no hook, no push, no setting. A head runs `fa usage record && fa usage show` whe
 (for example when a ticket closes, or before the weekly reset) and sends the table. The push to a git ref
 is not possible from a cloud session (see the push test above). The cost by head comes from get_session.
 This command gives what get_session does not: tokens by ticket and by agent type.
+
+QA gate: PASS-WITH-NOTES (2026-11-21). Five usage tests (counting, no model and no text, branch to
+ticket, private names, the table). A missing transcript is an error now. Open limits: a read error in the
+middle of a file ends the count there; a line with a field of an unexpected type is skipped with its tokens.

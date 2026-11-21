@@ -437,6 +437,9 @@ pub fn command(repo: &Path, args: &[String]) -> Result<i32, String> {
     match sub {
         Some("record") => {
             let t = transcript.or_else(default_transcript).ok_or_else(|| format!("no transcript found; give --transcript\n{USAGE}"))?;
+            if !t.is_file() {
+                return Err(format!("transcript not found: {}", t.display()));
+            }
             if subagents.is_none() {
                 let d = t.with_extension("").join("subagents");
                 if d.is_dir() {
