@@ -18,6 +18,15 @@ test date. It makes a model look better than it is.
 4. A calibration uses data up to the cut year. The scoring uses the years after it. Use
    `--cut YEAR` of `fa dcf pit`.
 5. A universe that lists today's companies has survivorship. Say it in the result.
+6. Prices in the store are split-adjusted to today; SEC share counts are as filed. A past value per
+   share against a past price needs the split factor between the filing date and the price date. A
+   poison test and a truncation test do not find this trap (`docs/traps/`, the split look-ahead).
+
+## Pre-register
+1. Commit the hypothesis, the gate and the decision rule in a commit before the first code commit
+   and before the first run output of the study. Count each run and each variant.
+2. The reviewer checks the order: `git log --format='%h %ci %s' -- <design file> <code files> <outputs>`.
+   A threshold that only a later commit holds is not pre-registered: say so in the result.
 
 ## Prove
 1. **Poison test.** Change a fact that is dated after the as-of date (make it absurd). The
