@@ -38,8 +38,10 @@
 //! before) is a scale error and is replaced by the reference count; a count outside 0.5 to 2 times stays and has a note.
 
 use super::auto::*;
-use super::auto_cli::{cache_dir, curve_and_index, jobs_of, load_table, map_inputs_pit, num, table_path, tickers_of, Opts, BANNER};
-use super::auto_implied::{groups_of, NO_VALUE, point, point_at_premium, point_with, read_groups, solve, Bound, Failure, Found, ImpliedConfig, ERP_RANGE, GROWTH_RANGE};
+use super::auto_baserate::{base_rates, BASERATE_PERIODS, BASERATE_YEARS};
+use super::auto_cli::{cache_dir, curve_and_index, jobs_of, load_table, map_inputs_pit, map_inputs_pit_periods, num, table_path, tickers_of, Opts, BANNER};
+use super::auto_reality;
+use super::auto_implied::{groups_of, list_premium, NO_VALUE, point, point_at_premium, point_with, read_groups, solve, Bound, Failure, Found, ImpliedConfig, ERP_RANGE, GROWTH_RANGE};
 use super::stats::percentile;
 use super::DcfError;
 use rayon::prelude::*;
@@ -112,6 +114,22 @@ fa dcf attribute [--tickers-file FILE | TICKER ...] --from D1 --to D2 [OPTIONS]
                   of the run. A run of one ticker needs it for a c that is not 0
   --common-file FILE  with --common file: a CSV with the header date,erp_change,growth_change,source (decimals). The row of
                   the date D2 gives the two changes. An empty field is no information (not a change of zero)
+  --top N        keep the N companies of the list with the largest market value at D1 (price x the guarded share count; one
+                  weight for each company). Both classes of one company (GOOG and GOOGL) stay in the run and count as one
+                  company. The common change c of --common is computed on the FULL list, before the cut, so the 10 largest
+                  of the S&P 100 have the median of the S&P 100 (with no --common-list). The text names the kept tickers
+  --reality      add the block \"(5) REALITY CHECK\" and the CSV columns at the END of the header (the other columns keep
+                  their places): the revenue of the last fiscal year public at D2 (the base revenue) and its size bucket
+                  (below 1B, 1B to 10B, 10B to 50B, 50B or more), the own 5-year growth, the implied 10-year growth at D2 (the
+                  growth of the growth view, at the model premium) with its percentile among the last windows of its bucket
+                  (the share of them below it; \"above every case\" when it is above the maximum), and the path of the 8-K
+                  earnings release of the window when the cache has it (<cache>/<TICKER>/filings/8k/<accession>/; the newest
+                  accession, then the newest file; empty when none). The base rates are those of `fa dcf baserates` at D2 (the
+                  same function, point in time). A measurement, never an input of the model
+  --baserate-list FILE  with --reality: the tickers of the base rates (default: the tickers of the run before --top)
+  --premium-history FILE  with --reality: a CSV of `fa dcf premium-series`; the premium that the list of the run (before --top)
+                  implies at D1 and at D2 is put against the s1 of the rows with an anchor before D1 (percentile; rows of D1 and
+                  later are not used). Use a history of the same list
   --jobs N       threads (default: all); the result does not depend on N";
 
 // ---------------------------------------------------------------------------------------------
@@ -277,6 +295,9 @@ pub struct Attribution {
     /// (`NaN`: no solution).
     pub cagr1: f64,
     pub cagr2: f64,
+    /// Where the growth search of D2 ended (`Bound::Exact`: a solution; else `cagr2` is the growth at the end of the range, a
+    /// floor or a ceiling, not a measurement).
+    pub growth2_bound: Bound,
     /// The third view: the growth shift that gives P2 with the premium of D1, and the 10-year growth at that shift.
     pub growth_at_x1: Option<Found>,
     pub cagr_at_x1: f64,
@@ -476,6 +497,7 @@ pub fn attribute_models(inp1: &AutoInputs, m1: &Market, inp2: &AutoInputs, m2: &
         grow,
         cagr1,
         cagr2,
+        growth2_bound: g2.bound,
         growth_at_x1,
         cagr_at_x1,
         shares1: sm1.shares,
@@ -916,16 +938,55 @@ pub fn econ_line(econ: &EconView, long_run_on: bool, cover: Option<(usize, usize
 /// The filing dates of the SEC 8-K with item 2.02 of a ticker that are after `d1` and on or before `d2` (`YYYY-MM-DD`, the
 /// first 10 characters), oldest first, joined with ";". Empty when there is none or the cache has no list. No price is used.
 pub fn earnings_8k_between(cache: &Path, ticker: &str, d1: &str, d2: &str) -> String {
-    let (Some(d1), Some(d2)) = (d1.get(..10), d2.get(..10)) else { return String::new() };
-    let Ok(text) = std::fs::read(mapcheck::sec::earnings_filings_path(cache, ticker)) else { return String::new() };
-    let Ok(v) = serde_json::from_slice::<serde_json::Value>(&text) else { return String::new() };
-    let mut dates: Vec<&str> = v["filings"]
-        .as_array()
-        .map(|a| a.iter().filter(|f| f["items"].as_str().is_some_and(|s| s.split(',').any(|i| i.trim() == "2.02"))).filter_map(|f| f["filed"].as_str()).filter(|d| d.len() == 10 && *d > d1 && *d <= d2).collect())
-        .unwrap_or_default();
-    dates.sort_unstable();
+    let mut dates: Vec<String> = earnings_8k_entries(cache, ticker, d1, d2).into_iter().map(|(filed, _)| filed).collect();
     dates.dedup();
     dates.join(";")
+}
+
+/// The SEC 8-K with item 2.02 of a ticker that are after `d1` and on or before `d2`: (filing date, accession number), oldest
+/// first (the accession number is empty when the list has none). The one reader of the list; `earnings_8k_between` and
+/// `release_path` use it.
+pub fn earnings_8k_entries(cache: &Path, ticker: &str, d1: &str, d2: &str) -> Vec<(String, String)> {
+    let (Some(d1), Some(d2)) = (d1.get(..10), d2.get(..10)) else { return Vec::new() };
+    let Ok(text) = std::fs::read(mapcheck::sec::earnings_filings_path(cache, ticker)) else { return Vec::new() };
+    let Ok(v) = serde_json::from_slice::<serde_json::Value>(&text) else { return Vec::new() };
+    let mut out: Vec<(String, String)> = v["filings"]
+        .as_array()
+        .map(|a| {
+            a.iter()
+                .filter(|f| f["items"].as_str().is_some_and(|s| s.split(',').any(|i| i.trim() == "2.02")))
+                .filter_map(|f| Some((f["filed"].as_str()?, f["accession"].as_str().unwrap_or(""))))
+                .filter(|(d, _)| d.len() == 10 && *d > d1 && *d <= d2)
+                .map(|(d, a)| (d.to_string(), a.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+    out.sort_unstable();
+    out.dedup();
+    out
+}
+
+/// The path of the earnings release of the window (R2 of the ticket `T-20261121-dcf-engine-integration`): the newest 8-K with
+/// item 2.02 after `d1` and on or before `d2` (the latest filing date, then the accession number) that has a folder
+/// `<cache>/<TICKER>/filings/8k/<accession>/`, and in it the newest file (the latest change time, then the name). Empty when
+/// the list or the folder has none. No network and no price.
+pub fn release_path(cache: &Path, ticker: &str, d1: &str, d2: &str) -> String {
+    for (_, accession) in earnings_8k_entries(cache, ticker, d1, d2).into_iter().rev() {
+        if accession.is_empty() {
+            continue;
+        }
+        let folder = cache.join(ticker).join("filings").join("8k").join(&accession);
+        let Ok(dir) = std::fs::read_dir(&folder) else { continue };
+        let newest = dir
+            .filter_map(Result::ok)
+            .filter(|f| f.file_type().is_ok_and(|t| t.is_file()))
+            .map(|f| (f.metadata().and_then(|m| m.modified()).ok(), f.file_name().to_string_lossy().to_string()))
+            .max();
+        if let Some((_, name)) = newest {
+            return folder.join(name).to_string_lossy().to_string();
+        }
+    }
+    String::new()
 }
 
 /// The CIK of a ticker from the filing list of the cache (no network).
@@ -995,6 +1056,19 @@ pub fn one_weight_for_one_company(rows: &mut [AttrRow]) {
             }
         }
     }
+}
+
+/// `--top N`: the positions (in the order of the list) of the rows of the `n` companies with the largest market value at D1
+/// (`weight`: price x guarded shares; one weight for each company). A row that carries no weight (`weight_of`) stays when
+/// the ticker that carries it stays, so both classes of a company (GOOG and GOOGL) are in the run and count as one company.
+/// A row with no weight (stale, no price, no share count) is not ranked and is out. Ties go to the first ticker of the list.
+/// The command runs it AFTER `add_common`: the common change c is a measure of the whole list, so the rows that stay have the
+/// c of the list that they were cut from (the S&P 100 median for the 10 largest of the S&P 100).
+pub fn keep_top(rows: &[AttrRow], n: usize) -> Vec<usize> {
+    let mut ranked: Vec<(usize, f64)> = rows.iter().enumerate().filter_map(|(i, r)| r.weight().map(|w| (i, w))).collect();
+    ranked.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
+    let kept: std::collections::HashSet<&str> = ranked.iter().take(n).map(|(i, _)| rows[*i].ticker.as_str()).collect();
+    (0..rows.len()).filter(|i| kept.contains(rows[*i].ticker.as_str()) || rows[*i].weight_of.as_deref().is_some_and(|t| kept.contains(t))).collect()
 }
 
 /// The names of the parts, in the order of `Chain::pct`.
@@ -1516,10 +1590,24 @@ pub fn csv_line(r: &AttrRow) -> String {
 }
 
 pub fn csv_text(rows: &[AttrRow]) -> String {
+    csv_text_with(rows, None)
+}
+
+/// The CSV with more columns at the END (`--reality`): `extra` is the tail of the header and one text of cells for each row.
+/// The columns of `CSV_HEADER` keep their places.
+pub fn csv_text_with(rows: &[AttrRow], extra: Option<(&str, &[String])>) -> String {
     let mut text = String::from(CSV_HEADER);
+    if let Some((header, _)) = extra {
+        text.push(',');
+        text.push_str(header);
+    }
     text.push('\n');
-    for r in rows {
+    for (i, r) in rows.iter().enumerate() {
         text.push_str(&csv_line(r));
+        if let Some((_, cells)) = extra {
+            text.push(',');
+            text.push_str(cells.get(i).map_or("", String::as_str));
+        }
         text.push('\n');
     }
     text
@@ -1807,7 +1895,19 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         println!("{ATTRIBUTE_USAGE}");
         return Ok(());
     }
-    let o = Opts::parse(args, &["--cache", "--out", "--jobs", "--table", "--from", "--to", "--tickers-file", "--rules", "--groups", "--curve", "--common", "--common-list", "--common-file"], &[])?;
+    let o = Opts::parse(
+        args,
+        &["--cache", "--out", "--jobs", "--table", "--from", "--to", "--tickers-file", "--rules", "--groups", "--curve", "--common", "--common-list", "--common-file", "--top", "--baserate-list", "--premium-history"],
+        &["--reality"],
+    )?;
+    let reality = o.flag("--reality");
+    if !reality && (o.get("--baserate-list").is_some() || o.get("--premium-history").is_some()) {
+        return e("--baserate-list and --premium-history need --reality");
+    }
+    let top: Option<usize> = match o.get("--top") {
+        Some(t) => Some(t.parse::<usize>().ok().filter(|n| *n > 0).ok_or_else(|| DcfError(format!("--top '{t}': use a whole number of 1 or more")))?),
+        None => None,
+    };
     let source = o.get("--curve").unwrap_or("gsw").to_string();
     if !["gsw", "fedinvest", "par"].contains(&source.as_str()) {
         return e(format!("--curve '{source}': use gsw, fedinvest or par"));
@@ -1887,12 +1987,67 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
             )
         }
     };
+    // the premium that the whole list implies at D1 and at D2, against the history (before the cut: the list of the run)
+    let list_prem = match o.get("--premium-history") {
+        Some(f) => {
+            let history = auto_reality::parse_history(&std::fs::read_to_string(f).map_err(|x| DcfError(format!("{f}: {x}")))?)?;
+            let premium_of = |inputs: &[AutoInputs], market_of: &(dyn Fn(&str) -> Market + Sync)| -> R<Option<f64>> {
+                Ok(list_premium(inputs, market_of, &cfg)?.filter(|m| m.found.bound == Bound::Exact && m.found.x.is_finite()).map(|m| m.found.x))
+            };
+            Some(auto_reality::premium_position(&history, &d1, premium_of(&inputs1, &market1_of)?, premium_of(&inputs2, &market2_of)?))
+        }
+        None => None,
+    };
+    // --top N: the cut comes after the common change (c is the c of the FULL list)
+    let top_line = top.map(|n| {
+        let keep = keep_top(&rows, n);
+        let kept: Vec<AttrRow> = keep.iter().map(|i| rows[*i].clone()).collect();
+        let companies = kept.iter().filter(|r| r.weight().is_some()).count();
+        let line = format!(
+            "TOP {n}: the {companies} companies with the largest market value at D1 of the {} tickers of the list ({} tickers kept; the common change c is the c of the full list): {}",
+            rows.len(),
+            kept.len(),
+            kept.iter().map(|r| r.ticker.as_str()).collect::<Vec<_>>().join(" ")
+        );
+        rows = kept;
+        line
+    });
+    let reality_out = if reality {
+        let (list, list_name): (Vec<String>, String) = match o.get("--baserate-list") {
+            Some(f) => (mapcheck::cli::read_ticker_file(f).map_err(DcfError)?, format!("the list {f}")),
+            None => (tickers.clone(), "the list of the run".to_string()),
+        };
+        let (br_inputs, br_s) = map_inputs_pit_periods(&cache, &list, &d2, day2, BASERATE_PERIODS, jobs)?;
+        let rates = base_rates(&br_inputs, &|t| cik_of(&cache, t), BASERATE_YEARS, &d2);
+        let by_ticker: HashMap<&str, &AutoInputs> = inputs2.iter().map(|i| (i.ticker.as_str(), i)).collect();
+        let reality_rows: Vec<auto_reality::RealityRow> = rows
+            .iter()
+            .map(|r| {
+                let years: &[YearData] = by_ticker.get(r.ticker.as_str()).map_or(&[], |i| i.years.as_slice());
+                let implied = r.outcome.as_ref().ok().map(|a| (a.cagr2, a.growth2_bound));
+                auto_reality::reality_row(&r.ticker, years, &d2, implied, &rates, release_path(&cache, &r.ticker, &d1, &d2))
+            })
+            .collect();
+        Some((reality_rows, rates, list_name, br_s))
+    } else {
+        None
+    };
     let attr_s = t1.elapsed().as_secs_f64();
     if let Some(path) = o.get("--out") {
-        std::fs::write(path, csv_text(&rows)).map_err(|x| DcfError(format!("{path}: {x}")))?;
+        let text = match &reality_out {
+            Some((rr, ..)) => {
+                let cells: Vec<String> = rr.iter().map(|r| auto_reality::cells(r, list_prem.as_ref())).collect();
+                csv_text_with(&rows, Some((auto_reality::HEADER_TAIL, &cells)))
+            }
+            None => csv_text(&rows),
+        };
+        std::fs::write(path, text).map_err(|x| DcfError(format!("{path}: {x}")))?;
     }
     println!("ATTRIBUTION of the change of the price from {d1} to {d2}, {} tickers, no random part. {BANNER} A market-implied value is a measurement, not an input.", rows.len());
     println!("  {common_line}");
+    if let Some(line) = &top_line {
+        println!("  {line}");
+    }
     println!("  The value is the value of the one path at the means (not the expected value). Order of the steps: facts, time, rates, plug (implied premium or implied growth), residual; the reverse order of rates and the plug is shown. This is an accounting split of the price change with the model; it is not a cause. Facts of each date: filed on or before it; the 10-K of the cache does not fill an input. Price: last close on or before the date. Curve: last GSW row on or before the date.{}", curve_sentence(&source));
     if rows.len() == 1 {
         match &rows[0].outcome {
@@ -1923,7 +2078,11 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
             print!("{}", group_text(&group_medians(&rows, view), view));
         }
     }
-    println!("\nTIME: mapping {:.2} s | attribution {attr_s:.2} s ({} threads) | total {:.2} s", map1 + map2, jobs.unwrap_or_else(rayon::current_num_threads), t0.elapsed().as_secs_f64());
+    if let Some((rr, rates, list_name, _)) = &reality_out {
+        print!("{}", auto_reality::block_text(rr, rates, list_name, list_prem.as_ref()));
+    }
+    let br_s = reality_out.as_ref().map_or(0.0, |x| x.3);
+    println!("\nTIME: mapping {:.2} s (base rates {br_s:.2} s) | attribution {attr_s:.2} s ({} threads) | total {:.2} s", map1 + map2, jobs.unwrap_or_else(rayon::current_num_threads), t0.elapsed().as_secs_f64());
     Ok(())
 }
 

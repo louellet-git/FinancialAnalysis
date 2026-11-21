@@ -158,6 +158,7 @@ fn attribution(p1: f64, p2: f64, c: Chain, shares: f64) -> Attribution {
         grow: Ok(c),
         cagr1: 0.1,
         cagr2: 0.1,
+        growth2_bound: Bound::Exact,
         growth_at_x1: None,
         cagr_at_x1: f64::NAN,
         shares1: shares,
@@ -924,4 +925,82 @@ fn one_and_four_threads_give_the_same_rows_after_the_common_pass() {
     assert_eq!(format!("{one:?}"), format!("{four:?}"));
     assert_eq!(csv_text(&one), csv_text(&four));
     assert!(one.iter().filter_map(|r| r.outcome.as_ref().ok()).any(|a| a.prem.as_ref().is_ok_and(|c| c.split.is_some())));
+}
+
+/// A row with a CIK and a market value `price x 10`.
+fn class_row(name: &str, price: f64, cik: &str) -> AttrRow {
+    let mut r = row(name, price, price * 0.9, 3, 10.0, 0.05);
+    r.cik = Some(cik.into());
+    r
+}
+
+#[test]
+fn top_keeps_the_largest_companies_and_both_classes_of_one_company() {
+    // GOOG (market value 1000) and GOOGL (980, same company) carry one weight; MSFT 500; AAA 300; BBB 100
+    let mut rows = vec![class_row("GOOG", 100.0, "7"), class_row("GOOGL", 98.0, "7"), class_row("MSFT", 50.0, "2"), class_row("AAA", 30.0, "3"), class_row("BBB", 10.0, "4")];
+    one_weight_for_one_company(&mut rows);
+    assert_eq!(rows[1].weight_of.as_deref(), Some("GOOG"));
+    // the top 2 companies are GOOG and MSFT: three tickers, because the class GOOGL stays
+    let keep = keep_top(&rows, 2);
+    assert_eq!(keep, vec![0, 1, 2]);
+    let kept: Vec<AttrRow> = keep.iter().map(|i| rows[*i].clone()).collect();
+    let w = whole_list(&kept).unwrap();
+    // 2 companies in the sum (the class has no weight), market value 1000 + 500
+    assert_eq!(w.n, 2);
+    assert!((w.value1 - 1500.0).abs() < 1e-9, "{w:?}");
+    assert_eq!(w.dropped, vec![("GOOGL".to_string(), "GOOG".to_string())]);
+    // the top 1 is GOOG with its class; a number above the count keeps all
+    assert_eq!(keep_top(&rows, 1), vec![0, 1]);
+    assert_eq!(keep_top(&rows, 10), vec![0, 1, 2, 3, 4]);
+    // a stale row has no weight: it is not ranked, even when it is the largest
+    rows[3].stale = Some("close of 2026-11-12 for 2026-11-13 (SPY 2026-11-13)".into());
+    rows[3].prices = Some((500.0, 450.0));
+    assert_eq!(keep_top(&rows, 3), vec![0, 1, 2, 4]);
+}
+
+#[test]
+fn the_common_change_with_top_is_the_common_change_of_the_full_list() {
+    let t = table();
+    let list = synthetic(12);
+    let price = |tk: &str, day: usize| -> f64 {
+        let k: f64 = tk[1..].parse().unwrap();
+        // D1 price grows with the index (so the largest are the last); the move to D2 differs from one ticker to the next
+        (20.0 + 3.0 * k) * if day == 2 { 0.80 + 0.04 * k } else { 1.0 }
+    };
+    let m1 = |tk: &str| mk(price(tk, 1), Some(curve(0.042, 4.0)));
+    let m2 = |tk: &str| mk(price(tk, 2), Some(curve(0.045, 4.3)));
+    let mut rows = attribute_list(&list, &list, &m1, &m2, &HashMap::new(), &cfg(&t), Some(1)).unwrap();
+    let full = common_from_rows(&rows, CommonMode::Median);
+    add_common(&mut rows, &list, &m1, &m2, &cfg(&t), &full, Some(1)).unwrap();
+    let keep = keep_top(&rows, 3);
+    assert_eq!(keep.len(), 3);
+    let kept: Vec<AttrRow> = keep.iter().map(|i| rows[*i].clone()).collect();
+    // the kept rows hold the c of the full list in both views ...
+    let c_of = |r: &AttrRow, v: View| r.outcome.as_ref().ok().and_then(|a| a.chain(v)).and_then(|c| c.split.as_ref()).map(|s| s.c);
+    let mut seen = 0;
+    for r in &kept {
+        for (k, v) in [View::Premium, View::Growth].into_iter().enumerate() {
+            if let Some(c) = c_of(r, v) {
+                assert_eq!(Some(c), full[k].c, "{} {v:?}", r.ticker);
+                seen += 1;
+            }
+        }
+    }
+    assert!(seen >= 3, "the kept rows must have a split");
+    // ... and it is not the c of the cut list: the cut before the common change would change it
+    let cut = common_from_rows(&kept, CommonMode::Median);
+    assert!(full[0].c.is_some() && cut[0].c.is_some() && (full[0].c.unwrap() - cut[0].c.unwrap()).abs() > 1e-6, "full {:?} cut {:?}", full[0].c, cut[0].c);
+}
+
+#[test]
+fn the_csv_with_the_reality_columns_has_the_old_columns_in_their_places() {
+    let r = row("A", 10.0, 8.0, 3, 10.0, 0.05);
+    let plain = csv_text(std::slice::from_ref(&r));
+    let tail = "x1,x2";
+    let cells = ["1,2".to_string()];
+    let with = csv_text_with(std::slice::from_ref(&r), Some((tail, &cells)));
+    let (p, w): (Vec<&str>, Vec<&str>) = (plain.lines().collect(), with.lines().collect());
+    assert_eq!(w[0], format!("{CSV_HEADER},{tail}"));
+    assert_eq!(w[1], format!("{},1,2", p[1]));
+    assert_eq!(p[0], CSV_HEADER);
 }
