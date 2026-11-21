@@ -2,7 +2,7 @@
 id: T-20261121-economics-premium-macro
 title: Design the test of the market-level implied premium against the macro risk measures
 area: docs
-status: in-progress
+status: review
 owner: louellet-git
 requested_by: louellet-git
 head: economics
