@@ -1,0 +1,540 @@
+[[case]]
+name = "dcf_drivers_ibm"
+args = ["dcf", "drivers", "IBM"]
+store = "2a0d1f22b7741be47d035e46817715e29a86cb46"
+sha256 = "d99ee949599ac76a1991f2045815784bcf5eca3beffb3d0c383b69dc847a8121"
+must_contain = ["83.84", "151.84", "258.03"]
+reason = "first golden: current main"
+updated = "2026-11-21"
+
+[[case.inputs]]
+path = "analysis/IBM/driver_model.toml"
+sha256 = "9c2c140d89df446424980896b579b35dd77357cdb3c75b4e5d7e40f4a9d14276"
+
+[[case]]
+name = "options_check_spx"
+args = ["options", "check", "SPX", "--date", "2026-11-20", "--rate", "0.04", "--top", "0"]
+store = "2a0d1f22b7741be47d035e46817715e29a86cb46"
+sha256 = "3631a2f5927d23f49be91731d8ad72c4599c1de9d323511263803fafa54e5538"
+reason = "options check: --top 0 (counts only, no raw quote lines may be committed); the check is the same"
+updated = "2026-11-21"
+
+[[case.inputs]]
+path = "data/raw/SPX/options/2026-11-20.json"
+sha256 = "be087a66749ec746a5c8dc9bf7f80ed6ce84a6e43bf6ff653aa3bca482e21bc3"
+
+[[case]]
+name = "trade_backtest"
+args = ["trade", "backtest", "--end", "2026-10-09"]
+store = "2a0d1f22b7741be47d035e46817715e29a86cb46"
+sha256 = "a98bb8a8a3c65c43dbe2a05e2c7fe795e673c299c19c104f1a5d5772e1700fcb"
+reason = "trade_backtest: the time of a bot is on its own line (G1, the rejected-entry counts are checked now)"
+updated = "2026-11-21"
+
+[[case.mask]]
+prefix = "  time "
+timing = true
+
+[[case.mask]]
+prefix = "total time"
+timing = true
+
+[[case.inputs]]
+path = "data/raw/trading/QQQ_1d.csv"
+sha256 = "36808b760150b688a6a99b1cf66dce25fe9e1bd7e53b2f093a0988bf4f0ac7ad"
+
+[[case.inputs]]
+path = "data/raw/trading/QQQ_1h.csv"
+sha256 = "9ffc1653e8986f5ecbcddf0801c30cf733a66ed44b20dd54d7228fe2e986165d"
+
+[[case.inputs]]
+path = "data/raw/trading/SPY_1d.csv"
+sha256 = "8bd826851c353d5735e8e6461df9815c515306665516ee186a43745581ad44bc"
+
+[[case.inputs]]
+path = "data/raw/trading/SPY_1h.csv"
+sha256 = "89243a9caa083b8d67e06e65e734b93354617f10430fe9de8840181c984fde1d"
+
+[[case.inputs]]
+path = "data/raw/trading/SPY_5m.csv"
+sha256 = "ee6061dabda872431dc68b4ddb598531028c3f2e183df8bf8f9dfd4ee359db34"
+
+[[case.inputs]]
+path = "data/raw/trading/_IRX_1d.csv"
+sha256 = "2632bcb76b8b15f65397ce7f20313cc456d7dfb039674a329ae724ef80b24904"
+
+[[case.inputs]]
+path = "data/raw/trading/_VIX1D_1d.csv"
+sha256 = "1c9564693089d55dd79d87f864af44cc02897c953febe2586a69444bb2819d12"
+
+[[case.inputs]]
+path = "data/raw/trading/_VIX1D_1h.csv"
+sha256 = "c25be999ed3557518d0ebd50c0e7d314076a8a392bc704077aa3ac51eca23bcf"
+
+[[case.inputs]]
+path = "data/raw/trading/_VIX1D_5m.csv"
+sha256 = "48eb35255e0d8e0335772b1c668f1da7d1f456b9b0cb12299f4112cee6f2863d"
+
+[[case.inputs]]
+path = "data/raw/trading/_VIX_1d.csv"
+sha256 = "6ecb2237f9c581f178ec9880306bda4de70820330c325eed1c3bf928ef2ba45d"
+
+[[case.inputs]]
+path = "data/raw/trading/_VIX_1h.csv"
+sha256 = "0079b5f223dedb0fb6d6770273e63b8d5e066262728bc5504d5925efd3af23a2"
+
+[[case.inputs]]
+path = "data/raw/trading/_VIX_5m.csv"
+sha256 = "04065a633822790abacba6ee3f29d875534c5081e7532b33f496cc2fb7c45284"
+
+[[case.inputs]]
+path = "data/raw/trading/_VXN_1d.csv"
+sha256 = "9bf68fb9ea793bc80a946a29c9a89ecc0d706295a39dd6f7cee6e073db6ce1b4"
+
+[[case.inputs]]
+path = "data/raw/trading/_VXN_1h.csv"
+sha256 = "c864fc60b90529d8039e9208bfbeb4dae1b9752b02bb813328f665a7a94029de"
+
+[[case]]
+name = "vol_fit_heston_spx"
+args = ["vol", "fit", "heston", "--symbol", "SPX", "--date", "2026-11-20", "--rate", "0.04", "--seed", "7"]
+store = "2a0d1f22b7741be47d035e46817715e29a86cb46"
+sha256 = "cd566f5296c74b5a5081f085d5910663e8ce36fff6519dba82e8dac391fc93e7"
+reason = "vol fit: the fit counts are on their own line, only the time line is masked"
+updated = "2026-11-21"
+
+[[case.mask]]
+prefix = "time:"
+timing = true
+
+[[case.inputs]]
+path = "data/raw/SPX/options/2026-11-20.json"
+sha256 = "be087a66749ec746a5c8dc9bf7f80ed6ce84a6e43bf6ff653aa3bca482e21bc3"
+
+[[case]]
+name = "dcf_attribute_panel32"
+args = ["dcf", "attribute", "--tickers-file", "rust/mapcheck/universe/panel32.txt", "--from", "2026-11-13", "--to", "2026-11-20"]
+store = "2a0d1f22b7741be47d035e46817715e29a86cb46"
+sha256 = "2b7f856ff520537451a40e83856b6eeeded64ad4b31aa7d90226708406f918ce"
+reason = "the store moved (e06070ce): AAPL prices.json changed"
+updated = "2026-11-21"
+
+[[case.mask]]
+prefix = "TIME:"
+timing = true
+
+[[case.inputs]]
+path = "analysis/priors/process_priors_2026-11-19.toml"
+sha256 = "32402e2260075c5535863e814302a719b5edf7251bfac4370acf6526c282c872"
+
+[[case.inputs]]
+path = "data/raw/AAPL/company_facts.json.gz"
+sha256 = "43080b3a83264fceb7ca32b05a139e1679d9da02b1c0951ee179109d07658bb1"
+
+[[case.inputs]]
+path = "data/raw/AAPL/prices.json"
+sha256 = "5bbce8f2383397b316a9bed0c111867187bc7c4d3c9d429b507147eeec6ade2b"
+
+[[case.inputs]]
+path = "data/raw/AAPL/sec_8k_earnings.json"
+sha256 = "1d6d17d742995176dde78a445515980e2c2f59cfdf7df687f2f9bc68948cea09"
+
+[[case.inputs]]
+path = "data/raw/ACN/company_facts.json.gz"
+sha256 = "c2c44ac5508d3aea198799f94a476dd36fb6107fd01e239bfb147b1988bf04eb"
+
+[[case.inputs]]
+path = "data/raw/ACN/prices.json"
+sha256 = "21c7b73b6aa7b51d4d97a5b7c32f1a3c5af8a6abfd7c9ba76f339dde0194ac6a"
+
+[[case.inputs]]
+path = "data/raw/ACN/sec_8k_earnings.json"
+sha256 = "c0bec9aa23bf3106b8892c4c3ab0938c1bd37db4feacaebce1d3abd206678a3d"
+
+[[case.inputs]]
+path = "data/raw/AMZN/company_facts.json.gz"
+sha256 = "e2412f1ee4fe9528054e00961cea34ae8b74708e948bec01a57dde4a3110a089"
+
+[[case.inputs]]
+path = "data/raw/AMZN/prices.json"
+sha256 = "bfae30f10e86df71a2eaf5ccc611fe8a7386c028bca5a5fd6ed56b86dd245d09"
+
+[[case.inputs]]
+path = "data/raw/AMZN/sec_8k_earnings.json"
+sha256 = "19d740645adb9ebbd2748a721875f3e2e9e830f662bdda8884fb8ae4e6a4fa36"
+
+[[case.inputs]]
+path = "data/raw/BA/company_facts.json.gz"
+sha256 = "0e51938ee4fce224eeaf3bc065b689f0e414b432f2ba069afc2901b75849be88"
+
+[[case.inputs]]
+path = "data/raw/BA/prices.json"
+sha256 = "0d34048fc8d7106c0f96b5580e3cd59aa231ea02d0ab29742448d8298fa1755c"
+
+[[case.inputs]]
+path = "data/raw/BA/sec_8k_earnings.json"
+sha256 = "942b32ec91942750a75997f7400f38938b496cb48cd6bd7d424453311a54896f"
+
+[[case.inputs]]
+path = "data/raw/CAT/company_facts.json.gz"
+sha256 = "816f460bf7aa1e1f9e075e19471426bd899557efa9899697eaa42b16b932c9f9"
+
+[[case.inputs]]
+path = "data/raw/CAT/prices.json"
+sha256 = "4d922c6aaeb3d040d9c8726abe8725736681a885c5d63f82a806d21acdde9876"
+
+[[case.inputs]]
+path = "data/raw/CAT/sec_8k_earnings.json"
+sha256 = "ef3d47968c19b897d8419d31d75672ac2620d95122f44d2161536fb090b7ea46"
+
+[[case.inputs]]
+path = "data/raw/COST/company_facts.json.gz"
+sha256 = "8a2e0987b856fbf6bfd47de7fead64ba1363499058880245e57fc865265b2aa6"
+
+[[case.inputs]]
+path = "data/raw/COST/prices.json"
+sha256 = "abe08475805350fda514e6b86d619fc9945a81e6bb391c04ff826a9ad87bd204"
+
+[[case.inputs]]
+path = "data/raw/COST/sec_8k_earnings.json"
+sha256 = "3e965defe1f7c1c3f9544258418339733d2b3c30b56ad634ea774b2cc77550a4"
+
+[[case.inputs]]
+path = "data/raw/CSCO/company_facts.json.gz"
+sha256 = "809026ab26e1214062a1a3a54536031075b43d41bcf98933c3b284a9df7bb539"
+
+[[case.inputs]]
+path = "data/raw/CSCO/prices.json"
+sha256 = "b7e1df63c3f908cd1774164cafc8d8b73a77d41970686b02751c75fceb6eb8e3"
+
+[[case.inputs]]
+path = "data/raw/CSCO/sec_8k_earnings.json"
+sha256 = "29fe696bd98a71c3b1c9d46b8c832d03c520f1aa82b439eb5f6fd4e3ca1ca3a4"
+
+[[case.inputs]]
+path = "data/raw/CVX/company_facts.json.gz"
+sha256 = "5d35cd39fc4133e0c06366b0bd8ba6bd5ad5cfb6026698392c3569e38d7cc4d5"
+
+[[case.inputs]]
+path = "data/raw/CVX/filings/0000093410-26-000078/MetaLinks.json"
+sha256 = "0d95058e643a1101ac1299e8cdd17d765b6831f7f18eaf20beb5d9be0340412f"
+
+[[case.inputs]]
+path = "data/raw/CVX/filings/0000093410-26-000078/cvx-20251231_htm.xml"
+sha256 = "383742ba0900c6bad8fbea17085f2854a2264ca1d3673de71654c94b76ddbe98"
+
+[[case.inputs]]
+path = "data/raw/CVX/prices.json"
+sha256 = "e0071c614c9292994caf4f43c479b668eae9985c1d301660c45d1fedec554caa"
+
+[[case.inputs]]
+path = "data/raw/CVX/sec_8k_earnings.json"
+sha256 = "9f8f2ac5d3a78afe201b8059b182e8b63ffed1d3384679ddbdc9d919c77a2616"
+
+[[case.inputs]]
+path = "data/raw/DIS/company_facts.json.gz"
+sha256 = "29ecc56d2bebe0430d07844938a4ba2501bc105f99b4490108d2165d84172011"
+
+[[case.inputs]]
+path = "data/raw/DIS/prices.json"
+sha256 = "4c4ef33cd59930c724a5f8c5675d8e60c0b833df9c688f051437a5d62569e070"
+
+[[case.inputs]]
+path = "data/raw/DIS/sec_8k_earnings.json"
+sha256 = "f196d0d340f136115e8d927ec7815f2cd604fa924b0aa70b4137e95d3ac6cbdc"
+
+[[case.inputs]]
+path = "data/raw/DUOL/company_facts.json.gz"
+sha256 = "83a8b976dc3df0275151be3502ac0ad7a9af41d38fc366b0178d00f2d7b8cbc1"
+
+[[case.inputs]]
+path = "data/raw/DUOL/prices.json"
+sha256 = "c531dc45f8770ff4bcad4c4e0a6b71eb6ecb71498e877c47f2d121ee98e38553"
+
+[[case.inputs]]
+path = "data/raw/DUOL/sec_8k_earnings.json"
+sha256 = "feb20f7d5b6188087d85e09aab38dd422b6e48072084c3ae85925417f7cbdf37"
+
+[[case.inputs]]
+path = "data/raw/GE/company_facts.json.gz"
+sha256 = "08f171bff7c9e5ed73756f7bda77cf5009e97d1b2c12066a92adf1265fcc0b91"
+
+[[case.inputs]]
+path = "data/raw/GE/prices.json"
+sha256 = "e5bd180c5d74505f3b62c9e0144077f0698dfb4c4eb099e0b69c0ab7b978f761"
+
+[[case.inputs]]
+path = "data/raw/GE/sec_8k_earnings.json"
+sha256 = "0d8be0a1d7479b4c3ca8d405005ae76f271918635de49a495dc6aa93e005264d"
+
+[[case.inputs]]
+path = "data/raw/GOOGL/company_facts.json.gz"
+sha256 = "35319d323a34423476aaa8eceae029e94aad40023a30263ca75cc758d1c1e323"
+
+[[case.inputs]]
+path = "data/raw/GOOGL/prices.json"
+sha256 = "0746f0b059ce925216a5ebd56a4893a047850808b2e1060a77b2ef92d7fc20c3"
+
+[[case.inputs]]
+path = "data/raw/GOOGL/sec_8k_earnings.json"
+sha256 = "05b34c31b018d55564f0247f61b6a1328b2ac686e29373b3b54a05c46d5fc71e"
+
+[[case.inputs]]
+path = "data/raw/HD/company_facts.json.gz"
+sha256 = "e7ab739be8d5be999fc4de0907801e9d693d1e919626f4f9fc89de26e17f83c7"
+
+[[case.inputs]]
+path = "data/raw/HD/prices.json"
+sha256 = "8dcc0c339a68cd55eb49e9ce4e2deb6f96892a96dee5e18607e10cbf9264a68c"
+
+[[case.inputs]]
+path = "data/raw/HD/sec_8k_earnings.json"
+sha256 = "1e02276d8e1cc3eed77fca4be3d332e8260d9176075b767a01be7a258277b8ec"
+
+[[case.inputs]]
+path = "data/raw/IBM/company_facts.json.gz"
+sha256 = "61bcefa6b83c9db610e514dcf376e6aa74ab51ba646d8f5b7ee4eb9d1299e51b"
+
+[[case.inputs]]
+path = "data/raw/IBM/filings/0000051143-26-000010/MetaLinks.json"
+sha256 = "ba322f6c313aca9a52ae7bea4b6f31bbddae158ebb1e4d800d31c15b7bf8e52c"
+
+[[case.inputs]]
+path = "data/raw/IBM/filings/0000051143-26-000010/ibm-20251231_htm.xml"
+sha256 = "62f3b8d77a81fd9616d8fe8573cbf61e97a669d4ab6e5b5720d4fb7619e0f134"
+
+[[case.inputs]]
+path = "data/raw/IBM/prices.json"
+sha256 = "ec1814ff2fcbd63318b9f66ccd1114693068c4d8a3fc09c0fdce877a175828bf"
+
+[[case.inputs]]
+path = "data/raw/IBM/sec_8k_earnings.json"
+sha256 = "c17e8349207b61f0920645eb750fccd686c6bbfff2055a36daa4ccd9e99d486f"
+
+[[case.inputs]]
+path = "data/raw/JNJ/company_facts.json.gz"
+sha256 = "1159ccc1434872c0e25da5eb55e544b9b3d4e98789e6099aae3bf5413939ae82"
+
+[[case.inputs]]
+path = "data/raw/JNJ/prices.json"
+sha256 = "1b62dfe2e4f9f02794bb0d20b1291867b601145a593325176b560c3cbe6986d5"
+
+[[case.inputs]]
+path = "data/raw/JNJ/sec_8k_earnings.json"
+sha256 = "4f8d0842a33acd996f960442279dad00eb44c84fd03b0da84b819c3a1a2365ab"
+
+[[case.inputs]]
+path = "data/raw/JPM/company_facts.json.gz"
+sha256 = "d5c7c2e950b54c5314f1a9fb3f851f688c86259fa248be1fdb1298aac880bc32"
+
+[[case.inputs]]
+path = "data/raw/JPM/prices.json"
+sha256 = "82843c15260b024d39c530740d63ae064bfebb00360fe043d6b6f6ff5eb8c026"
+
+[[case.inputs]]
+path = "data/raw/JPM/sec_8k_earnings.json"
+sha256 = "568e4246f62fa2909da05b89ac6497dc6d7671bb8470df1e1890e2deca3afe62"
+
+[[case.inputs]]
+path = "data/raw/KO/company_facts.json.gz"
+sha256 = "f7e4fb635f62ab72d5f461bcbe3ca9090cbc79fa32480ffda42064a293d177af"
+
+[[case.inputs]]
+path = "data/raw/KO/prices.json"
+sha256 = "c998f8c8a67548f6ef44b7a237f8b3a0ab97b3ca73cab2031e4b9257a7d763f8"
+
+[[case.inputs]]
+path = "data/raw/KO/sec_8k_earnings.json"
+sha256 = "11183e50f31b923a95a17118db481b39f84518ef6ffbed92a8b963d82fb4b2e3"
+
+[[case.inputs]]
+path = "data/raw/META/company_facts.json.gz"
+sha256 = "201f6a3b6c9aaac26974b9b3839c052d5ab4f3cc9d9fa25bad27a8614bdf893a"
+
+[[case.inputs]]
+path = "data/raw/META/prices.json"
+sha256 = "c632439b1d2f410167df1e615e65b7a2e128f1b6d95560d1ae54829962d2732c"
+
+[[case.inputs]]
+path = "data/raw/META/sec_8k_earnings.json"
+sha256 = "292f2b0e583976a8431243f282ab3d35b8fcf1b216972fdb53faafdb04ef97fe"
+
+[[case.inputs]]
+path = "data/raw/MSFT/company_facts.json.gz"
+sha256 = "3eeafb71e531b8d6d61ab6b46f93cb68834837789275442f5c8b5751f56d2300"
+
+[[case.inputs]]
+path = "data/raw/MSFT/prices.json"
+sha256 = "f9dc55c1f9c83c36b7bedd91a9742b7d5af4dfcc451f47e9d75435c0ef598833"
+
+[[case.inputs]]
+path = "data/raw/MSFT/sec_8k_earnings.json"
+sha256 = "ffa9cc7692ab3e8baee10a8590285a62c1195ab245d2971ae5af9fcd1e01f913"
+
+[[case.inputs]]
+path = "data/raw/NEE/company_facts.json.gz"
+sha256 = "db7756813e9d040a8b80b6d15feb822d2006b1e1464b6a5af4f7d48082a732fd"
+
+[[case.inputs]]
+path = "data/raw/NEE/filings/0000753308-26-000015/MetaLinks.json"
+sha256 = "e27802d7923a6cca85bd0c4ed482a700cd5c6e616d461a29cba23c9eea343bde"
+
+[[case.inputs]]
+path = "data/raw/NEE/filings/0000753308-26-000015/nee-20251231_htm.xml"
+sha256 = "1dbc69769541e9b679409a23f2a5a82750450de831b0b64a138d82df60bdf08c"
+
+[[case.inputs]]
+path = "data/raw/NEE/prices.json"
+sha256 = "25c4f5008c06260716c1b54cf2092723ce5545aa5aaaffd21506845a99c42464"
+
+[[case.inputs]]
+path = "data/raw/NEE/sec_8k_earnings.json"
+sha256 = "b5a1cdf06df9d355504ae6b4e42e1bef68d5c68b7ce8ba67cb8929dc959bb030"
+
+[[case.inputs]]
+path = "data/raw/NKE/company_facts.json.gz"
+sha256 = "657e0b94f200c3dbe07640a285914de10f0aa40c2e8ab2b1e46f46599c0db637"
+
+[[case.inputs]]
+path = "data/raw/NKE/prices.json"
+sha256 = "3a7ad6cf4defdd809fe298bd3f3b100a45e489a29dfbeeb7257506f0a03005a1"
+
+[[case.inputs]]
+path = "data/raw/NKE/sec_8k_earnings.json"
+sha256 = "893a30a216faa36b01bbaaf708408e3648b65a2f825deceb0f02edde82d4390b"
+
+[[case.inputs]]
+path = "data/raw/NVDA/company_facts.json.gz"
+sha256 = "0a1bcb785a32103ca172d92aa0b1f2932e0953b01a25159ea7063132e56ea1ab"
+
+[[case.inputs]]
+path = "data/raw/NVDA/prices.json"
+sha256 = "0a264058c8bd96a059ba84e4f5b6a3b2354abd94fb6e6d2ef65a259a06fe0bde"
+
+[[case.inputs]]
+path = "data/raw/NVDA/sec_8k_earnings.json"
+sha256 = "0704cbdf8b000dd9dfbfe41407755cd8c469e9b3a03916a1141561df15da1268"
+
+[[case.inputs]]
+path = "data/raw/O/company_facts.json.gz"
+sha256 = "9cf48b5ac7b7acf23c3f40127196d3d860fd812680c96706e0786afd4f97d6d1"
+
+[[case.inputs]]
+path = "data/raw/O/prices.json"
+sha256 = "af9bead67968c4112a8130eefb7c8492289c5793991f029a1c67c3afaa98a7e3"
+
+[[case.inputs]]
+path = "data/raw/O/sec_8k_earnings.json"
+sha256 = "47a5c32da304f76b349f5d9b0825cd7160b09a1db503f566837023743f954cd5"
+
+[[case.inputs]]
+path = "data/raw/ORCL/company_facts.json.gz"
+sha256 = "2042d6a69575c60ce96e127b09f2e4d9b52709d00bbe765b9181e478a15a5268"
+
+[[case.inputs]]
+path = "data/raw/ORCL/prices.json"
+sha256 = "fb5b08628c97ee5d45fe497aaa94ce64b549d1f0474e1d0269e2402c80fb2547"
+
+[[case.inputs]]
+path = "data/raw/ORCL/sec_8k_earnings.json"
+sha256 = "0b50466cd77c859b1aab88fb693159541786a0a0e860b00743908feb9b2ed762"
+
+[[case.inputs]]
+path = "data/raw/PANW/company_facts.json.gz"
+sha256 = "e2012724c39ead209f737d263993234722055223bee92740b30e947cc71b4ce9"
+
+[[case.inputs]]
+path = "data/raw/PANW/prices.json"
+sha256 = "30a8eb6050a6b2f5bd6c8155d79985909f19c63299f2eb2a646d4c9658c8e765"
+
+[[case.inputs]]
+path = "data/raw/PANW/sec_8k_earnings.json"
+sha256 = "db730bbbe6d2a8d8904b0eb7c7d660cf2b43b7df43e69be2f657cf77ac06b4e6"
+
+[[case.inputs]]
+path = "data/raw/PFE/company_facts.json.gz"
+sha256 = "9776b6aa3635409d4f17da715ec7e6eb0a0351bc1e009e2d80b349fb165669c2"
+
+[[case.inputs]]
+path = "data/raw/PFE/prices.json"
+sha256 = "8557139d15fa272858a8afa56479548c46454aba795816a7e67502f2e42b2c68"
+
+[[case.inputs]]
+path = "data/raw/PFE/sec_8k_earnings.json"
+sha256 = "86a1c7ee215ccf2219454a424ec7178ec1f1a527bea61ea6ec656df73aea5533"
+
+[[case.inputs]]
+path = "data/raw/PG/prices.json"
+sha256 = "125f65ce5e6300777f52a2a20028185e0fa4089ae9e401ec66074d4b8e1c5ac5"
+
+[[case.inputs]]
+path = "data/raw/PG/sec_8k_earnings.json"
+sha256 = "28bb59450ad4efc592553216a1f802ad6e5603c9b93d7f66737f1c253cababe8"
+
+[[case.inputs]]
+path = "data/raw/SPY/prices.json"
+sha256 = "ec36202131cbf125d3ca9fd24268103818b2f55762b711bea09384ea655cdd0d"
+
+[[case.inputs]]
+path = "data/raw/T/company_facts.json.gz"
+sha256 = "31926d30c59213ec03b532a47da56d65c996bdce8ae91929f9a5923d07a0f824"
+
+[[case.inputs]]
+path = "data/raw/T/prices.json"
+sha256 = "8f02a93bcd2cc90e95becce2c82fa3371ef6aa0d414ade0f6c01c32f28c7641b"
+
+[[case.inputs]]
+path = "data/raw/T/sec_8k_earnings.json"
+sha256 = "6b5fef0186c9ba0e6dbac949715dcc049dc7bba00cac54a6bebfb54dcd65a5bc"
+
+[[case.inputs]]
+path = "data/raw/TSLA/prices.json"
+sha256 = "a38e29faa2586906d4da4b6c9518e5f35e8f5ff0e86b21fff8b58dd833079eb7"
+
+[[case.inputs]]
+path = "data/raw/TSLA/sec_8k_earnings.json"
+sha256 = "99c3dc493fcdabe26577722993dc0d4ef45c0a6ec3dee322c5812f50dbfaa263"
+
+[[case.inputs]]
+path = "data/raw/UNH/company_facts.json.gz"
+sha256 = "f340ea76329b73cb24158e99560cea915055a5fedc9dd4e3c7d96c67e5c4fc0a"
+
+[[case.inputs]]
+path = "data/raw/UNH/prices.json"
+sha256 = "1a4c1a5a44c84fea505b0bf3906191889edc1a52e6cb4a2081a18641849329be"
+
+[[case.inputs]]
+path = "data/raw/UNH/sec_8k_earnings.json"
+sha256 = "37435bd9a6d298e45b1e92abba5d3904109da36180d296ef2f33ed25e03b1d97"
+
+[[case.inputs]]
+path = "data/raw/WMT/company_facts.json.gz"
+sha256 = "950e2cc639901f83cd248879b14cf491ac9a9ec9f9864e294eca788dffee3cf1"
+
+[[case.inputs]]
+path = "data/raw/WMT/prices.json"
+sha256 = "39068837d2b7a9fca021087dbda1b0171a7219a8d2f4814d816f829bd47bbdb9"
+
+[[case.inputs]]
+path = "data/raw/WMT/sec_8k_earnings.json"
+sha256 = "bbc1bac62c7a921156e680e8513b76dc108d6567385380058447d8aa19923318"
+
+[[case.inputs]]
+path = "data/raw/XOM/company_facts.json.gz"
+sha256 = "64c8095550d892228af7025e801f011808092fc6cdbb9a3d7d5b7d8812255dbb"
+
+[[case.inputs]]
+path = "data/raw/XOM/prices.json"
+sha256 = "f271cbb08ca1b4213368c15d63cf17d8467dc94e6e2c7d1c7efeff50fcec988d"
+
+[[case.inputs]]
+path = "data/raw/XOM/sec_8k_earnings.json"
+sha256 = "6afbece4568293897c96aee93012107e04d441da9b2e6f850dca2996e29883af"
+
+[[case.inputs]]
+path = "data/raw/rates/gsw_feds200628.csv"
+sha256 = "96af2ea14f2f9a1881b9dbd43015c3def725e5123aed267d120e19475564f2f3"
+
+[[case.inputs]]
+path = "rust/mapcheck/universe/panel32.txt"
+sha256 = "d4f985fa063cc93ae2b90be401e3c7e6d74e23e2573150ede296bf458578e368"

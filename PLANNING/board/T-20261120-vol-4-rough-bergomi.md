@@ -5,6 +5,7 @@ area: engine
 status: backlog
 owner: louellet-git
 head: quant
+story: E4.S3
 order: 6
 branch:
 created: 2026-11-20
@@ -57,3 +58,5 @@ and no arbitrage test on closes of different times.
 ## Commands
 
 `fa vol fit rbergomi --symbol SPX [--date D]`, `fa vol price rbergomi --params ...`, `fa vol hurst SPY --interval 5m|1m|1d [--method gjr|noise|range]`, `fa vol check rbergomi`.
+
+Needed by (2026-11-21): none. No check or strategy of the owner needs this model now, so it goes after the work that serves a decision of the owner (Head of Staff, 2026-11-21).

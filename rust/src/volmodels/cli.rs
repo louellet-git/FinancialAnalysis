@@ -159,7 +159,8 @@ fn report_sabr(set: &QuoteSet, beta: f64, start: Instant) {
     println!("  all    {:<11} {:>5} {:>10} {:>9} {:>8} {:>8} {:>5} {:>8.3} {:>8.3}", "", "", "", "", "", "", n, (s2 / n.max(1) as f64).sqrt(), mx);
     println!("series: {} fitted, {} not converged, {} \"converged, poor fit\" (largest error above {} times the median spread), {} with a parameter at a bound (not identified: do not read it), {} failed", fits.len() - failed, not_conv, poor, super::sabr::POOR_FACTOR, bound, failed);
     println!("note: the error is a model vol against a mid vol of an indicative or stored quote: a measurement of the fit, not a tradable price. No dynamics between expiries.");
-    println!("\ntime: {secs:.3} s (fit of {} series, {} quotes, {} threads)", set.series.len(), set.n_quotes(), rayon::current_num_threads());
+    println!("\nfit of {} series, {} quotes", set.series.len(), set.n_quotes());
+    println!("time: {secs:.3} s ({} threads)", rayon::current_num_threads());
 }
 
 fn print_counts(c: &Counts, f: &Filters) {
@@ -215,7 +216,8 @@ fn report<M: CharModel>(set: &QuoteSet, r: &FitResult<M>, start: Instant, opts: 
         mx = mx.max(e.max_points);
     }
     println!("  all    {:<11} {:>5} {:>5} {:>9.3} {:>9.3}", "", "", n, (s2 / n.max(1) as f64).sqrt(), mx);
-    println!("\ntime: {secs:.2} s (fit of {} series, {} quotes, {} threads)", set.series.len(), set.n_quotes(), rayon::current_num_threads());
+    println!("\nfit of {} series, {} quotes", set.series.len(), set.n_quotes());
+    println!("time: {secs:.2} s ({} threads)", rayon::current_num_threads());
 }
 
 #[cfg(test)]

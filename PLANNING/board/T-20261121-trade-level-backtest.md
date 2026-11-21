@@ -2,7 +2,7 @@
 id: T-20261121-trade-level-backtest
 title: Trade-level backtest engine in Rust: DCF signals on many stocks and dates, buy or short, exit at a target or a time, walk-forward rule choice
 area: engine
-status: in-progress
+status: backlog
 owner: louellet-git
 requested_by: louellet-git
 head: fundamental
@@ -50,3 +50,5 @@ attribution).** The work of the build agent is committed as is, with no review: 
 step. Not done: those tests, a build and test check of this commit, the code gate, the hypothesis file (rule grid and
 walk-forward, written before any run), the run of record. No run of the new commands was made. Next step: run
 `cargo test --manifest-path rust/Cargo.toml --locked`, complete the tests of item 5 of the design, then the gate.
+
+**Board note (2026-11-21 about 20:50 UTC):** paused by the owner word "hold off on other work for now" (the week attribution is first); back to the backlog, with the work kept on its branch (see the status at the pause above).
