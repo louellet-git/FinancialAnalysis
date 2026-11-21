@@ -1,0 +1,83 @@
+file 2026-11-20
+fa vol fit heston SPX 2026-11-20: snapshot of 32046 quotes, quote kind indicative
+series: 59 in the file, 53 kept (forward from put-call parity, median of the 5 strikes nearest to the parity strike; time = calendar days / 365; the snapshot has no clock time)
+quotes: 32046 total, 8141 kept, 23905 dropped:
+     2124  expiry today or earlier
+        0  expiry beyond --expiry-max
+        0  series with no forward from parity
+     2209  no bid or no ask (bid > 0 needed)
+        0  ask not above bid
+    13361  in the money (out-of-the-money quotes only)
+        0  no implied volatility for bid, mid or ask
+     6206  spread above 1 vol points
+        5  quotes of series with fewer than 5 quotes left
+
+parameters (20 starts, seed 7, LM iterations 16, loss 145232.630 in squared spreads for 8141 quotes):
+  v0          0.17416
+  theta       0.05816
+  kappa      10.27613
+  xi          2.87459
+  rho        -0.80172
+  status of the best start (final): converged
+  refined starts (stage 1, after 3 iterations each, not final losses; only the best one goes on): 3 (losses 145680.198 to 698953.050; stage 1 status: NOT converged, NOT converged, NOT converged)
+  uniqueness: not checked in this run (only the best start goes to the end); compare the final loss of runs with other --seed values
+  Feller ratio 2 kappa theta / xi^2 = 0.145 (under 1: v can reach 0)
+
+error by series, model implied volatility minus market mid (vol points):
+  root   expiry       days     n       rms       max
+  SPX    2026-12-18     28   149     1.025     5.774
+  SPX    2027-01-15     56   305     0.880     2.614
+  SPX    2027-02-19     91   338     0.783     4.500
+  SPX    2027-03-19    119   302     0.685     2.566
+  SPX    2027-04-16    147   143     0.603     3.195
+  SPX    2027-05-21    182   143     0.608     3.875
+  SPX    2027-06-17    209   171     0.725     4.374
+  SPX    2027-07-16    238   143     0.399     2.484
+  SPX    2027-08-20    273   148     0.687     4.163
+  SPX    2027-09-17    301   155     0.805     4.525
+  SPX    2027-10-15    329   158     0.584     4.993
+  SPX    2027-11-19    364   165     0.656     2.492
+  SPX    2027-12-17    392   101     0.975     4.004
+  SPX    2028-01-21    427   119     0.931     1.488
+  SPX    2028-06-16    574   100     1.248     1.911
+  SPX    2028-12-15    756    92     1.799     4.090
+  SPXW   2026-11-23      3   110     6.051    24.316
+  SPXW   2026-11-24      4   114     5.701    34.887
+  SPXW   2026-11-25      5   104     5.720    38.298
+  SPXW   2026-11-27      7   189     4.814    35.654
+  SPXW   2026-11-30     10   194     2.557    10.634
+  SPXW   2026-12-01     11    80     1.417     6.228
+  SPXW   2026-12-02     12    88     1.333     7.270
+  SPXW   2026-12-03     13    88     1.266     9.562
+  SPXW   2026-12-04     14   114     1.777    11.608
+  SPXW   2026-12-07     17    86     1.183     7.230
+  SPXW   2026-12-08     18    92     0.837     1.622
+  SPXW   2026-12-09     19    99     1.055     6.719
+  SPXW   2026-12-10     20    83     0.852     4.312
+  SPXW   2026-12-11     21   111     1.207     7.703
+  SPXW   2026-12-14     24    62     1.106     3.288
+  SPXW   2026-12-15     25    57     0.908     3.444
+  SPXW   2026-12-16     26    62     1.154     3.049
+  SPXW   2026-12-17     27    50     1.401     4.200
+  SPXW   2026-12-18     28   242     1.344     8.684
+  SPXW   2026-12-21     31    24     0.962     1.822
+  SPXW   2026-12-22     32    37     0.996     1.831
+  SPXW   2026-12-23     33    38     1.223     3.486
+  SPXW   2026-12-24     34    61     1.281     2.520
+  SPXW   2026-12-28     38     7     0.669     0.876
+  SPXW   2026-12-31     41   299     0.928     2.545
+  SPXW   2027-01-08     49    70     0.929     3.004
+  SPXW   2027-01-15     56   335     1.009     5.975
+  SPXW   2027-01-22     63    59     1.172     4.892
+  SPXW   2027-01-29     70   389     0.747     3.447
+  SPXW   2027-02-19     91   254     0.957     5.121
+  SPXW   2027-02-26     98   183     0.877     5.583
+  SPXW   2027-03-19    119   104     0.994     5.034
+  SPXW   2027-03-31    131   473     0.708     4.161
+  SPXW   2027-04-16    147    38     0.965     4.420
+  SPXW   2027-04-30    161   171     0.645     3.267
+  SPXW   2027-06-30    222   416     0.468     4.554
+  SPXW   2027-09-30    314   426     0.511     3.356
+  all                       8141     1.680    38.298
+
+<masked>

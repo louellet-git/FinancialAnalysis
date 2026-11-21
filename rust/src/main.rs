@@ -39,6 +39,8 @@ USAGE:
   fa vol fit heston|bates --symbol T --date D [--rate R] [--expiry-max DAYS]
                                                   fit Heston or Bates to a stored option snapshot (fa vol --help)
   fa dcf drivers|classic|scenarios|models ...     Monte Carlo DCF in Rust (fa dcf --help)
+  fa selftest golden [--case NAME] [--cases PATH] [--update REASON [--case NAME | --all]]
+                                                  stored commands with the SHA-256 of their expected output; a store commit that is not present is SKIPPED (fa selftest golden --help)
   fa backtest TICKER [--horizon Y] [--simulations N] [--seed S]
                                                   point-in-time vintage backtest of revenue and FCF projections (Rust)
   fa verdict TICKER [--price P] [--rf-date D|today] [--rf-base-date D] [--rating A-]
@@ -295,6 +297,10 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
         Some("vol") => match financial_analysis::volmodels::cli::run(&fa.repo, &args[1..]) {
             Ok(code) => Ok(ExitCode::from(code as u8)),
             Err(e) => Ok(usage_error(&e)),
+        },
+        Some("selftest") => match args.get(1).map(String::as_str) {
+            Some("golden") => Ok(ExitCode::from(financial_analysis::selftest::command(&fa.repo, &args[2..]))),
+            _ => Ok(usage_error("selftest needs a command: golden")),
         },
         Some("verdict") => verdict_cmd(fa, &args[1..]),
         Some("trade") => match args.get(1).map(String::as_str) {

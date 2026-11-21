@@ -167,6 +167,23 @@ disk; `fa analyze --refresh` gets new data. Prices come from the Yahoo chart end
 often answers HTTP 429 (too many requests) to a cloud container: then the program says so and
 keeps the cache file. The forward consensus (EPS, price targets, ratings), the surprises and the earnings dates come from the Nasdaq site API (no key): `fa estimates get` and `fa earnings calendar` write the cache, `fa analyze` reads it (see `docs/HIDDEN-ASSUMPTIONS.md`, #215 to #229). Revenue estimates need `FMP_API_KEY`.
 
+### Golden cases (`fa selftest golden`)
+
+`rust/tests/golden/cases.toml` lists commands with the SHA-256 of their expected output. The author and the reviewer
+of a change to the engine run it (not in CI: the store is private).
+
+```bash
+rust/target/release/fa selftest golden                       # run all cases; exit 1 on a difference (first 20 lines)
+rust/target/release/fa selftest golden --case dcf_drivers_ibm
+rust/target/release/fa selftest golden --update "why the output changes" --case NAME   # or --all
+```
+
+Each case names the store commit that it needs; a case whose commit is not the HEAD of `data/raw` is SKIPPED, not
+passed. A mask hides only lines that vary (timing lines); any other mask needs a `why`. The command never downloads:
+it runs only commands of an allow list that read the cache. `--update` needs a reason; the reason and the date go
+into the case file, and the expected text goes into `rust/tests/golden/NAME.txt`, so the pull request shows the change.
+`fa selftest golden --help` has the details.
+
 ## Standard input variables
 
 Companies use different XBRL tag names for the same line. For example, interest expense

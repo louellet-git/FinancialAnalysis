@@ -1,0 +1,56 @@
+[[case]]
+name = "dcf_drivers_ibm"
+args = ["dcf", "drivers", "IBM"]
+store = "2a0d1f22b7741be47d035e46817715e29a86cb46"
+sha256 = "d99ee949599ac76a1991f2045815784bcf5eca3beffb3d0c383b69dc847a8121"
+must_contain = ["83.84", "151.84", "258.03"]
+reason = "first golden: current main"
+updated = "2026-11-21"
+
+[[case]]
+name = "options_check_spx"
+args = ["options", "check", "SPX", "--date", "2026-11-20", "--rate", "0.04"]
+store = "2a0d1f22b7741be47d035e46817715e29a86cb46"
+sha256 = "24e69b6f38bf84b016489bb7a175d7e7e537019120fb8a938751058ba18c3d9f"
+reason = "first golden: current main"
+updated = "2026-11-21"
+
+[[case]]
+name = "trade_backtest"
+args = ["trade", "backtest", "--end", "2026-10-09"]
+store = "2a0d1f22b7741be47d035e46817715e29a86cb46"
+sha256 = "9f0222265c901ccbee68be7339275b21cc4b38c2e7adf949599f6119b3f4e5b2"
+reason = "first golden: current main"
+updated = "2026-11-21"
+
+[[case.mask]]
+prefix = "  rejected entries"
+timing = true
+
+[[case.mask]]
+prefix = "total time"
+timing = true
+
+[[case]]
+name = "vol_fit_heston_spx"
+args = ["vol", "fit", "heston", "--symbol", "SPX", "--date", "2026-11-20", "--rate", "0.04", "--seed", "7"]
+store = "2a0d1f22b7741be47d035e46817715e29a86cb46"
+sha256 = "87bfda3f505fdc89ff537b00be7bc9330f3194d8a56770267f8fdfb9bc10c276"
+reason = "first golden: current main"
+updated = "2026-11-21"
+
+[[case.mask]]
+prefix = "time:"
+timing = true
+
+[[case]]
+name = "dcf_attribute_panel32"
+args = ["dcf", "attribute", "--tickers-file", "rust/mapcheck/universe/panel32.txt", "--from", "2026-11-13", "--to", "2026-11-20"]
+store = "2a0d1f22b7741be47d035e46817715e29a86cb46"
+sha256 = "2b7f856ff520537451a40e83856b6eeeded64ad4b31aa7d90226708406f918ce"
+reason = "first golden: current main"
+updated = "2026-11-21"
+
+[[case.mask]]
+prefix = "TIME:"
+timing = true
