@@ -195,3 +195,5 @@ Done: the Head of Staff row and rules in `chiefs/ORIENTATION.md` (questions for 
 ## 2026-11-21 (dialog)
 Words: "Yes (Recommended)" to: may we keep the Philadelphia Fed SPF file as a private copy (not in the public repo), with only the results in the repo?
 Done: ticket `T-20261121-spf-loader`.
+Words: "Can you send a blast ensuring that models should be properly documented as per the rules?"
+Done: a message to the four heads with the rule (CLAUDE.md "Model documents"; QUALITY-STANDARDS section 4): each head lists the models of its area without a document or a record and writes them; the Quality and Risk head refuses a model change without a current document.

@@ -1,6 +1,6 @@
 # Model: Static arbitrage check of an option chain
 
-Updated: 2026-11-21. Commit: not yet made.
+Updated: 2026-11-21.
 
 ## Purpose
 WARNING: a break is a measurement of one stored file. It is not a tradable price and not a profit.
@@ -52,25 +52,48 @@ Each choice has one record in `docs/assumptions/`.
 | A-127 | Black-76 volatility | European model on American options | Used for the marker and the history. |
 | A-137 | Bounds of the checks | Slope with no discount; EPS 1e-9 | Sets which pairs break. |
 
+## Register and runner
+The register is the folder `arbitrage/register/`. It has one file for each relation. Its README gives the form.
+- Seven relations are `active`: one for each check of `CHECK_NAMES`.
+  Their ids are OPT-MONOTONY, OPT-SLOPE, OPT-BUTTERFLY, OPT-CALENDAR, OPT-PARITY-UPPER, OPT-INTRINSIC and OPT-BOUND.
+- Four relations are `planned`: OPT-PARITY-STRIKE, OPT-BOX-IDENTITY, OPT-BOX-RATE and VIX-REPLICATION.
+- A test reads the folder. Each active file names an id of `option_arb::CHECK_IDS`. Each id has an active file.
+
+Command: `fa arb run --symbol T --date D [--time HHMM] [--rate R] [--out PATH]` (`market/arb_run.rs`).
+1. It reads one stored snapshot. A missing snapshot is a usage error: exit 64.
+2. It calls `option_arb::check_chain` with the defaults of `fa options check`. These are: no size floor, the strike filter for a European index, no marker.
+3. It prints one table: id, class, status, tested, pass, break, not tested. It also prints the dropped legs by reason.
+4. It writes the same as JSON. The default path is `data/processed/arb/<D>/<T>-<HHMM or close>.json`.
+5. Exit 0 also with breaks. A usage error exits 64.
+
+Rules of the runner:
+- Cache only. The rate is `--rate R`, or the Treasury par curve file `data/raw/rates/treasury_nominal_<year>.csv` (read only).
+- If the file is missing, the command says so and stops. It never downloads. A test reads the code for the live rate source.
+- Quote gate: a quote with no ask, bid above ask, or no bid and no ask above 0 is dropped. It is counted by reason.
+- A bid of 0 with an ask above 0 is kept as a buy leg only. A relation whose sold leg is buy-only is "not tested", not "pass" (`SeriesRow::not_tested`).
+- A quote with bid = ask is counted (`Report::locked`) and still used.
+- A dropped quote has no known relation. It is counted as a dropped leg, not as a relation.
+- Status: `break` (one break or more), `pass` (tested, no break), `not tested` (no test could run), `n/a European` (the check is for American options).
+- The field `for` (2 snapshots) is not used yet. The checks run on one file.
+
 ## Limits
 - Limits of use: a break is not a profit. No costs, no borrow, no time of the quotes, no early exercise (`option_arb.rs`).
-- Limits of use: on Alpaca indicative quotes a break is a measurement, not a tradable price (the report prints this; Alpaca documentation, https://docs.alpaca.markets/docs/historical-option-data, read 2026-11-21).
+- Limits of use: on Alpaca indicative quotes a break is a measurement, not a tradable price.
+  The report prints this. Source: Alpaca documentation, https://docs.alpaca.markets/docs/historical-option-data, read 2026-11-21.
 - A Cboe delayed file has no time of the quotes. Quotes of one file are not at one time.
 - Monotony and slope use all strike pairs, so one bad quote makes many breaks.
 - The VIX checks are untested: VIX options settle on a VIX future, not on the index (`option_arb.rs`).
 - Black-76 is a European model. The volatility of a deep in-the-money American quote is not right.
-- The implied dividend is an approximation: early exercise and borrow are inside it. For a 1-day series it is not usable (IBM 2026-11-20 series: -55%).
+- The implied dividend is an approximation. Early exercise and borrow are inside it.
+- For a 1-day series the implied dividend is not usable (IBM 2026-11-20 series: -55%).
 - Backtest: none applies, because the command is a check of one chain. It is not a forecast.
 - A fixed-answer test plants each break. No test shows that a break on real quotes is tradable.
 
 ## Code and command
 | What | Path or command |
 |---|---|
-| Code | `rust/src/market/option_arb.rs`, `options_cli.rs` (`check`), `option_iv.rs`, `option_history.rs` |
+| Code | `rust/src/market/option_arb.rs`, `options_cli.rs` (`check`), `option_iv.rs`, `option_history.rs`, `arb_run.rs` (`fa arb run`) |
 | Command | `fa options check SYMBOL --date D [--time HHMM] [--rate R] [--top N] [--min-size USD] [--iv-mark POINTS] [--compare D2] [--otm \| --all-strikes]` |
-| Tests | `cargo test --manifest-path rust/Cargo.toml --lib option_` |
+| Tests | `cargo test --manifest-path rust/Cargo.toml --lib option_` and `--lib arb_run` |
 | Findings | `trading/research/arb-01-chain-check-2026-11-19.md` |
 
-## Review status
-Review of 2026-11-20: PASS-WITH-NOTES. See the tickets `T-20261120-arb-1-chain-check` and `T-20261120-arb-1b-chain-check-depth`.
-The records of this document are not reviewed.

@@ -45,3 +45,58 @@ Limits:
 Owner rule, 2026-11-21: a hook or a system that constricts a head (it stops, delays or forces a step) needs
 a few days of evidence that it is better than each alternative, before it starts. A tool that only reports
 and constricts nothing can start now. This ticket is of the second kind; keep it so.
+
+## Tokens by ticket, by head, by agent and by model (owner word, 2026-11-21; added by the Head of Staff)
+
+The person has a fixed number of tokens for each week. The table must show where they go. Still no action of
+a head, and no limit that stops work.
+
+What each transcript line already has (checked 2026-11-21): the model, the four token counts (input, cache
+write, cache read, output), the time, the git branch and the folder of the work. The lines of a subagent are
+in the `subagents/` folder of the session, with the agent type in a small file next to them.
+
+1. **Ticket.** The git branch of a line gives the ticket: the `branch` field of the board. A head already
+   sets that field, so no new step. A line on no ticket branch goes to the row "no ticket" of its head
+   (coordination, memory, messages). That row is a number to show, not a fault.
+2. **Head and agent.** The session gives the head. A line of the main transcript is the head itself; a line
+   of a subagent has its agent type.
+3. **Model cost.** One unit for all models: weighted tokens. The weights (input, cache write, cache read,
+   output, for each model) are one small table in the repo, from the current price list (read it with the
+   skill `claude-api`; do not write prices from memory).
+4. **Share of the week.** The real figure exists: each cloud session gets a `rate_limit_event` with the
+   used share of the 7-day window and its reset time (`list_events`, kind `rate_limit_event`; on 2026-11-21
+   18:49 UTC: 71% used, reset 2026-11-25 16:00 UTC). No probe call is necessary. The Head of Staff reads it
+   and gives it to the read command (`--week-used 71`), which then shows each row also as a share of the week.
+5. **Estimate.** No estimate field for the first days. First collect the actual numbers of some tickets
+   (owner rule: evidence first). Then a ticket gets one optional field, for example `tokens: S`, `M` or `L`,
+   with the size bands from the measured tickets, and the table shows actual against estimate.
+
+Output of the read command, one table: ticket | head | head itself or agent type | model | weighted tokens |
+share of the week. Sums by ticket, by head and by model.
+
+Not from the old `chiefs` repo (it constricted too much): shares for each head, phases of the week, colours,
+stop lines, a probe call, a ledger that a head writes.
+
+## The data that the calculator needs (owner word, 2026-11-21; this ticket is its dependency)
+
+| Data | Where it is | Collected now? |
+|---|---|---|
+| Tokens by ticket, head, agent type, model and time | The transcript files on the machine of each session | **No. It is lost when the machine goes.** This ticket collects it |
+| The weeks before the hook | The transcript files of the head sessions that are alive now | **No.** The first run of the script reads the full file of its session (a backfill, with no action of a head). Do it soon |
+| The session of each count, to find the head | The session id in the environment; the Head of Staff has the list of titles | With this ticket (write the id; no title is necessary) |
+| The real share of the week, some readings in each week | The `rate_limit_event` of a session. It is not in the transcript file | Partly: the Head of Staff writes a reading in its dashboard when it looks. Test if a hook can see it; if not, this is sufficient |
+| The ticket: head, area, story, dates, pull request, size of the change | Git and the board | Yes, for free. Git keeps it; read it later |
+| The gates and the review cycles of a ticket | The count of QA agent starts on the branch of the ticket | With this ticket (they are agent types in the count) |
+
+Rule for a clean count: one branch for one ticket, and the branch in the ticket (`T-20261121-board-check`
+shows the faults). Tokens on a branch with no ticket go to "no ticket".
+
+## GitHub cost
+
+- A push to a `usage/*` ref starts no check: the workflow runs only for a pull request with code and for
+  `main` (`.github/workflows/tests.yml`, read 2026-11-21). Do not open a pull request for the usage data.
+- One ref for each session, replaced at each push (one commit with no parent). So the repo does not grow
+  with each push. The file is small (numbers and names).
+- A maximum of one push in 10 minutes for each session, and no push when the counts did not change.
+- If a private place is better than this public repo, the private store `louellet-git/fa-data` is the
+  alternative. The Head of Technology decides after the test.
