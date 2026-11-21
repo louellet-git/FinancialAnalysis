@@ -3,14 +3,15 @@ For the next session of this head: how the environment and the data sources beha
 person decided. Keep this file below 60 lines. Started 2026-11-20.
 
 ## Goal now and subsequent steps
-- `T-20261120-portfolio-backtest` waits for the verdict of the Head of Quality and Risk (branch
-  `claude/portfolio-backtest`, commit 2162887). After the verdict: apply the notes, merge `origin/main`
-  once, run value-rank again (pull requests 77 and 81 changed the model defaults), correct the number in
-  the ticket, open the pull request.
-- Then the queue (`head: technology`, lowest `order`): `mapping-test-2000`, `filing-values-in-variables`,
-  `filed-date-fabrication`, `collab-board-workflow`, `store-arb-data-rest`. `live-data-stream` waits.
-- Daily option save test: a scheduled task (15:27 New York time, market days) saves SPX, SPY, VIX to the
-  store and stops after 20 days (about 2026-12-22). Then report the cost and the use to the person.
+- Queue (`head: technology`, lowest `order`): `filing-values-in-variables` (3), `share-count-scale-guard`
+  (4; WAT 10-Qs of 2026-05-12 and 2026-08-11 are 1000x; use the cover-page count of the same filing, not the
+  year before: the BD merger doubled the count; 2x to 25x is often a split), `backtest-10ka-vintage` (5; a
+  model-change gate: the fix changes recorded results), `store-arb-data-rest` (6, not needed now).
+  `live-data-stream` waits.
+- Daily option save test: a scheduled task (15:27 New York time, market days, from 2026-11-23) runs
+  `fa options archive` (or the snapshots) and pushes to the store; it stops after 20 days. A reminder comes
+  back to this session on 2026-12-22: report days saved, days lost, size, and ask yes/no to continue.
+- Prices: rerun `fa prices get` for the close of 2026-11-20 (Nasdaq lags the same day), then push.
 - Owner tasks: `owner-first-run` (keys on the laptop), `delete-merged-branches` (6 branches on GitHub).
 
 ## Standing words of the person (record: RECORD.md)
@@ -45,7 +46,9 @@ person decided. Keep this file below 60 lines. Started 2026-11-20.
 - Push to the store in parts of less than 40 MB (compressed) or 70 MB (text).
 - Many heads change `main`: merge it once before the review; no test count in documents.
 - Windows build check: `cargo check --release --target x86_64-pc-windows-gnu`.
+- A pull request number can be taken by another head first: check the newest number just before you
+  write `merged: pull request N`, and correct the line in the same push if it differs.
 
 ## Dream pass
 Before a compaction (context above about 75% of the threshold) or on the word "dream".
-Last pass: 2026-11-20 23:20 UTC (context 86%).
+Last pass: 2026-11-21 02:20 UTC.

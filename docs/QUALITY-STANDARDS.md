@@ -41,6 +41,13 @@ Verdicts: **PASS** (no open CRIT or MAJ), **PASS-WITH-NOTES** (the same, with MI
 listed), **REVISE** (a MAJ is open), **REJECT** (a CRIT is open). "Pass" means PASS or
 PASS-WITH-NOTES. A reviewer passes work that is correct and usable.
 
+**Proportion** (owner word, 2026-11-20). Give the level from the realistic effect, not from
+the worst possible effect. In an internal process or document, a risk that is only possible
+is a note (MIN). The condition: no value, data or trade can change. Do not slow the work for
+it. A defect that is present keeps the level of the table. Apply the levels strictly to a
+result that a person can use for a decision or a trade. A hard limit of section 8 or a rule
+of `CLAUDE.md` keeps the level that this table gives it.
+
 Review cycles: at most two for one piece of work. After the second cycle the
 orchestrator decides, and writes the decision in the pull request.
 
@@ -56,6 +63,7 @@ a row in the ledger of your own folder; no `data/`, `.env` or secret in the comm
 | Model change | The reason does not use the price. Fixed-answer tests pass. The IBM numbers are the same: $83.84 / $151.84 / $258.03 (`fa dcf drivers IBM`, seed 7). The model document and the assumption records are current. |
 | Investigation | One findings file (skill `investigation-report`). Each number was calculated again by the auditor. |
 | Valuation report | The four steps of `CLAUDE.md` were done in order (skill `valuation-report-review`). Luc approved a new ticker. |
+| Trade recommendation | Less than 3 pages (owner word, 2026-11-21). It rests on a value that passed the four steps of a valuation report. Its trade fields follow the form in `trading/journal/README.md`. The journal write-up of the trade (row below) stays a separate file of at most 2 pages. |
 | Trade (paper or live) | A write-up of at most 2 pages in `trading/journal/` (form in its `README.md`): the logic, the trade, the steps taken, the risks; the result after the close. |
 | Document | The text is about 85% STE (`CLAUDE.md`, "Language"). Each command and path exists. Each number has a source. |
 
@@ -76,12 +84,13 @@ The orchestrator does not merge before the listed QA agents pass the work.
 | Strategy or backtest | `strategy-researcher` | `model-validator` | Costs, out of sample, model prices, no orders |
 | Investigation | the researcher who owns it | `auditor` | Numbers calculated again |
 | Valuation report | `equity-analyst` | `model-validator`, `document-reviewer`, `auditor` | The four steps, in order |
+| Trade recommendation | the head of the sleeve | `model-validator`, `auditor`, `risk-compliance-officer` | The value supports the side and the size. The auditor calculates each number again. The price is not an input. The repo sends no order. |
 | Document or model record | the author, `model-documenter` | `document-reviewer` | Purpose, evidence, STE |
 
 A small change (a typing error, a count, a ticket, a ledger row) has no gate: the
-orchestrator examines it. `test-engineer` and `risk-compliance-officer` are not in the
-gates. The orchestrator adds one of them when the work needs it (`docs/TEAMS.md`, "Main
-flows").
+orchestrator examines it. `test-engineer` is not in any gate. `risk-compliance-officer` is in
+the gate of a trade recommendation. For other work, the orchestrator adds `test-engineer` or
+`risk-compliance-officer` when the work needs it (`docs/TEAMS.md`, "Main flows").
 
 ## 6. No fit to the price
 

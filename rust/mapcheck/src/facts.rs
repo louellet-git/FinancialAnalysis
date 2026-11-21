@@ -416,4 +416,22 @@ mod tests {
         assert_eq!(select_annual(cut.entries(&tag, "USD"), "2022-12-31").unwrap().value, 100.0);
         assert_eq!(select_annual(facts.entries(&tag, "USD"), "2022-12-31").unwrap().value, 900.0);
     }
+
+    #[test]
+    fn filed_up_to_keeps_the_value_that_was_public_and_counts_the_day_of_the_filing() {
+        let facts = company(vec![(
+            "Revenues",
+            vec![
+                fact(Some("2023-01-01"), "2023-12-31", 90.0, "10-K", "2024-02-01"),
+                fact(Some("2024-01-01"), "2024-12-31", 100.0, "10-K", "2025-02-01"),
+                // a restatement of 2023 in the filing of 2025
+                fact(Some("2023-01-01"), "2023-12-31", 91.0, "10-K", "2025-02-01"),
+            ],
+        )]);
+        let tag = Tag { full: "us-gaap/Revenues".into(), namespace: "us-gaap".into(), name: "Revenues".into() };
+        let left: Vec<f64> = facts.filed_up_to("2025-01-31").entries(&tag, "USD").iter().filter_map(|f| f.val).collect();
+        assert_eq!(left, vec![90.0]);
+        assert_eq!(facts.filed_up_to("2024-02-01").entries(&tag, "USD").len(), 1);
+        assert!(facts.filed_up_to("2024-01-31").entries(&tag, "USD").is_empty());
+    }
 }

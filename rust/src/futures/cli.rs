@@ -123,4 +123,16 @@ mod tests {
         assert!(Args::new(&v(&["ES", "--date"]), &["--date"], None).unwrap_err().contains("needs a value"));
         assert!(Args::new(&v(&["ES", "NQ"]), &[], None).unwrap_err().contains("unexpected"));
     }
+
+    #[test]
+    fn futures_lines_that_fail_before_any_file() {
+        let none = Path::new("/nonexistent");
+        let err = |x: &[&str]| dispatch(none, &v(x)).unwrap_err();
+        assert!(err(&["positions", "ES", "--weeks", "x"]).contains("bad --weeks"));
+        assert!(err(&["positions", "ES", "--weeks", "0"]).contains("1 to 520"));
+        assert!(err(&["positions", "--weeks", "4"]).contains("needs a root"));
+        assert!(err(&["history", "ESZ26"]).contains("--start"));
+        assert!(err(&["quote", "ESZ26", "--bogus", "1"]).contains("unknown option"));
+        assert!(err(&["quote"]).contains("needs a symbol"));
+    }
 }

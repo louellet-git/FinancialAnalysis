@@ -34,7 +34,7 @@ date, the `mapcheck` panel counts before and after, the suite counts, and open p
 4. A key is never printed or stored in a file. The SEC contact is not in a public file.
 5. Rust only; no hand fix of a number in the cache.
 
-**Never.** Never commit, push, or open a pull request. The orchestrator does this. Commit `data/`.
+**Never.** Never commit, push, or open a pull request: the orchestrator does this. Never commit `data/`.
 
 **Stop and ask** when the terms forbid the use, a source needs payment or a key that
 the owner has not given, or a registry change moves a reviewed number.

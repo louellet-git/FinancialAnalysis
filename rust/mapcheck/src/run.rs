@@ -3,7 +3,7 @@
 use crate::checks::{check_company_as, check_period_as, filer_template, Finding, PeriodChecks, Severity};
 use crate::facts::CompanyFacts;
 use crate::mapper::{map_company_with, Company, Fill};
-use crate::supplement::Supplement;
+use crate::supplement::{FillMode, Filled, Supplement};
 use std::cell::OnceCell;
 use crate::registry::Registry;
 use flate2::read::GzDecoder;
@@ -109,8 +109,11 @@ fn error_report(ticker: &str, message: String, seconds: f64) -> TickerReport {
 /// the company facts do not have. The filing is read only if an input has no value.
 pub fn map_ticker(registry: &Registry, cache: &Path, ticker: &str, facts: &CompanyFacts, n_periods: usize) -> Company {
     let filing: OnceCell<Option<Supplement>> = OnceCell::new();
-    let fill = |end: &str, name: &str| {
-        filing.get_or_init(|| Supplement::load(registry, cache, ticker)).as_ref().and_then(|s| s.fill(registry, end, name))
+    let fill = |end: &str, name: &str, mode: FillMode| {
+        filing.get_or_init(|| Supplement::load(registry, cache, ticker)).as_ref().and_then(|s| match mode {
+            FillMode::Gap => s.fill(registry, end, name).map(|(v, t)| Filled::Value(v, t)),
+            FillMode::Lines => s.lines(end, name),
+        })
     };
     map_company_with(registry, facts, n_periods, Some(&fill))
 }
@@ -123,8 +126,11 @@ pub fn check_facts(registry: &Registry, ticker: &str, facts: &CompanyFacts, n_pe
 /// Map and check one company from its facts, and from the 10-K in the cache.
 pub fn check_cached(registry: &Registry, cache: &Path, ticker: &str, facts: &CompanyFacts, n_periods: usize, as_of: i64, keep_values: bool) -> TickerReport {
     let filing: OnceCell<Option<Supplement>> = OnceCell::new();
-    let fill = |end: &str, name: &str| {
-        filing.get_or_init(|| Supplement::load(registry, cache, ticker)).as_ref().and_then(|s| s.fill(registry, end, name))
+    let fill = |end: &str, name: &str, mode: FillMode| {
+        filing.get_or_init(|| Supplement::load(registry, cache, ticker)).as_ref().and_then(|s| match mode {
+            FillMode::Gap => s.fill(registry, end, name).map(|(v, t)| Filled::Value(v, t)),
+            FillMode::Lines => s.lines(end, name),
+        })
     };
     check_facts_with(registry, ticker, facts, n_periods, as_of, keep_values, Some(&fill))
 }
@@ -267,13 +273,26 @@ fn has_form(facts: &CompanyFacts, forms: &[&str]) -> bool {
 }
 
 pub fn check_ticker(registry: &Registry, cache: &Path, ticker: &str, n_periods: usize, as_of: i64, keep_values: bool) -> TickerReport {
+    check_ticker_filed(registry, cache, ticker, n_periods, as_of, keep_values, None)
+}
+
+/// `check_ticker` with a filing date. `filed_cut = None`: all facts of the cache, and the 10-K of the cache fills a missing
+/// input (`check_cached`). `Some(date)`: only the facts that a filing of `date` or an earlier date reported
+/// (`CompanyFacts::filed_up_to`), and no fill from the 10-K of the cache (it can be a later filing).
+pub fn check_ticker_filed(registry: &Registry, cache: &Path, ticker: &str, n_periods: usize, as_of: i64, keep_values: bool, filed_cut: Option<&str>) -> TickerReport {
     let start = Instant::now();
     let Some(path) = facts_path(cache, ticker) else {
         return error_report(ticker, format!("no company_facts file in {}", cache.join(ticker).display()), 0.0);
     };
     match read_facts(&path) {
-        Ok(facts) => {
-            let mut report = check_cached(registry, cache, ticker, &facts, n_periods, as_of, keep_values);
+        Ok(mut facts) => {
+            let mut report = match filed_cut {
+                None => check_cached(registry, cache, ticker, &facts, n_periods, as_of, keep_values),
+                Some(date) => {
+                    facts = facts.filed_up_to(date);
+                    check_facts(registry, ticker, &facts, n_periods, as_of, keep_values)
+                }
+            };
             report.seconds = start.elapsed().as_secs_f64();
             report
         }
