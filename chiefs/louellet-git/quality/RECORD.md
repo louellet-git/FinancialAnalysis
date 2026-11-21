@@ -46,3 +46,6 @@ Done: the blind-projection tests T1 to T4 (ticket `T-20261121-blind-projection-t
 
 ## 2026-11-21 05:33 UTC (my decision; no word of the person)
 The public copy of a split table from the Alpaca corporate-actions API: allowed as derived facts only (ticker, ex_date, ratio, factor, kind, sec_check, source), each checked against the SEC split tag where one exists; no raw Alpaca payload and no Alpaca-only field in the public store. Alpaca terms for redistribution are not read; this is written in `docs/DATA-SOURCES.md`. The person can reverse this.
+
+## 2026-11-21 14:37 UTC (my decision; no word of the person)
+Point-in-time S&P 500 members (fja05680/sp500): kept out of the public store (the base file comes from a book with no stated redistribution right); each head fetches a pinned commit into a local cache, checked by SHA-256 and logged in each run. The person can reverse this.
