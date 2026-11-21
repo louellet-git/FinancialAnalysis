@@ -1,6 +1,6 @@
 # Model: what the price implies, and where the price move went (`fa dcf implied`, `fa dcf attribute`)
 
-Updated: 2026-11-21. Commit: 90ed737 (base). These two commands share one document: they share
+Updated: 2026-11-21. Commit: 2e70201 (branch `claude/premium-series`). These two commands share one document: they share
 the value at the means, the searches and the code in `auto_implied.rs`.
 
 Backtest: none applies, because these commands measure what a price implies and split a past change; they do not forecast. Their point-in-time checks apply (facts filed on or before each date, the stale-price check, the truncation test).
@@ -17,7 +17,7 @@ rates and the implied premium (or growth)? Both are measurements. No input of th
 | The automatic model | `rust/src/dcf/auto.rs` and the table (`analysis/priors/process_priors_2026-11-19.toml`) | The builder runs again for each search step |
 | Price | `--prices FILE`, or the last close; with `--price-date`, the last close on or before it | At most 10 days older (A-012) |
 | Facts | With `--as-of` or `--from/--to`: facts filed on or before the date | A 10-K of the cache does not fill a missing input (see the rule below) |
-| Curve, beta | GSW file and SPY of the date | A curve older than 3 days is flagged in `attribute` |
+| Curve, beta | `--curve gsw` (default), `fedinvest` or `par`; SPY of the date | One source at both dates. A GSW row older than 3 days is flagged (A-012). See "Curve" below |
 | Groups | SIC code of the cache (today's code), or `--groups FILE` | Fama-French 12 sector; industry with 5 tickers or more |
 
 ## Method (short)
@@ -35,6 +35,46 @@ rates and the implied premium (or growth)? Both are measurements. No input of th
    growth shift that P2 needs at the premium of D1.
 6. A list: the whole-list change weighted by price x shares at D1. The share count is guarded (A-016).
 
+## Curve (`--curve`)
+- `gsw`: the GSW row of the Federal Reserve Board. It lags about one week.
+- `fedinvest`: the NSS curve that `fa recon rich-cheap` fits to the FedInvest prices of the last file on or before the date.
+- `par`: the same NSS fit to the Treasury par yield curve of the last row on or before the date. The tenors are
+  1 to 30 years (`PAR_TENORS`); the fit does not go beyond 30 years. Each tenor is a par bond.
+- Rule of the code (being added by another change, not yet in this branch): a par fit with a root-mean-square error
+  above `PAR_FIT_MAX_RMSE_BP` = 5.0 bp is not used (A-028).
+
+## The full bridge
+- Each ticker with a weight is in it once. A second class of one company has no weight (one weight for one company).
+- The lines add to the change of the list: facts, time, rates, implied premium, implied growth, residual, and
+  "no model value" (the price change of a ticker with no view).
+- Premium first: a ticker uses the premium view where it exists, else the growth view. Growth first: the reverse.
+  The two readings are two readings of one price change. The model cannot tell them apart.
+- A list of 20 tickers or fewer (`BRIDGE_TICKER_LINES`) gets one line for each ticker (A-032).
+- Stale price: a close older than the SPY close of the same date leaves every sum (A-031).
+  The list of the tickers left out is printed (rule of the code, being added).
+- One group line: the tickers with an SEC 8-K item 2.02 in the window.
+
+## Split of the plug: common part and company part
+The plug of a view splits in two engine steps (the two add exactly to the plug). Common step: the premium (or the
+growth shift) goes from x1 to x1 + c. Company step: from there to x2, with the beta, weight and facts of D2.
+Option `--common` sets c (A-029):
+- `median` (default): the median of x2 - x1 over the tickers of the run. `--common-list FILE` uses the tickers of
+  that file in place of the run (needed for a run of one ticker; with no list c = 0).
+- `vw`: the mean weighted by price x shares at D1.
+- `file` with `--common-file FILE`: the economics view. The file has the header `date,erp_change,growth_change,source`
+  (decimals; the row of D2). In both views the common step moves the premium and G of A-001 (`Rules.long_run`)
+  together. G moves the value only where G binds, because L = min(10-year zero, G). An empty field means "not
+  covered": no information, not a change of zero. With both fields empty, the company part is the whole plug and
+  the text gives the count of covered and not covered tickers.
+- The economics view is an input from the Head of Economics (its own engine). It never comes from the prices that
+  the attribution explains. If it did, the split would be circular (`T-20261121-premium-company-part`, design change 2).
+- A beta is inside the value (cost of equity = rf + beta x premium). So no separate beta line exists.
+
+## Extra CSV columns
+`beta1`, `beta2` (the beta of the model at D1 and D2); `dur_premium1` = -(ln V(x1 + h) - ln V(x1 - h)) / (2 h),
+h = 0.001 (A-030); `earnings_8k` (the dates of the 8-K item 2.02 in the window); then `c_premium`, `c_growth`,
+`p_premium_common_pct`, `p_premium_company_pct`, `g_growth_common_pct`, `g_growth_company_pct`.
+
 ## Outputs
 `implied`: one CSV row for each ticker (value over price, implied rate, premium, growth and margin shift, flags),
 the group medians, the list premium. `attribute`: one table or one CSV row for each ticker (parts in percent),
@@ -49,6 +89,12 @@ gives the same output for any `--jobs`.
 | A-012 | Age of a price or a curve | 10 days; 3 days | Conventions, no source |
 | A-022 | Equity risk premium | 4.41% | The model premium that the search moves |
 | A-017 | Share basis | filing date rule | Past price against filed shares |
+| A-027 | Curve rule | GSW at most 3 days older, else par | Used by `premium-series` (see `premium-series.md`) |
+| A-028 | Par fit limit | 30 years; 5.0 bp | Limit of the `par` curve |
+| A-029 | Common change | list median | `--common median`, alternatives `vw`, `file` |
+| A-030 | Sensitivity step | h = 0.001 | `dur_premium1` |
+| A-031 | Stale-price rule | close older than the SPY close | Leaves every sum |
+| A-032 | Ticker lines | 20 tickers or fewer | Per-ticker bridge lines |
 
 ## Limits
 - The value at the means is not the expected value and not the P50. A search can end at the floor of the rate at
@@ -64,9 +110,9 @@ gives the same output for any `--jobs`.
 ## Code and command
 | What | Path or command |
 |---|---|
-| Code | `rust/src/dcf/auto_implied.rs`, `rust/src/dcf/auto_attribute.rs` |
+| Code | `rust/src/dcf/auto_implied.rs`, `rust/src/dcf/auto_attribute.rs`; the series: `docs/models/premium-series.md` |
 | Model or parameter file | `analysis/priors/process_priors_2026-11-19.toml` |
-| Command | `fa dcf implied --cache data/raw --tickers-file rust/mapcheck/universe/sp500.txt`; `fa dcf attribute --from D1 --to D2 --tickers-file FILE` |
+| Command | `fa dcf implied --cache data/raw --tickers-file rust/mapcheck/universe/sp500.txt`; `fa dcf attribute --from D1 --to D2 --tickers-file FILE [--curve par] [--common median|vw|file]` |
 | Tests | `rust/src/dcf/auto_implied_tests.rs`, `auto_attribute_tests.rs` |
 
 ## Review status
