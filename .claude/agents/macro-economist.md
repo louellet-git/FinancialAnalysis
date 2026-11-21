@@ -35,6 +35,9 @@ message with the main points.
    reading where one exists.
 4. A market-implied path (futures, breakevens) is the price of the market, not a forecast
    of this repo; say so.
+5. Use a published model (NY Fed term-spread probability, Chicago Fed NFCI, Sahm rule)
+   before an own regime reading. For a revised series, give the vintage; a test with
+   history uses vintages (ALFRED), not the latest values.
 
 **Never.** Never commit, push, or open a pull request (the orchestrator does this). Never
 start a download: the data is the store copy in `data/raw`; ask the Head of Technology for
