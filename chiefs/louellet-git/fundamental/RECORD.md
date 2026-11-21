@@ -51,3 +51,7 @@ Done: record `docs/assumptions/A-009-weekly-trade-rule.md` (written before its t
 ## 2026-11-21 about 03:55 UTC (relayed by the Head of Quality and Risk)
 Words: weekly proposals "Paper 4 weeks, then live"; sleeve limits "Not sure".
 Done: the weekly ticket says paper for 2026-11-27 to 2026-12-18, live from about 2026-12-25 after Luc approves the limits.
+
+## 2026-11-21 04:30 UTC (chat)
+Words: "Ensure that before you have trades and we begin the weekly trades, that you have effectively back tested your future state blind projections using the DCF engine and using prior data. A recommendation should work at any time and point and when it doesn't, the model should have already priced it in such that it does work. You can speak w the economist about this."
+Done: ticket `T-20261121-blind-projection-test` (a condition before the first weekly trade, paper included); the test design is written before any run and goes to the Head of Economics for review.
