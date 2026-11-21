@@ -48,7 +48,7 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   and each future purchase a total loss is two frames; NVDA round 2). Ask for the range across frames.
 - A weighted sum over a list: ask for the top weights and the excluded part (one 1000x share count of
   WAT made 39% of the weight; attribution review).
-- Haiku for narrow fixed-list checks; Sonnet for attacks.
+- Model change: model doc and records current; record number in its head's range (Fund A-001+, Quant 100+, Econ 160+, Tech 200+, QR 230-249).
 - A harness or a backtest: ask the validator to plant a look-ahead (1 day and 40 days) in a scratch copy;
   the author's own mutant only showed the long case (backtest environment, 2026-11-21).
 - A model change: ask for the P50 change by class (margin, size, no spend) in % of value, not only the
