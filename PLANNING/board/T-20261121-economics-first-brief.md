@@ -2,7 +2,7 @@
 id: T-20261121-economics-first-brief
 title: Write the industry-practice note of the Head of Economics and the first macro brief
 area: docs
-status: in-progress
+status: review
 owner: louellet-git
 requested_by: louellet-git
 head: economics
