@@ -158,7 +158,7 @@ fn backtest(repo: &Path, args: &[String]) -> Result<(), String> {
             eprintln!("value-rank: {} of {} tickers have SEC facts with the standard template", universe.len(), tickers.len());
             n_scored = Some(universe.len());
             let params = RetParams { table: &table, fade: &fade, rules: &rules, curves: curves.as_ref(), index: None, lag: 100, paths, seed };
-            let s = ValueRank { years, series: &raw, index: index.as_deref(), params };
+            let s = ValueRank { years, series: &raw, index: index.as_deref(), params, scored: Default::default() };
             super::run(&prices, &universe, &s, &cfg)?
         }
         x => return Err(format!("unknown strategy '{x}': value-rank or momentum")),
@@ -184,6 +184,13 @@ pub struct Info {
     /// Tickers whose first price is after the start day.
     pub late: usize,
     pub seconds: f64,
+}
+
+/// The minimum, the median (the upper one for an even count) and the maximum of a list of counts.
+fn spread(v: &[usize]) -> Option<(usize, usize, usize)> {
+    let mut s = v.to_vec();
+    s.sort_unstable();
+    Some((*s.first()?, s[s.len() / 2], *s.last()?))
 }
 
 pub fn render(r: &Report, ew: &Report, cfg: &Config, args: &[String], info: &Info) -> String {
@@ -223,14 +230,32 @@ pub fn render(r: &Report, ew: &Report, cfg: &Config, args: &[String], info: &Inf
         100.0 * r.cost_total,
         100.0 * r.cost_total / r.years()
     );
+    let _ = writeln!(t, "days with no position (cash): {} of {} days ({:.0}%)", r.cash_days, r.dates.len(), 100.0 * r.cash_days as f64 / r.dates.len().max(1) as f64);
+    if let Some((lo, mid, hi)) = spread(&r.scored) {
+        let _ = writeln!(t, "tickers scored at the rebalances: min {lo}, median {mid}, max {hi} ({} rebalances)", r.scored.len());
+    }
     let _ = writeln!(
         t,
-        "excess annual return against SPY: {:+.2}%; against the equal-weight line of the list: {:+.2}%",
+        "excess annual return against SPY: {:+.2}%; against the equal-weight line of the list: {:+.2}% (first position: {} for the strategy, {} for the equal-weight run; the two runs cover different spans if these dates differ)",
         100.0 * (r.fund.annual - r.bench_perf.annual),
-        100.0 * (r.fund.annual - ew.fund.annual)
+        100.0 * (r.fund.annual - ew.fund.annual),
+        day(r.dates.first()),
+        day(ew.dates.first())
     );
     t.push('\n');
     t.push_str(LIMITS);
     t.push('\n');
     t
+}
+
+#[cfg(test)]
+mod tests {
+    use super::spread;
+
+    #[test]
+    fn the_spread_of_the_scored_counts_is_min_median_max() {
+        assert_eq!(spread(&[]), None);
+        assert_eq!(spread(&[57, 93, 80]), Some((57, 80, 93)));
+        assert_eq!(spread(&[0, 19]), Some((0, 19, 19)));
+    }
 }

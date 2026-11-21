@@ -8,12 +8,12 @@ too good for both strategies. The review measured an equal-weight portfolio of t
 against SPY +12.35% (2018 to 2026-11-13). The command prints the equal-weight line, the number of tickers with a late first
 price, and the warning.
 *Trap 2, SEC facts restated (found in the review, fixed):* the first version cut only the list of fiscal years by the
-filing date. The value of each year came from the latest filing, so a restatement filed in 2022 entered a decision of 2020
+filing date and took the latest filing of each year, so a year became known about 2 years after its end (about 790 days). The 550-day cap then dropped almost each ticker (0 to 19 of 119 scored in the review run) and the portfolio held cash on 766 of 2,190 days (35%); the new rule gives 57 to 93 scored and 0 days in cash (value-rank +19.02% a year, equal weight +14.56%). The value of each year came from the latest filing, so a restatement filed in 2022 entered a decision of 2020
 (the review multiplied each fact filed from 2022-06-01 by 1000, and the portfolio changed from 2020-11-03). About 15% of the
 annual periods with more than one filing differ between the first and the latest filing. The fix: `load_vintages` makes the
 years again from the facts filed on one annual filing day or before (`CompanyFacts::filed_up_to`), once for each annual
 filing day; `Vintages::known(day)` gives the latest vintage filed before the rebalance day. A fact with no filing date is not
-in a vintage. The template of the filer and the list of tickers with facts still come from today's facts.
+in a vintage. The template of the filer and the list of tickers with facts still come from today's facts: a truncation test (facts cut at a past date) moved the scored set from 431 to 416 tickers and the value of the portfolio by about 1% by 2022-06.
 *Also:* the price files are adjusted for splits, not for dividends (price returns, also for SPY, which is cap-weighted and
 bought with no cost); 997 of 999 files in the store are like this, and the files of IBM and JNJ are adjusted for dividends.
 A ticker that stops trading is sold at its last close (no failure loss). The parameter table of value-rank was estimated on

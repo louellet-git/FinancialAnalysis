@@ -81,6 +81,10 @@ impl<'a> View<'a> {
 pub trait Strategy: Sync {
     fn name(&self) -> &str;
     fn weights(&self, view: &View, universe: &[String]) -> Result<Vec<(String, f64)>, String>;
+    /// The number of scored tickers at each rebalance so far (a strategy that scores gives it; the others give none).
+    fn scored_counts(&self) -> Vec<usize> {
+        Vec::new()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -171,6 +175,10 @@ pub struct Report {
     pub skipped: usize,
     /// Positions sold at a close older than `STALE_DAYS` (the ticker stopped trading; no failure loss in the price).
     pub stale_sales: usize,
+    /// Days of the series with no position (all cash), after the first position.
+    pub cash_days: usize,
+    /// The number of scored tickers at each rebalance (empty if the strategy gives none).
+    pub scored: Vec<usize>,
     pub fund: Perf,
     pub bench_perf: Perf,
 }
@@ -216,6 +224,7 @@ pub fn run(prices: &Prices, universe: &[String], strat: &dyn Strategy, cfg: &Con
     let mut cash = 1.0f64;
     let (mut ri, mut turnover_total, mut cost_total, mut skipped, mut stale_sales) = (0usize, 0.0f64, 0.0f64, 0usize, 0usize);
     let (mut dates, mut nav, mut bench) = (Vec::new(), Vec::new(), Vec::new());
+    let mut cash_days = 0usize;
     // The series starts on the first rebalance date with a position: a strategy with no data yet holds cash, and that
     // time is not in the result (it would be flat, and SPY would run alone).
     let mut spy_first = f64::NAN;
@@ -270,6 +279,7 @@ pub fn run(prices: &Prices, universe: &[String], strat: &dyn Strategy, cfg: &Con
             continue;
         }
         dates.push(d);
+        cash_days += usize::from(shares.is_empty());
         nav.push(marked(&shares, cash, d));
         bench.push(prices.asof("SPY", d).map_or(f64::NAN, |x| x.1) / spy_first);
     }
@@ -277,7 +287,7 @@ pub fn run(prices: &Prices, universe: &[String], strat: &dyn Strategy, cfg: &Con
         return Err("the strategy held no position on any rebalance date".into());
     }
     let (fund, bench_perf) = (perf(&nav, &dates), perf(&bench, &dates));
-    Ok(Report { strategy: strat.name().to_string(), dates, nav, bench, rebalances: rdays.len(), turnover_total, cost_total, skipped, stale_sales, fund, bench_perf })
+    Ok(Report { strategy: strat.name().to_string(), dates, nav, bench, rebalances: rdays.len(), turnover_total, cost_total, skipped, stale_sales, cash_days, scored: strat.scored_counts(), fund, bench_perf })
 }
 
 #[cfg(test)]
@@ -354,6 +364,16 @@ mod tests {
         near(r.cost_total, 0.001 * 0.999);
         near(r.nav[0], 1.0 - 0.001 * 0.999);
         near(r.nav[2], 1.0 - 0.001 * 0.999); // the price is flat: no other change
+    }
+
+    #[test]
+    fn days_with_no_position_are_counted() {
+        // 40 days from 2020-01-27; rebalances on day 0, day 5 (Feb 1) and day 34 (Mar 1). The second one is all cash.
+        let p = prices(vec![("SPY", series(40, |_| 50.0)), ("A", series(40, |_| 100.0))]);
+        let r = run(&p, &["A".into()], &Fixed::new(vec![vec![("A", 1.0)], vec![], vec![("A", 1.0)]]), &cfg(0.0, 39)).unwrap();
+        assert_eq!(r.rebalances, 3);
+        assert_eq!(r.cash_days, 29); // days 5 to 33
+        assert!(r.scored.is_empty());
     }
 
     #[test]

@@ -77,6 +77,8 @@ pub struct ValueRank<'a> {
     pub series: &'a BTreeMap<String, Vec<(String, f64)>>,
     pub index: Option<&'a [(String, f64)]>,
     pub params: RetParams<'a>,
+    /// The number of scored tickers at each rebalance, in the order of the calls.
+    pub scored: std::sync::Mutex<Vec<usize>>,
 }
 
 /// The fiscal years of one company as the SEC facts showed them after each annual filing: `(filing day, years)` in
@@ -126,6 +128,10 @@ impl Strategy for ValueRank<'_> {
         "value-rank"
     }
 
+    fn scored_counts(&self) -> Vec<usize> {
+        self.scored.lock().map(|n| n.clone()).unwrap_or_default()
+    }
+
     fn weights(&self, view: &View, universe: &[String]) -> Result<Vec<(String, f64)>, String> {
         let date = mapcheck::dates::format(view.date());
         let index = self.index.map(|m| before(m, &date));
@@ -148,6 +154,9 @@ impl Strategy for ValueRank<'_> {
                 (ratio.is_finite() && p50 > 0.0).then(|| (t.clone(), ratio))
             })
             .collect();
+        if let Ok(mut n) = self.scored.lock() {
+            n.push(scored.len());
+        }
         Ok(top_quintile(scored))
     }
 }
@@ -264,18 +273,40 @@ mod tests {
         }
     }
 
+    /// The restatement factor of ticker `k`: it differs by ticker, so a poison changes the rank (a uniform scale keeps it).
+    fn poison_scale(k: usize) -> f64 {
+        1.0 + 400.0 * ((k * 7) % N) as f64
+    }
+
+    /// The price factor of ticker `k` from the poison date on: it differs by ticker. A factor of 1000 puts one huge weekly
+    /// return into the beta of the ticker, so a strategy that reads the series after the date changes its rank.
+    fn price_poison(k: usize) -> f64 {
+        if k % 4 == 2 { 1000.0 } else { 1.0 + 0.5 * (k % 3) as f64 }
+    }
+
     /// Per ticker: vintage 1 (filed 2020-02-20) has FY2012 to FY2019. Vintage 2 (filed 2021-02-19) is poisoned: all years
-    /// restated 1000 times and FY2020 added.
+    /// restated by a factor that differs by ticker (`poison_scale`) and FY2020 added.
     fn vintages(k: usize) -> Vintages {
         let v1: Vec<YearData> = (0..8).map(|i| fy(k, i, 1.0)).collect();
-        let v2: Vec<YearData> = (0..9).map(|i| fy(k, i, 1000.0)).collect();
+        let v2: Vec<YearData> = (0..9).map(|i| fy(k, i, poison_scale(k))).collect();
         Vintages(vec![(d("2020-02-20"), v1), (d("2021-02-19"), v2)])
     }
 
-    /// Daily closes from 2019-01-01 to 2021-12-31; from `poison_from` on the close is 9 times larger.
+    /// Daily closes from 2017-01-01 to 2021-12-31; from `poison_from` on the close is larger by a factor that differs by ticker.
     fn closes(k: usize, poison_from: &str) -> Vec<(String, f64)> {
-        let (a, z, p) = (d("2019-01-01"), d("2021-12-31"), d(poison_from));
-        (a..=z).map(|day| (mapcheck::dates::format(day), if day >= p { 9.0 } else { 1.0 } * (15.0 + 0.5 * k as f64 + 0.001 * (day - a) as f64))).collect()
+        let (a, z, p) = (d("2017-01-01"), d("2021-12-31"), d(poison_from));
+        (a..=z).map(|day| (mapcheck::dates::format(day), if day >= p { price_poison(k) } else { 1.0 } * (15.0 + 0.5 * k as f64 + 0.001 * (day - a) as f64) * (market_level(day - a) / 100.0).powf(0.4 + 0.25 * (k % 5) as f64))).collect()
+    }
+
+    /// The level of the market index `n` days after 2017-01-01.
+    fn market_level(n: i64) -> f64 {
+        100.0 + 0.01 * n as f64 + 3.0 * (n as f64 * 0.37).sin()
+    }
+
+    /// The market index. The tickers move with it (different betas), so the beta needs 104 weeks of both series.
+    fn market() -> Vec<(String, f64)> {
+        let (a, z) = (d("2017-01-01"), d("2021-12-31"));
+        (a..=z).map(|day| (mapcheck::dates::format(day), market_level(day - a))).collect()
     }
 
     fn rank(years: &BTreeMap<String, Vintages>, poison_from: &str, at: &str) -> Vec<(String, f64)> {
@@ -285,7 +316,8 @@ mod tests {
         let params = RetParams { table: &table, fade: &fade, rules: &rules, curves: None, index: None, lag: 100, paths: 100, seed: 7 };
         let series: BTreeMap<String, Vec<(String, f64)>> = (0..N).map(|k| (format!("T{k:02}"), closes(k, poison_from))).collect();
         let prices = crate::portfolio::Prices::from_raw(&series);
-        let s = ValueRank { years: years.clone(), series: &series, index: None, params };
+        let index = market();
+        let s = ValueRank { years: years.clone(), series: &series, index: Some(&index), params, scored: Default::default() };
         let universe: Vec<String> = series.keys().cloned().collect();
         s.weights(&View::new(d(at), &prices), &universe).unwrap()
     }
