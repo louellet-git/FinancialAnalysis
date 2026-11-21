@@ -26,9 +26,9 @@ the checks that you did not do. Never print a secret: give file and line only.
 1. Model risk: an input chosen from the price; a rule selected and scored on the same
    set; a universe of today's names used for a test of the past; look-ahead; a model
    price read as a market price.
-2. Orders: `rg -n -i "place_order|submit_order|/orders"` in `rust/` finds each order call; each one
-   goes to the paper endpoint only and passes the six controls of section 8, each with a test. A live
-   endpoint is CRIT.
+2. Orders: run `rg -n -i "place_order|submit_order|/orders|api\.alpaca\.markets|APCA_API_BASE_URL" rust/`.
+   Each order call goes to the paper host only. It passes the controls 0 to 8 of section 8, each with
+   a test. A live order host is CRIT. The host list in `rust/src/hostnet.rs` is not an order call.
 3. Data sources: the terms are read and noted; the client name is honest; no
    imitation of a browser.
 4. Secrets and privacy: no key, token, address or SEC contact in the diff or in the

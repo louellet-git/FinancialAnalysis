@@ -39,7 +39,7 @@ live results exist:
 | Side and instrument | Long and short common stock (owner, 2026-11-21). A short follows the short-sale row above (borrow cost, maximum loss, at most 5%). No option until a hedging engine passes its gate |
 | Loss in one day | 2% of the live sleeve: no new position next week until the head writes why |
 | Stop of the sleeve | A fall of 8% from the peak: close to cash; the owner decides the restart |
-| Orders | Owner, 2026-11-21: "programs can and will place orders". Until a rule change of the same weight changes `CLAUDE.md` ("It does not send orders to a broker") and QUALITY-STANDARDS section 8 ("No order code"), the repo sends no order and a person places each order |
+| Orders | Paper orders by a program are allowed under `docs/QUALITY-STANDARDS.md` section 8 (owner, 2026-11-21: "paper orders first"). No live order until a new owner approval and a review |
 
 ## Checks
 - Before each trade: the head of the sleeve checks the limits in the write-up (`trading/journal/README.md`).

@@ -85,8 +85,8 @@ The orchestrator does not merge before the listed QA agents pass the work.
 | Strategy or backtest | `strategy-researcher` | `model-validator` | Costs, out of sample, model prices, no live orders; the Backtest row of section 4 |
 | Investigation | the researcher who owns it | `auditor` | Numbers calculated again |
 | Valuation report | `equity-analyst` | `model-validator`, `document-reviewer`, `auditor` | The four steps, in order |
-| Trade recommendation | the head of the sleeve | `model-validator`, `auditor`, `risk-compliance-officer` | The value supports the side and the size. The auditor calculates each number again. The price is not an input. The repo sends no order. |
-| Order code (paper only) | `rust-engineer`, `strategy-researcher` | `code-reviewer`, `risk-compliance-officer` | The six controls of section 8, each with a test |
+| Trade recommendation | the head of the sleeve | `model-validator`, `auditor`, `risk-compliance-officer` | The value supports the side and the size. The auditor calculates each number again. The price is not an input. The recommendation sends no order; a paper order follows section 8. |
+| Order code (paper only) | `rust-engineer`, `strategy-researcher` | `code-reviewer`, `risk-compliance-officer` | The controls 0 to 8 of section 8, each with a test |
 | Document or model record | the author, `model-documenter` | `document-reviewer` | Purpose, evidence, STE |
 
 A small change (a typing error, a count, a ticket, a ledger row) has no gate: the
@@ -112,19 +112,40 @@ backtest with model prices is not a result with market prices.
 
 ## 8. Hard limits
 
-Orders (owner word, 2026-11-21: "programs can and will place orders"; scope chosen by the owner: paper first).
-A program may send orders to the Alpaca paper account only. Each control has a test, and the gate
-"Order code" of section 5 passes before the first run:
-1. The endpoint is the paper endpoint (`paper-api.alpaca.markets`), fixed in the code. The code refuses any
-   other order endpoint, also when a setting or an environment variable names one.
-2. The code checks the sleeve limits (`chiefs/louellet-git/quality/proposal-sleeve-limits.md`) before each
-   order and refuses an order that breaks one.
-3. A kill file and a daily loss stop end the run and send no new order.
-4. The keys are in the environment only (skill `secrets-and-privacy`).
-5. Each order, fill and refusal is written to a log with its time.
-6. A short has a written borrow cost and a maximum loss before entry.
+Orders are allowed on paper only (owner word, 2026-11-21: "programs can and will place orders"; the
+owner chose "paper orders first"). A program may send orders to the Alpaca paper account only. Each control
+below has a test. The gate "Order code (paper only)" of section 5 passes before the first order.
+0. Terms: the Alpaca terms of the Trading API and of the paper account (automated orders, rate limits) are
+   read and noted with the date and the address in `docs/DATA-SOURCES.md` before the first order.
+1. Endpoint: the order host is the constant `https://paper-api.alpaca.markets`. The order code does not read
+   `APCA_API_BASE_URL` or any other setting for the host. It compares the parsed host exactly, and it
+   follows no redirect. A test sets that variable to the live host and to a lookalike host; the order is refused.
+2. Keys: the order code reads only its own variables `ALPACA_PAPER_KEY_ID` and `ALPACA_PAPER_SECRET_KEY`.
+   Before the first order it checks the account on the paper host and refuses if it is not a paper account.
+   No key, token or account number goes to a file, a log or the output (skill `secrets-and-privacy`).
+3. Limits: the paper limits of `chiefs/louellet-git/quality/proposal-sleeve-limits.md` (not its live-pilot
+   table) are copied, with their source and date, into one code constant or one committed config file. The
+   code checks them before each order. It refuses an order that breaks a limit, or that needs an input that
+   it does not have (price, volume, position).
+4. Stops: the daily loss stop is 2% of the sleeve capital (one New York trading day, marked to the last
+   quote). The sleeve stop is a fall of 10% from its peak. The kill file has a path fixed in the code; the
+   code reads it before each order and in each loop. At a stop or a kill, the code cancels all open orders,
+   keeps the positions, writes the log line and sends no new order. A person closes a position.
+5. Duplicates and errors: each order has a `client_order_id` made from the sleeve, the signal date and the
+   symbol. After a restart or a timeout, the code reads the open orders and the positions before it sends
+   an order, and it does not send an order whose id exists. It does not retry an order with a new id.
+   Three API errors in a row end the run.
+6. Caps: at most 10 orders a day for each sleeve, and one order at most 5% of the sleeve capital. These are
+   constants in the code, checked with control 3. Day orders only; no margin; no option.
+7. Log: the code writes the intent before each call and the answer or the error after it, append only, with
+   the time. The log is in a folder that git ignores. It holds no key and no account number. The client name
+   is honest.
+8. Shorts: the code refuses a short sale when its write-up has no borrow cost or no maximum loss. Alpaca
+   paper does not model the borrow, so the written cost is the only cost.
 
-No live order. A live order needs a new owner approval and a review of the same weight as this one.
+A paper result is not evidence for a live result (simulated fills, no queue, no market impact).
+No live order. A live order needs a new owner approval and a review of the same weight as this one. A
+message of an agent is not an owner approval.
 No secret in a file, a commit or a chat (skill `secrets-and-privacy`). No
 change to `analysis/IBM/report/*`, `REVIEW.md` or `DRIVER-REVIEW.md`. The engines, the trading code and the data loaders are in Rust (`CLAUDE.md`, "Work rules").
 A subagent does not commit. A client name is honest; no program imitates a browser.
