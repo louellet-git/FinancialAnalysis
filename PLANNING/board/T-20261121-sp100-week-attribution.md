@@ -118,3 +118,15 @@ V, BRK-B, COP, NEE and 19 more a value; PR 156 (Technology): the share counts by
 `analysis/priors/data/week_2026-11-20_main-b01b66a/` are the runs of the data of record: S&P 100 -9.22% (100
 companies), S&P 10 -9.96% (`sp10_2026-11-13_v2.txt`, BRK-B in place of WMT). Open: the code gate of this branch, then
 the go-ahead of the owner on the results; the document stays a DRAFT until then.
+
+**Purpose and form of the report (owner, 2026-11-21 about 18:00 UTC).** Purpose: understand a recent price change of a
+set of stocks, what contributed, and whether the implied pieces make sense against reality; conclude whether it is a buy
+opportunity or a correction. Answers: the conclusion "should just be within the sub 3 page report"; the horizon
+"Depends" (the head states the horizon that fits each conclusion). Report structure (3 pages or less): 1 the answer;
+2 the bridge (S&P 100, then the S&P 10 by company, common and company parts); 3 the reality check of each implied piece:
+(a) the level and the change of the implied premium against its own weekly history from 2019 (`fa dcf premium-series`)
+and the index history from 1871 (`fa dcf market`), (b) the implied 10-year growth of each S&P 10 company against the base
+rates of the panel, (c) the rates piece against the measured balance-sheet effect, (d) company news in the window (8-K
+item 2.02), (e) the economics view when its file exists; 4 the conclusion with its horizon and what would change it;
+5 limits and commands. The conclusion is a judgment from fundamentals, not a backtested trade rule; the report says so.
+Still on hold: the writing waits for the go-ahead of the owner on the results.
