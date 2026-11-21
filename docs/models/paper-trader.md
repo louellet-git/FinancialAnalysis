@@ -16,7 +16,7 @@ of the repo, to watch a bot before any real trade.
 | Input | Source | Note |
 |---|---|---|
 | Bars and volatility indexes | data cache; refreshed from Yahoo unless `--no-refresh` | Same loader as the backtest (`docs/models/option-bot-backtest.md`) |
-| Live option chain | Cboe delayed quotes, `chain.rs` (`URL`) | One download for each underlying in a run, 3 s pause (`PAUSE_SECONDS`). `--no-live` skips it |
+| Live option chain | None now. `Chains::get` refuses (T-20261121-cboe-off) | The Cboe client is removed. Use `--no-live` |
 | Paper start | `data/processed/trading/paper/<bot>.json`, field `paper_start` | The first run saves it: `--start D` or today (New York date) |
 | Clock | System time, converted to New York time (`Now`, `paper.rs`) | |
 | Account rules | `RiskConfig::default()`, `--equity`, `--max-risk`, `--risk` | No option for the commission: 0.65 |
@@ -48,7 +48,7 @@ The model price of the legs has the records of `docs/models/option-bot-backtest.
 ## Limits
 - The account does not use the live price. A fill in the account is a model fill at the next bar open.
   The live price shows only what the signal would cost now.
-- The chain is delayed about 15 minutes. Before the open it can be stale. Cboe can change the file.
+- The live chain is refused: the Cboe page prohibits automatic downloads. The paper trader has no Alpaca adapter yet.
 - The signal price is not the next-bar-open price that the engine will use.
 - The run depends on the schedule of the person. The engine runs again from the bars, so a missed run is not a missed trade.
   But the live signal price of the missed run is lost.

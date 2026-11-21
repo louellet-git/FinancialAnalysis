@@ -7,7 +7,7 @@ the code disagree, the code governs.
 ## Data flow
 
 ```
-SEC EDGAR (companyfacts JSON API)      Yahoo chart     Cboe delayed quotes     FMP (key)
+SEC EDGAR (companyfacts JSON API)      Yahoo chart     Alpaca options          FMP (key)
         |                                  |                  |                   |
    rust/mapcheck (Rust: fetch, map,   rust/src/market/   rust/src/market/    rust/src/market/
    check, store file; import.rs)      prices.rs          options.rs          fmp.rs, consensus.rs
@@ -718,7 +718,7 @@ These parts are Rust code only. The Python files `scripts/analyze.py`, `scripts/
 | `company.rs` | Typed company: periods with one value for each registry variable, the source texts and the unmapped tags. `Company::from_store` reads the content of the store file in memory, `Company::load` reads the file. Free cash flow and its margin. `series` gives the values of one metric, oldest first (a variable, `free_cash_flow` or `fcf_margin`). |
 | `market/mod.rs` | Rounding as Python `round(x, 6)`, JSON with `NaN` (written by Python), key order of a JSON object, the HTTP client with 2 seconds between requests. |
 | `market/prices.rs` | The older Yahoo loader (adjusted, as `yfinance`); cache `data/raw/<T>/prices.json`; HTTP 429 keeps the cache. `fa analyze` and `fa report` use it. New code uses the price layer below. |
-| `market/options.rs` | Cboe delayed quotes to a snapshot `data/raw/<T>/options/<date>.json`; snapshot files; `compute_chain_metrics`. |
+| `market/options.rs` | The snapshot files `data/raw/<T>/options/<date>[T<hhmm>].json` (old Cboe files, Alpaca files); `compute_chain_metrics`. |
 | `market/fmp.rs` | FMP estimates and surprises (the source of revenue estimates); key from `FMP_API_KEY`; caches `estimates.json`, `surprises.json`. |
 | `market/consensus.rs` | The consensus snapshot files (Nasdaq source: see the section on estimates below) and `yf_earnings.json` of the Python code (read only). |
 | `analyze.rs` | `flatten` (the rows of the nine sheets), `write_xlsx` (crate `rust_xlsxwriter`), the command. |
@@ -986,7 +986,7 @@ Commands:
 | Module | Function |
 |---|---|
 | `fetch.rs` | The bars of SPY, QQQ, ^VIX, ^VXN, ^VIX1D (1d, 1h, 5m) and ^IRX (1d) from the Yahoo chart endpoint. It merges each reply into the CSV file of the cache (see below). It reuses the HTTP client and the reply reader of `rust/src/futures/` (`futures::download`, `yahoo::parse_raw`). |
-| `chain.rs` | The live option chain of one underlying: the Cboe delayed quotes (JSON). It gives bid and ask for the options that the chain lists. |
+| `chain.rs` | The live option chain of one underlying: the container type and the option name parser. No client: `Chains::get` refuses (T-20261121-cboe-off). |
 | `paper.rs` | The paper trader. It refreshes the data, runs each bot again with entries blocked before the paper start, and prices the new signals on the live chain. State: `data/processed/trading/paper/<bot>.json`. |
 | `data.rs` | Reads the CSV files one time. Aligns the bars of all symbols, the vol indexes (VIX, VXN, VIX1D) and the rate on one bar index. A timestamp is an integer. |
 | `calendar.rs` | Dates, business days, and the New York time offset with the daylight saving rules (checked against every date of the cache, from 1960). |

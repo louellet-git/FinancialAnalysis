@@ -48,7 +48,7 @@ USAGE:
                                                   --rating takes the market kd spread of the rating (network)
   fa prices get TICKER... [--tickers-file F] [--source S] [--full]   daily price history into data/raw (fa prices --help)
   fa prices intraday SYMBOL [--interval 1m|5m] --from D [--to D]   1- and 5-minute bars of Alpaca (free key) into data/raw/trading
-  fa options snapshot SYMBOL [--source cboe|alpaca] | history SYMBOL --date D | --from D --to D
+  fa options snapshot SYMBOL [--source alpaca] | history SYMBOL --date D | --from D --to D
                                                   option chain of today, or the surface of past dates from daily closes (fa options --help)
   fa prices show TICKER [--from D] [--to D] | last TICKER... | check TICKER... [--sources A,B]
                                                   rows of the cache, last close, or a cross-check of two sources
@@ -68,7 +68,7 @@ USAGE:
                                                   the weekly rule against the 13-week outcome: tests T2 to T4 (fa portfolio --help)
   fa trade fetch [--symbol S]... [--interval I]...  download the bars of the option bots (Yahoo) into the CSV cache
   fa trade backtest [--bot ID]... [--max-risk N] [--out FILE] [-v]   backtest the option bots (fa trade backtest --help)
-  fa trade paper [BOT]... [--no-refresh] [--no-live]   forward paper trading, live Cboe option chain (fa trade paper --help)
+  fa trade paper [BOT]... [--no-refresh] [--no-live]   forward paper trading (needs --no-live: the live chain is refused) (fa trade paper --help)
   fa trade premium [--horizon N] [--lag N]   implied against realised variance of SPY (VIX 21 days, VIX1D 1 day)
   fa sync [TICKER...] [--tickers-file F] [--only A,B] [--skip A,B] [--force] [--dry-run] [--max-minutes N]
                                                   bring all cached data sets up to date, only the old ones, one queue for each host (fa sync --help)
