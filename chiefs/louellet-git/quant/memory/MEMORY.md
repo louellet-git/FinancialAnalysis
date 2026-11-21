@@ -3,15 +3,16 @@ What the next session of this head must know. Keep this file below 60 lines. Sta
 Rules: `chiefs/ORIENTATION.md`, section 8. Decisions of the person: `../RECORD.md`.
 
 ## Goal now
-- `vol-1-heston-bates` (order 2): code in the worktree `/home/user/wt-vol1` (local branch
-  `wt/vol-1-heston-bates`). Open: the 5 s fit target, the T=1 published value (1.6e-8, flagged for the
-  validator and the person), the live SPX fit (Head of Technology or a restarted session), the gate.
-- `arb-2` step 2 waits for 60 days of FedInvest prices (`store-arb-data`, Head of Technology).
+- Merged on 2026-11-21 (pull request 100): vol-1 (fa vol fit), vol-7 steps 2-3 (fa options archive), arb-1b,
+  arb-2, arb-4 step 1. Open in my queue: `arb-4` (steps 2-3: VIX parity forward against VX, ZQ/SR3 strip;
+  the two step-1 notes are in the ticket), `arb-3` (box rate, SPX against SPY, two-day `--compare`).
+- Data: the Technology scheduled task copies SPX, SPY, VIX each market day from 2026-11-23 (20 days).
 
 ## Next steps
-- `arb-1b-chain-check-depth` (1.3). `arb-3` and `arb-4` (3.1, 3.2) wait for the chain copy (`vol-7`) and
-  for the futures data. Open for the person: `vol-7` before `vol-1`; a branch for each ticket.
-- After several merges: a test audit with `test-engineer` (`chiefs/ORIENTATION.md`, section 3).
+- From 2026-11-24 (two copied days): `arb-3`; the out-of-sample test of vol-1 (fit day D, price D + 1).
+- Then `vol-2` (SABR, local volatility) on the new `volmodels` base.
+- Now due: a test audit with `test-engineer` (several merges in my area; `chiefs/ORIENTATION.md`, section 3).
+- Findings for the person: no tradable break so far; the SPX feed is indicative (not executable).
 
 ## Tested rules
 - `fa recon bonds`, `fa recon explain` and `fa futures check` download each missing file (two agent downloads on

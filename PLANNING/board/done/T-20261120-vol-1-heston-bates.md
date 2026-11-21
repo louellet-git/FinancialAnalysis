@@ -2,11 +2,12 @@
 id: T-20261120-vol-1-heston-bates
 title: Price and fit the Heston and Bates models with Fourier methods
 area: engine
-status: review
+status: done
 owner: louellet-git
 head: quant
 order: 2
 branch: claude/upbeat-cori-a4ykf5
+merged: 100
 created: 2026-11-20
 acceptance: `fa vol fit heston --symbol SPX` fits the live SPX chain of one day in under 5 seconds, the Heston price test reproduces the published value 5.785155450 to 2e-8 and the converged value 5.785155434376 to 1e-10 (changed 2026-11-20: an independent Gil-Pelaez price by the validator shows that the published T = 1 digits are 1.56e-8 high), and the fit error by expiry is printed in vol points.
 ---
