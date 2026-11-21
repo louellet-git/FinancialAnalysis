@@ -107,8 +107,8 @@ fa dcf attribute [--tickers-file FILE | TICKER ...] --from D1 --to D2 [OPTIONS]
                   c_premium, c_growth, p_premium_common_pct, p_premium_company_pct, g_growth_common_pct, g_growth_company_pct
                                    the common change c of each view (decimals) and the two parts of the plug of each view
                                    (percent of P1; they add to p_premium_pct and g_growth_pct). Empty with no view
-  --common SRC   where the common change c of a view comes from. "Common" here is the part of a plug that all tickers share
-                  (the market-wide change). It is NOT the "COMMON SET" of block (2), which is the set of tickers that
+  --common SRC   where the common change c of a view comes from. Here, common is the part of a plug that all tickers share
+                  (the market-wide change). It is NOT the COMMON SET of block (2), which is the set of tickers that
                   have both views. It splits the plug of each view in two engine steps, from the
                   facts, date and curve of D2, the beta and price weight of D1, and the free variable x1: the common step (x1
                   to x1 + c) and the company step (to the beta, weight and x2 of D2). The two add to the plug exactly.
