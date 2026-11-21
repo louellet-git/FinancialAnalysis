@@ -111,3 +111,4 @@
 | pit-supplement-fill, premium-test, members cycle 2 | 2026-11-21 | started (see the next rows) | | |
 | alpha-1 stage 1 | 2026-11-21 | claude/quant-alpha-1 (23bd711): model-validator PASS-WITH-NOTES (stop holds on 1b; F1 process lowered to MIN), code-reviewer REVISE (1 MAJ: NW Bartlett weight untested); verdict REVISE, 1 MAJ, 12 MIN | about 200k (about 90k + 109k measured) | disk full during the run; scratch cleaned |
 | premium-test validator | 2026-11-21 | econ/premium-test-cmd (f5e9403): model-validator PASS-WITH-NOTES (statistics match to 6 digits; 4 MIN); code-reviewer still running | 107k measured | |
+| quant model documents | 2026-11-21 | claude/quant-model-docs (12f43e5): two document-reviewers (PASS-WITH-NOTES; REVISE); verdict REVISE, 1 MAJ (A-130 false 403/404 claim), MIN list (line refs, ticket form, links, Backtest line, STE) | about 221k (117k + 105k measured) | found the Backtest row absent from main: PR 146 |
