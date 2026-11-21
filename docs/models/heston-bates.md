@@ -74,7 +74,7 @@ No record in `docs/assumptions/` has a form for these choices. They are listed h
 
 ## Limits
 - Limits of use: the fitted parameters are calibrated values, not measurements, and are not an input of a DCF or a forecast (help text, `rust/src/volmodels/cli.rs`); a fit that is "NOT converged" or has a parameter "at bound" is not a result (`calib.rs` `at_bound`; test `lm_reports_a_run_that_did_not_converge`).
-- Limits of use: on Alpaca indicative quotes (`quote_kind: indicative`) a difference between the model and a quote is a measurement, not a tradable price (Alpaca documentation: indicative quotes are not OPRA quotes).
+- Limits of use: on Alpaca indicative quotes (`quote_kind: indicative`) a difference between the model and a quote is a measurement, not a tradable price (Alpaca documentation, https://docs.alpaca.markets/docs/historical-option-data, read 2026-11-21: the indicative feed is not OPRA quotes).
 - American options (stocks, ETF): the model is European. The fit is an approximation.
 - The snapshot has no clock time. Short expiries (1 to 2 days) have a large error in `t`.
 - A model with one volatility factor fits one expiry well and the term structure badly.
