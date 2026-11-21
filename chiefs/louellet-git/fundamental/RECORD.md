@@ -88,3 +88,7 @@ Done: the document starts with the 10 largest companies of the S&P 100 (one weig
 ## 2026-11-21 about 15:40 UTC (chat)
 Words: "Okay, now I recommend you start with the S&P 100, but we should then be able to attribute / break down the model valuation of each component of the S&P 10 and be able to explain that such that the sum of the parts comes out to the S&P 10."
 Done: the document starts with the S&P 100 bridge; a second bridge has the 10 largest companies only, company by company, and its lines add to the change of the S&P 10 (value-weighted).
+
+## 2026-11-21 about 15:50 UTC (chat)
+Words: "If there's a problem with the data, that needs to be fixed."
+Done: two data defects found and sent to the Head of Technology, the owner of the files (the point-in-time mapping does not use the filing supplement, so V, BRK-B, COP and NEE fail at a past date; a duplicate row in the Treasury par file). The model limits (AMZN and INTC below 0, TSLA, AMD and PLTR outside the search range, banks with no template) are not data defects; the document states them.
