@@ -122,10 +122,9 @@ the 10-K (`mapcheck fetch --filings --gaps`), the program reads the filing
 2. **Share count of a company with share classes.** The value is the largest class.
    If the sum of the classes agrees with net income divided by EPS, and the largest
    class does not, the value is the sum (classes with the same rights).
-3. **Capex.** The sum of the capex lines in the investing section of the cash-flow
-   statement, company tags included. A line is a capex line because of its tag name or
-   its label. A line that is a different standard variable (capitalized software) is
-   not included.
+3. **Capex.** The sum of the equipment lines in the investing section of the cash-flow
+   statement, company tags included (the lines are found with the calculation tree: see
+   "Capex lines of the 10-K"). Capitalized software is a different standard variable.
 4. **No capex line.** If the investing section has lines but no capex line, capex is 0.
    The filer does not show capex because the amount is small for this filer.
 
@@ -133,6 +132,29 @@ One 10-K gives the values for its three fiscal years. The source text of each va
 starts with `filing <accession number>`, and the check `filled_from_filing` gives a
 warning: a person must read the lines that the value contains. Only revenue, capex and
 the share count can get a value from the filing.
+
+## Capex lines of the 10-K
+
+For each fiscal year that the latest 10-K holds (three), the lines of the 10-K give the
+standard variables `capex` (equipment) and `capitalized_software`, also when the company
+facts have a value (`src/supplement.rs`, `Supplement::lines`). An older year keeps the
+company-facts value. The company-facts value stays in `capex_companyfacts` and
+`capitalized_software_companyfacts` (registry key `companyfacts_of`; models do not read them).
+`capex_total` is the sum of the two (rule R2). The source text is `10-K lines <accession>:`
+and the tags of the lines that it sums. It is not a gap fill: it gives no `filled_from_filing`
+warning. `fa` reads the values from the store file that `mapcheck import` writes.
+
+The rule on the calculation tree (`filing::capex_lines_in`): go down from the investing
+total (with discontinued operations, from the total of the continuing operations).
+
+1. A line with the standard variable `capex` or `capitalized_software` is a capex line.
+2. A line with any other standard variable (purchased intangibles, businesses, investments,
+   proceeds) is not, and its parts are not.
+3. A line with no standard variable (a company tag, or a standard tag that the registry
+   does not have) is a capex line if it is a payment (its effect on the total is negative)
+   and its tag name or label says equipment, property, capital expenditure or software.
+   Only this last step uses words.
+4. A line below a capex line is not counted again.
 
 ## The checks
 
@@ -204,9 +226,13 @@ lines for capex, depreciation and amortization, and total debt. The two values c
 from different methods (tag names, and the structure of the statements of the filer),
 and the filing is the source of truth. It uses no outside data source.
 
-Limits: the filing lines are found by words in the tag name, thus a line can be missing
-or incorrect; read the printed lines. Facts with two or more segment members are not
-used. The standard variables use the filing values only for a critical input that has
+Limits: a line that has no standard variable is found by words in the tag name or label (see
+"Capex lines of the 10-K"), thus a line can be missing or incorrect; read the printed lines.
+A line for property, plant and equipment together with intangible assets (URI) counts as
+equipment. `crosscheck` maps the company facts only (no filing values): it shows how good the
+company-facts value is. Facts with two or more segment members are not
+used. The standard variables use the filing lines for capex and capitalized software
+(see "Capex lines of the 10-K") and the filing values for a critical input that has
 no value (see "Values from the 10-K").
 
 ## Results (2026-11-20)

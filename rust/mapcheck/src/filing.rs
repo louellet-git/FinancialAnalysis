@@ -40,6 +40,7 @@ pub const LIABILITY_TOTALS: [&str; 2] = ["us-gaap_Liabilities", "us-gaap_Liabili
 struct Patterns {
     capex: Regex,
     capex_label: Regex,
+    not_capex: Regex,
     intangibles: Regex,
     not_a_payment: Regex,
     da: Regex,
@@ -53,7 +54,9 @@ fn patterns() -> &'static Patterns {
     CELL.get_or_init(|| {
         let re = |text: &str| Regex::new(&format!("(?i){text}")).expect("pattern");
         Patterns {
-            // Payments for long-life assets of the business: equipment and software
+            // Only for a line that has no standard variable (a company tag, or a standard tag that
+            // the registry does not have). A line with a standard variable is classified by its
+            // variable. Payments for long-life assets of the business: equipment and software
             // (PLANNING/RULES.md R2). Purchased intangibles are a separate pattern.
             // An oil company: the payments to explore and develop, not the purchase of
             // properties from other companies. A rental company: the rental equipment.
@@ -62,6 +65,7 @@ fn patterns() -> &'static Patterns {
             // A filer can use a tag with a different name for its capex line. The label
             // of the line in the statement says what the line is.
             capex_label: re("capital expenditure|purchases? of property|additions to property"),
+            not_capex: re("Businesses|Acquisitions?Net|IntangibleAssets|Spectrum|Licenses"),
             intangibles: re("IntangibleAssets|Spectrum|Licenses"),
             not_a_payment: re("^Proceeds|Businesses|Acquisitions?Net"),
             da: re("Depreciation|Amortization|Depletion"),
@@ -594,14 +598,79 @@ pub fn lines_matching_label<'a>(statement: Option<&'a Statement>, pattern: &Rege
     out
 }
 
-pub fn capex_lines(filing: &Filing) -> Vec<&Line> {
-    capex_lines_in(filing.statement("cash"))
+/// The capex lines of the investing section, found with the calculation tree (rule R2).
+/// A line is an amount with its effect on the investing total (negative: cash out).
+#[derive(Debug, Default)]
+pub struct CapexLines<'a> {
+    /// Equipment, plant and property (standard variable `capex`).
+    pub equipment: Vec<(&'a Line, f64)>,
+    /// Capitalized software (standard variable `capitalized_software`).
+    pub software: Vec<(&'a Line, f64)>,
+}
+
+impl<'a> CapexLines<'a> {
+    pub fn all(&self) -> Vec<&'a Line> {
+        self.equipment.iter().chain(&self.software).map(|(l, _)| *l).collect()
+    }
+}
+
+/// Sum of the effects of lines, as a cash outflow (None: no line).
+pub fn outflow(lines: &[(&Line, f64)]) -> Option<f64> {
+    (!lines.is_empty()).then(|| -lines.iter().map(|(l, effect)| effect * l.value.unwrap_or(0.0)).sum::<f64>().abs())
+}
+
+/// The investing total of the statement. A filer with discontinued operations has two
+/// totals, one inside the other: the lines of the continuing operations are used, thus
+/// the capex of a discontinued business is not counted.
+fn investing_total(cash: &Statement) -> Option<&Line> {
+    let top = cash.lines().into_iter().find(|l| INVESTING_TOTALS.contains(&l.tag.as_str()))?;
+    Some(top.children.iter().find(|c| INVESTING_TOTALS.contains(&c.tag.as_str())).unwrap_or(top))
 }
 
 /// The capital expenditure lines in the investing section of a cash-flow statement.
-pub fn capex_lines_in(cash: Option<&Statement>) -> Vec<&Line> {
+/// Rule on the calculation tree: go down from the investing total. A line with the
+/// standard variable `capex` or `capitalized_software` is a capex line. A line with any
+/// other standard variable (purchased intangibles, businesses, investments, ...) is not,
+/// and its parts are not. A line with no standard variable is a capex line if it is a
+/// payment (its effect on the total is negative) and its name or label says equipment,
+/// property, capital expenditure or software; if it is not, its parts are examined.
+/// A line below a capex line is not counted: the parent already contains it.
+pub fn capex_lines_in<'a>(cash: Option<&'a Statement>, variables: &HashMap<String, String>) -> CapexLines<'a> {
+    let mut out = CapexLines::default();
+    let Some(top) = cash.and_then(investing_total) else { return out };
+    for child in &top.children {
+        visit_capex(child, 1.0, variables, &mut out);
+    }
+    out
+}
+
+fn visit_capex<'a>(line: &'a Line, sign_above: f64, variables: &HashMap<String, String>, out: &mut CapexLines<'a>) {
+    let effect = sign_above * line.weight;
     let p = patterns();
-    lines_matching_label(cash, &p.capex, Some(&p.capex_label), &INVESTING_TOTALS, Some(&p.not_a_payment))
+    let name = local(&line.tag);
+    match line.variable(variables) {
+        Some("capex") if line.value.is_some() => return out.equipment.push((line, effect)),
+        Some("capitalized_software") if line.value.is_some() => return out.software.push((line, effect)),
+        Some("capex") | Some("capitalized_software") => {}
+        Some(_) => return,
+        None => {
+            // A line for "property, plant and equipment and intangible assets" is one amount that the
+            // filer does not split: it counts as equipment (a limit: it can hold some intangibles).
+            let excluded = p.not_capex.is_match(name) && !name.contains("PropertyPlantAndEquipment");
+            let named = (p.capex.is_match(name) || p.capex_label.is_match(&line.label)) && !excluded;
+            if line.value.is_some() && effect < 0.0 && named {
+                if name.contains("Software") {
+                    out.software.push((line, effect));
+                } else {
+                    out.equipment.push((line, effect));
+                }
+                return;
+            }
+        }
+    }
+    for child in &line.children {
+        visit_capex(child, effect, variables, out);
+    }
 }
 
 /// True if the cash-flow statement has an investing section with lines that have values.
@@ -613,9 +682,10 @@ pub fn has_investing_lines(cash: Option<&Statement>) -> bool {
         .any(|total| total.children.iter().any(|c| c.value.is_some()))
 }
 
-pub fn intangible_purchase_lines(filing: &Filing) -> Vec<&Line> {
+pub fn intangible_purchase_lines<'a>(filing: &'a Filing, variables: &HashMap<String, String>) -> Vec<&'a Line> {
     let p = patterns();
-    let capex: HashSet<&str> = capex_lines(filing).into_iter().map(|l| l.tag.as_str()).collect();
+    let capex = capex_lines_in(filing.statement("cash"), variables).all();
+    let capex: HashSet<&str> = capex.into_iter().map(|l| l.tag.as_str()).collect();
     lines_matching(filing.statement("cash"), &p.intangibles, &INVESTING_TOTALS, Some(&p.not_a_payment))
         .into_iter()
         .filter(|l| !capex.contains(l.tag.as_str()))
@@ -643,7 +713,8 @@ pub struct FilingEstimates {
     pub total_debt: Option<f64>,
 }
 
-pub fn estimates(filing: &Filing) -> FilingEstimates {
+pub fn estimates(registry: &Registry, filing: &Filing) -> FilingEstimates {
+    let variables = variable_of_tag(registry);
     // weight * value is the effect of a line on its section total (negative = cash out)
     let cash_effect = |lines: &[&Line]| -> Option<f64> {
         if lines.is_empty() {
@@ -659,8 +730,9 @@ pub fn estimates(filing: &Filing) -> FilingEstimates {
             Some(lines.iter().map(|l| l.value.unwrap_or(0.0)).sum())
         }
     };
-    let capex = cash_effect(&capex_lines(filing));
-    let intangibles = cash_effect(&intangible_purchase_lines(filing));
+    let lines = capex_lines_in(filing.statement("cash"), &variables);
+    let capex = outflow(&[lines.equipment.as_slice(), lines.software.as_slice()].concat());
+    let intangibles = cash_effect(&intangible_purchase_lines(filing, &variables));
     FilingEstimates {
         capex,
         capex_with_intangibles: capex.map(|c| c + intangibles.unwrap_or(0.0)),
@@ -731,8 +803,8 @@ pub fn report(registry: &Registry, filing: &Filing, statement: Option<&str>, foc
     }
     if focus || statement.is_none() {
         let sections: [(&str, Vec<&Line>); 4] = [
-            ("Capital expenditure lines (in the investing section)", capex_lines(filing)),
-            ("Purchases of intangible assets (in the investing section)", intangible_purchase_lines(filing)),
+            ("Capital expenditure lines (in the investing section)", capex_lines_in(filing.statement("cash"), &variables).all()),
+            ("Purchases of intangible assets (in the investing section)", intangible_purchase_lines(filing, &variables)),
             ("Depreciation and amortization lines (in the operating section)", depreciation_lines(filing)),
             ("Debt lines (balance sheet)", debt_lines(filing)),
         ];
@@ -746,7 +818,7 @@ pub fn report(registry: &Registry, filing: &Filing, statement: Option<&str>, foc
                 let _ = writeln!(out, "    {:58} {}  {} {}", label, value(line), kind(line), line.tag);
             }
         }
-        let e = estimates(filing);
+        let e = estimates(registry, filing);
         let b = |v: Option<f64>| v.map(|v| format!("{:.3}", v / 1e9)).unwrap_or_else(|| "no line found".to_string());
         let _ = writeln!(
             out,
@@ -978,8 +1050,10 @@ mod tests {
     #[test]
     fn capex_lines_include_a_company_tag_and_no_proceeds_and_no_acquisitions() {
         let f = filing();
-        assert_eq!(tags(capex_lines(&f)), vec!["us-gaap_PaymentsToAcquirePropertyPlantAndEquipment", "acme_PaymentsToAcquireAndDevelopSoftware"]);
-        assert_eq!(tags(intangible_purchase_lines(&f)), vec!["us-gaap_PaymentsToAcquireIntangibleAssets"]);
+        let variables = variable_of_tag(&Registry::embedded().unwrap());
+        let lines = capex_lines_in(f.statement("cash"), &variables);
+        assert_eq!(tags(lines.all()), vec!["us-gaap_PaymentsToAcquirePropertyPlantAndEquipment", "acme_PaymentsToAcquireAndDevelopSoftware"]);
+        assert_eq!(tags(intangible_purchase_lines(&f, &variables)), vec!["us-gaap_PaymentsToAcquireIntangibleAssets"]);
     }
 
     #[test]
@@ -991,7 +1065,54 @@ mod tests {
 
     #[test]
     fn estimates_from_the_filing_lines() {
-        let e = estimates(&filing());
+        let e = estimates(&Registry::embedded().unwrap(), &filing());
         assert_eq!(e, FilingEstimates { capex: Some(-80.0), capex_with_intangibles: Some(-90.0), da_total: Some(65.0), total_debt: Some(464.0) });
+    }
+
+    fn leaf(tag: &str, weight: f64, value: f64) -> Line {
+        Line { tag: tag.into(), label: tag.into(), weight, value: Some(value), children: Vec::new() }
+    }
+
+    fn cash_of(total: Line) -> Statement {
+        Statement { kind: "cash".into(), name: "Cash flows".into(), role: "r".into(), roots: vec![total] }
+    }
+
+    #[test]
+    fn calculation_tree_rule_sums_equipment_and_software_only() {
+        let variables = variable_of_tag(&Registry::embedded().unwrap());
+        // A subtotal of the filer (a company tag with no capex word) holds equipment and software.
+        let mut group = leaf("acme_CashSpentOnLongLivedAssets", -1.0, 90.0);
+        group.children = vec![
+            leaf("us-gaap_PaymentsToAcquirePropertyPlantAndEquipment", 1.0, 70.0),
+            leaf("us-gaap_PaymentsToDevelopSoftware", 1.0, 20.0),
+        ];
+        let mut investing = leaf("us-gaap_NetCashProvidedByUsedInInvestingActivities", 1.0, -400.0);
+        investing.children = vec![
+            group,
+            leaf("us-gaap_PaymentsToAcquireIntangibleAssets", -1.0, 50.0),
+            leaf("us-gaap_PaymentsToAcquireBusinessesNetOfCashAcquired", -1.0, 200.0),
+            leaf("us-gaap_PaymentsToAcquireAvailableForSaleSecuritiesDebt", -1.0, 30.0),
+            leaf("acme_ProceedsFromSaleOfEquipment", 1.0, 25.0),
+            leaf("acme_PaymentsForRentalEquipment", -1.0, 10.0),
+        ];
+        let cash = cash_of(investing);
+        let lines = capex_lines_in(Some(&cash), &variables);
+        assert_eq!(tags(lines.equipment.iter().map(|(l, _)| *l).collect()), vec!["us-gaap_PaymentsToAcquirePropertyPlantAndEquipment", "acme_PaymentsForRentalEquipment"]);
+        assert_eq!(tags(lines.software.iter().map(|(l, _)| *l).collect()), vec!["us-gaap_PaymentsToDevelopSoftware"]);
+        // The effects: the parts of the subtotal have weight +1 below a line with weight -1.
+        assert_eq!(outflow(&lines.equipment), Some(-80.0));
+        assert_eq!(outflow(&lines.software), Some(-20.0));
+        assert_eq!(outflow(&[]), None);
+    }
+
+    #[test]
+    fn discontinued_operations_are_not_counted() {
+        let variables = variable_of_tag(&Registry::embedded().unwrap());
+        let mut continuing = leaf("us-gaap_NetCashProvidedByUsedInInvestingActivitiesContinuingOperations", 1.0, -60.0);
+        continuing.children = vec![leaf("us-gaap_PaymentsToAcquirePropertyPlantAndEquipment", -1.0, 60.0)];
+        let mut all = leaf("us-gaap_NetCashProvidedByUsedInInvestingActivities", 1.0, -65.0);
+        all.children = vec![continuing, leaf("us-gaap_PaymentsForProceedsFromProductiveAssets", -1.0, 5.0)];
+        let cash = cash_of(all);
+        assert_eq!(outflow(&capex_lines_in(Some(&cash), &variables).equipment), Some(-60.0));
     }
 }

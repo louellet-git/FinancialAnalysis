@@ -5,7 +5,7 @@
 
 use crate::facts::{period_ends, select, CompanyFacts, Forms};
 use crate::registry::{Period, Registry};
-use crate::supplement::{FILLED, TRIGGERS};
+use crate::supplement::{FillMode, FILLED, FROM_LINES, TRIGGERS};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone)]
@@ -192,9 +192,10 @@ fn correct_share_scale(registry: &Registry, values: &mut [Option<f64>], sources:
     }
 }
 
-/// A source of values for a critical input that the company facts do not have:
-/// (period end, variable) -> (value, source text). See supplement.rs.
-pub type Fill<'a> = &'a dyn Fn(&str, &str) -> Option<(f64, String)>;
+/// A source of values from the 10-K: (period end, variable, mode) -> (value, source text).
+/// `Gap`: a critical input that the company facts do not have. `Lines`: the capex lines of the
+/// 10-K replace the company-facts value. See supplement.rs.
+pub type Fill<'a> = &'a dyn Fn(&str, &str, FillMode) -> Option<(f64, String)>;
 
 /// A formula value can be larger than its total by this share (rounding).
 pub const FORMULA_OVER_TOTAL: f64 = 0.02;
@@ -311,7 +312,25 @@ pub fn resolve_period_with(registry: &Registry, facts: &CompanyFacts, end: &str,
         }
     }
 
-    let (tag_values, tag_sources) = (values, sources);
+    let (mut tag_values, mut tag_sources) = (values, sources);
+    // The company-facts value stays in its own variable when the 10-K lines replace it.
+    for (i, variable) in registry.variables.iter().enumerate() {
+        if let Some(target) = variable.companyfacts_of.as_deref().and_then(|name| registry.try_var(name)) {
+            tag_values[i] = tag_values[target];
+            tag_sources[i] = tag_sources[target].clone();
+        }
+    }
+    // Capex lines of the 10-K for each fiscal year that the 10-K holds: they replace the
+    // company-facts value (calculation tree rule). An earlier year keeps the company facts.
+    if let (Forms::Annual, Some(fill)) = (forms, fill) {
+        for name in FROM_LINES {
+            let Some(i) = registry.try_var(name) else { continue };
+            if let Some((value, source)) = fill(end, name, FillMode::Lines) {
+                tag_values[i] = Some(value);
+                tag_sources[i] = Some(source);
+            }
+        }
+    }
     let (values, sources) = finish(registry, tag_values.clone(), tag_sources.clone());
 
     // The revenue fact (most companies have it as contract revenue).
@@ -344,7 +363,7 @@ pub fn resolve_period_with(registry: &Registry, facts: &CompanyFacts, end: &str,
             for name in FILLED {
                 let Some(i) = registry.try_var(name) else { continue };
                 if period.values[i].is_none() {
-                    if let Some((value, source)) = fill(end, name) {
+                    if let Some((value, source)) = fill(end, name, FillMode::Gap) {
                         values[i] = Some(value);
                         sources[i] = Some(source);
                         changed = true;
@@ -399,6 +418,10 @@ mod tests {
 
     fn flow(val: f64) -> Vec<crate::facts::Fact> {
         vec![fact(FY.0, FY.1, val, "10-K", "2025-02-01")]
+    }
+
+    fn flow_at(start: &str, end: &str, val: f64) -> Vec<crate::facts::Fact> {
+        vec![fact(Some(start), end, val, "10-K", "2023-02-01")]
     }
 
     fn balance(val: f64) -> Vec<crate::facts::Fact> {
@@ -683,22 +706,58 @@ mod tests {
     fn filing_value_fills_a_critical_input_and_the_formulas_use_it() {
         let registry = Registry::embedded().unwrap();
         let facts = company(vec![("Revenues", flow(1000.0)), ("PaymentsToDevelopSoftware", flow(30.0))]);
-        let fill = |end: &str, name: &str| {
+        let fill = |end: &str, name: &str, mode: FillMode| {
             assert_eq!(end, FY.1);
-            if name == "capex" { Some((-50.0, "filing 0000000001-25-000001: acme_Capex".to_string())) } else { None }
+            if name == "capex" && mode == FillMode::Gap { Some((-50.0, "filing 0000000001-25-000001: acme_Capex".to_string())) } else { None }
         };
         let p = resolve_period_with(&registry, &facts, FY.1, Forms::Annual, Some(&fill));
         assert_eq!(p.get(&registry, "capex"), Some(-50.0));
         assert_eq!(p.get(&registry, "capex_total"), Some(-80.0));
         assert_eq!(p.from_filing(&registry), vec![("capex", "filing 0000000001-25-000001: acme_Capex")]);
         // A quarter, and a year with all critical inputs: the filing is not used.
-        let never = |_: &str, _: &str| -> Option<(f64, String)> { panic!("the filing must not be read") };
+        let never = |_: &str, _: &str, mode: FillMode| -> Option<(f64, String)> {
+            assert_eq!(mode, FillMode::Lines, "a year with all critical inputs needs no gap fill");
+            None
+        };
+        let never_quarter = |_: &str, _: &str, _: FillMode| -> Option<(f64, String)> { panic!("the filing must not be read") };
         let mut full = company(vec![("Revenues", flow(1000.0)), ("PaymentsToAcquirePropertyPlantAndEquipment", flow(50.0))]);
         let mut units = std::collections::HashMap::new();
         units.insert("shares".to_string(), flow(10.0));
         full.facts.get_mut("us-gaap").unwrap().insert("WeightedAverageNumberOfDilutedSharesOutstanding".to_string(), crate::facts::Concept { units });
         resolve_period_with(&registry, &full, FY.1, Forms::Annual, Some(&never));
-        resolve_period_with(&registry, &facts, FY.1, Forms::Quarterly, Some(&never));
+        resolve_period_with(&registry, &facts, FY.1, Forms::Quarterly, Some(&never_quarter));
+    }
+
+    #[test]
+    fn filing_lines_replace_capex_for_the_fiscal_years_of_the_filing_only() {
+        let registry = Registry::embedded().unwrap();
+        let facts = company(vec![("Revenues", flow(1000.0)), ("PaymentsToAcquirePropertyPlantAndEquipment", flow(50.0)), ("PaymentsToDevelopSoftware", flow(5.0))]);
+        // The 10-K holds the year FY.1 only: capex is 70 (equipment) and 20 (software) there.
+        let fill = |end: &str, name: &str, mode: FillMode| {
+            if mode != FillMode::Lines || end != FY.1 {
+                return None;
+            }
+            match name {
+                "capex" => Some((-70.0, "10-K lines 0000000001-25-000001: us-gaap_A + acme_B".to_string())),
+                "capitalized_software" => Some((-20.0, "10-K lines 0000000001-25-000001: acme_S".to_string())),
+                _ => None,
+            }
+        };
+        let p = resolve_period_with(&registry, &facts, FY.1, Forms::Annual, Some(&fill));
+        assert_eq!(p.get(&registry, "capex"), Some(-70.0));
+        assert_eq!(p.source(&registry, "capex"), "10-K lines 0000000001-25-000001: us-gaap_A + acme_B");
+        assert_eq!(p.get(&registry, "capex_total"), Some(-90.0));
+        assert!(p.from_filing(&registry).is_empty(), "a replaced value is not a gap fill");
+        // The company-facts value stays in its own variable.
+        assert_eq!(p.get(&registry, "capex_companyfacts"), Some(-50.0));
+        assert_eq!(p.get(&registry, "capitalized_software_companyfacts"), Some(-5.0));
+        assert_eq!(p.source(&registry, "capex_companyfacts"), "us-gaap/PaymentsToAcquirePropertyPlantAndEquipment");
+        // An older year: the filing does not hold it, the company facts stay.
+        let old = company(vec![("Revenues", flow_at("2022-01-01", "2022-12-31", 900.0)), ("PaymentsToAcquirePropertyPlantAndEquipment", flow_at("2022-01-01", "2022-12-31", 40.0))]);
+        let q = resolve_period_with(&registry, &old, "2022-12-31", Forms::Annual, Some(&fill));
+        assert_eq!(q.get(&registry, "capex"), Some(-40.0));
+        assert_eq!(q.source(&registry, "capex"), "us-gaap/PaymentsToAcquirePropertyPlantAndEquipment");
+        assert_eq!(q.get(&registry, "capex_companyfacts"), Some(-40.0));
     }
 
     #[test]

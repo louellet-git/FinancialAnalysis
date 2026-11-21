@@ -152,7 +152,11 @@ software). This corrects only the companies that use a standard tag for software
 finds the capex, depreciation and debt lines by words in the tag name. A line can be
 missing (a capex line with an unusual name) or incorrect
 (FDX and DUK: debt is counted two times; V and MA: a line that is not depreciation).
-The printed lines show what the value contains.
+The printed lines show what the value contains. (Update 2026-11-21: the capex lines now come
+from the calculation tree: a standard variable of the line decides, and words decide only for a
+line with no standard variable; AMD discontinued capex, MA software and MCD other productive
+assets are correct. Depreciation and debt lines still use words. Open: a company tag with an
+unusual name and no standard variable is missed; one line of URI holds PP&E and intangibles.)
 
 **44. A share count can have no scale.** McDonald's tags 716.4 for 716.4 million shares.
 The importer and the Rust mapper correct a factor of 1,000 or 1,000,000 when net income
