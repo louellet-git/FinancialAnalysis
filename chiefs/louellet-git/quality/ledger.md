@@ -75,3 +75,4 @@
 | long-history test audit | 2026-11-21 | `claude/dcf-market-level` (3f5a6e3), store 8952a5a (hashes checked on 4358fed): auditor; numbers PASS (byte-identical rerun, 7 months by hand); record REVISE (R3 not in git; two scored runs) | about 90k (measured) | |
 | acquisition charge cycle 2, validator | 2026-11-21 | `claude/dcf-acq-charge-limits` (4566c41): PASS-WITH-NOTES | about 45k (measured) | code check running |
 | strategy gate, auditor | 2026-11-21 | `claude/dcf-engine-backtest` (f24f518): PASS-WITH-NOTES (each number reproduces; commit order consistent) | about 52k (measured) | |
+| long-history findings, fix check | 2026-11-21 | econ/long-history-findings (21676f8): head check; R3 committed as written after the first run; run of record named; PASS-WITH-NOTES | small (head only) | |
