@@ -389,58 +389,135 @@ mod tests {
         }
     }
 
-    /// The text without quotes, plus signs, commas, brackets and white space: `"a" + "b"` and `concat!("a", "b")` join.
+    /// The text without call noise (`.to_string()`, `.into()`, `String::from(`, `.to_owned()`), quotes, plus signs, commas,
+    /// brackets and white space: `"a" + "b"`, `concat!("a", "b")` and `"a".to_string() + "b"` join.
     fn squeeze(text: &str) -> String {
-        text.chars().filter(|c| !matches!(c, '"' | '+' | ',' | '(' | ')' | '[' | ']' | ' ' | '\t' | '\n' | '\r')).collect()
+        let mut t = text.to_string();
+        for noise in [".to_string()", ".into()", "String::from(", ".to_owned()"] {
+            t = t.replace(noise, "");
+        }
+        t.chars().filter(|c| !matches!(c, '"' | '+' | ',' | '(' | ')' | '[' | ']' | ' ' | '\t' | '\n' | '\r')).collect()
     }
 
-    /// Every `*.rs` file under `rust/src`. The words are built from pieces that sit in different statements, so that this
-    /// test does not match itself. Allowed: the existing GET-only uses of the trading base in `market/alpaca.rs`
-    /// (the contract list) and the host list of `hostnet.rs`, each with the count of its lines; `rates.rs` posts to the BLS.
+    /// The words that the guard looks for. They are built from pieces that sit in different statements, so that this
+    /// test file does not match itself.
+    struct Words {
+        order_path: String,
+        slash_word: String,
+        quoted_word: String,
+        word: String,
+        paper_host: String,
+        tbase: String,
+        api_host: String,
+        post: String,
+    }
+
+    fn words() -> Words {
+        let w1 = "/v2/";
+        let h1 = "paper";
+        let h2 = "-api";
+        let t1 = "trading";
+        let t2 = "_base";
+        let m1 = "api.alpaca";
+        let q1 = "post";
+        let q2 = "_json";
+        let e1 = "ord";
+        let e2 = "ers";
+        let w2 = format!("{e1}{e2}");
+        Words {
+            order_path: format!("{w1}{w2}"),
+            slash_word: format!("/{w2}"),
+            quoted_word: format!("\"{w2}\""),
+            word: w2,
+            paper_host: format!("{h1}{h2}"),
+            tbase: format!("{t1}{t2}"),
+            api_host: format!("{m1}.markets"),
+            post: format!("{q1}{q2}"),
+        }
+    }
+
+    /// The count of each needle that a file may have (the existing GET-only uses of the trading base in `market/alpaca.rs`
+    /// and the host list of `hostnet.rs`; the BLS post of `rates.rs` with its test fakes). Anything else is 0.
+    fn allowed(w: &Words, rel: &str, needle: &str) -> usize {
+        let table: [(&str, &str, usize); 10] = [
+            ("hostnet.rs", &w.paper_host, 1),
+            ("market/alpaca.rs", &w.paper_host, 2),
+            ("market/alpaca.rs", &w.tbase, 6),
+            ("hostnet.rs", &w.api_host, 2),
+            ("market/alpaca.rs", &w.api_host, 2),
+            ("hostnet.rs", &w.post, 2),
+            ("rates.rs", &w.post, 4),
+            ("rates_tests.rs", &w.post, 2),
+            ("market/fred_api.rs", &w.post, 1),
+            ("never", "never", 0),
+        ];
+        table.iter().find(|(f, n, _)| *f == rel && *n == needle).map(|t| t.2).unwrap_or(0)
+    }
+
+    /// The problems of one file (the path under `src`, the text).
+    fn violations(w: &Words, rel: &str, raw: &str) -> Vec<String> {
+        let sq = squeeze(raw);
+        let mut out = vec![];
+        if sq.contains(&w.order_path) {
+            out.push(format!("{rel} has an orders endpoint"));
+        }
+        if raw.contains(&w.quoted_word) || sq.contains(&w.slash_word) {
+            out.push(format!("{rel} has an orders path or word"));
+        }
+        // A path built from calls: the data path prefix with the word within 40 characters after it.
+        let prefix = &w.order_path[..4];
+        let mut from = 0;
+        while let Some(i) = sq[from..].find(prefix) {
+            let at = from + i + prefix.len();
+            let window: String = sq[at..].chars().take(40).collect();
+            if window.contains(&w.word) {
+                out.push(format!("{rel} builds an orders path"));
+            }
+            from = at;
+        }
+        let low = sq.to_lowercase();
+        for needle in [&w.paper_host, &w.tbase, &w.api_host, &w.post] {
+            let (n, ok) = (low.matches(&needle.to_lowercase()).count(), allowed(w, rel, needle));
+            if n != ok {
+                out.push(format!("{rel}: '{needle}' found {n} times, allowed {ok}"));
+            }
+        }
+        out
+    }
+
+    /// A TRIPWIRE, not a proof. It scans every `*.rs` file under `rust/src` for an order endpoint, a trading host, the
+    /// trading base helper and a post call, and it joins pieces of strings built with `+`, `concat!`, `.to_string()`
+    /// and the like. A determined author can still hide a word. The real protection is that `fa algo` uses only
+    /// `DataClient` and `DataUrl`, which send `GET` on the data host and nothing else.
     #[test]
     fn no_order_code_in_the_repo() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
         let mut files = vec![];
         rs_files(&root, &mut files);
         assert!(files.len() > 100, "the walk found {} files", files.len());
-        let w1 = "/v2/";
-        let w2 = ["ord", "ers"].concat();
-        let order_path = format!("{w1}{w2}");
-        let slash_word = format!("/{w2}");
-        let quoted_word = format!("\"{w2}\"");
-        let h1 = "paper";
-        let h2 = "-api";
-        let paper_host = format!("{h1}{h2}");
-        let t1 = "trading";
-        let t2 = "_base";
-        let tbase = format!("{t1}{t2}");
-        let m1 = "api.alpaca";
-        let api_host = format!("{m1}.markets");
-        let p1 = "hostnet::";
-        let p2 = "post_json";
-        let post = format!("{p1}{p2}");
-        // (file under src, text, allowed count in the squeezed text)
-        let allow = [
-            ("hostnet.rs", paper_host.as_str(), 1usize),
-            ("market/alpaca.rs", paper_host.as_str(), 2),
-            ("market/alpaca.rs", tbase.as_str(), 6),
-            ("hostnet.rs", api_host.as_str(), 2),
-            ("market/alpaca.rs", api_host.as_str(), 2),
-            ("rates.rs", post.as_str(), 1),
-        ];
+        let w = words();
+        let mut bad = vec![];
         for f in &files {
             let rel = f.strip_prefix(&root).unwrap().to_string_lossy().replace('\\', "/");
-            let raw = std::fs::read_to_string(f).unwrap();
-            let sq = squeeze(&raw);
-            let sq_lower = sq.to_lowercase();
-            assert!(!sq.contains(&order_path), "{rel} has an orders endpoint");
-            assert!(!raw.contains(&quoted_word) && !sq.contains(&slash_word), "{rel} has an orders path or word");
-            for needle in [&paper_host, &tbase, &api_host, &post] {
-                let n = sq_lower.matches(&needle.to_lowercase()).count();
-                let ok = allow.iter().find(|(file, w, _)| *file == rel && *w == needle.as_str()).map(|a| a.2).unwrap_or(0);
-                assert_eq!(n, ok, "{rel}: '{needle}' found {n} times, allowed {ok}");
-            }
+            bad.extend(violations(&w, &rel, &std::fs::read_to_string(f).unwrap()));
         }
+        assert!(bad.is_empty(), "{bad:?}");
+    }
+
+    #[test]
+    fn the_tripwire_catches_planted_forms() {
+        let w = words();
+        let word = &w.word;
+        let planted = [
+            format!("fn f(base: &str) -> String {{ format!(\"{{}}/v2/{{}}\", base, \"{}\".to_string() + \"{}\") }}", &word[..3], &word[3..]),
+            format!("use crate::hostnet::{{{}}}; fn f() {{ {}(u, b, 1.0); }}", w.post, w.post),
+            format!("const U: &str = concat!(\"https://{}\", \"{}\", \"/v2/\", \"{}\");", &w.paper_host[..5], &w.paper_host[5..], word),
+        ];
+        for text in &planted {
+            assert!(!violations(&w, "trading/algo/planted.rs", text).is_empty(), "not caught: {text}");
+        }
+        // A clean file has no problem.
+        assert!(violations(&w, "trading/algo/clean.rs", "fn f() { let u = format!(\"{}/v2/stocks/bars\", base); }").is_empty());
     }
 
     #[test]

@@ -463,7 +463,7 @@ rust/target/release/fa trade backtest                 # all bots, leaderboard (R
 rust/target/release/fa trade backtest --bot s14b_spy_trend_calls -v
 rust/target/release/fa trade backtest --max-risk 250  # larger risk for each trade
 rust/target/release/fa trade paper                    # one paper-trade step for each bot
-rust/target/release/fa algo replay --strategy demo --date 2026-11-18   # algo engine on stored bars; live: fa algo run --strategy demo (needs the Alpaca keys; own simulator, no order; a pipe test outside the trading sleeves; run one Alpaca command at a time). PowerShell, from the REPO folder: $env:APCA_API_KEY_ID="..."; $env:APCA_API_SECRET_KEY="..."; .\rust\target\release\fa.exe algo run --strategy demo; stop and flatten: New-Item "$PWD\data\processed\algo\STOP" (the run prints the full path of this file; remove it before the next run)
+rust/target/release/fa algo replay --strategy demo --date 2026-11-18   # algo engine on stored bars; live: fa algo run --strategy demo (needs the Alpaca keys; own simulator, no order; a pipe test outside the trading sleeves; run one Alpaca command at a time). PowerShell, from the REPO folder: $env:APCA_API_KEY_ID="..."; $env:APCA_API_SECRET_KEY="..."; .\rust\target\release\fa.exe algo run --strategy demo; stop and flatten: New-Item "$PWD\data\processed\algo\STOP" (the run prints the full path of this file; remove it before the next run). A run or a replay writes under `data/processed/algo/` of the repo folder, which git ignores
 ```
 
 `fa trade backtest --help` shows all options (`--out FILE` writes the leaderboard as CSV,

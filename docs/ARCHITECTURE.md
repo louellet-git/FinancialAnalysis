@@ -1036,7 +1036,8 @@ test checks that the code has no order endpoint. All fills are model fills.
   next bar. `--latency-ms` does not apply, and the replay prints a warning. An order never fills on the input of its decision.
 - The code of `fa algo` reads the Alpaca DATA host only (`DataClient` and `DataUrl` in `source.rs` send `GET` of stock data
   paths). A test scans each `*.rs` file of `rust/src` for an order endpoint, with an allow-list for the existing
-  GET-only uses of the trading base. A look-ahead guard refuses an input with a data time after its read time, and a
+  GET-only uses of the trading base. The test is a tripwire, not a proof: the real protection is that `fa algo` uses only
+  `DataClient` and `DataUrl`. A look-ahead guard refuses an input with a data time after its read time, and a
   recorded file that is out of order.
 - Limits (printed at each start and in each summary): no market impact, no queue position, no partial fills; IEX quotes
   are not the NBBO; a fill at the quote is not a real fill; the spread of a stored bar is assumed; the loss stop is
