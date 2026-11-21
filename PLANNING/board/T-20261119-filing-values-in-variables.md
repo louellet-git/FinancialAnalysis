@@ -2,11 +2,12 @@
 id: T-20261119-filing-values-in-variables
 title: Use the filing-level values for capex, depreciation and debt in the standard variables
 area: importer
-status: backlog
+status: in-progress
 owner: louellet-git
+requested_by: louellet-git
 head: technology
 order: 3
-branch:
+branch: claude/filing-capex
 created: 2026-11-19
 acceptance: For the 50 tickers of `rust/mapcheck/universe/batch50.txt`, the standard variables for capex, depreciation and amortization, and total debt agree with Yahoo Finance for 90% or more, and each value records the filing lines that it contains.
 ---
