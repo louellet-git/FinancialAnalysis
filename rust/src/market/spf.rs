@@ -170,7 +170,7 @@ fn us_date(text: &str) -> Option<String> {
 
 /// The upper bound of the release date of the Q1 survey of `year`, where the file has no date.
 /// Evidence, not a formula: the Bank's release-dates file (downloaded 2026-11-21) gives all 35 Q1 releases from 1992 to
-/// 2026; the latest is 2019-03-22 (after a shutdown). 31 March is later than each of them. It is a bound, not a date:
+/// 2026; the latest day of the year is 22 March (2019, after a shutdown). 31 March is later in the year than each of them. It is a bound, not a date:
 /// a later delay can pass it, so a row marked "bound" needs a check by hand before a point-in-time use.
 pub fn q1_release_bound(year: i32) -> String {
     format!("{year:04}-03-31")
