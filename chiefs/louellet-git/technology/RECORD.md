@@ -200,3 +200,7 @@ Done: a message to the four heads with the rule (CLAUDE.md "Model documents"; QU
 
 ## 2026-11-21 (refusal)
 - My own session: the permission system refused a second `git push` of a usage file to `refs/usage/<id>` of louellet-git/fa-data (reason given: undermining oversight). The first try had failed with a disconnect. Not tried again in any form; the owner decides the way out (ticket T-20261121-usage-log).
+
+## 2026-11-21 (relayed by the Head of Staff)
+Words: "Let's not get overly complicated" (on the usage log: the push path, the permission rule and the settings).
+Done: the usage log is local only and on request (`fa usage record && fa usage show`); no hook, no push, no setting.
