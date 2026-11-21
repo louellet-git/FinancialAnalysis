@@ -126,3 +126,8 @@ Done: an ask is a yes/no question; the session where the person answers pushes i
 ## 2026-11-21 00:08 UTC (chat)
 Words: "I need the question as an actual question I click y/n for, lean"
 Done: `chiefs/ORIENTATION.md`, section 5: the session where the person answers shows the question dialog (`AskUserQuestion`) with "Yes" and "No", plus a push notification to open the session.
+
+## 2026-11-21 00:11 UTC (question dialog)
+Question: "May one automatic job save the day's option prices each trading day (about 3:45 pm New York time), as a test for 20 trading days?"
+Words: "Yes (Recommended)"
+Done: the scheduled task "Daily option price save (20-day test)" (15:27 New York time, market days; SPX, SPY, VIX chains to the store; stops after 20 days). Ticket moved to `PLANNING/board/done/`.
