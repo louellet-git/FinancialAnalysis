@@ -18,7 +18,8 @@ once to see the form of a finding.
    choice stochastic or fixed, and why; is the sign of each correlation right.
 3. **Look for double counts and mismatches.** Debt charged twice (F1); a stock with its
    flow (F15); growth credited without the cost that bought it (F16); SBC added back and
-   not charged (F5); a terminal value share that nobody reports (F11).
+   not charged (F5); a terminal value share that nobody reports (F11); a rule that is right for
+   the median and wrong for the tail (count the values at or below 0 before and after).
 4. **Base rates.** Compare each driver with the history of the company, the panel and the
    tables in `analysis/priors/`. A growth path that no company has done is a finding.
 5. **Sensitivity.** Move each large driver (`--sensitivity NAME=V1,V2`, `--set`, `--pset`).
@@ -26,7 +27,9 @@ once to see the form of a finding.
 6. **What the price implies.** Use `--implied-price P --implied-param NAME`. Read the
    result as a measurement of the gap. Never use it to change an input.
 7. **Search for the omitted.** Forward disclosures (RPO, guidance), stale ledger facts,
-   hand-entered numbers.
+   hand-entered numbers; for a backtest, a poison test of each data source it reads; for a
+   fit, the convergence status and the parameters on a bound; for a rejected alternative in a
+   record, a run of it.
 8. **Verdict.** Give PASS, PASS-WITH-NOTES, REVISE or REJECT with each finding, its level
    and the fix that you ask for (`docs/QUALITY-STANDARDS.md`, section 3).
 

@@ -7,45 +7,51 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   internal documents: do not be constricting and do not slow the work. Risk in trades: strict.
   (`RECORD.md`; rule in `docs/QUALITY-STANDARDS.md`, section 3, "Proportion".)
 - 2026-11-20: the agents are lean and of good quality, "not obsessive and tight fisted".
-- GitHub Actions cost (date not recorded, 2026-11-19 or 2026-11-20): few pull requests; a pull
-  request with documents only has no check run. Rules: `chiefs/ORIENTATION.md`, section 6.
+- Few pull requests; a pull request with documents only has no check run (`chiefs/ORIENTATION.md`, section 6).
 - The computer of the person is a Windows laptop: give commands for PowerShell.
-- 2026-11-20 23:22 UTC: choose the model of each agent run for the job (permission, not a duty); the files
-  stay Sonnet. Today: the validator, auditor and code reviewer found each MAJ (keep Sonnet for that work);
-  format, data checks and test plans found MIN only (Haiku fits a small job of that kind).
+- 2026-11-20 23:22 UTC: choose the model of each agent run for the job (permission, not a duty); the
+  files stay Sonnet. The validator, auditor and code reviewer found each MAJ: keep Sonnet for that work.
+  Haiku fits a small mechanical check (a byte comparison, a narrow diff).
 
 ## Goal now
-- Do the gate reviews that the other heads ask for; send one verdict with all findings in one
-  message to the author. Then the queue (`head: quality`, lowest `order` first).
+- Do the gate reviews that the other heads ask for; one verdict with all findings in one message.
+- Open for the person (asked 2026-11-20): open the pull request of my branch? Start my queue?
 
-## How a review runs here (tested 2026-11-20)
-- One detached worktree for each review: `git worktree add --detach ../wt-qa-<name> <commit>`.
-  Build the release binary there before the agents start; give each agent its own
-  `CARGO_TARGET_DIR` in the scratch folder, so that two agents do not rebuild one binary.
-- Data: clone the store one time to `/home/user/qa-fa-data`
-  (`GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 https://github.com/louellet-git/fa-data <path>`,
-  1.5 GB) and link it as `data/raw` of the worktree. Agents read it and never write it.
-- The store has no SIC code in the 505 earnings list files (until the next `fa sync`), and no
-  price file for CFR, DDS, ET, MOG-A, SUN. Tell the agents: these are not new findings.
-- Alpaca from a cloud session: dummy key variables give HTTP 401 (the proxy does not add the key id; 2026-11-20). A real Alpaca run needs the person or a key.
-- Write in each brief that the agent must not download many tickers (only the Head of Technology
-  starts that). A gate request can ask for such a run; do not give it to an agent.
+## How a review runs here (tested 2026-11-20 and 2026-11-21)
+- One detached worktree for each review (`git worktree add --detach ../wt-qa-<name> <commit>`); build
+  the release binary before the agents start; each agent has its own `CARGO_TARGET_DIR` in scratch.
+- For a refactor or a merge: build the base commit too, and ask for a byte comparison of the outputs
+  (`cmp`). Cheap and strong; it passed each time.
+- Data: the store moves during the day. Clone it one time (`GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1
+  https://github.com/louellet-git/fa-data /home/user/qa-fa-data`); for a second fixed commit use
+  `git -C /home/user/qa-fa-data worktree add --detach <path> <commit>`. Name the store commit in each
+  brief and verdict. A fetch that only adds files does not disturb a running review.
+- Alpaca from a cloud session: dummy key variables give HTTP 401 (the proxy does not add the key id).
+- In each brief: no download of many tickers (only the Head of Technology starts one), no network
+  unless the request needs it.
+- An agent's verdict can disagree with its own levels (PASS-WITH-NOTES with a MAJ). Set the verdict
+  from the levels, after "Proportion".
 
 ## Review patterns
-- 2026-11-20 conventions review: a charge or a rule that is right for the median company can be wrong for the tail (heavy buyers: ROP P50 $441 to -$88). Ask for the tail class and the count of P50 <= 0 in each model-change brief. It found the MAJ; cycle 2 fixed 11 of 13.
-- 2026-11-20 accuracy review: a record defended a default with numbers for the rejected alternatives,
-  and those numbers did not reproduce (-2.9% stated, -0.4% run). Ask the validator to run each
-  rejected alternative of a record.
-- 2026-11-20 portfolio review: a poison test on the SEC facts (not only on the prices) found a
-  look-ahead (restated values of old years). Ask for a poison test of each data source that a backtest reads.
-- 2026-11-20 vol-1 review: a calibration that prints its parameters with no convergence status hid a
-  stop at the iteration cap and parameters on their bounds. Ask each fit review for the status and the bounds.
-- Precedent, 2026-11-20: in cycle 2, a remaining limit that is measured and written in the record
-  passes, with a ticket as a condition (no third cycle). The automatic model is a screen.
+- Tail of a model change: a rule right for the median can be wrong for the tail (ROP P50 $441 to -$88).
+  Ask for the tail class and the count of P50 <= 0.
+- A record that rejects alternatives with numbers: ask the validator to run each alternative
+  (accuracy review: -2.9% stated, -0.4% run).
+- A backtest: ask for a poison test of each data source it reads, not only the prices (the SEC
+  restatements entered value-rank). A large change of a result after a fix: isolate code against data.
+- A fit or calibration: ask for the convergence status and the parameters on a bound (vol-1).
+- A findings file: check the statistic behind a headline number (the value at the means is not the
+  mean; market-implied review).
+- A new mapping tag that is a fallback: check non-target companies and old periods, not only the
+  latest year (the status check sees the latest year only; mapping review, 2026-11-21).
+- QA agents often rate wording, a document conflict or a text claim MAJ. Apply "Proportion": MIN when
+  no value, data or trade can change. Each time I changed a level, I said so in the verdict.
+- Precedent: in cycle 2, a limit that is measured and written in the record passes, with a ticket as
+  a condition (no third cycle). The automatic model is a screen.
 
 ## Pages
 - No page.
 
 ## Dream pass
 Before a compaction (above about 75% of the threshold in `get_session`) or on "dream".
-Last pass: none.
+Last pass: 2026-11-21 00:30 UTC (context 67%).
