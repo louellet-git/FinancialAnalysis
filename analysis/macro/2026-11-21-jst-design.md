@@ -139,6 +139,7 @@ The sensitivities (R-2, R-7) change the reading, not the class.
 - Revisions and splices: JST joins sources of different type and date. A later revision can change a value, and a splice can make a step. We did not test for this.
 - Survivorship: the 15 countries are rich today.
 - Shared shocks make the countries dependent. The effective sample is small (section 1). The p-values are coarse.
+- "Pass" needs at least one country rejection in a Holm family of m = 15, with about 13 windows a country. This is hard, so "Mixed" is the likely reading even if the pooled effect is real. "Mixed" is not a failure: it means a pooled result that no single country confirms alone. (Note of the Head of Quality and Risk at the freeze, 31ed025; no rule changed.)
 - The Stambaugh bias can raise the slope under H0. The size simulation measures it with a common factor of 0.5; a stronger common factor in the real data can still make it understate the bias.
 - The list of R-7 comes from history. A war year not on the list stays in.
 - The dividend is a yield times a price index, not a reported dividend level.

@@ -1,8 +1,8 @@
 ---
 id: T-20261121-economics-jst-design
-title: Design the out-of-sample test of the market-level engine in 17 countries (JST data, local copy only)
+title: Design the cross-country replication of the market-level engine in 15 countries (JST data, local copy only)
 area: docs
-status: in-progress
+status: review
 owner: louellet-git
 requested_by: louellet-git
 head: economics
