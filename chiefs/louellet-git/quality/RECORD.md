@@ -65,3 +65,6 @@ Words: "Hold off on writing the doc until I give my go ahead on the results". Ef
 ## 2026-11-21 about 18:00 UTC (owner answer, in this session)
 Question: the daily save of the Alpaca SPX, SPY and VIX option chains (from 2026-11-23) into the shared private store, which merlan1996 also reads, against the Alpaca terms ("solely for your own personal and non-commercial purposes"; no copy to another server for distribution). Answer: "Shared store, I accept". Effect: the save stays in the shared private store; the owner accepts the terms risk; nothing of it goes into the public repo.
 Also (my decision, 17:58 UTC): the Cboe delayed-quote reads stop (the Cboe page prohibits auto-extraction); existing private copies stay with the stated risk; no new copy.
+
+## 2026-11-21 about 21:05 UTC (owner answer, relayed by the Head of Staff)
+Question: a new session for the Head of Quality and Risk, as a test. Answer: "Yes, as a test". Effect: a new session takes the next gates; this session stays open as a fallback, titled "FA-L - Quality and Risk (fallback)", takes no new gate, and answers the new session's questions (each question is a fact that the handover lost; the Head of Staff counts them).
