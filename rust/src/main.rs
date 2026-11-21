@@ -18,13 +18,14 @@ USAGE:
   fa rates nyfed --rate SOFR|EFFR|OBFR|TGCR|BGCR [--date D]
   fa rates inflation [--date D]                   breakevens, 5y5y forward, CPI (BLS)
   fa rates fred --series ID [--start D] [--raw]   any FRED series
+  fa rates derived --out DIR [--from-year Y] [--to-year Y]  T10Y3M, DFII10, T10YIE from the Treasury curves, FRED form
   fa rates check [--days N]                       cross-check against FRED (exit 1 on mismatch)
-  fa bonds [snapshot] [--date D]                  every rating, Moody's Aaa/Baa, HQM corporate curve
-  fa bonds spread|yield|over10y --rating A- [--date D]
-                                                  ICE OAS, index yield, or yield minus UST 10Y
-  fa bonds moodys --grade Aaa|Baa [--date D]      Moody's seasoned corporate yield
+  fa bonds [snapshot] [--date D]                  every rating (HQM + step), HQM corporate curve
+  fa bonds hqm-compare --xls FILE... --fred-dir DIR  Treasury HQM spot files against FRED HQMCB*YR
+  fa bonds step|yield|over10y --rating A- [--date D]
+                                                  step over HQM, cost of debt (UST 10Y + HQM basis + step), or kd_spread (basis + step)
   fa bonds hqm [--date D]                         Treasury HQM corporate spot curve (monthly)
-  fa bonds check [--days N]                       Moody's - 10Y vs FRED (exit 1 on mismatch)
+  fa bonds hqm get [--force]                      download the Treasury HQM spot files into data/raw/bonds/treasury_hqm/
   fa forwards [--date D]                          GSW zero-coupon yields and forward rates (Federal Reserve Board)
   fa forwards check [--days N]                    GSW par yields against Treasury (exit 1 on mismatch)
   fa futures roots                                contract facts of each root
@@ -45,7 +46,7 @@ USAGE:
              [--simulations N] [--seed S]
                                                   Monte Carlo verdict; without --price: the last close of the price cache;
                                                   --rf-date takes the Treasury 10Y as rf,
-                                                  --rating takes the market kd spread of the rating (network)
+                                                  --rating takes the kd spread of the rating (HQM basis + step; Treasury files)
   fa prices get TICKER... [--tickers-file F] [--source S] [--full]   daily price history into data/raw (fa prices --help)
   fa prices intraday SYMBOL [--interval 1m|5m] --from D [--to D]   1- and 5-minute bars of Alpaca (free key) into data/raw/trading
   fa options snapshot SYMBOL [--source cboe|alpaca] | history SYMBOL --date D | --from D --to D
@@ -129,21 +130,43 @@ fn bonds(fa: &Fa, rest: &[String]) -> financial_analysis::Result<ExitCode> {
     let rating = flag(&args, "--rating").unwrap_or_else(|| "A".into());
     match sub.as_str() {
         "snapshot" => print_json(&fa.credit_snapshot(date)?),
-        "spread" => print_json(&fa.credit_spread(&rating, date)?),
+        "step" | "spread" => print_json(&fa.rating_step(&rating)?),
         "yield" => print_json(&fa.corporate_yield(&rating, date)?),
         "over10y" => print_json(&fa.spread_over_10y(&rating, date)?),
-        "moodys" => {
-            let grade = flag(&args, "--grade").unwrap_or_else(|| "Baa".into());
-            print_json(&fa.moodys(&grade, date)?)
+        "hqm" if args.get(1).map(String::as_str) == Some("get") => {
+            // fa bonds hqm get [--force]: the Treasury HQM spot files into data/raw/bonds/treasury_hqm/
+            let cache = fa.repo.join("data").join("raw");
+            let force = match financial_analysis::hqm::get_args(&args[2..]) {
+                Ok(f) => f,
+                Err(e) => return Ok(usage_error(&e)),
+            };
+            let mut fetch = |url: &str| financial_analysis::hostnet::get(url, &[], financial_analysis::rates::DELAY_SECONDS);
+            match financial_analysis::hqm::get(&cache, force, mapcheck::dates::today(), &mut fetch) {
+                Ok(rows) => {
+                    for (name, what) in &rows {
+                        println!("{name}: {what}");
+                    }
+                    if rows.iter().any(|(_, w)| w.starts_with("failed")) {
+                        return Ok(ExitCode::from(1));
+                    }
+                }
+                Err(e) => return Ok(usage_error(&e)),
+            }
         }
         "hqm" => print_json(&fa.hqm_curve(date)?),
-        "check" => {
-            let results = match days_flag(&args, 90) {
-                Ok(d) => fa.check_bonds(d)?,
-                Err(m) => return Ok(usage_error(&m)),
-            };
-            print_json(&results);
-            return Ok(exit_on_mismatch(&results));
+        "hqm-compare" => {
+            // fa bonds hqm-compare --xls FILE [--xls FILE ...] --fred-dir DIR: the Treasury HQM files against the FRED files
+            let xls: Vec<std::path::PathBuf> = args.windows(2).filter(|w| w[0] == "--xls").map(|w| w[1].clone().into()).collect();
+            let Some(dir) = flag(&args, "--fred-dir") else { return Ok(usage_error("bonds hqm-compare needs --xls FILE and --fred-dir DIR")) };
+            if xls.is_empty() {
+                return Ok(usage_error("bonds hqm-compare needs --xls FILE"));
+            }
+            match financial_analysis::hqm::compare_files(&xls, std::path::Path::new(&dir)) {
+                Ok(r) => print_json(&r.iter().map(|c| serde_json::json!({
+                    "maturity": c.maturity, "months_in_both": c.both, "equal": c.equal, "off_by_0.01": c.off_by_one_hundredth,
+                    "larger": c.larger, "max_diff": c.max_diff, "first_treasury": c.first_ours, "first_fred": c.first_fred})).collect::<Vec<_>>()),
+                Err(e) => return Ok(usage_error(&e)),
+            }
         }
         other => return Ok(usage_error(&format!("unknown bonds command '{other}'"))),
     }
@@ -179,6 +202,15 @@ fn rates(fa: &Fa, rest: &[String]) -> financial_analysis::Result<ExitCode> {
             print_json(&fa.fred(&series, flag(&args, "--start").as_deref(), has(&args, "--raw"))?)
         }
         "inflation" => print_json(&fa.inflation(date)?),
+        "derived" => {
+            let Some(out) = flag(&args, "--out") else { return Ok(usage_error("rates derived needs --out DIR")) };
+            let year = |n: &str| flag(&args, n).map(|v| v.parse::<i64>().map_err(|_| format!("bad {n} '{v}'")));
+            let (from, to) = match (year("--from-year").transpose(), year("--to-year").transpose()) {
+                (Ok(f), Ok(t)) => (f, t),
+                (Err(m), _) | (_, Err(m)) => return Ok(usage_error(&m)),
+            };
+            print_json(&fa.rates_derived(std::path::Path::new(&out), from, to)?)
+        }
         "check" => {
             let results = match days_flag(&args, 30) {
                 Ok(d) => fa.check(d)?,

@@ -149,7 +149,9 @@ fa sync [IBM MSFT...] [--tickers-file F] [--only A,B] [--skip A,B] [--force] [--
 fa sync --status [IBM...]                         # one line for each data set: current, old, no data; no request
 fa verdict IBM [--price 228.53] [--simulations 10000] [--seed 7] [--rf-date today] [--rf-base-date 2026-07-16] [--rating A-]
 fa rates [snapshot|yield|curve|history|nyfed|inflation|fred|check] [--date D]   # JSON
-fa bonds [snapshot|spread|yield|over10y|moodys|hqm|check] [--rating A-] [--date D]   # JSON
+fa bonds [snapshot|step|yield|over10y|hqm] [--rating A-] [--date D]   # JSON
+fa bonds hqm get [--force]                        # the Treasury HQM files into data/raw/bonds/treasury_hqm/
+fa bonds hqm-compare --xls FILE... --fred-dir DIR # the Treasury HQM files against FRED HQMCB*YR
 ```
 
 More options of `fa dcf drivers` (each analysis of the three first passes and of the IBM
@@ -277,19 +279,20 @@ inflation part of a rate change is large, examine the growth drivers too.
 ### Corporate bonds and the cost of debt
 
 The engine uses `kd = rf + kd_spread`. `fa bonds` (Rust, `rust/src/bonds.rs`) gives market
-values for `kd_spread`. The data come through the FRED CSV file (see
-`docs/HIDDEN-ASSUMPTIONS.md` #128 if FRED does not answer).
+values for `kd_spread`. The cost of debt of a rating is the Treasury HQM 10-year spot yield
+plus a fixed step for the rating row, with the HQM basis (`docs/models/cost-of-debt.md`).
 
 ```bash
-fa bonds                       # all ratings, Moody's, HQM curve
+fa bonds hqm get               # the Treasury HQM files into data/raw/bonds/treasury_hqm/
+fa bonds                       # all ratings (HQM + step), HQM curve
 fa bonds over10y --rating A-   # the market kd_spread for a rating
-fa bonds check                 # Moody's minus UST 10Y against FRED (exit 1 on a mismatch)
 ```
 
-`over10y` is the yield of the ICE BofA index for the rating minus the Treasury 10-year
-yield on the same date. This is the definition of `kd_spread` in the engine. The rating
-can be S&P (`A-`) or Moody's (`A3`). The index has no notches, thus `A-` uses the `A`
-index.
+`over10y` is the cost of debt of the rating (UST 10-year of the date + the HQM basis + the step of
+the rating row) minus the Treasury 10-year yield on the date. This is the definition of `kd_spread` in the
+engine. The rating can be S&P (`A-`) or Moody's (`A3`). Each notch with a row in the
+Damodaran table has its own step (`A-` +0.11 points); a notch with no row takes its letter grade.
+The bucket `A` is the HQM reference bucket (step 0).
 
 To use the market spread in a verdict, add `--rating` to a run with `--rf-date`:
 
@@ -387,7 +390,7 @@ saved company data (`data/processed/<TICKER>.json`). The charts need the network
 | Stock | The standard variables of the latest fiscal years with value and source, the status (PASS, WARN, FAIL, N/A), the company type and the findings. | `mapcheck` library, cache `data/raw/` |
 | Monte Carlo DCF | P10 to P90 of the value for each share, the chance that the price is too high, and the verdict. Optional: the market rates of today and a credit rating. | `fa verdict` (Rust) |
 | Rates | The nominal and real Treasury curves, SOFR, EFFR, breakevens, the 5y5y forward and CPI. | `fa rates` (Rust) |
-| Bonds | The ICE BofA yield and spread for each rating, Moody's Aaa and Baa, the HQM corporate curve. | `fa bonds` (Rust) |
+| Bonds | The cost of debt and the step for each rating (HQM + step), the HQM corporate curve. | `fa bonds` (Rust) |
 | Option bots | The text of `trading/research/LEADERBOARD.md`. | file |
 
 Limits:
@@ -531,9 +534,8 @@ The table of all data sets with their sources, keys and commands is `docs/DATA-S
 | CPI-U, headline and core | Bureau of Labor Statistics, API v1 | None |
 | Zero-coupon yields and forward rates (fitted curve, GSW) | Federal Reserve Board, `feds200628.csv` | None |
 | Cross-check of the rates and CPI | FRED (St. Louis Fed): the API with a key, else the CSV with no key | `FRED_API_KEY` (optional) |
-| Corporate bond spreads and yields for each rating | ICE BofA indexes, through FRED (last 3 years only) | None |
-| Moody's seasoned Aaa and Baa yields | Moody's, through FRED | None |
-| HQM corporate bond yield curve | U.S. Treasury, through FRED | None |
+| Rating step table (default spread of each rating) | A. Damodaran, January 2026 (fixed table in the code) | None |
+| HQM corporate bond yield curve | U.S. Treasury (files) | None |
 
 The pipeline supports US-GAAP filers on EDGAR. ETFs and IFRS filers cause an
 `UnsupportedFilingError`. Segment revenue is not available from companyfacts

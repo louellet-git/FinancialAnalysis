@@ -3,7 +3,10 @@
 <!-- Limit: 60 lines. One choice, one file: docs/assumptions/A-<number>-<short-name>.md.
      The code and the TOML files are the correct source. This file points to them.
      The record shows a choice. A person or a review makes the choice. Delete these comments.
-     Write in ASD-STE100. If a field is not known, write "not known". -->
+     Write in ASD-STE100. If a field is not known, write "not known".
+     Number ranges (one for each head, so that parallel work does not use the same number):
+     Fundamental A-001 to A-099, Quant A-100 to A-159, Economics A-160 to A-199,
+     Technology A-200 to A-229, Quality and Risk A-230 to A-249. -->
 
 Updated: <date>. Commit: <short hash>.
 
