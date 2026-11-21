@@ -151,3 +151,4 @@
 | attribution-reality gate | 2026-11-21 | claude/attribution-reality (a0e2480, new part ee82144..a0e2480): code-reviewer + model-validator started | | week report, first in the work order |
 | macro view conditions; page 1 Table 2 | 2026-11-21 | econ/view-engine-cmd (a8780f3) C1, C2 met; claude/attribution-reality 493337b Table 2 against the note d6e4049: both PASS-WITH-NOTES (head checks) | small (head only) | |
 | trade grids | 2026-11-21 | claude/quant-trade-grids (790348a): model-validator REVISE, code-reviewer (Haiku) REVISE; verdict REVISE, 3 MAJ (no selection warning or N; wrong cause of the cut-scan range; day beyond month length accepted) | about 140k (65k + Haiku) | |
+| trade grids cycle 2 | 2026-11-21 | claude/quant-trade-grids (274c1c4): head check of T1-T3; PASS-WITH-NOTES | small (head only) | the golden test found the PR 190 output change on its first day |
