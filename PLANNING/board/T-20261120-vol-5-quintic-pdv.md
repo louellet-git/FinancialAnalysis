@@ -5,6 +5,7 @@ area: engine
 status: backlog
 owner: louellet-git
 head: quant
+story: E4.S3
 order: 7
 branch:
 created: 2026-11-20
@@ -56,3 +57,5 @@ Both are alternatives to the rough models of step 4 that need no roughness.
 ## Commands
 
 `fa vol pdv SPY [--train 1990-2015] [--test 2016-2026]`, `fa vol fit quintic --symbol SPX [--date D]`, `fa vol price pdv|quintic --params ...`, `fa vol check quintic`.
+
+Needed by (2026-11-21): none. No check or strategy of the owner needs this model now, so it goes after the work that serves a decision of the owner (Head of Staff, 2026-11-21).
