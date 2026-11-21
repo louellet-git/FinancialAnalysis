@@ -131,3 +131,18 @@ ways such that you can stay on track while not falling prey to over constriction
 losing the plot. Again, we don't force things until we have adequate data ... our system is lean on purpose."
 Done: `memory/MEMORY.md` is the Head of Staff file now: part 1 is the 12 agreements; part 2 is how I stay
 on track (memory, the dream pass with its number). Context use checked: 286,508 of 784,000.
+
+## 2026-11-21 about 19:09 UTC (chat)
+Context: the count of all heads showed that each head turn reads 400,000 to 500,000 cached tokens; I
+proposed a trial of a compaction in two head sessions.
+Words: "I've tested smaller contexts and shortening the context window and frankly it's blown up in my
+face, I feel like it's harmful. Not refuting the entire idea but that it's something to really be tested
+before turning the [knob]."
+Done: the proposal is withdrawn. No change to the context of a head. A test design comes first, if at all.
+
+## 2026-11-21 about 19:21 UTC (chat, from speech)
+Words: "I think that the heads are still like reporting to me in general as opposed to you. So again, I'm not
+sure how we want to like particularly deal with that. Something lean, non-invasive, to be monitored."
+Done: no new rule. I read what each head session asks of the person (`list_sessions`, the field
+`needs_action`; one call, no tokens of a head) and I take those items. Method in the Head of Staff file,
+part 3. First item found: the go-ahead for the week report (Fundamental Research).
