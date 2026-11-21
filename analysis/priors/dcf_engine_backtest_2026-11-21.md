@@ -113,8 +113,41 @@ harness run after the harness gate counts if a number differs.
 9. B again with `--holdings` (the same values, a check).
 11. D with `--end 2022-01-31` on the full cache, and on the cut cache (the truncation test; holdings only).
 10. D: B with `--neutral sector`: +3.45.
-Pre-registered next (A-009, committed 0360941 at 2026-11-21 03:54:55 UTC, before any of its runs): R1 the A-009
-rule weekly; R2 the bottom fifth inside each sector (the short side test). Results go here as they come.
+Pre-registered (A-009, committed 0360941 at 2026-11-21 03:54:55 UTC, before any of its runs). Each ran once:
+12. R1: `--strategy value-rank-weekly --rebalance weekly` (the A-009 rule), table cut 2016.
+13. R2: `--strategy value-rank --neutral sector --pick bottom`, quarterly, table cut 2016.
+14. R1 again by the head (byte-identical CSV), and R1 with the data cut at 2021-03-01 (truncation test).
+
+## The pre-registered runs of A-009 (branch `claude/dcf-engine-backtest` c53f56d)
+
+```bash
+$F portfolio backtest --strategy value-rank-weekly --start 2018-01-01 --rebalance weekly --tickers-file $S/scored.txt --cache $C --table $S/table_cut2016.toml --out $S/R1.csv --holdings $S/R1_h.csv
+$F portfolio backtest --strategy value-rank --neutral sector --pick bottom --start 2018-01-01 --rebalance quarterly --tickers-file $S/scored.txt --cache $C --table $S/table_cut2016.toml --out $S/R2.csv
+```
+
+| Run | Annual return | Equal weight | Difference a year (mean of years) | Years above | t |
+|---|---|---|---|---|---|
+| **R1, the A-009 rule** | +21.37% | +14.80% (weekly) | **+6.56** | 8 of 9 | **3.44** |
+| R2, bottom fifth inside each sector (held long) | +11.78% | +15.28% | -3.24 | 2 of 9 | -2.71 |
+
+R1 by year (difference, points): 2018 +1.8; 2019 +8.8; 2020 +9.3; 2021 +6.1; 2022 +11.6; 2023 +9.9; 2024 +11.1;
+2025 -6.4; 2026 +6.7. First position 2018-01-05, 463 weekly rebalances, 38.3 open positions on average after week
+13, turnover 1.92 a year, cost 1.07% a year (included). 9 of 450 weeks had no new entry. Of 1,362 entries, 928 are a
+re-entry of a name whose 13 weeks ended that day (the rule drops first, then chooses), so a name that stays at the
+top of its sector is held for more than 13 weeks. In live use a re-entry is a hold, not a trade.
+R1 truncation test: the 6,108 holding rows before 2021-03-01 are byte-identical with the prices and the curve cut
+at that date.
+
+Judgment:
+- R1 is the strongest result: +6.56 points a year over the equal weight of the same list, t 3.44, one run as
+  pre-registered. It is larger than the quarterly top fifth (run D, +3.45). This file does not say why. Possible
+  parts: the 3 names a week are the extreme ranks; the weekly trade back to 1/39 (a reversal effect, which the
+  weekly equal weight also gets); the staggered entry. These are not measured, and no variant is run to find out.
+- R2 meets the A-009 trigger for a short side (t -2.71 at or below -2). A short is still not used: the pilot
+  limits of the Head of Quality and Risk permit long stock only until a hedging engine passes its gate, and R2
+  holds the names long (no borrow cost, no short loss).
+- The limits above stand: survivorship, price returns, 9 years. The weekly equal weight is also rebalanced weekly.
+  A-009 item 5 data checks that the backtest cannot apply: the mapping status and the share-count guard.
 
 ## What stays open (owner: the Head of Fundamental Research)
 

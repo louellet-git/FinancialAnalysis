@@ -43,8 +43,11 @@ staggered entry of 3 names a week with a 13-week hold keeps about the breadth of
 the same holding time. None of the reasons uses the price of a chosen name.
 
 ## Effect on the result
-Not measured. The pre-registered test: this rule, weekly, 2018-01 to 2026-11, table cut at 2016, against the
-equal weight of the same list, by year with a t value. The result is reported as it is.
+Measured once, as pre-registered (`analysis/priors/dcf_engine_backtest_2026-11-21.md`, run R1, store `1804f48`):
++21.37% a year against +14.80% for the weekly equal weight of the same list, 2018-01 to 2026-11; +6.56 points a
+year, t 3.44, 8 of 9 years above. The order of items 4 and 8 in the test: the exit first, then the choice, so a
+name can be chosen again on its exit day (a re-entry; in live use it is a hold, not a new trade).
+The short-side test (R2, the bottom fifth inside each sector): -3.24 points a year, t -2.71.
 
 ## Who decided and when
 The Head of Fundamental Research, 2026-11-21, on the word of the owner ("size of trades should be subject to the
