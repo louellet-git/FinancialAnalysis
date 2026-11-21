@@ -24,6 +24,8 @@ Each item says "changes a value" (the fix changes a number that a model or a che
 - B6. `fa trade paper` has no `--commission` option (`rust/src/trading/cli.rs`, `rust/src/trading/paper.rs`). Its account uses the model fill, not the chain price. Link: `T-20261119-options-paper-test`. Changes a value (paper account).
 - B7. `^IRX` is divided by 100 with no conversion to a continuous rate (the `rate` series in `rust/src/trading/data.rs`). Changes a value (bot model prices).
 
+- B8. Measure the model price of the option legs against real quotes: for each SPY condor that s05 would sell on a copied day (the daily Alpaca chain copies from 2026-11-23), the real credit at bid and ask against the model credit (`trading/pricing.rs`). From `T-20261121-alpha-1-pipeline` stage 2 (stopped at gate 1, so it runs as a check of the backtest prices, not as a strategy stage). Needs two or more copied days. Changes a value (it sizes B1 and B2).
+
 ## Option chain check and futures check (records A-120 to A-137)
 - O1. Wrong text: `rust/src/market/option_arb.rs` and `CHECK_USAGE` (`rust/src/market/options_cli.rs`) call the 0.99/1.01 band "the rule of the volatility fit". The fit has no band. Text only.
 - O2. One chain has two forwards: 3 strikes in the check (`PARITY_STRIKES` in `rust/src/market/option_iv.rs`, checked) and 5 in the fit (`PARITY_STRIKES` in `rust/src/volmodels/chain.rs`). Choose one, or record why. Link: `T-20261120-arb-3-index-parity-box`. Changes a value (check break counts).
