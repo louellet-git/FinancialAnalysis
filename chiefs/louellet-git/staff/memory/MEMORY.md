@@ -17,12 +17,18 @@ Rules: `chiefs/ORIENTATION.md`, sections 1, 5 and 8. Decisions of the person: `.
 2. One question has one answer, and the output of one head is the input of the next.
 3. A head finishes before it starts.
 
+## Main work (owner word 2026-11-21)
+- Keep `PLANNING/board/EPICS.md` (epic -> story -> ticket) true: each open ticket in one story, each epic
+  with the decision that it serves. Ticket `T-20261121-board-epics`. Look for: a ticket with no story, a
+  story with no path to its end, old ticket text, a head that starts before it finishes.
+- The order across the epics in `EPICS.md` is a proposal; the person has not agreed to it yet.
+
 ## Watch list
-- Fundamental Research: 8 tickets in progress, 4 of them on one branch (`claude/dcf-engine-backtest`).
-  The first weekly trades are due 2026-11-27 and need the blind projection test, the side rule
-  (`T-20261121-trade-side-rule`, backlog) and a gate. A message went to that head on 2026-11-21.
+- E1 (stock trades) is on hold: no rule passed, T1 fails, and the person paused the fix for the week study.
 - PR #131 (`fa algo`) waits for the live run of the person on Monday 2026-11-23.
-- `T-20261120-paper-desk`, decision 1, is old: the paper account is permitted now (`CLAUDE.md`).
+- Old tickets (Pytest or Python in the text; `paper-desk` decision 1): with their heads since 2026-11-21.
+- `T-20261119-filing-values-in-variables` and `T-20261120-arb-4-futures-basis` are in progress on a branch
+  that the remote does not have.
 
 ## Messages received from the heads (2026-11-21)
 - Quant Research: alpha-1 stopped at gate 1 (#148); SABR (#158); model documents (#147, #151); the
