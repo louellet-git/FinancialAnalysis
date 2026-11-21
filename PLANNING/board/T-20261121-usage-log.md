@@ -76,3 +76,27 @@ share of the week. Sums by ticket, by head and by model.
 
 Not from the old `chiefs` repo (it constricted too much): shares for each head, phases of the week, colours,
 stop lines, a probe call, a ledger that a head writes.
+
+## The data that the calculator needs (owner word, 2026-11-21; this ticket is its dependency)
+
+| Data | Where it is | Collected now? |
+|---|---|---|
+| Tokens by ticket, head, agent type, model and time | The transcript files on the machine of each session | **No. It is lost when the machine goes.** This ticket collects it |
+| The weeks before the hook | The transcript files of the head sessions that are alive now | **No.** The first run of the script reads the full file of its session (a backfill, with no action of a head). Do it soon |
+| The session of each count, to find the head | The session id in the environment; the Head of Staff has the list of titles | With this ticket (write the id; no title is necessary) |
+| The real share of the week, some readings in each week | The `rate_limit_event` of a session. It is not in the transcript file | Partly: the Head of Staff writes a reading in its dashboard when it looks. Test if a hook can see it; if not, this is sufficient |
+| The ticket: head, area, story, dates, pull request, size of the change | Git and the board | Yes, for free. Git keeps it; read it later |
+| The gates and the review cycles of a ticket | The count of QA agent starts on the branch of the ticket | With this ticket (they are agent types in the count) |
+
+Rule for a clean count: one branch for one ticket, and the branch in the ticket (`T-20261121-board-check`
+shows the faults). Tokens on a branch with no ticket go to "no ticket".
+
+## GitHub cost
+
+- A push to a `usage/*` ref starts no check: the workflow runs only for a pull request with code and for
+  `main` (`.github/workflows/tests.yml`, read 2026-11-21). Do not open a pull request for the usage data.
+- One ref for each session, replaced at each push (one commit with no parent). So the repo does not grow
+  with each push. The file is small (numbers and names).
+- A maximum of one push in 10 minutes for each session, and no push when the counts did not change.
+- If a private place is better than this public repo, the private store `louellet-git/fa-data` is the
+  alternative. The Head of Technology decides after the test.

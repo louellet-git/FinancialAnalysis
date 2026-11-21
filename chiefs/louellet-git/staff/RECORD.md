@@ -113,3 +113,12 @@ should cost. This is a project on its own, and we can only/should only really wo
 enough data."
 Done: the order until the reset is in `PLANNING/board/EPICS.md`; one message to each head (an order, not a
 limit). Ticket `T-20261121-token-calculator`, on hold until the data exists.
+
+## 2026-11-21 about 18:59 UTC (chat)
+Words: "making sure that we're collecting that data is needed prior to that. So if there's any data that
+we're not collecting / should be collecting, that's a dependency. Again, when collecting this data, it's
+lean, script, shouldn't cost tokens to do. And we also need to balance the fact that we don't want to be
+overusing our GitHub usage / GitHub bills."
+Done: the data table and the GitHub cost section in `T-20261121-usage-log`; the dependency in
+`T-20261121-token-calculator`. One note to the Head of Technology: the transcript files are lost with the
+machine, so the backfill is urgent.
