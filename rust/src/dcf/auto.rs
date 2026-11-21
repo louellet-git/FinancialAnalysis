@@ -474,8 +474,11 @@ fn weekly(prices: &[(String, f64)]) -> Vec<(i64, f64)> {
 /// two series are skipped (a return needs two weeks in sequence). At least 104 weekly returns are needed.
 pub fn regression_beta(stock: &[(String, f64)], market: &[(String, f64)], as_of: &str, weeks: usize, weight: f64, name: &str) -> Option<BetaFit> {
     let cut = week_of(as_of)?;
-    let s: std::collections::HashMap<i64, f64> = weekly(stock).into_iter().filter(|(w, _)| *w <= cut).collect();
-    let m = weekly(market);
+    // the bars after the date are cut first: the weekly bar of the week of the date takes the last close on or before the date
+    let day = as_of.get(..10)?;
+    let upto = |v: &[(String, f64)]| -> Vec<(String, f64)> { v.iter().filter(|(d, _)| d.get(..10).is_some_and(|d| d <= day)).cloned().collect() };
+    let s: std::collections::HashMap<i64, f64> = weekly(&upto(stock)).into_iter().filter(|(w, _)| *w <= cut).collect();
+    let m = weekly(&upto(market));
     let mut pairs: Vec<(f64, f64, i64)> = Vec::new();
     for k in 1..m.len() {
         let (w0, w1) = (m[k - 1].0, m[k].0);
@@ -539,7 +542,8 @@ pub const PRICE_GAP_DAYS: i64 = 10;
 /// The last close on or before `date` of a series `(date, close)`, if it is not more than `PRICE_GAP_DAYS` older than `date`.
 pub fn close_on_or_before(series: &[(String, f64)], date: &str) -> Option<(String, f64)> {
     let day = mapcheck::dates::parse(date.get(..10)?)?;
-    let (d, c) = series.iter().filter(|(d, c)| d.get(..10).is_some_and(|d| d <= &date[..10]) && c.is_finite() && *c > 0.0).last()?;
+    // the latest date at or before `date` (the series need not be sorted)
+    let (d, c) = series.iter().filter(|(d, c)| d.get(..10).is_some_and(|d| d <= &date[..10]) && c.is_finite() && *c > 0.0).max_by(|a, b| a.0[..10].cmp(&b.0[..10]))?;
     let age = day - mapcheck::dates::parse(d.get(..10)?)?;
     (age <= PRICE_GAP_DAYS).then(|| (d.clone(), *c))
 }

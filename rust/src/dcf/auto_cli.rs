@@ -660,46 +660,24 @@ pub(super) fn tickers_of(o: &Opts, cache: &Path) -> R<Vec<String>> {
 /// Stage 1 of the screen: the mapping (company facts of the cache to the standard variables, with the checks). The
 /// result does not depend on the rules. Returns the inputs and the seconds.
 pub fn map_inputs(cache: &Path, tickers: &[String], as_of_day: i64, jobs: Option<usize>) -> R<(Vec<AutoInputs>, f64)> {
-    let registry = Registry::embedded().map_err(DcfError)?;
-    let t0 = Instant::now();
-    let run_map = || -> Vec<AutoInputs> {
-        tickers
-            .par_iter()
-            .map(|t| {
-                let r = mapcheck::run::check_ticker(&registry, cache, t, MAP_PERIODS, as_of_day, true);
-                inputs_from_report(&registry, &r)
-            })
-            .collect()
-    };
-    let inputs = match jobs {
-        Some(n) => rayon::ThreadPoolBuilder::new().num_threads(n.max(1)).build().map_err(|x| DcfError(x.to_string()))?.install(run_map),
-        None => run_map(),
-    };
-    Ok((inputs, t0.elapsed().as_secs_f64()))
+    map_inputs_with(cache, tickers, as_of_day, None, jobs)
 }
 
-/// Like `map_inputs`, but the company facts are the facts that were public on `as_of` (a fact is kept when its filing date is
-/// `as_of` or earlier: `CompanyFacts::retain_filed_on_or_before`). The 10-K of the cache is NOT used to fill a missing input
-/// (it can be a later filing). `fa dcf auto --as-of` and `fa dcf screen --as-of` do not filter the facts: they use `map_inputs`.
+/// Like `map_inputs`, but the company facts are the facts that were public on `as_of` (`mapcheck::run::check_ticker_filed`:
+/// a fact is kept when its filing date is `as_of` or earlier). The 10-K of the cache is NOT used to fill a missing input (it
+/// can be a later filing). `fa dcf auto --as-of` and `fa dcf screen --as-of` do not filter the facts: they use `map_inputs`.
 pub fn map_inputs_pit(cache: &Path, tickers: &[String], as_of: &str, as_of_day: i64, jobs: Option<usize>) -> R<(Vec<AutoInputs>, f64)> {
+    map_inputs_with(cache, tickers, as_of_day, Some(as_of), jobs)
+}
+
+fn map_inputs_with(cache: &Path, tickers: &[String], as_of_day: i64, filed_cut: Option<&str>, jobs: Option<usize>) -> R<(Vec<AutoInputs>, f64)> {
     let registry = Registry::embedded().map_err(DcfError)?;
     let t0 = Instant::now();
     let run_map = || -> Vec<AutoInputs> {
         tickers
             .par_iter()
             .map(|t| {
-                let facts = mapcheck::run::facts_path(cache, t).ok_or_else(|| format!("no company_facts file in {}", cache.join(t).display())).and_then(|p| mapcheck::run::read_facts(&p));
-                let r = match facts {
-                    Ok(mut f) => {
-                        f.retain_filed_on_or_before(as_of);
-                        mapcheck::run::check_facts(&registry, t, &f, MAP_PERIODS, as_of_day, true)
-                    }
-                    Err(m) => {
-                        let mut r = mapcheck::run::check_facts(&registry, t, &Default::default(), MAP_PERIODS, as_of_day, true);
-                        r.error = Some(m);
-                        r
-                    }
-                };
+                let r = mapcheck::run::check_ticker_filed(&registry, cache, t, MAP_PERIODS, as_of_day, true, filed_cut);
                 inputs_from_report(&registry, &r)
             })
             .collect()

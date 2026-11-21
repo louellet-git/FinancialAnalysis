@@ -206,6 +206,20 @@ fn the_regression_beta_recovers_a_known_beta_and_shrinks_it() {
     // the window ends at the as-of date: a later week does not count
     let early = mapcheck::dates::format(friday + 7 * 150);
     assert_eq!(regression_beta(&stock, &market, &early, 260, 2.0 / 3.0, "t").unwrap().weeks, 150);
+    // a bar later in the same week as the date does not count: the Monday of the last week as the date, and a wild close on
+    // the Wednesday after it, in both series, give the beta of the series without that bar
+    let last_friday = friday + 7 * 299;
+    let monday = last_friday - 4;
+    let mut stock2 = stock.clone();
+    let mut market2 = market.clone();
+    stock2.insert(299, (mapcheck::dates::format(monday), stock[298].1 * 1.01));
+    market2.insert(299, (mapcheck::dates::format(monday), market[298].1 * 1.01));
+    let date = mapcheck::dates::format(monday);
+    let with_bar = regression_beta(&stock2, &market2, &date, 260, 2.0 / 3.0, "t").unwrap();
+    let mut stock3 = stock2.clone();
+    stock3[300].1 *= 5.0; // the Friday close after the date
+    let poisoned = regression_beta(&stock3, &market2, &date, 260, 2.0 / 3.0, "t").unwrap();
+    assert_eq!(with_bar.raw, poisoned.raw);
 }
 
 #[test]
@@ -1105,6 +1119,10 @@ fn the_price_of_a_past_date_is_the_last_close_on_or_before_it() {
     assert_eq!(close_on_or_before(&s, "2026-11-20"), None);
     // a date before the first close
     assert_eq!(close_on_or_before(&s, "2026-11-01"), None);
+    // a series that is not sorted gives the same answers
+    let u: Vec<(String, f64)> = [s[3].clone(), s[0].clone(), s[2].clone(), s[1].clone()].to_vec();
+    assert_eq!(close_on_or_before(&u, "2026-11-07"), Some(("2026-11-06".into(), 12.0)));
+    assert_eq!(close_on_or_before(&u, "2026-11-19"), Some(("2026-11-09".into(), 13.0)));
 }
 
 #[test]

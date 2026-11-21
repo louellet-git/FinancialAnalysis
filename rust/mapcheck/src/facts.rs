@@ -395,5 +395,11 @@ mod tests {
         assert_eq!(facts.entries(&tag, "USD").len(), 1);
         facts.retain_filed_on_or_before("2024-01-31");
         assert!(facts.entries(&tag, "USD").is_empty());
+        // a fact with no filing date is dropped (the filter is safe, not exact)
+        let mut undated = fact(Some("2023-01-01"), "2023-12-31", 90.0, "10-K", "2024-02-01");
+        undated.filed = None;
+        let mut facts = company(vec![("Revenues", vec![undated])]);
+        facts.retain_filed_on_or_before("2030-01-01");
+        assert!(facts.entries(&tag, "USD").is_empty());
     }
 }

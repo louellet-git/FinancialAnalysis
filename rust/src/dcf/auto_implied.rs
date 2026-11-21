@@ -395,7 +395,7 @@ pub fn implied_models(
             let values: Vec<Option<f64>> = bases
                 .par_iter()
                 .map(|b| match (&b.base, b.market.price) {
-                    (Ok(_), Some(price)) if x.is_finite() => point_at_premium(b.inp, cfg, &b.market, x).ok().map(|p| p.map_or(f64::MAX, |p| p.value) / price),
+                    (Ok(_), Some(price)) if x.is_finite() => point_at_premium(b.inp, cfg, &b.market, x).ok().flatten().map(|p| p.value / price),
                     _ => None,
                 })
                 .collect();

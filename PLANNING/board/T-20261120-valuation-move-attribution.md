@@ -35,3 +35,5 @@ Needs data of the days of the drop: prices to 2026-11-20 and the GSW curve to th
 of Technology, 2026-11-20).
 
 Branch note, 2026-11-21: this branch starts from `claude/dcf-market-implied` (38b6460, in review), because it needs `fa dcf implied`. After that pull request merges, `main` is merged here and only the attribution diff stays.
+
+Change note (review cycle 1): `fa dcf implied --as-of` now filters the facts by filing date (before, `--as-of` set only the curve, the beta and the stale warning). `fa dcf auto` and `fa dcf screen` are unchanged.
