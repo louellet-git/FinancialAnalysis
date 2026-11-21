@@ -14,7 +14,7 @@
 //! A last search finds the premium for which the median value over price of the whole list is 1.
 
 use super::auto::*;
-use super::auto_cli::{as_of_of, cache_dir, curve_and_index, jobs_of, load_table, map_inputs, model_rate_of, num, read_prices, table_path, tickers_of, Opts, BANNER};
+use super::auto_cli::{as_of_of, cache_dir, curve_and_index, jobs_of, load_table, map_inputs, map_inputs_pit, model_rate_of, num, read_prices, table_path, tickers_of, Opts, BANNER};
 use super::calibrate::{FadeCell, ProcessTable};
 use super::model::bisect;
 use super::paths::{PathEngine, F_FCFF, F_REV};
@@ -49,7 +49,10 @@ fa dcf implied [--tickers-file FILE | TICKER ...] [OPTIONS]
   Then the premium that the whole list implies (the median of value / price is 1) and, for each group, the median of the
   value at that premium over the price. Without a ticker: all tickers of the cache.
   --cache DIR     as for `fa dcf auto`
-  --as-of DATE    date of the model and of the yield curve (default today)
+  --as-of DATE    date of the model and of the yield curve (default today). With a date, the facts are the facts that were
+                  public on it (filed on or before it); the 10-K of the cache does not fill a missing input then
+  --price-date D  a past date: the price is the last close on or before D (not more than 10 days older), the yield curve,
+                  the beta and the model date are those of D, and the facts are those of D unless --as-of is given
   --prices FILE   CSV `ticker,price`; else the last close of the price cache (fa prices get)
   --table FILE    parameter table
   --rules K=V,..  change a rule of the builder (the list: fa dcf auto --help)
@@ -172,7 +175,7 @@ pub fn deterministic_value(spec: &PathsSpec) -> R<(f64, f64, f64)> {
     Ok((sim.per_share[0], rev, fcff))
 }
 
-fn point(inp: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], market: &Market, rules: &Rules) -> Result<(Point, Summary), Failure> {
+pub(super) fn point(inp: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], market: &Market, rules: &Rules) -> Result<(Point, Summary), Failure> {
     let m = build(inp, table, fade, market, rules, BuildOptions::default()).map_err(Failure::Refusal)?;
     let spec = PathsSpec::from_toml(&m.toml).map_err(|x| Failure::Refusal(Refusal::NoPriors(format!("the model file does not parse: {x}"))))?;
     let (value, rev, fcff) = deterministic_value(&spec).map_err(|x| Failure::Engine(x.to_string()))?;
@@ -187,7 +190,7 @@ fn point(inp: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], market: &Mar
 }
 
 /// The point for a premium `x` (a failure of the engine is a value above any price, as in `implied_discount_rate`).
-fn point_at_premium(inp: &AutoInputs, cfg: &ImpliedConfig, market: &Market, x: f64) -> R<Option<Point>> {
+pub(super) fn point_at_premium(inp: &AutoInputs, cfg: &ImpliedConfig, market: &Market, x: f64) -> R<Option<Point>> {
     let rules = Rules { erp: (x, cfg.rules.erp.1), ..cfg.rules.clone() };
     match point(inp, cfg.table, cfg.fade, market, &rules) {
         Ok((p, _)) => Ok(Some(p)),
@@ -196,7 +199,7 @@ fn point_at_premium(inp: &AutoInputs, cfg: &ImpliedConfig, market: &Market, x: f
     }
 }
 
-fn point_with(inp: &AutoInputs, cfg: &ImpliedConfig, market: &Market, growth_shift: f64, margin_shift: f64) -> R<Point> {
+pub(super) fn point_with(inp: &AutoInputs, cfg: &ImpliedConfig, market: &Market, growth_shift: f64, margin_shift: f64) -> R<Point> {
     let rules = Rules { growth_shift, margin_shift, ..cfg.rules.clone() };
     match point(inp, cfg.table, cfg.fade, market, &rules) {
         Ok((p, _)) => Ok(p),
@@ -702,10 +705,22 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         println!("{IMPLIED_USAGE}");
         return Ok(());
     }
-    let o = Opts::parse(args, &["--cache", "--out", "--jobs", "--prices", "--table", "--as-of", "--tickers-file", "--rules", "--groups"], &[])?;
+    let o = Opts::parse(args, &["--cache", "--out", "--jobs", "--prices", "--table", "--as-of", "--price-date", "--tickers-file", "--rules", "--groups"], &[])?;
     let cache = cache_dir(repo, &o);
     let (table, fade) = load_table(&table_path(repo, &o))?;
     let (as_of, as_of_day) = as_of_of(&o)?;
+    // the market date: the price date if given, else the as-of date. The facts date: --as-of, else the price date.
+    let price_date: Option<String> = match o.get("--price-date") {
+        Some(d) if mapcheck::dates::parse(d).is_some() => Some(d.to_string()),
+        Some(d) => return e(format!("--price-date '{d}' is not YYYY-MM-DD")),
+        None => None,
+    };
+    let market_date = price_date.clone().unwrap_or_else(|| as_of.clone());
+    let (facts_date, facts_day, filter_facts) = match (o.get("--as-of"), &price_date) {
+        (Some(_), _) => (as_of.clone(), as_of_day, true),
+        (None, Some(d)) => (d.clone(), mapcheck::dates::parse(d).unwrap_or(as_of_day), true),
+        (None, None) => (as_of.clone(), as_of_day, false),
+    };
     let jobs = jobs_of(&o)?;
     let tickers = tickers_of(&o, &cache)?;
     let prices = match o.get("--prices") {
@@ -717,15 +732,15 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         None => HashMap::new(),
     };
     let rules = super::auto_pit::parse_rules(o.get("--rules").unwrap_or(""))?;
-    let (inputs, map_s) = map_inputs(&cache, &tickers, as_of_day, jobs)?;
-    let (curve, index) = curve_and_index(&cache, &as_of);
-    let market_of = |t: &str| -> Market { market_from_cache(&cache, t, &as_of, prices.get(t).copied(), &rules, curve.as_ref(), index.as_deref()) };
+    let (inputs, map_s) = if filter_facts { map_inputs_pit(&cache, &tickers, &facts_date, facts_day, jobs)? } else { map_inputs(&cache, &tickers, as_of_day, jobs)? };
+    let (curve, index) = curve_and_index(&cache, &market_date);
+    let market_of = |t: &str| -> Market { market_at(&cache, t, &market_date, prices.get(t).copied(), price_date.as_deref(), &rules, curve.as_ref(), index.as_deref()) };
     let cfg = ImpliedConfig { table: &table, fade: &fade, rules: rules.clone(), cache: Some(&cache) };
     let (rows, market, timing) = implied_models(&inputs, &market_of, &groups, &cfg, jobs)?;
     if let Some(path) = o.get("--out") {
         std::fs::write(path, csv_text(&rows)).map_err(|x| DcfError(format!("{path}: {x}")))?;
     }
-    println!("IMPLIED by the price of {} tickers, as of {as_of}, no random part. {BANNER} A market-implied value is a measurement, not an input.", rows.len());
+    println!("IMPLIED by the price of {} tickers, market date {market_date}, facts date {}, no random part. {BANNER} A market-implied value is a measurement, not an input.", rows.len(), if filter_facts { facts_date.clone() } else { "all filings of the cache".to_string() });
     if rows.len() <= 40 {
         println!("{CSV_HEADER}");
         for r in &rows {

@@ -10,6 +10,7 @@ use std::fmt;
 
 pub mod analysis;
 pub mod auto;
+pub mod auto_attribute;
 pub mod auto_cli;
 pub mod auto_implied;
 pub mod auto_pit;

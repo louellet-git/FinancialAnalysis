@@ -1092,3 +1092,37 @@ fn the_margin_scan_needs_all_five_links_of_the_six_years() {
     full.rows[1].prev_ok = true;
     assert_eq!(sigma_nu_scan(&[full], &table(), &plain_rules(), None, &[4.0])[0][3].0, 2);
 }
+
+#[test]
+fn the_price_of_a_past_date_is_the_last_close_on_or_before_it() {
+    let s: Vec<(String, f64)> = [("2026-11-02", 10.0), ("2026-11-03", 11.0), ("2026-11-06", 12.0), ("2026-11-09", 13.0)].iter().map(|(d, c)| (d.to_string(), *c)).collect();
+    assert_eq!(close_on_or_before(&s, "2026-11-03"), Some(("2026-11-03".into(), 11.0)));
+    // a Saturday and a Sunday: the Friday close
+    assert_eq!(close_on_or_before(&s, "2026-11-07"), Some(("2026-11-06".into(), 12.0)));
+    assert_eq!(close_on_or_before(&s, "2026-11-08"), Some(("2026-11-06".into(), 12.0)));
+    // a date after the last close: that close, while it is not more than 10 days old
+    assert_eq!(close_on_or_before(&s, "2026-11-19"), Some(("2026-11-09".into(), 13.0)));
+    assert_eq!(close_on_or_before(&s, "2026-11-20"), None);
+    // a date before the first close
+    assert_eq!(close_on_or_before(&s, "2026-11-01"), None);
+}
+
+#[test]
+fn market_at_takes_the_close_of_the_price_date_and_market_from_cache_the_last_close() {
+    let dir = std::env::temp_dir().join(format!("fa_market_at_{}", std::process::id()));
+    std::fs::create_dir_all(dir.join("ZZ")).unwrap();
+    let rows: Vec<String> = [("2026-11-02", 10.0), ("2026-11-03", 11.0), ("2026-11-06", 12.0)]
+        .iter()
+        .map(|(d, c)| format!(r#"{{"date":"{d}","open":{c},"high":{c},"low":{c},"close":{c},"volume":1}}"#))
+        .collect();
+    std::fs::write(dir.join("ZZ").join("prices.json"), format!("[{}]", rows.join(","))).unwrap();
+    let rules = plain_rules();
+    let past = market_at(&dir, "ZZ", "2026-11-04", None, Some("2026-11-04"), &rules, None, None);
+    assert_eq!(past.price, Some(11.0));
+    assert!(past.price_source.contains("2026-11-03"), "{}", past.price_source);
+    assert_eq!(past.as_of, "2026-11-04");
+    // a price of the caller wins; no price date: the last close
+    assert_eq!(market_at(&dir, "ZZ", "2026-11-04", Some(5.0), Some("2026-11-04"), &rules, None, None).price, Some(5.0));
+    assert_eq!(market_from_cache(&dir, "ZZ", "2026-11-04", None, &rules, None, None).price, Some(12.0));
+    std::fs::remove_dir_all(&dir).ok();
+}

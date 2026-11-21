@@ -678,6 +678,39 @@ pub fn map_inputs(cache: &Path, tickers: &[String], as_of_day: i64, jobs: Option
     Ok((inputs, t0.elapsed().as_secs_f64()))
 }
 
+/// Like `map_inputs`, but the company facts are the facts that were public on `as_of` (a fact is kept when its filing date is
+/// `as_of` or earlier: `CompanyFacts::retain_filed_on_or_before`). The 10-K of the cache is NOT used to fill a missing input
+/// (it can be a later filing). `fa dcf auto --as-of` and `fa dcf screen --as-of` do not filter the facts: they use `map_inputs`.
+pub fn map_inputs_pit(cache: &Path, tickers: &[String], as_of: &str, as_of_day: i64, jobs: Option<usize>) -> R<(Vec<AutoInputs>, f64)> {
+    let registry = Registry::embedded().map_err(DcfError)?;
+    let t0 = Instant::now();
+    let run_map = || -> Vec<AutoInputs> {
+        tickers
+            .par_iter()
+            .map(|t| {
+                let facts = mapcheck::run::facts_path(cache, t).ok_or_else(|| format!("no company_facts file in {}", cache.join(t).display())).and_then(|p| mapcheck::run::read_facts(&p));
+                let r = match facts {
+                    Ok(mut f) => {
+                        f.retain_filed_on_or_before(as_of);
+                        mapcheck::run::check_facts(&registry, t, &f, MAP_PERIODS, as_of_day, true)
+                    }
+                    Err(m) => {
+                        let mut r = mapcheck::run::check_facts(&registry, t, &Default::default(), MAP_PERIODS, as_of_day, true);
+                        r.error = Some(m);
+                        r
+                    }
+                };
+                inputs_from_report(&registry, &r)
+            })
+            .collect()
+    };
+    let inputs = match jobs {
+        Some(n) => rayon::ThreadPoolBuilder::new().num_threads(n.max(1)).build().map_err(|x| DcfError(x.to_string()))?.install(run_map),
+        None => run_map(),
+    };
+    Ok((inputs, t0.elapsed().as_secs_f64()))
+}
+
 /// Stages 2 and 3 of the screen for mapped inputs: the market inputs from the cache (yield curve, beta, price), the
 /// models and the paths. `prices` replaces the price of the cache for a ticker.
 pub fn screen_rows(inputs: &[AutoInputs], cache: &Path, as_of: &str, prices: &HashMap<String, f64>, cfg: &ScreenConfig, jobs: Option<usize>) -> R<(Vec<ScreenRow>, ScreenTiming)> {

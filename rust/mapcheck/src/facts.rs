@@ -92,6 +92,19 @@ impl CompanyFacts {
     pub fn has_us_gaap(&self) -> bool {
         self.facts.contains_key("us-gaap")
     }
+
+    /// Keep only the facts that a filing of `date` (`YYYY-MM-DD`) or an earlier date reported: the facts known on that
+    /// date. A fact with no filing date is dropped (the filter is then safe, not exact). A later filing that gives the
+    /// same period again (a restatement) is dropped, so the value that was public on `date` stays.
+    pub fn retain_filed_on_or_before(&mut self, date: &str) {
+        for concepts in self.facts.values_mut() {
+            for concept in concepts.values_mut() {
+                for list in concept.units.values_mut() {
+                    list.retain(|f| f.filed.as_deref().is_some_and(|d| d.get(..10).unwrap_or(d) <= date));
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -360,5 +373,27 @@ mod tests {
         let anchors = vec![Tag { full: "us-gaap/Revenues".into(), namespace: "us-gaap".into(), name: "Revenues".into() }];
         assert_eq!(period_ends(&facts, &anchors, Forms::Annual, None), vec!["2022-12-31", "2023-12-31", "2024-12-31"]);
         assert_eq!(period_ends(&facts, &anchors, Forms::Annual, Some(2)), vec!["2023-12-31", "2024-12-31"]);
+    }
+    #[test]
+    fn the_filter_keeps_the_facts_that_were_public_on_the_date() {
+        let mut facts = company(vec![(
+            "Revenues",
+            vec![
+                fact(Some("2023-01-01"), "2023-12-31", 90.0, "10-K", "2024-02-01"),
+                fact(Some("2024-01-01"), "2024-12-31", 100.0, "10-K", "2025-02-01"),
+                // a restatement of 2023 in the filing of 2025
+                fact(Some("2023-01-01"), "2023-12-31", 91.0, "10-K", "2025-02-01"),
+            ],
+        )]);
+        facts.retain_filed_on_or_before("2025-01-31");
+        let tag = Tag { full: "us-gaap/Revenues".into(), namespace: "us-gaap".into(), name: "Revenues".into() };
+        let left = facts.entries(&tag, "USD");
+        assert_eq!(left.len(), 1);
+        assert_eq!(left[0].val, Some(90.0));
+        // the day of the filing counts
+        facts.retain_filed_on_or_before("2024-02-01");
+        assert_eq!(facts.entries(&tag, "USD").len(), 1);
+        facts.retain_filed_on_or_before("2024-01-31");
+        assert!(facts.entries(&tag, "USD").is_empty());
     }
 }
