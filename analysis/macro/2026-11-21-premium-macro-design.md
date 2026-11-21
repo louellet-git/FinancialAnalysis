@@ -205,4 +205,10 @@ Each result has a second reading. The findings give both.
 
 ## 6. Dated records after the freeze
 
-None yet. Quality and Risk adds the freeze commit here. Fundamental Research adds the commit of S1, S2 and ret_w, the curve dates, the switch week and the list of regressors that the store has. Each record is dated and written before the first run, or it says that it follows a result (rule 10).
+Each record is dated. Each record was written before the first run, or it says that it follows a result (rule 10).
+
+**Freeze.** The design is frozen at commit 55f2e92 (Head of Quality and Risk, PASS-WITH-NOTES, 2026-11-21, about 15:42 UTC).
+
+**R1. BAA10Y is excluded (2026-11-21, about 16:20 UTC, before any run).** The Moody's Baa series (FRED BAA10Y) has no lawful daily source for the store: the FRED terms prohibit storage, and Moody's publishes no free daily series (Head of Technology, 2026-11-21). A monthly HQM spread does not fit a weekly test. So M1 = M0 + dVIX + dNFCI, and the placebo block is (dVIX, dNFCI). No other rule changes. No value of S1, of y or of a regressor was seen for this choice.
+
+Fundamental Research adds its record (the commit of S1, S2 and ret_w, the curve dates, the switch week) before the first run.
