@@ -27,3 +27,7 @@ Done: the records start with the next NVDA draft; the branch gets a document rev
 ## 2026-11-21 01:49 UTC (correction and source note; no new words of the person)
 - Correction of the entry of 2026-11-20 21:44: the words of that entry do not mention the terms check. The decision that the data store stays public is the owner's word in `chiefs/louellet-git/technology/RECORD.md` (2026-11-20 20:01). To drop my own recommendation of a terms check of the store was my decision under "Proportion"; check 3 of the risk officer (terms of a new source) is unchanged.
 - Source of the four new checks of the skill `model-validation` (steps 3 and 7): the findings of my gate reviews of 2026-11-20 and 2026-11-21 (the conventions, accuracy, portfolio and vol-1 verdicts; the ledger rows), recorded in my dashboard under "Review patterns". No word of the person.
+
+## 2026-11-21 03:16 UTC (chat)
+Words: "I need the report to be a trade recommendation, based on fundamentals. Trade recommendations should be sub 3 pages."
+Done: a request to the Head of Fundamental Research for an NVDA trade recommendation of less than 3 pages, from the reviewed report (baf6358). A row for "Trade recommendation" in `docs/QUALITY-STANDARDS.md`, sections 4 and 5. A trade gets the strict levels (entry of 2026-11-20 21:44).
