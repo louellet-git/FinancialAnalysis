@@ -57,3 +57,8 @@ and AA. Seed 7, 300 paths, 10 bp. Each run once, as new variants 15 and later of
    - **The 13 excluded tickers** (12 `mismatch` and AA): only DD is in the scored list, and the old R1 held none of
      them (0 of 17,511 holding rows; `awk -F, '$2==T' R1_h.csv` for each ticker). The exclusion cannot drive the
      result. If the gate of the split table changes a row, the reruns wait for that change.
+5. The split table of record is store `c422939` (after its gate review), not `f6e66fc` (2026-11-21, before any rerun).
+   The exclude list is replaced: the tickers with a `mismatch` row in `c422939` (GSAT) and the tickers with an
+   estimated ex-date (`ex_date_estimated` = true) on or after 2016-01-01, because that date can be up to about 250
+   days late, near the filings that the backtest uses: of the scored list, BALL, EW, EXE, GPN and HWM. A row with
+   `status` = pending (SNDK) is after its last price date and is not counted (the `to` rule).
