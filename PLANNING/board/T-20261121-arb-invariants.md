@@ -5,6 +5,7 @@ area: engine
 status: in-progress
 owner: louellet-git
 head: quant
+story: E4.S2
 order: 0.9
 branch: claude/quant-invariants
 created: 2026-11-21
@@ -38,3 +39,8 @@ The breaks on indicative quotes are measurements, not trades (`docs/models/optio
   it, into the private journal repo.
 - Store gzip CSV with the quote time `t` of each contract (the parser does not keep `t` today).
 - Build after PR 131 merges. A one-day smoke test on the VM first; the interval from the measured bytes.
+
+## State (2026-11-21)
+Steps 1 and 2 and step 3 part 1 (`fa arb run` on one stored snapshot) pass the gate (PASS-WITH-NOTES, 5196d9c).
+Next: the continuous capture (after PR 131), break persistence (`for`), then the planned relations one at a time.
+Note of Quality and Risk: a runner keeps the cache path (`compare_vx` takes a history closure).
