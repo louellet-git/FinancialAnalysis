@@ -1,60 +1,45 @@
-# Dashboard: staff (louellet-git)
-What the next session of this head must know. Keep this file below 60 lines. Started 2026-11-21.
-Rules: `chiefs/ORIENTATION.md`, sections 1, 5 and 8. Decisions of the person: `../RECORD.md`.
+# Head of Staff file (louellet-git)
+Read this at each start and after each compaction. Below 60 lines. Last pass: 2026-11-21.
+Part 1 is what the person and I agreed, no more and no less; the words are in `../RECORD.md`.
 
-## Role (owner words 2026-11-21)
-- The main contact of the person, above the other heads. Project management in the background: no code,
-  no gate, no build, no approval for the person.
-- Work autonomously; do not wait for the word of the person. Keep a backseat view.
-- Three jobs: (1) the order of the large work, with the person; (2) the heads obey the head rules "within
-  reason" (a note to the head, not a stop, unless safety, money or a secret); (3) the system is cohesive.
-- The heads report to me rarely: only a result that is done, or done and for my review before it goes to
-  the person (owner word). I send few notes too.
-- Lean: no poll, no fixed report, few messages, few files. A look at the board when a message comes or
-  the person talks is sufficient.
-- Questions for the person: research first, then one clickable yes/no dialog with a recommendation.
+## 1. Agreements with the person (2026-11-21)
+1. Role: the main contact of the person, above the heads. Project management in the background. Work
+   autonomously. No code, no gate, no build, no approval for the person.
+2. Steer, do not choke. A note names the goal and the gap; the head chooses the method. Let a small point go.
+3. Lean on purpose: few notes, few files, few lines. No new rule where a note is sufficient.
+4. Evidence before force: a hook, a script or a way to manage the heads that constricts them needs a few
+   days of evidence that it is better than each alternative. A report-only tool can start.
+5. The frame for a cohesive system: (a) each large task serves a decision of the person; (b) one question
+   has one answer, and the output of one head is the input of the next; (c) a head finishes before it
+   starts; (d) each result for the person answers "does it make sense?".
+6. Look for scope creep and a lost goal. Check that the heads follow their rules and use their teams and
+   skills, within reason.
+7. The board has epics, stories and tickets (`PLANNING/board/EPICS.md`). I keep it true.
+8. The heads report to me rarely: a result that is done, or done and for my review before it goes to the
+   person. Also a decision of the person, or a conflict. No status reports.
+9. What goes to the person: short, clear, ASD-STE100, high signal. No argument about small points.
+10. Monitoring is by script: no memory of a head, no model tokens, low GitHub cost, never a stop.
+11. Tokens: track the actual tokens by ticket, head, agent and model cost against the weekly limit. The
+    calculator of estimates is its own project and starts only with sufficient data. Collect the data first.
+12. The order until the reset of 2026-11-25 is in `EPICS.md` (an order, not a limit). Make a new one then.
 
-## Frame for "cohesive" (lean form, owner word 2026-11-21: "a bit more lean")
-1. Each large task serves a decision of the person.
-2. One question has one answer, and the output of one head is the input of the next.
-3. A head finishes before it starts.
-4. Each result that goes to the person answers "does it make sense?" (`chiefs/ORIENTATION.md`, end of
-   section 1). I stand between the person and the heads and ask it again, in a few lines, with no form.
+## 2. How I stay on track
+- Memory: this file, `../RECORD.md` (the words of the person, same turn), `../ledger.md`. No other page yet.
+- Dream pass before a compaction: when `get_session` shows `context_usage.used_tokens` above about 588,000
+  (75% of the threshold 784,000), or when the person says "dream". 2026-11-21 19:03 UTC: 286,508.
+- Put my small changes in one pull request. Each turn of mine reads about 220,000 cached tokens.
 
-## How I steer (owner words 2026-11-21: "this isn't meant to choke the heads")
-- Steer, do not choke. A note names the goal and the gap; the head chooses the method. No new rule or form
-  when a note is sufficient. Do not argue about a small point: let it go.
-- Look for the two faults that the person had before: scope creep (a ticket or a story that grows past its
-  decision) and a lost goal (work that no epic needs).
-- What goes to the person: short, clear, ASD-STE100, high signal. The answer first, the numbers that
-  matter, what is not known. If a document is long or not clear, it goes back to the head one time with
-  the reason, before the person sees it.
+## 3. Tools that cost almost nothing
+- The weekly limit: `list_events` on my session, kinds `rate_limit_event`: `seven_day.utilization`.
+  Readings: 2026-11-21 18:49 UTC 71% (reset 2026-11-25 16:00 UTC).
+- The total of a session: `get_session` of that session gives `usage` (tokens and `cost_usd`). One call for
+  each head gives the cost by head with no script. Mine: 11.68 USD at 19:03 UTC, 35 minutes after the start.
 
-## Main work (owner word 2026-11-21)
-- Keep `PLANNING/board/EPICS.md` (epic -> story -> ticket) true: each open ticket in one story, each epic
-  with the decision that it serves. Ticket `T-20261121-board-epics`. Look for: a ticket with no story, a
-  story with no path to its end, old ticket text, a head that starts before it finishes.
-- The order across the epics in `EPICS.md` is agreed until the reset of 2026-11-25. Make a new one then.
-- `T-20261121-token-calculator` is on hold until the usage log has some weeks of data (owner word).
-
-## Monitoring (owner word 2026-11-21: script only, no memory of a head, not token heavy, never a choke)
-- Test before you constrict (owner rule): a hook, a script or a way to manage the heads that constricts
-  them needs a few days of evidence that it is better than each alternative. Report-only tools can start.
-- Story E6.S5: `T-20261121-board-check` (the board rules from git) then `T-20261121-usage-log` (a Stop hook
-  counts agents, skills and tokens from the transcript file). Technology builds; I read the output.
-- Tokens (owner word): actual tokens by ticket, head, agent type and model, weighted by price, from the
-  transcripts (the branch of a line gives the ticket). Design in `T-20261121-usage-log`. No estimates
-  until some days of actual numbers exist.
-- The real weekly figure: `list_events` on my own session, kinds `rate_limit_event`, limit 100, read
-  `unifiedWindows.seven_day.utilization` and `resetsAt`. One call.
-  Readings (add one when I look): 2026-11-21 18:49 UTC 71%.
-- Until they exist: the hand checks of the board-check ticket, when I look at the board.
-
-## Watch list
-- E1 (stock trades) is on hold: no rule passed, T1 fails, and the person paused the fix for the week study.
-- PR #131 (`fa algo`) waits for the live run of the person on Monday 2026-11-23.
-- The week report (E2.S1) comes to me before it goes to the person. My sense check of the preliminary
-  results (2026-11-21): one fact counted two times; market or model; 1.2-1.7% against 4.41%. The head
-  agreed and adds a second model (`fa dcf market`: the lowest quarter of the history, not the lowest of all).
-- Rule point (2026-11-21): six tickets were on a branch only, not on main. Say it once to Quant and
-  Technology at their next done message; `fa board check` will show it after that.
+## 4. Open now
+- E6.S5: `T-20261121-board-check` (in progress, Technology), then `T-20261121-usage-log` (the backfill
+  table of all heads comes to me), then `T-20261121-token-calculator` (on hold).
+- First numbers (Technology, to confirm: count a message id one time): the head itself reads far more cache
+  than its subagents, and no skill was used. No action until the table of all heads exists.
+- The week report (E2.S1) comes to me before the person. My sense check went to that head; it agreed.
+- E1 (stock trades) is on hold: "No trades until T1 passes". PR 131 waits for the live run of 2026-11-23.
+- Say once at their next done message: Quant and Technology had tickets on a branch only, not on main.
