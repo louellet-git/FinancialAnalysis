@@ -20,7 +20,9 @@ then a fit to our systems (and new parts where needed).
    relations that apply to our data (SPX, SPY, VIX, VX, Treasury, rates); what we check today and what we do not.
 2. Register: the folder and the form; the relations that we check today move in first (the chain checks of
    `fa options check`, the futures check, the Treasury fit residuals).
-3. Runner: one command over the register; one report for each day; a daily run with the chain copies.
+3. Runner: one command over the register; a check on each new snapshot in market hours, as continuous as the
+   sources permit (owner, 2026-11-21: "for quant work, we're going to require as continuous as possible"); the
+   duration of each break; a continuous capture on the e2-micro (research: `analysis/priors/continuous_option_data_2026-11-21.md`).
 4. New relations, one at a time, each with a fixed-answer test. First candidate: the VIX from the SPX chain
    (Cboe method) against the published VIX (owner question, 2026-11-21).
 

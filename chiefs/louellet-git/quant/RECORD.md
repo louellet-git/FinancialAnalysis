@@ -45,3 +45,7 @@ Done: Answer: no. Nothing calculates the VIX from our SPX chain, and nothing mon
 ## 2026-11-21 17:55 UTC
 Words: "I think that you should probably have a list or like a folder of arbitrage theories. That should generally always be true. And we should also have code that's running autonomously to make sure that that's the case. Fleshing this out will probably require some research to see how regular quant firms do this, and then how we should do this as well, and fitting it into our systems, / expanding our systems if need be."
 Done: Ticket `T-20261121-arb-invariants` (branch `claude/quant-invariants`): research of industry practice first, then a register of no-arbitrage relations (one file for each relation) and one command that checks all of them on the newest data each day.
+
+## 2026-11-21 18:05 UTC
+Words: "I think for quant work, we're going to require as continuous as possible"
+Done: The arbitrage register ticket now aims at a continuous capture in market hours and a check on each new snapshot, not one daily copy. Research of the Alpaca limits and the e2-micro capacity first (`analysis/priors/continuous_option_data_2026-11-21.md`); then a recommendation to the Head of Technology (host and data plan are its area).
