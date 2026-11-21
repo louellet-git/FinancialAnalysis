@@ -113,6 +113,9 @@ impl Net for Live {
 pub struct Rates {
     /// `data/raw`
     pub cache: PathBuf,
+    /// `data/local`: the folder of the data that the terms of the source do not let us store in the public data store
+    /// (FRED). It is git-ignored. In a test it is `<cache>/local`.
+    pub local: PathBuf,
     net: Box<dyn Net>,
     /// Today as a day number (a test sets it).
     pub today: i64,
@@ -124,7 +127,9 @@ pub struct Rates {
 impl Rates {
     /// The network, the cache `<repo>/data/raw`, today from the clock.
     pub fn live(repo: &Path) -> Rates {
-        Rates::with_net(repo.join("data").join("raw"), Box::new(Live::new()), dates::today()).with_fred_key(crate::market::keys::read_key(repo, crate::market::fred_api::KEY_ENV))
+        let mut r = Rates::with_net(repo.join("data").join("raw"), Box::new(Live::new()), dates::today());
+        r.local = repo.join("data").join("local");
+        r.with_fred_key(crate::market::keys::read_key(repo, crate::market::fred_api::KEY_ENV))
     }
 
     /// Use the FRED API with this key as the first source of the FRED series (`None`: the keyless CSV only).
@@ -134,7 +139,7 @@ impl Rates {
     }
 
     pub fn with_net(cache: PathBuf, net: Box<dyn Net>, today: i64) -> Rates {
-        Rates { cache, net, today, fred_memo: HashMap::new(), fred_key: None }
+        Rates { local: cache.join("local"), cache, net, today, fred_memo: HashMap::new(), fred_key: None }
     }
 
     pub(crate) fn get(&mut self, url: &str) -> Res<String> {

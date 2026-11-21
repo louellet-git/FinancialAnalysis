@@ -22,12 +22,12 @@ fa dcf market --shiller FILE --cpi FILE --out FILE [--long-real G] [--fade-years
   The equity risk premium that the S&P composite price implies under a dividend DCF with a linear fade, for each month.
   A measurement: the price is the input of the search, no model input comes from the price. Real terms (CPI).
   --shiller FILE   shiller_monthly.csv of the data store (macro/shiller)
-  --cpi FILE       CPIAUCNS.csv of the data store (macro/fred); needed for the rows from 1913 (the command fails without it)
+  --cpi FILE       CPIAUCNS.csv of the local folder (data/local/macro/fred, from `fa macro get`); needed for the rows from 1913 (the command fails without it)
   --out FILE       CSV: month, price_real, d_known_real, g0, rr, erp_implied, erp_gordon, estimate, status
   --long-real G    real growth after the fade (default 0.02, record A-001; the cap at the 10-year yield is not used)
   --fade-years N   years of the linear fade from g0 to G (default 10, at least 2)
   --score FILE     also score the premium against the later real excess return (design 2026-11-21-long-history-design.md,
-                   sections 3, 4, 6, 9); needs --tb3ms, --nber, --gs10 FILE (macro/fred); --months-out FILE: CSV by month
+                   sections 3, 4, 6, 9); needs --tb3ms, --nber, --gs10 FILE (data/local/macro/fred); --months-out FILE: CSV by month
   Then a summary by decade on stdout (a description, not a score). Model document: docs/models/market-level-dcf.md";
 
 pub const ERP_LO: f64 = -0.10;

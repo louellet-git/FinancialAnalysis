@@ -21,7 +21,7 @@
 //! - OAS = spread over the Treasury curve at each bond's own maturity. It differs from
 //!   `spread_over_10y` by the slope of the curve between the index duration and 10 years.
 //!
-//! UNITS: decimals (0.0067 = 0.67%). The cache is `data/raw/bonds/fred_<ID>.csv`.
+//! UNITS: decimals (0.0067 = 0.67%). The cache is `data/local/bonds/fred_<ID>.csv` (FRED terms: local only, never in the public store).
 
 use crate::rates::{compare, is_fresh_file, iso, observation, parse_fred_csv, round6, save_cache, Rates, Res};
 use crate::{CheckResult, CreditSnapshot, HqmCurve, RateObservation, RatingQuote};
@@ -51,7 +51,7 @@ const DAILY_MAX_AGE: i64 = 7;
 /// Days: a monthly average has the date of the 1st and is published after the month end.
 const MONTHLY_MAX_AGE: i64 = 70;
 
-/// The FRED series that the bond functions cache in `data/raw/bonds/fred_<ID>.csv`, in a stable order: the ICE
+/// The FRED series that the bond functions cache in `data/local/bonds/fred_<ID>.csv`, in a stable order: the ICE
 /// option-adjusted spreads and yields of each rating, Moody's Aaa and Baa yields and their spreads over the 10-year
 /// Treasury, and the Treasury HQM corporate spot rates.
 pub fn cached_series_ids() -> Vec<String> {
@@ -66,9 +66,9 @@ pub fn cached_series_ids() -> Vec<String> {
     ids
 }
 
-/// The cache file of one FRED series of the bond functions.
-pub fn cached_series_path(cache: &std::path::Path, id: &str) -> std::path::PathBuf {
-    cache.join("bonds").join(format!("fred_{id}.csv"))
+/// The cache file of one FRED series of the bond functions. `local` is the folder `data/local`.
+pub fn cached_series_path(local: &std::path::Path, id: &str) -> std::path::PathBuf {
+    local.join("bonds").join(format!("fred_{id}.csv"))
 }
 
 fn ice_oas_id(bucket: &str) -> &'static str {
@@ -136,12 +136,12 @@ pub fn latest(series: &BTreeMap<i64, f64>, on: i64, max_age_days: i64, label: &s
 
 impl Rates {
     /// The full history of a FRED percent series as `{day: decimal}`, cached in
-    /// `data/raw/bonds/`. A failed download gives the cache, with a warning.
+    /// `data/local/bonds/`. A failed download gives the cache, with a warning.
     pub fn load_fred(&mut self, series_id: &str, refresh: bool) -> Res<BTreeMap<i64, f64>> {
         if let Some(s) = self.fred_memo.get(series_id) {
             return Ok(s.clone());
         }
-        let path = cached_series_path(&self.cache, series_id);
+        let path = cached_series_path(&self.local, series_id);
         let read = |p: &std::path::Path| std::fs::read_to_string(p).map_err(|e| format!("{}: {e}", p.display()));
         let parsed = if path.exists() && !refresh && is_fresh_file(&path, 6.0) {
             parse_fred_csv(&read(&path)?, true)?

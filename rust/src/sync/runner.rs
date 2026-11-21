@@ -423,7 +423,7 @@ impl RealRunner {
     }
 
     fn job_fred(&self, item: &PlanItem) -> JobOutcome {
-        let path = crate::bonds::cached_series_path(&self.ctx.cache, &item.key);
+        let path = crate::bonds::cached_series_path(&self.ctx.repo.join("data").join("local"), &item.key);
         let before = [modified(&path)];
         let mut rates = crate::rates::Rates::live(&self.ctx.repo);
         match rates.load_fred(&item.key, true) {

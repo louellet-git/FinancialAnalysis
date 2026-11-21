@@ -14,8 +14,9 @@ The data cache (`data/raw`) is not in this repo. A copy of it is in the repo
 request to the sources. Only the Head of Technology writes the store and starts a bulk
 download (`chiefs/ORIENTATION.md`, section 2). Command:
 `git clone --depth 1 https://github.com/louellet-git/fa-data data/raw`.
-The store has each data set of the cache. The owner decided on 2026-11-20 that the store repo
-is public for now. Its `README.md` lists the data sets and their sources, and its `SNAPSHOT.md`
+The store has each data set of the cache. The store repo is private (owner decision, 2026-11-21):
+the terms of the price, estimate and option sources do not permit a public copy. In a cloud session,
+attach `louellet-git/fa-data` (read access) before the clone. Do not copy store files to a public place. Its `README.md` lists the data sets and their sources, and its `SNAPSHOT.md`
 gives the date of each download.
 
 ## Words in the table
@@ -45,9 +46,21 @@ gives the date of each download.
 | Treasury curves (par, real) | home.treasury.gov CSV, one file for each year | none | published files | Nominal from 1990. Real from 2003 | Yes, 2026-11-19 (#130) | `fa rates curve`, `yield`, `history` | `rates`, 1 market day |
 | Federal Reserve curve (GSW) | federalreserve.gov file `feds200628.csv` | none | published file | The whole file | Not recorded in the documents | `fa forwards` | `gsw`, 1 market day |
 | New York Fed rates (SOFR, EFFR, OBFR, TGCR, BGCR) | markets.newyorkfed.org JSON | none | published API (the documentation page refused the fetch tool on 2026-11-19: the terms are not read) | The history of each rate | Yes, 2026-11-19 (#130) | `fa rates nyfed` | none: the code has no cache for these rates (`fa rates nyfed` asks the site each time) |
-| FRED series (spreads, yields, indexes) | 1. FRED API with a key. 2. FRED CSV with no key | `FRED_API_KEY` for the API | API (1). Site (2) | Each series from its first date. Limit: 120 requests each minute | API: fixtures only. CSV: the site closed the connection from the container, 2026-11-19 (#128) | `fa rates fred`, `fa bonds ...` | `fred`, 1 market day (the series of the bond functions in `data/raw/bonds/`) |
+| FRED series (spreads, yields, indexes) | 1. FRED API with a key. 2. FRED CSV with no key | `FRED_API_KEY` for the API | API (1). Site (2) | Each series from its first date. Limit: 120 requests each minute | API: fixtures only. CSV: the site closed the connection from the container, 2026-11-19 (#128) | `fa rates fred`, `fa bonds ...`, `fa macro get` | `fred`, 1 market day (the series of the bond functions in `data/local/bonds/`) |
+| FRED macro series (25 series: labour, prices, output, credit, rates; list in `rust/src/market/macro_cli.rs`) | FRED graph CSV, no key | none | Site | Each series from its first date | Not run in this container: the keyless CSV client got a TLS close error through the proxy (2026-11-21). A `curl` download of the 25 series gave files that equal the store copies byte for byte | `fa macro get` | not in `fa sync` (macro series are for the market-level model, read from files) |
 | Inflation (breakevens, CPI) | Treasury real and nominal curves. BLS API (CPI). FRED T10YIE and T5YIFR for the cross-check | BLS: none (limit for each address, #129) | BLS: API. Others as above | CPI: the BLS series. Breakevens: from 2003 | Yes, 2026-11-19, but not FRED (#130) | `fa rates inflation` | `rates` (the BLS CPI file); the breakevens come from the Treasury files |
 | FedInvest bond prices | TreasuryDirect FedInvest price file | none | site (a session is needed) | One file for each date. A past date works only if the file is still on the site | The Rust download failed with HTTP 400; `curl` worked (#67, #69) | `fa recon bonds --date D` (reads `data/raw/prices/fedinvest_<date>.csv`) | `bonds`, 1 market day (the file of the last market day before today). The option `--bond-days N` (or `bond_days` in `sync.toml`) asks for the last N market days. A day that has its file is current. Each day is one item of the one queue of `treasurydirect`. The sync uses the stock-market calendar: on a bond-market holiday that is not a stock-market holiday (Columbus Day, Veterans Day) FedInvest has no file, and the day stays "not available yet" (2026-10-12 and 2026-11-11 in a run of 60 days: 2 items, up to 8 requests a run) |
+
+## FRED data is local only
+
+The FRED terms do not let us store or pass on FRED content. A private store is also a shared copy.
+So FRED data does not go into the data store.
+
+- The command `fa macro get` downloads the macro series into `data/local/macro/fred/`. `data/local/` is in `.gitignore`.
+- The bond functions keep their FRED cache in `data/local/bonds/`.
+- `fa macro get` refuses a target folder inside a work tree of `fa-data`.
+- The citation and the FRED terms of each series are in `fa macro list` and in `data/local/macro/fred/SOURCE.md`.
+- A person who clones the repo runs `fa macro get` once. The files are then equal to the earlier store copies.
 
 ## Which data sets still depend on a site or a paid plan
 

@@ -203,7 +203,7 @@ fn cache_date(set: DataSet, ctx: &Ctx, key: &str) -> Option<String> {
             _ => file_date(&c.join("rates").join("bls_cpi.json")),
         },
         DataSet::Gsw => file_date(&crate::forwards::cache_path(&ctx.repo)),
-        DataSet::Fred => file_date(&crate::bonds::cached_series_path(c, key)),
+        DataSet::Fred => file_date(&crate::bonds::cached_series_path(&ctx.repo.join("data").join("local"), key)),
         DataSet::Futures => {
             let dir = c.join("futures");
             if key == "vx" {

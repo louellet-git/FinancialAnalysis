@@ -28,3 +28,6 @@ vendor/
 
 # Rust build output
 rust/target/
+
+# Data that the terms of the source do not let us store in the public data store (FRED)
+data/local/

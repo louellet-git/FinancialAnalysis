@@ -170,7 +170,7 @@ mod tests {
         let s: BTreeMap<i64, f64> = r.load_fred("DGS10", true).unwrap();
         assert_eq!(s.len(), 2);
         assert!(log.borrow().iter().all(|u| u.contains("api.stlouisfed.org")), "no keyless request when the key works: {:?}", log.borrow());
-        let cached = std::fs::read_to_string(dir.join("bonds/fred_DGS10.csv")).unwrap();
+        let cached = std::fs::read_to_string(dir.join("local/bonds/fred_DGS10.csv")).unwrap();
         assert!(cached.starts_with("observation_date,DGS10\n2024-01-02,3.95"), "{cached}");
         let one = r.fred_series("DGS10", Some(19_000), true).unwrap();
         assert_eq!(one.len(), 2);

@@ -28,6 +28,7 @@ pub mod fmp;
 pub mod fred_api;
 pub mod intraday;
 pub mod keys;
+pub mod macro_cli;
 pub mod option_arb;
 pub mod option_history;
 pub mod option_iv;

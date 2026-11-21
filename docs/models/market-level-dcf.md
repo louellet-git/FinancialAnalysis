@@ -9,7 +9,7 @@ input of the search, and no model input comes from the price. With `--score` it 
 
 ## Data
 `macro/shiller/shiller_monthly.csv` of the data store (Shiller, `ie_data.xls`). Columns used:
-price, dividend (annual rate), cpi, gs10 (percent), estimate. Also `macro/fred/CPIAUCNS.csv` (from 1913-01).
+price, dividend (annual rate), cpi, gs10 (percent), estimate. Also `data/local/macro/fred/CPIAUCNS.csv` (from 1913-01). FRED files are local only: run `fa macro get` to make them (the FRED terms do not allow the public data store).
 
 ## Design (fixed before the first run)
 All values are real. The money unit is the money of month t (the CPI known at t, CPIK(t)).
