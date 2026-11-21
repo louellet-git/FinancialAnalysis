@@ -1068,6 +1068,18 @@ mod backtest_behavior {
     }
 
     #[test]
+    fn a_sparse_row_is_visible_only_from_its_filing_date() {
+        // A row with no revenue is not used; when a late filing gives its revenue, the row is
+        // visible from that filing date only, not from the period end plus the filing lag.
+        let mut c = company(3, "SYN");
+        c.periods.push(annual(2021, None, Some(8e9), Some(-1e9), Some("2022-02-15"), "10-K"));
+        assert_eq!(years(&vintage_periods(&c, "2030-01-01")), vec![2018, 2019, 2020]);
+        c.periods.push(annual(2021, Some(30e9), Some(8e9), Some(-1e9), Some("2022-11-01"), "10-K/A"));
+        assert_eq!(years(&vintage_periods(&c, &as_of(2021))), vec![2018, 2019, 2020]);
+        assert_eq!(years(&vintage_periods(&c, "2022-11-01")), vec![2018, 2019, 2020, 2021]);
+    }
+
+    #[test]
     fn params_recover_growth_and_margin_and_floor_the_stds() {
         let c = company(8, "SYN");
         let p = mechanical_params(&vintage_periods(&c, "2030-01-01"), "SYN", Some("2030-01-01")).unwrap();
