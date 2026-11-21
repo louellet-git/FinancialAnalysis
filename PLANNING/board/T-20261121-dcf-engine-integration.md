@@ -2,12 +2,12 @@
 id: T-20261121-dcf-engine-integration
 title: Put the new DCF work of 2026-11-21 into the engine, so that it runs as one set of commands, fast and with tests
 area: engine
-status: open
+status: in-progress
 owner: louellet-git
 requested_by: louellet-git
 head: fundamental
 order: 0.008
-branch: (to set at start)
+branch: claude/attribution-reality
 created: 2026-11-21
 acceptance: Each item below is Rust code in `fa dcf` with a fixed-answer test, and no result of a study comes from a shell loop or an awk calculation; the full S&P 500 premium series runs in a stated time that is lower than now (about 45 to 70 minutes).
 ---
@@ -30,3 +30,35 @@ Items (each with a test):
    across dates; measure the time of the full S&P 500 series before and after.
 6. The model documents and records (branch `claude/fundamental-model-docs`, in progress).
 Not in scope: one engine for all company models (owner: "It depends"); the driver engine and the classic engine stay.
+
+**Owner, 2026-11-21 about 18:50 UTC: "make sure that whatever is repeatable/should be expected of future work like this is
+built into the correct engine." The repeatable steps of the week study, each with its engine (written before the code).**
+Status of the ticket: in-progress, branch `claude/attribution-reality`.
+
+| Step of the study | How it was done | Where it goes | Owner |
+|---|---|---|---|
+| Bridge of a change, common and company parts, 8-K flag, stale and left-out names, par curve | `fa dcf attribute` | done (at the gate) | Fundamental |
+| The 10 largest of a list | a list file made by hand | `fa dcf attribute --top N` (by market value at D1, one weight for each company) | Fundamental |
+| Growth base rates by size | an agent with jq and awk | `fa dcf baserates` (item R1 below) | Fundamental |
+| Implied growth against the base rate; implied premium against its history | by hand | `fa dcf attribute --reality` (item R2) | Fundamental |
+| The bridge week by week for each company | a shell loop | `fa dcf premium-series --per-ticker` (item 2 above) | Fundamental |
+| One curve rule (GSW, else par) | two code paths | one function (item 1 above) | Fundamental |
+| Balance-sheet effect of the curve | an agent with jq and awk | the bridge of the engine, after its backtest (item 4 above) | Fundamental |
+| The view on the premium and the growth | none yet | the view engine, file `--common-file` | Economics |
+| Facts of an earnings release in the window | an agent read the 8-K | the path of the release in the output (R2); a parser is a data task | Technology |
+| Poison and truncation test of a series | a shell script | `analysis/priors/data/premium_series_pit/make_cache.sh`; the skill `point-in-time-test` names it | Fundamental |
+| Missing mapped revenue of old years (51 tickers) | patched by hand in the study | the mapping (`mapcheck`); the engine never patches | Technology |
+
+R1. `fa dcf baserates --tickers-file F --as-of D [--years 10] --out FILE`: for each company of the list, each window of
+`--years` fiscal years whose end year was filed on or before D (point in time), from the mapped variable `revenue` only (no
+raw tag); the compound growth of each window; the size bucket by the revenue of the base year (below 1B, 1B to 10B, 10B to
+50B, 50B or more; nominal dollars; fixed now). Output: for each bucket, the last window of each company and the pooled
+windows: n, median, 75th, 90th, 95th, maximum (with the ticker), and the count of companies with no base-year value. Limits
+printed: today's list (survivorship), overlapping windows, acquired revenue.
+R2. `fa dcf attribute --reality [--premium-history FILE]`: a block "(5) REALITY CHECK" and CSV columns at the end: the base
+revenue and its bucket, the own 5-year growth, the implied 10-year growth at D2 with its percentile in the bucket of the base
+rates of D2 (the last windows), a flag when it is above every case; with `--premium-history` (a CSV of `fa dcf
+premium-series`), the percentile of the list premium of D1 and of D2 in the rows before D1; the path of the 8-K release of
+the window when the cache has it. A measurement: no input of the model is set from it. An assumption record for the buckets
+and the window; the model documents updated; tests with fixed answers; a poison test (a window that ends after D does not
+enter).

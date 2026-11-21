@@ -140,3 +140,7 @@ Done: pull request 106 (NVDA) merges. It is NOT an approval of the value: the re
 Words: "Changing you to fable for this project, proceed" (the model of the session changed; no change of the work).
 Words: "The point of the attribution valuation is to understand any recent changes in prices of any given set of underlying, explain what contributed to the change, and whether those impacts make sense with reality/possibility. The point is to understand if we have a buy opportunity or a correction for this particular instance, but will be used more generally in the future for understanding/analysis from a fundamentals perspective. Do you have questions?"
 Done: the purpose is recorded: (1) what changed, (2) what contributed, (3) does each implied piece make sense against reality (history, fundamentals, the economics view), (4) a reading: buy opportunity or correction. Two questions asked (the form of the conclusion; the horizon).
+
+## 2026-11-21 about 18:50 UTC (chat)
+Words: "Great, make sure that whatever is repeatable/should be expected of future work like this is built into the correct engine."
+Done: the list of the repeatable steps of this study, each with its engine and owner, is on `T-20261121-dcf-engine-integration` (written before the code); the build starts on branch `claude/attribution-reality` (from `claude/premium-series`, which is at the gate).
