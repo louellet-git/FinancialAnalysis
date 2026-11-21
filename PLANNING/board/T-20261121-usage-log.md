@@ -2,13 +2,13 @@
 id: T-20261121-usage-log
 title: Record the agents, the skills and the tokens of each head session with a hook (no model tokens)
 area: planning
-status: backlog
+status: in-progress
 owner: louellet-git
 requested_by: louellet-git
 head: technology
 order: 1.6
 story: E6.S5
-branch:
+branch: claude/usage-log
 created: 2026-11-21
 acceptance: After a normal day of work with no action of a head, one command prints for each head session the agents that it started (by type), the skills that it used, and its tokens (input, output, cache), from data that a hook wrote; the hook adds less than 2 seconds to a turn, never stops a turn, and writes no text of the conversation.
 ---
