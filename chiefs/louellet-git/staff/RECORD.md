@@ -220,3 +220,10 @@ I compare the two for lost facts, repeated work and tokens)? Answer of the perso
 Done: steps sent to the Head of Quality and Risk (handover in its memory, a new title for the old session,
 no new gate there). The person starts the new session; I do not. The test and its measures are in the
 Head of Staff file, part 4.
+
+## 2026-11-21 about 21:19 UTC (question dialog)
+Question: the usage script cannot send its counts out of a session machine; shall the counts stay on each
+machine, with the script output in the token ledger of each head? Answer of the person: "Let's not get
+overly complicated".
+Done: the simplest form. The counts stay on each machine; a head runs `fa usage show` when I ask. No push
+path, no permission rule, no tie to the ledger. I read the cost by head myself (`get_session`).

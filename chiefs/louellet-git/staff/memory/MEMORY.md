@@ -43,8 +43,9 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
   to the head only if the same head does it again and again.
 
 ## 4. Open now
-- E6.S5: `fa board check` is on main (it needs the built `fa`; I start no build, so I ask Technology for
-  the output or read the counts in its message). Next: `T-20261121-usage-log`, then the calculator (on hold).
+- E6.S5: `fa board check` is on main (I start no build: ask Technology for its output). Usage log, owner
+  word "Let's not get overly complicated": local only; a head runs `fa usage show` when I ask (a ticket
+  closes, or before the weekly reset). No push path. The calculator stays on hold.
 - Count of all heads (2026-11-21, `get_session` cost in USD from each start): Technology 629, Fundamental
   314, Quality 220, Quant 152, Economics 97, Staff 12. The heads make 70% of the cache reads (400k to 500k
   for each head turn); 317 agent starts; 2 skill uses.
@@ -54,7 +55,7 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
   for each head turn, 144 agent starts, 220 USD. Measures, some days: questions that the new session must
   ask the old one (lost facts), repeated work, a verdict that the heads dispute, cache read for each turn
   and cost for each gate. Report the result to the person before any other head changes.
-- Skills are almost not used: no action until some days of usage data exist.
+- Skills are almost not used (2 uses): no action until some days of data exist.
 - Week study (E2.S1), owner words: three pieces, to me first, then to the person (also (3) the chip sector
   of the S&P 500, a page or a half: did it fall as expected):
   (1) the week and each stock, with the section of Economics (the market's reason for the chip fall of
