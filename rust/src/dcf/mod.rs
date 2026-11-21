@@ -23,6 +23,8 @@ pub mod calibrate;
 pub mod classic;
 pub mod cli;
 pub mod driver;
+pub mod market;
+pub mod market_score;
 pub mod model;
 pub mod nprandom;
 pub mod pathrate;
