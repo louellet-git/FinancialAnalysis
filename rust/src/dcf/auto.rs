@@ -141,6 +141,13 @@ pub struct Rules {
     /// so it charges `w` of the spend. Needs no `acq_mult`. Default on (decision of 2026-11-20, record A-002); `acq_w=0`
     /// gives the old model. `acq_charge` and `acq_f` win over it.
     pub acq_w: bool,
+    // ---- Used by the implied search (`fa dcf implied`, `auto_implied.rs`) only. They are not `--rules` keys and no default
+    // reads a market-implied result: a market-implied value is a measurement, not an input (`docs/QUALITY-STANDARDS.md`, 6).
+    /// Added to the company mean of the growth and to the growth of year 1. The long-run level and the terminal rule are
+    /// those of the builder for the shifted mean. 0: the model of the rules.
+    pub growth_shift: f64,
+    /// Added to the start and to the target of the free cash flow margin. 0: the model of the rules.
+    pub margin_shift: f64,
     /// With `acq_w`: the charge fades with the growth that it pays for. When the company mean of the growth is above the
     /// fade level, the credited growth above the level falls linearly to zero along the drift ramp (`ramp_n` years); the
     /// charge falls from `w` x the mean spend ratio in year 1 to zero in the same years (the same timing as the drift,
@@ -197,6 +204,8 @@ impl Default for Rules {
             acq_fade: true,
             last_floor: Some(0.0),
             margin_sigma_nu: None,
+            growth_shift: 0.0,
+            margin_shift: 0.0,
         }
     }
 }
@@ -954,7 +963,8 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
     if market.curve.is_none() {
         warnings.push(format!("no GSW yield curve: the risk-free rate is the default {} (a fixed rate)", pct(DEFAULT_RF)));
     }
-    let mu = gfit.mu.clamp(-0.5, 1.5);
+    let mu_company = if rules.growth_shift != 0.0 { gfit.mu + rules.growth_shift } else { gfit.mu };
+    let mu = mu_company.clamp(-0.5, 1.5);
     // terminal_rf sets both the fade level and the terminal mean to the yield (it wins over long_run); long_cap sets the level
     let cap = rules.long_cap.unwrap_or_else(|| if rules.terminal_rf { rf_long } else { rules.long_run.map_or(rf_long, |x| x.min(rf_long)) });
     // the mean terminal growth: the same number L as the fade level (terminal_rf and long_run), else the rule value
@@ -975,7 +985,8 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
     };
     let ramp_n = rules.fade_years.map_or_else(|| fade_ramp_years(slow_h, rules.years), |n| n.clamp(2, 60));
     let drift_end = (g_long - mu) * 1.0;
-    let g_start = gfit.start_mean.clamp(GROWTH_LIMITS.0 + 0.01, GROWTH_LIMITS.1 - 0.01);
+    let g_start_raw = if rules.growth_shift != 0.0 { gfit.start_mean + rules.growth_shift } else { gfit.start_mean };
+    let g_start = g_start_raw.clamp(GROWTH_LIMITS.0 + 0.01, GROWTH_LIMITS.1 - 0.01);
     let g_half = half_life_of(gfit.phi);
     let g_lo = GROWTH_LIMITS.0;
     let g_hi = GROWTH_LIMITS.1;
@@ -998,12 +1009,13 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
     let last_margin = last.fcf_margin().filter(|m| m.abs() <= MARGIN_LIMIT);
     let sm_own = own_sigma(&mhist, &mp, rules.margin_sigma_nu.unwrap_or(rules.own_sigma_nu));
     let mfit = ar1_fit_w(&mhist, last_margin, &Ar1Params { sigma: sm_own, ..mp.clone() }, rules.margin_w);
-    let m_start = (mfit.start_mean + interest_ratio).clamp(-MARGIN_LIMIT + 0.01, MARGIN_LIMIT - 0.01);
+    let m_shift = rules.margin_shift;
+    let m_start = (mfit.start_mean + interest_ratio + m_shift).clamp(-MARGIN_LIMIT + 0.01, MARGIN_LIMIT - 0.01);
     let m_mu = match (rules.margin_last, last_margin) {
         (true, Some(l)) => l,
         _ => mfit.mu,
     };
-    let m_target = (m_mu + interest_ratio).clamp(-MARGIN_LIMIT + 0.01, MARGIN_LIMIT - 0.01);
+    let m_target = (m_mu + interest_ratio + m_shift).clamp(-MARGIN_LIMIT + 0.01, MARGIN_LIMIT - 0.01);
     let m_half = half_life_of(mfit.phi);
     if m_target <= 0.0 {
         warnings.push(format!("the long-run free cash flow margin before SBC is {} (not above zero): the value is zero or negative", pct(m_target)));
@@ -1245,7 +1257,7 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
     );
     let _ = writeln!(tw, "[process.growth]\nrole = \"growth\"");
     let _ = writeln!(tw, "start = {}", draw(g_start, gfit.start_sd, g_lo, g_hi));
-    let _ = writeln!(tw, "target = {}", draw(gfit.mu.clamp(g_lo + 0.01, g_hi - 0.01), gfit.var_post.sqrt(), g_lo, g_hi));
+    let _ = writeln!(tw, "target = {}", draw(mu_company.clamp(g_lo + 0.01, g_hi - 0.01), gfit.var_post.sqrt(), g_lo, g_hi));
     let _ = writeln!(tw, "half_life = {}", f(g_half));
     let _ = writeln!(tw, "sigma = {}", f(sg_own));
     if kappa > 0.0 {
@@ -1278,7 +1290,9 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
         let fade_text = if acq_fades { format!(" The charge falls linearly to zero in {ramp_n} years, as the credited growth above the long-run level does (the drift of the growth).") } else { " The charge is constant.".to_string() };
         let _ = writeln!(tw, "rationale = {}\n", q(&format!("Cash paid for businesses: mean of acquisitions_net_of_cash / revenue of the last {} years, times the share f.{} The growth history keeps the bought growth, so the cost is a cost of the model (IBM review F2, F16; record A-002).", acq_vals.len(), fade_text)));
     }
-    let _ = write!(tw, "[discount]\nbeta = {}\nerp = {{ mean = {}, std = {}, lo = 0.02 }}\nkd_spread = {}\nequity_weight = {}\n", f(beta), f(rules.erp.0), f(rules.erp.1), f(rules.kd_spread), f(weight));
+    // the lower bound of the draw is 2%; a mean below it (the implied search) moves the bound to the mean
+    let erp_lo = rules.erp.0.min(0.02);
+    let _ = write!(tw, "[discount]\nbeta = {}\nerp = {{ mean = {}, std = {}, lo = {} }}\nkd_spread = {}\nequity_weight = {}\n", f(beta), f(rules.erp.0), f(rules.erp.1), f(erp_lo), f(rules.kd_spread), f(weight));
     if let Some((stub, share)) = timing {
         let _ = write!(tw, "stub_years = {}\nyear1_share = {}\n", f(stub), f(share));
     }
@@ -1318,7 +1332,7 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
         base_revenue,
         base_end: last.end.clone(),
         growth_start: g_start,
-        growth_company_mean: gfit.mu,
+        growth_company_mean: mu_company,
         growth_long_run: g_long,
         margin_start: m_start,
         margin_target: m_target,
@@ -1351,4 +1365,4 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
 
 #[cfg(test)]
 #[path = "auto_tests.rs"]
-mod tests;
+pub(crate) mod tests;

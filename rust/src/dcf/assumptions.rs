@@ -461,7 +461,7 @@ mod tests {
 
     /// The fields of `Rules` that are options of a measurement, off by default: each one is an alternative of a row of
     /// the table or a way to test it. They are not assumptions of their own.
-    const NOT_ASSUMPTIONS: [&str; 9] = ["long_cap", "fade_years", "growth_w", "growth_phi", "margin_w", "margin_last", "acq_charge", "acq_f", "acq_mult"];
+    const NOT_ASSUMPTIONS: [&str; 11] = ["long_cap", "fade_years", "growth_w", "growth_phi", "margin_w", "margin_last", "acq_charge", "acq_f", "acq_mult", "growth_shift", "margin_shift"];
 
     fn default_block(text: &str) -> String {
         let start = text.find("impl Default for Rules").expect("impl Default for Rules");

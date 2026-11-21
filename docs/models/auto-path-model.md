@@ -35,6 +35,7 @@ valuation. Do not use it alone for a trade (`CLAUDE.md`, "Review of a valuation 
 The model numbers with their source (`--explain`), the P10, P50 and P90 of the value
 for each share, the warnings, and with a price what the price implies. Exit code: 0 a
 value, 3 no value, 2 an error. `fa dcf screen` gives one CSV row for each ticker.
+`fa dcf implied` gives one CSV row for each ticker (what the price implies) and the group medians. It is a measurement: no input of the model reads it.
 
 ## Assumptions
 | Record | Name | Value | One line |
@@ -93,7 +94,8 @@ The records "not written" belong to the board ticket
 | Commands | `rust/src/dcf/auto_cli.rs`; `fa dcf auto IBM --cache data/raw --explain` |
 | Point-in-time test | `rust/src/dcf/auto_pit.rs`; `fa dcf pit --cache data/raw` |
 | Return test | `rust/src/dcf/auto_returns.rs`; `fa dcf returns --cache data/raw` |
-| Tests | `rust/src/dcf/auto_tests.rs` |
+| Implied by the price | `rust/src/dcf/auto_implied.rs`; `fa dcf implied --cache data/raw` (a measurement) |
+| Tests | `rust/src/dcf/auto_tests.rs`, `rust/src/dcf/auto_implied_tests.rs` |
 | Alternatives | `fa dcf auto --help` (`--rules K=V`) |
 
 ## Review status
