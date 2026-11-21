@@ -103,3 +103,11 @@ the result); V and BRK-B have no count until `T-20261121-shares-by-class` merges
 `attribute` (-9.42%); switch week 2026-11-20. Timing S&P 500: about 6.6 s a week (10.8 s with --bridge). Not done: a
 poison test of a fact filed after the anchor (needs a real facts cache), the poison and truncation runs on 3 dates, the
 code gate, the run of record (after the Technology fixes). Economics builds `fa macro premium-test` against the CSV.
+
+**Mapping fix (2026-11-21 about 20:45 UTC, from Quality):** the Technology change `pit-supplement-fill` (f4d74ea, not merged,
+REVISE for text only, no look-ahead) gives a value at cut 2026-11-13 to all 23 S&P 500 tickers that failed (BRK-B, V,
+COP, NEE, CI, LHX, PSX, VLO, ...) and moves some values (value at the means: IBM 171.25 to 164.79, MA 401.39 to 381.49,
+CMCSA 92.26 to 91.95, ED 96.70 to 99.31). The final runs use the merged code and say its commit. After the merge,
+`docs/models/implied-and-attribute.md` states the rule: with a cut, the 10-K supplement fills an input only when its
+filing date is on or before the cut, and the 10-K capex lines replace the company-facts capex (`fa dcf pit` does not use
+this path).
