@@ -2,7 +2,7 @@
 id: T-20261121-quant-test-audit-1
 title: Add parser tests for the option, volatility and futures commands, and a bond age test
 area: engine
-status: in-progress
+status: review
 owner: louellet-git
 requested_by: louellet-git
 head: quant
@@ -21,3 +21,8 @@ tests; two possible duplicate pairs are checked when that file next changes.
 2. `rust/src/bonds.rs` `latest` (`max_age_days`): an entry on the limit, one day over, and an empty series.
 
 Agent: `volatility-derivatives-quant` (1), `rates-credit-quant` (2). Gate: `code-reviewer`.
+
+Review 2026-11-21: PASS-WITH-NOTES (`code-reviewer`). MIN 1 and 2 (`--max-spread` below 0, and the raw text in its
+error) are done in this pull request. Open for a later change of `option_arb`: the reviewer reports that
+`fa options check --min-size` and `--iv-mark` still accept `nan` and `inf`, or check them only after the snapshot
+loads; a test cannot reach that path without a file.

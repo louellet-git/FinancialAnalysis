@@ -68,8 +68,8 @@ pub fn run(repo: &Path, rest: &[String]) -> Result<i32, String> {
     let expiry_max: Option<i64> = num(&flags, "--expiry-max")?;
     let mut filters = Filters::for_symbol(&symbol, expiry_max);
     if let Some(v) = num::<f64>(&flags, "--max-spread")? {
-        if !v.is_finite() {
-            return Err(format!("bad --max-spread '{v}'"));
+        if !v.is_finite() || v < 0.0 {
+            return Err(format!("bad --max-spread '{}'", get("--max-spread").unwrap_or_default()));
         }
         filters.max_spread = v;
     }
@@ -185,6 +185,8 @@ mod tests {
         assert!(run(&["fit", "heston", "--symbol", "IBM", "--date", "2026-11-19", "--starts", "x"]).contains("bad --starts"));
         assert!(run(&["fit", "heston", "--symbol", "IBM", "--date", "2026-11-19", "--rate", "inf"]).contains("bad --rate"));
         assert!(run(&["fit", "heston", "--symbol", "IBM", "--date", "2026-11-19", "--max-spread", "nan"]).contains("bad --max-spread"));
+        assert!(run(&["fit", "heston", "--symbol", "IBM", "--date", "2026-11-19", "--max-spread", "nan"]).contains("'nan'"), "the raw text");
+        assert!(run(&["fit", "heston", "--symbol", "IBM", "--date", "2026-11-19", "--max-spread", "-1"]).contains("bad --max-spread"), "below 0");
         assert!(run(&["fit", "merton", "--symbol", "IBM", "--date", "2026-11-19"]).contains("unknown model"));
     }
 }
