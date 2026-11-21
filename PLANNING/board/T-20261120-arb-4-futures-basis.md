@@ -2,12 +2,13 @@
 id: T-20261120-arb-4-futures-basis
 title: Compare futures with their spot and carry, and the VIX options with the VX futures
 area: trading
-status: in-progress
+status: backlog
 owner: louellet-git
 requested_by: louellet-git
 head: quant
+story: E4.S2
 order: 3.2
-branch: claude/upbeat-cori-a4ykf5
+branch: 
 created: 2026-11-20
 acceptance: `fa futures check` gives the VX future against the VIX option parity forward of the same expiry and the ZQ and SR3 strip against the New York Fed rates, each check has a test with a fixed answer, and one real day is in the findings note.
 ---
@@ -30,3 +31,5 @@ Step 1 is done (tests of `check_vx` and `check_zq`; review PASS-WITH-NOTES, 2026
 step: a missing VX history file returns "HTTP 403 ... (no history file)" in `cboe.rs` (~183, ~195), but
 `compare_vx` skips only "HTTP 404": make the test fixture use the real 403 text and state the rule (skip or error);
 and name the skipped contracts in the output, so that "N VX compared" shows the coverage.
+
+State (2026-11-21): step 1 merged in pull request 100 (the old branch `claude/upbeat-cori-a4ykf5` is gone). Steps 2 and 3 wait for the VIX chain copies and the NY Fed rates. The relations go into the register (`T-20261121-arb-invariants`).

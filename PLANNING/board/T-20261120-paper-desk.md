@@ -14,10 +14,9 @@ Owner request, 2026-11-20: "set up a paper trade team once we feel ready, half w
 and half for the quant research team". The owner starts this ticket when the owner is ready (head: owner).
 
 Decisions for the owner before the start:
-1. Where the paper trades go. (a) A paper book in this repo (no order leaves the repo; the rule of `CLAUDE.md`
-   "It does not send orders to a broker" stays). (b) The Alpaca paper account (orders go to a paper broker, no
-   real money; this changes the rule of `CLAUDE.md`). Recommendation of the Head of Technology: (a) first, (b)
-   when the fills of (a) look too easy.
+1. Where the paper trades go. DECIDED (owner, 2026-11-21, PR 149): the Alpaca paper account, under the
+   controls 0 to 8 of `docs/QUALITY-STANDARDS.md` section 8 (`CLAUDE.md`, "Purpose"). Each person uses an own
+   paper account and own keys (Alpaca terms, `docs/DATA-SOURCES.md`). No live order.
 2. The capital of each sleeve and the limits (largest position, largest loss in a day, stop of a sleeve).
    Recommendation: the Head of Quality and Risk proposes the limits.
 3. Which head runs the desk each day. Recommendation: each research head runs its own sleeve; the Head of

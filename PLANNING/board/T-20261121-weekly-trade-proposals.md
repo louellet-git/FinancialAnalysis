@@ -2,12 +2,12 @@
 id: T-20261121-weekly-trade-proposals
 title: Propose 3 fundamental trades each Friday for the live trader, from 2026-11-27
 area: engine
-status: in-progress
+status: backlog
 owner: louellet-git
 requested_by: louellet-git
 head: fundamental
 order: 0.03
-branch: claude/dcf-engine-backtest
+branch:
 created: 2026-11-21
 acceptance: Each Friday from 2026-11-27, three trade write-ups (`trading/journal/<date>-fundamental-<ticker>.md`, form of `trading/journal/README.md`, under 3 pages each) are ready for Luc, each from the valuation engine with a dated, reviewed rule of a side and size, and each passed the gate of the Head of Quality and Risk; Luc decides each trade and places it himself (the repo sends no order).
 ---
@@ -43,3 +43,10 @@ the worst year 2025. No size rule for stress now (a rule fitted to three seen wi
 rule A-009 fails its decision rule (R1-hold -1.10 points a year against the equal weight, t -0.58, 3 of 9 years;
 `analysis/priors/dcf_engine_backtest_rerun_2026-11-21.md`). No weekly proposal uses A-009, and no weekly proposal has
 a backed rule now. A new rule needs its own test, written before its run. Luc chooses the next path.
+
+**State (2026-11-21 about 20:50 UTC): no weekly trade starts on 2026-11-27.** No stock rule has passed its backtest (the
+value rank shows no evidence of an edge on split-corrected prices, pull request 136; rule A-009 is INVALID), T1 of the
+blind projection test still fails on revenue at T+3, and the side rule (`T-20261121-trade-side-rule`) is in the backlog.
+The owner's rule stands: no trades until T1 passes and a rule passes its backtest. Open decision of the owner (through the
+Head of Staff): path 1, no trades until a new rule passes (recommended by this head); path 2, index-level proposals from
+the market-level engine; path 3, paper trades as a process test only. Back to the backlog until that decision.

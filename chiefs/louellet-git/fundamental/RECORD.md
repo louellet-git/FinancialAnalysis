@@ -30,6 +30,14 @@ The rule of the entry above is in `chiefs/ORIENTATION.md`, section 6 ("Reviews a
 ## 2026-11-20 23:09 UTC (chat)
 Words: "I think you might have deleted an old ticket, that's not how we should handle those, speak w tech head"
 Done: question to the Head of Technology; the rule is now in `PLANNING/board/README.md` (a merged ticket moves to `PLANNING/board/done/` with `status: done` and `merged:`; never deleted). The two deletions on my branches are replaced by the move.
+## 2026-11-20 23:21 UTC (chat)
+Words: "I need to know why the market crashed today and over past few days, generally what I'm looking for is an understanding of where the market valuation WENT. This is a large task that requires its own models being built, and probably will start with you doing one stock at a time until you've built a general enough model to explain. I want to know what NVDA is worth."
+Done: tickets `T-20261120-nvda-valuation` (order 0.1) and `T-20261120-valuation-move-attribution` (order 0.2); data request to the Head of Technology.
+
+## 2026-11-21 01:04 UTC (chat)
+Words: "Ensure that work we do is repeatable and contributes to the dcf engine"
+Done: (1) each ticker or market analysis has a command file with the store commit, so that a person can run it again; (2) each judgment of a ticker model that can be a general rule is listed and goes to the engine ticket `T-20261121-dcf-engine-from-tickers`; (3) the analyst and quant agent files have this as a check.
+
 
 ## 2026-11-21 03:17 UTC (chat)
 Words: "I need you to begin working on testing your DCF engine on the back tester. That's the real value. You and the chief of economics will have to look for as long of data as you have, chief of economics could/should even consider periods of time that are outside the length of the stock market when that makes sense."
@@ -84,3 +92,75 @@ Done: no, the findings file of `T-20261120-valuation-move-attribution` was not w
 ## 2026-11-21 about 15:10 UTC (chat)
 Words: "Start w S&P10 / Updating data should be relatively easy, speak w tech / Make sure that whenever you stop work, just make sure that it all goes on the board for later and just report on where it is, to help out future users."
 Done: the document starts with the 10 largest companies of the S&P 100 (one weight for each company). A standing rule of this head: each pause puts the state of the work on the board (the ticket says what is done, what is not, the next step), and the report says where it is.
+
+## 2026-11-21 about 15:40 UTC (chat)
+Words: "Okay, now I recommend you start with the S&P 100, but we should then be able to attribute / break down the model valuation of each component of the S&P 10 and be able to explain that such that the sum of the parts comes out to the S&P 10."
+Done: the document starts with the S&P 100 bridge; a second bridge has the 10 largest companies only, company by company, and its lines add to the change of the S&P 10 (value-weighted).
+
+## 2026-11-21 about 15:50 UTC (chat)
+Words: "If there's a problem with the data, that needs to be fixed."
+Done: two data defects found and sent to the Head of Technology, the owner of the files (the point-in-time mapping does not use the filing supplement, so V, BRK-B, COP and NEE fail at a past date; a duplicate row in the Treasury par file). The model limits (AMZN and INTC below 0, TSLA, AMD and PLTR outside the search range, banks with no template) are not data defects; the document states them.
+
+## 2026-11-21 about 16:50 UTC (chat)
+Words: "Can we break down higher implied risk premium? Is there any research work that can be done on this assumption for understanding it/quantifying it better / Hold off on writing the doc until I give my go ahead on the results / While you research that, please do the same break down analysis over the past 2 months for the S&P10"
+Done: the document is on hold (draft kept, no review started) until the owner approves the results. Research on the implied premium starts (a plan with literature, data and first measurements). The S&P 10 breakdown runs week by week over 2026-09-18 to 2026-11-20, plus one bridge over the whole period.
+
+## 2026-11-21 about 17:15 UTC (chat)
+Words: "Can the head of tech check if there are other problems like those"
+Done: request to the Head of Technology for a full data audit (one board ticket, an owner for each defect, the S&P 100 first), with a first list: 23 S&P 500 tickers fail the point-in-time mapping at 2026-11-13 but pass the normal mapping (WARN); BF-B has no price file; IBM and JNJ stop at 2026-11-18; and seven more checks to run.
+
+## 2026-11-21 about 19:00 UTC (chat)
+Words: "When will the report be ready for S&P10?" Answer to the go-ahead question: "Did you break down implied premium and growth? Also what is no model points". Then: "Where are we getting the 0.78 from?" and "For the difference i.e attributable to the indiviudal company, that is somethign to be investigated/understood."
+Done: no go-ahead yet (the document stays on hold). The 0.78 is the median change of the implied premium over the 65 S&P 100 tickers with a value at both dates (store 652dc28 gives the same). New ticket `T-20261121-premium-company-part` with a design written before any analysis (sensitivity, market exposure, company news such as an earnings 8-K in the week).
+
+## 2026-11-21 about 19:10 UTC (chat)
+Words: "I think we also need to make sure that we're properly evaluating the impact of rates on a company by getting an appropriate value of how it's assets and liabilities are affected by the change in curves."
+Done: ticket `T-20261121-rates-balance-sheet` with a design written before any measurement (debt at fair value and its ladder, debt securities held, pensions, floating debt and cash, the full curve); first a measurement for the S&P 100, then a model change with its own backtest only if the effect is material.
+
+## 2026-11-21 about 19:30 UTC (chat)
+Words: "Is all DCF work fitting to the DCF engine?" Answer to the one-engine question: "It depends, we need some way for this all to run efficiently/smoothly. What I meant was more so that."
+Done: ticket `T-20261121-dcf-engine-integration` (one curve rule, a per-ticker weekly bridge, the common and company parts in Rust, the balance-sheet effect in the bridge if material, a cache of the point-in-time mapping for speed, the model documents). No change to the number of engines.
+
+## 2026-11-21 about 20:10 UTC (chat)
+Words: "Can you draw me up a visual html to describe via mermaid chart? of the overall process, less words more diagrams and visuals" Done: artifact https://claude.ai/artifact/6edSJhjvtqoedfNZ1VA3uC (private).
+Words: "Hm, I think that the implied premium/implied growth should also be part of the attribution engine." Done: design change on `T-20261121-premium-company-part`: `fa dcf attribute` splits the premium and the growth plug into a common part and a company part (engine steps that add exactly), with an 8-K group line.
+
+## 2026-11-21 about 20:30 UTC (chat)
+Words: "For attribution, there are numbers in the valuation that are a direct result of the math, but there are some that are implied. The implied components require the view of the economists." and "The economists require their own engine in that regard."
+Done: design change 2 on `T-20261121-premium-company-part`: the common change of the premium and the growth comes from an Economics engine (owner: the Head of Economics) through a file interface; the math parts stay in `fa dcf attribute`. Request and interface sent to the Head of Economics.
+
+## 2026-11-21 about 17:20 UTC (in the session of the Head of Quality and Risk, relayed)
+Words (on Deere and a captive finance arm, after the explanation of the sum of parts): "Enhance the DCF engine."
+Done: ticket `T-20261121-evaluator-captive-finance` (detection, then an industrial DCF plus a finance-arm equity value; after the bank evaluator; gate model-validator + code-reviewer with a backtest).
+## 2026-11-21 about 17:10 UTC (in the session of the Head of Quality and Risk, relayed)
+Words: "yes approve the merge but this doesnt mean I approve that the valuation is correct"
+Done: pull request 106 (NVDA) merges. It is NOT an approval of the value: the report keeps "a range for a judgment, not a price target", and no later document or trade may say that the owner approved the NVDA value.
+
+## 2026-11-21 about 18:00 UTC (chat)
+Words: "Changing you to fable for this project, proceed" (the model of the session changed; no change of the work).
+Words: "The point of the attribution valuation is to understand any recent changes in prices of any given set of underlying, explain what contributed to the change, and whether those impacts make sense with reality/possibility. The point is to understand if we have a buy opportunity or a correction for this particular instance, but will be used more generally in the future for understanding/analysis from a fundamentals perspective. Do you have questions?"
+Done: the purpose is recorded: (1) what changed, (2) what contributed, (3) does each implied piece make sense against reality (history, fundamentals, the economics view), (4) a reading: buy opportunity or correction. Two questions asked (the form of the conclusion; the horizon).
+
+## 2026-11-21 about 18:50 UTC (chat)
+Words: "Great, make sure that whatever is repeatable/should be expected of future work like this is built into the correct engine."
+Done: the list of the repeatable steps of this study, each with its engine and owner, is on `T-20261121-dcf-engine-integration` (written before the code); the build starts on branch `claude/attribution-reality` (from `claude/premium-series`, which is at the gate).
+
+## 2026-11-21 about 19:05 UTC (chat)
+Words: "Send the same request of work to quant research for its engine/processes."
+Done: the request is sent to the Head of Quant Research with the owner words, the four steps as applied in this area, the example table (`T-20261121-dcf-engine-integration`) and the borders between the two areas.
+
+## 2026-11-21 about 19:20 UTC (chat)
+Words: "Give me the prelim results before the report, that's the general rule."
+Done: a standing rule of this head: the preliminary results go to the owner first (in the chat, with a results file on the branch); a report is written only after the owner has seen them and gives the go-ahead. First use: `analysis/priors/sp100_week_prelim_results_2026-11-21.md`.
+
+## 2026-11-21 about 19:35 UTC (chat)
+Words: "But why the sudden rise in the return investors are asking for? I've heard that people are expecting a rate rise too"
+Done: three more runs (11-06 to 11-13, 11-06 to 11-20, 10-30 to 11-20) and the yield data: the premium rise of the last week mostly reverses the fall of the week before, when the yields rose (10-year 4.86% to 5.15%) and the stocks did not follow; section 6 of the preliminary results. News (a high CPI on 11-10, a December rate increase priced) is cited as reported, not checked.
+
+## 2026-11-21 about 19:50 UTC (chat)
+Words: "You should generally be asking the head of economics these questions"
+Done: a standing rule: each macro "why" question (rates, the central bank, inflation, the required return of the market) goes to the Head of Economics; this head gives the owner that answer with its source. The question on the rate rise is sent with the data of section 6.
+
+## 2026-11-21 about 20:40 UTC (from the heads)
+The Head of Economics answered the rate question (a248803, audited): a rate rise of about two quarter-point steps in a year is priced in the bill curve; the December odds of the news are not ours; the yield rise of the week to 11-13 was a real-rate rise; "a late reaction" is one fair reading, not proven. Section 7 of the preliminary results. Correction by this head: the "high October CPI" of the news is not visible in the data of the store.
+New rule (owner decision, PR 161): a Head of Staff is above the heads; send it only: a large task done or merged, a block of more than half a day, a decision that only the owner can make, a conflict with a head. A permission refusal still goes to the Head of Technology.

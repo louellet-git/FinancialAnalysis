@@ -5,6 +5,7 @@ area: engine
 status: backlog
 owner: louellet-git
 head: quant
+story: E4.S4
 order: 3.05
 branch:
 created: 2026-11-21
@@ -24,6 +25,8 @@ Each item says "changes a value" (the fix changes a number that a model or a che
 - B6. `fa trade paper` has no `--commission` option (`rust/src/trading/cli.rs`, `rust/src/trading/paper.rs`). Its account uses the model fill, not the chain price. Link: `T-20261119-options-paper-test`. Changes a value (paper account).
 - B7. `^IRX` is divided by 100 with no conversion to a continuous rate (the `rate` series in `rust/src/trading/data.rs`). Changes a value (bot model prices).
 
+- B8. Measure the model price of the option legs against real quotes: for each SPY condor that s05 would sell on a copied day (the daily Alpaca chain copies from 2026-11-23), the real credit at bid and ask against the model credit (`trading/pricing.rs`). From `T-20261121-alpha-1-pipeline` stage 2 (stopped at gate 1, so it runs as a check of the backtest prices, not as a strategy stage). Needs two or more copied days. Changes a value (it sizes B1 and B2).
+
 ## Option chain check and futures check (records A-120 to A-137)
 - O1. Wrong text: `rust/src/market/option_arb.rs` and `CHECK_USAGE` (`rust/src/market/options_cli.rs`) call the 0.99/1.01 band "the rule of the volatility fit". The fit has no band. Text only.
 - O2. One chain has two forwards: 3 strikes in the check (`PARITY_STRIKES` in `rust/src/market/option_iv.rs`, checked) and 5 in the fit (`PARITY_STRIKES` in `rust/src/volmodels/chain.rs`). Choose one, or record why. Link: `T-20261120-arb-3-index-parity-box`. Changes a value (check break counts).
@@ -42,3 +45,9 @@ Each item says "changes a value" (the fix changes a number that a model or a che
 - R4. `MR_T_THRESHOLD` 2.86 (`rust/src/ratemodels/calib.rs`) is a Dickey-Fuller value. The code also applies it to an ML t-statistic. Changes a value (a warning flag).
 - R5. Hull-White mixes a real-world fit (a, sigma) with the market curve (theta) (`HullWhite` branch in `rust/src/ratemodels/calib.rs`). Text only (record the choice).
 - R6. The "lasting residual" rule of the step 2 note is in an `awk` script only (`analysis/priors/rates_recon_step2_2026-11-20.md`), not in code. Text only.
+
+## Variance premium test (records A-150 to A-154; added 2026-11-21 from `docs/models/variance-premium-test.md`)
+- P1. The 2016-2026 block ends at a fixed date: `report` in `rust/src/trading/premium.rs` sets `w16` to 2016-01-05 to 2026-11-19 (checked). A day after 2026-11-19 goes into the row "1993 to 2015 (no windows defined)" with a wrong label. The window list is a hand copy of `analysis/macro/stress-windows.csv`, and no test links them. Changes a value (a row of the table).
+- P2. The row label "all days 1990s-2026": SPY starts in 1993 (`report`, `premium.rs`). Text only.
+- P3. The 1-day table uses a block step of 1, so its "t_blk" is the plain t; its window rows print no t (`premium.rs`). Text only.
+- P4. The median is `v[len / 2]`, the upper middle value for an even count (`row`, `premium.rs`, checked). Changes a value (small).

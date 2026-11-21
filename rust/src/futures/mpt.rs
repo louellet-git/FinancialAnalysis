@@ -83,7 +83,7 @@ fn unescape(s: &str) -> String {
 }
 
 /// The value of an XML attribute in a start tag, for example attr("<c r=\"A1\" t=\"s\">", "t").
-fn attr<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
+pub(crate) fn attr<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
     let key = format!("{name}=\"");
     let mut from = 0;
     while let Some(i) = tag[from..].find(&key) {
@@ -99,7 +99,7 @@ fn attr<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
 }
 
 /// The text of each `<si>` of sharedStrings.xml.
-fn shared_strings(xml: &str) -> Result<Vec<String>> {
+pub(crate) fn shared_strings(xml: &str) -> Result<Vec<String>> {
     let mut out = Vec::new();
     let mut rest = xml;
     while let Some(i) = rest.find("<si>") {
@@ -123,7 +123,7 @@ fn shared_strings(xml: &str) -> Result<Vec<String>> {
 }
 
 /// The path of the sheet that has this name, from workbook.xml and its relations.
-fn sheet_path(zip: &[u8], sheet: &str) -> Result<String> {
+pub(crate) fn sheet_path(zip: &[u8], sheet: &str) -> Result<String> {
     let workbook = String::from_utf8(zip_entry(zip, "xl/workbook.xml")?).map_err(|_| "workbook.xml is not UTF-8")?;
     let rels = String::from_utf8(zip_entry(zip, "xl/_rels/workbook.xml.rels")?).map_err(|_| "workbook.xml.rels is not UTF-8")?;
     let tag = workbook
@@ -165,7 +165,7 @@ pub struct Dataset {
 const HEADER: [&str; 5] = ["date", "reference_start", "target_range", "field", "value"];
 
 /// The cells of one `<row>` as (column letter, type, text).
-fn cells(row: &str) -> Vec<(char, &str, &str)> {
+pub(crate) fn cells(row: &str) -> Vec<(char, &str, &str)> {
     let mut out = Vec::new();
     let mut rest = row;
     while let Some(i) = rest.find("<c ") {

@@ -29,7 +29,7 @@ sources, dates, points, largest difference), parameters with standard errors, li
 2. A closed-form test (a par bond at its coupon yield prices at 100; a zero curve
    reprices its own par bonds).
 3. A fit runs on several windows and frequencies, not one; a unit root is reported.
-4. A rich or cheap candidate is a candidate after cost, not a trade. The repo sends no
+4. A rich or cheap candidate is a candidate after cost, not a trade. A candidate sends no
    order.
 5. `rf` and `kd_spread` of the DCF change only through `--rf-date` and `--rating`; the
    IBM numbers do not change.
