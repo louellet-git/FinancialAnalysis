@@ -1,57 +1,54 @@
 # Dashboard: fundamental (louellet-git)
 For the next session of this head: the judgments about value that are not in the code, and what the
-person decided. Keep this file below 60 lines. Started 2026-11-20.
+person decided. Keep this file below 60 lines. Started 2026-11-20. Dream pass: 2026-11-21 03:40 UTC.
 
-## Goal now and subsequent steps
-The person wants (2026-11-20, `RECORD.md`): an engine with assumptions that are studied, decided and
-written in the assumption records, and a fixed procedure that shows what the market price implies for
-each stock, industry and sector. The person does not choose each assumption: this head decides.
-Work started again on 2026-11-20 21:19 UTC ("Proceed with your work"). Each ticket file has its state.
-1. `T-20261120-dcf-conventions-decision` (branch `claude/magical-planck-41ip3i`): built and tested; the
-   full runs on the data store run now; then the gate (Head of Quality and Risk), then the pull request.
-2. `T-20261120-dcf-engine-accuracy` (branch `claude/dcf-engine-accuracy`): A recovery after a decline
-   year, B bands too wide for a stable margin, C the mean of the value with its standard error.
-3. `T-20261120-dcf-market-implied` (branch `claude/dcf-market-implied`): parts 1 to 3 built; waits for
-   the SIC codes, the findings file and the gate. Merge the conventions branch into it first.
-4. `T-20261120-dcf-assumption-register` (not started): build it after the conventions merge.
+## Goal now and subsequent steps (`RECORD.md` has the words)
+1. 2026-11-21 03:17: "testing your DCF engine on the back tester. That's the real value", over the longest
+   data, with the Head of Economics (also periods outside the stock market). Ticket
+   `T-20261121-dcf-engine-backtest`, worktree `../wt-bt`. Part 1 done (fb3d31c): value-rank +2.91 points
+   a year over the equal weight of the S&P scored list, 2018-2026, t 1.62 (table cut at 2016). Next:
+   sector-neutral rank; prices from 2009 (Technology); market-level model in Rust on Economics data.
+2. NVDA (PR 106): report reviewed (four steps). 2026-11-21 03:16 "trade recommendation, based on
+   fundamentals, sub 3 pages": `TRADE-RECOMMENDATION.md` = no trade (caa0082), gate at Quality, then Luc.
+3. Acquisition charge (`../wt-acq`, 32957b8): at the gate (validator + code reviewer). Then PR; the
+   title says that the output of auto, screen, implied, attribute, pit and returns changes.
+4. Attribution: merged (PR 107). Findings file waits for the 2026-11-20 closes and the Economics brief.
 
-## Decisions of this head (the reasons are in the records; no reason uses the price)
-- 2026-11-20, long-run growth: one number `L` = lower of the 10-year zero yield and `G`. `G` = FOMC
-  longer-run real growth + longer-run PCE inflation (SEP of 2026-09-16: 2.0% + 2.0% = 4.0%). Why FOMC
-  and not CBO (3.8%): we can read the page, and ALFRED keeps each vintage for a point-in-time test.
-- 2026-11-20, acquisitions: charge `w` x mean spend (`acq_w`), `w` = weight of the history in the growth
-  mean, and the charge fades to zero along the same ramp as the credited growth above L (review cycle 1,
-  F1: a constant charge made ROP -$91). Lesson: a paired rule must stay paired in EACH year, not only in
-  year 1. Heavy buyers are still over-charged a little (point-in-time T+3 +2.4% of revenue).
-- 2026-11-20, growth after a decline year: floor of 0% on the base-year growth in the company mean
-  (A-003). A recovery term was refused: the rest of the error is one episode (base years 2019, 2020).
-- 2026-11-20, margin bands: not narrowed. In sample they look too wide (95%), out of sample (`--cut
-  2015`) they are right. Lesson: check an in-sample band error out of sample before a correction.
-- 2026-11-20, market-implied values use the value at the means, not the P50: a risk-adjusted DCF values
-  EXPECTED cash flows, so a price compares with an expected value. The P50 is lower by construction
-  (IBM $159.72 at the means against P50 $132.87). So the screen ratio P50 / price is conservative by
-  construction: a part of the gap to the market is the statistic, not the model.
-- A market-implied value is a measurement, never an input.
+## Decisions of this head (records A-001 to A-003; no reason uses the price)
+- One long-run growth L = min(10-year zero yield, 4.0%) (FOMC SEP). Acquisition charge = w x expected
+  spend, fading with the credited growth above L. A base-year decline enters as 0%.
+- 2026-11-21: `acq_second` on; `acq_persist` on (1.75% + 0.3925 x past, fit on pit half 0, scored on
+  half 1 and cut 2015 half 1); `acq_keep` off, open question: is growth at L paid by reinvestment only?
+- The value at the means is deterministic and is NOT the expected value (the mean is higher).
+- Market (2026-11-18): S&P list implies a premium of 2.32%, next 500 3.12% (model 4.41%).
+- A trade side needs: close outside P25-P75; the side holds at a premium of 3.5% and 5.5%; the gap is
+  not a property of the whole list (same frame). Written after the NVDA price was known: gate checks it.
+
+## Lessons (tested)
+- A paired rule must stay paired in EACH year and in ONE frame. Check it year by year before a brief.
+- Check an in-sample error out of sample, and check whether a data window was selected.
+- A backtest of the model uses a parameter table cut before its first year (in-sample table: +0.9
+  points a year of look-ahead, 2026-11-21).
+- Compare a stock strategy with the equal weight of the SAME scored list, by year, with a t value.
+- No claim before a run supports it; rerun two numbers of an agent before the gate.
+- Do not edit code with a perl one-line substitution that has `|` in it: use the Edit tool.
 
 ## Standing words of the person
-- 2026-11-20: the immediate goal is to improve the stochastic DCF engine, for stocks only ("stick to
-  underlyings"); no option work in this area.
-- 2026-11-20: "the agents should not be overly sophisticated just overall lean and of quality, not
-  obsessive and tight fisted".
-- 2026-11-19 or 2026-11-20, on the GitHub Actions use: "this is too much usage". Effect: few pull
-  requests. A pull request with documents only has no check run.
-- The computer of the person is a Windows laptop. Give commands for PowerShell.
+- The stochastic DCF engine, for stocks only; no option work in this area. Agents lean and of quality.
+- Each analysis has COMMANDS.md with the store commit; each ticker judgment that can be a rule goes to
+  `T-20261121-dcf-engine-from-tickers`. Few pull requests (CI cost). Windows laptop: PowerShell.
+- The head merges its own PR after a gate pass and a green check (ORIENTATION section 6).
+- A merged ticket moves to `PLANNING/board/done/`; never delete a ticket.
+- Trade recommendations: fundamentals, under 3 pages, "paper" unless Luc says live.
+- From time to time: an industry-practice note (`industry-<date>.md`, 1 page, ORIENTATION section 3).
 
-## Tested rules
-- The cache is the data store: `git clone --depth 1 https://github.com/louellet-git/fa-data data/raw`
-  (public, read with no attach; 28 s). Do not start a bulk download (`chiefs/ORIENTATION.md`, section 2).
-  Check after a clone: `fa dcf auto IBM --as-of 2026-11-19 --rules long_run=off,acq_w=0` gives P50 $132.87.
-- The quant agent can build and test while data is missing; send the data runs as a second message.
-- Parallel agents: one worktree each (`../wt-<name>`), the cache path with `--cache`, read only.
-- cbo.gov refuses a request from the cloud machine (HTTP 403). federalreserve.gov answers.
+## Tested rules and contacts
+- Cache = data store (`GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 .../fa-data data/raw`); store 1804f48.
+- Heads (send_message): Technology session_015ReypMwF8aVDzTBhLCbEv1; Quality session_015ReypKkZtAZBTkhHTskxJg;
+  Quant session_015ReypKReqsgzkZY2hCsPdF; Economics session_015ReypPG2WmExK3KRHNj1e2.
+- A reviewer asks: no push to a branch under review until the verdict.
+- Data length: SEC facts from about 2009; most prices from 2016-11-18; SPY and IBM from 1962; GSW from 1961.
+- cbo.gov refuses the cloud machine (HTTP 403); federalreserve.gov answers.
 
 ## Pages
-- No page.
-
-## Dream pass
-On the word of the person ("clean up memory" or "dream"). Last pass: none.
+- `responsibilities.md`: the area of this head and its boundary with the Head of Quant Research.
