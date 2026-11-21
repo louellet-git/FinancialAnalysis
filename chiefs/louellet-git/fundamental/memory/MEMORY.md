@@ -30,12 +30,12 @@ each assumption: this head decides, with a reason that does not use the price.
 - A paired rule must stay paired in EACH year and in ONE frame (F1 of 77: ROP -$91; NVDA N1/N2: a charge that
   faded slower than its growth, and stakes at full value with each new purchase a total loss). Before I
   give a pairing rule in a brief, check it year by year and frame by frame.
-- Check an in-sample band error out of sample before a correction (margin bands: 95% in, 80% out).
+- Check an in-sample error out of sample (margin bands: 95% in, 80% out), and check whether a data window
+  was selected (NVDA guide record: 12 of 12 beats in the upswing window; the full record had a bust).
 - Write no claim in an output text or a brief before a run supports it (V1 of pull request 81: I wrote
   "compare the mean with a price"). An agent can write numbers that no run made (V2): the record gets
   the command of each number, and I rerun two of them before the gate.
-- Same error two times (V1 of 81, F1 of the implied file): a claim on the mean or the expected value
-  with no run. Before a claim on a statistic, run `fa dcf auto` and read the mean line.
+- Before a claim on the mean or the expected value, run `fa dcf auto` and read the mean line (V1 of 81, F1).
 
 ## Standing words of the person
 - Immediate goal: the stochastic DCF engine, for stocks only; no option work in this area.

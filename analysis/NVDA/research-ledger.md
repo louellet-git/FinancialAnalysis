@@ -1,6 +1,6 @@
 # NVDA research ledger (DRAFT, not reviewed)
 
-Version 4 of 2026-11-21 (answer to the skeptic, round 2; version 3 was round 1). Step 1 of the review (analyst). Version 1 (commit 9a2e6f0) had the base of 2026-07-26; version 2 added the 8-K. Form of
+Version 5 of 2026-11-21 (answer to the skeptic, round 3; version 4 was round 2, version 3 round 1). Step 1 of the review (analyst). Version 1 (commit 9a2e6f0) had the base of 2026-07-26; version 2 added the 8-K. Form of
 `analysis/IBM/research-ledger.md`, with one id for each fact.
 
 Each outside fact has a date, a source, a tier and an expiry. Tier: PRIMARY = filing or XBRL fact of the SEC; COMPANY 8-K = the
@@ -8,7 +8,7 @@ press release of the company, filed as an 8-K, unaudited; SECONDARY = a data ven
 this repo (CONVENTION or DATA of the calibration); JUDGMENT = the analyst, with no source. "WAITS" = the number is old because a
 newer filing exists or will exist, and it is not in the data store.
 
-Data store: `data/raw`, commit `1696af8` (2026-11-21; the NVDA facts, prices and estimates are those of `a1dffb5`; the store of 1696af8 adds the 8-K press releases of 13 quarters). SEC company facts of 2026-11-20. NVDA prices to 2026-11-19 (close $145.98).
+Data store: `data/raw`, commit `1804f48` (2026-11-21; the NVDA facts, prices and estimates are those of `a1dffb5`; the store adds the 8-K earnings releases of 21 quarters, Q4 FY22 to Q3 FY27, in `NVDA/filings/8k/`).
 SPY prices to 2026-11-18. GSW curve to 2026-11-13. The close of 2026-11-20 is NOT in the store (the source lags one day). Model
 date 2026-11-20. Filings in the store: 10-K of 2026-02-25 (accession 0001045810-26-000021) and the 10-Q of 2026-08-26 for the fiscal
 second quarter of 2027, period end 2026-07-26 (accession 0001045810-26-000075). **The 10-Q of the fiscal third quarter of 2027
@@ -68,9 +68,9 @@ No model input comes from the quote of the press release.
 | L10a | Cash | 29.089 $B | Yes | Interest income is not in the margin (the margin is the operating margin), so the cash is counted one time (F15). |
 | L10b | Marketable debt securities | 24.423 $B (07-26: 34.143 `DebtSecuritiesCurrent`) | Yes | Cash-like; same as cash. `mapcheck` gives no value for `short_term_investments` after 2025-10-26 (filer tag change, finding W7). |
 | | **Net debt used** | 32.371 - 29.089 - 24.423 = **-21.141 $B** (net cash; $0.87 a share) | | Version 1: -23.220 |
-| L11 | Marketable equity securities | 44.219 $B (07-26: 42.783) | **Yes, at r x fair value, r = 0.5** (version 4) | Decision of the Head of Fundamental Research, 2026-11-21, round 2: ONE r for the past and the future. A purchase is partly an investment that keeps its value (share r) and partly a subsidy to buyers that buys credited revenue (share 1 - r). Gains are not in the margin (F15). |
-| L11a | Non-marketable securities | 65.528 $B (07-26: 47.898; 10-K: 22.251) | **Yes, at r x carrying value** | Same. The carrying value is mostly the cost (upward adjustments 9.1 $B on 2026-07-26, `EquitySecuritiesWithoutReadilyDeterminableFairValueUpwardPriceAdjustmentCumulativeAmount`). The terms are in the 10-Q notes, not read. |
-| | Equity securities together | 109.747 $B ($4.54 a share at r = 1) | **In the bridge at r x 109.747 = 54.874 $B ($2.27 a share).** Net debt used: -21.141 - 54.874 = **-76.015 $B** | The future purchases are charged at (1 - r) of the four-quarter rate (process.charge, part A), with the fade of the growth (same half-life as D3). There are no terms and no data for r: 0.5 says that we do not know, and the range of r carries the uncertainty (report section 1: r = 0, 0.25, 0.5, 0.75, 1). r = 1: stakes in at full value, no equity charge. r = 0: stakes out, full charge. Version 2 had r = 0 for the bridge and no charge; version 3 had r = 1 for the bridge and r = 0 for the charge. **The engine cannot impair the bridge on a failed path**, so the collapse paths keep the stakes at $2.27 a share (the P10 is biased up by up to about $2.3). |
+| L11 | Marketable equity securities | 44.219 $B (07-26: 42.783) | **Yes, at FULL fair value** (round 4) | Decision of the Head of Fundamental Research, round 4: they have observable marks and net gains of $25.5B in nine months (`Gains from equity securities, net` (25,474), page cash flow statement) and no impairment; r does not apply to them. Gains are not in the margin (F15). |
+| L11a | Non-marketable securities | 65.528 $B (07-26: 47.898; 10-K: 22.251) | **Yes, at r x carrying value, r = 0.5** | Decision of the Head, round 2: ONE r for the non-marketable stakes and for the future purchases. A purchase is partly an investment that keeps its value (share r) and partly a subsidy to buyers that buys credited revenue (share 1 - r). The carrying value is mostly the cost (upward adjustments 9.1 $B on 2026-07-26, `EquitySecuritiesWithoutReadilyDeterminableFairValueUpwardPriceAdjustmentCumulativeAmount`). The terms are in the 10-Q notes, not read. |
+| | Equity securities together | 109.747 $B ($4.54 a share at r = 1) | **In the bridge at 44.219 + r x 65.528 = 77.0 $B at r = 0.5 ($3.18 a share).** Net debt used: -21.141 - 44.219 - 32.764 = **-98.124 $B** | The future purchases are charged at (1 - r) of the four-quarter rate (process.charge, part A), with the fade of the growth (same half-life as D3). There are no terms and no data for r: 0.5 says that we do not know, and the range of r carries the uncertainty (report section 1: r = 0, 0.25, 0.5, 0.75, 1). r = 1: all stakes in at full value, no equity charge. r = 0: non-marketable stakes out, full charge. Earlier versions: version 2 r = 0 for the bridge and no charge; version 3 r = 1 for the bridge and r = 0 for the charge; version 4 (rounds 2 and 3) r on all stakes (net debt -76.015). **The engine cannot impair the bridge on a failed path**, so the collapse paths keep the stakes at $3.18 a share (the P10 is biased up by up to about $3.2). |
 | L12 | Guarantees, maximum exposure | 108.5 $B on 2026-07-26 (`GuaranteeObligationsMaximumExposure`); 0.86 $B on 2025-10-26. The 2026-10-25 value is not in the press release. | No, **open** | The tag gives a maximum, not an expected loss. If the whole amount were a claim: -$4.49 a share (24.186B shares). The note of the 10-Q WAITS. The risk goes with the demand collapse of the model (failure table), not with the bridge. |
 | L13 | Operating lease liabilities | 5.494 $B (2026-07-26) | No | The lease cost is in the operating income (F15). Memo: -$0.23 a share. |
 | L14 | Purchase obligations | `PurchaseObligation` 45.774 $B (2025-07-27, last value in the store); `UnrecordedUnconditionalPurchaseObligationBalanceSheetAmount` 22.7 $B (2026-01-25), 7.6 $B (2025-01-26) | No | Payments for product that the company will sell: the cost is in the gross margin and the inventory (a debt claim would count it two times). Rule R1: section D. |
@@ -92,31 +92,46 @@ No model input comes from the quote of the press release.
 |---|---|---|---|---|
 | L20 | Remaining performance obligation | 3.2 $B (2026-07-26), 2.6 (2026-04-26), 2.3 (2026-01-25) (`RevenueRemainingPerformanceObligation`). The value at 2026-10-25 is not in the press release. | **Excluded** | 1.1% of the trailing revenue of version 1, under 1% now. It is for cloud and software contracts, not for the product orders. It does not bear on the growth driver. IBM had 105% coverage, and NVDA has about 1%. |
 | L21 | Purchase obligations and supply commitments | See L14 | **Excluded as a number; plausibility check only** | They show what NVDA bought, not what the customers ordered. |
-| L22 | Guidance of the company: outlook for Q4 FY27 (L2d) | Revenue $130.0B +-3% (14 weeks, 120.7 in 13 weeks); GAAP gross margin 71.0% to 72.0%; GAAP opex about $11.0B; tax 16% to 18% for FY27; no China data center compute revenue assumed | **USED** (version 2) | Evidence for the growth start (first quarter of year 1: +4.2% on Q3 in 13 weeks; reported +12.2%), for the margin start (GAAP operating margin about 63.0% in the guided quarter) and for the half-life (the sequential growth falls from +20% to +4% in one quarter). It sets no number alone: the model mean is 47.9% for year 1 (the guide times the median beat, L26; 40% at the guide alone) and the guide is one quarter of four. The guidance of the earlier quarters and the revenue of the company against them are NOT in the store, so a habit of beating the guide is not measured. The history of the guide against the result is now MEASURED (L26): the revenue was above the guide in 12 of 12 quarters, median +5.65% (range +2.5% to +10.5%). **The base case (version 4, round 3) uses the guide times the median beat: year-1 growth 47.9%** (decision of the Head of Fundamental Research: the company's own record in L26 is the best evidence for the revenue of Q4, and a base at the guide alone would be low on it). Sensitivity: the guide alone (40%): P50 $97.74; +2.5% (43.5%): $102.40; +10.5% (54.7%): $118.16; the median beat (47.9%) is the base: $108.40. |
+| L22 | Guidance of the company: outlook for Q4 FY27 (L2d) | Revenue $130.0B +-3% (14 weeks, 120.7 in 13 weeks); GAAP gross margin 71.0% to 72.0%; GAAP opex about $11.0B; tax 16% to 18% for FY27; no China data center compute revenue assumed | **USED** (version 2) | Evidence for the growth start (first quarter of year 1: +4.2% on Q3 in 13 weeks; reported +12.2%), for the margin start (GAAP operating margin about 63.0% in the guided quarter) and for the half-life (the sequential growth falls from +20% to +4% in one quarter). It sets no number alone: the model mean is 44.9% for year 1 (the guide plus half the all-pairs median beat, L26; 41.0% at the guide alone) and the guide is one quarter of four. The guidance of the earlier quarters and the revenue of the company against them are NOT in the store, so a habit of beating the guide is not measured. The history of the guide against the result is now MEASURED (L26): the revenue was above the guide in 12 of 12 quarters, median +5.65% (range +2.5% to +10.5%). **The base case (version 5) is the guide plus half the all-pairs median beat: year-1 growth 44.9%**, by the rule of L26 (written before the run). Sensitivity (100,000 paths): the guide alone (41.0%): P50 $98.60; the base: $103.78; the full median (48.9%): $109.23; a miss like Q2 FY23 (16.7%): $72.86. |
 | L23 | EPS reported and consensus (Nasdaq) | Actual (non-GAAP; SBC is no longer excluded from Q1 FY27) EPS: Q4 FY26 1.57 (consensus 1.45), Q1 FY27 1.87 (1.70), Q2 2.22 (2.09), Q3 2.68 (2.47, reported 2026-11-17). GAAP diluted EPS of Q3 is 2.70 (L2b). Consensus of 2026-11-20: Q4 FY27 2.84 (15 analysts), Q1 FY28 3.27, Q2 3.77, Q3 4.33, Q4 4.92; fiscal year EPS FY27 9.60, FY28 16.09, FY29 22.18, FY30 26.90 (18, 18, 9, 3 analysts). No revenue estimates in the file. | **Cross-check only, no input.** The consensus for the four quarters Q4 FY27 to Q3 FY28 is 2.84 + 3.27 + 3.77 + 4.33 = 14.21, against 8.34 for the last four reported quarters: +70% in EPS. The model has revenue +40% for year 1 with a margin that falls. The street therefore expects a growth of the quarters after Q4 that is far above the +4% of the guide. The model does not follow it: the only evidence in the store for those quarters is the guide. This is the largest open difference with the street. |
 | L24 | Price targets and ratings (Nasdaq) | Mean $232.59, low $130, high $350; 29 buy, 13 hold, 1 sell | 2026-11-20 | SECONDARY | `data/raw/NVDA/estimates/2026-11-20.json` | **Not used.** A target is not evidence for a driver. Shown only as the view of others. |
 
-### L26. Guide against result: the 12 pairs (revenue, $ billions)
+### L26. Guide against result: the 19 pairs (revenue, $ billions)
 
-Source: the 8-K press releases (EX-99.1) of 13 quarters in the store (`data/raw/NVDA/filings/8k/<accession>/q<N>fy<YY>pr.htm`; tier company 8-K, unaudited; expiry: when the next quarter is reported, add a pair). Guide = the sentence "Revenue is expected to be $X billion, plus or minus Y%" in the "Outlook" of the release of the quarter before; reported = the line "Revenue" of the income statement of the release of the quarter itself. Beat = reported / guide - 1. Method: `COMMANDS.md`, section 10.
+Source: the 8-K earnings releases (EX-99.1) of 21 quarters in the store (store `1804f48`; `data/raw/NVDA/filings/8k/<accession>/q<N>fy<YY>pr.htm`; tier company 8-K, unaudited; expiry: when the next quarter is reported, add a pair). Guide = the sentence "Revenue is expected to be $X billion, plus or minus Y%" (the oldest releases say "Y percent") in the "Outlook" of the release of the quarter before; reported = the line "Revenue" of the income statement of the release of the quarter itself. Beat = reported / guide - 1. A pair needs a guide and the next result: the store has 20 final releases with a guide (Q4 FY22 to Q3 FY27), the guide of the last one (Q4 FY27) has no result, so there are **19 pairs** (the coordinator counted 20 and 8 before Q4 FY24; the store gives 19 and 7). Method: `COMMANDS.md`, section 3.
 
-| Quarter | Guide (file of the quarter before) | Guide $B (+-) | Reported $B (file) | Beat |
+**The preliminary release of 2022-08-08** (`0001045810-22-000133/pressrelease.htm`) is a PRELIMINARY result of Q2 FY23 ("approximately $6.70 billion, down 19% sequentially ... weaker than forecasted Gaming revenue", and about $1.32B of charges for inventory). It is NOT used. The reported value of Q2 FY23 is from the final release of 2022-08-24 (`0001045810-22-000136/q2fy23pr.htm`, $6.704B). The guide of that quarter was $8.10B in the release of Q1 FY23 (`0001045810-22-000073`). The miss was pre-announced.
+
+| Quarter | Guide in the release of | Guide $B (+-2%) | Reported $B (release) | Beat |
 |---|---|---|---|---|
-| Q4 FY24 | `0001045810-23-000225/q3fy24pr.htm` | 20.0 (2%) | 22.103 (`0001045810-24-000028/q4fy24pr.htm`) | +10.5% |
-| Q1 FY25 | `0001045810-24-000028/q4fy24pr.htm` | 24.0 (2%) | 26.044 (`0001045810-24-000113/q1fy25pr.htm`) | +8.5% |
-| Q2 FY25 | `0001045810-24-000113/q1fy25pr.htm` | 28.0 (2%) | 30.040 (`0001045810-24-000262/q2fy25pr.htm`) | +7.3% |
-| Q3 FY25 | `0001045810-24-000262/q2fy25pr.htm` | 32.5 (2%) | 35.082 (`0001045810-24-000315/q3fy25pr.htm`) | +7.9% |
-| Q4 FY25 | `0001045810-24-000315/q3fy25pr.htm` | 37.5 (2%) | 39.331 (`0001045810-25-000021/q4fy25pr.htm`) | +4.9% |
-| Q1 FY26 | `0001045810-25-000021/q4fy25pr.htm` | 43.0 (2%) | 44.062 (`0001045810-25-000115/q1fy26pr.htm`) | +2.5% |
-| Q2 FY26 | `0001045810-25-000115/q1fy26pr.htm` | 45.0 (2%; the guide reflects a loss of H20 revenue of about $8.0B) | 46.743 (`0001045810-25-000207/q2fy26pr.htm`) | +3.9% |
-| Q3 FY26 | `0001045810-25-000207/q2fy26pr.htm` | 54.0 (2%) | 57.006 (`0001045810-25-000228/q3fy26pr.htm`) | +5.6% |
-| Q4 FY26 | `0001045810-25-000228/q3fy26pr.htm` | 65.0 (2%) | 68.127 (`0001045810-26-000019/q4fy26pr.htm`) | +4.8% |
-| Q1 FY27 | `0001045810-26-000019/q4fy26pr.htm` | 78.0 (2%) | 81.615 (`0001045810-26-000051/q1fy27pr.htm`) | +4.6% |
-| Q2 FY27 | `0001045810-26-000051/q1fy27pr.htm` | 91.0 (2%) | 96.221 (`0001045810-26-000073/q2fy27pr.htm`) | +5.7% |
-| Q3 FY27 | `0001045810-26-000073/q2fy27pr.htm` | 108.0 (2%) | 115.844 (`0001045810-26-000088/q3fy27pr.htm`) | +7.3% |
-| Q4 FY27 | `0001045810-26-000088/q3fy27pr.htm` | **130.0 (3%)**, 14 weeks | not reported | |
+| Q1 FY23 | Q4 FY22 (`0001045810-22-000008`) | 8.10 | 8.288 (`0001045810-22-000073`) | +2.32% |
+| Q2 FY23 | Q1 FY23 (`0001045810-22-000073`) | 8.10 | 6.704 (`0001045810-22-000136`; preliminary 6.70 on 2022-08-08 not used) | **-17.23%** |
+| Q3 FY23 | Q2 FY23 (`0001045810-22-000136`) | 5.90 | 5.931 (`0001045810-22-000163`) | +0.53% |
+| Q4 FY23 | Q3 FY23 (`0001045810-22-000163`) | 6.00 | 6.051 (`0001045810-23-000014`) | +0.85% |
+| Q1 FY24 | Q4 FY23 (`0001045810-23-000014`) | 6.50 | 7.192 (`0001045810-23-000087`) | +10.65% |
+| Q2 FY24 | Q1 FY24 (`0001045810-23-000087`) | 11.00 | 13.507 (`0001045810-23-000171`) | +22.79% |
+| Q3 FY24 | Q2 FY24 (`0001045810-23-000171`) | 16.00 | 18.120 (`0001045810-23-000225`) | +13.25% |
+| Q4 FY24 | Q3 FY24 (`0001045810-23-000225`) | 20.00 | 22.103 (`0001045810-24-000028`) | +10.52% |
+| Q1 FY25 | Q4 FY24 (`0001045810-24-000028`) | 24.0 | 26.044 (`0001045810-24-000113`) | +8.52% |
+| Q2 FY25 | Q1 FY25 (`0001045810-24-000113`) | 28.0 | 30.040 (`0001045810-24-000262`) | +7.29% |
+| Q3 FY25 | Q2 FY25 (`0001045810-24-000262`) | 32.5 | 35.082 (`0001045810-24-000315`) | +7.94% |
+| Q4 FY25 | Q3 FY25 (`0001045810-24-000315`) | 37.5 | 39.331 (`0001045810-25-000021`) | +4.88% |
+| Q1 FY26 | Q4 FY25 (`0001045810-25-000021`) | 43.0 | 44.062 (`0001045810-25-000115`) | +2.47% |
+| Q2 FY26 | Q1 FY26 (`0001045810-25-000115`) | 45.0 (the guide reflects a loss of H20 revenue of about $8.0B) | 46.743 (`0001045810-25-000207`) | +3.87% |
+| Q3 FY26 | Q2 FY26 (`0001045810-25-000207`) | 54.0 | 57.006 (`0001045810-25-000228`) | +5.57% |
+| Q4 FY26 | Q3 FY26 (`0001045810-25-000228`) | 65.0 | 68.127 (`0001045810-26-000019`) | +4.81% |
+| Q1 FY27 | Q4 FY26 (`0001045810-26-000019`) | 78.0 | 81.615 (`0001045810-26-000051`) | +4.63% |
+| Q2 FY27 | Q1 FY27 (`0001045810-26-000051`) | 91.0 | 96.221 (`0001045810-26-000073`) | +5.74% |
+| Q3 FY27 | Q2 FY27 (`0001045810-26-000073`) | 108.0 | 115.844 (`0001045810-26-000088`) | +7.26% |
+| Q4 FY27 | Q3 FY27 (`0001045810-26-000088`) | **130.0 (+-3%)**, 14 weeks | not reported | |
 
-Statistics of the 12 pairs: 12 of 12 above the guide; median +5.65%; mean +6.12%; minimum +2.5%; maximum +10.5%; the last 8: median +4.85%; the last 4: +4.8%, +4.6%, +5.7%, +7.3%. All earlier guides had a band of plus or minus 2%; the guide of Q4 FY27 has plus or minus 3% (wider) and one extra week; the beat of the 12 pairs is always above the band. Limits: 12 observations of one company in a rising market; no reported beat of a guide that had a 14-week quarter; a beat is not a law. The measured beat is applied in the base on the level of year 1 (a beat of the guided quarter that holds in the next quarters, because each guide starts from the last result): year-1 growth = 1.40 x (1 + beat) - 1.
+| Window | Pairs | Beats | Median | Mean | Minimum | Maximum |
+|---|---|---|---|---|---|---|
+| All pairs (Q1 FY23 to Q3 FY27) | 19 | 18 | +5.57% | +5.61% | -17.23% | +22.79% |
+| Before Q4 FY24 (Q1 FY23 to Q3 FY24) | 7 | 6 | +2.32% | +4.74% | -17.23% | +22.79% |
+| Q4 FY24 to Q3 FY27 (the window of the first version) | 12 | 12 | +5.65% | +6.12% | +2.47% | +10.52% |
+
+**The rule for the base** (decision of the Head of Fundamental Research, round 5; written before the base was run; also in the model file, D2, and in report section 3). The base of year-1 growth is the guide alone, UNLESS (a) the median of the beats of ALL pairs is above zero AND (b) at least 15 of 20 pairs (75%) are beats. If both hold, the base takes HALF of the all-pairs median beat (half, because the window holds one upswing and one bust, and a full median would rest on the upswing). Year-1 growth = 1.41 x (1 + beat) - 1, where 1.41 is the guide alone (121 + 125 + 130 + 134 = 510 over 361.8 = +41.0%). **Result:** (a) the median of 19 pairs is +5.57%: holds; (b) 18 of 19 beats (94.7%): holds. So the beat is +2.78% and the base is 1.41 x 1.0278 - 1 = **44.9%**. Sensitivity rows (100,000 paths): a miss like Q2 FY23 (-17.2%: 16.7%) P50 $72.86; the guide alone (41.0%) $98.60; the base (44.9%) $103.78; the full median (+5.57%: 48.9%) $109.23. Limits: one company; one upswing and one bust; the guide of Q4 FY27 has a band of plus or minus 3% (all earlier ones 2%) and 14 weeks; the beat is applied to the level of year 1 (each guide starts from the last result).
 
 ## E. Items that were not read, and what they change
 
@@ -125,7 +140,7 @@ Statistics of the 12 pairs: 12 of 12 above the guide; median +5.65%; mean +6.12%
 | 10-Q of Q3 FY27 (when filed) | Guarantees note, purchase obligations, RPO, share count at the cover date, terms of the equity securities, the investigation and the leadership change (L2h) | The bridge (guarantees: up to -$4.49 a share), the stake value |
 | Press release page | Read and traced in version 3 (section A2); two inferences are marked (L2f, L2g) | None; check again against the 10-Q |
 | Convertible debt and accrued purchase consideration (footnote B, L2i) | The 10-Q | A claim that is not in net debt |
-| Guidance history | Measured in L26 (12 pairs); read from the store | None |
+| Guidance history | Measured in L26 (19 pairs; Q1 FY23 to Q3 FY27); the store has no release before Q4 FY22 | The record before FY23 (not in the store) |
 | 10-K FY26 and 10-Q notes (customer concentration, China, terms of the stakes) | L11, L12, L14 | A claim of up to $4.49 a share; the stakes at a different value |
 | Closes of 2026-11-20 and later | "what the price implies" | A price at a different date |
 
