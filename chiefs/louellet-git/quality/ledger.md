@@ -121,3 +121,4 @@
 | cycle-2 head checks | 2026-11-21 | pit-supplement-fill 300030b (T1-T3 closed) and fundamental documents a65e2a3 (A-022 to A-026; no clash): both PASS-WITH-NOTES; PR 149 (order rule) merged with owner approval | small (head only) | |
 | quant docs part 2; view engine design | 2026-11-21 | claude/quant-model-docs-2 (f8245fe): document-reviewer started; econ/view-engine-design (29e4eb5): model-validator + document-reviewer (Haiku) started | | |
 | quant docs part 2 | 2026-11-21 | claude/quant-model-docs-2 (f8245fe): document-reviewer PASS-WITH-NOTES (3 MIN); verdict PASS-WITH-NOTES | about 50k | |
+| view engine design | 2026-11-21 | econ/view-engine-design (29e4eb5): model-validator REVISE (5 MAJ: 0 row, split undefined, units and identity, layer B and section 6, Backtest row), document-reviewer (Haiku) REVISE (5 MAJ, 3 lowered to MIN); verdict REVISE, 6 MAJ | about 100k (59k + 41k measured) | no run before the freeze |
