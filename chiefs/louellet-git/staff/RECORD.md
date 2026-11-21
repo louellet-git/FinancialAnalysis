@@ -168,3 +168,26 @@ Words: "And AAPL leaving something not yet proven isn't acceptable, same w the o
 Done: the exact words went to the Head of Fundamental Research, with my reading: each reason is a claim
 with its test; a result is proven, refuted, or "tested, no cause found" with the list of the tests.
 Standing point for my reviews: a document for the person does not say "possible, not proven".
+
+## 2026-11-21 about 19:52 UTC (chat; review of the second S&P 10 page, in parts)
+Words, on the status block at the top ("PRELIMINARY ... Of record ... NOT of record ..."): "unnecessary for
+my reading."
+On "One thing is not explained: the cause of the chip fall of Friday": "this to me then becomes the job of
+economics to understand what the general consensus is on the street for WHY!"
+On the note below the table: "A disclosure beneath a table should be one or two lines MAX ... it should
+ideally say 'Table 1: ....' and a one liner of what I should note, not an essay."
+On "PROVEN: it is the fall of its sector": "it's actually not proven but instead consistent with it's
+sector." On the refuted report reason: "I dont need this, what does this help me answer the original
+quetion?"
+On the section of the reasons: "this section should overall not just be about my follow-up questions but
+about noticing things/trends that I should know about, mentionning for instance if there's a general
+agreement w other stocks, why some stocks are jumping, why some aren't, etc. This is about making a good
+report for the original question."
+On the Friday section: "dont come to me with 'no cause found', I dont care for that. I require an
+explanation that has been tested and backed by other data/observances. This section should be an
+economists view of the headlines and about what the market is implying going forward. using our engines.
+Also, showing me numbers of the valuation as a series of string is not ideal, I view a valuation as one
+block made of mini blocks, so it should be as bullet points or something or a table."
+Done: `memory/owner-report-style.md` (8 points). My earlier reading "three forms: proven, refuted, tested
+with no cause found" was wrong on two points and is replaced. The words went to the Head of Fundamental
+Research (the page) and to the Head of Economics (the reason for the chip fall of 11-20 and the view after).
