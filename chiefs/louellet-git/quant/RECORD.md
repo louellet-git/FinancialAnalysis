@@ -49,3 +49,7 @@ Done: Venue chosen by this head: our own simulator first (live quotes, fills at 
 ## 2026-11-21 04:02 UTC (chat)
 Words: "To be honest, for your question about where, look into it."
 Done: The answer "Your laptop" is not final; this head studies where the algos should run and recommends one place.
+
+## 2026-11-21 04:03 UTC (chat)
+Words: "Before asking me anything, please look into it. Send that to the tech head."
+Done: Standing rule for this head: research a question before it goes to the person, and send it through the Head of Technology, not by a direct question dialog. The study of where the algos run goes to the Head of Technology when the research is done.

@@ -34,6 +34,8 @@ Rules: `chiefs/ORIENTATION.md` (sections 3 to 8). Decisions of the person: `../R
   no point-in-time member list exists in the store.
 
 ## Standing words of the person
+- 2026-11-21: "Before asking me anything, please look into it. Send that to the tech head." Research first; a
+  question for the person goes through the Head of Technology with my recommendation, not by a direct dialog.
 - 2026-11-20: "You don't need me to tell you to continue unless I tell you to stop": report, then take the next
   ticket with no wait.
 - 2026-11-20: permission requests and decisions go to the Head of Technology (`chiefs/ORIENTATION.md`, section 5).
