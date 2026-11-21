@@ -2,12 +2,13 @@
 id: T-20261121-trade-grids
 title: Robustness grids of the strategy tests (stress windows from the file, lags, cut scan, price grid)
 area: trading
-status: in-progress
+status: done
 owner: louellet-git
 head: quant
 story: E4.S4
 order: 0.86
 branch: claude/quant-trade-grids
+merged: 196
 created: 2026-11-21
 requested_by: louellet-git
 acceptance: `fa trade premium --stress-file F` reads the windows and the block end from the file (no copy in code); `--lags L1,L2,...` prints one table; `fa trade backtest --cut-scan` and `--price-grid` print one table each; each with fixed-answer tests; the default outputs do not change; records A-150 to A-154 and `docs/models/variance-premium-test.md` are current.

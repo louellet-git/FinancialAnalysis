@@ -115,8 +115,8 @@ sha256 = "be087a66749ec746a5c8dc9bf7f80ed6ce84a6e43bf6ff653aa3bca482e21bc3"
 name = "dcf_attribute_panel32"
 args = ["dcf", "attribute", "--tickers-file", "rust/mapcheck/universe/panel32.txt", "--from", "2026-11-13", "--to", "2026-11-20"]
 store = "2a0d1f22b7741be47d035e46817715e29a86cb46"
-sha256 = "2b7f856ff520537451a40e83856b6eeeded64ad4b31aa7d90226708406f918ce"
-reason = "the store moved (e06070ce): AAPL prices.json changed"
+sha256 = "5075eec825b18881486c8bc2509e368f8bbde85632d8490abc07a22a6b4b04e6"
+reason = "PR 190: the plug splits into a common and a company part; the full bridge; the stale-price rule"
 updated = "2026-11-21"
 
 [[case.mask]]
@@ -464,6 +464,10 @@ path = "data/raw/PFE/sec_8k_earnings.json"
 sha256 = "86a1c7ee215ccf2219454a424ec7178ec1f1a527bea61ea6ec656df73aea5533"
 
 [[case.inputs]]
+path = "data/raw/PG/company_facts.json.gz"
+sha256 = "7cded38f5ec7dd8ec41a3f754d053fb7208c095ce148cecdd4160f3b85117ecf"
+
+[[case.inputs]]
 path = "data/raw/PG/prices.json"
 sha256 = "125f65ce5e6300777f52a2a20028185e0fa4089ae9e401ec66074d4b8e1c5ac5"
 
@@ -486,6 +490,10 @@ sha256 = "8f02a93bcd2cc90e95becce2c82fa3371ef6aa0d414ade0f6c01c32f28c7641b"
 [[case.inputs]]
 path = "data/raw/T/sec_8k_earnings.json"
 sha256 = "6b5fef0186c9ba0e6dbac949715dcc049dc7bba00cac54a6bebfb54dcd65a5bc"
+
+[[case.inputs]]
+path = "data/raw/TSLA/company_facts.json.gz"
+sha256 = "e4f104c29255c188a03bb5740073cc2f5f470c47fe78e5df28816031f2cf9c95"
 
 [[case.inputs]]
 path = "data/raw/TSLA/prices.json"
