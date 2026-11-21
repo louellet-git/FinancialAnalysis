@@ -298,6 +298,32 @@ pub fn parse_treasury_csv(text: &str) -> Res<CurveByDay> {
     Ok(out)
 }
 
+/// The CSV text to store: the rows of the old file and of the new download, one row for each
+/// date, newest first (the Treasury layout). A date in both has the row of the download: it
+/// replaces the old row (the values can differ after a correction; if they are the same, the
+/// text is the same). The old rows are kept only if the header is the same. A date that
+/// the download has two times keeps its last row.
+pub(crate) fn merge_treasury_csv(old: Option<&str>, new: &str) -> String {
+    let new = new.trim_start_matches('\u{feff}');
+    let header = new.lines().next().unwrap_or("").trim_end();
+    let mut rows: BTreeMap<i64, String> = BTreeMap::new();
+    let old_text = old.map(|t| t.trim_start_matches('\u{feff}')).filter(|t| t.lines().next().unwrap_or("").trim_end() == header);
+    for text in old_text.into_iter().chain(std::iter::once(new)) {
+        for line in text.lines().skip(1) {
+            if let Some(day) = split_csv_line(line).first().and_then(|d| parse_us(d)) {
+                rows.insert(day, line.trim_end().to_string());
+            }
+        }
+    }
+    let mut out = String::from(header);
+    out.push('\n');
+    for line in rows.values().rev() {
+        out.push_str(line);
+        out.push('\n');
+    }
+    out
+}
+
 /// Tenors of a curve in curve order (1M first, 30Y last); tenors that are not in the list go last.
 pub fn tenors_in_order(curve: &BTreeMap<String, f64>) -> Vec<String> {
     let mut v: Vec<String> = curve.keys().cloned().collect();
@@ -325,7 +351,8 @@ impl Rates {
         let fetched = self.net.get(&url).and_then(|t| parse_treasury_csv(&t).map(|p| (t, p)));
         match fetched {
             Ok((t, parsed)) => {
-                write_cache(&path, &t)?;
+                let old = std::fs::read_to_string(&path).ok();
+                write_cache(&path, &merge_treasury_csv(old.as_deref(), &t))?;
                 Ok(parsed)
             }
             Err(e) => {

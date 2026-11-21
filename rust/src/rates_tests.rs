@@ -359,6 +359,27 @@ fn a_failed_download_gives_the_old_cache() {
 }
 
 #[test]
+fn a_refresh_keeps_each_date_once_newest_first() {
+    let dir = tmp("refresh-dup");
+    let head = "Date,\"1 Mo\",\"10 Yr\"";
+    let old = format!("{head}\n11/19/2026,4.10,5.00\n11/20/2026,4.11,5.01\n");
+    std::fs::create_dir_all(dir.join("rates")).unwrap();
+    let path = dir.join("rates").join("treasury_nominal_2026.csv");
+    std::fs::write(&path, &old).unwrap();
+    // The download has the last date again (same values), a changed 11/19 row, and one new date.
+    let new = format!("{head}\n11/23/2026,4.12,5.02\n11/20/2026,4.11,5.01\n11/19/2026,4.10,5.05\n");
+    let net = FnNet(Box::new(move |_| Ok(new.clone())), Rc::new(RefCell::new(0)));
+    let mut r = Rates::with_net(dir, Box::new(net), day("2026-11-23").unwrap());
+    let curves = r.load_treasury_curve(2026, false, true).unwrap();
+    assert_eq!(curves.len(), 3);
+    let text = std::fs::read_to_string(&path).unwrap();
+    let want = format!("{head}\n11/23/2026,4.12,5.02\n11/20/2026,4.11,5.01\n11/19/2026,4.10,5.05\n");
+    assert_eq!(text, want);
+    // The same text again does not change the file.
+    assert_eq!(merge_treasury_csv(Some(&text), &want), want);
+}
+
+#[test]
 fn a_bad_answer_is_not_cached() {
     let net = FnNet(Box::new(|_| Ok("<html>maintenance</html>".into())), Rc::new(RefCell::new(0)));
     let mut r = Rates::with_net(tmp("bad-payload"), Box::new(net), day(TODAY).unwrap());
