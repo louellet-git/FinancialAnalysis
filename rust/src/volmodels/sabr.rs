@@ -82,6 +82,7 @@ pub struct SabrFit {
 }
 
 /// A fit is poor when its largest error (vol points) is more than this factor times the median spread (vol points).
+/// Author choice, no study (A-139). It marks 7 of 53 series of SPX 2026-11-20.
 pub const POOR_FACTOR: f64 = 5.0;
 
 /// The bounds of alpha, rho, nu. Alpha scales with `F^(1-beta)` (alpha is about the volatility times `F^(1-beta)`).

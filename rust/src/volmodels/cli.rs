@@ -76,11 +76,11 @@ pub fn run(repo: &Path, rest: &[String]) -> Result<i32, String> {
     if model == "sabr" {
         for n in ["--starts", "--seed"] {
             if get(n).is_some() {
-                println!("warning: {n} has no effect with sabr (fixed starts)");
+                eprintln!("warning: {n} has no effect with sabr (fixed starts)");
             }
         }
     } else if beta.is_some() {
-        println!("warning: --beta has no effect with {model} (it is for sabr)");
+        eprintln!("warning: --beta has no effect with {model} (it is for sabr)");
     }
     let symbol = get("--symbol").ok_or("give --symbol T")?.to_uppercase();
     let date = get("--date").ok_or("give --date D")?;

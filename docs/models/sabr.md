@@ -19,13 +19,20 @@ Ticket: `PLANNING/board/T-20261120-vol-2-sabr-localvol.md`, part 1.
 ## Method (short)
 1. For each series (root and expiry), the implied volatility is `I0 (1 + I1 T)`.
    `I0` is the zero order term of Obloj (2008, arXiv:0708.0998, Table 1, row "I0(x), beta < 1"), `I1` is
-   eq. (3) of Obloj (2008), the same as eq. (A.65) / (2.17b) of Hagan, Kumar, Lesniewski and Woodward (2002).
-   The ATM form is eq. (2.18) of Hagan et al.
+   eq. (3) of Obloj (2008), the time term of Hagan, Kumar, Lesniewski and Woodward (2002; their equation numbers
+   are from memory, not checked). The ATM form is the same term at K = F.
 2. The loss is `(model vol - mid vol) / spread in vol`, with the spread floor of 0.05 vol points of the Heston loss.
 3. Levenberg-Marquardt (`calib::lm_core`, shared with Heston) for alpha, rho, nu from six fixed starts. The best loss wins.
    Series run in parallel (rayon).
 4. Output for each series: days, forward, alpha, rho, nu, the status, the number of quotes, the error in vol points
    (RMS and largest of the model vol minus the mid vol). A parameter within 0.1% of its range from a bound is marked.
+
+## Assumptions
+| Name | Record | One line |
+|---|---|---|
+| Beta, alpha, rho, nu bounds | `docs/assumptions/A-138-sabr-beta-and-bounds.md` | Beta 1 fixed; alpha bound scales with F^(1-beta) |
+| Starts, poor-fit rule | `docs/assumptions/A-139-sabr-starts-and-poor-fit.md` | Six fixed starts; poor fit above 5 times the median spread |
+| Spread filter, spread floor, forward | A-132, A-133, A-134 | Reused from Heston |
 
 ## Tests and reference values
 - The formula is tested against fixed answers of an independent implementation (Quality and Risk, 2026-11-21; six cases, 1e-12), not against a published value.
@@ -38,6 +45,7 @@ Ticket: `PLANNING/board/T-20261120-vol-2-sabr-localvol.md`, part 1.
 - On Alpaca indicative quotes (`quote_kind: indicative`) a difference between the model and a quote is a measurement, not a tradable price.
 - Expiries under about 10 days fit badly (SPX 2026-11-20, `--rate 0.04`, SPXW 3 to 7 days: rms 1.4 to 2.5 vol points, largest error 6 to 12.4, nu 4.7 to 7.9), and the status is still "converged".
   The command prints "converged, poor fit" when the largest error is more than 5 times the median spread of the series.
+  The factor 5 is an author choice, no study (A-139). It marks 7 of 53 series (SPX 2026-11-20).
 - Fits of 28 days and more have rms 0.14 to 0.41 vol points (same run). Some are above the 0.2 of the ticket.
 - No dynamics between expiries: each expiry has its own alpha, rho, nu. Do not read them as one model of the surface.
 - The Hagan formula is an asymptotic expansion in T. It can give a negative density at low strikes and long expiries.

@@ -492,6 +492,7 @@ fn sabr_6_alpha_bounds_scale_with_the_forward() {
 fn sabr_7_beta_zero_nu_zero_is_bachelier() {
     // beta = 0, nu = 0: alpha is a normal (Bachelier) volatility. Bachelier price, inverted with the Black inversion, against the SABR vol.
     // At T = 1e-4 the two agree to the order T^2 (the time term of the formula is the O(T) conversion).
+    // This test cannot see the O(T) time term (tolerance 1e-7 at T = 1e-4): the time term is tested by sabr_2 and sabr_5.
     let (f, t, sn): (f64, f64, f64) = (100.0, 1e-4, 20.0);
     for &k in &[99.6, 99.8, 100.0, 100.3] {
         let sd: f64 = sn * t.sqrt();
