@@ -2,7 +2,7 @@
 //! (design `premium-design-55f2e92`, rule 4 and its data rules 1 to 10).
 //!
 //! Units: `s1`, `zero10` and `ret_w` of the series file are decimals. The outcome `y` and `dzero10`
-//! are in percentage points (x100, as the design says). `ret_w` stays a decimal. BAA10Y, DFII10 and
+//! are in percentage points (x100, as the design says). `ret_w` stays a decimal. DFII10 and
 //! T10YIE keep the percent points of the FRED files. VIX keeps index points.
 
 use serde::Serialize;
@@ -131,9 +131,9 @@ pub fn parse_fred(text: &str, id: &str) -> Result<Daily, String> {
     let mut lines = text.lines();
     let head = lines.next().unwrap_or("").trim_start_matches('\u{feff}').trim();
     let hf: Vec<&str> = head.split(',').map(str::trim).collect();
-    let ok = hf.len() == 2 && (hf[0].eq_ignore_ascii_case("observation_date") || hf[0].eq_ignore_ascii_case("date")) && hf[1].eq_ignore_ascii_case(id);
+    let ok = hf.len() == 2 && (hf[0].eq_ignore_ascii_case("observation_date") || hf[0].eq_ignore_ascii_case("date")) && (hf[1].eq_ignore_ascii_case(id) || hf[1].eq_ignore_ascii_case("value"));
     if !ok {
-        return Err(format!("{id} file: unexpected header '{head}' (want observation_date,{id})"));
+        return Err(format!("{id} file: unexpected header '{head}' (want observation_date,{id} or DATE,value)"));
     }
     let (mut pts, mut miss) = (Vec::new(), 0);
     for (i, line) in lines.enumerate() {
@@ -267,7 +267,6 @@ pub fn lookup_exact(d: &Daily, friday: i64) -> Lookup {
 
 pub struct External {
     pub vix: Daily,
-    pub baa: Daily,
     pub nfci: Daily,
     pub dfii: Option<Daily>,
     pub bei: Option<Daily>,
@@ -299,7 +298,6 @@ pub struct Week {
     pub ret: Option<f64>,
     pub dz: Option<f64>,
     pub dvix: Option<f64>,
-    pub dbaa: Option<f64>,
     pub dnfci: Option<f64>,
     pub ddfii: Option<f64>,
     pub dbei: Option<f64>,
@@ -319,7 +317,7 @@ impl Week {
     }
     /// Weeks of the test (M0 and M1).
     pub fn test_ok(&self) -> bool {
-        self.core_ok() && self.dvix.is_some() && self.dbaa.is_some() && self.dnfci.is_some()
+        self.core_ok() && self.dvix.is_some() && self.dnfci.is_some()
     }
 }
 
@@ -345,7 +343,6 @@ pub struct Counts {
     pub drop_no_ret: usize,
     pub drop_no_dzero10: usize,
     pub drop_no_vix: usize,
-    pub drop_no_baa: usize,
     pub drop_no_nfci: usize,
     pub switch_weeks: Vec<String>,
     pub series: Vec<SeriesCount>,
@@ -384,9 +381,8 @@ pub fn build_weeks(rows: &[SeriesRow], ext: &External, excl: Option<(i64, i64)>)
     let (s1, _) = levels(rows, |r| r.s1.map_or(Lookup::Missing, |v| Lookup::Value { v, carried: false }), "s1");
     let (z10, _) = levels(rows, |r| r.zero10.map_or(Lookup::Missing, |v| Lookup::Value { v, carried: false }), "zero10");
     let (vix, cv) = levels(rows, |r| lookup_daily(&ext.vix, r.anchor), "VIX");
-    let (baa, cb) = levels(rows, |r| lookup_daily(&ext.baa, r.anchor), "BAA10Y");
     let (nfci, cn) = levels(rows, |r| lookup_exact(&ext.nfci, r.friday), "NFCI");
-    let mut series = vec![cv, cb, cn];
+    let mut series = vec![cv, cn];
     let spy = ext.spy.as_ref().map(|d| levels(rows, |r| lookup_exact(d, r.anchor), "SPY"));
     let spy = spy.map(|(l, c)| {
         series.push(c);
@@ -417,7 +413,6 @@ pub fn build_weeks(rows: &[SeriesRow], ext: &External, excl: Option<(i64, i64)>)
             ret: if i > 0 { r.ret_w } else { None },
             dz: change(rows, &z10, i).map(|d| d * 100.0),
             dvix: change(rows, &vix, i),
-            dbaa: change(rows, &baa, i),
             dnfci: change(rows, &nfci, i),
             ddfii: dfii.as_ref().and_then(|l| change(rows, l, i)),
             dbei: bei.as_ref().and_then(|l| change(rows, l, i)),
@@ -437,7 +432,6 @@ pub fn build_weeks(rows: &[SeriesRow], ext: &External, excl: Option<(i64, i64)>)
             counts.drop_no_ret += usize::from(w.ret.is_none());
             counts.drop_no_dzero10 += usize::from(w.dz.is_none());
             counts.drop_no_vix += usize::from(w.dvix.is_none());
-            counts.drop_no_baa += usize::from(w.dbaa.is_none());
             counts.drop_no_nfci += usize::from(w.dnfci.is_none());
             counts.kept += usize::from(w.test_ok());
         }
@@ -468,7 +462,7 @@ mod tests {
 02/01/2019,1,1,1,14.0
 02/08/2019,1,1,1,13.5
 ";
-    const BAA: &str = "observation_date,BAA10Y
+    const REAL: &str = "observation_date,DFII10
 2018-12-28,2.2
 2019-01-03,2.0
 2019-01-04,.
@@ -500,14 +494,14 @@ mod tests {
 
     #[test]
     fn dot_is_missing_not_zero() {
-        // BAA10Y has "." on 2019-01-04. The point list must not hold a 0 for that day.
-        let d = parse_fred(BAA, "BAA10Y").unwrap();
+        // DFII10 has "." on 2019-01-04. The point list must not hold a 0 for that day.
+        let d = parse_fred(REAL, "DFII10").unwrap();
         assert_eq!(d.missing_rows, 1);
         assert!(d.pts.iter().all(|p| p.1 != 0.0));
         // Anchor 2019-01-04: the last non-missing value is 2.0 of 2019-01-03 (age 1, carried).
         assert_eq!(lookup_daily(&d, parse_date("2019-01-04").unwrap()), Lookup::Value { v: 2.0, carried: true });
         // A "." with nothing within 3 days gives Missing, never 0: anchor 2019-01-07 is 4 days after 01-03.
-        let only_dot = parse_fred("observation_date,BAA10Y\n2019-01-03,2.0\n2019-01-04,.\n", "BAA10Y").unwrap();
+        let only_dot = parse_fred("observation_date,DFII10\n2019-01-03,2.0\n2019-01-04,.\n", "DFII10").unwrap();
         assert_eq!(lookup_daily(&only_dot, parse_date("2019-01-07").unwrap()), Lookup::Missing);
         // NFCI uses the exact Friday: a missing Friday is Missing, not the Friday before.
         let n = parse_fred(NFCI, "NFCI").unwrap();
@@ -520,6 +514,7 @@ mod tests {
         assert!(parse_vix("Date,Close\n").is_err());
         assert!(parse_fred("observation_date,OTHER\n", "NFCI").is_err());
         assert!(parse_fred("DATE,NFCI\n2019-01-04,.\n", "NFCI").is_ok());
+        assert!(parse_fred("DATE,value\n2019-01-04,1.5\n", "NFCI").is_ok());
     }
 
     /// Design data rule 10: the loader with a fixed answer, computed by hand.
@@ -527,7 +522,6 @@ mod tests {
     /// Fridays F0 2018-12-28 .. F6 2019-02-08. Sample weeks (from 2019-01-04): F1..F6 = 6.
     /// VIX levels: F0 20, F1 18, F2 16 (value of 01-10, age 1, carried), F3 none (last value 01-10 is
     /// 8 days old), F4 15, F5 14, F6 13.5. So dVIX: F1 -2, F2 -2, F3 and F4 dropped (rule 6).
-    /// BAA10Y: F1 level is 2.0 (01-03 carried, "." on 01-04), F0 2.2: dBAA F1 = -0.2, F2 = 1.9-2.0 = -0.1.
     /// NFCI: no value on F4 (2019-01-25), so dNFCI of F4 and F5 drop. dNFCI F1 -0.05, F2 -0.05.
     /// F6 is the switch week (gsw to par) and drops. Kept weeks: F1 and F2. Dropped: 4.
     /// F1: y = (0.0210-0.0200)*100 = 0.10, dz = (0.0260-0.0270)*100 = -0.10, ret 0.01.
@@ -537,7 +531,6 @@ mod tests {
         let rows = parse_series(SERIES).unwrap();
         let ext = External {
             vix: parse_vix(VIX).unwrap(),
-            baa: parse_fred(BAA, "BAA10Y").unwrap(),
             nfci: parse_fred(NFCI, "NFCI").unwrap(),
             dfii: None,
             bei: None,
@@ -549,18 +542,17 @@ mod tests {
         let close = |a: Option<f64>, b: f64| (a.unwrap() - b).abs() < 1e-9;
         let (f1, f2) = (&weeks[1], &weeks[2]);
         assert!(close(f1.y, 0.10) && close(f1.dz, -0.10) && close(f1.ret, 0.01));
-        assert!(close(f1.dvix, -2.0) && close(f1.dbaa, -0.2) && close(f1.dnfci, -0.05));
+        assert!(close(f1.dvix, -2.0) && close(f1.dnfci, -0.05));
         assert!(close(f2.y, -0.05) && close(f2.dz, -0.10) && close(f2.ret, -0.02));
-        assert!(close(f2.dvix, -2.0) && close(f2.dbaa, -0.1) && close(f2.dnfci, -0.05));
+        assert!(close(f2.dvix, -2.0) && close(f2.dnfci, -0.05));
         assert!(weeks[3].dvix.is_none() && weeks[4].dvix.is_none() && weeks[5].dvix.is_some());
         assert!(weeks[4].dnfci.is_none() && weeks[5].dnfci.is_none() && weeks[3].dnfci.is_some());
         assert!(weeks[6].switch);
         assert_eq!((c.rows, c.sample_weeks, c.kept, c.dropped), (7, 6, 2, 4));
-        assert_eq!((c.drop_switch, c.drop_no_vix, c.drop_no_nfci, c.drop_no_baa), (1, 2, 2, 0));
+        assert_eq!((c.drop_switch, c.drop_no_vix, c.drop_no_nfci), (1, 2, 2));
         assert_eq!(c.switch_weeks, ["2019-02-08"]);
         let by = |n: &str| c.series.iter().find(|s| s.name == n).unwrap().clone();
         assert_eq!((by("VIX").carried, by("VIX").missing), (1, 1));
-        assert_eq!((by("BAA10Y").carried, by("BAA10Y").missing), (1, 0));
         assert_eq!((by("NFCI").carried, by("NFCI").missing), (0, 1));
         // The exclude window drops F2 only.
         let f2d = parse_date("2019-01-11").unwrap();
@@ -575,7 +567,7 @@ mod tests {
         let j = r#"[{"date":"2019-01-04","close":100.0},{"date":"2019-01-11","close":105.0},{"date":"2019-01-25","close":99.0}]"#;
         let spy = parse_spy_json(j).unwrap();
         let rows = parse_series(SERIES).unwrap();
-        let ext = External { vix: parse_vix(VIX).unwrap(), baa: parse_fred(BAA, "BAA10Y").unwrap(), nfci: parse_fred(NFCI, "NFCI").unwrap(), dfii: None, bei: None, spy: Some(spy) };
+        let ext = External { vix: parse_vix(VIX).unwrap(), nfci: parse_fred(NFCI, "NFCI").unwrap(), dfii: None, bei: None, spy: Some(spy) };
         let (w, _) = build_weeks(&rows, &ext, None);
         assert!(w[0].spy_ret.is_none() && w[1].spy_ret.is_none());
         assert!((w[2].spy_ret.unwrap() - 0.05).abs() < 1e-12);
@@ -590,7 +582,7 @@ mod tests {
 2019-01-18,2019-01-18,gsw,x,0.0255,0.0207,,,0.01,,,,,,,,,
 ";
         let rows = parse_series(text).unwrap();
-        let ext = External { vix: parse_vix("DATE,OPEN,HIGH,LOW,CLOSE\n").unwrap(), baa: parse_fred("observation_date,BAA10Y\n", "BAA10Y").unwrap(), nfci: parse_fred("observation_date,NFCI\n", "NFCI").unwrap(), dfii: None, bei: None, spy: None };
+        let ext = External { vix: parse_vix("DATE,OPEN,HIGH,LOW,CLOSE\n").unwrap(), nfci: parse_fred("observation_date,NFCI\n", "NFCI").unwrap(), dfii: None, bei: None, spy: None };
         let (weeks, _) = build_weeks(&rows, &ext, None);
         assert!(weeks[1].y.is_none() && weeks[1].dz.is_none());
     }

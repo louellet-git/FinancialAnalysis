@@ -4,15 +4,16 @@
 //! Choices where the design is unclear (accepted by the coordinator, 2026-11-21):
 //! 1. `--list` is a label only; run the command once for each list with its series file.
 //! 2. A missing `ret_w` drops only its own week. Rule 6 (drop w and w+1) is applied to the levels
-//!    s1, zero10, VIX, BAA10Y, NFCI, DFII10, T10YIE (and SPY for rule 6.7).
+//!    s1, zero10, VIX, NFCI, DFII10, T10YIE (and SPY for rule 6.7).
 //! 3. DFII10 and T10YIE use the daily rule of VIX: last non-missing value on or before the anchor, at most 3 days old.
 //! 4. The switch week is the row whose `curve_source` differs from the row before; week w+1 stays.
 //! 5. The sensitivity run flags the weeks of the window as dropped; neighbouring changes still use the levels.
-//! 6. Units: y, S2 and dzero10 in percentage points (x100); ret_w a decimal; VIX in index points; BAA10Y,
+//! 6. Units: y, S2 and dzero10 in percentage points (x100); ret_w a decimal; VIX in index points;
 //!    DFII10, T10YIE in the percent points of the FRED files. R2, p and gain do not depend on the scale.
 //! 7. Clark-West p from the normal, upper tail; a variance that is not positive gives p = 1. The placebo
 //!    shifts over the kept weeks in time order, applied to all kept weeks.
 //! 8. Columns are scaled inside the OLS for numerics only.
+//! 9. The test has no credit spread: M1 = M0 + dVIX + dNFCI (decision of 2026-11-21, before any run).
 //!
 //! Added with rules 7.2, 6.3, 6.4, 6.7 (also accepted): the stress R2 uses the residuals of one full-sample fit
 //! (R2 of a subset = 1 - SSE/SST of the subset); the variance split uses the kept weeks with all 8 S2 columns
@@ -35,17 +36,20 @@ use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
 pub const USAGE: &str = "\
-fa macro premium-test --series FILE [--cache DIR] [--local DIR] [--out FILE]
+fa macro premium-test --series FILE --nfci FILE [--dfii10 FILE] [--t10yie FILE]
+                      [--cache DIR] [--out FILE]
                       [--exclude-from YYYY-MM-DD --exclude-to YYYY-MM-DD] [--list sp500|sp100]
 
 The frozen test of the weekly change of the implied premium S1 (design premium-design-55f2e92).
   --series FILE   CSV of `fa dcf premium-series` (fixed header; decimals; empty field = missing)
-  --cache DIR     data store, default data/raw (vix/VIX_History.csv)
-  --local DIR     local FRED files, default data/local (bonds/fred_BAA10Y.csv, macro/fred/{NFCI,DFII10,T10YIE}.csv)
+  --cache DIR     data store, default data/raw (vix/VIX_History.csv, SPY/prices.json)
+  --nfci FILE     FRED NFCI CSV (required)
+  --dfii10 FILE, --t10yie FILE  FRED CSV (optional; without them the descriptive block prints 'not run')
+                  FRED files: header observation_date,<ID> or DATE,value; '.' or an empty value is missing
   --out FILE      JSON of the results only (no weekly series)
   --exclude-from/--exclude-to  also run the sensitivity without the seen weeks (both flags, closed window)
   --list          label of the list of the series file (default sp500); run once for each list
-Models: M0 = intercept, ret_w, ret_w^2, dzero10. M1 = M0 + dVIX, dBAA10Y, dNFCI. Expanding-window OLS,
+Models: M0 = intercept, ret_w, ret_w^2, dzero10. M1 = M0 + dVIX, dNFCI. Expanding-window OLS,
 first fit on 104 kept weeks. One test: Clark-West (one-sided, Newey-West lag 8). Placebo: 80 circular shifts.
 Answer: yes, or no share shown. Rates are decimals in the series file; y and dzero10 are in percentage points.";
 
@@ -84,13 +88,6 @@ pub struct Sensitivity {
 
 fn read(path: &Path) -> Result<String, String> {
     std::fs::read_to_string(path).map_err(|e| format!("cannot read {}: {e} (this command downloads nothing)", path.display()))
-}
-
-fn load_optional(path: &Path, id: &str) -> (Option<data::Daily>, Option<String>) {
-    match read(path).and_then(|t| parse_fred(&t, id)) {
-        Ok(d) => (Some(d), None),
-        Err(e) => (None, Some(e)),
-    }
 }
 
 pub fn run(series_text: &str, ext: &External, list: &str, series_name: &str, excl: Option<(i64, i64)>) -> Result<Results, String> {
@@ -183,8 +180,8 @@ fn counts_text(out: &mut String, c: &Counts) {
     let _ = writeln!(out, "  sample weeks {} | kept {} | dropped {}", c.sample_weeks, c.kept, c.dropped);
     let _ = writeln!(
         out,
-        "  drop reasons (overlap): switch {} | excluded {} | no y {} | no ret {} | no dzero10 {} | no dVIX {} | no dBAA10Y {} | no dNFCI {}",
-        c.drop_switch, c.drop_excluded, c.drop_no_y, c.drop_no_ret, c.drop_no_dzero10, c.drop_no_vix, c.drop_no_baa, c.drop_no_nfci
+        "  drop reasons (overlap): switch {} | excluded {} | no y {} | no ret {} | no dzero10 {} | no dVIX {} | no dNFCI {}",
+        c.drop_switch, c.drop_excluded, c.drop_no_y, c.drop_no_ret, c.drop_no_dzero10, c.drop_no_vix, c.drop_no_nfci
     );
     let _ = writeln!(out, "  switch weeks (dropped from all models): {}", if c.switch_weeks.is_empty() { "none".into() } else { c.switch_weeks.join(", ") });
     for s in &c.series {
@@ -299,7 +296,7 @@ pub fn command(repo: &Path, args: &[String]) -> Result<i32, String> {
             repo.join(p)
         }
     };
-    let (cache, local) = (path("--cache", "data/raw"), path("--local", "data/local"));
+    let cache = path("--cache", "data/raw");
     let list = flag(a, "--list").unwrap_or_else(|| "sp500".into());
     if list != "sp500" && list != "sp100" {
         return Err(format!("bad --list '{list}' (sp500 or sp100)"));
@@ -324,9 +321,21 @@ pub fn command(repo: &Path, args: &[String]) -> Result<i32, String> {
         }
     };
     let text = read(&series_path)?;
-    let must = |p: PathBuf, id: &str| read(&p).and_then(|t| parse_fred(&t, id));
-    let (dfii, _) = load_optional(&local.join("macro/fred/DFII10.csv"), "DFII10");
-    let (bei, _) = load_optional(&local.join("macro/fred/T10YIE.csv"), "T10YIE");
+    let need = |name: &str, id: &str| -> Result<data::Daily, String> {
+        let p = flag(a, name).ok_or(format!("premium-test needs {name} FILE"))?;
+        read(&PathBuf::from(flag(a, name).unwrap_or_default())).and_then(|t| parse_fred(&t, id)).map_err(|e| format!("{name} {p}: {e}"))
+    };
+    let optional = |name: &str, id: &str| -> Option<data::Daily> {
+        flag(a, name)?;
+        match read(&PathBuf::from(flag(a, name).unwrap_or_default())).and_then(|t| parse_fred(&t, id)) {
+            Ok(d) => Some(d),
+            Err(e) => {
+                eprintln!("note: {e}; the descriptive block is not run");
+                None
+            }
+        }
+    };
+    let (dfii, bei) = (optional("--dfii10", "DFII10"), optional("--t10yie", "T10YIE"));
     let spy = match read(&cache.join("SPY/prices.json")).and_then(|t| data::parse_spy_json(&t)) {
         Ok(d) => Some(d),
         Err(e) => {
@@ -337,8 +346,7 @@ pub fn command(repo: &Path, args: &[String]) -> Result<i32, String> {
     let ext = External {
         spy,
         vix: read(&cache.join("vix/VIX_History.csv")).and_then(|t| parse_vix(&t))?,
-        baa: must(local.join("bonds/fred_BAA10Y.csv"), "BAA10Y")?,
-        nfci: must(local.join("macro/fred/NFCI.csv"), "NFCI")?,
+        nfci: need("--nfci", "NFCI")?,
         dfii,
         bei,
     };
@@ -366,7 +374,7 @@ mod tests {
 2019-01-11,2019-01-11,gsw,x,0.0255,0.0207,,,0.01,,,,,,,,,
 ";
         let e = parse_vix("DATE,OPEN,HIGH,LOW,CLOSE\n").unwrap();
-        let ext = External { vix: e, baa: parse_fred("observation_date,BAA10Y\n", "BAA10Y").unwrap(), nfci: parse_fred("observation_date,NFCI\n", "NFCI").unwrap(), dfii: None, bei: None, spy: None };
+        let ext = External { vix: e, nfci: parse_fred("observation_date,NFCI\n", "NFCI").unwrap(), dfii: None, bei: None, spy: None };
         let r = run(text, &ext, "sp500", "t.csv", None).unwrap();
         assert!(r.primary.is_none() && !r.sanity.passed && r.sanity.n == 0);
         assert!(report_text(&r).contains("sanity check failed: the bridge has a defect; the test stops"));

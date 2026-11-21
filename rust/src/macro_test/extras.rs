@@ -206,7 +206,6 @@ mod tests {
             ret: Some(0.0),
             dz: Some(dz),
             dvix: Some(0.0),
-            dbaa: Some(0.0),
             dnfci: Some(0.0),
             ddfii: None,
             dbei: None,

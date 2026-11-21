@@ -31,16 +31,16 @@ fn m0_names() -> Vec<String> {
     ["intercept", "ret_w", "ret_w^2", "dzero10"].map(String::from).to_vec()
 }
 
-/// Main test rows: M1 block is dVIX, dBAA10Y, dNFCI. `y` is the S1 change.
+/// Main test rows: M1 block is dVIX, dNFCI. `y` is the S1 change.
 pub fn test_rows(weeks: &[Week]) -> Rows {
     let ks: Vec<&Week> = weeks.iter().filter(|w| w.test_ok()).collect();
     Rows {
         fridays: ks.iter().map(|w| w.friday).collect(),
         y: ks.iter().map(|w| w.y.unwrap_or(f64::NAN)).collect(),
         x0: ks.iter().map(|w| m0_row(w)).collect(),
-        block: ks.iter().map(|w| vec![w.dvix.unwrap_or(f64::NAN), w.dbaa.unwrap_or(f64::NAN), w.dnfci.unwrap_or(f64::NAN)]).collect(),
+        block: ks.iter().map(|w| vec![w.dvix.unwrap_or(f64::NAN), w.dnfci.unwrap_or(f64::NAN)]).collect(),
         x0_names: m0_names(),
-        block_names: ["dVIX", "dBAA10Y", "dNFCI"].map(String::from).to_vec(),
+        block_names: ["dVIX", "dNFCI"].map(String::from).to_vec(),
     }
 }
 
@@ -259,7 +259,6 @@ mod tests {
         let ret = z(n);
         let dz = z(n);
         let mut dvix = z(n);
-        let dbaa = z(n);
         let dnfci = z(n);
         let noise = z(n);
         let y: Vec<f64> = (0..n).map(|t| 0.3 * ret[t] + 0.2 * dz[t] + link * dvix[t] + 0.5 * noise[t]).collect();
@@ -271,9 +270,9 @@ mod tests {
             fridays: (0..n as i64).map(|t| 17_900 + 7 * t).collect(),
             y,
             x0: (0..n).map(|t| vec![1.0, ret[t], ret[t] * ret[t], dz[t]]).collect(),
-            block: (0..n).map(|t| vec![dvix[t], dbaa[t], dnfci[t]]).collect(),
+            block: (0..n).map(|t| vec![dvix[t], dnfci[t]]).collect(),
             x0_names: m0_names(),
-            block_names: vec!["dVIX".into(), "dBAA10Y".into(), "dNFCI".into()],
+            block_names: vec!["dVIX".into(), "dNFCI".into()],
         }
     }
 
