@@ -100,3 +100,7 @@ Done: the document is on hold (draft kept, no review started) until the owner ap
 ## 2026-11-21 about 17:15 UTC (chat)
 Words: "Can the head of tech check if there are other problems like those"
 Done: request to the Head of Technology for a full data audit (one board ticket, an owner for each defect, the S&P 100 first), with a first list: 23 S&P 500 tickers fail the point-in-time mapping at 2026-11-13 but pass the normal mapping (WARN); BF-B has no price file; IBM and JNJ stop at 2026-11-18; and seven more checks to run.
+
+## 2026-11-21 about 19:00 UTC (chat)
+Words: "When will the report be ready for S&P10?" Answer to the go-ahead question: "Did you break down implied premium and growth? Also what is no model points". Then: "Where are we getting the 0.78 from?" and "For the difference i.e attributable to the indiviudal company, that is somethign to be investigated/understood."
+Done: no go-ahead yet (the document stays on hold). The 0.78 is the median change of the implied premium over the 65 S&P 100 tickers with a value at both dates (store 652dc28 gives the same). New ticket `T-20261121-premium-company-part` with a design written before any analysis (sensitivity, market exposure, company news such as an earnings 8-K in the week).
