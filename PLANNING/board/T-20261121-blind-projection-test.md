@@ -38,3 +38,28 @@ data store `1804f48`; parameter table cut at 2016 for the stock tests, `--cut 20
   stated in each write-up.
 If a test fails, the weekly trades do not start on its basis; the head reports the failure to Luc with the numbers.
 No rule is changed after a result to make a test pass. Survivorship, price returns and today's lists stay as limits.
+
+**Revision 1, 2026-11-21 04:35 UTC, before any run of T1 to T4** (review of the statistics by the Head of
+Economics). It replaces the pass rules of T2 to T4 above. T1 does not change.
+- **T2.** Each week w: d_w = the mean 13-week excess of the top decile less that of the bottom decile. The excess
+  is the return less the return of the equal weight of the scored list of the same week. Primary: a one-sided
+  p < 0.05 for mean(d_w) > 0 from a circular block bootstrap of the d_w series, block 26 weeks, seed 7. Checks
+  that are reported: block 13 and 52, and the mean of the 13 non-overlapping phases (every 13th week). Power:
+  about 34 independent 13-week periods.
+- **T3.** For each week with entries: hit(entries) less the share of all scored names with an excess above 0 in
+  that week. Pass: the mean over the weeks is above 0, with a one-sided p < 0.05 (the same bootstrap).
+  **The "priced in" test:** from 2019-01, at each week, the stated P10 and P5 are the empirical P10 and P5 of
+  the 13-week excess of all entries that closed before that week (an expanding window). Pass: the share of the
+  later entries with an outcome below the stated P10 is 5% to 15%, and below the stated P5 it is 2% to 8%. The
+  block bootstrap gives an interval.
+- **T4.** Pass: the mean 13-week excess of the entries, and d_w of T2, are above 0 in at least 7 of 9 calendar
+  years, in both halves of the list, and in at least 2 of the 3 periods 2018-2020, 2021-2023 and 2024-2026.
+  Descriptive only: d_w, the entry excess and the tail coverage in the stress windows of
+  `analysis/macro/2026-11-21-stress-windows.md` (on `main`), and the worst 13-week d_w with its date.
+- **Headline:** T1 to T4 must all pass for the weekly trades to start on this basis.
+- **Traps:**
+  - Survivorship: the list is today's S&P 500, so the bottom decile looks better than it was. This bias makes T2
+    harder to pass, not easier. Its size is not known.
+  - The automatic model reads no consensus estimate and no price target. The store has one snapshot only
+    (2026-11-19).
+  - The sector is today's SIC code.
