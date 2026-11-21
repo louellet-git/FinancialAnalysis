@@ -17,14 +17,16 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
 7. The board has epics, stories and tickets (`PLANNING/board/EPICS.md`). I keep it true.
 8. The heads report to me rarely: a result that is done, or done and for my review before it goes to the
    person. Also a decision of the person, or a conflict. No status reports.
-9. What goes to the person: short, clear, ASD-STE100, high signal. No argument about small points.
+9. What goes to the person: short, clear, ASD-STE100, high signal, no argument about small points. The
+   details are his own words: `owner-report-style.md` (read it before each review).
 10. Monitoring is by script: no memory of a head, no model tokens, low GitHub cost, never a stop.
 11. Tokens: track the actual tokens by ticket, head, agent and model cost against the weekly limit. The
     calculator of estimates is its own project and starts only with sufficient data. Collect the data first.
 12. The order until the reset of 2026-11-25 is in `EPICS.md` (an order, not a limit). Make a new one then.
 
 ## 2. How I stay on track
-- Memory: this file, `../RECORD.md` (the words of the person, same turn), `../ledger.md`. No other page yet.
+- Memory: this file, `../RECORD.md` (the words of the person, same turn), `../ledger.md`, and one page:
+  `owner-report-style.md`.
 - Dream pass before a compaction: when `get_session` shows `context_usage.used_tokens` above about 588,000
   (75% of the threshold 784,000), or when the person says "dream". 2026-11-21 19:03 UTC: 286,508.
 - Put my small changes in one pull request. Each turn of mine reads about 220,000 cached tokens.
@@ -50,6 +52,8 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
   a smaller window as a saving. Only a real test, designed first, can change this. The automatic compaction
   and the dream pass rule stay as they are.
 - Skills are almost not used: no action until some days of usage data exist.
-- The week report (E2.S1) comes to me before the person. My sense check went to that head; it agreed.
+- Week study (E2.S1), owner word: first ONE page for the S&P 10 (does the explanation hold for each stock;
+  which was hit more, which less). It comes to me, then to the person. The S&P 100 part and the other work
+  wait for the review of the person.
 - E1 (stock trades) is on hold: "No trades until T1 passes". PR 131 waits for the live run of 2026-11-23.
 - Say once at their next done message: Quant and Technology had tickets on a branch only, not on main.
