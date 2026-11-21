@@ -27,7 +27,9 @@ fa portfolio backtest --strategy NAME --start D [--end D] [OPTIONS]
   --tickers-file F   the universe: one ticker at the start of each line (default: each ticker of the cache with a price file)
   --paths N (300)    value-rank: paths of each model (100 or more)     --seed S (7): a whole number
   --table FILE       value-rank: parameter table (default analysis/priors/process_priors_2026-11-19.toml)
-  --out FILE         write the daily value of the portfolio, of SPY and of the equal-weight line as CSV
+  --neutral sector   value-rank: the top quintile inside each Fama-French 12 sector (today's SIC code of the cache),
+                     with the sector weights of the scored list; the stock choice without the sector tilt
+  --out FILE        write the daily value of the portfolio, of SPY and of the equal-weight line as CSV
   --holdings FILE    write the target weights of each rebalance date as CSV (date,ticker,weight)
   Survivorship: the lists of tickers are today's lists, so the result is too good. The output has an equal-weight line of
   the whole list for the comparison.";
@@ -81,7 +83,7 @@ pub fn run(repo: &Path, args: &[String]) -> u8 {
 }
 
 fn backtest(repo: &Path, args: &[String]) -> Result<(), String> {
-    let known = ["--strategy", "--cache", "--start", "--end", "--rebalance", "--cost-bp", "--tickers-file", "--paths", "--seed", "--table", "--out", "--holdings"];
+    let known = ["--strategy", "--cache", "--start", "--end", "--rebalance", "--cost-bp", "--tickers-file", "--paths", "--seed", "--table", "--out", "--holdings", "--neutral"];
     let mut i = 0;
     while i < args.len() {
         if !known.contains(&args[i].as_str()) {
@@ -159,7 +161,17 @@ fn backtest(repo: &Path, args: &[String]) -> Result<(), String> {
             eprintln!("value-rank: {} of {} tickers have SEC facts with the standard template", universe.len(), tickers.len());
             n_scored = Some(universe.len());
             let params = RetParams { table: &table, fade: &fade, rules: &rules, curves: curves.as_ref(), index: None, lag: 100, paths, seed };
-            let s = ValueRank { years, series: &raw, index: index.as_deref(), params, scored: Default::default() };
+            let sectors = match opt(args, "--neutral") {
+                None => None,
+                Some("sector") => Some(
+                    universe
+                        .iter()
+                        .map(|t| (t.clone(), mapcheck::sec::company_sic(&cache, t).map_or("Other", |(sic, _)| mapcheck::sec::ff12_sector(sic)).to_string()))
+                        .collect::<BTreeMap<String, String>>(),
+                ),
+                Some(x) => return Err(format!("--neutral '{x}': sector")),
+            };
+            let s = ValueRank { years, series: &raw, index: index.as_deref(), params, scored: Default::default(), sectors };
             super::run(&prices, &universe, &s, &cfg)?
         }
         x => return Err(format!("unknown strategy '{x}': value-rank or momentum")),

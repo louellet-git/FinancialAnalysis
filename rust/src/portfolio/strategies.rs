@@ -29,6 +29,31 @@ pub fn top_quintile(mut scored: Vec<(String, f64)>) -> Vec<(String, f64)> {
     top
 }
 
+/// The top quintile inside each sector, with the sector weight of the scored list: a sector with `n` of the `N` scored
+/// tickers gets the weight `n / N`, split equally over its top `max(1, n / 5)` tickers. So the sector weights are those
+/// of the list, and only the choice inside a sector differs from the equal weight. `sector_of` gives the sector of a
+/// ticker (a ticker with no sector is in "Other"). Fewer than `MIN_SCORED` scored tickers: cash. The result is in ticker order.
+pub fn top_quintile_by_sector(scored: Vec<(String, f64)>, sector_of: &BTreeMap<String, String>) -> Vec<(String, f64)> {
+    let n_all = scored.len();
+    if n_all < MIN_SCORED {
+        return Vec::new();
+    }
+    let mut groups: BTreeMap<&str, Vec<(String, f64)>> = BTreeMap::new();
+    for (t, x) in scored {
+        let s = sector_of.get(&t).map_or("Other", String::as_str);
+        groups.entry(s).or_default().push((t, x));
+    }
+    let mut out: Vec<(String, f64)> = Vec::new();
+    for (_, mut g) in groups {
+        g.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        let k = (g.len() / 5).max(1);
+        let w = g.len() as f64 / n_all as f64 / k as f64;
+        out.extend(g.into_iter().take(k).map(|(t, _)| (t, w)));
+    }
+    out.sort_by(|a, b| a.0.cmp(&b.0));
+    out
+}
+
 /// Equal weight in each ticker of the universe with a fresh close: the reference for the survivorship of the list.
 pub struct EqualWeight;
 
@@ -79,6 +104,9 @@ pub struct ValueRank<'a> {
     pub params: RetParams<'a>,
     /// The number of scored tickers at each rebalance, in the order of the calls.
     pub scored: std::sync::Mutex<Vec<usize>>,
+    /// With a sector of each ticker: the top quintile inside each sector, with the sector weights of the scored list
+    /// (`top_quintile_by_sector`). `None`: the top quintile of the whole list.
+    pub sectors: Option<BTreeMap<String, String>>,
 }
 
 /// The fiscal years of one company as the SEC facts showed them after each annual filing: `(filing day, years)` in
@@ -157,7 +185,10 @@ impl Strategy for ValueRank<'_> {
         if let Ok(mut n) = self.scored.lock() {
             n.push(scored.len());
         }
-        Ok(top_quintile(scored))
+        Ok(match &self.sectors {
+            Some(s) => top_quintile_by_sector(scored, s),
+            None => top_quintile(scored),
+        })
     }
 }
 
@@ -178,6 +209,25 @@ mod tests {
         let w = top_quintile(scored);
         assert_eq!(w.iter().map(|x| x.0.as_str()).collect::<Vec<_>>(), ["T16", "T17", "T18", "T19"]);
         assert!(w.iter().all(|x| (x.1 - 0.25).abs() < 1e-12));
+    }
+
+    #[test]
+    fn the_sector_top_quintile_keeps_the_sector_weights_of_the_list() {
+        // sector A: 10 tickers (A0..A9, score = index), sector B: 2 tickers, one ticker with no sector (Other)
+        let mut scored: Vec<(String, f64)> = (0..10).map(|i| (format!("A{i}"), i as f64)).collect();
+        scored.extend([("B0".to_string(), 5.0), ("B1".to_string(), 1.0), ("Z".to_string(), 0.0)]);
+        let sectors: BTreeMap<String, String> = (0..10).map(|i| (format!("A{i}"), "A".to_string())).chain([("B0".into(), "B".into()), ("B1".into(), "B".into())]).collect();
+        let w = top_quintile_by_sector(scored, &sectors);
+        // A: weight 10/13 over its top 2 (A8, A9); B: 2/13 on its top 1 (B0); Other: 1/13 on Z
+        let n = 13.0;
+        let want = [("A8", 5.0 / n), ("A9", 5.0 / n), ("B0", 2.0 / n), ("Z", 1.0 / n)];
+        assert_eq!(w.len(), want.len());
+        for ((t, x), (wt, wx)) in w.iter().zip(want) {
+            assert_eq!(t, wt);
+            assert!((x - wx).abs() < 1e-12, "{t} {x} {wx}");
+        }
+        assert!((w.iter().map(|x| x.1).sum::<f64>() - 1.0).abs() < 1e-12);
+        assert!(top_quintile_by_sector((0..MIN_SCORED - 1).map(|i| (format!("T{i}"), 0.0)).collect(), &sectors).is_empty());
     }
 
     #[test]
@@ -317,7 +367,7 @@ mod tests {
         let series: BTreeMap<String, Vec<(String, f64)>> = (0..N).map(|k| (format!("T{k:02}"), closes(k, poison_from))).collect();
         let prices = crate::portfolio::Prices::from_raw(&series);
         let index = market();
-        let s = ValueRank { years: years.clone(), series: &series, index: Some(&index), params, scored: Default::default() };
+        let s = ValueRank { years: years.clone(), series: &series, index: Some(&index), params, scored: Default::default(), sectors: None };
         let universe: Vec<String> = series.keys().cloned().collect();
         s.weights(&View::new(d(at), &prices), &universe).unwrap()
     }
