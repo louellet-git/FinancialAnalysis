@@ -1,0 +1,73 @@
+SCORE of the market-level premium, design analysis/macro/2026-11-21-long-history-design.md (2ffd392, R1, R2: 7b6c050)
+A measurement. The price is the input of the search; no model input comes from a return. One run on the frozen sample.
+Latest data month used (CPIAUCNS, GS10, TB3MS; section 4): 2026-10. Last start month H=120: 2016-10. H=60: 2021-10.
+Bootstrap (section 4): circular blocks of 120 start months, K = 10000, seed 20261121, generator PCG64 (nprandom). Phases: 120.
+Sample (section 4): start months 1893-01 to 2016-10 = 1486 calendar months; independent windows floor(n/120) = 12.
+
+COUNTS (sections 4, 9 R2)
+X(t,120) present in the sample: 1484 of 1486
+  X120 dropped, CPIAUCNS value missing at the end month (R2: end month 2025-10, start 2015-10): 1 2015-10
+  X120 dropped, Shiller dividend missing in a month of the window: 1 2016-10
+  X120 dropped, bill rate missing: 0 
+  X120 dropped, data end: 0 
+X(t,60) present in 1893-01 to 2021-10: 1544 of 1546; dropped: 2020-10 NoCpi, 2021-10 NoDividend
+Predictor missing in the sample: P1 0, engine erp_implied 0
+Engine rows with status no_cpi (R2): 1; with no root: 0. No value is filled.
+Pairs in the sample: P1 1484, engine 1484, L1 1484, L3 1484, N5 1484, N20 1484, gordon 1484
+
+PRIMARY TESTS (section 4: the mean phase slope, one-sided p < 0.05 AND OOS R2 > 0)
+  P1                           pairs  1484  b_hat    0.6374  p   0.0319  OOS R2    0.0865 (1125 forecasts)
+  P1: PASS
+  engine erp_implied (L 2%, N 10) pairs  1484  b_hat    0.6945  p   0.0115  OOS R2    0.1194 (1125 forecasts)
+  engine: rejection rule PASS
+ENGINE FAILURE RULE (section 4, confirmed 2026-11-21): fails if the rejection rule fails or its OOS R2 is below that of P1.
+  engine OOS R2 0.1194 < P1 OOS R2 0.0865: false
+  engine result: PASS (does not fail)
+
+ENGINE SECONDARY FAMILY (section 9 R1: m = 5, Holm, family-wise 0.05, one-sided; separate from the P1 family)
+  engine L 1%                  pairs  1484  b_hat    0.6839  p   0.0119  OOS R2    0.1190 (1125 forecasts)
+      Holm-adjusted p 0.0550: no rejection
+  engine L 3%                  pairs  1484  b_hat    0.7050  p   0.0110  OOS R2    0.1197 (1125 forecasts)
+      Holm-adjusted p 0.0550: no rejection
+  engine N 5                   pairs  1484  b_hat    0.7041  p   0.0124  OOS R2    0.1255 (1125 forecasts)
+      Holm-adjusted p 0.0550: no rejection
+  engine N 20                  pairs  1484  b_hat    0.6555  p   0.0145  OOS R2    0.1040 (1125 forecasts)
+      Holm-adjusted p 0.0550: no rejection
+  engine erp_gordon (L 2%)     pairs  1484  b_hat    0.6940  p   0.0177  OOS R2    0.1259 (1125 forecasts)
+      Holm-adjusted p 0.0550: no rejection
+  The design gives no OOS condition for the secondary tests: the OOS R2 is reported, not combined with the Holm result.
+
+PERIODS (section 6: a window belongs to the period of its start month; independent windows = floor(start months / 120))
+Monetary regimes (descriptive only, no p-value, not in a Holm family):
+  P-1: start months in the sample 252, independent windows 2: no regression (fewer than 3 independent windows)
+  P-2: start months in the sample 240, independent windows 2: no regression (fewer than 3 independent windows)
+  P-3: start months in the sample 206, independent windows 1: no regression (fewer than 3 independent windows)
+  P-4: start months in the sample 245, independent windows 2: no regression (fewer than 3 independent windows)
+  P-5: start months in the sample 98, independent windows 0: no regression (fewer than 3 independent windows)
+  P-6: start months in the sample 350, independent windows 2: no regression (fewer than 3 independent windows)
+  P-7: start months in the sample 95, independent windows 0: no regression (fewer than 3 independent windows)
+  P-8: start months in the sample 0, independent windows 0: no regression (fewer than 3 independent windows)
+30-year blocks (section 6; B1 to B4 are the scored partition of the P1 family; no Holm here: the family needs S2, which needs P2):
+  B1 P1: start months 360, independent windows 3, b_hat -0.2146, p 0.8179 (uncorrected)
+  B1 engine: start months 360, independent windows 3, b_hat -0.0966, p 0.7050 (uncorrected)
+  B2 P1: start months 360, independent windows 3, b_hat 0.8134, p 0.1131 (uncorrected)
+  B2 engine: start months 360, independent windows 3, b_hat 0.8015, p 0.1355 (uncorrected)
+  B3 P1: start months 360, independent windows 3, b_hat 2.4758, p 0.0056 (uncorrected)
+  B3 engine: start months 360, independent windows 3, b_hat 1.9636, p 0.0172 (uncorrected)
+  B4 P1: start months 406, independent windows 3, b_hat 3.2088, p 0.0070 (uncorrected)
+  B4 engine: start months 406, independent windows 3, b_hat 3.2030, p 0.0069 (uncorrected)
+
+JANUARY CHECK (section 4: phase January alone; the January phase is the phase of the month of January in the sample)
+  P1: slope over the Januaries (124 pairs, every 12th month, not one 120-month phase) 0.6548
+  engine erp_implied (L 2%, N 10): slope over the Januaries (124 pairs, every 12th month, not one 120-month phase) 0.7163
+
+INTERPRETATIONS (the design is not exact here; each can change a number)
+  1. P2 is not built: section 3 gives 1/CAPE10 - r10 without the exact CAPE window (months, deflator). Nothing is scored for P2.
+  2. The last start month is 2016-10 by section 4. Shiller D has no value for 2026-10, so the window of 2016-10 (and 2021-10 for H=60) drops out, with no fill, as R2 does for a missing value.
+  3. The bootstrap phase of a pseudo-sample is its position modulo 120 (the blocks have 120 months). The generator PCG64 and the bounded integer of nprandom are mine: the design names no generator.
+  4. 20 years of complete pairs = 240 monthly pairs.
+  5. The crossing ratio of the deflator (1912-12 to 1913-01) uses the Shiller CPI; Dr(Y) of g(t) deflates with the December CPI of the engine rule (Shiller before 1913, CPIAUCNS from 1913).
+  6. The 'phase' slope uses the calendar months of the sample; a dropped month leaves a gap. Windows per period count calendar start months.
+  7. Secondary tests: Holm decides on p only; the design gives no OOS condition for them.
+  8. January check: the design says 'phase January alone'; here the slope over the Januaries (every 12th month), because one 120-month phase has about 12 points.
+  9. P1 r10 uses FRED GS10 from 1953-04 (section 3); the engine rr uses the Shiller gs10 column as committed (R1).
