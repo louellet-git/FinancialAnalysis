@@ -141,3 +141,12 @@ release in the store): revenue $115.8B (+103% on the year; guidance $108.0B), gr
 $130.0B with a gross margin of 71.0% to 72.0%; the release names an "interim CEO" (the release of 2026-08-26 named the
 founder as CEO) and gives no reason. NVDA closes: 155.46 (11-17), 150.96, 145.98, 125.53 (11-20). The store gives no
 cause for 2026-11-20. Poison and truncation tests of the series: pass (`analysis/priors/data/premium_series_pit/`).
+
+**Direction of the owner (2026-11-21 19:24 UTC, relayed by the Head of Staff):** "... is there any stock where that
+explanation doesn't hold up? Was anything hit less? Was anything hit more? If S&P10 finished expand to S&P100. Have a one
+pager for the S&P10 for my review before moving on to the additional work." Done: the page
+`analysis/priors/sp10_week_one_pager_2026-11-21.md` (preliminary). Test: the change of each stock against its beta times the
+market (SPY -8.56%), the rest in units of its usual weekly deviation (104 weeks; a shell calculation, to build into
+`fa dcf attribute --reality` as step R6 of `T-20261121-dcf-engine-integration`). Result: the explanation holds for 6 of
+10; NVDA hit more (-8.6 points, 2.2 deviations); AAPL (+5.5), BRK-B (+2.4), AMZN (+3.6) hit less. STOP here: the S&P 100
+part and the other work wait for the review of the owner. The page goes to the Head of Staff first.
