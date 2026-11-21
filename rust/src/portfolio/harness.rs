@@ -71,7 +71,7 @@ pub struct Hypothesis {
 }
 
 /// The parameters that a hypothesis file can set, and the option of the command for each.
-const PARAMS: [(&str, &str); 5] = [("paths", "--paths"), ("seed", "--seed"), ("table", "--table"), ("rebalance", "--rebalance"), ("cost_bp", "--cost-bp")];
+const PARAMS: [(&str, &str); 6] = [("paths", "--paths"), ("seed", "--seed"), ("table", "--table"), ("rebalance", "--rebalance"), ("cost_bp", "--cost-bp"), ("hold", "--hold")];
 
 impl Hypothesis {
     /// Parse the file that runs: `prior_variants` is needed.
@@ -103,7 +103,7 @@ impl Hypothesis {
             return Err(format!("hypothesis strategy '{}': value-rank, value-rank-weekly or momentum", h.strategy));
         }
         if let Some(k) = h.params.keys().find(|k| !PARAMS.iter().any(|p| p.0 == k.as_str())) {
-            return Err(format!("hypothesis params: unknown key '{k}' (known: paths, seed, table, rebalance, cost_bp)"));
+            return Err(format!("hypothesis params: unknown key '{k}' (known: paths, seed, table, rebalance, cost_bp, hold)"));
         }
         if h.oos_inherits.is_some() && h.oos_inherits != h.parent {
             return Err("hypothesis: oos_inherits must be the id of the parent".into());
@@ -159,7 +159,8 @@ impl Hypothesis {
                 toml::Value::String(s) => s.clone(),
                 toml::Value::Integer(i) => i.to_string(),
                 toml::Value::Float(f) => f.to_string(),
-                _ => return Err(format!("hypothesis params.{key}: a number or a text")),
+                toml::Value::Boolean(b) => b.to_string(),
+                _ => return Err(format!("hypothesis params.{key}: a number, a text or true/false")),
             };
             put(opt, &format!("params.{key}"), text)?;
         }
@@ -393,9 +394,9 @@ impl Strategy for Replay {
 }
 
 /// The same strategy at 0x and at 2x the cost: (0x, 2x). The target weights and the dates are those of the 1x run.
-pub fn cost_levels(prices: &super::Prices, universe: &[String], one: &Report, cfg: &Config) -> Result<(Report, Report), String> {
+pub fn cost_levels(prices: &super::Prices, universe: &[String], one: &Report, cfg: &Config, hold: bool) -> Result<(Report, Report), String> {
     let replay = Replay::new(one);
-    let at = |k: f64| super::run(prices, universe, &replay, &Config { cost_bp: cfg.cost_bp * k, ..cfg.clone() });
+    let at = |k: f64| super::run_mode(prices, universe, &replay, &Config { cost_bp: cfg.cost_bp * k, ..cfg.clone() }, hold);
     Ok((at(0.0)?, at(2.0)?))
 }
 
@@ -770,6 +771,11 @@ cost_bp = 10
         assert_eq!(get("--seed").as_deref(), Some("7"));
         assert_eq!(get("--rebalance").as_deref(), Some("monthly"));
         assert_eq!(get("--tickers-file").as_deref(), Some("/repo/rust/mapcheck/universe/sp500.txt"));
+        // hold is a registered parameter (true/false); a command value that differs is an error
+        let hh = Hypothesis::parse(&GOOD.replace("cost_bp = 10", "cost_bp = 10\nhold = true")).unwrap();
+        let m = hh.merge_args(&args(&["--start", "2018-01-01", "--strategy", "value-rank"]), repo).unwrap();
+        assert_eq!(m.iter().position(|a| a == "--hold").map(|i| m[i + 1].as_str()), Some("true"));
+        assert!(hh.merge_args(&args(&["--start", "2018-01-01", "--strategy", "value-rank", "--hold", "false"]), repo).is_err());
         // start and end from the file
         let h2 = Hypothesis::parse(&GOOD.replace("prior_variants = 4", "prior_variants = 4\nstart = \"2018-01-01\"\nend = \"2024-12-31\"\nsuccess = \"x\"")).unwrap();
         let m = h2.merge_args(&[], repo).unwrap();
@@ -1043,7 +1049,7 @@ cost_bp = 10
     fn the_return_falls_as_the_cost_rises() {
         let (p, u, cfg) = fixture();
         let one = run(&p, &u, &Switch(Default::default()), &cfg).unwrap();
-        let (zero, two) = cost_levels(&p, &u, &one, &cfg).unwrap();
+        let (zero, two) = cost_levels(&p, &u, &one, &cfg, false).unwrap();
         assert!(one.trades.len() > 4);
         assert!(zero.fund.annual > one.fund.annual, "{} {}", zero.fund.annual, one.fund.annual);
         assert!(one.fund.annual > two.fund.annual, "{} {}", one.fund.annual, two.fund.annual);

@@ -260,6 +260,14 @@ fn check_weights(w: &[(String, f64)], prices: &Prices) -> Result<(), String> {
 
 /// Run a strategy. The calendar is the SPY trading days; `prices` must hold a "SPY" series.
 pub fn run(prices: &Prices, universe: &[String], strat: &dyn Strategy, cfg: &Config) -> Result<Report, String> {
+    run_mode(prices, universe, strat, cfg, false)
+}
+
+/// As [`run`]. With `hold` (no rebalance): at each rebalance day a ticker that is held and is still in the targets keeps its
+/// shares (no trade); a ticker that leaves the targets is sold at that close; a new ticker is bought with its target weight
+/// times the value of the portfolio of that day after the sales, scaled down together if the cash is not enough. The cost is
+/// on the traded value only and comes out of the cash.
+pub fn run_mode(prices: &Prices, universe: &[String], strat: &dyn Strategy, cfg: &Config, hold: bool) -> Result<Report, String> {
     let spy = prices.0.get("SPY").ok_or("no SPY price series (the calendar and the benchmark)")?;
     let cal: Vec<i64> = spy.iter().map(|x| x.0).filter(|d| *d >= cfg.start && *d <= cfg.end).collect();
     let rdays = rebalance_days(&cal, cfg.start, cfg.end, cfg.rebalance);
@@ -293,21 +301,50 @@ pub fn run(prices: &Prices, universe: &[String], strat: &dyn Strategy, cfg: &Con
             }
             let cur: BTreeMap<String, f64> = shares.iter().map(|(t, s)| (t.clone(), s * prices.asof(t, d).map_or(0.0, |x| x.1))).collect();
             stale_sales += cur.iter().filter(|(t, v)| **v > 0.0 && !target.contains_key(*t) && prices.asof(t, d).is_some_and(|(pd, _)| d - pd > STALE_DAYS)).count();
-            let names: Vec<&String> = cur.keys().chain(target.keys().filter(|t| !cur.contains_key(*t))).collect();
-            // The cost comes out of the portfolio: the targets use the value less the cost of the first estimate.
-            let cost0 = rate * names.iter().map(|t| (target.get(*t).map_or(0.0, |x| x.0 * v) - cur.get(*t).copied().unwrap_or(0.0)).abs()).sum::<f64>();
-            let scale = (v - cost0).max(0.0);
             let mut traded = 0.0;
             let mut new_shares = BTreeMap::new();
             let mut target_sum = 0.0;
             let mut moves = Vec::new();
-            for t in names {
-                let tv = target.get(t).map_or(0.0, |x| x.0 * scale);
-                moves.push((t.clone(), cur.get(t).copied().unwrap_or(0.0), tv));
-                traded += (tv - cur.get(t).copied().unwrap_or(0.0)).abs();
-                if tv > 0.0 {
-                    new_shares.insert(t.clone(), tv / target[t].1);
-                    target_sum += tv;
+            if hold {
+                // sales first: each held ticker that is not in the targets (or has no fresh close) is sold at this close
+                let mut sold = 0.0;
+                for (t, s) in &shares {
+                    if target.contains_key(t) {
+                        new_shares.insert(t.clone(), *s);
+                        target_sum += cur[t];
+                    } else {
+                        sold += cur[t];
+                        moves.push((t.clone(), cur[t], 0.0));
+                    }
+                }
+                let after_sales = v - rate * sold; // the value of the portfolio after the sales
+                let cash_now = cash + sold * (1.0 - rate);
+                let wanted: Vec<(&String, f64)> = target.iter().filter(|(t, _)| !shares.contains_key(*t)).map(|(t, x)| (t, x.0 * after_sales)).collect();
+                let need: f64 = wanted.iter().map(|x| x.1).sum::<f64>() * (1.0 + rate);
+                let k = if need > cash_now && need > 0.0 { (cash_now / need).max(0.0) } else { 1.0 };
+                for (t, w) in wanted {
+                    let bv = w * k;
+                    if bv > 0.0 {
+                        moves.push((t.clone(), 0.0, bv));
+                        new_shares.insert(t.clone(), bv / target[t].1);
+                        target_sum += bv;
+                        traded += bv;
+                    }
+                }
+                traded += sold;
+            } else {
+                let names: Vec<&String> = cur.keys().chain(target.keys().filter(|t| !cur.contains_key(*t))).collect();
+                // The cost comes out of the portfolio: the targets use the value less the cost of the first estimate.
+                let cost0 = rate * names.iter().map(|t| (target.get(*t).map_or(0.0, |x| x.0 * v) - cur.get(*t).copied().unwrap_or(0.0)).abs()).sum::<f64>();
+                let scale = (v - cost0).max(0.0);
+                for t in names {
+                    let tv = target.get(t).map_or(0.0, |x| x.0 * scale);
+                    moves.push((t.clone(), cur.get(t).copied().unwrap_or(0.0), tv));
+                    traded += (tv - cur.get(t).copied().unwrap_or(0.0)).abs();
+                    if tv > 0.0 {
+                        new_shares.insert(t.clone(), tv / target[t].1);
+                        target_sum += tv;
+                    }
                 }
             }
             let cost = rate * traded;
@@ -389,6 +426,80 @@ mod tests {
 
     fn near(a: f64, b: f64) {
         assert!((a - b).abs() < 1e-9, "{a} != {b}");
+    }
+
+    /// The hold fixture: SPY flat, A rises 1 a day from 100, B flat at 200; 40 days, rebalances at day 0, 5 (Feb 1) and 34 (Mar 1).
+    fn hold_run(cost_bp: f64, w: Vec<Vec<(&'static str, f64)>>, hold: bool) -> Report {
+        let p = prices(vec![("SPY", series(40, |_| 50.0)), ("A", series(40, |i| 100.0 + i as f64)), ("B", series(40, |_| 200.0))]);
+        run_mode(&p, &["A".into(), "B".into()], &Fixed::new(w), &cfg(cost_bp, 39), hold).unwrap()
+    }
+
+    #[test]
+    fn hold_keeps_the_shares_of_a_name_that_stays_in_the_targets() {
+        let r = hold_run(0.0, vec![vec![("A", 1.0)]; 3], true);
+        near(r.nav[39], 1.39); // 1 / 100 shares at 139, no trade after the first day
+        assert_eq!(r.trades.len(), 1);
+        near(r.turnover_total, 0.5); // only the first buy: 1 / 1 / 2
+    }
+
+    #[test]
+    fn hold_sells_an_exit_at_its_close_and_buys_the_new_name_with_the_value() {
+        let r = hold_run(0.0, vec![vec![("A", 1.0)], vec![("B", 1.0)], vec![("B", 1.0)]], true);
+        near(r.nav[5], 1.05); // A sold at 105, B bought with 1.05
+        near(r.nav[39], 1.05); // B flat
+        let sale = r.trades.iter().find(|t| t.ticker == "A" && !t.buy).unwrap();
+        near(sale.price, 105.0);
+        near(sale.before, 1.0);
+        near(sale.after, 0.0);
+        let buy = r.trades.iter().find(|t| t.ticker == "B" && t.buy).unwrap();
+        near(buy.after, 1.0);
+    }
+
+    #[test]
+    fn hold_gives_a_new_entry_its_target_weight_of_the_current_value() {
+        // day 0: A 0.5 (0.005 shares). Day 5: A is 0.525, the value is 1.025, B gets 0.4 * 1.025 = 0.41 of the cash 0.5.
+        let r = hold_run(0.0, vec![vec![("A", 0.5)], vec![("A", 0.5), ("B", 0.4)], vec![("A", 0.5), ("B", 0.4)]], true);
+        near(r.nav[5], 1.025);
+        near(r.nav[39], 0.005 * 139.0 + 0.41 + 0.09); // A keeps 0.005 shares, B 0.00205 shares, cash 0.09
+        let b = r.trades.iter().find(|t| t.ticker == "B").unwrap();
+        near(b.after, 0.4);
+        assert!(!r.trades.iter().any(|t| t.ticker == "A" && t.date != r.trades[0].date)); // A is not traded again
+    }
+
+    #[test]
+    fn hold_charges_the_cost_on_the_traded_value_only() {
+        // 100 bp: the first buy of 1 / 1.01 costs 0.01 / 1.01; the held name is not traded again
+        let r = hold_run(100.0, vec![vec![("A", 1.0)]; 3], true);
+        near(r.cost_total, 0.01 / 1.01);
+        near(r.nav[0], 1.0 / 1.01);
+        // an exit and an entry: the sale of 1.05 * (1 / 1.01) / 1 and the purchase are both charged
+        let e = hold_run(100.0, vec![vec![("A", 1.0)], vec![("B", 1.0)], vec![("B", 1.0)]], true);
+        let v0: f64 = 1.0 / 1.01; // value after the first buy: shares 1/1.01/100
+        let sold = v0 * 1.05;
+        let after_sales: f64 = sold - 0.01 * sold; // value of the day less the cost of the sale (the cash is the proceeds)
+        let cash = sold * 0.99;
+        let buy = after_sales.min(cash / 1.01);
+        near(e.cost_total, 0.01 / 1.01 + 0.01 * (sold + buy));
+    }
+
+    #[test]
+    fn hold_scales_the_new_buys_down_to_the_cash() {
+        // day 5: the value is 1.025, B wants 0.5 * 1.025 = 0.5125, the cash is 0.5: B gets 0.5, the cash is 0
+        let r = hold_run(0.0, vec![vec![("A", 0.5)], vec![("A", 0.5), ("B", 0.5)], vec![("A", 0.5), ("B", 0.5)]], true);
+        near(r.nav[5], 1.025);
+        near(r.nav[39], 0.005 * 139.0 + 0.5);
+        let b = r.trades.iter().find(|t| t.ticker == "B").unwrap();
+        near(b.after, 0.5 / 1.025);
+    }
+
+    #[test]
+    fn without_hold_the_run_is_the_old_run() {
+        let w = vec![vec![("A", 1.0)], vec![("B", 0.5)], vec![("B", 0.5)]];
+        let (a, b) = (hold_run(10.0, w.clone(), false), {
+            let p = prices(vec![("SPY", series(40, |_| 50.0)), ("A", series(40, |i| 100.0 + i as f64)), ("B", series(40, |_| 200.0))]);
+            run(&p, &["A".into(), "B".into()], &Fixed::new(w), &cfg(10.0, 39)).unwrap()
+        });
+        assert_eq!((a.nav, a.cost_total, a.turnover_total, a.trades.len()), (b.nav, b.cost_total, b.turnover_total, b.trades.len()));
     }
 
     #[test]

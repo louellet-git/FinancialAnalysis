@@ -40,6 +40,11 @@ fa portfolio backtest --strategy NAME --start D [--end D] [OPTIONS]
   --pick top|bottom  with value-rank --neutral sector: the top fifth (default) or the bottom fifth of each sector, held
                      long (the test of the short side of A-009: does the bottom fifth return less than the equal weight)
                      (--neutral and --pick are not parameters of a hypothesis file: with --hypothesis they are an error)
+  --hold true|false  (false) no rebalance: a held ticker that is still in the targets keeps its shares (no trade); a ticker that
+                     leaves the targets is sold at that close; a new ticker gets its target weight of the value of that day after
+                     the sales (scaled down together if the cash is not enough). Cost on the traded value only. For every strategy;
+                     mainly value-rank-weekly (A-009 holds 13 weeks). The equal-weight line is not changed. A hypothesis file can
+                     set it (params.hold).
   --out FILE         write the daily value of the portfolio, of SPY and of the equal-weight line as CSV
   --holdings FILE    write the target weights of each rebalance date as CSV (date,ticker,weight)
   --hypothesis FILE  a registered hypothesis (trading/hypotheses/<id>.toml, committed): the file gives strategy, params and tickers
@@ -120,9 +125,9 @@ pub fn run(repo: &Path, args: &[String]) -> u8 {
 }
 
 /// Each option that `backtest` knows. Each takes one value.
-const KNOWN: [&str; 17] = [
+const KNOWN: [&str; 18] = [
     "--strategy", "--cache", "--start", "--end", "--rebalance", "--cost-bp", "--tickers-file", "--paths", "--seed", "--table", "--out", "--hypothesis", "--trades", "--poison-check", "--neutral", "--pick",
-    "--holdings",
+    "--holdings", "--hold",
 ];
 
 /// Each option that `calibrate` knows. Each takes one value.
@@ -350,6 +355,11 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
     };
     let args = &merged[..];
     let strategy = opt(args, "--strategy").ok_or("--strategy is needed: value-rank, value-rank-weekly or momentum")?;
+    let hold = match opt(args, "--hold").unwrap_or("false") {
+        "true" => true,
+        "false" => false,
+        x => return Err(format!("--hold '{x}': true or false")),
+    };
     let is_vr = strategy.starts_with("value-rank");
     let weekly = strategy == "value-rank-weekly";
     let cache: PathBuf = opt(args, "--cache").map(PathBuf::from).unwrap_or_else(|| repo.join("data").join("raw"));
@@ -451,7 +461,7 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
             "config": {
                 "command": harness::log_args(repo, args_in), "effective_arguments": harness::log_args(repo, args), "store": "<store>",
                 "start": mapcheck::dates::format(start), "end": mapcheck::dates::format(end), "rebalance": format!("{rebalance:?}"),
-                "cost_bp": cost_bp, "paths": paths, "seed": seed, "n_tickers": tickers.len(),
+                "cost_bp": cost_bp, "hold": hold, "paths": paths, "seed": seed, "n_tickers": tickers.len(),
                 "poison_check_days": poisons.iter().map(|p| p.0.clone()).collect::<Vec<_>>(),
             },
         });
@@ -486,7 +496,7 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
         // One run of the strategy on the given closes. `poison`: the day from which each fact is multiplied by a factor of its ticker.
         let run_with = |raw: &BTreeMap<String, Vec<(String, f64)>>, prices: &Prices, index: Option<&[(String, f64)]>, poison: Option<&str>, cfg: &Config| -> Result<(Report, Option<usize>, Vec<String>), String> {
             match (strategy, &vr) {
-                ("momentum", _) => Ok((super::run(prices, &tickers, &Momentum, cfg)?, None, tickers.clone())),
+                ("momentum", _) => Ok((super::run_mode(prices, &tickers, &Momentum, cfg, hold)?, None, tickers.clone())),
                 ("value-rank" | "value-rank-weekly", Some(p)) => {
                     let (years, universe) = value_rank_years(p, &cache, &tickers, start, poison);
                     if poison.is_none() {
@@ -496,7 +506,7 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
                     let sectors = sector_map(&cache, &universe, sector_mode)?;
                     let s = ValueRank { years, series: raw, index, params, scored: Default::default(), signals: Default::default(), sectors, pick };
                     let n = universe.len();
-                    let report = if weekly { super::run(prices, &universe, &WeeklyValueRank { base: s, open: Default::default() }, cfg)? } else { super::run(prices, &universe, &s, cfg)? };
+                    let report = if weekly { super::run_mode(prices, &universe, &WeeklyValueRank { base: s, open: Default::default() }, cfg, hold)? } else { super::run_mode(prices, &universe, &s, cfg, hold)? };
                     Ok((report, Some(n), universe))
                 }
                 (x, _) => Err(format!("unknown strategy '{x}': value-rank, value-rank-weekly or momentum")),
@@ -507,7 +517,7 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
         let info = Info { n_tickers: tickers.len(), n_scored, late, seconds: t0.elapsed().as_secs_f64() };
         let mut out = format!("{}{}", vr.as_ref().map_or("", |p| p.split_note.as_str()), render(&report, &ew, &cfg, args_in, &info));
 
-        let (zero, two) = harness::cost_levels(&prices, &universe, &report, &cfg)?;
+        let (zero, two) = harness::cost_levels(&prices, &universe, &report, &cfg, hold)?;
         let mut h = String::new();
         let _ = writeln!(h, "\nRUN HARNESS");
         let _ = writeln!(h, "{}; {}", harness::UNIVERSE_LABEL, harness::PRICE_LABEL);
