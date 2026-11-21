@@ -204,3 +204,7 @@ Done: a message to the four heads with the rule (CLAUDE.md "Model documents"; QU
 ## 2026-11-21 (relayed by the Head of Staff)
 Words: "Let's not get overly complicated" (on the usage log: the push path, the permission rule and the settings).
 Done: the usage log is local only and on request (`fa usage record && fa usage show`); no hook, no push, no setting.
+
+## 2026-11-21 (chat)
+Words: "the recent head of staff plus any other heads work to the heads repo."
+Done: the-heads 19a65d4: the Head of Staff rules as they are now; the habits "Does it make sense?" and "Test before you constrict"; monitoring by script; the store terms (public, private, original source); long head sessions; epics and stories; the backtest line; record number ranges.
