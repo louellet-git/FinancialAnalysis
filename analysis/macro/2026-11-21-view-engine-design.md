@@ -37,8 +37,8 @@ The design gives a reading of the market. It does not show a cause. It does not 
 
 1. Let t be a date. Let the survey of t be the latest first-quarter survey that was released on or before t. This makes the layer point in time by the release date.
 2. ERP_A(t) = median STOCK10 - median BOND10 of the survey of t. Unit: percentage points per year.
-3. Growth_A(t) = median RGDP10 of the survey of t. Unit: percentage points per year.
-4. Unit match. The growth engine of Fundamental Research uses real growth L. RGDP10 is real growth. So the units match, and the engine makes no inflation step.
+3. Growth_A(t) = median RGDP10 + median CPI10 of the same survey of t. This is a nominal growth. Unit: percentage points per year. The sum is the usual approximation of (1 + real)(1 + inflation) - 1.
+4. Unit match. The long-run growth L of Fundamental Research is nominal (A-001: L = min(10-year nominal zero yield, G), G = the FOMC SEP longer-run real growth + the 2% inflation goal). RGDP10 is real growth, so the engine adds CPI10 from the same survey. The column `source` gives the two parts (see rule 3).
 5. ERP_A has a nominal return and a nominal yield. Both hold the same expected inflation. So the difference is a premium over the 10-year Treasury yield.
 6. Between two releases, both values stay flat. The layer is a step function of the release date.
 7. A second ERP form, for description only: STOCK10 - BILL10. It does not go into the output file.
@@ -61,6 +61,8 @@ For an attribution window D1 to D2:
 2. growth_change = Growth(D2) - Growth(D1), in decimals.
 3. ERP(t) = ERP_A(t) plus the sum of the layer B changes since the last survey release.
 4. If no survey is out at D1, the row for that window is absent. The engine does not fill it.
+7. A window with no survey release and no layer B change has a row with erp_change = 0 and growth_change = 0. Its source is "no release in window". The engine does not leave out that row.
+8. In a row with a release, `source` names the growth parts, for example "spf: RGDP10 2.0 + CPI10 2.3".
 5. The column source is "spf" when layer B is zero. It is "spf+macro" when layer B is on.
 6. Most windows contain no survey release. In those windows, erp_change comes from layer B only, or it is zero. The findings say how many windows have a release.
 
