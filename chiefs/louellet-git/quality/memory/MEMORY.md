@@ -53,6 +53,8 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
 - A valuation report is not limited to two cycles: step 2 repeats until the skeptic accepts (`CLAUDE.md`).
 - A valuation with a charge for future spending: check that the frames agree (an asset held at full value
   and each future purchase a total loss is two frames; NVDA round 2). Ask for the range across frames.
+- A weighted sum over a list: ask for the top weights and the excluded part (one 1000x share count of
+  WAT made 39% of the weight; attribution review).
 - Haiku did well on narrow checks with a fixed list (byte comparisons, a 5-point diff check); it found
   the same defect as the Sonnet validator in vol-1 cycle 2. Keep Sonnet for open attacks.
 ## Dream pass (before a compaction, above about 75% in `get_session`, or on "dream")
