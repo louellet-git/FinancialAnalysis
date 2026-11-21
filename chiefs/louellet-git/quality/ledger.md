@@ -109,3 +109,5 @@
 | premium-macro design conditions | 2026-11-21 | econ/premium-macro-design (55f2e92): head check of C1-C6; PASS-WITH-NOTES; design frozen at 55f2e92 | small (head only) | |
 | vol-2 part 1 SABR | 2026-11-21 | claude/quant-vol-2 (1f0fe9c): model-validator REVISE (1 MAJ: the tests cannot catch a wrong smile formula; 2 formula mutants survive), code-reviewer PASS-WITH-NOTES (4 MIN); formula agrees with an independent implementation to 15 digits; Heston/Bates byte-identical; verdict REVISE with 6 fixed answers | about 121k (72k + 50k measured) | |
 | pit-supplement-fill, premium-test, members cycle 2 | 2026-11-21 | started (see the next rows) | | |
+| alpha-1 stage 1 | 2026-11-21 | claude/quant-alpha-1 (23bd711): model-validator PASS-WITH-NOTES (stop holds on 1b; F1 process lowered to MIN), code-reviewer REVISE (1 MAJ: NW Bartlett weight untested); verdict REVISE, 1 MAJ, 12 MIN | about 200k (about 90k + 109k measured) | disk full during the run; scratch cleaned |
+| premium-test validator | 2026-11-21 | econ/premium-test-cmd (f5e9403): model-validator PASS-WITH-NOTES (statistics match to 6 digits; 4 MIN); code-reviewer still running | 107k measured | |
