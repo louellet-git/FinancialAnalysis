@@ -30,7 +30,7 @@ USAGE:
                           A parameter marked \"at bound\" (within 0.1% of its range) means that the fit is not identified.";
 
 fn parse_args(rest: &[String]) -> Result<(String, Vec<(String, String)>), String> {
-    let model = rest.first().cloned().ok_or("give a model: heston or bates")?;
+    let model = rest.first().filter(|m| !m.starts_with("--")).cloned().ok_or("give a model: heston or bates")?;
     let mut flags = Vec::new();
     let mut i = 1;
     while i < rest.len() {
@@ -38,7 +38,7 @@ fn parse_args(rest: &[String]) -> Result<(String, Vec<(String, String)>), String
         if !["--symbol", "--date", "--time", "--rate", "--expiry-max", "--max-spread", "--starts", "--seed"].contains(&k.as_str()) {
             return Err(format!("unknown argument {k}; see fa vol --help"));
         }
-        let v = rest.get(i + 1).ok_or_else(|| format!("{k} needs a value"))?;
+        let v = rest.get(i + 1).filter(|v| !v.starts_with("--")).ok_or_else(|| format!("{k} needs a value"))?;
         flags.push((k.clone(), v.clone()));
         i += 2;
     }
@@ -64,10 +64,13 @@ pub fn run(repo: &Path, rest: &[String]) -> Result<i32, String> {
     let get = |n: &str| flags.iter().find(|(k, _)| k == n).map(|(_, v)| v.clone());
     let symbol = get("--symbol").ok_or("give --symbol T")?.to_uppercase();
     let date = get("--date").ok_or("give --date D")?;
-    let flat: Option<f64> = num(&flags, "--rate")?;
+    let flat = get("--rate").map(|r| crate::market::options_cli::parse_rate(&r)).transpose()?;
     let expiry_max: Option<i64> = num(&flags, "--expiry-max")?;
     let mut filters = Filters::for_symbol(&symbol, expiry_max);
     if let Some(v) = num::<f64>(&flags, "--max-spread")? {
+        if !v.is_finite() || v < 0.0 {
+            return Err(format!("bad --max-spread '{}'", get("--max-spread").unwrap_or_default()));
+        }
         filters.max_spread = v;
     }
     let mut opts = FitOptions::default();
@@ -154,4 +157,36 @@ fn report<M: CharModel>(set: &QuoteSet, r: &FitResult<M>, start: Instant, opts: 
     }
     println!("  all    {:<11} {:>5} {:>5} {:>9.3} {:>9.3}", "", "", n, (s2 / n.max(1) as f64).sqrt(), mx);
     println!("\ntime: {secs:.2} s (fit of {} series, {} quotes, {} threads)", set.series.len(), set.n_quotes(), rayon::current_num_threads());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn v(x: &[&str]) -> Vec<String> {
+        x.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn vol_fit_lines_are_parsed_as_the_help_says() {
+        let (m, f) = parse_args(&v(&["heston", "--symbol", "IBM", "--date", "2026-11-19", "--rate", "0.04", "--starts", "3"])).unwrap();
+        assert_eq!(m, "heston");
+        assert_eq!((num::<f64>(&f, "--rate").unwrap(), num::<usize>(&f, "--starts").unwrap(), num::<u64>(&f, "--seed").unwrap()), (Some(0.04), Some(3), None));
+        assert!(parse_args(&v(&[])).is_err(), "no model");
+        assert!(parse_args(&v(&["heston", "--bogus", "1"])).unwrap_err().contains("unknown argument"));
+        assert!(parse_args(&v(&["heston", "--date"])).unwrap_err().contains("needs a value"));
+        assert!(parse_args(&v(&["heston", "--date", "--rate", "0.04"])).unwrap_err().contains("--date needs a value"));
+        assert!(parse_args(&v(&["--symbol", "IBM"])).unwrap_err().contains("give a model"));
+        let none = Path::new("/nonexistent");
+        let run = |x: &[&str]| run(none, &v(x)).unwrap_err();
+        assert!(run(&["fit", "heston", "--date", "2026-11-19"]).contains("--symbol"));
+        assert!(run(&["fit", "heston", "--symbol", "IBM"]).contains("--date"));
+        assert!(run(&["fit", "heston", "--symbol", "IBM", "--date", "2026-11-19", "--rate", "abc"]).contains("bad --rate"));
+        assert!(run(&["fit", "heston", "--symbol", "IBM", "--date", "2026-11-19", "--starts", "x"]).contains("bad --starts"));
+        assert!(run(&["fit", "heston", "--symbol", "IBM", "--date", "2026-11-19", "--rate", "inf"]).contains("bad --rate"));
+        assert!(run(&["fit", "heston", "--symbol", "IBM", "--date", "2026-11-19", "--max-spread", "nan"]).contains("bad --max-spread"));
+        assert!(run(&["fit", "heston", "--symbol", "IBM", "--date", "2026-11-19", "--max-spread", "nan"]).contains("'nan'"), "the raw text");
+        assert!(run(&["fit", "heston", "--symbol", "IBM", "--date", "2026-11-19", "--max-spread", "-1"]).contains("bad --max-spread"), "below 0");
+        assert!(run(&["fit", "merton", "--symbol", "IBM", "--date", "2026-11-19"]).contains("unknown model"));
+    }
 }

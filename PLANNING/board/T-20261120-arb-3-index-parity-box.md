@@ -26,3 +26,9 @@ and SPY chains with bid and ask at the same time).
 
 Agent: `volatility-derivatives-quant`, with `rates-credit-quant` for the rates. Gate: `model-validator`,
 `code-reviewer`.
+
+Method (industry note `chiefs/louellet-git/quant/industry-2026-11-21.md`, 2026-11-21): measure the box rate as the
+NY Fed does (van Binsbergen, Diamond, Van Tassel, Liberty Street Economics, 2023-10-02): for each SPX expiry,
+regress the put minus call mid on the strike; the slope gives the discount factor; keep bid > 0, 1 month to 5
+years, and an expiry only when R² ≥ 0.99999. Their 1996-2023 box rate was about 35 bp above Treasuries. Run the
+arbitrage parts on NBBO quotes with the underlying at the same minute (Cboe), not on the Alpaca indicative feed.

@@ -25,6 +25,7 @@ form `FA-<tag> - <head>`, for example `FA-L - Head of Technology`.
 | `Head of Quant Research` | Pricing models (rates, volatility) and signals (bonds, option strategies, backtests) | `rates-credit-quant`, `volatility-derivatives-quant`, `strategy-researcher` | `quant` |
 | `Head of Fundamental Research` | Company value: the DCF engines, the automatic model, the models for banks and other company types, ticker reports | `valuation-quant`, `equity-analyst` | `fundamental` |
 | `Head of Technology` | Data sources, `fa sync`, `mapcheck`, the CLI, the build, the CI cost, the structure of the shared documents | `data-engineer`, `rust-engineer` | `technology` |
+| `Head of Economics` | A supporting role: the current economic conditions and factors (growth, inflation, labor, the policy rate path, the curve, credit spreads, the cycle). It gives briefs and answers to the other heads; it trades nothing and sets no model input | `macro-economist`, `rates-credit-quant` (shared with Quant Research) | `economics` |
 | `Head of Quality and Risk` | Reviews and gates, model documents and assumption records, model risk, secrets, terms of use of data | `model-validator`, `document-reviewer`, `auditor`, `code-reviewer`, `test-engineer`, `data-quality-analyst`, `model-documenter`, `risk-compliance-officer` | `quality` |
 
 Example: the title `FA-L - Head of Technology` in the account `louellet-git` is the Head
@@ -64,6 +65,7 @@ The person decides. **You are an orchestrator agent.** You are the orchestrator 
 | Quant Research | `rust/src/ratemodels/`, `rust/src/trading/`, `rust/src/futures/`, the option files of `rust/src/market/` (`option*.rs`), the rate and bond research files of `rust/src/` (`rates.rs`, `bonds.rs`, `curve.rs`, `fit.rs`, `forwards.rs`, `recon.rs`, `richcheap.rs`, `explain.rs`), `trading/` |
 | Fundamental Research | `rust/src/dcf/`, `rust/src/report/`, `rust/src/analyze.rs`, `rust/src/company.rs`, `analysis/` |
 | Technology | `rust/mapcheck/`, `rust/src/sync/`, `rust/src/hostnet.rs`, `rust/src/serve.rs`, the data loaders of `rust/src/market/` (prices, estimates, keys, Alpaca, FRED), `.github/`, `financial_analysis/standard_variables.toml`, `sec_contact.toml` |
+| Economics | `analysis/macro/` (the briefs) |
 | Quality and Risk | `docs/models/`, `docs/assumptions/`, `docs/QUALITY-STANDARDS.md` |
 | Each head | The agent files of its own team in `.claude/agents/` (section 1), and the skills that its team uses most (section 3) |
 
@@ -127,6 +129,15 @@ or refine one, when you judge it worth the effort. This is a permission, not a d
 merges in your area, or when the tests become slow), start `test-engineer` in a fresh
 context for a test audit of your area: too few tests, too many, slow or repeated tests.
 You decide what to change. It does not run on each change and it is not a gate.
+
+**Industry practice.** From time to time, when you judge it useful (for example at the start of a new
+area, or after a large change of your queue), research what the same role does at a quant or a
+fundamental investment firm: its work, its outputs, its tools, and its usual errors. Use public sources
+(papers, books, the documents of firms and regulators), and name each source. Write a short note (at
+most 1 page) in your folder, `chiefs/<login>/<head>/industry-<date>.md`: what we do the same, what we
+do not do, and at most three changes that you propose. Use it to refine your team, your skills and your
+queue (a new ticket for a change of code). It is not a gate. A change to the area of a different head is
+a request to that head.
 
 Rules for a change:
 
@@ -203,6 +214,9 @@ not in a chat.
    command or the question, the reason, and the refusal text. Do not get around a refusal.
 2. The Head of Technology filters: it answers what it can (a safer form, a fact, a rule that
    exists) and drops duplicates. It never runs a command that a different session was refused.
+   Research comes first (the person, 2026-11-21: "Before asking me anything, please look into it"): the
+   asking head and the Head of Technology look at the options, costs and facts, and the question
+   carries the result and a recommendation. A question that research can answer is not asked.
 3. What only the person can decide becomes one ticket: `area: ask`, `head: owner`. It is a
    yes/no question in clear, plain words, with no internal names: **Question** (yes/no, one
    sentence), **Why it matters** (two or three sentences, with the cost if any),

@@ -409,3 +409,19 @@ fn the_industries_are_in_the_order_of_their_size() {
     let names: Vec<String> = group_table(&rows).into_iter().filter(|g| g.name.starts_with("industry")).map(|g| g.name).collect();
     assert_eq!(names, vec!["industry A", "industry B", "industry C"]);
 }
+
+#[test]
+fn a_premium_with_no_engine_value_gives_no_number_and_no_huge_ratio() {
+    // the cost of capital is rf + premium (beta 1, weight 1): at a premium of -6% it is negative and the engine has no value
+    let t = table();
+    let cfg = ImpliedConfig { table: &t, fade: &[], rules: rules_w1(), cache: None };
+    let m = Market { price: Some(10.0), price_source: "test".into(), ..market() };
+    let p = point_at_premium(&inputs(), &cfg, &m, -0.06).unwrap();
+    assert!(p.is_none());
+    assert_eq!(value_over_price_at(p, 10.0), None);
+    let q = point_at_premium(&inputs(), &cfg, &m, 0.04).unwrap();
+    let v = q.unwrap().value;
+    assert!((value_over_price_at(q, 10.0).unwrap() - v / 10.0).abs() < 1e-12);
+    // the stand-in value of a search is finite and above any price
+    assert!(NO_VALUE.is_finite() && NO_VALUE > 1e20);
+}

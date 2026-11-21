@@ -273,13 +273,26 @@ fn has_form(facts: &CompanyFacts, forms: &[&str]) -> bool {
 }
 
 pub fn check_ticker(registry: &Registry, cache: &Path, ticker: &str, n_periods: usize, as_of: i64, keep_values: bool) -> TickerReport {
+    check_ticker_filed(registry, cache, ticker, n_periods, as_of, keep_values, None)
+}
+
+/// `check_ticker` with a filing date. `filed_cut = None`: all facts of the cache, and the 10-K of the cache fills a missing
+/// input (`check_cached`). `Some(date)`: only the facts that a filing of `date` or an earlier date reported
+/// (`CompanyFacts::filed_up_to`), and no fill from the 10-K of the cache (it can be a later filing).
+pub fn check_ticker_filed(registry: &Registry, cache: &Path, ticker: &str, n_periods: usize, as_of: i64, keep_values: bool, filed_cut: Option<&str>) -> TickerReport {
     let start = Instant::now();
     let Some(path) = facts_path(cache, ticker) else {
         return error_report(ticker, format!("no company_facts file in {}", cache.join(ticker).display()), 0.0);
     };
     match read_facts(&path) {
-        Ok(facts) => {
-            let mut report = check_cached(registry, cache, ticker, &facts, n_periods, as_of, keep_values);
+        Ok(mut facts) => {
+            let mut report = match filed_cut {
+                None => check_cached(registry, cache, ticker, &facts, n_periods, as_of, keep_values),
+                Some(date) => {
+                    facts = facts.filed_up_to(date);
+                    check_facts(registry, ticker, &facts, n_periods, as_of, keep_values)
+                }
+            };
             report.seconds = start.elapsed().as_secs_f64();
             report
         }
