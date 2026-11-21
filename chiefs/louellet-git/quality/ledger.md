@@ -84,3 +84,5 @@
 | split table gate started | 2026-11-21 | `claude/split-table` (da40ce5), store f6e66fc: data-quality-analyst, code-reviewer | running | |
 | algo engine cycle 2 | 2026-11-21 | `claude/quant-algo-paper` (ed34706): code-reviewer PASS-WITH-NOTES (5 MAJ closed; 3 of 4 guard mutants caught); Monday paper run allowed | about 90k (measured) | |
 | split table, data check | 2026-11-21 | `claude/split-table` (da40ce5), store f6e66fc: data-quality-analyst REVISE (22 spin-off factors as splits; 2 wrong factors; 3 missing; AA wrong issuer; SNDK after the price end) | about 93k (measured) | code reviewer running |
+| split table verdict | 2026-11-21 | `claude/split-table` (da40ce5): code-reviewer PASS-WITH-NOTES, data-quality-analyst REVISE; verdict REVISE (5 MAJ in the data) | about 48k code (measured) | reruns wait |
+| split-basis correction gate started | 2026-11-21 | `claude/split-basis-fix` (72d994f), store f6e66fc: model-validator, code-reviewer | running | |
