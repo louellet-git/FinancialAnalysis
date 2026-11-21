@@ -204,7 +204,7 @@ pub fn resolve(repo: &Path, h: &Hypothesis) -> Result<Resolved, String> {
 }
 
 /// Whether the out-of-sample window is clean, and the reasons if it is not.
-pub fn oos_clean(h: &Hypothesis, window_id: &str, earlier_family_reads: &[String], table_in_sample: bool) -> (bool, Vec<String>) {
+pub fn oos_clean(h: &Hypothesis, window_id: &str, earlier_family_reads: &[String], exploratory_dates: &[String], table_in_sample: bool) -> (bool, Vec<String>) {
     let mut why = Vec::new();
     if h.oos_prior_exposure {
         why.push("oos_prior_exposure: results of the window were seen before the hypothesis file".to_string());
@@ -214,6 +214,9 @@ pub fn oos_clean(h: &Hypothesis, window_id: &str, earlier_family_reads: &[String
     }
     if !earlier_family_reads.is_empty() {
         why.push(format!("an earlier run of the family read the window ({} run(s), first: {})", earlier_family_reads.len(), earlier_family_reads[0]));
+    }
+    for date in exploratory_dates {
+        why.push(format!("not clean (exploratory read on {date})"));
     }
     if table_in_sample {
         why.push("the parameter table was fitted on all years of the cache (through 2025): the window is in the fit sample of the model".to_string());
@@ -497,7 +500,21 @@ pub struct RunRecord {
 
 /// The run files of the working tree and of the whole git history (all branches, also the files that were deleted). A deleted
 /// file is a hidden variant: it stays in the count.
+/// The run files (not the window-read files).
 pub fn list_runs(repo: &Path) -> Vec<RunRecord> {
+    list_files(repo).into_iter().filter(|r| !is_window_read(&r.path)).collect()
+}
+
+/// The window-read files: a read of a window by an exploratory run. It is a read, not a variant.
+pub fn list_window_reads(repo: &Path) -> Vec<RunRecord> {
+    list_files(repo).into_iter().filter(|r| is_window_read(&r.path)).collect()
+}
+
+fn is_window_read(path: &str) -> bool {
+    path.rsplit('/').next().is_some_and(|n| n.starts_with("window-read-"))
+}
+
+fn list_files(repo: &Path) -> Vec<RunRecord> {
     let mut paths: BTreeSet<String> = BTreeSet::new();
     if let Ok(dirs) = std::fs::read_dir(repo.join("trading").join("runs")) {
         for d in dirs.flatten().filter(|d| d.path().is_dir()) {
@@ -541,6 +558,8 @@ pub struct Counts {
     pub prior_family: u32,
     /// The earlier runs of the family that read the window.
     pub earlier_reads: Vec<String>,
+    /// The dates (YYYY-MM-DD) of the exploratory reads of the window (window-read files).
+    pub exploratory_dates: Vec<String>,
 }
 
 impl Counts {
@@ -583,7 +602,17 @@ pub fn count_runs(repo: &Path, h: &Hypothesis, r: &Resolved) -> Counts {
         }
     }
     let prior_family = family_of.values().filter(|f| f.0 == r.family).map(|f| f.1).sum();
-    Counts { n_id: n_id + 1, n_family: n_family + 1, prior_id: h.prior_variants.unwrap_or(0), prior_family, earlier_reads: reads }
+    let mut exploratory_dates: Vec<String> = list_window_reads(repo)
+        .into_iter()
+        .filter(|rec| {
+            let v = rec.value.as_ref();
+            v.and_then(|v| v["window"]["owner"].as_str()) == Some(r.window_id.as_str()) || family_of.get(&rec.id).is_some_and(|f| f.0 == r.family)
+        })
+        .filter_map(|rec| rec.path.rsplit('/').next().and_then(|n| n.strip_prefix("window-read-")).and_then(|n| n.get(..8)).map(|d| format!("{}-{}-{}", &d[..4], &d[4..6], &d[6..8])))
+        .collect();
+    exploratory_dates.sort();
+    exploratory_dates.dedup();
+    Counts { n_id: n_id + 1, n_family: n_family + 1, prior_id: h.prior_variants.unwrap_or(0), prior_family, earlier_reads: reads, exploratory_dates }
 }
 
 /// Make the file `trading/runs/<id>/<stamp>.json` with the record "started". The record is there before any result. An
@@ -613,20 +642,42 @@ pub fn finalize(path: &Path, record: &Value) -> Result<(), String> {
 /// A run with no hypothesis file must not reach the out-of-sample window of a registered hypothesis of the same strategy.
 /// The registered windows that an exploratory run (no hypothesis file) reads. The run is permitted (a head that
 /// does not use the harness is not slowed), but each result line says that it is not counted and which window it read.
-pub fn exploratory_reads(repo: &Path, strategy: &str, end: i64) -> Vec<String> {
+/// One registered window that an exploratory run reads.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ExploreRead {
+    /// The hypothesis whose window is read, and the id that owns the window.
+    pub id: String,
+    pub window_id: String,
+    pub window_start: i64,
+}
+
+pub fn exploratory_reads(repo: &Path, strategy: &str, end: i64) -> Vec<ExploreRead> {
     let mut out = Vec::new();
     for e in std::fs::read_dir(hypotheses_dir(repo)).into_iter().flatten().flatten() {
-        let Some(h) = std::fs::read_to_string(e.path()).ok().and_then(|t| Hypothesis::parse(&t).ok()) else { continue };
+        let Some(h) = std::fs::read_to_string(e.path()).ok().and_then(|t| Hypothesis::parse_lenient(&t).ok()) else { continue };
         if h.strategy != strategy {
             continue;
         }
         if let Ok(r) = resolve(repo, &h) {
             if oos_read(end, r.window_start) {
-                out.push(format!("'{}' (window of '{}' from {})", h.id, r.window_id, mapcheck::dates::format(r.window_start)));
+                out.push(ExploreRead { id: h.id.clone(), window_id: r.window_id.clone(), window_start: r.window_start });
             }
         }
     }
     out
+}
+
+/// Write the record of an exploratory read: a new file `trading/runs/<id>/window-read-<stamp>.json`. It is a read, not a variant.
+/// Never replaces a file.
+pub fn write_window_read(repo: &Path, read: &ExploreRead, stamp: &str, record: &Value) -> Result<PathBuf, String> {
+    use std::io::Write;
+    let dir = repo.join("trading").join("runs").join(&read.id);
+    std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    let path = dir.join(format!("window-read-{stamp}.json"));
+    let mut file = std::fs::OpenOptions::new().write(true).create_new(true).open(&path).map_err(|e| format!("{}: {e} (a record is never replaced; wait one second)", path.display()))?;
+    let text = serde_json::to_string_pretty(record).map_err(|e| e.to_string())?;
+    file.write_all(text.as_bytes()).and_then(|_| file.write_all(b"\n")).map_err(|e| format!("{}: {e}", path.display()))?;
+    Ok(path)
 }
 
 #[cfg(test)]
@@ -759,14 +810,14 @@ cost_bp = 10
         put("q", "parent = \"p\"", "2023-01-01");
         assert!(resolve(&repo, &load("p")).is_err());
         // the clean flag: an inherited window is not clean; a prior exposure is not clean; an earlier read is not clean
-        let (ok, why) = oos_clean(&load("c"), &r.window_id, &[], false);
+        let (ok, why) = oos_clean(&load("c"), &r.window_id, &[], &[], false);
         assert!(!ok && why.len() == 1, "{why:?}");
-        let (ok, _) = oos_clean(&load("a"), "a", &[], false);
+        let (ok, _) = oos_clean(&load("a"), "a", &[], &[], false);
         assert!(ok);
         let h = Hypothesis::parse(&GOOD.replace("prior_variants = 4", "prior_variants = 4\noos_prior_exposure = true")).unwrap();
-        assert!(!oos_clean(&h, &h.id, &[], false).0);
-        assert!(!oos_clean(&load("a"), "a", &["trading/runs/a/x.json".to_string()], false).0);
-        assert!(!oos_clean(&load("a"), "a", &[], true).0);
+        assert!(!oos_clean(&h, &h.id, &[], &[], false).0);
+        assert!(!oos_clean(&load("a"), "a", &["trading/runs/a/x.json".to_string()], &[], false).0);
+        assert!(!oos_clean(&load("a"), "a", &[], &[], true).0);
         let _ = std::fs::remove_dir_all(&repo);
     }
 
@@ -827,9 +878,44 @@ cost_bp = 10
         std::fs::create_dir_all(hypotheses_dir(&repo)).unwrap();
         std::fs::write(hypotheses_dir(&repo).join("value-rank-sp500-v1.toml"), GOOD).unwrap();
         assert!(exploratory_reads(&repo, "value-rank", d("2022-12-31")).is_empty());
-        let e = exploratory_reads(&repo, "value-rank", d("2023-01-01")).join(" ");
-        assert!(e.contains("value-rank-sp500-v1") && e.contains("2023-01-01"), "{e}");
+        let e = exploratory_reads(&repo, "value-rank", d("2023-01-01"));
+        assert_eq!(e, vec![ExploreRead { id: "value-rank-sp500-v1".into(), window_id: "value-rank-sp500-v1".into(), window_start: d("2023-01-01") }]);
         assert!(exploratory_reads(&repo, "momentum", d("2026-01-01")).is_empty()); // another strategy
+        let _ = std::fs::remove_dir_all(&repo);
+    }
+
+    #[test]
+    fn an_exploratory_read_is_a_record_that_makes_the_window_not_clean_and_is_not_a_variant() {
+        let repo = scratch("wread");
+        git_in(&repo, &["init", "-q"]);
+        std::fs::create_dir_all(hypotheses_dir(&repo)).unwrap();
+        std::fs::write(hypotheses_dir(&repo).join("value-rank-sp500-v1.toml"), GOOD).unwrap();
+        let h = Hypothesis::parse(GOOD).unwrap();
+        let r = resolve(&repo, &h).unwrap();
+        let c0 = count_runs(&repo, &h, &r);
+        assert!(c0.exploratory_dates.is_empty() && oos_clean(&h, &h.id, &c0.earlier_reads, &c0.exploratory_dates, false).0);
+        let read = exploratory_reads(&repo, "value-rank", d("2023-03-31")).remove(0);
+        let rec = json!({ "kind": "window-read", "run_time_utc": "20261121T050000Z", "window": { "owner": read.window_id } });
+        let p = write_window_read(&repo, &read, "20261121T050000Z", &rec).unwrap();
+        assert!(p.ends_with("value-rank-sp500-v1/window-read-20261121T050000Z.json"));
+        // never replaced
+        let before = std::fs::read_to_string(&p).unwrap();
+        assert!(write_window_read(&repo, &read, "20261121T050000Z", &json!({ "kind": "other" })).is_err());
+        assert_eq!(std::fs::read_to_string(&p).unwrap(), before);
+        // not a variant: the counts are as before; it is a read: the window is not clean, with the reason
+        let c1 = count_runs(&repo, &h, &r);
+        assert_eq!((c1.n_id, c1.n_family, c1.variants_id(), c1.variants_family()), (c0.n_id, c0.n_family, c0.variants_id(), c0.variants_family()));
+        assert!(list_runs(&repo).is_empty() && list_window_reads(&repo).len() == 1);
+        assert_eq!(c1.exploratory_dates, ["2026-11-21"]);
+        let (clean, why) = oos_clean(&h, &h.id, &c1.earlier_reads, &c1.exploratory_dates, false);
+        assert!(!clean && why == ["not clean (exploratory read on 2026-11-21)"], "{why:?}");
+        // a deleted window-read file is still found in the git history
+        git_in(&repo, &["add", "-A"]);
+        git_in(&repo, &["commit", "-q", "-m", "w"]);
+        std::fs::remove_file(&p).unwrap();
+        git_in(&repo, &["add", "-A"]);
+        git_in(&repo, &["commit", "-q", "-m", "delete"]);
+        assert_eq!(count_runs(&repo, &h, &r).exploratory_dates, ["2026-11-21"]);
         let _ = std::fs::remove_dir_all(&repo);
     }
 

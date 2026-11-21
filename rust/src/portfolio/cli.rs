@@ -225,12 +225,13 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
     let (code, dirty) = harness::code_state(repo);
     let mut start_record = serde_json::Value::Null;
     let mut state: Option<(PathBuf, harness::Counts, bool, bool, Vec<String>, i64)> = None;
-    let mut explore_reads: Vec<String> = Vec::new();
+    let mut explore_reads: Vec<harness::ExploreRead> = Vec::new();
+    let mut explore_files: Vec<String> = Vec::new();
     if let Some((hy, proof)) = &hyp {
         let res = harness::resolve(repo, hy)?;
         let counts = harness::count_runs(repo, hy, &res);
         let read = harness::oos_read(end, res.window_start);
-        let (clean, why) = harness::oos_clean(hy, &res.window_id, &counts.earlier_reads, strategy == "value-rank");
+        let (clean, why) = harness::oos_clean(hy, &res.window_id, &counts.earlier_reads, &counts.exploratory_dates, strategy == "value-rank");
         let (store, store_dirty) = harness::store_state(&cache);
         let stamp = harness::utc_stamp(harness::now_secs());
         let hash_of = |p: &Path| std::fs::read(p).ok().map(|b| harness::sha256_hex(&b));
@@ -279,6 +280,22 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
         state = Some((path, counts, read, clean, why, res.window_start));
     } else {
         explore_reads = harness::exploratory_reads(repo, strategy, end);
+        // Each registered window that this run reads gets a record BEFORE any result: a new file for each window (a read, not a variant).
+        let stamp = harness::utc_stamp(harness::now_secs());
+        for read in &explore_reads {
+            let record = serde_json::json!({
+                "kind": "window-read",
+                "run_time_utc": stamp,
+                "code": { "commit": code, "dirty": dirty },
+                "window": { "read_hypothesis": read.id, "owner": read.window_id, "start": mapcheck::dates::format(read.window_start) },
+                "run": { "start": mapcheck::dates::format(start), "end": mapcheck::dates::format(end) },
+                "strategy": strategy,
+                "command": harness::log_args(repo, args_in),
+                "store": "<store>",
+            });
+            let path = harness::write_window_read(repo, read, &stamp, &record)?;
+            explore_files.push(harness::rel_path(repo, &path.to_string_lossy()));
+        }
     }
 
     let work = || -> Result<Body, String> {
@@ -362,7 +379,11 @@ fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
             _ => {
                 let _ = writeln!(h, "exploratory run: no hypothesis file, not usable for a decision (not counted as a variant)");
                 if !explore_reads.is_empty() {
-                    let _ = writeln!(h, "WARNING: this exploratory run reads the out-of-sample window of {}: not counted; a later result of that hypothesis must report this run", explore_reads.join(", "));
+                    let names: Vec<String> = explore_reads.iter().map(|r| format!("'{}' (window of '{}' from {})", r.id, r.window_id, mapcheck::dates::format(r.window_start))).collect();
+                    let _ = writeln!(h, "WARNING: this exploratory run reads the out-of-sample window of {}: not counted as a variant; the window is not clean after this read", names.join(", "));
+                    for p in &explore_files {
+                        let _ = writeln!(h, "window read recorded: {p} (commit it with your work)");
+                    }
                 }
             }
         }
