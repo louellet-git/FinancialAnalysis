@@ -19,7 +19,7 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
 - Until 2026-11-25 11:00 Toronto (token limit 71% used): gates in the order of EPICS.md last section; one agent a gate
   where enough, Haiku for narrow checks; at most 2 builds at a time (15 GB machine; OOM on 2026-11-21).
 - HANDOVER (2026-11-21 21:05 UTC): every gate of 2026-11-21 has a verdict (ledger). Open: review the premium-series
-  PIT results (61fe8de) before the series run of record; PR 198 waits for the Fundamental head's yes on the skill text;
+  PIT results (61fe8de) before the series run of record; PR 198 merged (skill text agreed by its owner);
   9 stray HQM files in /home/user/qa-fa-data-e06/bonds/treasury_hqm (local, untracked). A new session needs Luc's word.
 
 ## How a review runs here (tested 2026-11-20 and 2026-11-21)
