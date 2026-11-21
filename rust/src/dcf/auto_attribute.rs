@@ -39,7 +39,7 @@
 
 use super::auto::*;
 use super::auto_cli::{cache_dir, curve_and_index, jobs_of, load_table, map_inputs_pit, num, table_path, tickers_of, Opts, BANNER};
-use super::auto_implied::{groups_of, point, point_at_premium, point_with, read_groups, solve, Bound, Failure, Found, ImpliedConfig, ERP_RANGE, GROWTH_RANGE};
+use super::auto_implied::{groups_of, NO_VALUE, point, point_at_premium, point_with, read_groups, solve, Bound, Failure, Found, ImpliedConfig, ERP_RANGE, GROWTH_RANGE};
 use super::stats::percentile;
 use super::DcfError;
 use rayon::prelude::*;
@@ -283,7 +283,7 @@ fn value_at(inp: &AutoInputs, cfg: &ImpliedConfig, market: &Market, x: f64) -> R
 fn premium_search(inp: &AutoInputs, cfg: &ImpliedConfig, market: &Market, price: f64) -> Result<Found, (String, String)> {
     let model = cfg.rules.erp.0;
     let v0 = value_at(inp, cfg, market, model)?;
-    let f = solve(|x| Ok(point_at_premium(inp, cfg, market, x)?.map_or(f64::MAX, |p| p.value)), ERP_RANGE.0, ERP_RANGE.1, price, false, Some((model, v0))).map_err(engine_err)?;
+    let f = solve(|x| Ok(point_at_premium(inp, cfg, market, x)?.map_or(NO_VALUE, |p| p.value)), ERP_RANGE.0, ERP_RANGE.1, price, false, Some((model, v0))).map_err(engine_err)?;
     if !f.x.is_finite() {
         return fail("premium search", "the value does not fall with the premium on the ends of the range");
     }
@@ -382,11 +382,12 @@ impl Attribution {
             }
         }
         let (l1, l2) = self.curve_lag();
-        if l1.is_some() {
-            v.push("curve1-old".into());
-        }
-        if l2.is_some() {
-            v.push("curve2-old".into());
+        for (n, curve, lag) in [("1", &self.curve1, l1), ("2", &self.curve2, l2)] {
+            if curve.is_empty() {
+                v.push(format!("curve{n}-none"));
+            } else if lag.is_some() {
+                v.push(format!("curve{n}-old"));
+            }
         }
         v.join(" ")
     }
@@ -616,6 +617,10 @@ pub struct WholeList {
     pub differs: Vec<String>,
     /// Tickers with no weight because another ticker of the same company has it: ticker and the ticker that carries it.
     pub dropped: Vec<(String, String)>,
+    /// Tickers with a weight and no CIK in the cache: the one-weight rule could not apply to them.
+    pub no_cik: Vec<String>,
+    /// Tickers with a weight and no model value (a template with no model, a refusal): ticker and share of the list.
+    pub no_model: Vec<(String, f64)>,
 }
 
 fn top_weights(rows: &[&AttrRow], total: f64) -> Vec<(String, f64, f64)> {
@@ -646,6 +651,12 @@ pub fn whole_where(rows: &[AttrRow], one_weight: bool, keep: &dyn Fn(&AttrRow) -
         top: top_weights(&list, value1),
         guarded: list.iter().filter(|r| r.shares_note.as_ref().is_some_and(|n| n.starts_with("replaced"))).map(|r| r.ticker.clone()).collect(),
         differs: list.iter().filter(|r| r.shares_note.as_ref().is_some_and(|n| n.starts_with("differs"))).map(|r| r.ticker.clone()).collect(),
+        no_cik: list.iter().filter(|r| r.cik.is_none()).map(|r| r.ticker.clone()).collect(),
+        no_model: {
+            let mut v: Vec<(String, f64)> = list.iter().filter(|r| r.outcome.is_err()).map(|r| (r.ticker.clone(), weight(r).unwrap_or(0.0) / value1)).collect();
+            v.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
+            v
+        },
         dropped: rows.iter().filter(|r| r.weight_raw().is_some()).filter_map(|r| r.weight_of.as_ref().map(|t| (r.ticker.clone(), t.clone()))).collect(),
     })
 }
@@ -684,7 +695,7 @@ pub fn flagged(c: &Chain, view: View) -> bool {
     (view == View::Premium && c.x1.x < 0.01) || c.pct().iter().any(|p| p.abs() > 0.15)
 }
 
-pub fn set_sum(rows: &[AttrRow], view: View, kind: SetKind, whole: &WholeList, drop_flagged: bool) -> Option<SetSum> {
+pub fn set_sum(rows: &[AttrRow], view: View, kind: SetKind, whole: &WholeList) -> Option<SetSum> {
     let list: Vec<(&AttrRow, &Chain)> = rows
         .iter()
         .filter(|r| r.weight().is_some())
@@ -692,9 +703,6 @@ pub fn set_sum(rows: &[AttrRow], view: View, kind: SetKind, whole: &WholeList, d
             let a = r.outcome.as_ref().ok()?;
             let c = a.chain(view)?;
             if kind == SetKind::Common && a.chain(match view { View::Premium => View::Growth, View::Growth => View::Premium }).is_none() {
-                return None;
-            }
-            if drop_flagged && flagged(c, view) {
                 return None;
             }
             Some((r, c))
@@ -926,6 +934,14 @@ fn whole_text(w: &WholeList) -> String {
     if !w.guarded.is_empty() {
         s.push_str(&format!("  share count replaced by the guard (a scale error): {}\n", w.guarded.join(" ")));
     }
+    if !w.no_cik.is_empty() {
+        s.push_str(&format!("  no CIK in the cache, so the one-weight rule could not apply to: {}\n", w.no_cik.join(" ")));
+    }
+    if !w.no_model.is_empty() {
+        let total: f64 = w.no_model.iter().map(|x| x.1).sum();
+        let v: Vec<String> = w.no_model.iter().map(|(t, sh)| format!("{t} {:.2}%", sh * 100.0)).collect();
+        s.push_str(&format!("  {} tickers with no model value are in the whole list, {:.1}% of its market value (weight in the list): {}\n", w.no_model.len(), total * 100.0, v.join(", ")));
+    }
     if !w.differs.is_empty() {
         s.push_str(&format!("  share count kept, but more than 2 times from the reference count (a split or one class of several): {}\n", w.differs.join(" ")));
     }
@@ -936,11 +952,11 @@ fn whole_text(w: &WholeList) -> String {
 fn set_text(headline: &str, w: &SetSum) -> String {
     let long = long_names(w.view);
     let mut s = format!(
-        "{headline} ({} tickers, {:.1}% of the market value of the list at D1): change {}%; the rest of the list (not in this set) {}%\n",
+        "{headline} ({} tickers, {:.1}% of the market value of the list at D1): change {}%; the rest of the list (not in this set) {}\n",
         w.n,
         w.share_of_list * 100.0,
         sgn(w.change * 100.0, 2),
-        sgn(w.change_excluded * 100.0, 2)
+        if w.change_excluded.is_finite() { format!("{}%", sgn(w.change_excluded * 100.0, 2)) } else { "none".to_string() }
     );
     s.push_str(&weights_text(&w.top_weights));
     s.push_str("  part, as a share of the market value of the set at D1 (percent); for rates and the plug the range over the two orders; top 5 contributors in percentage points\n");
@@ -958,12 +974,11 @@ fn variants_text(rows: &[AttrRow]) -> String {
     let template = |r: &AttrRow| matches!(&r.outcome, Err((k, _)) if k.starts_with("template"));
     let has_value = |r: &AttrRow| r.outcome.is_ok();
     type Keep = Box<dyn Fn(&AttrRow) -> bool>;
-    let sets: [(&str, bool, Keep); 6] = [
+    let sets: [(&str, bool, Keep); 5] = [
         ("all tickers with two prices, one weight for each company (the number above)", true, Box::new(|_| true)),
         ("all tickers with two prices, every ticker its own weight (a company with two classes counted two times)", false, Box::new(|_| true)),
         ("without banks, REITs, insurers and new filers (a template with no model)", true, Box::new(move |r| !template(r))),
         ("only tickers with a model value", true, Box::new(has_value)),
-        ("all, every ticker its own weight, without WAT", false, Box::new(|r| r.ticker != "WAT")),
         ("only tickers with a model value, every ticker its own weight", false, Box::new(has_value)),
     ];
     let mut s = String::from("  the same change over other sets:\n");
@@ -976,30 +991,12 @@ fn variants_text(rows: &[AttrRow]) -> String {
     s
 }
 
-fn flags_text(rows: &[AttrRow], view: View, whole: &WholeList) -> String {
+fn flags_text(rows: &[AttrRow], view: View) -> String {
     let fl = flagged_list(rows, view);
     let mut s = format!("  FLAGGED ({} tickers: the implied premium at D1 below 1% (premium view), or a part above 15% of P1): ", fl.len());
     let items: Vec<String> = fl.iter().map(|(t, x, p, n)| format!("{t} (x1 {:.2}%, {n} {}%)", x * 100.0, sgn(p * 100.0, 1))).collect();
     s.push_str(&items.join(", "));
     s.push('\n');
-    if !fl.is_empty() {
-        match set_sum(rows, view, SetKind::Own, whole, true) {
-            Some(w) => {
-                s.push_str(&format!(
-                    "  WITHOUT THE FLAGGED ({} tickers, covered part only): change {}%; facts {}%, time {}%, rates {}%, {} {}%, residual {}%\n",
-                    w.n,
-                    sgn(w.change * 100.0, 2),
-                    sgn(w.parts[0] * 100.0, 2),
-                    sgn(w.parts[1] * 100.0, 2),
-                    sgn(w.parts[2] * 100.0, 2),
-                    part_names(view)[3],
-                    sgn(w.parts[3] * 100.0, 2),
-                    sgn(w.parts[4] * 100.0, 2)
-                ));
-            }
-            None => s.push_str("  WITHOUT THE FLAGGED: no ticker left\n"),
-        }
-    }
     s
 }
 
@@ -1009,19 +1006,21 @@ pub fn list_text(rows: &[AttrRow]) -> String {
     let mut s = String::from("\nThis is an accounting split of the price change with the model; it is not a cause. facts and time have a fixed position (first and second); rates and the plug are shown as the range of the two orders.\n\n");
     s.push_str(&whole_text(&whole));
     s.push_str(&variants_text(rows));
+    let old = |side: usize| rows.iter().filter(|r| r.outcome.as_ref().ok().is_some_and(|a| if side == 1 { a.curve_lag().0 } else { a.curve_lag().1 }.is_some())).count();
+    s.push_str(&format!("  rows whose curve is more than {CURVE_LAG_DAYS} days older than the date: {} at D1, {} at D2 (the curve source lags)\n", old(1), old(2)));
     s.push_str("\n(2) COMMON SET: the tickers that have both views. Covered part only.\n");
     for view in [View::Premium, View::Growth] {
-        match set_sum(rows, view, SetKind::Common, &whole, false) {
+        match set_sum(rows, view, SetKind::Common, &whole) {
             Some(w) => s.push_str(&set_text(&format!("  {} VIEW on the common set, covered part only", view.name().to_uppercase()), &w)),
             None => s.push_str("  no ticker has both views\n"),
         }
     }
     s.push_str("\n(3) EACH VIEW ON ITS OWN SET. Covered part only.\n");
     for view in [View::Premium, View::Growth] {
-        match set_sum(rows, view, SetKind::Own, &whole, false) {
+        match set_sum(rows, view, SetKind::Own, &whole) {
             Some(w) => {
                 s.push_str(&set_text(&format!("{} VIEW, covered part only", view.name().to_uppercase()), &w));
-                s.push_str(&flags_text(rows, view, &whole));
+                s.push_str(&flags_text(rows, view));
             }
             None => s.push_str(&format!("{} VIEW: no ticker has the view\n", view.name().to_uppercase())),
         }

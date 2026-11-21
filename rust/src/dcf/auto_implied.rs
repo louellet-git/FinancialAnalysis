@@ -62,6 +62,15 @@ fa dcf implied [--tickers-file FILE | TICKER ...] [OPTIONS]
   --out FILE      write one CSV row for each ticker
   --jobs N        threads (default: all); the result does not depend on N";
 
+/// The value that a search uses for a number at which the engine gives no value (for example a cost of capital that is not
+/// positive): a number above any price, and finite (a ratio to a price stays finite).
+pub const NO_VALUE: f64 = 1e30;
+
+/// The value over the price at a premium, or `None` when the engine gives no value there (no number is printed for it).
+pub fn value_over_price_at(p: Option<Point>, price: f64) -> Option<f64> {
+    p.map(|p| p.value / price)
+}
+
 /// The search ranges (the number that moves).
 pub const ERP_RANGE: (f64, f64) = (-0.04, 0.20);
 pub const GROWTH_RANGE: (f64, f64) = (-0.30, 0.60);
@@ -395,7 +404,7 @@ pub fn implied_models(
             let values: Vec<Option<f64>> = bases
                 .par_iter()
                 .map(|b| match (&b.base, b.market.price) {
-                    (Ok(_), Some(price)) if x.is_finite() => point_at_premium(b.inp, cfg, &b.market, x).ok().flatten().map(|p| p.value / price),
+                    (Ok(_), Some(price)) if x.is_finite() => point_at_premium(b.inp, cfg, &b.market, x).ok().and_then(|p| value_over_price_at(p, price)),
                     _ => None,
                 })
                 .collect();
@@ -436,7 +445,7 @@ fn searches(b: &Base, p: &Point, sm: &Summary, cfg: &ImpliedConfig) -> ImpliedVa
     };
     let Some(price) = b.market.price else { return v };
     // 1. the premium (a higher premium gives a lower value)
-    let erp_search = solve(|x| Ok(point_at_premium(b.inp, cfg, &b.market, x)?.map_or(f64::MAX, |p| p.value)), ERP_RANGE.0, ERP_RANGE.1, price, false, Some((sm.erp, p.value)));
+    let erp_search = solve(|x| Ok(point_at_premium(b.inp, cfg, &b.market, x)?.map_or(NO_VALUE, |p| p.value)), ERP_RANGE.0, ERP_RANGE.1, price, false, Some((sm.erp, p.value)));
     match erp_search {
         Ok(f) => {
             if f.x.is_finite() {
@@ -494,7 +503,7 @@ fn market_premium(bases: &[Base], cfg: &ImpliedConfig) -> R<Option<MarketPremium
     let median_at = |x: f64| -> R<f64> {
         let ratios: Vec<f64> = list
             .par_iter()
-            .map(|(b, price)| point_at_premium(b.inp, cfg, &b.market, x).map(|p| p.map_or(f64::MAX, |p| p.value) / price))
+            .map(|(b, price)| point_at_premium(b.inp, cfg, &b.market, x).map(|p| p.map_or(NO_VALUE, |p| p.value) / price))
             .collect::<R<Vec<f64>>>()?;
         Ok(median(ratios))
     };

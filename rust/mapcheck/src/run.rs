@@ -294,6 +294,7 @@ pub fn check_ticker_filed(registry: &Registry, cache: &Path, ticker: &str, n_per
     }
 }
 
+/// All tickers, in parallel. The result has the sequence of the input.
 pub fn check_all(registry: &Registry, cache: &Path, tickers: &[String], n_periods: usize, as_of: i64, keep_values: bool) -> Vec<TickerReport> {
     tickers
         .par_iter()

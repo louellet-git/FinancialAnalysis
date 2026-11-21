@@ -197,7 +197,7 @@ fn the_sums_have_the_hand_calculated_answers() {
     assert_eq!(whole.n, 3);
     assert!((whole.value1 - 1000.0).abs() < 1e-9 && (whole.change + 0.08).abs() < 1e-12, "{whole:?}");
     assert_eq!(whole.top[0].0, "C");
-    let w = set_sum(&rows, View::Premium, SetKind::Own, &whole, false).unwrap();
+    let w = set_sum(&rows, View::Premium, SetKind::Own, &whole).unwrap();
     assert_eq!(w.n, 2);
     assert!((w.value1 - 400.0).abs() < 1e-9 && (w.share_of_list - 0.4).abs() < 1e-12);
     assert!((w.change + 0.125).abs() < 1e-12, "{w:?}");
@@ -211,19 +211,19 @@ fn the_sums_have_the_hand_calculated_answers() {
     assert_eq!(w.top_parts[3][0].0, "A");
     assert!((w.top_parts[3][0].1 + 0.05).abs() < 1e-12);
     // the common set is the same here (both views exist for A and B)
-    let c = set_sum(&rows, View::Growth, SetKind::Common, &whole, false).unwrap();
+    let c = set_sum(&rows, View::Growth, SetKind::Common, &whole).unwrap();
     assert_eq!(c.n, 2);
     // a ticker with no premium view is left out of the premium set and the common set
     let mut rows2 = rows.clone();
     if let Ok(a) = &mut rows2[1].outcome {
         a.prem = Err("none".into());
     }
-    let w2 = set_sum(&rows2, View::Premium, SetKind::Own, &whole, false).unwrap();
+    let w2 = set_sum(&rows2, View::Premium, SetKind::Own, &whole).unwrap();
     assert_eq!(w2.n, 1);
     assert!((w2.change + 0.2).abs() < 1e-12 && (w2.value1 - 100.0).abs() < 1e-9);
-    assert_eq!(set_sum(&rows2, View::Premium, SetKind::Common, &whole, false).unwrap().n, 1);
-    assert_eq!(set_sum(&rows2, View::Growth, SetKind::Common, &whole, false).unwrap().n, 1);
-    assert_eq!(set_sum(&rows2, View::Growth, SetKind::Own, &whole, false).unwrap().n, 2);
+    assert_eq!(set_sum(&rows2, View::Premium, SetKind::Common, &whole).unwrap().n, 1);
+    assert_eq!(set_sum(&rows2, View::Growth, SetKind::Common, &whole).unwrap().n, 1);
+    assert_eq!(set_sum(&rows2, View::Growth, SetKind::Own, &whole).unwrap().n, 2);
     // the medians of the group: two values
     let g = group_medians(&rows, View::Premium);
     assert_eq!(g[0].name, "all");
@@ -232,22 +232,18 @@ fn the_sums_have_the_hand_calculated_answers() {
 }
 
 #[test]
-fn a_flagged_ticker_is_listed_and_left_out_of_the_sum_without_the_flagged() {
+fn a_flagged_ticker_is_listed() {
     // A has an implied premium of 0.5% at D1 (below 1%): flagged in the premium view only. B has a part of 30% of P1: flagged
     // in both views. D is clean.
     let rows = vec![row("A", 10.0, 9.0, 3, 10.0, 0.005), row("B", 30.0, 39.0, 2, 10.0, 0.05), row("D", 20.0, 19.0, 3, 10.0, 0.04)];
-    let whole = whole_list(&rows).unwrap();
     let fp: Vec<String> = flagged_list(&rows, View::Premium).into_iter().map(|x| x.0).collect();
     assert_eq!(fp, vec!["A", "B"]);
     let fg: Vec<String> = flagged_list(&rows, View::Growth).into_iter().map(|x| x.0).collect();
     assert_eq!(fg, vec!["B"]);
-    let clean = set_sum(&rows, View::Premium, SetKind::Own, &whole, true).unwrap();
-    assert_eq!(clean.n, 1);
-    assert!((clean.change + 0.05).abs() < 1e-12, "{clean:?}");
 }
 
 #[test]
-fn a_share_count_that_is_a_thousand_times_too_large_is_replaced_and_flagged() {
+fn a_scale_error_of_1650_times_is_replaced_and_a_split_is_kept_with_a_note() {
     let mut inp = inputs();
     // the 10-Q of WAT: the weighted diluted count is 98,204,000,000, the count at the end of the period is 59.5M
     let b = inp.balance.as_mut().unwrap();
@@ -256,6 +252,22 @@ fn a_share_count_that_is_a_thousand_times_too_large_is_replaced_and_flagged() {
     let (s, note) = guarded_shares(&inp, Some(98.204e9));
     assert_eq!(s, Some(59.5e6));
     assert!(note.unwrap().starts_with("replaced: shares 98204.0M -> 59.5M"));
+    // the edges: exactly 100 times and exactly 0.01 times stay (with a note); a little beyond them is replaced
+    let mut edge = inputs();
+    edge.balance.as_mut().unwrap().shares_outstanding = Some(1e6);
+    assert_eq!(guarded_shares(&edge, Some(1e8)).0, Some(1e8));
+    assert!(guarded_shares(&edge, Some(1e8)).1.unwrap().starts_with("differs"));
+    assert_eq!(guarded_shares(&edge, Some(1.0001e8)).0, Some(1e6));
+    assert_eq!(guarded_shares(&edge, Some(1e4)).0, Some(1e4));
+    assert_eq!(guarded_shares(&edge, Some(0.99e4)).0, Some(1e6));
+    // equal values: no note
+    assert_eq!(guarded_shares(&edge, Some(1e6)), (Some(1e6), None));
+    // a reference of 0 is no reference: the count stays, with no note
+    edge.balance.as_mut().unwrap().shares_outstanding = Some(0.0);
+    for y in edge.years.iter_mut() {
+        y.shares = Some(0.0);
+    }
+    assert_eq!(guarded_shares(&edge, Some(7e6)), (Some(7e6), None));
     // a count within 0.5 to 2 times the reference stays
     let (s, note) = guarded_shares(&inp, Some(70e6));
     assert_eq!((s, note), (Some(70e6), None));
@@ -302,11 +314,64 @@ fn two_classes_of_one_company_have_one_weight() {
     assert!((w.value1 - 1500.0).abs() < 1e-9 && (w.change + 100.0 / 1500.0).abs() < 1e-12, "{w:?}");
     assert_eq!(w.dropped, vec![("GOOG".to_string(), "GOOGL".to_string())]);
     // the set sums do not count GOOG either, and the rows keep both tickers (medians over rows)
-    let p = set_sum(&rows, View::Premium, SetKind::Own, &w, false).unwrap();
+    let p = set_sum(&rows, View::Premium, SetKind::Own, &w).unwrap();
     assert_eq!(p.n, 2);
     assert_eq!(group_medians(&rows, View::Premium)[0].n, 3);
     // with no rule: three tickers
     let raw = whole_where(&rows, false, &|_| true).unwrap();
     assert_eq!(raw.n, 3);
     assert!((raw.value1 - (1000.0 + 1010.0 + 500.0)).abs() < 1e-9);
+}
+
+#[test]
+fn the_curve_age_flag_has_the_edge_at_three_days() {
+    let with = |c1: &str, d1: &str, c2: &str, d2: &str| {
+        let mut a = attribution(10.0, 9.0, chain(-0.1, 3, 0.05), 10.0);
+        a.curve1 = c1.into();
+        a.date1 = d1.into();
+        a.curve2 = c2.into();
+        a.date2 = d2.into();
+        a
+    };
+    // 3 days: not flagged on either side
+    let a = with("2026-11-10", "2026-11-13", "2026-11-10", "2026-11-13");
+    assert_eq!(a.curve_lag(), (None, None));
+    assert!(!a.flags().contains("curve"));
+    // 4 days at D1 only
+    let a = with("2026-11-09", "2026-11-13", "2026-11-13", "2026-11-13");
+    assert_eq!(a.curve_lag(), (Some(4), None));
+    assert!(a.flags().contains("curve1-old") && !a.flags().contains("curve2-old"));
+    // 4 days at D2 only
+    let a = with("2026-11-13", "2026-11-13", "2026-11-09", "2026-11-13");
+    assert_eq!(a.curve_lag(), (None, Some(4)));
+    assert!(a.flags().contains("curve2-old") && !a.flags().contains("curve1-old"));
+    // a missing curve
+    let a = with("", "2026-11-13", "2026-11-13", "2026-11-13");
+    assert!(a.flags().contains("curve1-none"));
+}
+
+#[test]
+fn the_list_text_names_the_tickers_with_no_model_value_and_a_missing_cik() {
+    let mut rows = vec![row("A", 10.0, 8.0, 3, 10.0, 0.05)];
+    rows[0].cik = Some("1".into());
+    rows.push(AttrRow {
+        ticker: "V".into(),
+        sector: "Money".into(),
+        industry: String::new(),
+        prices: Some((100.0, 99.0)),
+        shares: Some(10.0),
+        shares_note: None,
+        cik: None,
+        weight_of: None,
+        outcome: Err(("template bank: no model".into(), String::new())),
+    });
+    let w = whole_list(&rows).unwrap();
+    assert_eq!(w.no_model.len(), 1);
+    assert_eq!(w.no_model[0].0, "V");
+    assert!((w.no_model[0].1 - 1000.0 / 1100.0).abs() < 1e-12);
+    assert_eq!(w.no_cik, vec!["V"]);
+    let text = list_text(&rows);
+    assert!(text.contains("no CIK in the cache") && text.contains("no model value") && text.contains("V 90.91%"), "{text}");
+    // a set with no tickers outside it prints "none", not NaN
+    assert!(!text.contains("NaN"), "{text}");
 }

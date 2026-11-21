@@ -658,7 +658,7 @@ chain, the growth shift at the model premium), and the rest (the roll of the val
 variable is printed. A chain exists only when both searches have an exact solution. A list gives one CSV row for each ticker, medians by size and sector,
 and the sum weighted by price x shares at D1 (only tickers with the view). `fa dcf implied --price-date D` uses the close of D, the curve, the beta and
 the facts of D. Note: `--as-of` of `fa dcf auto` and `fa dcf screen` does not filter facts by the filing date; `fa dcf implied --as-of` and
-`fa dcf attribute` do.
+`fa dcf attribute` do. The beta now uses only the bars on or before the date, so `fa dcf returns` can give other numbers for a date in the middle of a week (a run as of today with no partial week does not change).
 
 **`fa dcf assumptions [--md]`** (ticket `T-20261120-dcf-assumption-register`). The register `assumptions.rs` has one row for each assumption of the automatic model that a person could choose: record number, name, `--rules` key, default, place in the code, record, state (`decided <date>` or `convention, not studied`). The default text is read from `Rules::default()`. A test fails when the section "Choice" of a record does not have the default, when a key is not in `parse_rules`, or when a field of `Rules` is neither in the table nor in the short list of options (`NOT_ASSUMPTIONS` in the tests). `fa dcf auto --explain` names the record number of a row that has a record. Procedure of a study: skill `assumption-study`.
 
