@@ -2,11 +2,12 @@
 id: T-20261120-dcf-assumption-register
 title: Tie each assumption of the automatic model to a record and a repeatable study
 area: engine
-status: review
+status: done
 owner: louellet-git
 head: fundamental
 order: 1.1
 branch: claude/dcf-assumption-register
+merged: 91
 created: 2026-11-20
 acceptance: `fa dcf assumptions` lists each assumption of the automatic model with its value, its record and its decision state, a test fails when a default of the code and its record disagree, and each assumption has a record.
 ---

@@ -46,7 +46,7 @@ fn cell(size: &str, template: &str, g: Ar1Params, m: Ar1Params) -> ProcessPriors
 
 /// A table with one cell for the size bucket 1-10B and one for all: growth (phi 0.2, mean 8%, tau 6%, sigma 12%), margin
 /// (phi 0.5, mean 10%, tau 8%, sigma 9%).
-fn table() -> ProcessTable {
+pub(crate) fn table() -> ProcessTable {
     let meta = TableMeta { date: "test".into(), command: String::new(), companies: 0, company_years: 0, growth_observations: 0, note: String::new() };
     let cells = vec![
         cell("1-10B", "standard", ar1(0.2, 0.08, 0.06, 0.12), ar1(0.5, 0.10, 0.08, 0.09)),
@@ -56,7 +56,7 @@ fn table() -> ProcessTable {
 }
 
 /// A rule set with the table shock size for everyone and no level rule: the hand calculation of the tests.
-fn plain_rules() -> Rules {
+pub(crate) fn plain_rules() -> Rules {
     Rules { own_sigma_nu: 0.0, level_kappa: 0.0, ..Rules::default() }
 }
 
@@ -83,7 +83,7 @@ fn years() -> Vec<YearData> {
         .collect()
 }
 
-fn inputs() -> AutoInputs {
+pub(crate) fn inputs() -> AutoInputs {
     let y = years();
     AutoInputs {
         ticker: "ACME".into(),
@@ -96,7 +96,7 @@ fn inputs() -> AutoInputs {
     }
 }
 
-fn market() -> Market {
+pub(crate) fn market() -> Market {
     Market { as_of: "2026-11-19".into(), ..Default::default() }
 }
 
@@ -569,7 +569,7 @@ fn the_rules_text_changes_a_rule_and_refuses_an_unknown_one() {
     assert_eq!(parse_rules("").unwrap(), Rules::default());
 }
 
-fn synthetic(n: usize) -> Vec<AutoInputs> {
+pub(crate) fn synthetic(n: usize) -> Vec<AutoInputs> {
     (0..n)
         .map(|k| {
             let mut i = inputs();

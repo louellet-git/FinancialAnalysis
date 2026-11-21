@@ -5,3 +5,4 @@
 | 1 | 2026-11-20 | T-20261120-option-history-root-defect: group the quotes by root and expiry (`volatility-derivatives-quant`) | 58,000 | Code and 4 tests done; smoke test blocked (no Alpaca key id) |
 | 2 | 2026-11-20 | Arbitrage survey (`Explore`) and review notes of the root fix (`volatility-derivatives-quant`) | 170,000 | Five tickets written; gate PASS-WITH-NOTES, SPX and SPY real runs by the Head of Technology |
 | 3 | 2026-11-20 | arb-1 chain check (`volatility-derivatives-quant`, 3 rounds) and arb-2 step 1 (`rates-credit-quant`, 3 rounds) | 290,000 | Both gates PASS-WITH-NOTES; one pull request for the two tickets |
+| 4 | 2026-11-21 | arb-1b, arb-2 step 2, vol-1 (2 review cycles), vol-7 (2 cycles), arb-4 step 1 (four agents) | 900,000 | All gates passed; one pull request (work before the branch answer) |

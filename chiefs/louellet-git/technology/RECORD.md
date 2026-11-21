@@ -122,3 +122,16 @@ Done: the ask form in `chiefs/ORIENTATION.md`, section 5 (Question, Why it matte
 ## 2026-11-20 23:52 UTC (chat)
 Words: "I need the question as a yes/no from the sessions to my phone"
 Done: an ask is a yes/no question; the session where the person answers pushes it to the phone ("Yes or no: ...? Recommended: ..."). `chiefs/ORIENTATION.md`, section 5; the three open asks written again.
+
+## 2026-11-21 00:08 UTC (chat)
+Words: "I need the question as an actual question I click y/n for, lean"
+Done: `chiefs/ORIENTATION.md`, section 5: the session where the person answers shows the question dialog (`AskUserQuestion`) with "Yes" and "No", plus a push notification to open the session.
+
+## 2026-11-21 00:11 UTC (question dialog)
+Question: "May one automatic job save the day's option prices each trading day (about 3:45 pm New York time), as a test for 20 trading days?"
+Words: "Yes (Recommended)"
+Done: the scheduled task "Daily option price save (20-day test)" (15:27 New York time, market days; SPX, SPY, VIX chains to the store; stops after 20 days). Ticket moved to `PLANNING/board/done/`.
+
+## 2026-11-21 00:37 UTC (chat)
+Words: "Is the lean method up to date? Can you move to a new repo called the-heads. I created it so it'll be separate from the chiefs."
+Done: it was not up to date (no model permission, no ask flow, no board area `ask`, no write-up row). `louellet-git/the-heads` has the general system with these rules (commit 6264abb). `lean/` is removed from `louellet-git/chiefs`, and its README points to the new repo (chiefs pull request 35).

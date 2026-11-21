@@ -9,6 +9,8 @@ person decided. Keep this file below 60 lines. Started 2026-11-20.
   the ticket, open the pull request.
 - Then the queue (`head: technology`, lowest `order`): `mapping-test-2000`, `filing-values-in-variables`,
   `filed-date-fabrication`, `collab-board-workflow`, `store-arb-data-rest`. `live-data-stream` waits.
+- Daily option save test: a scheduled task (15:27 New York time, market days) saves SPX, SPY, VIX to the
+  store and stops after 20 days (about 2026-12-22). Then report the cost and the use to the person.
 - Owner tasks: `owner-first-run` (keys on the laptop), `delete-merged-branches` (6 branches on GitHub).
 
 ## Standing words of the person (record: RECORD.md)
@@ -23,7 +25,8 @@ person decided. Keep this file below 60 lines. Started 2026-11-20.
 - One data store `louellet-git/fa-data`, public, written only by this head; scan for keys before a push.
 - Do not take the Scan Support rules. Never work in a `chiefs` checkout under `/home/user`: its
   `.claude/CLAUDE.md` loads them. Change `louellet-git/chiefs` from a clone in the scratch folder.
-  Its `lean/` is the general heads system (rules only); a new copy only on the word of the person.
+  The general heads system (rules only) is the repo `louellet-git/the-heads` (not chiefs, from 2026-11-21).
+  When a head rule changes here, make the same general change there.
 - The person uses a Windows laptop (PowerShell) and keeps the keys in `.env`; a key never goes in a chat
   or a file; in a cloud session use `request_credential`.
 
