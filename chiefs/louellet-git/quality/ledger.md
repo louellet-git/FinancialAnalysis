@@ -156,3 +156,4 @@
 | revenue tags cycle 2 | 2026-11-21 | claude/revenue-old-tags (ce783eb): code-reviewer (Haiku) PASS (the mixed-basis rule needs a different value, not only a different accession; 95 removed, all mixed); verdict PASS-WITH-NOTES | measured with the batch | |
 | premium-series PIT results | 2026-11-21 | 61fe8de: model-validator (Haiku) REVISE (split basis, par path, tested commit, table not covered); verdict REVISE before the series run of record | measured with the batch | |
 | cycle-model brief | 2026-11-21 | econ/brief-cycle-models (826f23d): auditor (Haiku) 33 of 36 claims agree; verdict REVISE (probit framing against the NY Fed input; the Baa-Aaa count) | measured with the batch | |
+| cycle-model brief fixes | 2026-11-21 | econ/brief-cycle-models (5823444): head check of B1, B2, NFCI; PASS-WITH-NOTES | small (head only) | |
