@@ -98,3 +98,14 @@ choice (a). The blind score of the fix is `fa dcf pit --cut 2015 --half 1` only 
 and the T2 to T4 runs after the fix are reported as "not blind (designed after the first T1 failed; half 0 fitted
 the fix)", with the count of tries. The fix is a model change: it takes the gate of a model change and the
 Backtest row. The first live weeks give the fresh hold-out.
+
+**Result of the T1 fix (2026-11-21, `claude/t1-fcf-band` 49a1d82, A-010):** the blind score on half 1 FAILS on
+revenue only. Free cash flow passes at T+1 to T+3 (13.9 / 76.9 / 9.2; 11.2 / 79.6 / 9.3; 10.6 / 78.3 / 11.1).
+Revenue at T+3 fails (3.8 / 87.6 / 8.6; the band is too wide, an error on the safe side). Half 1 is now seen.
+
+**The test of a revenue fix (written before any run of it):** develop on `fa dcf pit --cut 2015 --half 0` only,
+one rule with a reason that is a fact of half 0. Score once on a hold-out that no run has scored alone: the earlier
+base years, `fa dcf pit --cut 2011` limited to base years 2011 to 2014 (a new option `--base-to 2014`), with
+`acq_cv=1` and the revenue rule, both halves. Label it "partly blind": earlier full-sample runs mixed these years
+with later years. Pass: the T1 rule on the "all" rows, revenue and free cash flow, T+1 to T+3. No fully blind
+fundamentals data exists in the store; the next 10-K filings are the only fresh data.
