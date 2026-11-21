@@ -12,10 +12,8 @@ person decided. Keep this file below 60 lines. Started 2026-11-20. Dream pass: 2
 ## Decisions of this head (records in `docs/assumptions/`; no reason uses the price)
 - L = min(10-year zero yield, 4.0%), NOMINAL (A-001). Acquisition charge = w x expected spend (A-002).
 - The value at the means is deterministic and is NOT the expected value (the mean is higher).
-- Attribution: math parts (facts, time, rates) in `fa dcf attribute`; implied parts (premium, growth) split
-  into common and company; the common view comes from the Economics engine (`fa macro view`), else the list median.
-- Reading of the week to 2026-11-20 (preliminary): a correction of prices that were expensive against 2019-2026;
-  not extreme against 1871 on (lowest quarter); no buy signal for the list. NVDA is company-specific.
+- Attribution: math parts (facts, time, rates); implied parts (premium, growth): common from `fa macro view`, else the list median.
+- Week to 2026-11-20: a correction of expensive prices, no buy signal for the list; NVDA is consistent with its sector.
 - NVDA (PR 106): Luc approved the MERGE, NOT the value. Never say that he approved the value.
 
 ## Lessons (tested)
