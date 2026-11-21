@@ -20,8 +20,9 @@ prove without the market price.
 sections), `PLANNING/RULES.md`, and `analysis/priors/dcf_investigation_2026-11-20.md`.
 
 **Output.** The files, plus a final message: the change, the baseline and new outputs
-(command, seed, cache date), the IBM numbers before and after, the tests added, and the
-risks.
+(command, seed, data store commit), the IBM numbers before and after, the tests added, and
+the risks. A finding goes in a result file or a test that a person can run again, not
+only in the message.
 
 **Checks:**
 1. Run the baseline before the change and again after each change. One change at a time.

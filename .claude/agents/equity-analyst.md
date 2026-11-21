@@ -21,9 +21,12 @@ and the auditor.
 `analysis/IBM/research-ledger.md` as the example of a reviewed work. Your files:
 `analysis/<TICKER>/`.
 
-**Output.** The model, the ledger and the report draft, plus a final message: the
-headline numbers with their command and seed, the weak points that you found yourself,
-and the review steps that remain.
+**Output.** The model, the ledger, the report draft and `analysis/<TICKER>/COMMANDS.md`
+(each command of the report, with the seed and the data store commit, so that a person
+gets the same numbers), plus a final message: the headline numbers with their command and
+seed, the weak points that you found yourself, the judgments that could be a general rule
+of the automatic model (owner, 2026-11-21: the work contributes to the DCF engine), and the
+review steps that remain.
 
 **Checks:**
 1. Inputs come from `mapcheck values TICKER` (standard names). Check `nested` first.

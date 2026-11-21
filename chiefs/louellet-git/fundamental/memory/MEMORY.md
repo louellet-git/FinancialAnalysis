@@ -38,6 +38,9 @@ each assumption: this head decides, with a reason that does not use the price.
 
 ## Standing words of the person
 - Immediate goal: the stochastic DCF engine, for stocks only; no option work in this area.
+- 2026-11-21: "Ensure that work we do is repeatable and contributes to the dcf engine": each analysis has
+  a COMMANDS.md with the store commit; each ticker judgment that can be a rule goes to
+  `T-20261121-dcf-engine-from-tickers`.
 - Merge rule: the head merges its own pull request after a gate pass and a green check
   (`chiefs/ORIENTATION.md`, section 6), with no new question.
 - A merged ticket moves to `PLANNING/board/done/` (`status: done`, `merged:`); never delete a ticket.
