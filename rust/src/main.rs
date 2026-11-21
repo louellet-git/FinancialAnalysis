@@ -40,7 +40,7 @@ USAGE:
                                                   fit Heston or Bates to a stored option snapshot (fa vol --help)
   fa dcf drivers|classic|scenarios|models ...     Monte Carlo DCF in Rust (fa dcf --help)
   fa selftest golden [--case NAME] [--cases PATH] [--update REASON [--case NAME | --all]]
-                                                  stored commands with the SHA-256 of their expected output; a store commit that is not present is SKIPPED (fa selftest golden --help)
+                                                  stored commands with the SHA-256 of their expected output; an input file that changed makes a case SKIPPED (fa selftest golden --help)
   fa backtest TICKER [--horizon Y] [--simulations N] [--seed S]
                                                   point-in-time vintage backtest of revenue and FCF projections (Rust)
   fa verdict TICKER [--price P] [--rf-date D|today] [--rf-base-date D] [--rating A-]

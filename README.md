@@ -186,6 +186,7 @@ misses can only make the case FAIL (the output changes), never pass: then add th
 are skipped says "0 of N cases ran" and exits 0. The `store` commit is information only. A mask hides only lines that vary (timing lines); any other mask needs a `why`. The command never downloads:
 it runs only commands of an allow list that read the cache, and a case whose command asks for the network FAILS and names the request. `--update` needs a reason; it rewrites the input hashes and the expected text together, and the reason and the date go
 into the case file, and the expected text goes into `rust/tests/golden/NAME.txt`, so the pull request shows the change.
+A case that runs longer than the deadline (default 30 minutes, `--timeout-mins N`) is killed and FAILS. The expected texts are public: a case must not print raw option quotes (the options case uses `--top 0`).
 `fa selftest golden --help` has the details.
 
 ## Standard input variables

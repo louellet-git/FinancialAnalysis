@@ -80,4 +80,5 @@ error by series, model implied volatility minus market mid (vol points):
   SPXW   2027-09-30    314   426     0.511     3.356
   all                       8141     1.680    38.298
 
+fit of 53 series, 8141 quotes
 <masked>

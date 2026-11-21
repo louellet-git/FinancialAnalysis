@@ -69,19 +69,8 @@ size bands of the checks 1 to 5 (USD for one share): all breaks / breaks with no
   0.10 to 1         72 /     71
   1 to 10           59 /     59
   10 and above       0 /      0
-the 10 largest of the checks 1 to 5 with no marked leg:
-       5.86 $    117.1 ticks  SPX 2027-09-17 butterfly: call: bid 564.76 of SPX270917C07125000 is above 558.9050 = 0.5000 x ask 569.96 of SPX270917C07100000 + 0.5000 x ask 547.85 of SPX270917C07150000
-       5.45 $    109.0 ticks  SPXW 2027-09-30 monotony: put: bid 442.55 of SPXW270930P06830000 is above ask 437.1 of SPXW270930P06840000
-       5.00 $     99.9 ticks  SPXW 2027-03-31 butterfly: put: bid 421.43 of SPXW270331P07065000 is above 416.4350 = 0.5000 x ask 413.63 of SPXW270331P07060000 + 0.5000 x ask 419.24 of SPXW270331P07070000
-       4.51 $     90.3 ticks  SPXW 2027-03-31 butterfly: put: bid 391.97 of SPXW270331P06990000 is above 387.4550 = 0.5000 x ask 385.73 of SPXW270331P06985000 + 0.5000 x ask 389.18 of SPXW270331P06995000
-       4.34 $     86.8 ticks  SPX 2027-12-17 butterfly: put: bid 527.45 of SPX271217P07000000 is above 523.1100 = 0.5000 x ask 506.56 of SPX271217P06950000 + 0.5000 x ask 539.66 of SPX271217P07050000
-       3.73 $     74.6 ticks  SPXW 2027-03-31 monotony: put: bid 421.43 of SPXW270331P07065000 is above ask 417.7 of SPXW270331P07080000
-       3.22 $     64.4 ticks  SPXW 2027-09-30 slope: put: bid 445.32 of SPXW270930P06845000 less ask 437.1 of SPXW270930P06840000 is above the strike difference 5
-       3.15 $     63.0 ticks  SPXW 2027-03-31 monotony: put: bid 276.15 of SPXW270331P06640000 is above ask 273 of SPXW270331P06645000
-       2.95 $     59.1 ticks  SPX 2027-03-19 butterfly: call: bid 373.9 of SPX270319C07030000 is above 370.9450 = 0.5000 x ask 371.17 of SPX270319C07025000 + 0.5000 x ask 370.72 of SPX270319C07035000
-       2.93 $     58.6 ticks  SPXW 2027-03-31 butterfly: put: bid 288.2 of SPXW270331P06680000 is above 285.2700 = 0.5000 x ask 284.09 of SPXW270331P06675000 + 0.5000 x ask 286.45 of SPXW270331P06685000
-the 1 largest of the checks 1 to 5 with a marked leg:
-       0.54 $     10.9 ticks  SPXW 2026-11-25 butterfly: put: bid 117.47 of SPXW261125P06870000 is above 116.9250 = 0.5000 x ask 116.51 of SPXW261125P06865000 + 0.5000 x ask 117.34 of SPXW261125P06875000
+the 0 largest of the checks 1 to 5 with no marked leg:
+the 0 largest of the checks 1 to 5 with a marked leg:
 the 0 largest intrinsic and bound breaks:
 
 Notes:

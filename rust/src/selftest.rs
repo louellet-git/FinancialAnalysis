@@ -20,9 +20,10 @@ use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 pub const USAGE: &str = "\
-fa selftest golden [--case NAME] [--cases PATH] [--update REASON [--case NAME | --all]] [--record-inputs [--case NAME | --all]]
+fa selftest golden [--case NAME] [--cases PATH] [--update REASON [--case NAME | --all]] [--record-inputs [--case NAME | --all]] [--timeout-mins N]
   Run the stored cases with this binary and compare the SHA-256 of the masked stdout with the stored hash.
   Default case file: rust/tests/golden/cases.toml of the repository (FA_REPO). The data cache is data/raw of it.
   Each case lists the input files that it reads, with their SHA-256 (paths relative to the repository root).
@@ -34,6 +35,7 @@ fa selftest golden [--case NAME] [--cases PATH] [--update REASON [--case NAME | 
   Exit 1: a case failed (the first 20 lines that differ).
   --case NAME       run only this case
   --cases PATH      another case file (the expected texts are next to it)
+  --timeout-mins N  the deadline of one case (default 30): a case that runs longer is killed and FAILS
   --update REASON   write the new expected text and the new input hashes of the named cases, with the reason and the
                     date. A reason is required. Needs --case NAME or --all.
   --record-inputs   run the case(s) and write the list of the files that the command opens, with their hashes, into the
@@ -285,6 +287,8 @@ pub struct RunOutput {
     pub code: i32,
     /// The network requests that the child tried (the first line of each, for example `CONNECT host:443 HTTP/1.1`).
     pub requests: Vec<String>,
+    /// The run was killed at the deadline.
+    pub timed_out: bool,
 }
 
 pub type RunResult = Result<RunOutput, String>;
@@ -302,6 +306,8 @@ pub struct Env<'a> {
     pub run: &'a dyn Fn(&[String]) -> RunResult,
     /// The files (relative to the root) that the arguments open for reading.
     pub record: &'a dyn Fn(&[String]) -> FilesResult,
+    /// The deadline of one case (for the message).
+    pub timeout: Duration,
     pub today: String,
 }
 
@@ -312,6 +318,8 @@ pub struct Options {
     pub update: Option<String>,
     pub all: bool,
     pub record_inputs: bool,
+    /// The deadline of one case in minutes (default 30).
+    pub timeout_mins: Option<f64>,
 }
 
 fn parse_options(args: &[String]) -> Result<Options, String> {
@@ -331,6 +339,10 @@ fn parse_options(args: &[String]) -> Result<Options, String> {
             }
             "--all" => o.all = true,
             "--record-inputs" => o.record_inputs = true,
+            "--timeout-mins" => {
+                let v = value("--timeout-mins")?;
+                o.timeout_mins = Some(v.parse::<f64>().ok().filter(|m| m.is_finite() && *m > 0.0).ok_or_else(|| format!("bad --timeout-mins '{v}'"))?);
+            }
             other => return Err(format!("unknown argument '{other}'")),
         }
     }
@@ -357,6 +369,7 @@ pub fn run_cases(cases_path: &Path, opts: &Options, env: &Env, out: &mut dyn Wri
         }
     }
     let (mut passed, mut failed, mut skipped, mut changed, mut selected) = (0, 0, Vec::new(), 0, 0);
+    let mut writes: Vec<(PathBuf, String)> = Vec::new();
     for case in file.cases.iter_mut() {
         if opts.case.as_ref().is_some_and(|n| n != &case.name) {
             continue;
@@ -379,6 +392,11 @@ pub fn run_cases(cases_path: &Path, opts: &Options, env: &Env, out: &mut dyn Wri
             }
         }
         let o = (env.run)(&case.args).map_err(|e| format!("case {}: {e}", case.name))?;
+        if o.timed_out {
+            let _ = writeln!(out, "FAIL {}: timed out after {} min", case.name, minutes(env.timeout));
+            failed += 1;
+            continue;
+        }
         if !o.requests.is_empty() {
             let _ = writeln!(out, "FAIL {}: the command asked for the network (the golden run never downloads): {}", case.name, o.requests.join("; "));
             failed += 1;
@@ -402,7 +420,7 @@ pub fn run_cases(cases_path: &Path, opts: &Options, env: &Env, out: &mut dyn Wri
         if let Some(reason) = &opts.update {
             // The input hashes and the expected text change together.
             case.inputs = case.inputs.iter().map(|i| hash_inputs(env.root, std::slice::from_ref(&i.path)).map(|mut v| v.remove(0))).collect::<Result<_, _>>()?;
-            std::fs::write(&txt, &masked).map_err(|e| format!("{}: {e}", txt.display()))?;
+            writes.push((txt.clone(), masked.clone()));
             if let Some(h) = (env.head)() {
                 case.store = h;
             }
@@ -434,8 +452,8 @@ pub fn run_cases(cases_path: &Path, opts: &Options, env: &Env, out: &mut dyn Wri
         }
     }
     if opts.update.is_some() || opts.record_inputs {
-        let s = toml::to_string(&file).map_err(|e| e.to_string())?;
-        std::fs::write(cases_path, s).map_err(|e| format!("{}: {e}", cases_path.display()))?;
+        writes.push((cases_path.to_path_buf(), toml::to_string(&file).map_err(|e| e.to_string())?));
+        write_all_or_none(&writes)?;
         let _ = writeln!(out, "{changed} case(s) written to {}", cases_path.display());
         return Ok(if failed > 0 { 1 } else { 0 });
     }
@@ -470,6 +488,137 @@ fn request_listener() -> Result<(u16, Seen), String> {
     Ok((port, seen))
 }
 
+/// Minutes of a deadline for a message: `30`, `0.05`.
+fn minutes(d: Duration) -> String {
+    let m = d.as_secs_f64() / 60.0;
+    if m.fract() == 0.0 {
+        format!("{m:.0}")
+    } else {
+        format!("{m:.2}")
+    }
+}
+
+/// Write each file to a temporary name, then rename them all. An error before the renames leaves every file as it was.
+fn write_all_or_none(items: &[(PathBuf, String)]) -> Result<(), String> {
+    let tmp_of = |p: &Path| {
+        let mut n = p.file_name().map(|s| s.to_os_string()).unwrap_or_default();
+        n.push(".golden-tmp");
+        p.with_file_name(n)
+    };
+    for (i, (p, text)) in items.iter().enumerate() {
+        if let Err(e) = std::fs::write(tmp_of(p), text) {
+            for (q, _) in &items[..=i] {
+                let _ = std::fs::remove_file(tmp_of(q));
+            }
+            return Err(format!("{}: {e}", p.display()));
+        }
+    }
+    for (p, _) in items {
+        std::fs::rename(tmp_of(p), p).map_err(|e| format!("{}: {e}", p.display()))?;
+    }
+    Ok(())
+}
+
+/// Run a command with a deadline. At the deadline the command (and, on Unix, its process group) is killed.
+/// Returns (stdout, stderr, exit code, timed out).
+fn run_with_deadline(cmd: &mut Command, timeout: Duration) -> Result<(String, String, i32, bool), String> {
+    use std::io::Read;
+    use std::process::Stdio;
+    cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        cmd.process_group(0);
+    }
+    let mut child = cmd.spawn().map_err(|e| e.to_string())?;
+    let drain = |r: Option<Box<dyn Read + Send>>| {
+        std::thread::spawn(move || {
+            let mut b = Vec::new();
+            if let Some(mut r) = r {
+                let _ = r.read_to_end(&mut b);
+            }
+            String::from_utf8_lossy(&b).into_owned()
+        })
+    };
+    let out = drain(child.stdout.take().map(|s| Box::new(s) as Box<dyn Read + Send>));
+    let err = drain(child.stderr.take().map(|s| Box::new(s) as Box<dyn Read + Send>));
+    let start = Instant::now();
+    let (code, timed_out) = loop {
+        match child.try_wait().map_err(|e| e.to_string())? {
+            Some(st) => break (st.code().unwrap_or(-1), false),
+            None if start.elapsed() >= timeout => {
+                #[cfg(unix)]
+                {
+                    // the process group: strace and the command under it
+                    let _ = Command::new("kill").args(["-KILL", "--", &format!("-{}", child.id())]).output();
+                }
+                let _ = child.kill();
+                let _ = child.wait();
+                break (-1, true);
+            }
+            None => std::thread::sleep(Duration::from_millis(20)),
+        }
+    };
+    Ok((out.join().unwrap_or_default(), err.join().unwrap_or_default(), code, timed_out))
+}
+
+/// The child process of a case: this binary (or another for a test), the repository, the recording proxy, the deadline.
+pub struct Runner {
+    pub exe: PathBuf,
+    pub repo: PathBuf,
+    pub port: u16,
+    pub seen: Seen,
+    pub timeout: Duration,
+}
+
+impl Runner {
+    fn command(&self, prefix: &[&str], a: &[String]) -> Command {
+        let proxy = format!("http://127.0.0.1:{}", self.port);
+        let mut c = match prefix.split_first() {
+            Some((p, rest)) => {
+                let mut c = Command::new(p);
+                c.args(rest).arg(&self.exe);
+                c
+            }
+            None => Command::new(&self.exe),
+        };
+        // No download: the proxy is a local listener that records and closes; the repository is the working folder.
+        c.args(a).current_dir(&self.repo).env("FA_REPO", &self.repo).env("HTTPS_PROXY", &proxy).env("https_proxy", &proxy);
+        c
+    }
+
+    pub fn run(&self, a: &[String]) -> RunResult {
+        check_allowed(a)?;
+        if let Ok(mut v) = self.seen.lock() {
+            v.clear();
+        }
+        let (stdout, stderr, code, timed_out) = run_with_deadline(&mut self.command(&[], a), self.timeout)?;
+        // The listener thread writes the request a moment after the child has sent it.
+        std::thread::sleep(Duration::from_millis(50));
+        let requests = self.seen.lock().map(|v| v.clone()).unwrap_or_default();
+        Ok(RunOutput { stdout, stderr, code, requests, timed_out })
+    }
+
+    pub fn record(&self, a: &[String]) -> FilesResult {
+        check_allowed(a)?;
+        let trace = std::env::temp_dir().join(format!("fa-golden-strace-{}.txt", std::process::id()));
+        let mut cmd = self.command(&["strace", "-f", "-e", "trace=openat", "-o", &trace.to_string_lossy()], a);
+        let (_, _, code, timed_out) =
+            run_with_deadline(&mut cmd, self.timeout).map_err(|e| format!("strace is needed for --record-inputs ({e}); write the list by hand and add a `note` to the case"))?;
+        if timed_out {
+            let _ = std::fs::remove_file(&trace);
+            return Err(format!("timed out after {} min under strace", minutes(self.timeout)));
+        }
+        let text = std::fs::read_to_string(&trace).map_err(|e| format!("{}: {e}", trace.display()))?;
+        let _ = std::fs::remove_file(&trace);
+        if code != 0 {
+            return Err(format!("the command exited with {code} under strace"));
+        }
+        // Only paths under the repository count.
+        Ok(paths_from_strace(&text, &self.repo))
+    }
+}
+
 /// Entry point: the arguments after `selftest golden`.
 pub fn command(repo: &Path, args: &[String]) -> u8 {
     if args.iter().any(|a| a == "-h" || a == "--help") {
@@ -499,51 +648,18 @@ pub fn command(repo: &Path, args: &[String]) -> u8 {
             return 2;
         }
     };
-    let proxy = format!("http://127.0.0.1:{port}");
-    // No download: the proxy is a local listener that records and closes; the repository is the working folder.
-    let child = |prefix: &[&str], a: &[String]| -> Command {
-        let mut c = match prefix.split_first() {
-            Some((p, rest)) => {
-                let mut c = Command::new(p);
-                c.args(rest).arg(&exe);
-                c
-            }
-            None => Command::new(&exe),
-        };
-        c.args(a).current_dir(repo).env("FA_REPO", repo).env("HTTPS_PROXY", &proxy).env("https_proxy", &proxy);
-        c
-    };
+    let timeout = Duration::from_secs_f64(opts.timeout_mins.unwrap_or(30.0) * 60.0);
+    let runner = Runner { exe, repo: repo.to_path_buf(), port, seen, timeout };
     let head = || git(&cache, &["rev-parse", "HEAD"]).filter(|o| o.status.success()).map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
-    let run = |a: &[String]| -> RunResult {
-        check_allowed(a)?;
-        if let Ok(mut v) = seen.lock() {
-            v.clear();
-        }
-        let o = child(&[], a).output().map_err(|e| e.to_string())?;
-        let requests = seen.lock().map(|v| v.clone()).unwrap_or_default();
-        Ok(RunOutput { stdout: String::from_utf8_lossy(&o.stdout).into_owned(), stderr: String::from_utf8_lossy(&o.stderr).into_owned(), code: o.status.code().unwrap_or(-1), requests })
-    };
-    let record = |a: &[String]| -> Result<Vec<String>, String> {
-        check_allowed(a)?;
-        let trace = std::env::temp_dir().join(format!("fa-golden-strace-{}.txt", std::process::id()));
-        let st = child(&["strace", "-f", "-e", "trace=openat", "-o", &trace.to_string_lossy()], a)
-            .output()
-            .map_err(|e| format!("strace is needed for --record-inputs ({e}); write the list by hand and add a `note` to the case"))?;
-        let text = std::fs::read_to_string(&trace).map_err(|e| format!("{}: {e}", trace.display()))?;
-        let _ = std::fs::remove_file(&trace);
-        if !st.status.success() {
-            return Err(format!("the command exited with {:?} under strace", st.status.code()));
-        }
-        // The files that fa itself reads at start (the case file, the binary) are outside the repository data; only paths under the repository count.
-        Ok(paths_from_strace(&text, repo))
-    };
-    let env = Env { root: repo, head: &head, run: &run, record: &record, today: mapcheck::dates::format(mapcheck::dates::today()) };
+    let run = |a: &[String]| runner.run(a);
+    let record = |a: &[String]| runner.record(a);
+    let env = Env { root: repo, head: &head, run: &run, record: &record, timeout, today: mapcheck::dates::format(mapcheck::dates::today()) };
     match run_cases(&cases_path, &opts, &env, &mut std::io::stdout()) {
         Ok(code) => code,
         Err(m) => {
             eprintln!("fa: {m}");
-            // A refused command or a bad case file is a usage fault of the case file.
-            if m.contains("allow list") || m.contains("can download") || m.contains("mask") {
+            // A refused command, a bad case file or an unknown case name is a usage fault.
+            if m.contains("allow list") || m.contains("can download") || m.contains("mask") || m.contains("no case named") {
                 64
             } else {
                 2
@@ -681,7 +797,7 @@ mod tests {
             Ok(out.clone())
         };
         let record = |_: &[String]| -> Result<Vec<String>, String> { Ok(s(&["data/raw/in.txt"])) };
-        let env = Env { root: &f.dir, head: &head, run: &run, record: &record, today: "2026-11-21".into() };
+        let env = Env { root: &f.dir, head: &head, run: &run, record: &record, timeout: Duration::from_secs(60), today: "2026-11-21".into() };
         let mut buf = Vec::new();
         let code = run_cases(&f.dir.join("cases.toml"), opts, &env, &mut buf).unwrap();
         (code, String::from_utf8(buf).unwrap())
@@ -801,9 +917,85 @@ mod tests {
             Ok(RunOutput::default())
         };
         let record = |_: &[String]| -> Result<Vec<String>, String> { Ok(vec![]) };
-        let env = Env { root: &f.dir, head: &head, run: &run, record: &record, today: "2026-11-21".into() };
+        let env = Env { root: &f.dir, head: &head, run: &run, record: &record, timeout: Duration::from_secs(60), today: "2026-11-21".into() };
         let err = run_cases(&f.dir.join("cases.toml"), &Options::default(), &env, &mut Vec::new()).unwrap_err();
         assert!(err.contains("allow list"), "{err}");
         assert_eq!(*calls.borrow(), 0);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_child_that_sleeps_is_killed_at_the_deadline() {
+        let t = Instant::now();
+        let (_, _, _, timed_out) = run_with_deadline(Command::new("sleep").arg("20"), Duration::from_millis(300)).unwrap();
+        assert!(timed_out);
+        assert!(t.elapsed() < Duration::from_secs(10), "the run did not wait for the child");
+        let (out, _, code, timed_out) = run_with_deadline(Command::new("echo").arg("hi"), Duration::from_secs(30)).unwrap();
+        assert_eq!((out.as_str(), code, timed_out), ("hi\n", 0, false));
+    }
+
+    #[test]
+    fn a_timed_out_case_fails_and_says_so() {
+        let f = Fixture::new("t", "a\n");
+        let calls = RefCell::new(0);
+        let out = RunOutput { timed_out: true, ..Default::default() };
+        let head = || None;
+        let run = |_: &[String]| -> RunResult {
+            *calls.borrow_mut() += 1;
+            Ok(out.clone())
+        };
+        let record = |_: &[String]| -> FilesResult { Ok(vec![]) };
+        let env = Env { root: &f.dir, head: &head, run: &run, record: &record, timeout: Duration::from_secs(3), today: "2026-11-21".into() };
+        let mut buf = Vec::new();
+        let code = run_cases(&f.dir.join("cases.toml"), &Options::default(), &env, &mut buf).unwrap();
+        let text = String::from_utf8(buf).unwrap();
+        assert_eq!(code, 1);
+        assert!(text.contains("FAIL one: timed out after 0.05 min"), "{text}");
+    }
+
+    #[test]
+    fn all_files_are_written_or_none() {
+        let dir = std::env::temp_dir().join(format!("fa-golden-atomic-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("a.txt"), "old").unwrap();
+        let bad = vec![(dir.join("a.txt"), "new".to_string()), (dir.join("no_such_folder").join("b.txt"), "x".to_string())];
+        assert!(write_all_or_none(&bad).is_err());
+        assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "old");
+        assert!(!dir.join("a.txt.golden-tmp").exists());
+        write_all_or_none(&[(dir.join("a.txt"), "new".to_string())]).unwrap();
+        assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "new");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn an_unknown_case_name_is_a_usage_error() {
+        let f = Fixture::new("u", "a\n");
+        let cases = f.dir.join("cases.toml");
+        let args = s(&["--cases", &cases.to_string_lossy(), "--case", "nope"]);
+        assert_eq!(command(&f.dir, &args), 64);
+    }
+
+    /// End to end with the real runner: a child (a shell script that stands for a command that downloads) opens a
+    /// connection through the proxy variable. The case FAILS and the message names the host. No real download happens.
+    #[cfg(unix)]
+    #[test]
+    fn a_child_that_asks_for_the_network_fails_the_case_end_to_end() {
+        use std::os::unix::fs::PermissionsExt;
+        let f = Fixture::new("n", "out\n");
+        let script = f.dir.join("fake_fa.sh");
+        std::fs::write(&script, "#!/bin/bash\nport=${HTTPS_PROXY##*:}\nexec 3<>/dev/tcp/127.0.0.1/$port\necho \"CONNECT query1.finance.yahoo.com:443 HTTP/1.1\" >&3\necho out\n").unwrap();
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let (port, seen) = request_listener().unwrap();
+        let runner = Runner { exe: script, repo: f.dir.clone(), port, seen, timeout: Duration::from_secs(60) };
+        let head = || None;
+        let run = |a: &[String]| runner.run(a);
+        let record = |a: &[String]| runner.record(a);
+        let env = Env { root: &f.dir, head: &head, run: &run, record: &record, timeout: Duration::from_secs(60), today: "2026-11-21".into() };
+        let mut buf = Vec::new();
+        let code = run_cases(&f.dir.join("cases.toml"), &Options::default(), &env, &mut buf).unwrap();
+        let text = String::from_utf8(buf).unwrap();
+        assert_eq!(code, 1, "{text}");
+        assert!(text.contains("FAIL one") && text.contains("query1.finance.yahoo.com:443"), "{text}");
     }
 }

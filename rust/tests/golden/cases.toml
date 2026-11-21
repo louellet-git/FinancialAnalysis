@@ -13,10 +13,10 @@ sha256 = "9c2c140d89df446424980896b579b35dd77357cdb3c75b4e5d7e40f4a9d14276"
 
 [[case]]
 name = "options_check_spx"
-args = ["options", "check", "SPX", "--date", "2026-11-20", "--rate", "0.04"]
+args = ["options", "check", "SPX", "--date", "2026-11-20", "--rate", "0.04", "--top", "0"]
 store = "2a0d1f22b7741be47d035e46817715e29a86cb46"
-sha256 = "24e69b6f38bf84b016489bb7a175d7e7e537019120fb8a938751058ba18c3d9f"
-reason = "first golden: current main"
+sha256 = "3631a2f5927d23f49be91731d8ad72c4599c1de9d323511263803fafa54e5538"
+reason = "options check: --top 0 (counts only, no raw quote lines may be committed); the check is the same"
 updated = "2026-11-21"
 
 [[case.inputs]]
@@ -27,12 +27,12 @@ sha256 = "be087a66749ec746a5c8dc9bf7f80ed6ce84a6e43bf6ff653aa3bca482e21bc3"
 name = "trade_backtest"
 args = ["trade", "backtest", "--end", "2026-10-09"]
 store = "2a0d1f22b7741be47d035e46817715e29a86cb46"
-sha256 = "9f0222265c901ccbee68be7339275b21cc4b38c2e7adf949599f6119b3f4e5b2"
-reason = "first golden: current main"
+sha256 = "a98bb8a8a3c65c43dbe2a05e2c7fe795e673c299c19c104f1a5d5772e1700fcb"
+reason = "trade_backtest: the time of a bot is on its own line (G1, the rejected-entry counts are checked now)"
 updated = "2026-11-21"
 
 [[case.mask]]
-prefix = "  rejected entries"
+prefix = "  time "
 timing = true
 
 [[case.mask]]
@@ -99,8 +99,8 @@ sha256 = "c864fc60b90529d8039e9208bfbeb4dae1b9752b02bb813328f665a7a94029de"
 name = "vol_fit_heston_spx"
 args = ["vol", "fit", "heston", "--symbol", "SPX", "--date", "2026-11-20", "--rate", "0.04", "--seed", "7"]
 store = "2a0d1f22b7741be47d035e46817715e29a86cb46"
-sha256 = "87bfda3f505fdc89ff537b00be7bc9330f3194d8a56770267f8fdfb9bc10c276"
-reason = "first golden: current main"
+sha256 = "cd566f5296c74b5a5081f085d5910663e8ce36fff6519dba82e8dac391fc93e7"
+reason = "vol fit: the fit counts are on their own line, only the time line is masked"
 updated = "2026-11-21"
 
 [[case.mask]]
@@ -116,7 +116,7 @@ name = "dcf_attribute_panel32"
 args = ["dcf", "attribute", "--tickers-file", "rust/mapcheck/universe/panel32.txt", "--from", "2026-11-13", "--to", "2026-11-20"]
 store = "2a0d1f22b7741be47d035e46817715e29a86cb46"
 sha256 = "2b7f856ff520537451a40e83856b6eeeded64ad4b31aa7d90226708406f918ce"
-reason = "first golden: current main"
+reason = "the store moved (e06070ce): AAPL prices.json changed"
 updated = "2026-11-21"
 
 [[case.mask]]
