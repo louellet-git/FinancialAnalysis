@@ -1016,6 +1016,24 @@ the trades are the same for the 22 bots and the template, with the 3% risk accou
 A Rust refresh of the cache gives the same text as the Python cache for each old row (see the
 ticket `option-backtest-rust`).
 
+### Algo engine (`rust/src/trading/algo/`, `fa algo ...`)
+
+One engine for replay and live. It fills each order in its own simulator, in memory. It sends no
+order to a broker: the live source type has one read function (the latest Alpaca quote), and a
+test checks that the code has no order endpoint. All fills are model fills.
+
+- `Strategy` (`mod.rs`) gets each input (a quote, or a bar close) and returns order intents. `demo.rs`
+  is a mean reversion on 1-minute closes. It is a pipe test, not a claim of profit.
+- `Source` (`source.rs`): `Live` polls the quote feed (default 1 request a second, the limit is 120 a
+  minute, because the free plan allows 200 a minute for the whole account); `Replay` reads the
+  recorded inputs of the day, else the stored bars (`SPY_1m.csv`, else `SPY_5m.csv`).
+- `Engine` (`engine.rs`): buy at the ask and sell at the bid (`--spread-share`), a fixed latency, a fee
+  for each share, no partial fills. Risk: max position, max loss for the day, the kill file
+  `data/processed/algo/STOP`, the end time (default 15:55 New York). A stop closes the position at once.
+- Files in `data/processed/algo/<date>/`: the inputs (each quote with its time and the read time), the
+  journal (each decision and fill), the summary. `fa algo replay` of the same day gives the same decisions.
+- The link to the research harness (hypothesis file, run log) is `cli::report_to_harness`: it is empty now.
+
 ## Tests
 
 `cargo test --manifest-path rust/Cargo.toml --locked`: the tests of the `fa` crate (the command prints the counts; no document names them, so that each change does not edit the same line).

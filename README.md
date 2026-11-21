@@ -463,6 +463,7 @@ rust/target/release/fa trade backtest                 # all bots, leaderboard (R
 rust/target/release/fa trade backtest --bot s14b_spy_trend_calls -v
 rust/target/release/fa trade backtest --max-risk 250  # larger risk for each trade
 rust/target/release/fa trade paper                    # one paper-trade step for each bot
+rust/target/release/fa algo replay --strategy demo --date 2026-11-18   # algo engine on stored bars; live: fa algo run --strategy demo (needs the Alpaca keys; own simulator, no order). PowerShell: $env:APCA_API_KEY_ID="..."; $env:APCA_API_SECRET_KEY="..."; .\rust\target\release\fa.exe algo run --strategy demo; stop: New-Item data\processed\algo\STOP
 ```
 
 `fa trade backtest --help` shows all options (`--out FILE` writes the leaderboard as CSV,
