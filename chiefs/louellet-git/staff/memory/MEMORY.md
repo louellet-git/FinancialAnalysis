@@ -34,7 +34,8 @@ Rules: `chiefs/ORIENTATION.md`, sections 1, 5 and 8. Decisions of the person: `.
 - Keep `PLANNING/board/EPICS.md` (epic -> story -> ticket) true: each open ticket in one story, each epic
   with the decision that it serves. Ticket `T-20261121-board-epics`. Look for: a ticket with no story, a
   story with no path to its end, old ticket text, a head that starts before it finishes.
-- The order across the epics in `EPICS.md` is a proposal; the person has not agreed to it yet.
+- The order across the epics in `EPICS.md` is agreed until the reset of 2026-11-25. Make a new one then.
+- `T-20261121-token-calculator` is on hold until the usage log has some weeks of data (owner word).
 
 ## Monitoring (owner word 2026-11-21: script only, no memory of a head, not token heavy, never a choke)
 - Test before you constrict (owner rule): a hook, a script or a way to manage the heads that constricts

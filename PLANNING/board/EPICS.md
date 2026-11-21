@@ -91,12 +91,15 @@ documents, the order code passed its gate, and the public repo has no private fi
 | E6.S2 The gates are repeatable | quality | `fa selftest golden` (row 25 of `T-20261121-quant-engine-integration`; Quant builds) → the mutation-test script (row 26), `T-20261025-bridge-per-ticker-rule` | next |
 | E6.S3 Work of the person | owner | `T-20261120-owner-first-run`, `T-20261120-delete-merged-branches` → `T-20261025-keep-private-frameworks-out-of-the-public-repo` | waits for the person |
 | E6.S4 Controls of orders and of data terms | quality (technology for the terms) | the gate "Order code (paper only)" before the first order (controls 0 to 8), a terms line for each source in `docs/DATA-SOURCES.md` | now (no ticket yet) |
-| E6.S5 The rules are checked by a script, not by memory | technology (the Head of Staff reads the output) | `T-20261121-board-check` → `T-20261121-usage-log`; also this page: `T-20261121-board-epics` (staff) | next |
+| E6.S5 The rules are checked by a script, not by memory | technology (the Head of Staff reads the output) | `T-20261121-board-check` → `T-20261121-usage-log` → `T-20261121-token-calculator` (on hold: needs the data); also this page: `T-20261121-board-epics` (staff) | next |
 
-## Order across the epics (proposal of the Head of Staff; the person decides)
+## Order across the epics
 
-1. E2.S1, because the person asked for it first and paused other work for it.
-2. E5.S1, because each result of E1 and E2 reads this data.
-3. E1.S1, because it opens E1.S3 and E1.S4.
-4. E4.S1, on the date of the live run.
-5. The other stories, in the order of their heads.
+Agreed with the person on 2026-11-21, until the reset of the weekly token limit (2026-11-25, 11:00 Toronto
+time; 71% was used on 2026-11-21). It is an order, not a limit: no work is stopped.
+
+1. E2.S1, the week report to its end.
+2. E5.S1 (the data audit) and E6.S5 (the two monitoring scripts).
+3. E4.S2 (the arbitrage register, in review) and E4.S1 after the live run of 2026-11-23.
+4. E1.S1, the T1 correction of the projection test.
+5. All other backlog (company types, volatility models, new studies) starts after the reset.
