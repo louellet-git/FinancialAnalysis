@@ -93,3 +93,8 @@ TO DO in the next code commit on claude/attribution-reality, before its gate req
 Before the series run of record: the poison and truncation tests on 3 real dates must also cover a 10-K/A after the
 anchor, a split after the anchor, the GSW and par rows and the switch week, a holiday Friday, every column, and the cut
 table. The first three dates (2020-03-20, 2022-06-17, 2025-04-04) are in `analysis/priors/data/premium_series_pit/`.
+
+**Pull request 190 (20:32 UTC, 2026-11-21):** claude/premium-series (9f8863c, main c251fa3 merged; 966 + 17 + 1 and 126 tests
+pass; the IBM headline is unchanged; the S&P 10 smoke test gives -9.96%). After the green check: merge, then the run of
+record of the week on main (the commands of pages 2 and 3 with `--curve par`), then merge main into
+claude/attribution-reality. The second branch waits for its gate verdict (a0e2480).
