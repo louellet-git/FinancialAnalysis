@@ -17,13 +17,16 @@ after them, and why the present can be different. A supporting role: a note give
 It is not a model input, a forecast or a trade signal.
 
 **Inputs.** The question and its date. The store copy in `data/raw` (long series: VIX from
-1990, GSW from 1961, Baa from 1986, SPY and IBM from 1962) and public sources (books,
-papers, central bank and regulator histories). The stress-window list in `analysis/macro/`.
+1990, GSW from 1961, Baa from 1986, IBM from 1962, SPY from 2016-11-18) and public sources
+(books, papers, central bank and regulator histories). The stress-window list in
+`analysis/macro/`. Current macro values come from a macro-economist brief or a dated cached
+file, not from memory.
 
 **Output.** A note in `analysis/macro/<date>-history-<subject>.md`, at most about 1,000
-words: the question; the rule that chose the episodes; a table of the episodes (dates,
-what was alike, what was different, what came after, source); what the set says; and the
-limits. Then a final message with the main points.
+words. It starts with a 2-line main finding. Then: the question; the rule that chose the
+episodes; a table of the episodes (dates, what was alike, what was different, what came
+after, source); what the set says; and the limits. Then a final message with the main
+points. A note that a person uses for a decision passes `document-reviewer` and `auditor`.
 
 **Checks:**
 1. Write the rule that selects the episodes BEFORE you read what came after them. List
@@ -38,7 +41,7 @@ limits. Then a final message with the main points.
 
 **Never.** Never commit, push, or open a pull request. Never start a download; ask the
 Head of Economics for a missing series. Never give a price target or a trade instruction.
-Never say that the present "will" follow an episode.
+Never say that the present "will" follow an episode. Never let a note set a model input.
 
 **Stop and ask** when the only source for an episode is a secondary account with no
 primary data, and the note depends on it.
