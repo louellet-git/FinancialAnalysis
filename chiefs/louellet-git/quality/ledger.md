@@ -91,3 +91,5 @@
 | fa dcf market F1 check | 2026-11-21 | `claude/dcf-market-level` (04d29fd): head check; header by name and parse errors with tests; PASS-WITH-NOTES | small (head only) | |
 | split-basis correction, validator | 2026-11-21 | `claude/split-basis-fix` (72d994f): REVISE (1 MAJ: `to` = today; SNDK 8x); real-path k-test identical to 1e-15; market values right for BKNG 2018 and NVDA 2024 | about 113k (measured) | code reviewer running |
 | split-basis correction verdict | 2026-11-21 | `claude/split-basis-fix` (72d994f): code-reviewer REVISE (the same MAJ), validator REVISE; verdict REVISE (1 MAJ: `to` = today); head checks the fix | about 75k code (measured) | |
+| split-basis fix check | 2026-11-21 | `claude/split-basis-fix` (afa1ab6): head check; `to` = the last price date of each ticker, with tests; PASS-WITH-NOTES | small (head only) | reruns wait for the split table cycle 2 |
+| split table cycle 2 started | 2026-11-21 | `claude/split-table` (dac0d5c), store c422939: data-quality-analyst (narrow; the two decisions) | running | |
