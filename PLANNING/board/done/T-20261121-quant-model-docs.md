@@ -2,11 +2,12 @@
 id: T-20261121-quant-model-docs
 title: Model documents and assumption records for the quant models
 area: docs
-status: review
+status: done
 owner: louellet-git
 head: quant
 order: 2.9
 branch: claude/quant-model-docs
+merged: 147, 151
 created: 2026-11-21
 requested_by: louellet-git
 acceptance: Each merged quant model has a document in `docs/models/` (at most 120 lines) and each assumption a record in `docs/assumptions/` (at most 60 lines, with its source), as CLAUDE.md "Model documents" and docs/QUALITY-STANDARDS.md section 4 say. A document-reviewer pass.
