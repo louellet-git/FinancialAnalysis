@@ -47,3 +47,12 @@ ticker for a list of 20 tickers or fewer; the S&P 10 list is `analysis/priors/da
 Not data defects (model limits, stated in the document): AMZN and INTC have a value below 0 at the means (AMZN FY2025:
 operating cash flow 139.5B, capex 131.8B, and the model counts all capex and stock pay as a cost); TSLA, AMD and PLTR
 need a premium or a growth outside the search range; banks, insurers and REITs have no model template.
+
+**State (2026-11-21 about 16:20 UTC):** correction: defect 2 above (a duplicate par row) was a false report of this head
+(a `head -2` printed the row); the store file is correct. The store f634633 has the 2026-11-20 closes of the S&P 100.
+Run to 2026-11-20 (not final): S&P 100 -9.40% (SPY 754.37 to 689.81, -8.56%); premium-first bridge: rates +4.93
+(10-year zero 5.129% to 4.903%), implied premium -10.71, implied growth -1.68, no model -2.03, time +0.09, facts +0.01.
+The prices to 2026-11-19 agree with the Alpaca IEX closes to a few cents. New data defect 3: IBM and JNJ have no close
+after 2026-11-18, and `attribute` takes the last close up to 10 days older, so it uses a stale price (sent to the Head
+of Technology; a later tool change: flag a price that is older than the date). The final run waits for defects 1 and 3
+(owner: "Don't leave out Berkshire ... Have that fixed"). A draft document is in progress (an agent).
