@@ -1,6 +1,6 @@
 # A-005: NVDA long-run operating margin (D7)
 
-Updated: 2026-11-21. Draft: from commit 5ffe7a0 of `claude/nvda-valuation`.
+Updated: 2026-11-21. Draft: from commit 38fbbdb (values as in 5ffe7a0) of `claude/nvda-valuation`.
 Source: commit 5ffe7a0, branch `claude/nvda-valuation`. Line numbers below are of that commit.
 
 ## Choice

@@ -1,6 +1,6 @@
 # A-004: NVDA half-life of the growth fade (D3)
 
-Updated: 2026-11-21. Draft: from commit 5ffe7a0 of `claude/nvda-valuation`.
+Updated: 2026-11-21. Draft: from commit 38fbbdb (values as in 5ffe7a0) of `claude/nvda-valuation`.
 Source: commit 5ffe7a0, branch `claude/nvda-valuation`. Line numbers below are of that commit.
 
 ## Choice
