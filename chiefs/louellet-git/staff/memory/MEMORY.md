@@ -48,9 +48,12 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
 - Count of all heads (2026-11-21, `get_session` cost in USD from each start): Technology 629, Fundamental
   314, Quality 220, Quant 152, Economics 97, Staff 12. The heads make 70% of the cache reads (400k to 500k
   for each head turn); 317 agent starts; 2 skill uses.
-- Context size: the person tested smaller contexts before and it did harm. Do NOT propose a compaction or
-  a smaller window as a saving. Only a real test, designed first, can change this. The automatic compaction
-  and the dream pass rule stay as they are.
+- Context size: the person tested smaller contexts before and it did harm. No change without a test.
+  ONE test is agreed (2026-11-21): a new Quality and Risk session takes the next gates; the old one stays
+  open as "FA-L - Quality and Risk (fallback)". Baseline of the old one: 1,140 head turns, 451k cache read
+  for each head turn, 144 agent starts, 220 USD. Measures, some days: questions that the new session must
+  ask the old one (lost facts), repeated work, a verdict that the heads dispute, cache read for each turn
+  and cost for each gate. Report the result to the person before any other head changes.
 - Skills are almost not used: no action until some days of usage data exist.
 - Week study (E2.S1), owner words: three pieces, to me first, then to the person (also (3) the chip sector
   of the S&P 500, a page or a half: did it fall as expected):
