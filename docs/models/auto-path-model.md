@@ -25,8 +25,9 @@ valuation. Do not use it alone for a trade (`CLAUDE.md`, "Review of a valuation 
 3. Margin: free cash flow before SBC and interest, shrunk the same way. SBC is a cost.
 4. Discount rate: CAPM with the shrunk beta, the equity risk premium, and a Hull-White
    risk-free rate. Net debt and shares come from the latest balance sheet. The model
-   charges `w` times the expected ratio of the cash for businesses to revenue, 1.75% +
-   0.3925 x the past 5-year mean ratio capped at 25% (`acq_persist`, A-002). The charge falls to zero with the fade of the growth when the company mean is above L.
+   charges `w` times the expected ratio of the cash for businesses to revenue, 0.5226
+   x the past 5-year mean ratio capped at 25%, through the origin: no past purchases, no charge (`acq_persist`, A-002; it applies to
+   the `acq_w` charge only, not to `acq_charge`, `acq_f` or the `chain` cut). The charge falls to zero with the fade of the growth when the company mean is above L.
    The spend has the second line of the business purchases when its value differs from the
    first line (`acq_second`, default on). `acq_persist=off` gives the past ratio as the base.
    The option `acq_keep` is off (the charge keeps the share L / mean, with no step at a mean

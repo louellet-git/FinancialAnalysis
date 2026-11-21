@@ -725,8 +725,9 @@ pub fn parse_rules(text: &str) -> R<Rules> {
                 }
                 r.acq_persist = None
             }
-            "acq_persist_a" => r.acq_persist.get_or_insert((0.0, 1.0)).0 = x,
-            "acq_persist_b" => r.acq_persist.get_or_insert((0.0, 1.0)).1 = x,
+            // after `acq_persist=off`, one number set takes the default of the other number
+            "acq_persist_a" => r.acq_persist.get_or_insert(ACQ_PERSIST_DEFAULT).0 = x,
+            "acq_persist_b" => r.acq_persist.get_or_insert(ACQ_PERSIST_DEFAULT).1 = x,
             "last_floor" => {
                 if !x.is_finite() {
                     return Err(DcfError(format!("--rules: last_floor must be a finite number, got '{v}'")));

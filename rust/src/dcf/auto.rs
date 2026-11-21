@@ -50,6 +50,10 @@ pub const DEFAULT_RF: f64 = 0.042;
 /// The cap of the past spend ratio in the persistence fit of the charge (`Rules::acq_persist`): a mean spend above a quarter
 /// of the revenue is a change of the company, not a spend that recurs.
 pub const ACQ_PERSIST_CAP: f64 = 0.25;
+/// The default of `Rules::acq_persist`: `(a, b)` of the charge base `a + b x min(past, cap)`. The fit through the origin of
+/// half 0 (`fa dcf pit --half 0 --diag acq`, record A-002): a company with no past purchases has no bought growth in its
+/// history, so the charge that pays for credited growth is 0 for it (decision of 2026-11-21, review cycle 1).
+pub const ACQ_PERSIST_DEFAULT: (f64, f64) = (0.0, 0.5226);
 
 /// The values that the repo uses as a convention and the rules that have a number. Each has a reason in
 /// `docs/ARCHITECTURE.md`.
@@ -151,8 +155,9 @@ pub struct Rules {
     pub acq_second: bool,
     /// The base of the charge is the persistence fit of the past spend, not the past spend: `a + b x min(past, 25%)`, with
     /// `past` the mean spend ratio of the margin history (`--rules acq_persist_a=..,acq_persist_b=..`; the fit of the
-    /// next 3 years on the past 5 years of the panel, `fa dcf pit --diag acq`). Default `(0.0175, 0.3925)`, the fit of half 0 (record A-002, decision of
-    /// 2026-11-21); `acq_persist=off` gives the past spend.
+    /// next 3 years on the past 5 years of the panel, `fa dcf pit --diag acq`). Default `(0.0, 0.5226)`, the fit through the origin of half 0 (record A-002, decision of
+    /// 2026-11-21); `acq_persist=off` gives the past spend. It applies to the `acq_w` charge only: `acq_charge` and
+    /// `acq_f` use the past spend, and so does the `chain` cut of the growth history.
     pub acq_persist: Option<(f64, f64)>,
     /// With `acq_w` and `acq_fade`: the charge does not fall to zero when the company mean `mu` is above the fade level `L`.
     /// It keeps the share `L / mu`, the share of the credited growth that stays (the spend buys growth in proportion to the
@@ -220,7 +225,7 @@ impl Default for Rules {
             acq_mult: 0.0,
             acq_w: true,
             acq_second: true,
-            acq_persist: Some((0.0175, 0.3925)),
+            acq_persist: Some(ACQ_PERSIST_DEFAULT),
             acq_keep: false,
             acq_fade: true,
             last_floor: Some(0.0),
@@ -1082,7 +1087,11 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
     // the paired charge fades with the credited growth above the fade level (the drift ramp), else it is constant
     let acq_fades = acq_paired && rules.acq_fade && drift_end < -1e-12;
     let acq_past = if acq_vals.is_empty() { 0.0 } else { acq_vals.iter().sum::<f64>() / acq_vals.len() as f64 };
-    let acq_base = rules.acq_persist.map_or(acq_past, |(a, b)| (a + b * acq_past.min(ACQ_PERSIST_CAP)).max(0.0));
+    // the persistence fit applies to the paired charge only; acq_charge and acq_f use the past spend
+    let acq_base = match rules.acq_persist {
+        Some((a, b)) if acq_paired => (a + b * acq_past.min(ACQ_PERSIST_CAP)).max(0.0),
+        _ => acq_past,
+    };
     let acq_ratio = if acq_share > 0.0 && !acq_vals.is_empty() { acq_share * acq_base } else { 0.0 };
 
     // ---- bridge and shares

@@ -1184,20 +1184,36 @@ fn the_charge_base_can_be_the_persistence_fit_of_the_past_spend() {
         }
         build(&i, &table(), &[], &market(), &r, BuildOptions::default()).unwrap()
     };
-    let fit = Rules { acq_charge: true, ..plain_rules() };
-    // off: the past spend
-    assert!((run(0.02, fit.clone()).summary.acq_ratio - 0.02).abs() < 1e-12);
-    // on: a + b x past = 0.0175 + 0.3925 x 0.02
-    let on = Rules { acq_persist: Some((0.0175, 0.3925)), ..fit.clone() };
-    assert!((run(0.02, on.clone()).summary.acq_ratio - (0.0175 + 0.3925 * 0.02)).abs() < 1e-12);
+    // the paired charge (`acq_w`; w = 1 here, no fade) with the fit a + b x past
+    let paired = |p: Option<(f64, f64)>| Rules { acq_w: true, acq_fade: false, acq_persist: p, ..plain_rules() };
+    let w = run(0.02, paired(None)).summary.acq_ratio / 0.02;
+    assert!(w > 0.0 && w <= 1.0);
+    // off: w x the past spend
+    assert!((run(0.02, paired(None)).summary.acq_ratio - w * 0.02).abs() < 1e-12);
+    // on: w x (a + b x past) = w x (0.0175 + 0.3925 x 0.02)
+    let on = paired(Some((0.0175, 0.3925)));
+    assert!((run(0.02, on.clone()).summary.acq_ratio - w * (0.0175 + 0.3925 * 0.02)).abs() < 1e-12);
     // the past spend is capped at 25% of revenue
-    assert!((run(0.40, on.clone()).summary.acq_ratio - (0.0175 + 0.3925 * 0.25)).abs() < 1e-12);
-    // the default is the fit of half 0 (record A-002, 2026-11-21); the rule keys change one number of it, in any order;
-    // `acq_persist=off` gives the past spend, and any other value of that key is an error
-    assert_eq!(Rules::default().acq_persist, Some((0.0175, 0.3925)));
+    assert!((run(0.40, on.clone()).summary.acq_ratio - w * (0.0175 + 0.3925 * 0.25)).abs() < 1e-12);
+    // the default is the fit through the origin (record A-002, 2026-11-21): a past spend of 0 gives a charge of 0
+    assert_eq!(Rules::default().acq_persist, Some((0.0, 0.5226)));
+    assert_eq!(run(0.0, paired(Some(ACQ_PERSIST_DEFAULT))).summary.acq_ratio, 0.0);
+    assert!((run(0.02, paired(Some(ACQ_PERSIST_DEFAULT))).summary.acq_ratio - w * 0.5226 * 0.02).abs() < 1e-12);
+    // the old intercept rule at a spend of 0 charges 1.75% x w
+    assert!((run(0.0, on.clone()).summary.acq_ratio - w * 0.0175).abs() < 1e-12);
+    // acq_charge and acq_f use the past spend, not the fit
+    let explicit = Rules { acq_charge: true, acq_persist: Some((0.0175, 0.3925)), ..plain_rules() };
+    assert!((run(0.02, explicit).summary.acq_ratio - 0.02).abs() < 1e-12);
+    let f = Rules { acq_f: Some(0.5), acq_persist: Some((0.0175, 0.3925)), ..plain_rules() };
+    assert!((run(0.02, f).summary.acq_ratio - 0.5 * 0.02).abs() < 1e-12);
+    // the rule keys change one number of the default, in any order; after `off`, one number set takes the default of
+    // the other (0.0 or 0.5226, not 1.0); `acq_persist=off` gives the past spend, and any other value of that key is an error
     assert_eq!(parse_rules("acq_persist_b=0.4,acq_persist_a=0.01").unwrap().acq_persist, Some((0.01, 0.4)));
-    assert_eq!(parse_rules("acq_persist_b=0.4").unwrap().acq_persist, Some((0.0175, 0.4)));
+    assert_eq!(parse_rules("acq_persist_b=0.4").unwrap().acq_persist, Some((0.0, 0.4)));
+    assert_eq!(parse_rules("acq_persist_a=0.0175").unwrap().acq_persist, Some((0.0175, 0.5226)));
     assert!(parse_rules("acq_persist=off").unwrap().acq_persist.is_none());
+    assert_eq!(parse_rules("acq_persist=off,acq_persist_a=0.01").unwrap().acq_persist, Some((0.01, 0.5226)));
+    assert_eq!(parse_rules("acq_persist=off,acq_persist_b=0.4").unwrap().acq_persist, Some((0.0, 0.4)));
     assert!(parse_rules("acq_persist=1").is_err());
 }
 
