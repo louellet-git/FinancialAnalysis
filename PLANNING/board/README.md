@@ -26,7 +26,7 @@ Free text.
 | Field | Rule |
 |---|---|
 | `id` | `T-YYYYMMDD-<slug>`. The file name is the id. |
-| `area` | `engine`, `importer`, `trading`, `docs`, `planning`, or `ticker:<TICKER>`. |
+| `area` | `engine`, `importer`, `trading`, `docs`, `planning`, or `ticker:<TICKER>`, or `ask` (a question or a permission request for the person; `chiefs/ORIENTATION.md`, section 5). |
 | `status` | `backlog`, `in-progress`, `review`, or `done`. |
 | `owner` | A GitHub login. |
 | `head` | The head that is responsible for the ticket: `quant`, `fundamental`, `technology` or `quality` (`chiefs/ORIENTATION.md`). `owner` means that only a person can do the work. Each ticket has this field. |

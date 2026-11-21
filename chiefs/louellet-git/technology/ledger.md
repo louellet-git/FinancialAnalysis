@@ -17,3 +17,4 @@
 | Yahoo 429 stop merged | 2026-11-20 | pull request 73 after the review PASS-WITH-NOTES (5 notes applied); ticket removed | 0 (no subagent) | also ran 2 one-day option tests (SPX, SPY) for the Head of Quant Research |
 | FedInvest days and the arbitrage data in the store | 2026-11-20 | `fa sync --bond-days N` (agent); 58 FedInvest days, bill rates, futures, VIX history pushed to the store | ~54k (1 Sonnet subagent) | 3 recon commands ran on a store copy with the network blocked |
 | Store-arb-data merged; general heads system | 2026-11-20 | pull request 86 (`--bond-days`) after the review PASS-WITH-NOTES; ticket to `done/`; rest ticket; general `lean/` in chiefs (1 Sonnet agent, ~120k) | ~120k | the check of 86 passed |
+| The-heads repo; daily option save; NVDA data; timing run | 2026-11-21 | the-heads 6264abb, chiefs PR 35; FA PR 96, 97; scheduled task; store a1dffb5, ba4cdab, c486b86; Quant timing run (no agent) | ~60k | Heston 5.3 to 5.8 s |

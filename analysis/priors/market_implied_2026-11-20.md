@@ -70,7 +70,7 @@ Searches (tickers with a price):
 ## 4. Which statistic: the value at the means, the P50 or the mean
 
 The search uses the value of the path at the means because it is deterministic and stable. It is not the expected
-value: for most tickers it lies between the P50 and the simulated mean (median 0.89 of the mean). The mean is unstable
+value: for most tickers it lies between the P50 and the simulated mean (median 0.89 of the mean; the mean is below the P50 for 23 sp500 and 85 next500 tickers). The mean is unstable
 for some tickers (one tail holds a large share of it). So the size of the gap to the price depends on the statistic.
 The reason for the choice does not use the price. (An earlier text of the ticket said that the path at the means is an
 estimate of the expected value. The runs show that it is not; the ticket text is corrected.)
@@ -182,8 +182,8 @@ value at the list premium over the price.
 
 ## 6. What the tables show
 
-- The model values the median ticker below its price: `V` / price is 0.63 (sp500) and 0.76 (next500). To make the median
-  ticker equal its price, the premium must fall from 4.41% to 2.32% (sp500) and to 3.12% (next500). The list premium is
+- The model values the median ticker below its price: `V` / price is 0.63 (sp500) and 0.76 (next500) with the value at the means (with the simulated mean 0.77 and 0.86; with the P50 0.48 and 0.58). To make the median
+  ticker equal its price, the premium must fall from 4.41% to 2.32% (sp500) and to 3.12% (next500), with the value at the means. A negative implied premium is possible by design (the search range is -4% to +20%; KO -1.16%) and has no flag. The list premium is
   one number for a list. It is not a forecast of the market premium.
 - Software, semiconductors and other business equipment (BusEq) have a low `V` / price (median 0.37 in sp500). The price
   needs a lower cost of capital (3 points less), or more growth (10 points a year more), or a higher margin of year 10
@@ -233,8 +233,8 @@ different explanations of the same gap, not a sum. Do not use the table to chang
   limit does not apply to it. The result is not a history of groups.
 - **Data date.** The data is of 2026-11-19 (store commit 08361bd or later). The numbers change with the data and with the defaults.
 - **Size class.** A class with 1 ticker (<1B in sp500; >100B in next500) is one ticker, not a median.
-- **One run.** This is one run. The file passed an audit (the auditor of the Head of Quality and Risk, 2026-11-20,
-  cycle 1). No skeptic has attacked the substance and no reviewer has graded the content and the format. The audit did
+- **One run.** This is one run. The file was audited by the auditor of the Head of Quality and Risk: cycle 1 (one MAJ, corrected)
+  and cycle 2 (passed with notes), 2026-11-20 and 2026-11-21. No skeptic has attacked the substance and no reviewer has graded the content and the format. The audit did
   not check the model itself (the defaults of the builder), the choice of the value at the means as the statistic, or
   the SIC groups against a second source. The numbers of the three searches of one ticker were not recalculated by hand.
 

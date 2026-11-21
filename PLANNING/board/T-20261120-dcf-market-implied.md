@@ -2,7 +2,7 @@
 id: T-20261120-dcf-market-implied
 title: Show what the market price implies for each stock, industry and sector
 area: engine
-status: in-progress
+status: review
 owner: louellet-git
 head: fundamental
 order: 1.2
