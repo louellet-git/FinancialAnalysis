@@ -440,6 +440,18 @@ pub fn parse_instance(xml: &str, tag_of: &HashMap<(String, String), String>) -> 
     Ok(InstanceValues { years, fiscal_year_end, facts_total: total, facts_with_segment: with_segment })
 }
 
+/// The label of a tag in MetaLinks.json: the label that the filer shows on the statement first
+/// (`terseLabel`, then `negatedTerseLabel`, which is the same line with its own words, then the
+/// standard `label`). The business and acquisition exclusion of capex reads this label.
+fn label_of(tag_info: Option<&Value>, tag: &str) -> String {
+    let roles = tag_info.and_then(|t| t.pointer("/lang/en-us/role"));
+    roles
+        .and_then(|r| r.get("terseLabel").or_else(|| r.get("negatedTerseLabel")).or_else(|| r.get("label")))
+        .and_then(Value::as_str)
+        .unwrap_or(tag)
+        .to_string()
+}
+
 /// The income statement, the balance sheet and the cash-flow statement as trees.
 pub fn build_statements(meta: &Value, values: &HashMap<String, f64>) -> Vec<Statement> {
     let Some(instance) = meta.get("instance").and_then(Value::as_object).and_then(|m| m.values().next()) else {
@@ -448,15 +460,7 @@ pub fn build_statements(meta: &Value, values: &HashMap<String, f64>) -> Vec<Stat
     let empty = serde_json::Map::new();
     let tags = instance.get("tag").and_then(Value::as_object).unwrap_or(&empty);
     let reports = instance.get("report").and_then(Value::as_object).unwrap_or(&empty);
-    let label = |tag: &str| -> String {
-        let roles = tags.get(tag).and_then(|t| t.pointer("/lang/en-us/role"));
-        roles
-            // The label that the filer shows on the statement first (a negated label is the same line with its own words).
-            .and_then(|r| r.get("terseLabel").or_else(|| r.get("negatedTerseLabel")).or_else(|| r.get("label")))
-            .and_then(Value::as_str)
-            .unwrap_or(tag)
-            .to_string()
-    };
+    let label = |tag: &str| label_of(tags.get(tag), tag);
 
     // The reports in the sequence of the filing: "R2", "R3", ...
     let mut ordered: Vec<(u64, &Value)> = reports
@@ -687,7 +691,9 @@ fn visit_capex<'a>(line: &'a Line, sign_above: f64, variables: &HashMap<String, 
         }
         Some(_) => return,
         None => {
-            let candidate = p.capex.is_match(name) || p.capex_label.is_match(&line.label);
+            // A sale is not a purchase: a line that starts with "Proceeds" is out (VNOM).
+            let sale = name.starts_with("Proceeds") || line.label.to_lowercase().starts_with("proceeds");
+            let candidate = !sale && (p.capex.is_match(name) || p.capex_label.is_match(&line.label));
             if candidate && line.children.is_empty() {
                 // A line for "property, plant and equipment and intangible assets" is one amount that the
                 // filer does not split: it counts as equipment (a limit: it can hold some intangibles).
@@ -1248,5 +1254,27 @@ mod tests {
         // A capex tag with a positive contribution (net proceeds) is not a payment.
         let cash = investing_with(vec![leaf("us-gaap_PaymentsForProceedsFromProductiveAssets", 1.0, 38.0)]);
         assert!(equipment_tags(&cash).is_empty());
+    }
+
+    #[test]
+    fn label_order_is_terse_then_negated_terse_then_label() {
+        let info = |roles: Value| json!({"lang": {"en-us": {"role": roles}}});
+        let all = info(json!({"terseLabel": "T", "negatedTerseLabel": "N", "label": "L"}));
+        assert_eq!(label_of(Some(&all), "x"), "T");
+        let no_terse = info(json!({"negatedTerseLabel": "Purchases of restaurant businesses", "label": "Payments to Acquire Other Productive Assets"}));
+        assert_eq!(label_of(Some(&no_terse), "x"), "Purchases of restaurant businesses");
+        let only = info(json!({"label": "L", "documentation": "D"}));
+        assert_eq!(label_of(Some(&only), "x"), "L");
+        assert_eq!(label_of(None, "x"), "x");
+    }
+
+    #[test]
+    fn a_sale_line_with_no_variable_is_not_capex() {
+        // VNOM: the name says "Proceeds" first, the sign of the line is a payment.
+        let mut sale = leaf("vnom_ProceedsFromRepaymentsForSaleOfPropertyPlantAndEquipment", -1.0, 3.0);
+        sale.label = "Sale of equipment".into();
+        let mut by_label = leaf("acme_SaleOfPropertyPlantAndEquipmentNet", -1.0, 4.0);
+        by_label.label = "Proceeds from sale of equipment".into();
+        assert!(equipment_tags(&investing_with(vec![sale, by_label])).is_empty());
     }
 }

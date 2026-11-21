@@ -172,10 +172,10 @@ the years before it use the company facts, with a different line definition (sof
 lines can be in the 10-K years only), thus a growth rate across this edge is not clean.
 
 Known limits: a company tag with an unusual name and no standard variable is missed
-(`eqr_NonRealEstateCapitalAdditions`). Real estate development counts as capex for a REIT
+(`eqr_NonRealEstateCapitalAdditions`). BMNR and VNOM keep an explicit 0 (a purchase line with no
+consolidated value, the same as the base). A line whose name or label starts with "Proceeds" is a sale and is out. Real estate development counts as capex for a REIT
 (VMRK, MAC): these companies had no capex value before. `crosscheck` maps the company facts
-without the filing (`main.rs`, `cmd_crosscheck`), thus its capex agreement does not measure
-these values. The warning `filled_from_filing` is gone for CI, COP, DTE, NEE, PSX, TPL and URI,
+without the filing (`main.rs`, `cmd_crosscheck`); its filing side uses the rule above, thus its capex agreement (98% on `batch50.txt`) shows how close the company facts are to the filing lines, not the new values. The warning `filled_from_filing` is gone for CI, COP, PSX, TKO, TPL and URI,
 because their value is now a replaced value, not a gap fill.
 
 ## The checks
@@ -251,17 +251,17 @@ and the filing is the source of truth. It uses no outside data source.
 Limits: a line that has no standard variable is found by words in the tag name or label (see
 "Capex lines of the 10-K"), thus a line can be missing or incorrect; read the printed lines.
 A line for property, plant and equipment together with intangible assets (URI) counts as
-equipment. `crosscheck` maps the company facts only (no filing values): it shows how good the
-company-facts value is. Facts with two or more segment members are not
+equipment. `crosscheck` maps the company facts only (no filing values): its filing side applies
+the exclusions of the rule above, and it shows how good the company-facts value is. Facts with two or more segment members are not
 used. The standard variables use the filing lines for capex and capitalized software
 (see "Capex lines of the 10-K") and the filing values for a critical input that has
 no value (see "Values from the 10-K").
 
-## Results (2026-11-20)
+## Results (2026-11-20; the S&P 500 row 2026-11-21, after the capex lines of the 10-K)
 
 | Set | Companies | PASS | WARN | FAIL | N/A | ERROR |
 |---|---|---|---|---|---|---|
-| `universe/sp500.txt` (the S&P 500 members) | 503 | 68 | 433 | 0 | 2 | 0 |
+| `universe/sp500.txt` (the S&P 500 members) | 503 | 69 | 432 | 0 | 2 | 0 |
 | `universe/next500.txt` (the 500 companies after them in the SEC list) | 500 | 20 | 459 | 5 | 16 | 0 |
 | `universe/next1000.txt` (the 1,000 companies after the first two lists) | 1000 | 42 | 840 | 30 | 88 | 0 |
 | `universe/panel32.txt` (used to build the registry) | 32 | 7 | 25 | 0 | 0 | 0 |
@@ -270,8 +270,8 @@ no value (see "Values from the 10-K").
 
 S&P 500: each company with a 10-K has a value for each critical input. The 2 `N/A` are
 new companies with no 10-K yet (HONA, VYLR). Company types: 23 banks, 19 insurers,
-19 REITs, 440 with the standard template. 24 companies get a critical input from the
-10-K (16 capex, 7 share count, 2 revenue); for 5 of them capex is 0 because the filing
+19 REITs, 440 with the standard template. 18 companies get a critical input from the
+10-K as a gap fill (10 capex, 7 share count, 2 revenue; one company has two); for 5 of them (ABNB, APO, APP, COIN, VEEV) capex is 0 because the filing
 has no capex line.
 
 Next 500: 37 companies get a critical input from the 10-K. The 16 `N/A`: 10 new
