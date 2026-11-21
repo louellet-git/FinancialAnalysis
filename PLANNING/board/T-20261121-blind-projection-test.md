@@ -91,3 +91,10 @@ too wide); T2 to T4 pass (`analysis/priors/blind_projection_test_2026-11-21.md`)
   command), once, with the fixed model. All must pass. If the score of half 1 fails, the fix fails: report it
   to Luc; a second fix needs a new written test.
 - `fa dcf drivers IBM` stays $83.84 / $151.84 / $258.03; a changed value gets its record (`docs/assumptions/`).
+
+**Blindness of the T1 re-run (2026-11-21, before any score run of a fix; condition of the Head of Quality and Risk):**
+choice (a). The blind score of the fix is `fa dcf pit --cut 2015 --half 1` only (the fix is fitted and chosen on half
+0). The store has no year after the last year of the T1 data, so no fresher hold-out exists now. The full-sample T1
+and the T2 to T4 runs after the fix are reported as "not blind (designed after the first T1 failed; half 0 fitted
+the fix)", with the count of tries. The fix is a model change: it takes the gate of a model change and the
+Backtest row. The first live weeks give the fresh hold-out.
