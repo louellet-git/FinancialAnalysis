@@ -2,15 +2,17 @@
 id: T-20261121-alpha-1-pipeline
 title: Put the best candidate through the three stages, isolation, bigger data, paper
 area: trading
-status: review
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: quant
 order: 0.8
 branch: claude/quant-alpha-1
+merged: 148
 created: 2026-11-21
 acceptance: Stage 1 gives, for the candidate s05_ic_0dte and for the volatility premium it sells, a test in isolation with a dated hypothesis, the trial count, the deflated Sharpe ratio and t, and the result under other model prices; the gate decision (go to stage 2 or stop) is written with its numbers.
 ---
+Result (2026-11-21): STOPPED at gate 1 (s05 OOS t 1.35 against t > 2; premium gate row t_NW 1.97). Note: `trading/research/alpha-1-stage1.md`. Stages 2 and 3 do not start for s05. The real-against-model price measurement of stage 2 moves to `T-20261121-quant-doc-findings` (B8), as a check of the backtest prices.
 Owner request, 2026-11-21: "First test in isolation, then on a bigger dataset, then try on paper after and improve
 the model recursively." No alpha is proven today (record of 2026-11-21). The best candidate in the repo is the bot
 `s05_ic_0dte` (same-day SPY iron condors; `trading/research/LEADERBOARD.md`: out-of-sample Sharpe 1.69 on 56 trades),

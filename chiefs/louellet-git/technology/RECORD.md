@@ -181,3 +181,10 @@ Done: ticket `T-20261121-fred-local`.
 ## 2026-11-21 (dialog)
 Words: "Yes (Recommended)" to: will you make fa-data private? (The terms of Nasdaq, Yahoo, Cboe, FRED and ICE do not permit a public copy; GitHub ToS D.3.)
 Done: the store README says private (store e3b735e); the heads are told to attach fa-data before a clone. The owner changes the visibility on GitHub. The FRED move continues.
+
+## 2026-11-21 (refusals reported by the heads)
+- Fundamental Research: the permission system refused `git push origin claude/sp100-week-attribution` (its own branch). Not needed: the same commits are on GitHub through claude/premium-series. Cause not known. Do not try again in another form.
+
+## 2026-11-21 ~18:00 UTC (dialog in the Quality and Risk session, read in its transcript)
+Words: "Shared store, I accept" (the daily save of the Alpaca chains goes into the shared private store; the owner accepts the terms risk).
+Done: the note in `docs/DATA-SOURCES.md`, section "Alpaca paper trading".

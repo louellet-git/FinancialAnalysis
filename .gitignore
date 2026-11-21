@@ -10,6 +10,7 @@ __pycache__/
 
 # Data — raw cache and processed outputs are local only
 data/raw/
+data/local/
 data/recon/
 data/processed/
 data/reports/

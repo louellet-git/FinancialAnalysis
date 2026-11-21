@@ -129,6 +129,19 @@ impl CompanyFacts {
         out
     }
 
+    /// The filing date (YYYY-MM-DD) of the filing with this accession number: the earliest `filed` of the facts that carry
+    /// it (None: no fact has it, or it has no date).
+    pub fn filing_date(&self, accn: &str) -> Option<String> {
+        self.facts
+            .values()
+            .flat_map(|ns| ns.values())
+            .flat_map(|c| c.units.values().flatten())
+            .filter(|f| f.accn.as_deref() == Some(accn))
+            .filter_map(|f| f.filed.as_deref().and_then(|d| d.get(..10)))
+            .min()
+            .map(|d| d.to_string())
+    }
+
     /// The facts as they were on `cutoff` (YYYY-MM-DD): only the facts filed on that day or before. A fact with no filing
     /// date is dropped (it cannot be shown to be known). A later filing that restates a value is not in the copy.
     pub fn filed_up_to(&self, cutoff: &str) -> CompanyFacts {
