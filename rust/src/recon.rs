@@ -283,13 +283,13 @@ pub fn csv_row(r: &Row, price_date: &str, settle: Day, curve_date: Day) -> Strin
 }
 
 /// The curve-level comparison with the corporate rates. Each row compares the HQM spot
-/// rate of a maturity with (our Treasury zero rate + the mean default spread of AAA, AA, A).
+/// rate of a maturity with (our Treasury zero rate + the default spread of the HQM reference bucket, A-201).
 /// The default spreads are the fixed table of `bonds.rs` (Damodaran, January 2026).
 pub fn hqm_rows(boot: &Bootstrapped, fa: &Fa, date: &str) -> Result<Vec<Row>, FaError> {
     let hqm = fa.hqm_curve(Some(date))?;
-    let oas: Vec<(&str, f64)> = ["AAA", "AA", "A"].iter().map(|g| (*g, crate::bonds::default_spread(g))).collect();
-    let mean_oas = oas.iter().map(|(_, o)| o).sum::<f64>() / oas.len() as f64;
-    let oas_text: Vec<String> = oas.iter().map(|(g, o)| format!("{g}={o:.4}")).collect();
+    // One rule with A-201: the HQM curve is the reference bucket (A).
+    let mean_oas = crate::bonds::default_spread(crate::bonds::REFERENCE_BUCKET);
+    let oas_text = [format!("{}={mean_oas:.4}", crate::bonds::REFERENCE_BUCKET)];
     let mut rows = Vec::new();
     for (label, spot) in hqm.ordered() {
         let Some(years) = label.trim_end_matches('Y').parse::<i64>().ok() else { continue };
@@ -312,7 +312,7 @@ pub fn hqm_rows(boot: &Bootstrapped, fa: &Fa, date: &str) -> Result<Vec<Row>, Fa
             buy: None,
             sell: None,
             note: format!(
-                "hqm_date={} (monthly average); ust_zero_semi={:.6}; implied_spread_bp={:.1}; mean_spread={:.4} of {}",
+                "hqm_date={} (monthly average); ust_zero_semi={:.6}; implied_spread_bp={:.1}; ref_spread={:.4} of {}",
                 hqm.date,
                 zero_sa,
                 (spot - zero_sa) * 1e4,
@@ -331,7 +331,7 @@ Compare the value that our rates give with the market value of simple bonds.
 It gets the Treasury par curve of the date, builds a zero curve, and prices each
 Treasury bill, note and bond that has an end-of-day price (TreasuryDirect FedInvest).
 It lists observed minus theoretical, in price (per 100) and in yield (bp).
-It also compares the HQM corporate spot curve with our zero curve plus the mean default spread of AAA, AA, A.
+It also compares the HQM corporate spot curve with our zero curve plus the default spread of the HQM reference bucket A (Damodaran).
 
   --date  A business day. Default: the latest day that has curve and end-of-day prices.
   --out   The CSV file. Default: data/recon/bonds_<date>.csv in the repository.
@@ -478,7 +478,7 @@ fn run_bonds(fa: &Fa, args: &[String]) -> Result<(), String> {
     }
     let hqm: Vec<&Row> = rows.iter().filter(|r| r.kind == "hqm").collect();
     if !hqm.is_empty() {
-        println!("\nCORPORATE CURVE: HQM spot (semi-annual) vs our Treasury zero (semi-annual) + mean default spread of AAA, AA, A (Damodaran)");
+        println!("\nCORPORATE CURVE: HQM spot (semi-annual) vs our Treasury zero (semi-annual) + default spread of A (Damodaran; HQM reference bucket, A-201)");
         println!("{:<9} {:>8} {:>10} {:>10} {:>10} {:>8}", "maturity", "HQM", "UST zero", "spread bp", "theo", "bp");
         for r in &hqm {
             let zero = r.theo_yield - mean_oas_of(r);
@@ -507,7 +507,7 @@ fn run_bonds(fa: &Fa, args: &[String]) -> Result<(), String> {
 
 fn mean_oas_of(r: &Row) -> f64 {
     r.note
-        .split("mean_spread=")
+        .split("ref_spread=")
         .nth(1)
         .and_then(|s| s.split(' ').next())
         .and_then(|s| s.parse().ok())

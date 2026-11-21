@@ -821,19 +821,20 @@
     "on": "2025-06-15"
    },
    "expect": {
-    "date": "2025-06-01",
+    "date": "2025-05-01",
     "source": "U.S. Treasury HQM",
     "maturities": {
-     "1Y": 0.0429,
-     "2Y": 0.0412,
-     "3Y": 0.0399,
+     "1Y": 0.0434,
+     "2Y": 0.0406,
+     "3Y": 0.0397,
      "5Y": 0.0435,
-     "7Y": 0.0445,
-     "10Y": 0.0444,
-     "20Y": 0.0439,
-     "30Y": 0.0461
+     "7Y": 0.044500000000000005,
+     "10Y": 0.0446,
+     "20Y": 0.0432,
+     "30Y": 0.04650000000000001
     }
-   }
+   },
+   "note": "2026-11-21: June 2025 is published on 2025-07-07, so 2025-06-15 gives May (values equal fred.json); the Python expectation gave June (look-ahead)"
   },
   {
    "name": "verdict_none",

@@ -159,12 +159,12 @@ pub struct RatesContext {
     pub base: Option<BaseSplit>,
 }
 
-/// One rating bucket: step, cost of debt and spread over the UST 10Y, all decimals.
+/// One rating row: step, cost of debt and spread over the UST 10Y, all decimals.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RatingQuote {
     /// The fixed step of the bucket over the HQM reference bucket.
     pub step: f64,
-    /// HQM 10Y spot + the step: the cost of debt of the bucket.
+    /// UST 10Y + HQM basis + the step: the cost of debt of the row.
     #[serde(rename = "yield")]
     pub effective_yield: RateObservation,
     /// Cost of debt minus UST 10Y: the engine's `kd_spread` definition.
@@ -204,8 +204,12 @@ pub struct CreditContext {
     pub kd_spread: RateObservation,
     pub model_kd_spread: f64,
     pub kd_spread_change_vs_model: f64,
-    /// HQM spot yield at the default maturity (10 years).
+    /// HQM spot yield at the default maturity (10 years), monthly average of the HQM month.
     pub hqm_spot: f64,
+    /// Mean UST 10Y par yield of the same month.
+    pub ust_mean_10y: f64,
+    /// `hqm_spot - ust_mean_10y`.
+    pub basis: f64,
     /// The step of the bucket over the HQM reference bucket.
     pub step: f64,
     pub kd_pretax: f64,
@@ -547,7 +551,7 @@ mod tests {
         assert!(v.credit.is_none());
         let credit = format!(
             r#"{{"rating": "A-", "index": "A", "kd_spread": {}, "model_kd_spread": -0.001,
-                "kd_spread_change_vs_model": 0.0077, "hqm_spot": 0.0577, "step": 0.0,
+                "kd_spread_change_vs_model": 0.0077, "hqm_spot": 0.0577, "ust_mean_10y": 0.0507, "basis": 0.007, "step": 0.0,
                 "kd_pretax": 0.0574,
                 "kd_after_tax": 0.045346, "tax_rate": 0.21}}"#,
             obs_json("A - 10Y", 0.0067, "A- uses the A step")

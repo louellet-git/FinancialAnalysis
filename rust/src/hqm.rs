@@ -221,7 +221,8 @@ pub fn cells(file: &[u8]) -> Res<BTreeMap<(u32, u16), Cell>> {
             0x00BD if in_sheet && len >= 6 => {
                 let (row, first) = (u16le(body, 0) as u32, u16le(body, 2));
                 for k in 0..(len - 6) / 6 {
-                    out.insert((row, first + k as u16), Cell::Num(rk_value(u32le(body, 4 + 6 * k + 2))));
+                    let col = first.checked_add(k as u16).ok_or("Excel file: MULRK column out of range")?;
+                    out.insert((row, col), Cell::Num(rk_value(u32le(body, 4 + 6 * k + 2))));
                 }
             }
             0x00FD if in_sheet && len >= 10 => {
@@ -238,6 +239,14 @@ pub fn cells(file: &[u8]) -> Res<BTreeMap<(u32, u16), Cell>> {
     Ok(out)
 }
 
+/// The year header columns `(column, year)` must be 12 columns apart: a block is 12 month columns.
+fn check_year_blocks(years: &[(u16, i64)]) -> Res<()> {
+    match years.windows(2).find(|w| w[1].0.wrapping_sub(w[0].0) != 12) {
+        Some(w) => Err(format!("the year blocks of the HQM file are not 12 columns wide (years {} and {} start {} columns apart): the layout changed?", w[0].1, w[1].1, w[1].0 as i32 - w[0].0 as i32)),
+        None => Ok(()),
+    }
+}
+
 /// Monthly spot rates in percent: `{first day of the month: {maturity in years: rate}}` for the
 /// wanted whole-year maturities. A month with no value (a future month) is not in the map.
 pub fn parse_hqm_spot(file: &[u8], maturities: &[i64]) -> Res<BTreeMap<i64, BTreeMap<i64, f64>>> {
@@ -251,6 +260,8 @@ pub fn parse_hqm_spot(file: &[u8], maturities: &[i64]) -> Res<BTreeMap<i64, BTre
     let years: Vec<(u32, u16, i64)> = cells.iter().filter(|((_, c), _)| *c >= 1).filter_map(|((r, c), v)| year_of(v).map(|y| (*r, *c, y))).collect();
     let year_row = years.iter().map(|y| y.0).min().ok_or("no year header row (the HQM spot layout changed?)")?;
     let years: Vec<(u16, i64)> = years.iter().filter(|y| y.0 == year_row).map(|y| (y.1, y.2)).collect();
+    // The month is the column place in the year block: each block must have 12 columns.
+    check_year_blocks(&years)?;
     let mut out: BTreeMap<i64, BTreeMap<i64, f64>> = BTreeMap::new();
     for ((r, c), v) in &cells {
         let Cell::Num(v) = v else { continue };
@@ -310,11 +321,29 @@ pub fn compare_with_fred(months: &BTreeMap<i64, BTreeMap<i64, f64>>, maturity: i
 
 pub const PAGE_URL: &str = "https://home.treasury.gov/data/treasury-coupon-issues-and-corporate-bond-yield-curve/corporate-bond-yield-curve";
 pub const FILE_URL: &str = "https://home.treasury.gov/system/files/226/{name}.xls";
-/// The monthly spot rate files, one for each five years. The last one is the open file.
+/// The monthly spot rate files, one for each five years. The last one is the open file. The list ends
+/// with `hqm_24_28` (the years 2024 to 2028): for a date in 2029 a new file name is needed (see
+/// `LAST_YEAR` and `get`).
 pub const FILES: [&str; 9] = ["hqm_84_88", "hqm_89_93", "hqm_94_98", "hqm_99_03", "hqm_04_08", "hqm_09_13", "hqm_14_18", "hqm_19_23", "hqm_24_28"];
+/// The last year that the file list covers.
+pub const LAST_YEAR: i64 = 2028;
 /// The open file is downloaded again when the copy is older than this (days).
 pub const OPEN_FILE_MAX_AGE_DAYS: f64 = 20.0;
 pub const SOURCE: &str = "U.S. Treasury HQM";
+
+/// The arguments of `fa bonds hqm get` (after `get`): only `--force` is known. Gives `force`; an unknown
+/// word or `--help` gives the usage text as an error, so that no flag runs a download by mistake.
+pub fn get_args(args: &[String]) -> Res<bool> {
+    let usage = "usage: fa bonds hqm get [--force]   (download the Treasury HQM spot files into data/raw/bonds/treasury_hqm/)";
+    let mut force = false;
+    for a in args {
+        match a.as_str() {
+            "--force" => force = true,
+            other => return Err(format!("unknown argument '{other}'; {usage}")),
+        }
+    }
+    Ok(force)
+}
 
 /// `<cache>/bonds/treasury_hqm/`: the files and `meta.json`.
 pub fn dir(cache: &std::path::Path) -> std::path::PathBuf {
@@ -329,7 +358,7 @@ fn write_bytes(path: &std::path::Path, bytes: &[u8]) -> Res<()> {
 
 /// Download the files that are missing, the open file when it is old, and all with `force`. A
 /// download must parse as an HQM file before it is kept. `meta.json` records the address, the
-/// date of each download and the date of the last check. Gives `(file, what happened)`.
+/// date of each download and the date of the last check (written only when no file failed). Gives `(file, what happened)`.
 /// A failed file does not stop the others, except a block or a connection failure (the caller's
 /// `fetch` returns the error; two errors in a row end the run).
 pub fn get(cache: &std::path::Path, force: bool, today: i64, fetch: &mut dyn FnMut(&str) -> Res<Vec<u8>>) -> Res<Vec<(String, String)>> {
@@ -342,6 +371,13 @@ pub fn get(cache: &std::path::Path, force: bool, today: i64, fetch: &mut dyn FnM
     meta["terms"] = "U.S. federal data; no reuse clause found on the site policy pages (2026-11-21)".into();
     let mut out = Vec::new();
     let mut failures = 0;
+    let mut any_failed = false;
+    let year: i64 = dates::format(today)[0..4].parse().unwrap_or(0);
+    if year > LAST_YEAR {
+        // The file of the new five years has a name that we cannot guess: say it, and do not mark the check as done.
+        any_failed = true;
+        out.push((format!("hqm_{:02}_{:02}", (LAST_YEAR + 1) % 100, (LAST_YEAR + 5) % 100), format!("failed: the file list ends in {LAST_YEAR}; the date has the year {year}. Add the new file name to `hqm::FILES` and raise `LAST_YEAR` (see {PAGE_URL})")));
+    }
     for name in FILES {
         let path = d.join(format!("{name}.xls"));
         let open = name == FILES[FILES.len() - 1];
@@ -351,6 +387,7 @@ pub fn get(cache: &std::path::Path, force: bool, today: i64, fetch: &mut dyn FnM
             continue;
         }
         if failures >= 2 {
+            any_failed = true;
             out.push((name.to_string(), "not tried (two failures)".to_string()));
             continue;
         }
@@ -364,11 +401,15 @@ pub fn get(cache: &std::path::Path, force: bool, today: i64, fetch: &mut dyn FnM
             }
             Err(e) => {
                 failures += 1;
+                any_failed = true;
                 out.push((name.to_string(), format!("failed: {e}")));
             }
         }
     }
-    meta["checked"] = dates::format(today).into();
+    // `checked` is the date of a run with no failed file: a failed run must not make the data set look current.
+    if !any_failed {
+        meta["checked"] = dates::format(today).into();
+    }
     let text = serde_json::to_string_pretty(&meta).map_err(|e| e.to_string())?;
     write_bytes(&meta_path, text.as_bytes())?;
     Ok(out)
@@ -495,8 +536,44 @@ mod tests {
         assert!(r[0].1.starts_with("failed") && r[1].1.starts_with("failed"));
         assert!(r[2].1.starts_with("not tried"));
         assert_eq!(n, 2);
+        // A failed run does not write the date of the check.
+        let meta: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(dir(&cache).join("meta.json")).unwrap()).unwrap();
+        assert!(meta.get("checked").is_none(), "{meta}");
         assert!(!dir(&cache).join("hqm_84_88.xls").exists());
         assert!(load_monthly(&cache).unwrap_err().contains("fa bonds hqm get"));
+    }
+
+    #[test]
+    fn the_arguments_of_get_are_checked() {
+        let s = |v: &[&str]| v.iter().map(|x| x.to_string()).collect::<Vec<_>>();
+        assert_eq!(get_args(&s(&[])), Ok(false));
+        assert_eq!(get_args(&s(&["--force"])), Ok(true));
+        let e = get_args(&s(&["--help"])).unwrap_err();
+        assert!(e.contains("unknown argument '--help'") && e.contains("usage: fa bonds hqm get [--force]"), "{e}");
+        assert!(get_args(&s(&["--forse"])).is_err());
+        assert!(get_args(&s(&["--force", "extra"])).is_err());
+    }
+
+    #[test]
+    fn a_date_after_the_last_file_year_gives_a_clear_error_and_no_check_date() {
+        let cache = tmp("year2029");
+        let today = dates::parse("2029-01-15").unwrap();
+        let mut fetch = |_: &str| -> Res<Vec<u8>> { Ok(fixture()) };
+        let r = get(&cache, false, today, &mut fetch).unwrap();
+        let (name, what) = &r[0];
+        assert_eq!(name, "hqm_29_33");
+        assert!(what.starts_with("failed: the file list ends in 2028") && what.contains("hqm::FILES"), "{what}");
+        let meta: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(dir(&cache).join("meta.json")).unwrap()).unwrap();
+        assert!(meta.get("checked").is_none());
+    }
+
+    #[test]
+    fn a_year_block_of_another_width_is_an_error() {
+        assert!(check_year_blocks(&[(1, 2025), (13, 2026), (25, 2027)]).is_ok());
+        let e = check_year_blocks(&[(1, 2025), (13, 2026), (24, 2027)]).unwrap_err();
+        assert!(e.contains("2026 and 2027") && e.contains("11 columns"), "{e}");
+        assert!(check_year_blocks(&[(1, 2025)]).is_ok());
+        assert!(parse_hqm_spot(&fixture(), &MATURITIES).is_ok());
     }
 
     #[test]

@@ -148,7 +148,9 @@ fa sync [IBM MSFT...] [--tickers-file F] [--only A,B] [--skip A,B] [--force] [--
 fa sync --status [IBM...]                         # one line for each data set: current, old, no data; no request
 fa verdict IBM [--price 228.53] [--simulations 10000] [--seed 7] [--rf-date today] [--rf-base-date 2026-07-16] [--rating A-]
 fa rates [snapshot|yield|curve|history|nyfed|inflation|fred|check] [--date D]   # JSON
-fa bonds [snapshot|spread|yield|over10y|moodys|hqm|check] [--rating A-] [--date D]   # JSON
+fa bonds [snapshot|step|yield|over10y|hqm] [--rating A-] [--date D]   # JSON
+fa bonds hqm get [--force]                        # the Treasury HQM files into data/raw/bonds/treasury_hqm/
+fa bonds hqm-compare --xls FILE... --fred-dir DIR # the Treasury HQM files against FRED HQMCB*YR
 ```
 
 More options of `fa dcf drivers` (each analysis of the three first passes and of the IBM
@@ -277,7 +279,7 @@ inflation part of a rate change is large, examine the growth drivers too.
 
 The engine uses `kd = rf + kd_spread`. `fa bonds` (Rust, `rust/src/bonds.rs`) gives market
 values for `kd_spread`. The cost of debt of a rating is the Treasury HQM 10-year spot yield
-plus a fixed step for the rating bucket (`docs/models/cost-of-debt.md`).
+plus a fixed step for the rating row, with the HQM basis (`docs/models/cost-of-debt.md`).
 
 ```bash
 fa bonds hqm get               # the Treasury HQM files into data/raw/bonds/treasury_hqm/
@@ -285,10 +287,11 @@ fa bonds                       # all ratings (HQM + step), HQM curve
 fa bonds over10y --rating A-   # the market kd_spread for a rating
 ```
 
-`over10y` is the cost of debt of the rating (HQM 10-year spot plus the step of the bucket)
-minus the Treasury 10-year yield on the date. This is the definition of `kd_spread` in the
-engine. The rating can be S&P (`A-`) or Moody's (`A3`). The steps have no notches, thus `A-`
-uses the `A` bucket, which is the HQM reference bucket (step 0).
+`over10y` is the cost of debt of the rating (UST 10-year of the date + the HQM basis + the step of
+the rating row) minus the Treasury 10-year yield on the date. This is the definition of `kd_spread` in the
+engine. The rating can be S&P (`A-`) or Moody's (`A3`). Each notch with a row in the
+Damodaran table has its own step (`A-` +0.11 points); a notch with no row takes its letter grade.
+The bucket `A` is the HQM reference bucket (step 0).
 
 To use the market spread in a verdict, add `--rating` to a run with `--rf-date`:
 

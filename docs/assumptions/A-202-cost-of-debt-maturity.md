@@ -1,15 +1,15 @@
 # A-202: the cost of debt is taken at 10 years
 
-Updated: 2026-11-21. Commit: not yet made.
-
+Updated: 2026-11-21. Commit: a66a70d (step 3), fix commit to follow.
 ## Choice
-The cost of debt uses the HQM spot yield at 10 years (`DEFAULT_MATURITY = 10`). The
-`kd_spread` of the verdict is this cost of debt minus the Treasury 10Y par yield of the same date.
+The cost of debt uses the HQM spot yield at 10 years (`DEFAULT_MATURITY = 10`). The `kd_spread`
+of the verdict is the basis (HQM 10Y minus the mean UST 10Y of the same month) plus the step.
+Model document: `docs/models/cost-of-debt.md`.
 
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Cost of debt | `rust/src/bonds.rs` | `DEFAULT_MATURITY`, `corporate_yield()`, `spread_over_10y()` |
+| Cost of debt | `rust/src/bonds.rs` | `DEFAULT_MATURITY`, `hqm_basis()`, `spread_over_10y()` |
 | Verdict | `rust/src/verdict_rates.rs` | `credit_context()` |
 
 ## Alternatives considered
@@ -19,15 +19,14 @@ The cost of debt uses the HQM spot yield at 10 years (`DEFAULT_MATURITY = 10`). 
 | HQM par yield | The Treasury par file has 2, 5, 10 and 30 years only, and it is not read |
 
 ## Why this choice
-The engine prices debt as `kd = rf + kd_spread` with `rf` the Treasury 10Y, as before.
-The same maturity keeps the definition. The reason does not use the price. Limits: the HQM
-rate is a spot rate (zero rate) and a monthly average; the Treasury 10Y is a par yield of one
-day. The basis between a spot and a par yield is small at 10 years (a few basis points).
-The latest HQM month can be up to 70 days old; an older month gives an error.
+The engine prices debt as `kd = rf + kd_spread` with `rf` the Treasury 10Y, as before. The same
+maturity keeps the definition. The reason does not use the price. Limits: the HQM rate is a
+spot rate (zero rate); the Treasury 10Y is a par yield. The spot-against-par basis is about
+10 bp at 10 years (a review estimate, not measured by us), and it is inside the basis of A-203.
 
 ## Effect on the result
-At the date 2026-11-18, the HQM 10Y of the latest month is used. A different maturity
-changes the cost of debt by the slope of the HQM curve (a few tenths of a point from 7 to 20 years).
+A different maturity changes the cost of debt by the slope of the HQM curve (a few tenths of a
+point from 7 to 20 years).
 
 ## Who decided and when
 The Technology head, 2026-11-21, as the unchanged default of the old `fa bonds` code.

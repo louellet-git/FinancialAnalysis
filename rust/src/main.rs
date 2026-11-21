@@ -23,7 +23,7 @@ USAGE:
   fa bonds [snapshot] [--date D]                  every rating (HQM + step), HQM corporate curve
   fa bonds hqm-compare --xls FILE... --fred-dir DIR  Treasury HQM spot files against FRED HQMCB*YR
   fa bonds step|yield|over10y --rating A- [--date D]
-                                                  step over HQM, cost of debt (HQM 10Y + step), or cost of debt minus UST 10Y
+                                                  step over HQM, cost of debt (UST 10Y + HQM basis + step), or kd_spread (basis + step)
   fa bonds hqm [--date D]                         Treasury HQM corporate spot curve (monthly)
   fa bonds hqm get [--force]                      download the Treasury HQM spot files into data/raw/bonds/treasury_hqm/
   fa forwards [--date D]                          GSW zero-coupon yields and forward rates (Federal Reserve Board)
@@ -46,7 +46,7 @@ USAGE:
              [--simulations N] [--seed S]
                                                   Monte Carlo verdict; without --price: the last close of the price cache;
                                                   --rf-date takes the Treasury 10Y as rf,
-                                                  --rating takes the market kd spread of the rating (network)
+                                                  --rating takes the kd spread of the rating (HQM basis + step; Treasury files)
   fa prices get TICKER... [--tickers-file F] [--source S] [--full]   daily price history into data/raw (fa prices --help)
   fa prices intraday SYMBOL [--interval 1m|5m] --from D [--to D]   1- and 5-minute bars of Alpaca (free key) into data/raw/trading
   fa options snapshot SYMBOL [--source cboe|alpaca] | history SYMBOL --date D | --from D --to D
@@ -131,8 +131,12 @@ fn bonds(fa: &Fa, rest: &[String]) -> financial_analysis::Result<ExitCode> {
         "hqm" if args.get(1).map(String::as_str) == Some("get") => {
             // fa bonds hqm get [--force]: the Treasury HQM spot files into data/raw/bonds/treasury_hqm/
             let cache = fa.repo.join("data").join("raw");
+            let force = match financial_analysis::hqm::get_args(&args[2..]) {
+                Ok(f) => f,
+                Err(e) => return Ok(usage_error(&e)),
+            };
             let mut fetch = |url: &str| financial_analysis::hostnet::get(url, &[], financial_analysis::rates::DELAY_SECONDS);
-            match financial_analysis::hqm::get(&cache, has(&args, "--force"), mapcheck::dates::today(), &mut fetch) {
+            match financial_analysis::hqm::get(&cache, force, mapcheck::dates::today(), &mut fetch) {
                 Ok(rows) => {
                     for (name, what) in &rows {
                         println!("{name}: {what}");

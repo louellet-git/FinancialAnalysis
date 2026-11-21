@@ -411,8 +411,8 @@ fn breakeven_and_5y5y_use_the_fred_formula() {
 #[test]
 fn rating_buckets() {
     for (r, e) in [
-        ("AAA", "AAA"), ("AA+", "AA"), ("A-", "A"), ("BBB+", "BBB"), ("BB-", "BB"), ("B", "B"), ("CCC+", "CCC"), ("CC", "CCC"), ("C", "CCC"),
-        ("Aaa", "AAA"), ("Aa2", "AA"), ("A3", "A"), ("Baa1", "BBB"), ("Ba3", "BB"), ("B2", "B"), ("Caa1", "CCC"), (" A- ", "A"),
+        ("AAA", "AAA"), ("AA+", "AA"), ("A-", "A-"), ("BBB+", "BBB"), ("BB-", "BB"), ("B", "B"), ("CCC+", "CCC"), ("CC", "CC"), ("C", "C"),
+        ("Aaa", "AAA"), ("Aa2", "AA"), ("A3", "A-"), ("Baa1", "BBB"), ("Ba3", "BB"), ("B2", "B"), ("Caa1", "CCC"), (" A- ", "A-"),
     ] {
         assert_eq!(rating_bucket(r).unwrap(), e, "{r}");
     }
@@ -456,65 +456,98 @@ fn fred_files_are_cached_and_checked_for_the_header() {
     assert!(!dir.join("bonds").join("fred_DBAA.csv").exists());
 }
 
+// The fixture months: HQM 10Y of 2026-10 is 4.45% (the file `hqm_24_28.xls` of the fixture). The UST 10Y of the 21 days of
+// October 2026 in `treasury_nominal_2026.csv` has the mean 5.130952% (Python, from the same file: sum/21). The UST 10Y of
+// 2026-11-18 is 5.07%. So basis = 4.45% - 5.130952% = -0.68095% (6 decimals: -0.006810) and, for the bucket A (step 0),
+// kd = 5.07% - 0.681% = 4.389%.
+const OCT_MEAN_UST10: f64 = 0.05131;
+const BASIS_OCT: f64 = -0.00681; // 0.0445 - 0.05131
+
 #[test]
-fn the_cost_of_debt_is_hqm_10y_plus_the_step_of_the_bucket() {
-    // Fixture: HQM 10Y spot of 2026-10 = 4.45%. Steps (hand arithmetic from the Damodaran table): A 0, BBB +0.33%, B +2.43%.
+fn the_cost_of_debt_is_the_ust_of_the_date_plus_the_basis_plus_the_step() {
     let (mut r, _) = fixture_rates("kd-steps");
     let on = day("2026-11-18");
-    let a = r.corporate_yield("A-", on).unwrap();
-    assert_eq!((a.value, a.date.as_str(), a.note.as_str()), (0.0445, "2026-10-01", "A- uses the A step"));
-    assert_eq!(r.corporate_yield("A", on).unwrap().value, 0.0445, "the HQM reference bucket has step 0");
-    assert_eq!(r.corporate_yield("BBB", on).unwrap().value, 0.0478);
-    assert_eq!(r.corporate_yield("Baa2", on).unwrap().value, 0.0478, "Moody's Baa2 is the BBB bucket");
-    assert_eq!(r.corporate_yield("B3", on).unwrap().value, 0.0688);
-    assert_eq!(r.rating_step("BB+").unwrap().value, 0.0106);
+    let b = r.hqm_basis(on).unwrap();
+    assert_eq!((b.month, b.hqm, b.ust_mean, b.basis), (day("2026-10-01").unwrap(), 0.0445, OCT_MEAN_UST10, BASIS_OCT));
+    // A is the HQM reference bucket: step 0. A- has its own row: +0.11 points (0.89 - 0.78).
+    let a = r.corporate_yield("A", on).unwrap();
+    assert!((a.value - (0.0507 + BASIS_OCT)).abs() < 1e-9, "{}", a.value);
+    assert_eq!((a.date.as_str(), a.note.as_str()), ("2026-11-18", "HQM month 2026-10-01"));
+    let am = r.corporate_yield("A-", on).unwrap();
+    assert!((am.value - (0.0507 + BASIS_OCT + 0.0011)).abs() < 1e-9, "{}", am.value);
+    assert!((r.corporate_yield("A3", on).unwrap().value - am.value).abs() < 1e-12, "Moody's A3 is the A- row");
+    // BBB +0.33; Baa3 has no row of its own: the BBB row, with a note. B3 is the B- row: +4.31.
+    let bbb = r.corporate_yield("BBB", on).unwrap().value;
+    assert!((bbb - (0.0507 + BASIS_OCT + 0.0033)).abs() < 1e-9);
+    let baa3 = r.corporate_yield("Baa3", on).unwrap();
+    assert!((baa3.value - bbb).abs() < 1e-12 && baa3.note.contains("no row in the table; uses the BBB row"), "{}", baa3.note);
+    assert!((r.corporate_yield("B3", on).unwrap().value - (0.0507 + BASIS_OCT + 0.0431)).abs() < 1e-9);
+    assert_eq!(r.rating_step("BB+").unwrap().value, 0.006);
 }
 
 #[test]
-fn the_spread_uses_the_treasury_of_the_date_and_gives_back_the_cost_of_debt() {
-    // UST 10Y on 2026-11-18 is 5.07%. kd_spread = 4.45% - 5.07% = -0.62%, so rf + kd_spread is the cost of debt again.
+fn the_spread_is_basis_plus_step_and_gives_the_cost_of_debt_back() {
     let (mut r, _) = fixture_rates("same-day");
-    let o = r.spread_over_10y("A-", day("2026-11-18")).unwrap();
+    let on = day("2026-11-18");
+    let o = r.spread_over_10y("A-", on).unwrap();
     assert_eq!(o.date, "2026-11-18");
-    assert!((o.value - (-0.0062)).abs() < 1e-12, "{}", o.value);
-    let y = r.corporate_yield("A-", day("2026-11-18")).unwrap();
-    assert!((0.0507 + o.value - y.value).abs() < 1e-12);
-    assert!(o.note.contains("A- uses the A step") && o.note.contains("HQM month 2026-10-01"), "{}", o.note);
+    assert!((o.value - (BASIS_OCT + 0.0011)).abs() < 1e-9, "{}", o.value);
+    let y = r.corporate_yield("A-", on).unwrap();
+    assert!((0.0507 + o.value - y.value).abs() < 1e-9, "rf + kd_spread is the cost of debt");
+    // The spread does not depend on the day inside the month: the cost of debt follows the UST close of the day.
+    let o2 = r.spread_over_10y("A-", day("2026-11-17")).unwrap();
+    assert_eq!(o2.value, o.value);
+    assert!((r.corporate_yield("A-", day("2026-11-17")).unwrap().value - (0.051 + o.value)).abs() < 1e-9, "UST 10Y of 2026-11-17 is 5.10%");
     // Before the first Treasury day of the fixture the 10Y is missing: an error, not a guess.
     assert!(r.spread_over_10y("A-", day("2020-03-23")).is_err());
 }
 
 #[test]
-fn an_old_hqm_month_is_an_error() {
-    // The last HQM month of the fixture is 2026-10-01: on 2026-12-31 it is 91 days old, more than 70.
+fn the_cost_of_debt_does_not_use_a_month_before_it_is_published() {
+    let (mut r, _) = fixture_rates("lag");
+    // On 2026-10-15 the October average does not exist. The month is September: HQM 10Y 4.41% (fred.json, same numbers).
+    let b = r.hqm_basis(day("2026-10-15")).unwrap();
+    assert_eq!((b.month, b.hqm), (day("2026-09-01").unwrap(), 0.0441));
+    // September 2026 mean UST 10Y: 4.989048% (Python, same file).
+    assert!((b.ust_mean - 0.049890).abs() < 1e-9, "{}", b.ust_mean);
+    // On 2026-11-05 October is still not published (rule day 2026-11-06); on 2026-11-06 it is.
+    assert_eq!(r.hqm_spot(10, day("2026-11-05")).unwrap().date, "2026-09-01");
+    assert_eq!(r.hqm_spot(10, day("2026-11-06")).unwrap().date, "2026-10-01");
+    assert_eq!(r.hqm_curve(day("2026-10-15")).unwrap().date, "2026-09-01");
+}
+
+#[test]
+fn an_old_hqm_month_is_an_error_that_names_the_command() {
+    // The last HQM month of the fixture is 2026-10, ending 2026-10-31; 70 days later is 2027-01-09.
     let (mut r, _) = fixture_rates("stale");
-    let e = r.corporate_yield("A", day("2026-12-31")).unwrap_err();
-    assert!(e.contains("HQM 10Y") && e.contains("more than 70 days old"), "{e}");
+    assert!(r.hqm_spot(10, day("2027-01-09")).is_ok());
+    let e = r.hqm_spot(10, day("2027-02-01")).unwrap_err();
+    assert!(e.contains("HQM 10Y") && e.contains("more than 70 days old") && e.contains("fa bonds hqm get"), "{e}");
     assert!(r.corporate_yield("ZZZ", day("2026-11-18")).unwrap_err().contains("unrecognized rating 'ZZZ'"));
 }
 
 #[test]
-fn the_snapshot_has_a_step_and_a_cost_of_debt_for_each_bucket_and_no_ice_or_moodys() {
+fn the_snapshot_has_a_step_and_a_cost_of_debt_for_each_row_and_no_ice_or_moodys() {
     let (mut r, _) = fixture_rates("snapshot");
     let s = r.credit_snapshot(day("2026-11-18")).unwrap();
-    assert_eq!(s.ratings.len(), 7);
+    assert_eq!(s.ratings.len(), 14);
     assert_eq!(s.ratings["A"].step, 0.0);
-    assert_eq!(s.ratings["CCC"].effective_yield.value, 0.1252);
+    assert!((s.ratings["CCC"].effective_yield.value - (0.0507 + BASIS_OCT + 0.0807)).abs() < 1e-9);
     assert!(s.ratings.values().all(|q| !q.effective_yield.source.contains("ICE") && !q.effective_yield.source.contains("FRED")));
     assert_eq!(s.hqm_curve.maturities["10Y"], 0.0445);
 }
 
 #[test]
 fn the_verdict_credit_context_gives_the_cost_of_debt_back() {
-    // IBM model, rf date 2026-11-18, rating BBB: kd_pretax = HQM 10Y 4.45% + 0.33% = 4.78%.
+    // IBM model, rf date 2026-11-18, rating BBB: kd_pretax = rf 5.07% + basis -0.681% + step 0.33% = 4.719%.
     let (mut r, _) = fixture_rates("verdict-credit");
     let repo = PathBuf::from(format!("{}/..", env!("CARGO_MANIFEST_DIR")));
     let spec = ModelSpec::load(&repo, "IBM").unwrap().unwrap();
     let (spec, ctx) = crate::verdict_rates::rates_context(&spec, &mut r, "2026-11-18", None).unwrap();
     let (spec, c) = crate::verdict_rates::credit_context(&spec, &mut r, "BBB", "2026-11-18", ctx.rf.value).unwrap();
-    assert_eq!((c.hqm_spot, c.step, c.index.as_str()), (0.0445, 0.0033, "BBB"));
-    assert!((c.kd_pretax - 0.0478).abs() < 1e-9, "{}", c.kd_pretax);
-    assert!((spec.driver("kd_spread").unwrap().mean - (0.0478 - 0.0507)).abs() < 1e-9);
+    assert_eq!((c.hqm_spot, c.ust_mean_10y, c.basis, c.step, c.index.as_str()), (0.0445, OCT_MEAN_UST10, BASIS_OCT, 0.0033, "BBB"));
+    assert!((c.kd_pretax - 0.04719).abs() < 1e-9, "{}", c.kd_pretax);
+    assert!((spec.driver("kd_spread").unwrap().mean - (BASIS_OCT + 0.0033)).abs() < 1e-9);
     assert!((c.kd_after_tax - c.kd_pretax * (1.0 - c.tax_rate)).abs() < 1e-6);
 }
 

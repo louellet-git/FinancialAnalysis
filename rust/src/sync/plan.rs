@@ -137,6 +137,13 @@ fn calendar_requests(ctx: &Ctx, force: bool) -> usize {
         .count()
 }
 
+/// The requests of `fa bonds hqm get`: one for each file that is missing, at least 1 (the open file is asked
+/// again when it is old).
+fn hqm_requests(cache: &std::path::Path) -> usize {
+    let d = crate::hqm::dir(cache);
+    crate::hqm::FILES.iter().filter(|n| !d.join(format!("{n}.xls")).exists()).count().max(1)
+}
+
 /// The windows of one request for the Alpaca bars: one month each.
 fn intraday_requests(ctx: &Ctx, symbol: &str, alpaca: bool) -> usize {
     if !alpaca {
@@ -245,7 +252,8 @@ pub fn make_plan(inp: &PlanInput) -> Plan {
                             if key == "treasury" {
                                 (vec!["treasury".into()], 2)
                             } else if key == "hqm" {
-                                (vec!["treasury".into()], 1)
+                                // One request for each missing file (the first run: 9), at least one for the open file.
+                                (vec!["treasury".into()], hqm_requests(&inp.ctx.cache))
                             } else {
                                 (vec!["bls".into()], 1)
                             }
