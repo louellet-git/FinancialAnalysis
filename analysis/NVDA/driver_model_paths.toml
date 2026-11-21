@@ -10,6 +10,12 @@
 # guarantees) still wait for the 10-Q and are marked "WAITS" in the ledger. Version 1 (commit 9a2e6f0) had the base of 2026-07-26.
 # Model date 2026-11-20 (the date of the SEC data; the last close in the store is 2026-11-19).
 #
+# VERSION 3 of 2026-11-21 (answer to the skeptic, round 1). The 8-K page was read by the analyst (ledger section A2: each row
+# traced to the page). Changes against version 2: (1) the equity securities ($109.747B, carrying value) are IN the bridge;
+# (2) the future purchases of equity securities are a COST of the business (process.charge: 19.6% of revenue, grossed up
+# for tax, fading to zero in 10 years), with the acquisitions charge of 1.5% kept separate; (3) SBC start 2.12% (Q3 SBC is on the
+# page); (4) comments updated. Decision (2) and (1) are from the Head of Fundamental Research: the model stays paired (IBM F16).
+#
 # RULE FOR THE INPUTS. No input comes from the market price, from a price target, or from a wish to be near the
 # price. No consensus number sets a driver. Each driver has one of the tags DATA (a reported number or the
 # calibration table), CONVENTION (a repo record) or JUDGMENT (the analyst; the text gives a base rate and a
@@ -24,12 +30,18 @@
 
 engine = "paths"
 ticker = "NVDA"
-notes = "NVDA path-engine model, DRAFT, not reviewed, version 2. Base: trailing four quarters to 2026-10-25 (Q4 FY26 68.127 + Q1 FY27 81.615 + Q2 FY27 96.221 + Q3 FY27 115.844 = $361.807B; Q3 from the 8-K of 2026-11-17, unaudited). Year 1 of the model is the twelve months after 2026-10-25. The bridge is the balance sheet of 2026-10-25 (8-K): debt $32.371B less cash $29.089B less marketable debt securities $24.423B = net debt -$21.141B (net cash). The marketable and non-marketable equity securities ($44.219B and $65.528B) are NOT in the bridge: see the ledger (L11) and the report. One segment: the 8-K gives Data Center 107.6B and Edge Computing 8.2B for Q3 only, with no history, so no segment process is possible."
+notes = "NVDA path-engine model, DRAFT, not reviewed, version 3. Base: trailing four quarters to 2026-10-25 (Q4 FY26 68.127 + Q1 FY27 81.615 + Q2 FY27 96.221 + Q3 FY27 115.844 = $361.807B; Q3 from the 8-K of 2026-11-17, unaudited). Year 1 of the model is the twelve months after 2026-10-25. The bridge is the balance sheet of 2026-10-25 (8-K): debt $32.371B less cash $29.089B less marketable debt securities $24.423B = net debt -$21.141B (net cash). The marketable and non-marketable equity securities ($44.219B and $65.528B, $109.747B together) ARE in the bridge at carrying value, so the net debt used is -$130.888B; the future purchases of equity securities are charged as a cost (process.charge): see the ledger (L11) and the report. One segment: the 8-K gives Data Center 107.6B and Edge Computing 8.2B for Q3 only, with no history, so no segment process is possible."
 # Net debt (balance sheet of 2026-10-25, 8-K of 2026-11-17, $ millions): long-term debt 32,371 (no short-term debt)
 # - cash and cash equivalents 29,089 - marketable debt securities 24,423 = -21,141. The debt securities are cash-like and their
 # interest is not in the margin (rule F15). The standard variable short_term_investments has no value for NVDA after
 # 2025-10-26 (the filer changed the tag), so the numbers are typed in from the 8-K (report weak point W7).
-net_debt = -21141000000.0
+# DECISION (Head of Fundamental Research, 2026-11-21; model stays paired, IBM F16): the equity securities are assets of NVDA, so
+# they are in the bridge at their carrying value: marketable equity securities 44,219 (fair value) + non-marketable securities
+# 65,528 (carrying value, mostly cost) = 109,747. Net debt used: -21,141 - 109,747 = -130,888. Their gains are not in the margin
+# (rule F15: stock in the bridge, flow not in the cash flow). The PURCHASES of equity securities in the future are a cost of the
+# business and are charged in process.charge: a purchase that finances a buyer buys credited revenue. Version 2 had the stakes out
+# of the bridge ($4.54 a share less). The sensitivity table is in the report (section 3).
+net_debt = -130888000000.0
 # Diluted weighted shares of the quarter to 2026-10-25: 24,186M (8-K of 2026-11-17; 24,285M in the quarter before; the buyback
 # was $22.1B in the quarter). Existing awards are in the diluted count; new awards are the SBC cost of the model (rule F5).
 shares = 24186000000.0
@@ -77,6 +89,16 @@ too slow; companies of 30 to 100 $B revenue fade faster); (b) the own momentum: 
 (2.5 years); the guide for Q4 breaks that (+20% to +4% in one quarter), so (b) no longer bounds the half-life from above; one
 guide is one observation and may be low. 1.0 is above the panel and above the speed of the guide. Sensitivity:
 --sensitivity process.growth.half_life=0.6,1.0,1.25,2.5.
+BASE RATE OF SCALE (skeptic M2; fade table, threshold 0.5, `[[fade]]` of the priors file): size above $100B revenue, 14 starts,
+median growth +44.7% (year 1, n 12), -13.3% (year 2, n 11), -5.5% (year 3, n 11); size 30 to 100 $B, 42 starts: +12.5% (n 39),
+-0.5% (n 38), +3.3% (n 36). The model at the means has +40%, +22%, +13% (years 1 to 3). Year 1 is near the cell above $100B (the
+guide). Years 2 and 3 are above both cells. Why: (a) the cells are small (11 company-years) and mix the busts of a cycle (the cache
+has MU: revenue $30.8B in FY22, $15.5B in FY23, -49.5%, with an operating margin of -37%); the model has such busts as a part of
+the paths (the shock and the collapse table: 18.5% of the paths), not in the median; (b) NVDA reports +20% a quarter for five quarters
+and the guide is +4.2% in 13 weeks, not a fall. A model that follows the cell would use a half-life of 0.4 years (the cell phi
+0.161 gives 0.38; the cut of the draw is 0.4): P50 $73.89; at 0.6 years (the all-size panel): $76.63; base 1.0: $85.07. The
+survivor limit: the cache has the companies that exist now, so the cells are too high, not too low. The skeptic can say that D3
+is above the base rate by $11 to $13 of P50; this is the price of reading the guide and the sequential growth as evidence.
 SHOCK (the cycle; JUDGMENT with DATA). Yearly shock size = max(15%, 30% of the slow part); persistence 0 (a miss is not made up:
 the level of revenue keeps the loss). NVDA history (ledger L3): growth +21% (FY19), -7% (FY20), +53%, +61%, +0.2% (FY23), +126%,
 +114%, +65%. Two busts in ten years (FY20, FY23), of 28 and 61 points under the year before. A normal shock of 15% to 20% gives
@@ -101,8 +123,8 @@ lo = 0.10
 hi = 0.80
 rationale = """
 START 66% (DATA + guidance, stochastic, std 3%; version 1 had 68%). GAAP operating margin: Q3 FY27 66.92% (77.520 / 115.844),
-Q2 66.24%, trailing four quarters 66.08% (239.089 / 361.807). SBC ratio about 2.1% to 2.3% (the press release gives no SBC
-for Q3: WAITS), so the margin before SBC is about 69% (Q3) and 68.4% (trailing). Guidance for Q4 FY27 (L2d, rule R1): GAAP
+Q2 66.24%, trailing four quarters 66.08% (239.089 / 361.807). SBC ratio: Q3 1.80% (2.088 / 115.844, page, cash flow table), trailing
+four quarters 2.12% (7.675 / 361.807); so the margin before SBC is 68.7% (Q3) and 68.2% (trailing). Guidance for Q4 FY27 (L2d, rule R1): GAAP
 gross margin 71.0% to 72.0% (74.8% in Q3) and GAAP operating expenses of about $11.0B on revenue of $130.0B (8.5%), so GAAP
 operating margin about 63.0% and about 65% before SBC. Year 1 holds the guided quarter and three quarters that follow it; 66% is
 below the trailing value and above the guided quarter. The gross margin falls 3 points in the guide: this is evidence that the
@@ -111,8 +133,12 @@ TARGET 48.5% (JUDGMENT, stochastic, std 8%, cut at 25% and 65%): a GAAP operatin
 45% is the middle between the mean GAAP operating margin of NVDA in fiscal 2017 to 2022 (31%: ledger L3) and in fiscal 2024
 to 2026 (59%). Reason for a fade at all (JUDGMENT, no source in the ledger): a margin of 65% rests on a gross margin of 75%; the buyers are few and
 large, and a high margin attracts other sellers and own designs of the buyers; a part of the margin moves to the buyers with time. Base
-rate: margins above 60% for ten years do not occur in the history of NVDA (31% before 2023, 15.7% in FY23). Comparators
-(JUDGMENT, not data of the repo and not in the ledger): other large platforms are at 30% to 45% operating margin. Sensitivity: --sensitivity
+rate: margins above 60% for ten years do not occur in the history of NVDA (31% before 2023, 15.7% in FY23). Comparators (DATA, the
+cache, 10-K rows, GAAP operating income over revenue, company-years with revenue above $100B): MSFT 41.6% to 46.8% (FY21 to FY26),
+META 34.7% to 42.2% (FY23 to FY25), GOOGL up to 32.1%, AAPL up to 33.0%; only MU (74.6% in FY26, one year after a loss in FY23) and
+NVDA (60.4%, 62.4%) are above 47%. So the target of 45% is at the level of the best sustained large company of the cache (MSFT,
+META) and above all others. The largest operating profit in the cache is $158.1B (AAPL FY26), $155.2B (MSFT FY26), $130.4B (NVDA
+FY26); the model has $472B at the means in year 10. Sensitivity: --sensitivity
 process.margin.target=0.35,0.485,0.60 (a GAAP operating margin of 31%, 45%, 56%).
 HALF-LIFE 3 years (std 1; JUDGMENT): a moat of this kind erodes over years, not in one year; the margin of year 10 is about 51%
 at the means. Sensitivity: --sensitivity process.margin.half_life=1.5,3,5.
@@ -127,14 +153,14 @@ growth shock and the margin shock have a correlation of 0.6 (see [[shock_corr]])
 
 [process.sbc]
 role = "sbc"
-start = 0.0227
+start = 0.0212
 target = { mean = 0.035, std = 0.01, lo = 0.02, hi = 0.07 }
 shape = "ramp"
 ramp_years = 10
 rationale = """
 SBC is a cost of the model (IBM review F5: the new awards are a cash cost; the existing awards are in the diluted share
-count). Start 2.27% of revenue = the three quarters Q4 FY26 to Q2 FY27, 5.587 / 245.963 (DATA, ledger L6; fixed). The SBC of Q3 FY27 is not in the press release (WAITS for the 10-Q); trailing to Q2 was 2.39%. The ratio fell from
-8.4% (FY21), 10.0% (FY23), 5.8% (FY24), 3.6% (FY25), 3.0% (FY26) to 2.1% (Q2 FY27) because revenue grew faster than the pay of
+count). Start 2.12% of revenue = trailing four quarters, 7.675 / 361.807 (Q4 FY26 1.633, Q1 1.928, Q2 2.026, Q3 2.088; Q3 from the cash flow table of the 8-K page; DATA, ledger L6; fixed). Version 2 had 2.27% (three quarters). The ratio fell from
+8.4% (FY21), 10.0% (FY23), 5.8% (FY24), 3.6% (FY25), 3.0% (FY26) to 1.8% (Q3 FY27) because revenue grew faster than the pay of
 employees. With the growth that fades, the ratio rises again. Target 3.5% (std 1%; JUDGMENT, stochastic): FY25 and FY26 were 3.6%
 and 3.0%; the large platforms are at 3.7% (MSFT) to 6% (GOOGL). Linear in ten years. No yearly shock.
 """
@@ -145,20 +171,33 @@ and 3.0%; the large platforms are at 3.7% (MSFT) to 6% (GOOGL). Linear in ten ye
 
 [process.charge]
 role = "charge"
-start = "target"
+start = { mean = 0.2631, std = 0.04, lo = 0.05, hi = 0.40 }
 target = { mean = 0.015, std = 0.007, lo = 0.0, hi = 0.05 }
-half_life = inf
+shape = "ramp"
+ramp_years = 10
 rationale = """
-Cash paid for businesses, as a share of revenue (JUDGMENT, stochastic; version 1 had 1.0%). DATA (ledger L7, L2e): fiscal 2025
-$1.0B (0.8% of revenue); fiscal 2026 $1.5B plus $13.0B (6.7%); nine months of fiscal 2027: "acquisitions, net of cash acquired and
-other" $3.031B (of which $2.718B in Q3) and a line "Groq, Inc." of $2.944B. It is not clear if the two lines overlap, so the nine
-months are $3.0B to $6.0B on revenue of $293.7B: 1.0% to 2.0%. A purchase of Hugging Face is pending (no amount). The growth that
-the model credits is mostly organic, so the pairing (rule F16) needs a part of the spend. 1.5% = the nine-month level plus a small
-allowance for a large deal. Constant. THE PURCHASES OF EQUITY SECURITIES ARE NOT IN THIS CHARGE: $15.696B in Q3 alone, 13.5% of
-revenue (L2e). The model treats them as follows: the stakes ($109.7B at 2026-10-25) are not in the bridge, so past purchases are
-charged in full (their value is zero in the model); future purchases are not charged. If they are a financing of customers (a
-discount on the price of the product), the cost is larger than this charge. Sensitivity: --pset process.charge.target=0.0 and =0.05
-(5% is about a third of the present rate of purchases of stakes, 13.5% of revenue; the upper cut of the draw is 5%). Weak point W6.
+THE CHARGE HAS TWO PARTS (rule F16; decision of the Head of Fundamental Research, 2026-11-21). The value of the year is a straight
+line from START in year 1 to TARGET in year 10.
+(A) PURCHASES OF EQUITY SECURITIES (fade to zero). If a purchase finances a buyer, the revenue that it buys is credited, so its cost
+is charged; if it is an investment at a fair price, the stake keeps its value (the stakes are in the bridge, so the first case needs
+the charge and the second case is neutral). DATA (8-K page, cash flow table; ledger L2e): purchases of equity securities $15.696B in
+Q3 FY27, $58.100B in nine months (19.8% of revenue of $293.681B); Q4 FY26 $12.80B (= fiscal 2026 $17.502B less nine months $4.702B,
+company facts `PaymentsToAcquireEquitySecuritiesFvNi`; the page shows $4.952B for the same nine months, so the basis differs by
+$0.25B). Four quarters: 12.80 + 58.100 = $70.90B over revenue of $361.807B = 19.6% (the mean of the last four quarters; Q3 alone
+is 13.5% and is not used). Proceeds from sales of equity securities: $9.493B in nine months (net purchases 16.6% of revenue; see
+sensitivity). The purchases are not tax deductible, and the engine taxes EBIT after the charge, so the charge is divided by
+(1 - 21%): 19.6% / 0.79 = 24.8%. The charge fades like the charge of record A-002 (to zero along the ramp of the credited growth
+above L): the credited growth that the purchases support fades the same way; the growth is 4.1% in year 10 at the means. Ten years
+linear (A-002 has 12 in the automatic model; here the horizon). STD 4% on the start: the spread of the quarterly ratios (13.5% to
+19.8%). A judgment: if the purchases are neutral investments, this charge is a cost that is too high.
+(B) PURCHASES OF BUSINESSES (constant, 1.5%, stays separate). DATA (ledger L7, L2e): fiscal 2025 $1.0B (0.8% of revenue); fiscal
+2026 $1.5B plus $13.0B (6.7%); nine months of fiscal 2027: "Acquisitions, net of cash acquired and other" $3.031B (Q3 $2.718B, in
+investing activities) and "Groq, Inc." $2.944B (a separate line in FINANCING activities, nine months, none in Q3): the lines do not
+overlap, so $5.975B on $293.681B = 2.0%. A purchase of Hugging Face is pending (no amount). The growth that the model credits is
+mostly organic, so the pairing needs a part of the spend: 1.5% is kept as decided, below the measured 2.0% (target 2.0%: P50
+$84.39 against $85.07). Target std 0.7%, cut 0 to 5%.
+Total in year 1 at the means: 26.3% of revenue (about $133B). Sensitivities (report section 3): charge 0; 1.5% only; Q3 rate 13.5%;
+net of sales proceeds; no tax gross-up; stakes out of the bridge.
 """
 
 # ---------------------------------------------------------------------------------------------
@@ -175,9 +214,9 @@ lo = 1.5
 rationale = """
 Change of revenue for one dollar of change of operating invested capital (DATA + JUDGMENT, stochastic). Invested capital =
 receivables + inventory + prepaid - (payables + accrued) + net property + operating-lease assets + other non-current assets
-(no goodwill, no investments, no cash). Ledger L4 has the balance sheets of 2026-07-26; the press release gives no receivables, inventory or payables for 2026-10-25 (WAITS for the 10-Q), so this driver is not updated. Incremental ratio, change of trailing revenue over change
+(no goodwill, no investments, no cash). Ledger L4 has the balance sheets. The 8-K page (version 3) has the balance sheet of 2026-10-25: receivables 81.033, inventory 39.724, prepaid 3.506, payables 21.074, accrued 33.287, net property 19.227, operating-lease assets 6.383, other assets 17.166 ($B): invested capital 112.7 (core without lease and other: 89.1). The ratio of the last year (trailing revenue 361.8 against 187.1 at 2025-10-26, capital 112.7 against 54.6): 3.0 (3.6 core). Trailing revenue to capital 3.2. Receivables are 63.7 days of Q3 revenue. The start of 3.0 is confirmed, not changed. Incremental ratio, change of trailing revenue over change
 of this capital: fiscal 2025 6.2, fiscal 2026 3.6, 2025-07-27 to 2026-07-26 2.7 (3.4 without the lease and other non-current
-assets). The ratio fell in the last year because receivables grew faster than revenue (63.1B on 96.2B of revenue in Q2 FY27, 60 days;
+assets), 2025-10-26 to 2026-10-25 3.0 (3.6). The ratio fell in the last year because receivables grew faster than revenue (63.1B on 96.2B of revenue in Q2 FY27, 60 days;
 45 days in Q1) and inventory and prepaid supply grew. Start 3.0 (between 2.7 and 3.4). Target 4.0 (std 1.0, cut at 2 and 8) in ten years:
 a fabless seller with revenue that grows 4% a year needs less capital for each new dollar than in the buildout; the average level of
 revenue to capital was 4.0 in fiscal 2026 (215.9 / 53.4) and 3.3 in Q2 FY27. Linear in ten years. No shock. Sensitivity:
@@ -197,8 +236,8 @@ rate = 0.21
 # CONVENTION: statutory 21%, the rule of the automatic model. DATA: the effective rate was 12.0% (FY24), 13.3% (FY25), 15.1% (FY26),
 # 17.4% in Q3 FY27 (13.730 / 79.017); the guidance (L2d) is 16% to 18% for the whole fiscal 2027. The decision: KEEP 21%. The rate has
 # risen by about two points a year for three years, the guide is for one year, and the long-run rate (ten years, terminal value) is
-# not guided; 21% is the rate where the series goes. It is conservative if the rate stays near 17%: P50 +5% at 17% (sensitivity
-# --pset tax.rate=0.17). Fixed: the engine has no draw for the tax rate.
+# not guided; 21% is the rate where the series goes. It is conservative if the rate stays near 17%: P50 +4.9% at 17% (sensitivity
+# --pset tax.rate=0.17: P50 $89.23 against $85.07). Fixed: the engine has no draw for the tax rate.
 
 [discount]
 beta = { mean = 1.681, std = 0.09, lo = 1.0 }
@@ -209,11 +248,11 @@ stub_years = 0.9288
 year1_share = 1.0
 # BETA 1.681 = 2/3 x 2.021 + 1/3 x 1 (DATA: regression of 260 weekly returns 2021-11-29 to 2026-11-16 on SPY (SPY ends 2026-11-18), `fa dcf auto
 # NVDA --explain`; standard error of the regression beta 0.132, so 0.088 after the shrink; ledger L8). The IBM review fixed the
-# beta as an estimation constant; here it is a draw with its standard error (a change to the IBM rule, with reason: the beta of
+# beta as an estimation constant (IBM: a number, not a draw); here the beta IS A DRAW with its standard error (a change to the IBM rule, with reason: the beta of
 # NVDA has a wide error). A beta of 1.68 for ten years is high for a company with $900B of revenue: see the weak points
 # (sensitivity: --pset discount.beta=1.2).
 # ERP 4.41% (std 0.75%, lower bound 2%): CONVENTION, Damodaran implied premium of 2026-11-19, as in the ANT file and the automatic model.
-# EQUITY WEIGHT 1.0: the weight from the market value would be an input from the price. The debt is $33.4B: for any equity value
+# EQUITY WEIGHT 1.0: the weight from the market value would be an input from the price. The debt is $32.4B (2026-10-25): for any equity value
 # above $0.5T the weight is above 0.985 (cost of capital -0.1 point at most). So kd_spread has no effect and is only for the form.
 # TIMING: the balance sheet is 2026-10-25; year 1 is the twelve months after it; all cash flows of year 1 come after the balance sheet
 # (year1_share 1.0). The model date is 2026-11-20. Year 1 ends 339 days later: stub 339 / 365 = 0.9288. End-of-year discounting
@@ -240,7 +279,7 @@ roic = { mean = 0.35, std = 0.15, lo = 0.15, hi = 1.0 }
 # capital. The terminal value takes a lower return, 35% (std 15%, cut at 15%), because a return of 110% to 150% for ever is not a base rate
 # (JUDGMENT; no data of the repo for the return of large platforms is in the ledger). So the terminal reinvestment is about 10% of NOPAT
 # (4% / 35% = 11%), not 3%.
-# Sensitivity: --pset terminal.roic=0.15 and =1.0. Effect: ROIC 15% gives P50 $126.51, ROIC 100% gives $135.69 (base $130.89).
+# Sensitivity: --pset terminal.roic=0.15 and =1.0. Effect: ROIC 15% gives P50 $82.23, ROIC 100% gives $88.36 (base $85.07).
 
 # ---------------------------------------------------------------------------------------------
 # Demand collapse: the engine has no regime state; the failure table is used as a collapse of demand
@@ -254,12 +293,15 @@ mode = "sampled"
 # company at a multiple of the revenue of the year before. Here it is NOT a bankruptcy: it is a regime in which the customers
 # cut their capital spend for good (a buildout that ends, and the financing of the buyers that fails). The company stays, with
 # smaller revenue and a lower margin. HAZARD 2% a year (std 1%): 18% in ten years. No NVDA precedent: the two busts of the
-# history (FY20, FY23) were mild in a year of revenue (-7%, +0.2%) and the revenue came back in the next year; the 18% is a
-# JUDGMENT from the record of other makers of equipment of a buildout (not in the repo data); the normal shock of the growth
+# history (FY20, FY23) were mild in a year of revenue (-7%, +0.2%) and the revenue came back in the next year. A precedent in the
+# cache: MU, revenue $30.8B (FY22) to $15.5B (FY23), -49.5%, operating margin -37%, then $133.2B in FY26 (a memory cycle; one company).
+# The 18% is a JUDGMENT, with this one precedent; the normal shock of the growth
 # process (a year of -30% or worse on 5% of the paths) is the mild kind of bust and stays. MULTIPLE 2.0 times the revenue of the
 # year before: value of a company with revenue 30% under that level, an operating margin of 30%, tax 21%, growth 4%, return on
 # new capital 35% and the cost of capital 12.5%: 0.7 x 0.30 x 0.79 x (1 - 0.04 / 0.35) x 1.04 / (0.125 - 0.04) = 1.8, rounded
-# to 2.0 (a hand calculation, no engine run). Sensitivity: --pset failure.hazard=0 and =0.04; --pset failure.recovery_revenue_multiple=1,4.
+# to 2.0 (a hand calculation, no engine run). Sensitivity: --pset failure.hazard=0 (P50 $92.31) and =0.04 ($76.11); --pset failure.recovery_revenue_multiple=1 ($83.51) and =4 ($91.63).
+# THE LOWER TAIL IS SET BY THE MULTIPLE (no source): a collapse in year 1 gives 2.0 x 361.8 x 0.896 = $648B, plus net cash and stakes
+# of $131B = $32 a share. 0.5% of the paths are below $30 and 5.9% below $40; no path is at or below zero.
 
 # ---------------------------------------------------------------------------------------------
 # Correlations of the drawn numbers (one draw for each path). All JUDGMENT, the sizes of the IBM and ANT files.
@@ -299,7 +341,7 @@ note = "repo convention (IBM)"
 a = "growth"
 b = "margin"
 rho = 0.6
-note = "JUDGMENT with own DATA: in the two busts (FY20, FY23) growth and operating margin fell together. The calibration table gives +0.25 for all companies (operating margin); NVDA has a large fixed cost base (opex) and write-downs of inventory in a bust. Sensitivity: a shock correlation has no --pset; a copy of this file with 0.25 gives P50 $130.55 against $130.89 (small effect)."
+note = "JUDGMENT with own DATA: in the two busts (FY20, FY23) growth and operating margin fell together. The calibration table gives +0.25 for all companies (operating margin); NVDA has a large fixed cost base (opex) and write-downs of inventory in a bust. Sensitivity: a shock correlation has no --pset; a copy of this file with 0.25 gives P50 $84.65 against $85.07 (small effect)."
 
 [[shock_corr]]
 a = "rate"
