@@ -130,3 +130,14 @@ rates of the panel, (c) the rates piece against the measured balance-sheet effec
 item 2.02), (e) the economics view when its file exists; 4 the conclusion with its horizon and what would change it;
 5 limits and commands. The conclusion is a judgment from fundamentals, not a backtested trade rule; the report says so.
 Still on hold: the writing waits for the go-ahead of the owner on the results.
+
+**Reality-check evidence (2026-11-21 about 18:40 UTC; an agent, not reviewed; two facts checked by this head in the
+store):** `analysis/priors/sp10_reality_check_evidence_2026-11-21.md`. (b) Base rate, from the store: 50 companies of
+today's S&P 500 with revenue of $50B or more ten years ago grew 3.7% a year at the median, 9.9% at the 90th percentile,
+20.9% at the maximum (AMZN). The 10-year growth that the price implies at the model premium of 4.41%, after the fall:
+NVDA 29.3%, AVGO 28.2%, LLY 27.1%, META 22.8%, TSLA above 39% (above every case of the set); GOOG 17.5%, MSFT 16.1%,
+AAPL 15.0% (above the 90th percentile); BRK-B 8.6%. (d) Only NVDA has an 8-K item 2.02 in the window (filed 2026-11-17;
+release in the store): revenue $115.8B (+103% on the year; guidance $108.0B), gross margin 74.8%, next-quarter guidance
+$130.0B with a gross margin of 71.0% to 72.0%; the release names an "interim CEO" (the release of 2026-08-26 named the
+founder as CEO) and gives no reason. NVDA closes: 155.46 (11-17), 150.96, 145.98, 125.53 (11-20). The store gives no
+cause for 2026-11-20. Poison and truncation tests of the series: pass (`analysis/priors/data/premium_series_pit/`).
