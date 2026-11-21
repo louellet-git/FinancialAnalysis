@@ -1,5 +1,9 @@
 # Blind projection test of the DCF engine (T1 to T4), one run
 
+> **T2 to T4 INVALID (2026-11-21, CRIT F1 of the strategy gate): split look-ahead in the prices.** The rank tests
+> compare a past value per share with a split-adjusted price. They run again after `T-20261121-split-basis-fix`.
+> T1 (`fa dcf pit`, no price) is not touched.
+
 Ticket `T-20261121-blind-projection-test` (design d7a6ae0, revision 1 0852d36, revision 2 1204ed1; all before
 this run). Data store `1804f48`, seed 7. Branch `claude/weekly-rule-backtest`. One run of each test, 2026-11-21
 04:46 to 04:49 UTC. No review yet. Rule: the price measures and ranks; no input is set from the price.
