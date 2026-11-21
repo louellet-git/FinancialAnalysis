@@ -20,7 +20,8 @@ test date. It makes a model look better than it is.
 5. A universe that lists today's companies has survivorship. Say it in the result.
 6. Prices in the store are split-adjusted to today; SEC share counts are as filed. A past value per
    share against a past price needs the split factor between the filing date and the price date. A
-   poison test and a truncation test do not find this trap (`docs/traps/`, the split look-ahead).
+   poison test and a truncation test do not find this trap (`docs/traps/`, the split look-ahead). Use the
+   engine's share basis (`split_factor`, `docs/models/share-basis.md`); do not write a second one.
 
 ## Pre-register
 1. Commit the hypothesis, the gate and the decision rule in a commit before the first code commit
