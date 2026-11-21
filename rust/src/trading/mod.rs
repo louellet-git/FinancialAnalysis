@@ -24,6 +24,7 @@ pub mod engine;
 pub mod fetch;
 pub mod metrics;
 pub mod paper;
+pub mod premium;
 pub mod pricing;
 pub mod stats;
 pub mod strategy;
