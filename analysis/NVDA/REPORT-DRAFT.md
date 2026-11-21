@@ -238,7 +238,7 @@ NVDA fell from $206.69 (2026-11-03) to $155.46 (2026-11-17), or -24.8%, before t
 
 ## 6. Comparison with the automatic screen
 
-`fa dcf auto NVDA --cache data/raw --as-of 2026-11-20 --explain` (seed 7, 10,000 paths) gives P10 1.18, P25 5.40, **P50 16.55**, P75 43.26, P90 104.57 and mean 43.85 (store `a1dffb5`). At store `1804f48` the beta is 1.675, the P50 is 16.57 and the mean is 44.00. The screen uses the 10-K and the 10-Q of Q2. It does not see the 8-K. It is not a reviewed valuation (`docs/models/auto-path-model.md`). This model gives P50 $103.78. The gap was not split by input.
+`fa dcf auto NVDA --cache data/raw --as-of 2026-11-20 --explain` (seed 7, 10,000 paths) gives P10 1.18, P25 5.40, **P50 16.55**, P75 43.26, P90 104.57 and mean 43.85 (store `a1dffb5`). At store `1804f48` the beta is 1.675, the P50 is 16.57 and the mean is 44.00. With the code of `main` merged at `a7f030d` (store `1804f48`), the screen gives P10 2.58, P25 6.81, P50 17.98, P75 44.80, P90 106.22 and mean 45.40. The cause is in the code of `main` (pull requests 101 to 104); this model does not change. The screen uses the 10-K and the 10-Q of Q2. It does not see the 8-K. It is not a reviewed valuation (`docs/models/auto-path-model.md`). This model gives P50 $103.78. The gap was not split by input.
 
 | Input | Automatic screen | This model |
 |---|---|---|

@@ -254,7 +254,7 @@ fa dcf drivers NVDA $K --model $M --no-attribution --price $P --implied-price $P
 ## 6. Automatic screen (section 6)
 
 ```bash
-fa dcf auto NVDA --cache $C --as-of 2026-11-20 --explain     # a1dffb5: P10 1.18, P25 5.40, P50 16.55, P75 43.26, P90 104.57, mean 43.85; 1804f48: P50 16.57, mean 44.00
+fa dcf auto NVDA --cache $C --as-of 2026-11-20 --explain     # a1dffb5: P10 1.18, P25 5.40, P50 16.55, P75 43.26, P90 104.57, mean 43.85; 1804f48: P50 16.57, mean 44.00; code of main at a7f030d: P10 2.58, P50 17.98, mean 45.40
 ```
 
 ## 7. Order of the runs (section 7)
