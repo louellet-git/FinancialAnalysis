@@ -157,4 +157,19 @@ One CSV file, one table. The unit of each column is in the table.
 
 ## 6. Dated records
 
-No record yet. The first record follows the freeze.
+Each record is dated. Each record was written before the first run, or it says that it follows a result.
+
+**Freeze.** The design is frozen at commit 3982324 (Head of Quality and Risk, PASS-WITH-NOTES, 2026-11-21, about 17:35 UTC).
+
+**R1. Conditions and notes of the freeze (2026-11-21, about 17:40 UTC, before any build or run).** No SPF value was seen for this record.
+1. Conditions before the first run on the real SPF file (not before the build):
+   - The Head of Technology checks the SPF terms ("All rights reserved"). Until then, a private copy only, and no series in any repo.
+   - The release dates file exists in the private store, with its source.
+   - The return form of STOCK10 (arithmetic or geometric, total or price) and the compounding of GSW10 are resolved, or a dated record states them as a limit.
+   - The six tests of rule 6.6 exist and pass.
+   - `fa macro view` and the flag `--view-file` of Fundamental Research pass their code gates.
+2. Notes (no change of a rule):
+   - Rule 2.4 is a special case of rule 2.3. Read them as one rule.
+   - Rule 5.3 ("a rate move does not change ERP_A alone") is true only between releases, because GSW10 is fixed at the release date. At a release, a rate move and a survey move are both in the step of ERP_A.
+   - The mix of two units (rule 7) touches the level check of rule 6.2 more than the changes.
+   - The release date 2026-03-06 of the 2026 Q1 survey is checked against the release calendar before the first run.
