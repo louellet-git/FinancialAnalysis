@@ -10,7 +10,7 @@ order: 2
 branch: claude/revenue-old-tags
 created: 2026-11-21
 acceptance: The mapped `revenue` has a value for fiscal year 2015 for the sp500 tickers that have a revenue tag in that year; the count before and after; no change for a ticker that already had a value; IBM 83.84 / 151.84 / 258.03; a fixed-answer test.
-merged: pull request 196 (branch claude/revenue-old-tags)
+merged: pull request 200 (branch claude/revenue-old-tags)
 ---
 Found by the Head of Fundamental Research (2026-11-21): `revenue` has no value in fiscal year 2015
 for 51 sp500 tickers (for example JNJ, KR, VLO, SYY, PFE, MRK, KO). The raw tags exist (for example
