@@ -30,12 +30,10 @@ Rules: `chiefs/ORIENTATION.md`, sections 1, 5 and 8. Decisions of the person: `.
 ## Watch list
 - E1 (stock trades) is on hold: no rule passed, T1 fails, and the person paused the fix for the week study.
 - PR #131 (`fa algo`) waits for the live run of the person on Monday 2026-11-23.
-- Old tickets (Pytest or Python in the text; `paper-desk` decision 1): with their heads since 2026-11-21.
-- `T-20261119-filing-values-in-variables` and `T-20261120-arb-4-futures-basis` are in progress on a branch
-  that the remote does not have.
-
-## Messages received from the heads (2026-11-21)
-- Quant Research: alpha-1 stopped at gate 1 (#148); SABR (#158); model documents (#147, #151); the
-  engine table (#159). No question.
-- Economics: view engine design frozen (#153); the rate-rise answer goes to the person through
-  Fundamental Research; the premium test command is in the gate. No question.
+- The week report (E2.S1) comes to me before it goes to the person. My sense check of the preliminary
+  results (2026-11-21): one fact counted two times; market or model; 1.2-1.7% against 4.41%. The head
+  agreed and adds a second model (`fa dcf market`: the lowest quarter of the history, not the lowest of all).
+- Rule point, seen 2026-11-21: six tickets are on a branch only, not on main (arb-invariants, cboe-off,
+  recon-lasting, revenue-old-tags, selftest-golden, trade-grids). "Ticket first" asks for the ticket on
+  main before the work. Say it once to Quant and Technology at their next done message; no separate note.
+- E6.S4 (controls of orders and of data terms) has no ticket yet (proposal of Quality and Risk).
