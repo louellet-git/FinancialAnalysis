@@ -181,6 +181,15 @@ pub fn read_text(path: &Path) -> Result<String, String> {
     }
 }
 
+/// The stem of the file that `load_snapshot_at` reads: `<date>T<time>`, or the last stem of the date (`<date>` if none exists).
+pub fn stem_of(cache: &Path, ticker: &str, date: &str, time: Option<&str>) -> Result<String, String> {
+    match time {
+        Some(t) if !valid_hhmm(t) => Err(format!("bad --time '{t}' (use HHMM in UTC, for example 1930)")),
+        Some(t) => Ok(format!("{date}T{t}")),
+        None => Ok(stems_of_date(cache, ticker, date).pop().unwrap_or_else(|| date.to_string())),
+    }
+}
+
 /// A snapshot by date; `None` is the latest date. A date with several files gives the LAST one (the latest time).
 pub fn load_snapshot(cache: &Path, ticker: &str, date: Option<&str>) -> Result<OptionChainSnapshot, String> {
     load_snapshot_at(cache, ticker, date, None)
@@ -195,15 +204,7 @@ pub fn load_snapshot_at(cache: &Path, ticker: &str, date: Option<&str>, time: Op
             .ok_or_else(|| format!("No option-chain snapshots for {} under {}", ticker.to_uppercase(), options_dir(cache, ticker).display()))?,
     };
     let files = snapshot_files(cache, ticker);
-    let stem = match time {
-        Some(t) => {
-            if !valid_hhmm(t) {
-                return Err(format!("bad --time '{t}' (use HHMM in UTC, for example 1930)"));
-            }
-            format!("{date}T{t}")
-        }
-        None => stems_of_date(cache, ticker, &date).pop().unwrap_or_else(|| date.clone()),
-    };
+    let stem = stem_of(cache, ticker, &date, time)?;
     let path = files.get(&stem).cloned().unwrap_or_else(|| snapshot_path(cache, ticker, &stem));
     let text = read_text(&path).map_err(|e| format!("No option-chain snapshot for {} on {date}{} at {}: {e}", ticker.to_uppercase(), time.map(|t| format!(" at {t} UTC")).unwrap_or_default(), path.display()))?;
     serde_json::from_str(&lenient_json(&text)).map_err(|e| format!("{}: {e}", path.display()))
@@ -298,7 +299,7 @@ pub fn fetch_option_chain(
     fetch: &dyn Fn(&str) -> Result<Vec<u8>, String>,
 ) -> Result<(OptionChainSnapshot, Source), String> {
     let ticker = ticker.to_uppercase();
-    if !refresh && snapshot_path(cache, &ticker, today).is_file() {
+    if !refresh && !stems_of_date(cache, &ticker, today).is_empty() {
         match load_snapshot(cache, &ticker, Some(today)) {
             Ok(snapshot) => return Ok((snapshot, Source::Cache)),
             Err(e) => eprintln!("fa: corrupt options snapshot for {ticker} ({e}); asking Cboe again"),

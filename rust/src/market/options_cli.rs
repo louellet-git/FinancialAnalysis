@@ -33,10 +33,11 @@ USAGE:
                               intrinsic value, monotony, slope, butterfly, calendar, upper parity bound only (the lower bound needs the
                               dividends). Without --rate the Treasury curve can be downloaded (one file); give --rate R for no network.
                               A break is not a profit. fa options check --help: more.
-  fa options archive [SYMBOLS] [--keep-days N] [--rate R]
+  fa options archive [SYMBOLS] [--keep-days N] [--min-share X] [--force] [--rate R]
                               copy the live Alpaca chains with the time: default SPX SPY VIX. Each symbol gives the file
                               <date>T<hhmm>.json (UTC) and its gzip copy <date>T<hhmm>.json.gz, and the Cboe VX settlement file
-                              is fetched too. A chain with less than 80% of the quotes of the last live file is not written.
+                              is fetched too. A chain with less than 80% (--min-share X) of the quotes of the last Alpaca file is not written;
+                              --force writes it and makes it the new base.
                               --keep-days N removes the JSON of files older than N days when the gzip copy is the same
                               (the readers read the gzip file). Default: no removal. Needs the Alpaca keys.
   fa options history SYMBOL (--date D | --from D --to D) [--max-days N] [--moneyness LO,HI] [--rate R] [--level S:RATIO] [--refresh] [--plan]
@@ -192,6 +193,13 @@ pub fn snapshot_alpaca(repo: &Path, cache: &Path, ticker: &str, today: &str, ref
     snapshot_alpaca_with(repo, cache, ticker, today, refresh, None, None)
 }
 
+/// Does a live Alpaca file (not closes) of this date exist?
+pub fn has_live_alpaca(cache: &Path, ticker: &str, date: &str) -> bool {
+    options::stems_of_date(cache, ticker, date).iter().any(|stem| {
+        options::snapshot_files(cache, ticker).get(stem).and_then(|p| options::read_text(p).ok()).and_then(|t| serde_json::from_str::<OptionChainSnapshot>(&super::lenient_json(&t)).ok()).is_some_and(|s| s.source.as_deref() == Some("alpaca") && s.quote_kind.as_deref() != Some("close"))
+    })
+}
+
 /// The live chain of one underlying, with the time stamp, and what the run cost.
 pub struct Fetched {
     pub snap: OptionChainSnapshot,
@@ -245,6 +253,9 @@ pub fn fetch_alpaca(repo: &Path, ticker: &str, today: &str, roots: Option<Vec<St
 /// The file has the time (UTC, to the minute) in it and in its name. A file of the same minute stays unless `refresh`.
 pub fn snapshot_alpaca_with(repo: &Path, cache: &Path, ticker: &str, today: &str, refresh: bool, roots: Option<Vec<String>>, flat_rate: Option<f64>) -> Result<String, String> {
     let (stamp, hhmm) = options::utc_stamp(alpaca::now_utc());
+    if !refresh && has_live_alpaca(cache, ticker, today) {
+        return Ok(format!("options {ticker} {today}: a live Alpaca snapshot of today exists; --refresh takes another one (a new file; fa options archive takes the chains of the day)"));
+    }
     if !refresh && options::timed_path(cache, ticker, today, &hhmm).is_file() {
         return Ok(format!("options {ticker} {today}: a snapshot of {hhmm} UTC exists; --refresh replaces it"));
     }
@@ -364,7 +375,7 @@ fn history(repo: &Path, rest: &[String]) -> Result<i32, String> {
     for (a_day, b_day) in super::intraday::month_windows(&from, &to) {
         let days = weekdays(&a_day, &b_day);
         if let (Some(first), Some(last)) = (days.first(), days.last()) {
-            let have = |d: &String| options::snapshot_path(&cache, &ticker, d).is_file();
+            let have = |d: &String| !options::stems_of_date(&cache, &ticker, d).is_empty();
             if !refresh && have(first) && have(last) {
                 skipped_months += 1;
                 eprintln!("fa: {a_day} to {b_day}: snapshot files exist; skipped");
@@ -395,6 +406,7 @@ fn check(repo: &Path, rest: &[String]) -> Result<i32, String> {
     let top = a.flag("--top").map(|n| n.parse::<usize>().map_err(|_| format!("bad --top '{n}'"))).transpose()?.unwrap_or(10);
     let cache = super::price_cli::cache_dir(repo);
     let snap = options::load_snapshot_at(&cache, &ticker, Some(date), a.flag("--time"))?;
+    println!("file {}", options::stem_of(&cache, &ticker, date, a.flag("--time"))?);
     let american = !super::option_arb::is_european(&ticker);
     let min_size = a.flag("--min-size").map(|n| n.parse::<f64>().map_err(|_| format!("bad --min-size '{n}'"))).transpose()?.unwrap_or(0.0);
     if !(min_size.is_finite() && min_size >= 0.0) {

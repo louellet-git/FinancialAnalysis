@@ -80,6 +80,7 @@ pub fn run(repo: &Path, rest: &[String]) -> Result<i32, String> {
     let snap = load_snapshot_at(&cache_dir(repo), &symbol, Some(&date), get("--time").as_deref())?;
     let mut rate = rate_fn(repo, flat);
     let (set, counts) = build(&snap, &mut rate, &filters)?;
+    println!("file {}", crate::market::options::stem_of(&cache_dir(repo), &symbol, &date, get("--time").as_deref())?);
     println!("fa vol fit {model} {symbol} {date}: snapshot of {} quotes, quote kind {}", snap.quotes.len(), snap.quote_kind.as_deref().unwrap_or("bid and ask"));
     print_counts(&counts, &filters);
     if index_info(&symbol).is_none() {

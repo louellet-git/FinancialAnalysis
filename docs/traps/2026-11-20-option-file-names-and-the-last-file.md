@@ -5,7 +5,7 @@
 the files `<date>.json` (Cboe, closes), `<date>T0930.json`, `<date>T1542.json` and the gzip copy
 `<date>T1542.json.gz`. A reader that is given a date only takes the LAST file of that date (the latest
 time). A person who wants the open quotes and gives `--date D` gets the last quotes. The time of a
-file is in UTC, and `snapshot_date` is the UTC date of the run. A run after 00:00 UTC has the next date.
+file is in UTC. It is the start of the run (one clock for the date and the time of all symbols), and `snapshot_date` is the UTC date of that time. A run after 00:00 UTC has the next date.
 Cboe gives the VX settlement file for a date before today (UTC) only: an archive run on the day
 copies the settlement of the trade date before.
 
