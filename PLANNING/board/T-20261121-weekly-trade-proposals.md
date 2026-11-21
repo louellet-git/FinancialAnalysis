@@ -28,3 +28,7 @@ Plan of the Head of Fundamental Research (first Friday: 2026-11-27):
    absolute, so a beta hedge with SPY (a stock instrument) is the first candidate. No option work in this area.
 5. Honest limit for Luc: the backtest evidence is weak (+2.9 to +3.5 points a year over the equal weight,
    t 1.6 to 2.1, 9 years, today's lists). Small sizes until the live record or the long history adds evidence.
+
+Owner answers, 2026-11-21 about 03:55 UTC (relayed by the Head of Quality and Risk): "Paper 4 weeks, then live".
+So the first 4 Fridays (2026-11-27 to 2026-12-18) are paper; live from about 2026-12-25, only after Luc approves
+the sleeve limits ("Not sure" for now; the limits of the Head of Quality and Risk apply to paper as an interim rule).

@@ -47,3 +47,7 @@ Done: ticket `T-20261121-weekly-trade-proposals` (first Friday 2026-11-27); ques
 Size of each weekly trade: "Not sure, size of trades should be subject to the trade and that responsibility is of the head."
 Sides: "Anything".
 Done: record `docs/assumptions/A-009-weekly-trade-rule.md` (written before its test): buy, sector-neutral, 3 a week, 1/39 of the sleeve each, 13-week hold; a short waits for its test.
+
+## 2026-11-21 about 03:55 UTC (relayed by the Head of Quality and Risk)
+Words: weekly proposals "Paper 4 weeks, then live"; sleeve limits "Not sure".
+Done: the weekly ticket says paper for 2026-11-27 to 2026-12-18, live from about 2026-12-25 after Luc approves the limits.
