@@ -43,3 +43,6 @@ Done: the weekly process runs on paper from 2026-11-27 for 4 weeks; live from ab
 ## 2026-11-21 04:29 and 04:30 UTC (relayed verbatim by the Head of Fundamental Research)
 Words: "Ensure that before you have trades and we begin the weekly trades, that you have effectively back tested your future state blind projections using the DCF engine and using prior data. A recommendation should work at any time and point and when it doesn't, the model should have already priced it in such that it does work." And: "Backtesting is integral to our work here".
 Done: the blind-projection tests T1 to T4 (ticket `T-20261121-blind-projection-test`) are a condition of the strategy gate before the first weekly trade, paper included. A row "Backtest" in `docs/QUALITY-STANDARDS.md`, section 4.
+
+## 2026-11-21 05:33 UTC (my decision; no word of the person)
+The public copy of a split table from the Alpaca corporate-actions API: allowed as derived facts only (ticker, ex_date, ratio, factor, kind, sec_check, source), each checked against the SEC split tag where one exists; no raw Alpaca payload and no Alpaca-only field in the public store. Alpaca terms for redistribution are not read; this is written in `docs/DATA-SOURCES.md`. The person can reverse this.
