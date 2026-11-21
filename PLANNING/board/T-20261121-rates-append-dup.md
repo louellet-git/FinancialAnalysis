@@ -2,12 +2,12 @@
 id: T-20261121-rates-append-dup
 title: Stop the Treasury curve refresh from adding a date that the file has
 area: engine
-status: backlog
+status: in-progress
 owner: louellet-git
 requested_by: louellet-git
 head: quant
 order: 1.0
-branch:
+branch: claude/quant-rates-dup
 created: 2026-11-21
 acceptance: A refresh of `rates/treasury_nominal_<year>.csv` replaces or skips a date that the file already has, a test with a file that already has the last date proves it, and `fa rates` gives the same output as before.
 ---
