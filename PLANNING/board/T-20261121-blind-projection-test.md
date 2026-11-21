@@ -39,7 +39,7 @@ data store `1804f48`; parameter table cut at 2016 for the stock tests, `--cut 20
 If a test fails, the weekly trades do not start on its basis; the head reports the failure to Luc with the numbers.
 No rule is changed after a result to make a test pass. Survivorship, price returns and today's lists stay as limits.
 
-**Revision 1, 2026-11-21 04:35 UTC, before any run of T1 to T4** (review of the statistics by the Head of
+**Revision 1, 2026-11-21 04:31 UTC, before any run of T1 to T4** (review of the statistics by the Head of
 Economics). It replaces the pass rules of T2 to T4 above. T1 does not change.
 - **T2.** Each week w: d_w = the mean 13-week excess of the top decile less that of the bottom decile. The excess
   is the return less the return of the equal weight of the scored list of the same week. Primary: a one-sided
