@@ -108,3 +108,7 @@ Done: no go-ahead yet (the document stays on hold). The 0.78 is the median chang
 ## 2026-11-21 about 19:10 UTC (chat)
 Words: "I think we also need to make sure that we're properly evaluating the impact of rates on a company by getting an appropriate value of how it's assets and liabilities are affected by the change in curves."
 Done: ticket `T-20261121-rates-balance-sheet` with a design written before any measurement (debt at fair value and its ladder, debt securities held, pensions, floating debt and cash, the full curve); first a measurement for the S&P 100, then a model change with its own backtest only if the effect is material.
+
+## 2026-11-21 about 19:30 UTC (chat)
+Words: "Is all DCF work fitting to the DCF engine?" Answer to the one-engine question: "It depends, we need some way for this all to run efficiently/smoothly. What I meant was more so that."
+Done: ticket `T-20261121-dcf-engine-integration` (one curve rule, a per-ticker weekly bridge, the common and company parts in Rust, the balance-sheet effect in the bridge if material, a cache of the point-in-time mapping for speed, the model documents). No change to the number of engines.
