@@ -558,13 +558,17 @@ mod tests {
 
     /// Runs `f` on a `ValueRank` of the fixture (curve none, 100 paths, seed 7).
     fn with_rank<T>(years: &BTreeMap<String, Vintages>, series: &BTreeMap<String, Vec<(String, f64)>>, at: &str, f: impl FnOnce(&ValueRank, &View, &[String]) -> T) -> T {
+        with_rank_index(years, series, &market(), at, f)
+    }
+
+    /// As `with_rank`, with the market index given.
+    fn with_rank_index<T>(years: &BTreeMap<String, Vintages>, series: &BTreeMap<String, Vec<(String, f64)>>, index: &[(String, f64)], at: &str, f: impl FnOnce(&ValueRank, &View, &[String]) -> T) -> T {
         let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
         let (table, fade) = crate::dcf::auto_cli::load_table(&repo.join(crate::dcf::auto::DEFAULT_TABLE)).map_err(|e| e.0).unwrap();
         let rules = crate::dcf::auto_pit::parse_rules("").map_err(|e| e.0).unwrap();
         let params = RetParams { table: &table, fade: &fade, rules: &rules, curves: None, index: None, lag: 100, paths: 100, seed: 7 };
         let prices = crate::portfolio::Prices::from_raw(series);
-        let index = market();
-        let s = ValueRank { years: years.clone(), series, index: Some(&index), params, scored: Default::default(), sectors: None, pick: Pick::Top, signals: Default::default() };
+        let s = ValueRank { years: years.clone(), series, index: Some(index), params, scored: Default::default(), sectors: None, pick: Pick::Top, signals: Default::default() };
         let universe: Vec<String> = series.keys().cloned().collect();
         f(&s, &View::new(d(at), &prices), &universe)
     }
@@ -752,6 +756,25 @@ mod tests {
         let at = "2020-09-01";
         let years = all_vintages();
         assert_eq!(rank(&years, "2030-01-01", at), rank(&years, at, at));
+    }
+
+    #[test]
+    fn value_rank_scores_do_not_move_with_a_market_close_on_the_date_or_later() {
+        let years = all_vintages();
+        let series: BTreeMap<String, Vec<(String, f64)>> = (0..N).map(|k| (format!("T{k:02}"), closes(k, "2030-01-01"))).collect();
+        // the dates: a Friday, the day after (a Saturday), and a Monday
+        for at in ["2020-09-04", "2020-09-05", "2020-09-07"] {
+            // the market closes ON the date and later are multiplied by 3 (a close of the day D is not known before D)
+            let cut: Vec<(String, f64)> = market().into_iter().map(|(day, c)| if day.as_str() >= at { (day, 3.0 * c) } else { (day, c) }).collect();
+            let a = with_rank_index(&years, &series, &market(), at, |s, v, u| (s.score(v, u), s.weights(v, u).unwrap()));
+            let b = with_rank_index(&years, &series, &cut, at, |s, v, u| (s.score(v, u), s.weights(v, u).unwrap()));
+            assert!(!a.0.is_empty());
+            assert_eq!(a, b, "{at}");
+            // control: a change of the market BEFORE the date does move the scores
+            let early: Vec<(String, f64)> = market().into_iter().map(|(day, c)| if day.as_str() < "2020-08-01" && day.as_str() >= "2020-01-01" { (day, 3.0 * c) } else { (day, c) }).collect();
+            let c = with_rank_index(&years, &series, &early, at, |s, v, u| s.score(v, u));
+            assert_ne!(a.0, c, "{at}");
+        }
     }
 
     // ---- the short side test and the weekly rule (A-009) ----

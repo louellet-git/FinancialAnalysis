@@ -1381,3 +1381,22 @@ fn a_split_after_the_last_price_date_does_not_change_the_value_over_the_price() 
     assert!(ratio_wrong / ratio_right < 1.0 / 7.0, "{ratio_wrong} {ratio_right}");
     std::fs::remove_dir_all(&dir).ok();
 }
+
+/// A truncated SPY file with fewer than 520 rows gives NO index: the beta is dropped (beta 1) and every score moves. A test
+/// that cuts SPY at a date must keep 520 rows or more, or it measures this switch and not a look-ahead (the 2018-11-23 cut
+/// of the store has 507 rows from 2016-11-18).
+#[test]
+fn a_short_spy_file_gives_no_index() {
+    let dir = std::env::temp_dir().join(format!("fa_short_spy_{}", std::process::id()));
+    std::fs::remove_dir_all(&dir).ok();
+    std::fs::create_dir_all(dir.join("SPY")).unwrap();
+    let write = |n: usize| {
+        let rows: Vec<String> = (0..n).map(|i| format!(r#"{{"date":"{}","open":1,"high":1,"low":1,"close":{},"volume":1}}"#, mapcheck::dates::format(mapcheck::dates::parse("2016-11-18").unwrap() + i as i64), 100.0 + i as f64)).collect();
+        std::fs::write(dir.join("SPY").join("prices.json"), format!("[{}]", rows.join(","))).unwrap();
+    };
+    write(507);
+    assert!(index_from_cache(&dir).is_none());
+    write(520);
+    assert_eq!(index_from_cache(&dir).map(|s| s.len()), Some(520));
+    std::fs::remove_dir_all(&dir).ok();
+}
