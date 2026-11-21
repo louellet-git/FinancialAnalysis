@@ -98,3 +98,23 @@ a248803; checked by an auditor, PASS-WITH-NOTES). It replaces the news items of 
 3. "A late reaction of stocks to rates" is one fair reading and is not proven. In the second week the yields fell while the
    stocks fell most and VIX rose: this also fits a risk-off shock (a flight to safety) or a company event. Daily stock and
    sector returns against the daily yields would separate the readings.
+
+## 8. Sense check (points of the Head of Staff; added 2026-11-21 19:05 UTC)
+1. The two supports of section 3 (the low implied premium, the high implied growth) are ONE fact seen two times: one price
+   and one model, solved for two different unknowns. A support that the stock model did not make: the market-level dividend
+   DCF (`fa dcf market`, Shiller data from 1871; file `market_level_dcf_1871.csv` in the series folder). Implied premium of
+   the index: 1.48% (2026-09), 1.37% (2026-10), 1.64% (2026-11; the last two months are estimates in the Shiller file).
+   Of the months since 1871, 24% are lower than 1.64% (since 1990: 30%). Decade means: 1990s 1.45%, 2000s 1.67%, 2010s
+   3.85%, 2020s 2.71%. So against the long history the level is in the lowest quarter, not the lowest of all: the 8-year
+   window of section 3 overstates how rare it is.
+2. Is the fall of the yearly premium the market or the large technology names? The same weekly series without the 27
+   names of the computer, chip and software sector (74 tickers; `sp100_ex_buseq_s1.csv`): the level is higher (2.58% on
+   2026-11-20 against 1.67%), and the path is the same: yearly mean 5.15% (2019), 4.79% (2022), 4.10% (2024), 4.01% (2025),
+   3.36% (2026); 2026-11-13 is the lowest week (2.07%), and 2026-11-20 is lower than 98.5% of the weeks before it. So the
+   fall is not made by the technology names alone. (The list premium is a median, not a value-weighted mean.)
+3. The model uses a premium of 4.41% (an assumption with no confirmed source, record A-022); the implied 1.2% to 1.7% is a
+   measurement. The comparison of the implied premium with its own history does not depend on which level is right.
+4. NVDA at 29.3% a year for 10 years is 13.1 times its revenue: $2,827B, against $717B for the largest company today.
+Corrected reading of section 4: the prices are expensive against the last 8 years and against the assumptions of the model;
+against the history from 1871 they are in the lowest quarter of the implied premium, which is not extreme. "A correction of
+rich prices" stays, with less force; it is still not a buy signal for the list.
