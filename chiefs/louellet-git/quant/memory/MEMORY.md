@@ -1,62 +1,48 @@
 # Dashboard: quant (louellet-git)
 What the next session of this head must know. Keep this file below 60 lines. Started 2026-11-20.
-Rules: `chiefs/ORIENTATION.md` (sections 3 to 8). Decisions of the person: `../RECORD.md`.
+Rules: `chiefs/ORIENTATION.md`. Decisions of the person: `../RECORD.md`. Order: `PLANNING/board/EPICS.md` (E4).
 
-## State on 2026-11-21 15:00 UTC (before a compaction)
-- PR 131 (`fa algo`, branch claude/quant-algo-paper): gate passed; merge AFTER the person's first live run on the laptop,
-  Monday 2026-11-23; then send the merge commit to the Head of Technology (Google e2-micro guide, the person said yes).
-  Do not push to an open code PR (any push reruns the check). A reminder fires 2026-11-23 21:30 UTC.
-- alpha-1 (branch claude/quant-alpha-1, commit 23bd711): stage 1 says STOP (s05 t 1.35; premium t 1.97 in the
-  gate sample); in review by Quality and Risk; no push until the verdict. Then measure model vs real option prices.
-- Person, 2026-11-21: research before a question; questions go through the Head of Technology. Three-stage method:
-  isolation, bigger data, paper, then improve (each change a counted trial).
-- Split look-ahead is fixed in the automatic model (Fundamental PR 136); a value factor has low priority.
+## State on 2026-11-21 21:00 UTC
+- Token rule (Head of Staff, with the person): until Wednesday 2026-11-25 11:00 Toronto time, finish open work only;
+  the algo engine after the live run of Monday; vol models and other new work after the reset.
+- PR 131 (`fa algo`, branch claude/quant-algo-paper): gate passed; merge AFTER the person's live run of Monday
+  2026-11-23; then the Head of Technology sets up the e2-micro. A reminder fires 2026-11-23 21:30 UTC.
+- Merged today: 147, 151 (model documents, records A-100 to A-154); 148 (alpha-1 stage 1: STOP at gate 1);
+  158 (SABR); 183 (arbitrage register and `fa arb run`); 187 (`fa recon history --lasting`); 189 (`fa selftest
+  golden`); 196 (trade grids: stress windows from the file, --lags, --cut-scan, --price-grid).
+- Ledger rows for today's runs wait until PR 131 merges (its branch has row 6; a row now makes it conflict).
+- The branch claude/quant-rates-dup is dropped (the duplicate report was false): do not merge it.
 
-## Goal now
-- Find and measure arbitrage and reconcile our data (person, 2026-11-20). Done and merged: SPX/SPXW apart (76),
-  `fa options check` (84, 100), rates reconciliation steps 1-2 (84, 100), `fa vol fit` Heston/Bates (100),
-  `fa options archive` (100), parser and bond tests (111), limits of use (115). No tradable break so far.
-- Data: the Technology scheduled task copies SPX, SPY, VIX (Alpaca indicative) each market day from 2026-11-23,
-  20 days (to about 2026-12-22). Cboe refuses the cloud (HTTP 403). The store fa-data is private from 2026-11-21:
-  a new session attaches it (add_repo, read) before the clone.
+## Next (after PR 131 merges; tickets on main)
+- `T-20261121-arb-invariants`: the continuous capture on the e2-micro (design B in
+  `analysis/priors/continuous_option_data_2026-11-21.md`; own process, a share of 60 of the 200 Alpaca requests a
+  minute; raw data stays on the VM); then break persistence, then the planned relations (VIX-REPLICATION first).
+- `T-20261121-algo-paper-orders`: controls 1 to 8, `--send` only on the laptop or the e2-micro, never in the cloud.
+- `T-20261121-quant-engine-integration`: next rows by value: 13 and 14 (a run log and a trial count for
+  `fa trade backtest`), 18 (`--seeds`), 20a (the VIX relation), 21; findings P5 and G1.
+- `T-20261121-quant-doc-findings`: B1 to B4 before any new bot result.
 
-## Next steps (queue `head: quant`)
-- From 2026-11-24 (two copied days): `arb-3` (box rate by the NY Fed regression, SPX against SPY, two-day
-  `--compare`); the out-of-sample test of vol-1 (fit day D, price D + 1).
-- `arb-4` steps 2-3 (VIX parity forward against VX; ZQ/SR3 strip): needs the VIX copies and NY Fed rates.
-- Then `vol-2` (SABR, local volatility) on the `volmodels` base.
-- About 2026-12-22: the Head of Technology asks me what the 20 days showed; then the person answers whether to
-  get real quotes (laptop at 15:45 ET or a paid source). My recommendation so far: no.
-
-## Lessons from this session (tested)
-- Reviews found what I missed in each code ticket: a fit that hid non-convergence (vol-1), an 80% check that
-  could lock the archive for good (vol-7), tests that a wrong formula passed (vol-2: no fixed answer off the money).
-  For a formula: a fixed answer from an independent source at each branch, and a mutant that must fail.
-- An agent report can be wrong on one fact (vol-1 "converged"): run the real command myself before I pass it on.
-- A defect report of a different head can be false (rates duplicate row, 2026-11-21): check it against the data
-  before an agent starts a fix. The fix branch `claude/quant-rates-dup` is dropped; it does not merge.
-- `fa recon bonds`, `fa recon explain`, `fa futures check` download each missing file (two agent downloads,
-  2026-11-20): the brief says "check the cache first"; `rates-credit-quant.md` says it too.
-- One branch for each ticket (person, 2026-11-21): `claude/quant-<ticket>` from `origin/main`. Parallel agents
-  get worktrees from the branch; I bring their work in with a patch or a cherry-pick and test it myself.
-- A value factor for a past date: `fa dcf implied --as-of D` or `fa dcf attribute`; `fa dcf auto --as-of` and
-  `fa dcf screen --as-of` read later filings (look-ahead; Fundamental, PR 107).
-- Alpaca: the proxy adds only the secret header; `APCA_API_KEY_ID` from the environment, a dummy secret value.
-- A backtest of momentum on today's index list has survivorship bias (`fa portfolio backtest` warns of it);
-  no point-in-time member list exists in the store.
+## Rules learned (tested)
+- Run the real command myself before I pass an agent report on; check a defect report of a head against the data.
+- A formula needs a fixed answer from an independent source at each branch, and a mutant that must fail.
+- A new ticket goes on main before its work (`fa board check`). One branch for each ticket, from origin/main.
+- Do not push to a branch in review; do not push to an open code PR (each push runs the paid check).
+- `fa selftest golden` before a code PR (it replaced the hand diffs against main; Linux recorder only).
+- No automatic Cboe read (terms, 2026-11-21). Alpaca: personal use, no copy in git or the store; no raw quote
+  in a committed file. Paper orders only, under QUALITY-STANDARDS section 8.
+- A break on indicative quotes measures the data, not the market (143 SPX breaks: 59 above $1 a share).
+- Messages: results, blocks over half a day, decisions of the person and conflicts go to the Head of Staff;
+  permission refusals go to the Head of Technology. No status reports.
 
 ## Standing words of the person
-- 2026-11-20: "You don't need me to tell you to continue unless I tell you to stop": report, then take the next
-  ticket with no wait.
-- 2026-11-20: permission requests and decisions go to the Head of Technology (`chiefs/ORIENTATION.md`, section 5).
-- 2026-11-20: "the agents should not be overly sophisticated just overall lean and of quality".
-- The check runs cost money (`chiefs/ORIENTATION.md`, section 6). The person's computer is Windows (PowerShell).
+- "You don't need me to tell you to continue unless I tell you to stop": report, then take the next ticket.
+- "Before asking me anything, please look into it": research first; a question carries a recommendation.
+- "for quant work, we're going to require as continuous as possible" (2026-11-21).
+- "whatever is repeatable ... is built into the correct engine" (2026-11-21).
+- "the agents should not be overly sophisticated just overall lean and of quality". Windows computer.
 
 ## Pages
-- `../industry-2026-11-21.md`: industry practice (SR 26-2, overfitting bar, NBBO data, box rate method).
-  Its three changes: real quotes (refused by Cboe; the ask waits), the strategy bar (in
-  `strategy-researcher.md`), limits of use (done for `heston-bates.md`; the other models wait for their documents).
-- `responsibilities.md`: the split of work between Quant Research and Fundamental Research.
-- Stress windows for backtests: `analysis/macro/2026-11-21-stress-windows.md` (Head of Economics; 13 windows).
+- `../industry-2026-11-21.md`, `responsibilities.md`, `arbitrage/register/README.md`,
+  `analysis/priors/arb_invariants_*.md`, `analysis/macro/2026-11-21-stress-windows.md`.
 
-Dream pass: last 2026-11-21 (82% of the threshold); next before the next compaction.
+Dream pass: 2026-11-21 21:00 UTC. Next: before the next compaction.
