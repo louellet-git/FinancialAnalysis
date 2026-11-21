@@ -637,7 +637,8 @@ fn a_list_of_21_weighted_tickers_prints_no_ticker_lines_and_a_list_of_20_does() 
 fn the_premium_duration_is_the_central_difference_of_ln_value() {
     let t = table();
     let model = rules_w1().erp.0;
-    let (h, x) = (DURATION_STEP, 0.04);
+    assert_eq!(DURATION_STEP, 0.001, "the step of the record and of the usage text");
+    let (h, x) = (0.001, 0.04);
     let m = mk(1.0, None);
     // by hand: D = -(ln V(x + h) - ln V(x - h)) / (2 h), with the two values of the same engine at x +- h
     let (up, down) = (value(&inputs(), &m, x + h), value(&inputs(), &m, x - h));
@@ -651,7 +652,9 @@ fn the_premium_duration_is_the_central_difference_of_ln_value() {
     let by_hand = -(value(&inputs(), &m, model + h).ln() - value(&inputs(), &m, model - h).ln()) / (2.0 * h);
     assert!((a.dur_premium1.unwrap() - by_hand).abs() < 1e-6, "{:?} {by_hand}", a.dur_premium1);
     // a step far outside the range has no value: no duration
-    assert!(premium_duration(&inputs(), &cfg(&t), &m, -5.0, h).is_none() || premium_duration(&inputs(), &cfg(&t), &m, 50.0, h).is_none());
+    let (low, high) = (premium_duration(&inputs(), &cfg(&t), &m, -5.0, h), premium_duration(&inputs(), &cfg(&t), &m, 50.0, h));
+    assert!(low.is_none(), "a premium of -5.0: {low:?}");
+    assert!(high.is_none(), "a premium of 50.0: {high:?}");
 }
 
 #[test]
@@ -692,7 +695,7 @@ fn the_8k_field_has_the_filings_after_d1_and_on_or_before_d2() {
 }
 
 #[test]
-fn the_csv_header_ends_with_the_four_new_columns_and_the_old_ones_keep_their_places() {
+fn the_csv_header_keeps_the_old_columns_and_appends_the_ten_new_ones() {
     assert!(CSV_HEADER.contains(",refusal,beta1,beta2,dur_premium1,earnings_8k,"));
     assert!(CSV_HEADER.ends_with(",earnings_8k,c_premium,c_growth,p_premium_common_pct,p_premium_company_pct,g_growth_common_pct,g_growth_company_pct"));
     assert!(CSV_HEADER.starts_with("ticker,size,sector,industry,price1,price2,change_pct,"));
@@ -707,7 +710,10 @@ fn the_csv_header_ends_with_the_four_new_columns_and_the_old_ones_keep_their_pla
     let cells: Vec<&str> = line.split(',').collect();
     assert_eq!(cells.len(), CSV_HEADER.split(',').count());
     let k = CSV_HEADER.split(',').position(|h| h == "beta1").unwrap();
-    assert_eq!(&cells[k..k + 4], ["1.1000", "", "21.500", "2026-11-17;2026-11-19"]);
+    // beta2 is missing: the model uses 1.0, the cell has 1.0000 and the row has the flag
+    assert_eq!(&cells[k..k + 4], ["1.1000", "1.0000", "21.500", "2026-11-17;2026-11-19"]);
+    let flags = cells[CSV_HEADER.split(',').position(|h| h == "flags").unwrap()];
+    assert!(flags.contains("beta2-default") && !flags.contains("beta1-default"), "{flags}");
     // no split yet: the six new cells are empty
     assert!(cells[cells.len() - 6..].iter().all(|c| c.is_empty()));
 }

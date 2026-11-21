@@ -95,8 +95,9 @@ fa dcf attribute [--tickers-file FILE | TICKER ...] --from D1 --to D2 [OPTIONS]
                   bridge (premium view first) for D0 to D1, D1 to D2 and D0 to D2, each with its common change c, and the
                   change of D0 to D1 followed by D1 to D2 for comparison. With --curve auto, D0 is one of the dates for the
                   choice of the source. It does not work with --top. It adds no CSV column.
-  --out FILE      write one CSV row for each ticker. The last four columns are:
-                  beta1, beta2     the beta that the model uses at D1 and at D2 (the shrunk regression beta; empty with no beta)
+  --out FILE      write one CSV row for each ticker. The columns after `refusal` are:
+                  beta1, beta2     the beta that the model uses at D1 and at D2 (the shrunk regression beta; with no beta
+                                   the model uses 1.0: the cell has 1.0000 and the flags have `beta1-default`, `beta2-default`)
                   dur_premium1     D = -(ln V(x1 + h) - ln V(x1 - h)) / (2 h), h = 0.001, where x1 is the premium that the price
                                    of D1 implies, and V is the value at the means with the facts, curve, beta and price weight
                                    of D1. Unit: d ln V for a change of 1.00 of the premium as a decimal. A change of 0.01 of
@@ -1028,7 +1029,10 @@ pub fn close_date(series: &[(String, f64)], date: &str) -> Option<String> {
 /// `one_weight_for_one_company`, so that a stale class does not keep the weight of its company. Returns the number of
 /// stale rows.
 pub fn mark_stale(rows: &mut [AttrRow], closes: &dyn Fn(&str) -> Option<CloseSeries>, d1: &str, d2: &str) -> usize {
-    let Some(index) = closes("SPY") else { return 0 };
+    let Some(index) = closes("SPY") else {
+        eprintln!("warning: no SPY close series in the cache: the stale-price rule did not run for {d1} and {d2}");
+        return 0;
+    };
     let (r1, r2) = (close_date(&index, d1), close_date(&index, d2));
     let mut n = 0;
     for r in rows.iter_mut() {
@@ -1551,7 +1555,7 @@ fn chain_cells(c: Option<&Chain>) -> Vec<String> {
 pub fn csv_line(r: &AttrRow) -> String {
     let n = CSV_HEADER.split(',').count();
     let mut f = vec![String::new(); n];
-    let idx = |name: &str| CSV_HEADER.split(',').position(|h| h == name).unwrap_or(0);
+    let idx = |name: &str| CSV_HEADER.split(',').position(|h| h == name).expect("a column name of CSV_HEADER");
     f[0] = r.ticker.clone();
     f[idx("sector")] = cell(&r.sector);
     f[idx("industry")] = cell(&r.industry);
@@ -1587,8 +1591,13 @@ pub fn csv_line(r: &AttrRow) -> String {
             f[idx("curve1")] = a.curve1.clone();
             f[idx("curve2")] = a.curve2.clone();
             f[idx("new_facts")] = a.new_facts.to_string();
-            f[idx("beta1")] = a.beta1.map_or(String::new(), |b| nm(b, 4));
-            f[idx("beta2")] = a.beta2.map_or(String::new(), |b| nm(b, 4));
+            // with no regression beta the model uses 1.0 (`auto.rs`, the discount block): the cell has 1.0 and the row a flag
+            for (name, b) in [("beta1", a.beta1), ("beta2", a.beta2)] {
+                f[idx(name)] = nm(b.unwrap_or(1.0), 4);
+                if b.is_none() {
+                    flags.push(format!("{name}-default"));
+                }
+            }
             f[idx("dur_premium1")] = a.dur_premium1.map_or(String::new(), |d| nm(d, 3));
             // the plug in two parts (empty before `add_common`, or with no view)
             if let Some(sp) = a.chain(View::Premium).and_then(|c| c.split.as_ref().map(|s| (s, c.pct_split()))) {
@@ -2114,6 +2123,13 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         "file" => None,
         other => return e(format!("--common '{other}': use median, vw or file")),
     };
+    // an option that the chosen source does not read is an error, not a silent no-op
+    if mode.is_some() && o.get("--common-file").is_some() {
+        return e("--common-file needs --common file");
+    }
+    if mode.is_none() && o.get("--common-list").is_some() {
+        return e("--common-list does not work with --common file (the economics view has no list)");
+    }
     let cache = cache_dir(repo, &o);
     let (table, fade) = load_table(&table_path(repo, &o))?;
     let ((d1, day1), (d2, day2)) = (date_of(&o, "--from")?, date_of(&o, "--to")?);

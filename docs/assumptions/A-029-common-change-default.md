@@ -35,3 +35,8 @@ Economics, 2026-11-21 (design change 3).
 
 ## When to examine it again
 When the Economics engine gives its first file. When the test on the weekly history has its result.
+
+## Limit of the default (added 2026-11-21, gate note)
+The default c is the median of the same price changes that the split explains. The company part is thus a difference
+from the list, not news about the company. The common step uses the beta and the equity weight of D1; the company part
+holds their change from D1 to D2.
