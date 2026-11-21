@@ -26,6 +26,7 @@ USAGE:
                                                   ICE OAS, index yield, or yield minus UST 10Y
   fa bonds moodys --grade Aaa|Baa [--date D]      Moody's seasoned corporate yield
   fa bonds hqm [--date D]                         Treasury HQM corporate spot curve (monthly)
+  fa bonds hqm get [--force]                      download the Treasury HQM spot files into data/raw/bonds/treasury_hqm/
   fa bonds check [--days N]                       Moody's - 10Y vs FRED (exit 1 on mismatch)
   fa forwards [--date D]                          GSW zero-coupon yields and forward rates (Federal Reserve Board)
   fa forwards check [--days N]                    GSW par yields against Treasury (exit 1 on mismatch)
@@ -132,6 +133,22 @@ fn bonds(fa: &Fa, rest: &[String]) -> financial_analysis::Result<ExitCode> {
         "moodys" => {
             let grade = flag(&args, "--grade").unwrap_or_else(|| "Baa".into());
             print_json(&fa.moodys(&grade, date)?)
+        }
+        "hqm" if args.get(1).map(String::as_str) == Some("get") => {
+            // fa bonds hqm get [--force]: the Treasury HQM spot files into data/raw/bonds/treasury_hqm/
+            let cache = fa.repo.join("data").join("raw");
+            let mut fetch = |url: &str| financial_analysis::hostnet::get(url, &[], financial_analysis::rates::DELAY_SECONDS);
+            match financial_analysis::hqm::get(&cache, has(&args, "--force"), mapcheck::dates::today(), &mut fetch) {
+                Ok(rows) => {
+                    for (name, what) in &rows {
+                        println!("{name}: {what}");
+                    }
+                    if rows.iter().any(|(_, w)| w.starts_with("failed")) {
+                        return Ok(ExitCode::from(1));
+                    }
+                }
+                Err(e) => return Ok(usage_error(&e)),
+            }
         }
         "hqm" => print_json(&fa.hqm_curve(date)?),
         "hqm-compare" => {

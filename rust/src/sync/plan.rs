@@ -244,6 +244,8 @@ pub fn make_plan(inp: &PlanInput) -> Plan {
                         DataSet::Rates => {
                             if key == "treasury" {
                                 (vec!["treasury".into()], 2)
+                            } else if key == "hqm" {
+                                (vec!["treasury".into()], 1)
                             } else {
                                 (vec!["bls".into()], 1)
                             }

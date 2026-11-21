@@ -981,7 +981,7 @@
     },
     "hqm_curve": {
      "date": "2026-10-01",
-     "source": "U.S. Treasury HQM via FRED",
+     "source": "U.S. Treasury HQM",
      "maturities": {
       "1Y": 0.0428,
       "2Y": 0.0439,
@@ -1183,7 +1183,7 @@
     },
     "hqm_curve": {
      "date": "2026-10-01",
-     "source": "U.S. Treasury HQM via FRED",
+     "source": "U.S. Treasury HQM",
      "maturities": {
       "1Y": 0.0428,
       "2Y": 0.0439,
@@ -1397,7 +1397,7 @@
    "args": {},
    "expect": {
     "date": "2026-10-01",
-    "source": "U.S. Treasury HQM via FRED",
+    "source": "U.S. Treasury HQM",
     "maturities": {
      "1Y": 0.0428,
      "2Y": 0.0439,
@@ -1418,7 +1418,7 @@
    },
    "expect": {
     "date": "2025-06-01",
-    "source": "U.S. Treasury HQM via FRED",
+    "source": "U.S. Treasury HQM",
     "maturities": {
      "1Y": 0.0429,
      "2Y": 0.0412,

@@ -12,7 +12,8 @@
 //!   (`data/` is not in git).
 //! - Moody's seasoned Aaa and Baa corporate bond yields (20 years or more to maturity).
 //! - U.S. Treasury HQM corporate bond yield curve: monthly average spot rates, 1 to 100 years,
-//!   a blend of AAA, AA and A bonds (FRED `HQMCB<n>YR` has the same numbers).
+//!   a blend of AAA, AA and A bonds. Read from the Treasury files (`fa bonds hqm get`, module `hqm`);
+//!   FRED `HQMCB<n>YR` has the same numbers.
 //!
 //! Two spread measures:
 //!
@@ -44,7 +45,7 @@ pub const HQM_MATURITIES: [i64; 8] = [1, 2, 3, 5, 7, 10, 20, 30];
 
 pub const ICE_SOURCE: &str = "ICE BofA via FRED";
 pub const MOODYS_SOURCE: &str = "Moody's via FRED";
-pub const HQM_SOURCE: &str = "U.S. Treasury HQM via FRED";
+pub const HQM_SOURCE: &str = crate::hqm::SOURCE;
 
 /// Days: weekends, holidays and the one-day FRED lag.
 const DAILY_MAX_AGE: i64 = 7;
@@ -219,9 +220,11 @@ impl Rates {
     /// The Treasury HQM corporate spot curve for the latest month on or before `on`.
     pub fn hqm_curve(&mut self, on: Option<i64>) -> Res<HqmCurve> {
         let on = self.on_or_today(on);
-        let mut series = Vec::new();
+        // The Treasury files (`fa bonds hqm get`); the rates are in percent there.
+        let months = crate::hqm::load_monthly(&self.cache)?;
+        let mut series: Vec<(i64, BTreeMap<i64, f64>)> = Vec::new();
         for n in HQM_MATURITIES {
-            series.push((n, self.load_fred(&format!("HQMCB{n}YR"), false)?));
+            series.push((n, months.iter().filter_map(|(d, m)| m.get(&n).map(|v| (*d, round6(v / 100.0)))).collect()));
         }
         let mut month = i64::MAX;
         for (n, s) in &series {

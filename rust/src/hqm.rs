@@ -308,6 +308,89 @@ pub fn compare_with_fred(months: &BTreeMap<i64, BTreeMap<i64, f64>>, maturity: i
     Ok(r)
 }
 
+pub const PAGE_URL: &str = "https://home.treasury.gov/data/treasury-coupon-issues-and-corporate-bond-yield-curve/corporate-bond-yield-curve";
+pub const FILE_URL: &str = "https://home.treasury.gov/system/files/226/{name}.xls";
+/// The monthly spot rate files, one for each five years. The last one is the open file.
+pub const FILES: [&str; 9] = ["hqm_84_88", "hqm_89_93", "hqm_94_98", "hqm_99_03", "hqm_04_08", "hqm_09_13", "hqm_14_18", "hqm_19_23", "hqm_24_28"];
+/// The open file is downloaded again when the copy is older than this (days).
+pub const OPEN_FILE_MAX_AGE_DAYS: f64 = 20.0;
+pub const SOURCE: &str = "U.S. Treasury HQM";
+
+/// `<cache>/bonds/treasury_hqm/`: the files and `meta.json`.
+pub fn dir(cache: &std::path::Path) -> std::path::PathBuf {
+    cache.join("bonds").join("treasury_hqm")
+}
+
+fn write_bytes(path: &std::path::Path, bytes: &[u8]) -> Res<()> {
+    let tmp = path.with_extension("tmp");
+    std::fs::write(&tmp, bytes).map_err(|e| format!("{}: {e}", tmp.display()))?;
+    std::fs::rename(&tmp, path).map_err(|e| format!("{}: {e}", path.display()))
+}
+
+/// Download the files that are missing, the open file when it is old, and all with `force`. A
+/// download must parse as an HQM file before it is kept. `meta.json` records the address, the
+/// date of each download and the date of the last check. Gives `(file, what happened)`.
+/// A failed file does not stop the others, except a block or a connection failure (the caller's
+/// `fetch` returns the error; two errors in a row end the run).
+pub fn get(cache: &std::path::Path, force: bool, today: i64, fetch: &mut dyn FnMut(&str) -> Res<Vec<u8>>) -> Res<Vec<(String, String)>> {
+    let d = dir(cache);
+    std::fs::create_dir_all(&d).map_err(|e| format!("{}: {e}", d.display()))?;
+    let meta_path = d.join("meta.json");
+    let mut meta: serde_json::Value = std::fs::read_to_string(&meta_path).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_else(|| serde_json::json!({}));
+    meta["source"] = SOURCE.into();
+    meta["page"] = PAGE_URL.into();
+    meta["terms"] = "U.S. federal data; no reuse clause found on the site policy pages (2026-11-21)".into();
+    let mut out = Vec::new();
+    let mut failures = 0;
+    for name in FILES {
+        let path = d.join(format!("{name}.xls"));
+        let open = name == FILES[FILES.len() - 1];
+        let old = open && !crate::rates::is_fresh_file(&path, OPEN_FILE_MAX_AGE_DAYS * 24.0);
+        if path.exists() && !force && !old {
+            out.push((name.to_string(), "kept".to_string()));
+            continue;
+        }
+        if failures >= 2 {
+            out.push((name.to_string(), "not tried (two failures)".to_string()));
+            continue;
+        }
+        let url = FILE_URL.replace("{name}", name);
+        let got = fetch(&url).and_then(|b| parse_hqm_spot(&b, &MATURITIES).map(|_| b));
+        match got {
+            Ok(bytes) => {
+                write_bytes(&path, &bytes)?;
+                meta["files"][name] = serde_json::json!({"url": url, "fetched": dates::format(today), "bytes": bytes.len()});
+                out.push((name.to_string(), format!("downloaded, {} bytes", bytes.len())));
+            }
+            Err(e) => {
+                failures += 1;
+                out.push((name.to_string(), format!("failed: {e}")));
+            }
+        }
+    }
+    meta["checked"] = dates::format(today).into();
+    let text = serde_json::to_string_pretty(&meta).map_err(|e| e.to_string())?;
+    write_bytes(&meta_path, text.as_bytes())?;
+    Ok(out)
+}
+
+/// All months of the files in `dir(cache)`: `{first day of the month: {maturity: percent}}`.
+pub fn load_monthly(cache: &std::path::Path) -> Res<BTreeMap<i64, BTreeMap<i64, f64>>> {
+    let d = dir(cache);
+    let mut months: BTreeMap<i64, BTreeMap<i64, f64>> = BTreeMap::new();
+    for name in FILES {
+        let p = d.join(format!("{name}.xls"));
+        let Ok(bytes) = std::fs::read(&p) else { continue };
+        for (day, m) in parse_hqm_spot(&bytes, &MATURITIES).map_err(|e| format!("{}: {e}", p.display()))? {
+            months.entry(day).or_default().extend(m);
+        }
+    }
+    if months.is_empty() {
+        return Err(format!("no Treasury HQM files in {}; run `fa bonds hqm get`", d.display()));
+    }
+    Ok(months)
+}
+
 pub const MATURITIES: [i64; 8] = [1, 2, 3, 5, 7, 10, 20, 30];
 
 /// Read the Treasury `.xls` files and compare each maturity with `<fred_dir>/fred_HQMCB<n>YR.csv`.
@@ -362,6 +445,58 @@ mod tests {
         assert_eq!(c.max_diff, 0.19);
         assert_eq!(c.first_ours.as_deref(), Some("2025-01-01"));
         assert_eq!(c.first_fred.as_deref(), Some("2024-12-01"));
+    }
+
+    fn tmp(name: &str) -> std::path::PathBuf {
+        let p = std::env::temp_dir().join(format!("fa-hqm-test-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&p);
+        p
+    }
+
+    #[test]
+    fn get_downloads_missing_files_keeps_the_others_and_records_the_origin() {
+        let cache = tmp("get");
+        let today = dates::parse("2026-11-21").unwrap();
+        let calls = std::cell::RefCell::new(Vec::new());
+        let mut fetch = |url: &str| -> Res<Vec<u8>> {
+            calls.borrow_mut().push(url.to_string());
+            Ok(fixture())
+        };
+        let first = get(&cache, false, today, &mut fetch).unwrap();
+        assert_eq!(first.len(), 9);
+        assert!(first.iter().all(|(_, w)| w.starts_with("downloaded")));
+        assert_eq!(calls.borrow()[0], "https://home.treasury.gov/system/files/226/hqm_84_88.xls");
+        let meta: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(dir(&cache).join("meta.json")).unwrap()).unwrap();
+        assert_eq!(meta["checked"], "2026-11-21");
+        assert_eq!(meta["files"]["hqm_24_28"]["url"], "https://home.treasury.gov/system/files/226/hqm_24_28.xls");
+        assert_eq!(meta["source"], SOURCE);
+        // A second run: all files exist and the open file is young, so there is no request.
+        let n = calls.borrow().len();
+        let second = get(&cache, false, today, &mut fetch).unwrap();
+        assert!(second.iter().all(|(_, w)| w == "kept"));
+        assert_eq!(calls.borrow().len(), n);
+        // With --force all 9 files are asked again.
+        get(&cache, true, today, &mut fetch).unwrap();
+        assert_eq!(calls.borrow().len(), n + 9);
+        // The reader merges the files.
+        assert_eq!(load_monthly(&cache).unwrap().len(), 15);
+    }
+
+    #[test]
+    fn a_bad_answer_is_not_kept_and_two_failures_stop_the_run() {
+        let cache = tmp("bad");
+        let today = dates::parse("2026-11-21").unwrap();
+        let mut n = 0;
+        let mut fetch = |_: &str| -> Res<Vec<u8>> {
+            n += 1;
+            Ok(b"<html>not found</html>".to_vec())
+        };
+        let r = get(&cache, false, today, &mut fetch).unwrap();
+        assert!(r[0].1.starts_with("failed") && r[1].1.starts_with("failed"));
+        assert!(r[2].1.starts_with("not tried"));
+        assert_eq!(n, 2);
+        assert!(!dir(&cache).join("hqm_84_88.xls").exists());
+        assert!(load_monthly(&cache).unwrap_err().contains("fa bonds hqm get"));
     }
 
     #[test]

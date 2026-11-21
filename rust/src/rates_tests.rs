@@ -91,7 +91,12 @@ fn day(s: &str) -> Option<i64> {
 
 fn fixture_rates(name: &str) -> (Rates, Rc<RefCell<Vec<String>>>) {
     let (net, log) = FixtureNet::new();
-    (Rates::with_net(tmp(name), Box::new(net), day(TODAY).unwrap()), log)
+    let cache = tmp(name);
+    // The HQM curve comes from the Treasury files in the cache (not from the net): a fixture file with the same numbers as `fred.json`.
+    let hqm = crate::hqm::dir(&cache);
+    std::fs::create_dir_all(&hqm).unwrap();
+    std::fs::write(hqm.join("hqm_24_28.xls"), std::fs::read(fixture_dir().join("treasury_hqm").join("hqm_24_28.xls")).unwrap()).unwrap();
+    (Rates::with_net(cache, Box::new(net), day(TODAY).unwrap()), log)
 }
 
 // ---------------------------------------------------------------------------
