@@ -11,6 +11,7 @@
 //! price in the portfolio (no failure loss); no tax, no short sale, no leverage, no market impact.
 
 pub mod cli;
+pub mod harness;
 pub mod strategies;
 
 use std::collections::BTreeMap;
@@ -85,6 +86,11 @@ pub trait Strategy: Sync {
     fn scored_counts(&self) -> Vec<usize> {
         Vec::new()
     }
+    /// The signal of a ticker on the rebalance date (the number that ranked it) and the accession number of the filing of the
+    /// facts that it used (empty if none). Used for the trade list only: it never changes a weight.
+    fn signal(&self, _view: &View, _ticker: &str) -> Option<(f64, String)> {
+        None
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -158,6 +164,20 @@ pub fn perf_line(name: &str, p: &Perf) -> String {
     format!("{name:<12} total {:+.1}%, annual {:+.2}%, volatility {:.1}%, max drawdown {:.1}%", 100.0 * p.total, 100.0 * p.annual, 100.0 * p.vol, 100.0 * p.max_drawdown)
 }
 
+/// One change of a position on a rebalance date.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Trade {
+    pub date: i64,
+    pub ticker: String,
+    pub buy: bool,
+    /// The share of the portfolio value before the trade and after it (after the cost).
+    pub before: f64,
+    pub after: f64,
+    /// The close of the day (NaN if the ticker has none).
+    pub price: f64,
+    pub signal: Option<(f64, String)>,
+}
+
 #[derive(Debug, Clone)]
 pub struct Report {
     pub strategy: String,
@@ -179,6 +199,10 @@ pub struct Report {
     pub cash_days: usize,
     /// The number of scored tickers at each rebalance (empty if the strategy gives none).
     pub scored: Vec<usize>,
+    /// The target weights that the strategy gave on each rebalance day, in date order.
+    pub targets: Vec<(i64, Vec<(String, f64)>)>,
+    /// The changes of the positions, in date order and then ticker order.
+    pub trades: Vec<Trade>,
     pub fund: Perf,
     pub bench_perf: Perf,
 }
@@ -225,6 +249,7 @@ pub fn run(prices: &Prices, universe: &[String], strat: &dyn Strategy, cfg: &Con
     let (mut ri, mut turnover_total, mut cost_total, mut skipped, mut stale_sales) = (0usize, 0.0f64, 0.0f64, 0usize, 0usize);
     let (mut dates, mut nav, mut bench) = (Vec::new(), Vec::new(), Vec::new());
     let mut cash_days = 0usize;
+    let (mut targets, mut trades) = (Vec::new(), Vec::new());
     // The series starts on the first rebalance date with a position: a strategy with no data yet holds cash, and that
     // time is not in the result (it would be flat, and SPY would run alone).
     let mut spy_first = f64::NAN;
@@ -234,6 +259,7 @@ pub fn run(prices: &Prices, universe: &[String], strat: &dyn Strategy, cfg: &Con
             ri += 1;
             let w = strat.weights(&View::new(d, prices), universe)?;
             check_weights(&w, prices)?;
+            targets.push((d, w.clone()));
             let v = marked(&shares, cash, d);
             let mut target: BTreeMap<String, (f64, f64)> = BTreeMap::new();
             for (t, x) in w.iter().filter(|(_, x)| *x > 0.0) {
@@ -253,8 +279,10 @@ pub fn run(prices: &Prices, universe: &[String], strat: &dyn Strategy, cfg: &Con
             let mut traded = 0.0;
             let mut new_shares = BTreeMap::new();
             let mut target_sum = 0.0;
+            let mut moves = Vec::new();
             for t in names {
                 let tv = target.get(t).map_or(0.0, |x| x.0 * scale);
+                moves.push((t.clone(), cur.get(t).copied().unwrap_or(0.0), tv));
                 traded += (tv - cur.get(t).copied().unwrap_or(0.0)).abs();
                 if tv > 0.0 {
                     new_shares.insert(t.clone(), tv / target[t].1);
@@ -262,6 +290,16 @@ pub fn run(prices: &Prices, universe: &[String], strat: &dyn Strategy, cfg: &Con
                 }
             }
             let cost = rate * traded;
+            moves.sort_by(|a, b| a.0.cmp(&b.0));
+            let (view, after_value) = (View::new(d, prices), v - cost);
+            for (t, cv, tv) in moves {
+                let (before, after) = (if v > 0.0 { cv / v } else { 0.0 }, if after_value > 0.0 { tv / after_value } else { 0.0 });
+                if (after - before).abs() > 1e-9 {
+                    let price = prices.asof(&t, d).map_or(f64::NAN, |x| x.1);
+                    let signal = strat.signal(&view, &t);
+                    trades.push(Trade { date: d, ticker: t, buy: after > before, before, after, price, signal });
+                }
+            }
             cash = v - target_sum - cost;
             shares = new_shares;
             cost_total += cost;
@@ -287,7 +325,7 @@ pub fn run(prices: &Prices, universe: &[String], strat: &dyn Strategy, cfg: &Con
         return Err("the strategy held no position on any rebalance date".into());
     }
     let (fund, bench_perf) = (perf(&nav, &dates), perf(&bench, &dates));
-    Ok(Report { strategy: strat.name().to_string(), dates, nav, bench, rebalances: rdays.len(), turnover_total, cost_total, skipped, stale_sales, cash_days, scored: strat.scored_counts(), fund, bench_perf })
+    Ok(Report { strategy: strat.name().to_string(), dates, nav, bench, rebalances: rdays.len(), turnover_total, cost_total, skipped, stale_sales, cash_days, scored: strat.scored_counts(), targets, trades, fund, bench_perf })
 }
 
 #[cfg(test)]

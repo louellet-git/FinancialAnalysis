@@ -1,0 +1,21 @@
+# Registered before the first run (see README.md in this folder). Do not change this file after its first run:
+# a change is a new id.
+id = "value-rank-sp500-v1"
+date = "2026-11-21"
+hypothesis = """
+Each month, the top quintile of the S&P 500 names by automatic model value (P50) over price, held with equal weight,
+has a higher annual return than the equal-weight line of the same names, after a cost of 10 bp on each traded value.
+The model value is built from the SEC facts known before each rebalance date (vintages). Test period: from 2018-01-01.
+Prior exposure: exploratory runs over 2018-01 to 2026-11 were seen before this file (pull request 104: +19.02% a year
+against +14.56%). Thus the out-of-sample window from 2023-01-01 is NOT clean for this hypothesis; it is an example of
+the harness, not evidence of an edge.
+"""
+strategy = "value-rank"
+universe = "rust/mapcheck/universe/sp500.txt"
+oos_start = "2023-01-01"
+
+[params]
+paths = 300
+seed = 7
+rebalance = "monthly"
+cost_bp = 10

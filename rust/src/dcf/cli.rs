@@ -25,7 +25,8 @@ USAGE:
   fa dcf screen [--tickers-file FILE | TICKER ...] [OPTIONS]   one row for each ticker, parallel; fa dcf screen --help
   fa dcf implied [--tickers-file FILE | TICKER ...] [OPTIONS]  what the price implies (cost of capital, growth, margin) and group medians, no random part; fa dcf implied --help
   fa dcf attribute [--tickers-file FILE | TICKER ...] --from D1 --to D2   where the value of a stock went between two dates (facts, rates, premium, rest); fa dcf attribute --help
-  fa dcf pit [OPTIONS]                            point-in-time test of the automatic model; fa dcf pit --help
+  fa dcf market --shiller FILE --cpi FILE --out FILE [--long-real G] [--fade-years N] [--score FILE --tb3ms F --nber F --gs10 F]   the premium that the S&P composite price implies, each month (a measurement); fa dcf market --help
+  fa dcf pit [OPTIONS]                          point-in-time test of the automatic model; fa dcf pit --help
   fa dcf assumptions [--md | --effect K=V,..]       the register of the assumptions of the automatic model; the effect of an alternative; --help
   fa dcf returns [OPTIONS]                        the automatic model value (P50 / price) against the later stock returns; fa dcf returns --help
   fa backtest TICKER [--horizon Y (3)] [--simulations N (10000)] [--seed S (7)] [--data-dir D]
@@ -638,6 +639,7 @@ pub fn run(repo: &Path, args: &[String]) -> u8 {
         Some("screen") => return super::auto_cli::screen(repo, &args[1..]),
         Some("implied") => return super::auto_implied::command(repo, &args[1..]),
         Some("attribute") => return super::auto_attribute::command(repo, &args[1..]),
+        Some("market") => return super::market::command(repo, &args[1..]),
         Some("pit") => return super::auto_pit::command(repo, &args[1..]),
         Some("assumptions") => return super::assumptions::command(repo, &args[1..]),
         Some("returns") => return super::auto_returns::command(repo, &args[1..]),
