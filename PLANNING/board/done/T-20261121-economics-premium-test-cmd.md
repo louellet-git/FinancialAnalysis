@@ -2,7 +2,7 @@
 id: T-20261121-economics-premium-test-cmd
 title: Build the command fa macro premium-test for the frozen premium design
 area: engine
-status: review
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: economics

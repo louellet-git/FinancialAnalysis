@@ -103,5 +103,5 @@ uses later priors, unless the series run uses a cut table (`--table`). For the r
 table, or state the look-ahead in the findings.
 
 ## Review status
-Not reviewed. The design is frozen (55f2e92 with R1 and R2). Reviewed: Quality and Risk, 2026-11-21 (code PASS-WITH-NOTES; documents passed with conditions D1-D6). to this
-document. No run of record is known to this document.
+The design is frozen (55f2e92 with R1 and R2). Reviewed: Quality and Risk, 2026-11-21 (code PASS-WITH-NOTES;
+documents passed with conditions D1-D6). No run of record exists yet.
