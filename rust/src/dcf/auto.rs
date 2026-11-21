@@ -648,7 +648,7 @@ pub fn regression_beta(stock: &[(String, f64)], market: &[(String, f64)], as_of:
     Some(BetaFit { raw, adjusted: weight * raw + (1.0 - weight), weeks: pairs.len(), first: day(pairs[0].2), last: day(pairs[pairs.len() - 1].2), market: name.to_string() })
 }
 
-fn price_series(cache: &std::path::Path, ticker: &str) -> Option<Vec<(String, f64)>> {
+pub(crate) fn price_series(cache: &std::path::Path, ticker: &str) -> Option<Vec<(String, f64)>> {
     let p = crate::market::prices::read_cache(&crate::market::prices::cache_path(cache, ticker)).ok()?;
     Some(p.into_iter().map(|x| (x.date, x.close)).collect())
 }

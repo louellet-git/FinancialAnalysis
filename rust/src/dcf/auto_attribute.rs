@@ -452,6 +452,9 @@ pub struct AttrRow {
     /// The ticker of the same company that carries the weight (one company, one weight): this ticker has none.
     pub weight_of: Option<String>,
     pub outcome: Result<Attribution, (String, String)>,
+    /// A close of this ticker is older than the close of the market index on the same date (`stale_note`): the row has
+    /// no weight, so no sum mixes the dates. The text names the dates.
+    pub stale: Option<String>,
 }
 
 impl AttrRow {
@@ -462,8 +465,11 @@ impl AttrRow {
         }
         self.weight_raw()
     }
-    /// The market value at D1 with no rule of one weight for one company.
+    /// The market value at D1 with no rule of one weight for one company (none for a stale price).
     pub fn weight_raw(&self) -> Option<f64> {
+        if self.stale.is_some() {
+            return None;
+        }
         let (p1, _) = self.prices?;
         self.shares.map(|s| p1 * s).filter(|w| w.is_finite() && *w > 0.0)
     }
@@ -496,7 +502,7 @@ pub fn attribute_list(
                 let primary = outcome.as_ref().ok().map(|x| x.shares1);
                 let (shares, shares_note) = guarded_shares(a, primary);
                 let cik = cfg.cache.and_then(|c| cik_of(c, &a.ticker));
-                AttrRow { ticker: a.ticker.clone(), sector, industry, prices, shares, shares_note, cik, weight_of: None, outcome }
+                AttrRow { ticker: a.ticker.clone(), sector, industry, prices, shares, shares_note, cik, weight_of: None, outcome, stale: None }
             })
             .collect()
     };
@@ -513,6 +519,38 @@ pub fn cik_of(cache: &Path, ticker: &str) -> Option<String> {
     let text = std::fs::read(mapcheck::sec::earnings_filings_path(cache, ticker)).ok()?;
     let v: serde_json::Value = serde_json::from_slice(&text).ok()?;
     v.get("cik").and_then(|c| c.as_str().map(String::from).or_else(|| c.as_u64().map(|n| n.to_string())))
+}
+
+/// The date of the close that `close_on_or_before` takes for `date` (`None`: no close in `PRICE_GAP_DAYS`).
+pub fn close_date(series: &[(String, f64)], date: &str) -> Option<String> {
+    close_on_or_before(series, date).map(|(d, _)| d[..10].to_string())
+}
+
+/// A row is stale when the date of its close at D1 or at D2 is older than the date of the close of the market index (SPY)
+/// for the same date: the ticker has a price of an earlier day, so a sum would mix two dates. `closes(ticker)` gives the
+/// close series. A ticker with no close at all is not stale (it has no prices and no weight already). Run it before
+/// `one_weight_for_one_company`, so that a stale class does not keep the weight of its company. Returns the number of
+/// stale rows.
+pub fn mark_stale(rows: &mut [AttrRow], closes: &dyn Fn(&str) -> Option<Vec<(String, f64)>>, d1: &str, d2: &str) -> usize {
+    let Some(index) = closes("SPY") else { return 0 };
+    let (r1, r2) = (close_date(&index, d1), close_date(&index, d2));
+    let mut n = 0;
+    for r in rows.iter_mut() {
+        let Some(s) = closes(&r.ticker) else { continue };
+        let mut notes = Vec::new();
+        for (d, want) in [(d1, &r1), (d2, &r2)] {
+            if let (Some(own), Some(want)) = (close_date(&s, d), want) {
+                if own < *want {
+                    notes.push(format!("close of {own} for {d} (SPY {want})"));
+                }
+            }
+        }
+        if !notes.is_empty() {
+            r.stale = Some(notes.join("; "));
+            n += 1;
+        }
+    }
+    n
 }
 
 /// One company, one weight. Two classes of one company (GOOG and GOOGL) have the same share count of the company, so a sum
@@ -945,6 +983,9 @@ pub fn csv_line(r: &AttrRow) -> String {
     f[idx("shares")] = r.shares.map_or(String::new(), |s| num(s, 0));
     f[idx("value1")] = r.weight().map_or(String::new(), |w| num(w, 0));
     let mut flags: Vec<String> = Vec::new();
+    if let Some(note) = &r.stale {
+        flags.push(format!("price-stale({})", note.replace(", ", ";").replace(',', ";")));
+    }
     if let Some(note) = &r.shares_note {
         flags.push(format!("shares-guard({})", note.replace(", ", ";").replace(',', ";")));
     }
@@ -1144,6 +1185,10 @@ pub fn list_text(rows: &[AttrRow]) -> String {
     let Some(whole) = whole_list(rows) else { return "WHOLE LIST: no ticker has two prices and a share count\n".to_string() };
     let mut s = String::from("\nThis is an accounting split of the price change with the model; it is not a cause. facts and time have a fixed position (first and second); rates and the plug are shown as the range of the two orders.\n\n");
     s.push_str(&whole_text(&whole));
+    let stale: Vec<String> = rows.iter().filter_map(|r| r.stale.as_ref().map(|n| format!("{} ({n})", r.ticker))).collect();
+    if !stale.is_empty() {
+        s.push_str(&format!("  STALE PRICE, left out of every sum ({} tickers: a close older than the SPY close of the same date): {}\n", stale.len(), stale.join(", ")));
+    }
     s.push_str(&variants_text(rows));
     let old = |side: usize| rows.iter().filter(|r| r.outcome.as_ref().ok().is_some_and(|a| if side == 1 { a.curve_lag().0 } else { a.curve_lag().1 }.is_some())).count();
     s.push_str(&format!("  rows whose curve is more than {CURVE_LAG_DAYS} days older than the date: {} at D1, {} at D2 (the curve source lags)\n", old(1), old(2)));
@@ -1242,7 +1287,13 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     let market2_of = |t: &str| -> Market { market_at(&cache, t, &d2, None, Some(&d2), &rules, curve2.as_ref(), index.as_deref()) };
     let cfg = ImpliedConfig { table: &table, fade: &fade, rules: rules.clone(), cache: Some(&cache) };
     let t1 = Instant::now();
-    let rows = attribute_list(&inputs1, &inputs2, &market1_of, &market2_of, &groups, &cfg, jobs)?;
+    let mut rows = attribute_list(&inputs1, &inputs2, &market1_of, &market2_of, &groups, &cfg, jobs)?;
+    // a close older than the SPY close of the same date takes the row out of the sums; the one-weight rule runs again after it
+    for r in rows.iter_mut() {
+        r.weight_of = None;
+    }
+    mark_stale(&mut rows, &|t: &str| super::auto::price_series(&cache, t), &d1, &d2);
+    one_weight_for_one_company(&mut rows);
     let attr_s = t1.elapsed().as_secs_f64();
     if let Some(path) = o.get("--out") {
         std::fs::write(path, csv_text(&rows)).map_err(|x| DcfError(format!("{path}: {x}")))?;

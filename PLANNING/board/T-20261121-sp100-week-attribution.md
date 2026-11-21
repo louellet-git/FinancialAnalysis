@@ -56,3 +56,12 @@ The prices to 2026-11-19 agree with the Alpaca IEX closes to a few cents. New da
 after 2026-11-18, and `attribute` takes the last close up to 10 days older, so it uses a stale price (sent to the Head
 of Technology; a later tool change: flag a price that is older than the date). The final run waits for defects 1 and 3
 (owner: "Don't leave out Berkshire ... Have that fixed"). A draft document is in progress (an agent).
+
+**State (2026-11-21 about 16:45 UTC):** code: `attribute` marks a stale price (a close older than the SPY close of the
+same date) and leaves the row out of every sum (test; suites pass 834 + 17 + 1). With it, IBM and JNJ leave the S&P
+100 sum (-9.48%, 96 companies) until their closes are in the store. The draft document
+`analysis/priors/sp100_week_attribution_2026-11-20.md` (an agent; numbers of the run to 2026-11-20 before the fixes;
+about 3.5 pages: cut after the final run). Open: data defects 1 and 3 (Head of Technology); the code gate (Quality);
+the final run; the review of the document (validator, document reviewer, auditor). A point for the validator: in the
+premium reading the rates part is large for names with an implied premium near 0 (AAPL about +10% of its price for
+-23 bp); the growth reading and the order range are in the draft.

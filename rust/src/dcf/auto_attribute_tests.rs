@@ -173,7 +173,7 @@ fn attribution(p1: f64, p2: f64, c: Chain, shares: f64) -> Attribution {
 /// `which` 3: all of the change is in the plug; 2: all in the rates.
 fn row(name: &str, p1: f64, p2: f64, which: usize, shares: f64, x1: f64) -> AttrRow {
     let c = chain((p2 / p1).ln(), which, x1);
-    AttrRow { ticker: name.into(), sector: "S".into(), industry: String::new(), prices: Some((p1, p2)), shares: Some(shares), shares_note: None, cik: None, weight_of: None, outcome: Ok(attribution(p1, p2, c, shares)) }
+    AttrRow { ticker: name.into(), sector: "S".into(), industry: String::new(), prices: Some((p1, p2)), shares: Some(shares), shares_note: None, cik: None, weight_of: None, outcome: Ok(attribution(p1, p2, c, shares)), stale: None }
 }
 
 #[test]
@@ -192,6 +192,7 @@ fn the_sums_have_the_hand_calculated_answers() {
         cik: None,
         weight_of: None,
         outcome: Err(("template bank: no model".into(), String::new())),
+        stale: None,
     });
     let whole = whole_list(&rows).unwrap();
     assert_eq!(whole.n, 3);
@@ -364,6 +365,7 @@ fn the_list_text_names_the_tickers_with_no_model_value_and_a_missing_cik() {
         cik: None,
         weight_of: None,
         outcome: Err(("template bank: no model".into(), String::new())),
+        stale: None,
     });
     let w = whole_list(&rows).unwrap();
     assert_eq!(w.no_model.len(), 1);
@@ -391,6 +393,7 @@ fn the_full_bridge_puts_each_ticker_in_once_and_adds_to_the_whole_change() {
         cik: None,
         weight_of: None,
         outcome: Err(("template bank: no model".into(), String::new())),
+        stale: None,
     });
     let b = full_bridge(&rows, View::Premium).unwrap();
     let p = b.all.parts;
@@ -429,4 +432,30 @@ fn the_full_bridge_puts_each_ticker_in_once_and_adds_to_the_whole_change() {
     let a = b.tickers.iter().find(|l| l.name == "A").unwrap();
     assert!((a.share - 0.1).abs() < 1e-12 && (a.change + 0.2).abs() < 1e-12 && (a.parts[4] + 0.02).abs() < 1e-12, "{a:?}");
     assert!(list_text(&rows).contains("\n  A    "), "a short list prints one line for each ticker");
+}
+
+#[test]
+fn a_close_older_than_the_index_close_takes_the_row_out_of_every_sum() {
+    // SPY has closes on 11-13 and 11-20. A has both; B stops at 11-18, so its price for 11-20 is of an earlier day.
+    let series = |t: &str| -> Option<Vec<(String, f64)>> {
+        let s = |v: &[(&str, f64)]| v.iter().map(|(d, c)| (d.to_string(), *c)).collect::<Vec<_>>();
+        match t {
+            "SPY" => Some(s(&[("2026-11-13", 750.0), ("2026-11-20", 690.0)])),
+            "A" => Some(s(&[("2026-11-13", 10.0), ("2026-11-20", 8.0)])),
+            "B" => Some(s(&[("2026-11-13", 30.0), ("2026-11-18", 27.0)])),
+            _ => None,
+        }
+    };
+    let mut rows = vec![row("A", 10.0, 8.0, 3, 10.0, 0.05), row("B", 30.0, 27.0, 2, 10.0, 0.05), row("C", 5.0, 4.0, 3, 10.0, 0.05)];
+    assert_eq!(mark_stale(&mut rows, &series, "2026-11-13", "2026-11-20"), 1);
+    assert_eq!(rows[1].stale.as_deref(), Some("close of 2026-11-18 for 2026-11-20 (SPY 2026-11-20)"));
+    assert!(rows[0].stale.is_none() && rows[2].stale.is_none(), "a ticker with no series is not marked");
+    assert!(rows[1].weight().is_none() && rows[1].weight_raw().is_none());
+    // the whole list and the bridge leave B out: A (value 100, -20%) and C (value 50, -20%) only
+    let w = whole_list(&rows).unwrap();
+    assert_eq!(w.n, 2);
+    assert!((w.change + 0.2).abs() < 1e-12, "{w:?}");
+    assert_eq!(full_bridge(&rows, View::Premium).unwrap().all.n, 2);
+    assert!(list_text(&rows).contains("STALE PRICE, left out of every sum (1 tickers"));
+    assert!(csv_line(&rows[1]).contains("price-stale(close of 2026-11-18 for 2026-11-20 (SPY 2026-11-20))"));
 }
