@@ -22,6 +22,12 @@
 //!    full history again.
 //! 4. A full history replaces the file only if it has at least 90% of the cached rows. A source
 //!    that fails never changes or shortens the file.
+//!    Exception (`append_after`): a source of another kind (or `adjusted`) with a full history shorter than the
+//!    cache does not replace the file. If its days from 10 calendar days before the last cached row agree
+//!    with the cache (same tolerance), the program appends its rows after the last cached date and keeps the
+//!    older rows. `source` and `adjusted` of the record keep the values of the first part; `segments` says who
+//!    gave which part. If the overlap does not agree (a constant ratio from a dividend adjustment, a split),
+//!    nothing changes.
 //! 5. On HTTP 429 the program waits one time, tries again, and then stops that source for the run.
 
 use super::price_source::{add_days, FetchError, PriceSource, Row};
@@ -52,6 +58,20 @@ pub struct Meta {
     /// What the source did besides its name, for example `feed=iex adjustment=split` (Alpaca).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub detail: Option<String>,
+    /// Set only when a source of another kind appended days to a longer cache (`append_after`): who gave which
+    /// part of the file. `source` and `adjusted` keep the values of the first part (`fa sync` reads `source`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub segments: Option<Vec<Segment>>,
+}
+
+/// One part of a cache file that came from one source.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Segment {
+    pub source: String,
+    pub adjusted: String,
+    pub first_date: String,
+    pub last_date: String,
+    pub rows: usize,
 }
 
 pub fn prices_path(cache: &Path, ticker: &str) -> PathBuf {
@@ -71,6 +91,7 @@ fn meta_for(rows: &[PricePoint], source: &str, adjusted: &str, updated: &str) ->
         last_date: rows.last().map(|r| r.date.clone()).unwrap_or_default(),
         rows: rows.len(),
         detail: None,
+        segments: None,
     }
 }
 
@@ -99,7 +120,10 @@ pub struct LastClose {
 pub fn last_close(cache: &Path, ticker: &str) -> Option<LastClose> {
     let rows = history(cache, ticker)?;
     let last = rows.iter().rev().find(|r| r.close.is_finite() && r.close > 0.0)?;
-    let source = valid_meta(cache, ticker, &rows).map_or_else(|| "cache (no source record)".to_string(), |m| m.source);
+    let source = valid_meta(cache, ticker, &rows).map_or_else(|| "cache (no source record)".to_string(), |m| match &m.segments {
+        Some(s) if s.len() > 1 => s.iter().map(|g| format!("{} ({} to {})", g.source, g.first_date, g.last_date)).collect::<Vec<_>>().join(" + "),
+        _ => m.source,
+    });
     Some(LastClose { date: last.date.clone(), close: last.close, source })
 }
 
@@ -199,7 +223,39 @@ fn save(cache: &Path, ticker: &str, rows: &[PricePoint], meta: &Meta) -> Result<
     write_atomic(&meta_path(cache, ticker), &serde_json::to_string_pretty(meta).map_err(|e| e.to_string())?)
 }
 
-fn attempt(src: &dyn PriceSource, ticker: &str, existing: &Existing, opt: &Options, run: &mut Run) -> Result<(Vec<PricePoint>, usize, bool, String), Attempt> {
+/// What `attempt` gives: the rows, the rows added, a full history or not, a note, and the parts of the file
+/// when the rows were appended to a cache of another source.
+type Outcome = (Vec<PricePoint>, usize, bool, String, Option<Vec<Segment>>);
+
+/// The cache is longer than the full history of this source, or is from another source: keep the older
+/// history and append the rows after its last date. Only if the days of the overlap agree (the same
+/// tolerance as an update); if they do not agree (another adjustment, a split), nothing changes.
+fn append_after(old: &[PricePoint], meta: &Meta, new: &[PricePoint], src: &dyn PriceSource, adjusted: &str) -> Result<Outcome, String> {
+    let last = old.last().map(|p| p.date.clone()).unwrap_or_default();
+    let from = add_days(&last, -OVERLAP_DAYS).unwrap_or_default();
+    let (n, worst) = overlap_difference(old, new, &from);
+    if n == 0 || worst > OVERLAP_TOLERANCE {
+        let why = if n == 0 { "no common day in the overlap".to_string() } else { format!("the overlap of {n} days differs by {:.3}%", worst * 100.0) };
+        return Err(format!("the full history has {} rows; the cache has {}: the cache stays ({why})", new.len(), old.len()));
+    }
+    let fresh: Vec<PricePoint> = new.iter().filter(|p| p.date > last).cloned().collect();
+    let mut segments = meta.segments.clone().unwrap_or_else(|| vec![Segment { source: meta.source.clone(), adjusted: meta.adjusted.clone(), first_date: meta.first_date.clone(), last_date: last.clone(), rows: old.len() }]);
+    if let (Some(f), Some(l)) = (fresh.first(), fresh.last()) {
+        match segments.last_mut() {
+            Some(g) if g.source == src.name() && g.adjusted == adjusted => {
+                g.last_date = l.date.clone();
+                g.rows += fresh.len();
+            }
+            _ => segments.push(Segment { source: src.name().into(), adjusted: adjusted.into(), first_date: f.date.clone(), last_date: l.date.clone(), rows: fresh.len() }),
+        }
+    }
+    let mut merged = old.to_vec();
+    merged.extend(fresh.iter().cloned());
+    let note = format!("{n} overlap days agree (largest difference {:.4}%); the older history of {} stays", worst * 100.0, meta.source);
+    Ok((merged, fresh.len(), false, note, Some(segments)))
+}
+
+fn attempt(src: &dyn PriceSource, ticker: &str, existing: &Existing, opt: &Options, run: &mut Run) -> Result<Outcome, Attempt> {
     let dividends = src.adjusts_dividends();
     let adjusted = if dividends { ADJUSTED_ALL } else { ADJUSTED_SPLITS };
     let mut reason = String::from("no cache");
@@ -209,7 +265,7 @@ fn attempt(src: &dyn PriceSource, ticker: &str, existing: &Existing, opt: &Optio
             if let Some(from) = add_days(&last, -OVERLAP_DAYS) {
                 let new: Vec<PricePoint> = fetch(src, ticker, Some(&from), opt, run)?.iter().map(|r| to_point(r, dividends)).collect();
                 if new.is_empty() {
-                    return Ok((old.clone(), 0, false, "the source gave no new rows".into()));
+                    return Ok((old.clone(), 0, false, "the source gave no new rows".into(), None));
                 }
                 let (n, worst) = overlap_difference(old, &new, &from);
                 if n > 0 && worst <= OVERLAP_TOLERANCE {
@@ -217,7 +273,7 @@ fn attempt(src: &dyn PriceSource, ticker: &str, existing: &Existing, opt: &Optio
                     merged.extend(new);
                     merged.dedup_by(|b, a| a.date == b.date);
                     let added = merged.len().saturating_sub(old.len());
-                    return Ok((merged, added, false, format!("{n} overlap days agree (largest difference {:.4}%)", worst * 100.0)));
+                    return Ok((merged, added, false, format!("{n} overlap days agree (largest difference {:.4}%)", worst * 100.0), None));
                 }
                 reason = if n == 0 { "no common day in the overlap".into() } else { format!("the overlap differs by {:.3}% (a split or a dividend)", worst * 100.0) };
             }
@@ -231,13 +287,16 @@ fn attempt(src: &dyn PriceSource, ticker: &str, existing: &Existing, opt: &Optio
     if new.is_empty() {
         return Err(Attempt::Failed("the source gave no rows".into()));
     }
-    if let Some((old, _)) = existing {
+    if let Some((old, meta)) = existing {
+        if !opt.full && (meta.source != src.name() || meta.adjusted != adjusted) && new.len() < old.len() {
+            return append_after(old, meta, &new, src, adjusted).map_err(Attempt::Failed);
+        }
         if new.len() * 10 < old.len() * 9 {
             return Err(Attempt::Failed(format!("the full history has {} rows; the cache has {}: the cache stays", new.len(), old.len())));
         }
     }
     let added = new.len().saturating_sub(existing.as_ref().map_or(0, |(o, _)| o.len()));
-    Ok((new, added, true, reason))
+    Ok((new, added, true, reason, None))
 }
 
 /// Update the cache of one ticker from the sources (in the order of use). The cache source goes first
@@ -264,9 +323,15 @@ pub fn update_with(cache: &Path, ticker: &str, mut order: Vec<&dyn PriceSource>,
     let mut reasons = Vec::new();
     for src in order {
         match attempt(src, ticker, &existing, opt, run) {
-            Ok((rows, added, full, note)) => {
-                let mut meta = meta_for(&rows, src.name(), if src.adjusts_dividends() { ADJUSTED_ALL } else { ADJUSTED_SPLITS }, &opt.today);
-                meta.detail = src.detail();
+            Ok((rows, added, full, note, segments)) => {
+                let meta = match (&segments, &existing) {
+                    (Some(_), Some((_, old_meta))) => Meta { detail: old_meta.detail.clone(), segments, ..meta_for(&rows, &old_meta.source, &old_meta.adjusted, &opt.today) },
+                    _ => {
+                        let mut m = meta_for(&rows, src.name(), if src.adjusts_dividends() { ADJUSTED_ALL } else { ADJUSTED_SPLITS }, &opt.today);
+                        m.detail = src.detail();
+                        m
+                    }
+                };
                 return match save(cache, ticker, &rows, &meta) {
                     Ok(()) => Status::Updated { source: src.name().into(), added, full, note },
                     Err(e) => Status::Failed(e),
@@ -548,6 +613,71 @@ mod tests {
         assert!(matches!(&s, Status::Updated { source, full: true, note, .. } if source == "nasdaq" && note.contains("not mixed")), "{s:?}");
         let h = history(&d, "TST").unwrap();
         assert_eq!(valid_meta(&d, "TST", &h).unwrap().adjusted, ADJUSTED_SPLITS);
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    fn yahoo_cache(name: &str, n: usize) -> (PathBuf, Run) {
+        let d = dir(name);
+        let mut run = Run::default();
+        let (y, _) = fake("yahoo", true, series(n));
+        update_ticker(&d, "TST", &[y], &opt("2024-04-10"), &mut run);
+        (d, run)
+    }
+
+    #[test]
+    fn long_cache_gets_only_the_new_days_from_a_shorter_source() {
+        let (d, mut run) = yahoo_cache("append", 100);
+        let before = history(&d, "TST").unwrap();
+        let last = before.last().unwrap().date.clone();
+        // Nasdaq has 30 days that end 5 days after the cache; the days it shares with the cache agree.
+        let rows = series(105)[75..].to_vec();
+        let (nas, rig) = fake("nasdaq", false, rows);
+        let mut o = opt("2024-04-16");
+        o.forced = true;
+        let s = update_ticker(&d, "TST", &[nas], &o, &mut run);
+        assert!(matches!(&s, Status::Updated { added: 5, full: false, note, .. } if note.contains("overlap days agree")), "{s:?}");
+        assert_eq!(rig.calls.borrow().len(), 1, "one request for the full history");
+        let h = history(&d, "TST").unwrap();
+        assert_eq!(h.len(), 105);
+        assert_eq!(&h[..100], &before[..], "the older rows are not touched");
+        assert!(h[100].date > last);
+        let m = valid_meta(&d, "TST", &h).unwrap();
+        assert_eq!((m.source.as_str(), m.adjusted.as_str(), m.rows, m.updated.as_str()), ("yahoo", ADJUSTED_ALL, 105, "2024-04-16"));
+        let g = m.segments.unwrap();
+        assert_eq!(g.len(), 2);
+        assert_eq!((g[0].source.as_str(), g[0].last_date.as_str(), g[0].rows), ("yahoo", last.as_str(), 100));
+        assert_eq!((g[1].source.as_str(), g[1].first_date.as_str(), g[1].rows), ("nasdaq", h[100].date.as_str(), 5));
+        assert!(last_close(&d, "TST").unwrap().source.contains("yahoo (") && last_close(&d, "TST").unwrap().source.contains("+ nasdaq ("));
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn long_cache_with_a_different_overlap_changes_nothing() {
+        let (d, mut run) = yahoo_cache("append_bad", 100);
+        let before = std::fs::read_to_string(prices_path(&d, "TST")).unwrap();
+        let meta_before = std::fs::read_to_string(meta_path(&d, "TST")).unwrap();
+        // The closes of Nasdaq are 1% lower on all days (a dividend adjustment, for example): a constant ratio.
+        let rows: Vec<Row> = series(105)[75..].iter().map(|r| row(&r.date, r.close * 0.99)).collect();
+        let (nas, _) = fake("nasdaq", false, rows);
+        let mut o = opt("2024-04-16");
+        o.forced = true;
+        let s = update_ticker(&d, "TST", &[nas], &o, &mut run);
+        assert!(matches!(&s, Status::Failed(m) if m.contains("the cache stays") && m.contains("differs by 1.0")), "{s:?}");
+        assert_eq!(std::fs::read_to_string(prices_path(&d, "TST")).unwrap(), before);
+        assert_eq!(std::fs::read_to_string(meta_path(&d, "TST")).unwrap(), meta_before);
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn long_cache_that_is_current_gives_zero_rows() {
+        let (d, mut run) = yahoo_cache("append_zero", 100);
+        let before = history(&d, "TST").unwrap();
+        let (nas, _) = fake("nasdaq", false, series(100)[70..].to_vec());
+        let mut o = opt("2024-04-11");
+        o.forced = true;
+        let s = update_ticker(&d, "TST", &[nas], &o, &mut run);
+        assert!(matches!(&s, Status::Updated { added: 0, .. }), "{s:?}");
+        assert_eq!(history(&d, "TST").unwrap(), before);
         let _ = std::fs::remove_dir_all(&d);
     }
 
