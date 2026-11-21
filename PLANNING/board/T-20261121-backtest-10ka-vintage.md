@@ -13,7 +13,7 @@ acceptance: A vintage earlier than the filing date of a 10-K/A uses the 10-K of 
 ---
 Found on 2026-11-21 (ticket `T-20261025-filed-date-fabrication`). `clean_annuals` in `rust/src/dcf/backtest.rs`
 keeps the row filed last for each fiscal year, and then `vintage_periods` drops the rows filed after
-`as_of`. Thus, when a 10-K/A is filed after `as_of`, the vintage loses that year, although the 10-K was
+`as_of`. When a 10-K/A is filed after `as_of`, the vintage loses that year. But the 10-K was
 available. Example: the IBM fixture has a 10-K/A of FY2012 (filed 2013-09-01); the vintage of
 2013-03-31 uses FY2011 as its base, not FY2012 (10-K filed 2013-02-15).
 

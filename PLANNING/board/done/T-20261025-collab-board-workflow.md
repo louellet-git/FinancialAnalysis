@@ -10,7 +10,7 @@ order: 5
 branch: claude/filed-date-sparse
 created: 2026-10-25
 acceptance: Pull request #18 is closed, or the parts that the owner wants are merged.
-merged: 2026-11-21 (pull request #18 was closed without a merge on 2026-11-19)
+merged: pull request 101 (branch claude/filed-date-sparse)
 ---
 Owner decision, 2026-11-19: the ISO/IEC/IEEE 15289 document standard is not used. Documents use ASD-STE100 only.
 The owner has not decided about built-in hooks. Until the owner decides, the hooks and the gate scripts of pull request #18 stay out of `main`.
