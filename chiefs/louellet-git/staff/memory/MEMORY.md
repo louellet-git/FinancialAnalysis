@@ -43,14 +43,11 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
   to the head only if the same head does it again and again.
 
 ## 4. Open now
-- Waits for the person: (1) his review of the three S&P pieces (sent 2026-11-21: the week by day and stock,
-  the valuation blocks, the chip sector; on main in `analysis/priors/pdf/`); the S&P 100 part starts after
-  it. (2) The start of the new session `FA-L - Head of Quality and Risk`: no gate works until then.
-- The one session test (agreed 2026-11-21): the old Quality session stays open as "FA-L - Quality and Risk
-  (fallback)". Baseline: 1,140 head turns, 451k cache read for each head turn, 144 agent starts, 220 USD.
-  Measures, some days: questions that the new session asks the old one (lost facts), repeated work, a
-  disputed verdict, cache read for each turn, cost for each gate. Report it before any other head changes.
-  The person tested smaller contexts before and it did harm: no other context change without a test.
+- Waits for the person: his review of the three S&P pieces (sent 2026-11-21: the week by day and stock,
+  the valuation blocks, the chip sector; on main in `analysis/priors/pdf/`). The S&P 100 part starts after it.
+- Sessions: one session for each head. The person agreed to a test of a new Quality session, then stopped
+  it the same day ("we'll stick to one"). Do not propose a new session, a compaction or a smaller context
+  as a saving. He tested smaller contexts before and it did harm.
 - E6.S5: `fa board check` is on main (I start no build: ask Technology for its output). Usage log, owner
   word "Let's not get overly complicated": local only; a head runs `fa usage show` when I ask. No push
   path. The calculator stays on hold.

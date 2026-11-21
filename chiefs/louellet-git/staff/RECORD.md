@@ -227,3 +227,8 @@ machine, with the script output in the token ledger of each head? Answer of the 
 overly complicated".
 Done: the simplest form. The counts stay on each machine; a head runs `fa usage show` when I ask. No push
 path, no permission rule, no tie to the ledger. I read the cost by head myself (`get_session`).
+
+## 2026-11-21 about 22:12 UTC (chat)
+Words: "Ignore the new quality and risk session we'll stick to one"
+Done: the session test is stopped before a new session started. The old session is the Head of Quality and
+Risk again (its title goes back, it takes gates again). No context change of a head.
