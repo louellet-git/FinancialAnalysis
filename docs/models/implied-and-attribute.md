@@ -17,7 +17,7 @@ rates and the implied premium (or growth)? Both are measurements. No input of th
 | The automatic model | `rust/src/dcf/auto.rs` and the table (`analysis/priors/process_priors_2026-11-19.toml`) | The builder runs again for each search step |
 | Price | `--prices FILE`, or the last close; with `--price-date`, the last close on or before it | At most 10 days older (A-012) |
 | Facts | With `--as-of` or `--from/--to`: facts filed on or before the date | A 10-K of the cache does not fill a missing input (see the rule below) |
-| Curve, beta | `--curve gsw` (default), `fedinvest` or `par`; SPY of the date | One source at both dates. A GSW row older than 3 days is flagged (A-012). See "Curve" below |
+| Curve, beta | `--curve auto` (default, being built; A-027), `gsw`, `fedinvest` or `par`; SPY of the date | One source at both dates. A GSW row older than 3 days is flagged (A-012). See "Curve" below |
 | Groups | SIC code of the cache (today's code), or `--groups FILE` | Fama-French 12 sector; industry with 5 tickers or more |
 
 ## Method (short)
@@ -110,7 +110,7 @@ gives the same output for any `--jobs`.
 ## Code and command
 | What | Path or command |
 |---|---|
-| Code | `rust/src/dcf/auto_implied.rs`, `rust/src/dcf/auto_attribute.rs`; the series: `docs/models/premium-series.md` |
+| Code | `rust/src/dcf/auto_implied.rs`, `rust/src/dcf/auto_attribute.rs`; series: `premium-series.md`; reality: `baserates-and-reality.md` |
 | Model or parameter file | `analysis/priors/process_priors_2026-11-19.toml` |
 | Command | `fa dcf implied --cache data/raw --tickers-file rust/mapcheck/universe/sp500.txt`; `fa dcf attribute --from D1 --to D2 --tickers-file FILE [--curve par] [--common median|vw|file]` |
 | Tests | `rust/src/dcf/auto_implied_tests.rs`, `auto_attribute_tests.rs` |
