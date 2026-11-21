@@ -18,11 +18,11 @@ The engine has no regime state. The failure table of the engine is used as a col
 P50 in $ a share, seed 7, 100,000 paths. Base: $103.78 (P10 54.92). Source: `COMMANDS.md` lines 44-45, 160-161.
 | Alternative | P50 | P10 | Command line |
 |---|---|---|---|
-| Hazard 0% | 112.50 | not known | 160 |
-| Hazard 4% | 93.91 | not known | 161 |
+| Hazard 0% | 112.50 | a bound of the range | 160 |
+| Hazard 4% | 93.91 | a bound of the range | 161 |
 | Multiple 0.5 / 1.0 / 1.5 | 101.53 / 102.12 / 102.80 | 41.46 / 46.83 / 51.29 | 44 |
 | Multiple 4.0 | 109.98 | 64.31 | 44 |
-The report gives no reason against each alternative: not known. The first run had no collapse table: P50 145.95 (report line 256).
+Each other row is a bound of the range (author answer, 2026-11-21). The first run had no collapse table: P50 145.95 (report line 256).
 
 ## Why this choice
 JUDGMENT, stochastic (toml 320; report line 87). Reasons of the toml (320-334):
@@ -39,7 +39,7 @@ The analyst added the table in version 1, after a check of the growth process al
 - The mean-path table of the output counts failed paths as zero revenue (report W4).
 
 ## Who decided and when
-The Head of Fundamental Research, in the NVDA review rounds of 2026-11-20 and 2026-11-21. The report names no separate decision of the Head for D14: the date of the decision is not known.
+The Head of Fundamental Research, in the NVDA review rounds of 2026-11-20 and 2026-11-21. D14 (hazard 2%, multiple 2.0) is judgment with no source and no separate dated decision; it comes from version 1, 2026-11-20 (author answer, 2026-11-21).
 Under review: step 2 of the valuation review, not yet accepted.
 
 ## When to examine it again

@@ -16,7 +16,7 @@ It is a GAAP operating margin of 45% plus an SBC ratio of 3.5% (toml line 155). 
 P50 in $ a share, seed 7, 100,000 paths. Base: $103.78. Source: `COMMANDS.md` line 148.
 | Alternative | P50 | Why not chosen |
 |---|---|---|
-| 35% before SBC (GAAP 31%, the mean of FY17 to FY22) | 85.31 | Not known (a test row; the report gives no separate reason) |
+| 35% before SBC (GAAP 31%, the mean of FY17 to FY22) | 85.31 | A bound of the range (author answer, 2026-11-21) |
 | 60% before SBC (GAAP 56%) | 119.06 | Report: a margin above 60% for ten years is not in the NVDA history (toml 158-160) |
 The GAAP values (31%, 45%, 56%) are in toml lines 164-165.
 
@@ -25,7 +25,7 @@ JUDGMENT, stochastic (report line 80). The report gives these reasons (toml 155-
 1. 45% GAAP is the middle between the mean GAAP operating margin of FY17 to FY22 (31%) and of FY24 to FY26 (59%) (ledger L3: 30.7% and 59.0%).
 2. The reason for a fade at all is a JUDGMENT with no source in the ledger: few large buyers, and a high margin attracts other sellers and own designs of the buyers.
 3. Comparators in the cache (company-years above $100B revenue): MSFT 41.6% to 46.8%, META 34.7% to 42.2%. Only MU (74.6%, one year) and NVDA (60.4%, 62.4%) are above 47%. So 45% is at the level of the best sustained large company.
-4. The model has $472B of operating profit in year 10 at the means. The largest in the cache is $158.1B (AAPL FY26) (toml 163-164).
+4. The model has $509B of operating profit in year 10 at the means (revenue $1,079.5B x (50.7% - 3.5%); the $472B of toml line 164 is stale, version 3; author answer, 2026-11-21). The largest in the cache is $158.1B (AAPL FY26) (toml 163-164).
 The report says D3 and D7 sit above the base rate of scale (report lines 210, 306).
 
 ## Effect on the result

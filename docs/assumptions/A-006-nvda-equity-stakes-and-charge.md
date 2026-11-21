@@ -18,13 +18,13 @@ One number r = 0.5 (no unit). A purchase of an equity security is partly an inve
 P50 in $ a share, seed 7, 100,000 paths. Base: $103.78. Sources: report lines 46-50, 105-113; `COMMANDS.md` lines 82-91, 122-136.
 | Alternative | P50 | Command line | Why not chosen |
 |---|---|---|---|
-| r = 0 (non-marketable out, full charge) | 98.42 | 85 | Not known (a bound of the range) |
-| r = 0.25 / 0.75 | 101.10 / 106.49 | 85 | Not known |
+| r = 0 (non-marketable out, full charge) | 98.42 | 85 | A bound of the range |
+| r = 0.25 / 0.75 | 101.10 / 106.49 | 85 | A bound of the range (author answer, 2026-11-21) |
 | r = 1 (all stakes in, no equity charge) | 109.08 | 85 | The "fair price" frame; a bound of the range |
 | Fade ou, half-life 2.0 years | 101.06 | 127 | The charge pays for credited growth: same half-life as D3 |
 | Ramp 3 / 4 / 5 / 10 years | 104.77 / 103.73 / 102.71 / 98.32 | 122-125 | Version 3 had a ramp of 10 years; the fade did not follow the growth (toml 15-16) |
 | Start at 0.39 / 0.55 / 0.24 of the past (panel) | 106.23 / 105.61 / 106.83 | 129-131 | Cross-check only, not the rule (toml 215-218) |
-| Q3 rate / net of sales / no tax gross-up | 105.02 / 104.41 / 104.62 | 133-135 | Q3 alone is not used (toml 211); other rows: not known |
+| Q3 rate / net of sales / no tax gross-up | 105.02 / 104.41 / 104.62 | 133-135 | Q3 alone is not used (toml 211); other rows: a bound of the range (author answer) |
 | Purchases of businesses at 2.0% (the measured value) | 102.88 | 136 | 1.5% "kept as decided" (toml 224) |
 
 ## Why this choice
@@ -37,7 +37,7 @@ JUDGMENT, with no data for r (report lines 99, 306). The Head of Fundamental Res
 - The terms of the stakes are in the 10-Q notes: not read.
 
 ## Who decided and when
-The Head of Fundamental Research, 2026-11-21, rounds 2 and 4 (marketable stakes at full value: round 4). The 1.5% for businesses: "as decided" (toml 224); the decider and the date are not known.
+The Head of Fundamental Research, 2026-11-21, rounds 2 and 4 (marketable stakes at full value: round 4). The 1.5% for businesses: analyst judgment, version 2, 2026-11-21, from the nine months of FY2027; accepted by the Head of Fundamental Research (toml 224; author answer).
 Under review: step 2 of the valuation review, not yet accepted.
 
 ## When to examine it again

@@ -20,7 +20,7 @@ P50 in $ a share, seed 7, 100,000 paths. Base: $103.78. Source: `COMMANDS.md`.
 | 0.4 year (the cut; a model that follows the cell above $100B) | 88.75 | 149 | Report: the cell is small and has busts (toml 117-124) |
 | 0.58 year (year 2 at +16.4%, the guide pace) | 92.02 | 72, 149 | Report line 178: the charge half-life stays at 1.0 |
 | 0.6 year (the panel of all sizes) | 92.45 | 149 | Panel has survivor bias (toml 110-111) |
-| 1.25 years (version 1) | 112.75 | 149 | Not known (the report gives no reason for the change) |
+| 1.25 years (version 1) | 112.75 | 149 | The upper bound of the old range (own momentum, 2.5 years) was void: the guided sequential growth fell from about +20% to +4% a quarter. 1.0 is the analyst judgment inside the range, accepted by the Head of Fundamental Research (version 2, 2026-11-21). |
 | 2.5 years (own momentum, version 1) | 163.14 | 149 | The guide breaks that bound (toml 111-113) |
 
 ## Why this choice

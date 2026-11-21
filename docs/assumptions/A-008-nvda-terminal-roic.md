@@ -16,7 +16,7 @@ The terminal value reinvests growth / return. At the means: 4% / 35% = 11% of NO
 P50 in $ a share, seed 7, 100,000 paths. Base: $103.78. Source: `COMMANDS.md` lines 166-167; report line 188.
 | Alternative | P50 | Command | Why not chosen |
 |---|---|---|---|
-| 15% (the lower cut) | 100.69 | `--pset terminal.roic=0.15` | Not known (a test row) |
+| 15% (the lower cut) | 100.69 | `--pset terminal.roic=0.15` | A bound of the range (author answer, 2026-11-21) |
 | 100% (the upper cut) | 107.28 | `--pset terminal.roic=1.0` | Years 1 to 10 imply 110% to 150%: not a base rate for ever (toml 306-309) |
 Run: `fa dcf drivers NVDA --model analysis/NVDA/driver_model_paths.toml --sims 100000 --no-attribution --pset terminal.roic=0.15`
 
