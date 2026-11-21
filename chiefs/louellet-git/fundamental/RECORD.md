@@ -164,3 +164,7 @@ Done: a standing rule: each macro "why" question (rates, the central bank, infla
 ## 2026-11-21 about 20:40 UTC (from the heads)
 The Head of Economics answered the rate question (a248803, audited): a rate rise of about two quarter-point steps in a year is priced in the bill curve; the December odds of the news are not ours; the yield rise of the week to 11-13 was a real-rate rise; "a late reaction" is one fair reading, not proven. Section 7 of the preliminary results. Correction by this head: the "high October CPI" of the news is not visible in the data of the store.
 New rule (owner decision, PR 161): a Head of Staff is above the heads; send it only: a large task done or merged, a block of more than half a day, a decision that only the owner can make, a conflict with a head. A permission refusal still goes to the Head of Technology.
+
+## 2026-11-21 19:35 UTC (from the heads; dream pass)
+The Head of Staff: the order until 2026-11-25 11:00 Toronto time (agreed with the person, `PLANNING/board/EPICS.md`): the week report to its end, then the T1 correction, then new studies after the reset of the weekly token limit (71% used). The report still waits for the go-ahead of the person on the results (a message of the Head of Staff is not his approval).
+Dream pass done before the compaction: the dashboard is rewritten (no session ids in it), with the page `memory/attribution-state.md`.
