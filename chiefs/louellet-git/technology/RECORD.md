@@ -177,3 +177,7 @@ Done: "Parallel work" is two lines, with no "not a duty" sentence, here and in `
 Words: "Yes (Recommended)" to: may I move the FRED files out of the public store into local copies that each head gets with one command?
 Then: "Would it help if I just made the repo private instead?" Answer: only part of the way (the terms also prohibit storage and giving the data to a second person; private repos use paid Actions minutes; each session needs access). The plan stays.
 Done: ticket `T-20261121-fred-local`.
+
+## 2026-11-21 (dialog)
+Words: "Yes (Recommended)" to: will you make fa-data private? (The terms of Nasdaq, Yahoo, Cboe, FRED and ICE do not permit a public copy; GitHub ToS D.3.)
+Done: the store README says private (store e3b735e); the heads are told to attach fa-data before a clone. The owner changes the visibility on GitHub. The FRED move continues.
