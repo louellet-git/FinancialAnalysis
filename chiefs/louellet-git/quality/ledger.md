@@ -90,3 +90,4 @@
 | fa dcf market code gate | 2026-11-21 | `claude/dcf-market-level` (d444206): code-reviewer PASS-WITH-NOTES (F1: no header check, a silent wrong table on swapped columns; fix before merge) | about 120k (measured) | |
 | fa dcf market F1 check | 2026-11-21 | `claude/dcf-market-level` (04d29fd): head check; header by name and parse errors with tests; PASS-WITH-NOTES | small (head only) | |
 | split-basis correction, validator | 2026-11-21 | `claude/split-basis-fix` (72d994f): REVISE (1 MAJ: `to` = today; SNDK 8x); real-path k-test identical to 1e-15; market values right for BKNG 2018 and NVDA 2024 | about 113k (measured) | code reviewer running |
+| split-basis correction verdict | 2026-11-21 | `claude/split-basis-fix` (72d994f): code-reviewer REVISE (the same MAJ), validator REVISE; verdict REVISE (1 MAJ: `to` = today); head checks the fix | about 75k code (measured) | |
