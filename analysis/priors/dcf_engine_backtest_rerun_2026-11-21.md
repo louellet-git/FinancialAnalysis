@@ -40,7 +40,16 @@ The deciles have no order: decile 0 +0.27%, decile 1 +0.56%, decile 9 +0.41%, th
   (gate PASS-WITH-NOTES, `afa1ab6`); the real-path k-test of the validator matched to 1e-15.
 - The runs used the binary of 2b77809 (before the switch to `market::splits`). Rebuilt from HEAD 8a513d4 and
   run again: all nine outputs are byte-identical (`cmp`). So the code switch changes nothing.
-- The truncation test at 20 rebalance Fridays: see the line below when it is done.
+- The truncation test at 20 rebalance Fridays (every 23rd from 2018-01-05; prices and curve kept to D, the run to the
+  next trading day): 17 identical. 2018-11-23 differed, and that difference is an artefact of the test, not a
+  look-ahead. `index_from_cache` gives no market index when SPY has fewer than 520 rows, and SPY cut at 2018-11-23 has
+  507 (the store starts 2016-11-18), so the cut run used beta 1. With SPY cut at 2018-12-14 (521 rows) the signal of
+  2018-11-23 is the same as with the full data (MCHP 1.367609). The tests `value_rank_scores_do_not_move_with_a_market_
+  close_on_the_date_or_later` (SPY closes on or after D times 3: no score or weight of D moves; a control moves) and
+  `a_short_spy_file_gives_no_index` are in the suite (292b6dc). 2021-12-23 and 2025-07-03 (Thursdays before a closed
+  Friday) are a rebalance day only if the next trading day is in the data: calendar knowledge, not a price, but not
+  point in time; stated as a limit, not changed.
+- A hazard for any test that cuts SPY: the beta is dropped with no message under 520 rows.
 - Store `58e54a2` (the split table of record; prices as `1804f48`). The table cut 2016 of the run code:
   `trading/hypotheses/data/process_priors_cut2016.toml`. The list: `trading/hypotheses/data/a009_list.txt`
   (426 tickers run). Excluded before the runs: GSAT, BALL, EW, EXE, GPN, HWM.
