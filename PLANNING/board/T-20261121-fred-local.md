@@ -58,3 +58,10 @@ reads the Treasury HQM spot files (`.xls`, home.treasury.gov/data/treasury-coupo
 154 of 154 months equal to FRED HQMCB*YR (FRED HQM is the spot rate, not the par yield).
 Next: an HQM fetch and cache step; `bonds.rs` reads HQM from Treasury; the rating step table and its
 record; NFCI from the Chicago Fed; then the FRED files and the FRED code leave.
+
+Step 2 done (commit 01383b4, examined after the agent finished; tests 838+17+1, mapcheck 121).
+`fa bonds hqm get` caches the 9 Treasury HQM files (data/raw/bonds/treasury_hqm/, `fa sync` key
+`hqm`); `fa bonds` reads HQM from them: 514 months of 8 maturities equal to FRED; the output is the
+same except the source label. NFCI: the Chicago Fed legal notice says "Users may not reproduce ...
+except as expressly authorized"; its permission covers written materials, not for private gain.
+So NFCI is not stored; the Head of Economics decides (drop it, or the owner asks for permission).
