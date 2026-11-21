@@ -55,6 +55,8 @@ USAGE:
   fa estimates get TICKER... [--tickers-file F] [--endpoints LIST] [--momentum] [--refresh]
                                                   analyst consensus EPS, price targets, surprises into data/raw (Nasdaq site, no key)
   fa estimates show TICKER [--price P]            consensus by period, revisions, forward P/E, target against the last close
+  fa spf get [--cache DIR]                        Philadelphia Fed SPF medianLevel.xlsx into DIR/macro/spf (dated copy)
+  fa spf show [--cache DIR] [--file F]            Q1 long-run medians (RGDP10, CPI10, STOCK10, BOND10, BILL10), release dates
   fa earnings calendar [TICKER...] [--tickers-file F] [--from D] [--days N]
                                                   Nasdaq earnings calendar scan, then the next report date of each ticker
   fa earnings dates TICKER... [--tolerance N]     past report dates against the SEC filing list (8-K item 2.02), next date
@@ -272,6 +274,10 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
             Err(e) => Ok(usage_error(&e)),
         },
         Some("prices") => match financial_analysis::market::price_cli::run(&fa.repo, &args[1..]) {
+            Ok(code) => Ok(ExitCode::from(code as u8)),
+            Err(e) => Ok(usage_error(&e)),
+        },
+        Some("spf") => match financial_analysis::market::spf::run(&fa.repo, &args[1..]) {
             Ok(code) => Ok(ExitCode::from(code as u8)),
             Err(e) => Ok(usage_error(&e)),
         },

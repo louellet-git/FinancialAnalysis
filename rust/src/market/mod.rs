@@ -43,6 +43,7 @@ pub mod prices;
 pub mod splits;
 pub mod splits_rules;
 pub mod splits_cli;
+pub mod spf;
 
 use serde::de::{MapAccess, Visitor};
 use serde::ser::SerializeMap;
