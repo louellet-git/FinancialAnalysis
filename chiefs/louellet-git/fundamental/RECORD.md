@@ -63,3 +63,8 @@ Done: a standing rule of this area: each model change and each strategy has a po
 ## 2026-11-21 about 04:50 UTC (answer to a question of this head)
 Question: if T1 does not pass by 2026-11-26, what happens on 2026-11-27? Answer: "No trades until T1 passes (Recommended)".
 Done: the ticket `T-20261121-blind-projection-test` has the decision and the written test of the T1 fix.
+
+## 2026-11-21 14:25 UTC (chat)
+Words: "We need a backtesting engine, then we will need to use our DCF engine across a variety of stocks and different points in time in combination with our backtesting engine until we find a positive expected return, any questions? We need rust for this in particular so that we can optimize our run times"
+Answers to two questions: the hold-out: "Any data that is ahead of the point in time, since we are dealing with stochastic processes they must be F_t adapted. If we're simulating a DCF in 2004, we don't use info from 2005"; the measure: "We effectively just need to know if the stock is a buy or a short, and for how long or until what price point, then we sell or buy back accordingly and that's our profit over that time period. Accounting for reality after trade would have supposedly been plaved".
+Done: ticket `T-20261121-trade-level-backtest` (signal panel, trade simulator, walk-forward rule choice).
