@@ -661,16 +661,157 @@ fn the_median_and_the_value_weighted_c_of_a_hand_made_list() {
 }
 
 #[test]
-fn the_file_source_gives_c_of_the_row_of_d2_and_an_empty_field_is_no_change() {
+fn the_file_source_gives_the_row_of_d2_and_an_empty_field_is_no_information() {
     let text = "date,erp_change,growth_change,source\n2026-11-13,0.001,0.002,old\n2026-11-20,-0.0025,,economics v1\n";
-    let c = common_from_text(text, "2026-11-20").unwrap();
-    assert_eq!(c[0].c, Some(-0.0025));
-    assert_eq!(c[0].label, "economics view, economics v1");
-    assert_eq!(common_label(&c[0]), "c = -0.250 points, common (economics view, economics v1)");
-    assert!(c[1].c.is_none() && c[1].label.contains("no growth change"), "{:?}", c[1]);
-    assert!(common_from_text(text, "2026-11-19").is_err());
-    assert!(common_from_text("date,erp\n", "2026-11-20").is_err());
-    assert!(common_from_text("date,erp_change,growth_change,source\n2026-11-20,abc,,x\n", "2026-11-20").is_err());
+    let c = econ_from_text(text, "2026-11-20").unwrap();
+    assert_eq!((c.erp, c.growth, c.source.as_str()), (Some(-0.0025), None, "economics v1"));
+    assert!(c.label(true).starts_with("economics view, economics v1") && c.label(true).contains("erp_change only"), "{}", c.label(true));
+    assert!(econ_from_text(text, "2026-11-19").is_err());
+    assert!(econ_from_text("date,erp\n", "2026-11-20").is_err());
+    assert!(econ_from_text("date,erp_change,growth_change,source\n2026-11-20,abc,,x\n", "2026-11-20").is_err());
+    let empty = econ_from_text("date,erp_change,growth_change,source\n2026-11-20,,,test only\n", "2026-11-20").unwrap();
+    assert_eq!((empty.erp, empty.growth), (None, None));
+    assert!(empty.label(true).contains("not covered"), "{}", empty.label(true));
+}
+
+fn econ(erp: Option<f64>, growth: Option<f64>) -> EconView {
+    EconView { erp, growth, source: "test only".into() }
+}
+
+/// The value at the means for a premium, a growth shift and a G, at the plain market (the default rate 4.2% or a curve).
+fn v_rules(m: &Market, erp: f64, shift: f64, g: f64) -> f64 {
+    let t = table();
+    value_at_rules(&inputs(), &cfg(&t), m, erp, shift, Some(g)).unwrap()
+}
+
+#[test]
+fn a_change_of_g_moves_the_value_only_where_g_binds() {
+    let model = rules_w1().erp.0;
+    // no curve: the default rate is 4.2%, so G = 4.0% is below it: L = G, and a lower G gives a lower value
+    let m_g = mk(1.0, None);
+    let (hi, lo) = (v_rules(&m_g, model, 0.0, 0.040), v_rules(&m_g, model, 0.0, 0.035));
+    assert!((lo / hi).ln() < -1e-4, "{lo} {hi}");
+    // a 10-year zero of 3.0% is below G: L = the yield, and G from 3.5% to 4.5% does not move the value
+    let m_y = mk(1.0, Some(curve(0.03, 4.0)));
+    let base = v_rules(&m_y, model, 0.0, 0.040);
+    for g in [0.035, 0.045] {
+        assert!((v_rules(&m_y, model, 0.0, g) / base - 1.0).abs() < 1e-12, "G {g}");
+    }
+}
+
+#[test]
+fn both_changes_together_equal_the_direct_value_in_both_views_and_the_parts_add() {
+    let t = table();
+    let ct = cfg(&t);
+    let (mut rows, model) = moved_row(&t);
+    let inp = vec![inputs()];
+    let (m1, m2) = (|_: &str| mk(1.0, None), |_: &str| mk(1.0, None));
+    let (d_erp, d_g) = (0.004, -0.001);
+    add_common_economics(&mut rows[..], &inp, &m1, &m2, &ct, &econ(Some(d_erp), Some(d_g)), Some(1)).unwrap();
+    let a = rows[0].outcome.as_ref().unwrap();
+    let m = mk(1.0, None);
+    let g0 = ct.rules.long_run.unwrap();
+    // premium view: from x1, the premium + erp_change and G + growth_change together (G binds: 4.0% < 4.2%)
+    let (p, g) = (prem(a), grow(a));
+    let sp = p.split.as_ref().unwrap();
+    let direct = (v_rules(&m, p.x1.x + d_erp, 0.0, g0 + d_g) / v_rules(&m, p.x1.x, 0.0, g0)).ln();
+    let erp_only = (v_rules(&m, p.x1.x + d_erp, 0.0, g0) / v_rules(&m, p.x1.x, 0.0, g0)).ln();
+    assert!((sp.common_ln - direct).abs() < 1e-9, "{} {direct}", sp.common_ln);
+    assert!((sp.common_ln - erp_only).abs() > 1e-4, "G must move the common step: {} {erp_only}", sp.common_ln);
+    assert_eq!((sp.c, sp.covered, sp.none), (d_erp, Some(true), false));
+    assert!(sp.label.starts_with("economics view, test only"), "{}", sp.label);
+    // growth view: the model premium moves by erp_change, the growth shift stays at x1 of D1
+    let gs = g.split.as_ref().unwrap();
+    let direct_g = (v_rules(&m, model + d_erp, g.x1.x, g0 + d_g) / v_rules(&m, model, g.x1.x, g0)).ln();
+    assert!((gs.common_ln - direct_g).abs() < 1e-9, "{} {direct_g}", gs.common_ln);
+    assert_eq!(gs.c, d_g);
+    // common + company = plug, in both views and both orders (the rates do not move, so the orders agree)
+    for ch in [p, g] {
+        let s = ch.split.as_ref().unwrap();
+        assert!((s.common_ln + s.company_ln - ch.free_ln).abs() < 1e-12);
+        assert!((s.rev_common_ln + s.rev_company_ln - ch.rev_free_ln).abs() < 1e-12);
+        let (u, w) = (ch.pct_split(), ch.pct_rev_split());
+        assert!((u[3] + u[4] - ch.pct()[3]).abs() < 1e-12 && (w[3] + w[4] - ch.pct_rev()[3]).abs() < 1e-12);
+        assert!((u.iter().sum::<f64>() - (a.p2 / a.p1 - 1.0)).abs() < 1e-12);
+    }
+}
+
+#[test]
+fn a_change_of_g_has_no_effect_in_the_common_step_where_the_yield_binds() {
+    let t = table();
+    let ct = cfg(&t);
+    // the curve gives a 10-year zero of 3.0% at both dates: G does not bind, so growth_change adds nothing to erp_change
+    let m = |_: &str| mk(1.0, Some(curve(0.03, 4.0)));
+    let (p1, p2) = (v_rules(&m(""), rules_w1().erp.0, 0.0, 0.04), v_rules(&m(""), 0.03, 0.0, 0.04));
+    let a = attribute_models(&inputs(), &mk(p1, Some(curve(0.03, 4.0))), &inputs(), &mk(p2, Some(curve(0.03, 4.0))), &ct).unwrap();
+    let mut rows = [engine_row(a)];
+    add_common_economics(&mut rows[..], &[inputs()], &m, &m, &ct, &econ(Some(0.004), Some(-0.003)), Some(1)).unwrap();
+    let s = prem(rows[0].outcome.as_ref().unwrap()).split.as_ref().unwrap().clone();
+    let x1 = prem(rows[0].outcome.as_ref().unwrap()).x1.x;
+    let erp_only = (v_rules(&m(""), x1 + 0.004, 0.0, 0.04) / v_rules(&m(""), x1, 0.0, 0.04)).ln();
+    assert!((s.common_ln - erp_only).abs() < 1e-12, "{} {erp_only}", s.common_ln);
+}
+
+#[test]
+fn empty_fields_are_not_covered_and_the_company_part_is_the_whole_plug() {
+    let t = table();
+    let ct = cfg(&t);
+    let (mut rows, _) = moved_row(&t);
+    let (mut second, _) = moved_row(&t);
+    second[0].ticker = "B".into();
+    rows.append(&mut second);
+    let inp = vec![inputs(), inputs()];
+    let (m1, m2) = (|_: &str| mk(1.0, None), |_: &str| mk(1.0, None));
+    add_common_economics(&mut rows[..], &inp, &m1, &m2, &ct, &econ(None, None), Some(1)).unwrap();
+    for r in &rows {
+        let a = r.outcome.as_ref().unwrap();
+        for (ch, name) in [(prem(a), "premium"), (grow(a), "growth")] {
+            let s = ch.split.as_ref().unwrap();
+            assert_eq!((s.common_ln, s.rev_common_ln, s.covered, s.none), (0.0, 0.0, Some(false), false));
+            assert_eq!((s.company_ln, s.rev_company_ln), (ch.free_ln, ch.rev_free_ln));
+            assert!(s.label.contains("not covered") && s.label.starts_with("economics view, test only"), "{}", s.label);
+            assert!(ch.flags(name).iter().any(|f| f.contains("not-covered-by-economics-view")));
+        }
+    }
+    assert_eq!(economics_cover(rows.iter()), Some((0, 2)));
+    let text = list_text(&rows);
+    assert!(text.contains("economics view: 0 tickers covered, 2 tickers not covered"), "{text}");
+    assert!(econ_line(&econ(None, None), true, economics_cover(rows.iter())).contains("not covered (company part = the whole plug): 2 tickers"));
+    // a median run has no economics view: no count
+    assert_eq!(economics_cover(std::iter::empty()), None);
+}
+
+#[test]
+fn a_file_with_only_erp_change_applies_it_and_says_so() {
+    let t = table();
+    let ct = cfg(&t);
+    let (mut rows, _) = moved_row(&t);
+    let inp = vec![inputs()];
+    let (m1, m2) = (|_: &str| mk(1.0, None), |_: &str| mk(1.0, None));
+    add_common_economics(&mut rows[..], &inp, &m1, &m2, &ct, &econ(Some(0.004), None), Some(1)).unwrap();
+    let a = rows[0].outcome.as_ref().unwrap();
+    let (p, g) = (prem(a), grow(a));
+    let m = mk(1.0, None);
+    let g0 = ct.rules.long_run.unwrap();
+    let sp = p.split.as_ref().unwrap();
+    // G stays: the common step is the premium step alone
+    assert!((sp.common_ln - (v_rules(&m, p.x1.x + 0.004, 0.0, g0) / v_rules(&m, p.x1.x, 0.0, g0)).ln()).abs() < 1e-9);
+    assert_eq!(sp.covered, Some(true));
+    assert!(sp.label.contains("erp_change only") && sp.label.contains("growth_change empty"), "{}", sp.label);
+    // the growth view: the premium of the model + erp_change at the shift x1; its own field (growth_change) is empty, so c = 0
+    let gs = g.split.as_ref().unwrap();
+    let model = ct.rules.erp.0;
+    assert!((gs.common_ln - (v_rules(&m, model + 0.004, g.x1.x, g0) / v_rules(&m, model, g.x1.x, g0)).ln()).abs() < 1e-9);
+    assert_eq!(gs.c, 0.0);
+    assert!((gs.common_ln + gs.company_ln - g.free_ln).abs() < 1e-12);
+    // a file with only growth_change: G applies, the premium does not move
+    let (mut rows2, _) = moved_row(&t);
+    add_common_economics(&mut rows2[..], &inp, &m1, &m2, &ct, &econ(None, Some(-0.001)), Some(1)).unwrap();
+    let a2 = rows2[0].outcome.as_ref().unwrap();
+    let s2 = prem(a2).split.as_ref().unwrap();
+    let x1 = prem(a2).x1.x;
+    assert!((s2.common_ln - (v_rules(&m, x1, 0.0, g0 - 0.001) / v_rules(&m, x1, 0.0, g0)).ln()).abs() < 1e-9 && s2.common_ln.abs() > 1e-5);
+    assert!(s2.label.contains("growth_change only"), "{}", s2.label);
 }
 
 #[test]
@@ -683,7 +824,7 @@ fn the_8k_group_line_is_the_sum_of_the_lines_of_its_tickers() {
             if let Ok(c) = a.prem.as_mut() {
                 let (common, company) = (c.free_ln * 0.25, c.free_ln * 0.75);
                 let (rc, rcc) = (c.rev_free_ln * 0.25, c.rev_free_ln * 0.75);
-                c.split = Some(Split { c: 0.001 * (i as f64 + 1.0), label: "list median".into(), common_ln: common, company_ln: company, rev_common_ln: rc, rev_company_ln: rcc, none: false });
+                c.split = Some(Split { c: 0.001 * (i as f64 + 1.0), label: "list median".into(), common_ln: common, company_ln: company, rev_common_ln: rc, rev_company_ln: rcc, none: false, covered: None });
             }
         }
     }

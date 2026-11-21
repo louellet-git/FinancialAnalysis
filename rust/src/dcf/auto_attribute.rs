@@ -98,13 +98,18 @@ fa dcf attribute [--tickers-file FILE | TICKER ...] --from D1 --to D2 [OPTIONS]
                   to x1 + c) and the company step (to the beta, weight and x2 of D2). The two add to the plug exactly.
                   median (default): the median of x2 - x1 over the tickers of the run with the view
                   vw: the mean of x2 - x1 weighted by price x shares at D1
-                  file: the row of the date D2 of --common-file
+                  file: the economics view, the row of the date D2 of --common-file. It differs from the two above: in BOTH views
+                  the common step applies both changes together, the premium of the start node + erp_change and G (the long
+                  run growth of A-001, Rules.long_run) + growth_change (L = min(10-year zero, G), so G moves the value only
+                  where G binds). An empty field is no information: the other field is applied and the label says which;
+                  with both empty the plug is not covered by the economics view (company part = the whole plug, flag
+                  not-covered-by-economics-view) and the bridge gives the count of tickers covered and not covered
                   A run of one ticker with no --common-list and no file has c = 0 (the company part is the plug); the text says so.
                   If the engine has no value at x1 + c, the whole plug is the company part (flag common-step:none)
   --common-list FILE  one ticker for each line; c is the median (or the mean with vw) over this list in place of the tickers
                   of the run. A run of one ticker needs it for a c that is not 0
   --common-file FILE  with --common file: a CSV with the header date,erp_change,growth_change,source (decimals). The row of
-                  the date D2 gives c of the two views. An empty field is no common change for that view (c = 0)
+                  the date D2 gives the two changes. An empty field is no information (not a change of zero)
   --jobs N       threads (default: all); the result does not depend on N";
 
 // ---------------------------------------------------------------------------------------------
@@ -150,6 +155,10 @@ pub struct Split {
     pub rev_company_ln: f64,
     /// The engine has no value at `x1 + c`: the whole plug is in the company part.
     pub none: bool,
+    /// Only for the economics view (`--common file`): `Some(true)` the view gave a change that was applied, `Some(false)` the
+    /// view gave no information (both fields empty): the plug is "not covered by the economics view" and the company part is
+    /// the whole plug. `None`: the split is not from the economics view.
+    pub covered: Option<bool>,
 }
 
 impl Chain {
@@ -193,6 +202,9 @@ impl Chain {
         }
         if self.split.as_ref().is_some_and(|s| s.none) {
             v.push(format!("{name}:common-step:none"));
+        }
+        if self.split.as_ref().is_some_and(|s| s.covered == Some(false)) {
+            v.push(format!("{name}:not-covered-by-economics-view"));
         }
         v
     }
@@ -400,6 +412,17 @@ fn same_facts(a: &AutoInputs, b: &AutoInputs) -> bool {
 /// The value at the means for a growth shift at the premium of the rules (a failure of the engine is an error).
 fn value_with_growth(inp: &AutoInputs, cfg: &ImpliedConfig, market: &Market, shift: f64) -> Result<f64, (String, String)> {
     Ok(point_with(inp, cfg, market, shift, cfg.rules.margin_shift).map_err(engine_err)?.value)
+}
+
+/// The value at the means for a premium, a growth shift and a long-run growth G (`Rules::long_run`; the builder makes
+/// L = min(10-year zero, G) from it, as for every other run). The other rules are those of `cfg`.
+fn value_at_rules(inp: &AutoInputs, cfg: &ImpliedConfig, market: &Market, erp: f64, growth_shift: f64, long_run: Option<f64>) -> Result<f64, (String, String)> {
+    let rules = Rules { erp: (erp, cfg.rules.erp.1), growth_shift, long_run, ..cfg.rules.clone() };
+    match point(inp, cfg.table, cfg.fade, market, &rules) {
+        Ok((p, _)) => Ok(p.value),
+        Err(Failure::Engine(m)) => fail("engine error", m),
+        Err(Failure::Refusal(r)) => fail("engine error", r.to_string()),
+    }
 }
 
 /// The attribution of one ticker from the inputs and the market of the two dates. The error is the key and the text.
@@ -671,9 +694,34 @@ pub fn common_from_rows(rows: &[AttrRow], mode: CommonMode) -> CommonChanges {
     [one(View::Premium), one(View::Growth)]
 }
 
-/// c from the text of a file of the economics view: a CSV with the header `date,erp_change,growth_change,source` (decimals).
-/// The row of the window is the row whose date is `d2` (the first 10 characters). An empty field is no common change for that view.
-pub fn common_from_text(text: &str, d2: &str) -> R<CommonChanges> {
+/// The row of the economics view for the window (decimals, the change over the window). It moves both free quantities in both
+/// views: the premium of the start node by `erp`, and G of A-001 (`Rules::long_run`) by `growth`. An empty field is `None`: no
+/// information (no release in the window), not a change of zero.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EconView {
+    pub erp: Option<f64>,
+    pub growth: Option<f64>,
+    pub source: String,
+}
+
+impl EconView {
+    /// The label of the split: "economics view, <source>" and which field was used.
+    pub fn label(&self, long_run_on: bool) -> String {
+        let g = self.growth.filter(|_| long_run_on);
+        let note = match (self.erp, g) {
+            (Some(_), Some(_)) => "erp_change and growth_change applied".to_string(),
+            (Some(_), None) if self.growth.is_some() => "erp_change only; growth_change not applied because long_run is off".to_string(),
+            (Some(_), None) => "erp_change only; growth_change empty = no information".to_string(),
+            (None, Some(_)) => "growth_change only; erp_change empty = no information".to_string(),
+            (None, None) => "not covered by the economics view (no information)".to_string(),
+        };
+        format!("economics view, {}: {note}", self.source)
+    }
+}
+
+/// The economics view from the text of a file: a CSV with the header `date,erp_change,growth_change,source` (decimals).
+/// The row of the window is the row whose date is `d2` (the first 10 characters). An empty field is no information.
+pub fn econ_from_text(text: &str, d2: &str) -> R<EconView> {
     let mut lines = text.lines().filter(|l| !l.trim().is_empty());
     let header: Vec<&str> = lines.next().unwrap_or("").split(',').map(str::trim).collect();
     if header != ["date", "erp_change", "growth_change", "source"] {
@@ -685,16 +733,16 @@ pub fn common_from_text(text: &str, d2: &str) -> R<CommonChanges> {
         if f.len() < 4 || f[0].get(..10) != Some(d2) {
             continue;
         }
-        let one = |s: &str, name: &str| -> R<CommonChange> {
+        let one = |s: &str, name: &str| -> R<Option<f64>> {
             if s.is_empty() {
-                return Ok(CommonChange::none(&format!("the economics view gives no {name} change for {d2}")));
+                return Ok(None);
             }
             match s.parse::<f64>() {
-                Ok(x) if x.is_finite() => Ok(CommonChange { c: Some(x), label: format!("economics view, {}", f[3]) }),
+                Ok(x) if x.is_finite() => Ok(Some(x)),
                 _ => e(format!("--common-file: '{s}' is not a number ({name})")),
             }
         };
-        return Ok([one(f[1], "premium")?, one(f[2], "growth")?]);
+        return Ok(EconView { erp: one(f[1], "erp_change")?, growth: one(f[2], "growth_change")?, source: f[3].to_string() });
     }
     e(format!("--common-file: no row with the date {d2}"))
 }
@@ -722,16 +770,77 @@ pub fn add_common(
     changes: &CommonChanges,
     jobs: Option<usize>,
 ) -> R<()> {
+    for_each_chain(rows, inputs2, market1_of, market2_of, jobs, &|c, view, inp2, m_time, m_rates| match view {
+        View::Premium => split_chain(c, &changes[0], m_time, m_rates, &|m, x| value_at(inp2, cfg, m, x)),
+        View::Growth => split_chain(c, &changes[1], m_time, m_rates, &|m, x| value_with_growth(inp2, cfg, m, x)),
+    })
+}
+
+/// The second pass for the economics view (`--common file`). The common step of each view applies both changes together, from
+/// the start node of the plug: the premium of that node + `erp`, and G of A-001 (`Rules::long_run`) + `growth` (the builder
+/// makes L = min(10-year zero, G), so G moves the value only where G binds). In the premium view the premium of the node is x1
+/// and the growth shift is the shift of the rules; in the growth view the premium is the model premium and the growth shift is
+/// x1. The common part is `ln V(changed) - ln V(start)`; the company part is the rest of the plug (so the two add exactly).
+/// A field that is empty is no information: the other one is applied (the label says which). With both empty the plug is not
+/// covered (`Split::covered = Some(false)`): the company part is the whole plug.
+pub fn add_common_economics(
+    rows: &mut [AttrRow],
+    inputs2: &[AutoInputs],
+    market1_of: &(dyn Fn(&str) -> Market + Sync),
+    market2_of: &(dyn Fn(&str) -> Market + Sync),
+    cfg: &ImpliedConfig,
+    econ: &EconView,
+    jobs: Option<usize>,
+) -> R<()> {
+    let g0 = cfg.rules.long_run;
+    // G + growth_change exists only when the rules have a G (long_run on)
+    let g1 = match (g0, econ.growth) {
+        (Some(g), Some(d)) => Some(g + d),
+        _ => g0,
+    };
+    let label = econ.label(g0.is_some());
+    let covered = econ.erp.is_some() || (econ.growth.is_some() && g0.is_some());
+    let d_erp = econ.erp.unwrap_or(0.0);
+    for_each_chain(rows, inputs2, market1_of, market2_of, jobs, &|c, view, inp2, m_time, m_rates| {
+        let (erp0, shift0) = match view {
+            View::Premium => (c.x1.x, cfg.rules.growth_shift),
+            View::Growth => (cfg.rules.erp.0, c.x1.x),
+        };
+        let own = if view == View::Premium { econ.erp } else { econ.growth };
+        if !covered {
+            finish_split(c, 0.0, label.clone(), Some(false), Some(0.0), Some(0.0));
+            return;
+        }
+        // ln V(changed) - ln V(start) at a market; `None` when the engine has no positive value at one of the two points
+        let step = |m: &Market| -> Option<f64> {
+            let v0 = value_at_rules(inp2, cfg, m, erp0, shift0, g0).ok()?;
+            let v1 = value_at_rules(inp2, cfg, m, erp0 + d_erp, shift0, g1).ok()?;
+            (v0.is_finite() && v1.is_finite() && v0 > 0.0 && v1 > 0.0).then(|| (v1 / v0).ln())
+        };
+        finish_split(c, own.unwrap_or(0.0), label.clone(), Some(true), step(m_rates), step(m_time));
+    })
+}
+
+/// Runs `f(chain, view, inputs of D2, market of the node Nt, market of the node N2)` for each view of each row that has a chain.
+/// The result does not depend on the number of threads.
+fn for_each_chain(
+    rows: &mut [AttrRow],
+    inputs2: &[AutoInputs],
+    market1_of: &(dyn Fn(&str) -> Market + Sync),
+    market2_of: &(dyn Fn(&str) -> Market + Sync),
+    jobs: Option<usize>,
+    f: &(dyn Fn(&mut Chain, View, &AutoInputs, &Market, &Market) + Sync),
+) -> R<()> {
     let run = |rows: &mut [AttrRow]| {
         rows.par_iter_mut().zip(inputs2.par_iter()).for_each(|(r, inp2)| {
             let Ok(a) = r.outcome.as_mut() else { return };
             let (m1, m2) = (market1_of(&r.ticker), market2_of(&r.ticker));
             let (m_time, m_rates) = step_markets(&m1, &m2);
             if let Ok(c) = a.prem.as_mut() {
-                split_chain(c, &changes[0], &m_time, &m_rates, &|m, x| value_at(inp2, cfg, m, x));
+                f(c, View::Premium, inp2, &m_time, &m_rates);
             }
             if let Ok(c) = a.grow.as_mut() {
-                split_chain(c, &changes[1], &m_time, &m_rates, &|m, x| value_with_growth(inp2, cfg, m, x));
+                f(c, View::Growth, inp2, &m_time, &m_rates);
             }
         });
     };
@@ -754,17 +863,52 @@ fn split_chain(ch: &mut Chain, change: &CommonChange, m_time: &Market, m_rates: 
         let (v0, v1) = (eval(m, x).ok()?, eval(m, x + c).ok()?);
         (v0.is_finite() && v1.is_finite() && v0 > 0.0 && v1 > 0.0).then(|| (v1 / v0).ln())
     };
-    let (fwd, rev) = (step(m_rates), step(m_time));
+    finish_split(ch, c, change.label.clone(), None, step(m_rates), step(m_time));
+}
+
+/// Puts the split in the chain. `fwd` and `rev` are the common steps at N2 and at Nt (`None`: no value; the whole plug is then
+/// the company part, flag `common-step:none`).
+fn finish_split(ch: &mut Chain, c: f64, label: String, covered: Option<bool>, fwd: Option<f64>, rev: Option<f64>) {
     let (common, rev_common) = (fwd.unwrap_or(0.0), rev.unwrap_or(0.0));
     ch.split = Some(Split {
         c,
-        label: change.label.clone(),
+        label,
         common_ln: common,
         company_ln: ch.free_ln - common,
         rev_common_ln: rev_common,
         rev_company_ln: ch.rev_free_ln - rev_common,
         none: fwd.is_none() || rev.is_none(),
+        covered,
     });
+}
+
+/// For the rows with an economics-view split: how many tickers the view covers and how many it does not (each ticker once, with
+/// its premium chain, else its growth chain). `None` when no split is from the economics view.
+pub fn economics_cover<'a>(rows: impl Iterator<Item = &'a AttrRow>) -> Option<(usize, usize)> {
+    let (mut yes, mut no) = (0, 0);
+    for r in rows {
+        let Some(a) = r.outcome.as_ref().ok() else { continue };
+        let split = a.prem.as_ref().ok().and_then(|c| c.split.as_ref()).or_else(|| a.grow.as_ref().ok().and_then(|c| c.split.as_ref()));
+        match split.and_then(|s| s.covered) {
+            Some(true) => yes += 1,
+            Some(false) => no += 1,
+            None => {}
+        }
+    }
+    (yes + no > 0).then_some((yes, no))
+}
+
+/// The headline text of the economics view, with the counts of the tickers that it covers and does not cover.
+pub fn econ_line(econ: &EconView, long_run_on: bool, cover: Option<(usize, usize)>) -> String {
+    let f = |x: Option<f64>| x.map_or("empty (no information)".to_string(), |x| format!("{} points", sgn(x * 100.0, 3)));
+    let counts = cover.map_or(String::new(), |(y, n)| format!(" Covered by the view: {y} tickers; not covered (company part = the whole plug): {n} tickers."));
+    format!(
+        "COMMON CHANGE of the economics view ({}), in both views, both changes together: erp_change {}; growth_change {}. {}.{counts}",
+        econ.label(long_run_on),
+        f(econ.erp),
+        f(econ.growth),
+        "The plug of each view is split in two engine steps: common (premium of the start node + erp_change, and G + growth_change) and company (the rest)"
+    )
 }
 
 /// The filing dates of the SEC 8-K with item 2.02 of a ticker that are after `d1` and on or before `d2` (`YYYY-MM-DD`, the
@@ -1108,6 +1252,8 @@ pub struct Bridge {
     pub earnings_tickers: Vec<String>,
     /// The common change c of the premium view and of the growth view, with the name of the source (`None`: no split was made).
     pub common: [Option<(f64, String)>; 2],
+    /// Economics view only: the tickers of the bridge that the view covers and that it does not cover (`None`: not that source).
+    pub economics: Option<(usize, usize)>,
 }
 
 /// The contributions of one row to a bridge, as shares of the row's own price.
@@ -1211,7 +1357,8 @@ pub fn full_bridge(rows: &[AttrRow], first: View) -> Option<Bridge> {
     // c of each view and the name of its source (the same for each row of a run)
     let common_of = |view: View| rows.iter().filter_map(|r| r.outcome.as_ref().ok()?.chain(view)?.split.as_ref().map(|s| (s.c, s.label.clone()))).next();
     let common = [common_of(View::Premium), common_of(View::Growth)];
-    Some(Bridge { first, n_view, share_view, all, sectors, tickers, top, earnings, earnings_tickers, common })
+    let economics = economics_cover(list.iter().map(|x| x.0));
+    Some(Bridge { first, n_view, share_view, all, sectors, tickers, top, earnings, earnings_tickers, common, economics })
 }
 
 fn bridge_text(b: &Bridge) -> String {
@@ -1222,6 +1369,9 @@ fn bridge_text(b: &Bridge) -> String {
     );
     let c_text = |c: &Option<(f64, String)>| c.as_ref().map_or("not computed".to_string(), |(c, l)| format!("{} points, common ({l})", sgn(c * 100.0, 3)));
     s.push_str(&format!("  common change c of the premium view: {}; of the growth view: {}. Each plug is split in two engine steps: common (x1 to x1 + c) and company (the rest); the two add to the plug.\n", c_text(&b.common[0]), c_text(&b.common[1])));
+    if let Some((yes, no)) = b.economics {
+        s.push_str(&format!("  economics view: {yes} tickers covered, {no} tickers not covered (a plug that the view does not cover is all company part).\n"));
+    }
     let cells = |l: &BridgeLine| -> String {
         let f = |x: f64, w: usize| format!("{:>w$}", sgn(x * 100.0, 2));
         format!("{}{}{}{}{}{}{}{}{}", f(l.parts[0], 8), f(l.parts[1], 8), f(l.parts[2], 8), f(l.split[0], 16), f(l.split[1], 16), f(l.split[2], 16), f(l.split[3], 16), f(l.parts[5], 8), f(l.parts[6], 8))
@@ -1657,29 +1807,33 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         "file" => None,
         other => return e(format!("--common '{other}': use median, vw or file")),
     };
-    let common: CommonChanges = match mode {
+    let common_line = match mode {
         None => {
             let f = o.get("--common-file").ok_or_else(|| DcfError("--common file needs --common-file FILE".into()))?;
-            common_from_text(&std::fs::read_to_string(f).map_err(|x| DcfError(format!("{f}: {x}")))?, &d2)?
+            let econ = econ_from_text(&std::fs::read_to_string(f).map_err(|x| DcfError(format!("{f}: {x}")))?, &d2)?;
+            add_common_economics(&mut rows, &inputs2, &market1_of, &market2_of, &cfg, &econ, jobs)?;
+            econ_line(&econ, cfg.rules.long_run.is_some(), economics_cover(rows.iter()))
         }
-        Some(mode) => match o.get("--common-list") {
-            Some(f) => {
-                let list = mapcheck::cli::read_ticker_file(f).map_err(DcfError)?;
-                let ((l1, _), (l2, _)) = (map_inputs_pit(&cache, &list, &d1, day1, jobs)?, map_inputs_pit(&cache, &list, &d2, day2, jobs)?);
-                let mut lrows = attribute_list(&l1, &l2, &market1_of, &market2_of, &groups, &cfg, jobs)?;
-                finish_weights(&mut lrows, &closes, &d1, &d2);
-                common_from_rows(&lrows, mode)
-            }
-            None if rows.len() > 1 => common_from_rows(&rows, mode),
-            None => no_common("one ticker and no --common-list"),
-        },
+        Some(mode) => {
+            let common: CommonChanges = match o.get("--common-list") {
+                Some(f) => {
+                    let list = mapcheck::cli::read_ticker_file(f).map_err(DcfError)?;
+                    let ((l1, _), (l2, _)) = (map_inputs_pit(&cache, &list, &d1, day1, jobs)?, map_inputs_pit(&cache, &list, &d2, day2, jobs)?);
+                    let mut lrows = attribute_list(&l1, &l2, &market1_of, &market2_of, &groups, &cfg, jobs)?;
+                    finish_weights(&mut lrows, &closes, &d1, &d2);
+                    common_from_rows(&lrows, mode)
+                }
+                None if rows.len() > 1 => common_from_rows(&rows, mode),
+                None => no_common("one ticker and no --common-list"),
+            };
+            add_common(&mut rows, &inputs2, &market1_of, &market2_of, &cfg, &common, jobs)?;
+            format!(
+                "COMMON CHANGE c (the plug of each view is split in two engine steps, common and company): premium view {}; growth view {}.",
+                common_label(&common[0]),
+                common_label(&common[1])
+            )
+        }
     };
-    add_common(&mut rows, &inputs2, &market1_of, &market2_of, &cfg, &common, jobs)?;
-    let common_line = format!(
-        "COMMON CHANGE c (the plug of each view is split in two engine steps, common and company): premium view {}; growth view {}.",
-        common_label(&common[0]),
-        common_label(&common[1])
-    );
     let attr_s = t1.elapsed().as_secs_f64();
     if let Some(path) = o.get("--out") {
         std::fs::write(path, csv_text(&rows)).map_err(|x| DcfError(format!("{path}: {x}")))?;
