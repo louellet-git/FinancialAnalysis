@@ -54,3 +54,5 @@
 | quant limits of use | 2026-11-21 | `claude/quant-limits-of-use` (53a9c8d): head check of two lines against the code; PASS-WITH-NOTES | small (head only) | |
 | economics stress windows | 2026-11-21 | econ/stress-windows (f2edb0c), store 1804f48: auditor PASS-WITH-NOTES (14 windows reproduced from the rule), document-reviewer (Haiku) REVISE (4 MAJ, two set to MIN); verdict REVISE (main finding; exact rule, the 2025 merge edge) | about 63k (37k + 26k measured) | an independent rebuild of the rule is the strong check |
 | economics stress windows, fix check | 2026-11-21 | econ/stress-windows (b601774): head check of the diff; PASS-WITH-NOTES | small (head only) | |
+| NVDA trade recommendation, fix check | 2026-11-21 | `claude/nvda-valuation` (d29496d): head check of the diff against the list; PASS-WITH-NOTES; report and recommendation to the owner (PR 106) | small (head only) | ticket `T-20261121-trade-side-rule` before the next ticker |
+| acquisition charge, code-reviewer | 2026-11-21 | `claude/dcf-acq-charge-limits` (32957b8): PASS-WITH-NOTES (4 low); options off give the same bytes | about 48k (measured) | validator running |
