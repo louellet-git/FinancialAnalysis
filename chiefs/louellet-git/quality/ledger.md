@@ -102,3 +102,4 @@
 | JST licence view | 2026-11-21 | request of the Head of Economics: CC BY-NC-SA 4.0; view sent (local copy and results only; notices for a store copy; live use needs a permission); owner decides | small (head only) | not legal advice |
 | S&P members source decision | 2026-11-21 | Head of Technology question: option (b), a pinned local fetch, not in the public store; 4 conditions | small (head only) | |
 | economics JST design | 2026-11-21 | econ/jst-design (ccd862e), pre-registration: model-validator REVISE (7 MAJ), document-reviewer (Haiku) REVISE (6 MAJ); verdict REVISE, 12 MAJ (units, timing, gaps, estimator, hyperinflation list, US dependence, per-country test, disclosure, download order, classes) | about 112k (45k + 67k measured) | no run before the freeze |
+| JST design cycle 2 | 2026-11-21 | econ/jst-design (31ed025): head check of the 12 MAJ; PASS-WITH-NOTES; design frozen | small (head only) | |
