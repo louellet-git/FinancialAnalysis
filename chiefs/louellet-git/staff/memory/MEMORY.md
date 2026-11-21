@@ -48,9 +48,10 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
 - Sessions: one session for each head. The person agreed to a test of a new Quality session, then stopped
   it the same day ("we'll stick to one"). Do not propose a new session, a compaction or a smaller context
   as a saving. He tested smaller contexts before and it did harm.
-- E6.S5: `fa board check` is on main (I start no build: ask Technology for its output). Usage log, owner
-  word "Let's not get overly complicated": local only; a head runs `fa usage show` when I ask. No push
-  path. The calculator stays on hold.
+- E6.S5 is on main (2026-11-21): `fa board check` (47 faults then: fundamental 13, technology 13, quant 7,
+  economics 5, staff 2; I start no build, so I ask Technology for the output) and `fa usage record && fa
+  usage show` (local only; a head runs it when I ask and sends the table). Ask each head for the usage
+  table before the reset of 2026-11-25, and at the close of a large ticket. The calculator stays on hold.
 - Cost by head from each start (2026-11-21, `get_session`, USD): Technology 629, Fundamental 314, Quality
   220, Quant 152, Economics 97. The heads make 70% of the cache reads; 317 agent starts; 2 skill uses.
 - E1 (stock trades) is on hold: "No trades until T1 passes". PR 131 waits for the live run of 2026-11-23.
