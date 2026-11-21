@@ -2,7 +2,7 @@
 id: T-20261121-economics-stress-windows
 title: List the market stress windows from 2016 for the backtests of Quant Research
 area: docs
-status: in-progress
+status: review
 owner: louellet-git
 requested_by: louellet-git
 head: economics
