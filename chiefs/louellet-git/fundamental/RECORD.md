@@ -140,3 +140,31 @@ Done: pull request 106 (NVDA) merges. It is NOT an approval of the value: the re
 Words: "Changing you to fable for this project, proceed" (the model of the session changed; no change of the work).
 Words: "The point of the attribution valuation is to understand any recent changes in prices of any given set of underlying, explain what contributed to the change, and whether those impacts make sense with reality/possibility. The point is to understand if we have a buy opportunity or a correction for this particular instance, but will be used more generally in the future for understanding/analysis from a fundamentals perspective. Do you have questions?"
 Done: the purpose is recorded: (1) what changed, (2) what contributed, (3) does each implied piece make sense against reality (history, fundamentals, the economics view), (4) a reading: buy opportunity or correction. Two questions asked (the form of the conclusion; the horizon).
+
+## 2026-11-21 about 18:50 UTC (chat)
+Words: "Great, make sure that whatever is repeatable/should be expected of future work like this is built into the correct engine."
+Done: the list of the repeatable steps of this study, each with its engine and owner, is on `T-20261121-dcf-engine-integration` (written before the code); the build starts on branch `claude/attribution-reality` (from `claude/premium-series`, which is at the gate).
+
+## 2026-11-21 about 19:05 UTC (chat)
+Words: "Send the same request of work to quant research for its engine/processes."
+Done: the request is sent to the Head of Quant Research with the owner words, the four steps as applied in this area, the example table (`T-20261121-dcf-engine-integration`) and the borders between the two areas.
+
+## 2026-11-21 about 19:20 UTC (chat)
+Words: "Give me the prelim results before the report, that's the general rule."
+Done: a standing rule of this head: the preliminary results go to the owner first (in the chat, with a results file on the branch); a report is written only after the owner has seen them and gives the go-ahead. First use: `analysis/priors/sp100_week_prelim_results_2026-11-21.md`.
+
+## 2026-11-21 about 19:35 UTC (chat)
+Words: "But why the sudden rise in the return investors are asking for? I've heard that people are expecting a rate rise too"
+Done: three more runs (11-06 to 11-13, 11-06 to 11-20, 10-30 to 11-20) and the yield data: the premium rise of the last week mostly reverses the fall of the week before, when the yields rose (10-year 4.86% to 5.15%) and the stocks did not follow; section 6 of the preliminary results. News (a high CPI on 11-10, a December rate increase priced) is cited as reported, not checked.
+
+## 2026-11-21 about 19:50 UTC (chat)
+Words: "You should generally be asking the head of economics these questions"
+Done: a standing rule: each macro "why" question (rates, the central bank, inflation, the required return of the market) goes to the Head of Economics; this head gives the owner that answer with its source. The question on the rate rise is sent with the data of section 6.
+
+## 2026-11-21 about 20:40 UTC (from the heads)
+The Head of Economics answered the rate question (a248803, audited): a rate rise of about two quarter-point steps in a year is priced in the bill curve; the December odds of the news are not ours; the yield rise of the week to 11-13 was a real-rate rise; "a late reaction" is one fair reading, not proven. Section 7 of the preliminary results. Correction by this head: the "high October CPI" of the news is not visible in the data of the store.
+New rule (owner decision, PR 161): a Head of Staff is above the heads; send it only: a large task done or merged, a block of more than half a day, a decision that only the owner can make, a conflict with a head. A permission refusal still goes to the Head of Technology.
+
+## 2026-11-21 19:35 UTC (from the heads; dream pass)
+The Head of Staff: the order until 2026-11-25 11:00 Toronto time (agreed with the person, `PLANNING/board/EPICS.md`): the week report to its end, then the T1 correction, then new studies after the reset of the weekly token limit (71% used). The report still waits for the go-ahead of the person on the results (a message of the Head of Staff is not his approval).
+Dream pass done before the compaction: the dashboard is rewritten (no session ids in it), with the page `memory/attribution-state.md`.

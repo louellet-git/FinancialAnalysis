@@ -5,6 +5,7 @@ area: trading
 status: backlog
 owner: louellet-git
 head: quant
+story: E4.S1
 order: 3.3
 branch:
 created: 2026-11-21

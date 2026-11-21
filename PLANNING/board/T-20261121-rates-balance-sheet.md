@@ -2,7 +2,7 @@
 id: T-20261121-rates-balance-sheet
 title: The effect of a change of the yield curve on the assets and liabilities of a company (debt, investments, pensions), next to the effect on the discount rate
 area: engine
-status: in-progress
+status: backlog
 owner: louellet-git
 requested_by: louellet-git
 head: fundamental
@@ -52,3 +52,5 @@ an assumption record and a point-in-time backtest written before its run.
 Commit note: commit c347c62 ("Board: rates effect ...") also holds the code of the beta, premium-sensitivity and 8-K
 columns of `fa dcf attribute` (`T-20261121-premium-company-part`, an agent); the message does not say it. Tests pass
 (846 + 17 + 1).
+
+**Board note (2026-11-21 about 20:50 UTC):** the measurement is done; the next step (the bridge at market value) is item 4 of `T-20261121-dcf-engine-integration`. Back to the backlog.
