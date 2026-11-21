@@ -1,142 +1,159 @@
-# Economics view engine: pre-registration (DRAFT)
+# Economics view engine: pre-registration (DRAFT 2)
 
-Date: 2026-11-21 (draft 1). Owner: Head of Economics. Ticket: T-20261121-economics-view-engine.
+Date: 2026-11-21 (draft 2, after the review of Quality and Risk, cycle 1). Owner: Head of Economics. Ticket: T-20261121-economics-view-engine.
 
-This file is a draft. It is not frozen until Quality and Risk passes it (rule 9). It sets the design before any build or run. It is context for the other heads. It is not a model input and not a trade signal. A head that wants a macro input writes an assumption record. The board owns status. This file holds no data value.
+This file is a draft. It is not frozen until Quality and Risk passes it (rule 8). It sets the design before any build or run. It is context for the other heads. It is not a model input and not a trade signal. A head that wants a macro input writes an assumption record. The board owns status. This file has no data value.
 
 ## 1. Question and aim
 
 Words of the owner (through Fundamental Research, 2026-11-21): "For attribution, there are numbers in the valuation that are a direct result of the math, but there are some that are implied. The implied components require the view of the economists." and "The economists require their own engine in that regard."
 
-The question: can the economists give, for each date, the market equity risk premium (ERP) and the long-run growth that they expect, from data that do not come from the stock prices that the attribution explains?
+The question: can the economists give, for each date, the equity risk premium (ERP) and the long-run growth that they expect, from data that do not come from the stock prices that the attribution explains?
 
-The engine writes one file. `fa dcf attribute --common file --common-file F` of Fundamental Research reads it. The company plug then splits into "common (economics view)" and "company (residual)".
+Terms of `fa dcf attribute` (`rust/src/dcf/auto_attribute.rs`):
+- The attribution window is the span from D1 to D2 (`--from D1 --to D2`).
+- The plug is the part of the price change that is left after facts, time and rates. In the PREMIUM VIEW it is the change of the implied premium. In the GROWTH VIEW it is the change of the implied growth shift at the model premium.
 
-The file has this CSV header: `date,erp_change,growth_change,source`. The values are decimals. For example, 0.01 means one percentage point. Each value is the change over the attribution window. The engine matches a row on the end date D2 of the window.
+What a reader decides with the output: how much of the plug of a window to read as a market-wide view, and how much as a company effect.
+
+Version 1 is layer A only. Layer A is the level from the SPF. The engine writes one file. `fa macro view` (planned) writes it. The planned flag `--view-file F` of `fa dcf attribute` (Fundamental Research) reads it. The flag name does not clash with the "common set" of `auto_attribute.rs` (the tickers that have both views).
+
+Layer B, later: a separate measurement file, named "market-implied common part (measurement)", after the premium test (design 55f2e92, R1, R2). It is not the view of the economists, because it is fitted to dS1 from the attributed prices on dVIX. If built: out-of-sample coefficients only, no intercept, its share reported apart, and a sum of weekly fitted changes has no mean reversion.
 
 The design gives a reading of the market. It does not show a cause. It does not give a price target.
 
-## 2. Terms
+## 2. Terms and sources
 
-- SPF is the Survey of Professional Forecasters of the Philadelphia Fed. Source: https://www.philadelphiafed.org/surveys-and-data/real-time-data-research/survey-of-professional-forecasters.
-- First-quarter surveys only ask the 10-year questions. They have done so since 1992:Q1. The forecasts are 10-year annual averages, in percentage points.
-- RGDP10 is the forecast of real GDP growth. PROD10 is the forecast of productivity growth.
-- STOCK10 is the forecast of the return on S&P 500 stocks.
-- BOND10 is the forecast of the 10-year constant-maturity Treasury yield.
-- BILL10 is the forecast of the 3-month bill return.
-- The question of BOND10 changed in 2014:Q1. This is a possible structural break.
-- Median means the median of the forecasters, as the Philadelphia Fed publishes it.
-- S1 is the premium of `fa dcf implied` (percentage points per year). It is the premium at which the median of value/price over the list is 1.
-- The Head of Economics read the facts about SPF in the documentation PDF of the Philadelphia Fed on 2026-11-21.
-- The release dates of 2026 are: Q1 on 2026-03-06, Q2 on 2026-05-15, Q3 on 2026-08-14 and Q4 on 2026-11-16 (file `spf-release-dates.txt`).
-- The 2026 first-quarter survey is the latest one that is out. Its release date is 2026-03-06.
+SPF is the Survey of Professional Forecasters of the Philadelphia Fed.
+- Page: https://www.philadelphiafed.org/surveys-and-data/real-time-data-research/survey-of-professional-forecasters
+- Documentation PDF (last update 2026-07-28, read 2026-11-21): https://www.philadelphiafed.org/-/media/frbp/assets/surveys-and-data/survey-of-professional-forecasters/spf-documentation.pdf
+- Release dates (the PDF names this file; not downloaded): https://www.philadelphiafed.org/-/media/frbp/assets/surveys-and-data/survey-of-professional-forecasters/spf-release-dates.txt
+
+Series. All are medians over the forecasters, in percentage points per year, and all are in first-quarter surveys. The data files are the workbooks of the same page, for example `MedianGrowth.xlsx`. Which workbook holds which series: not checked.
+
+| Series | Definition (documentation PDF) | First survey |
+|---|---|---|
+| RGDP10 | 10-year annual-average growth of real GDP (chain-weighted; fixed-weighted before 1996) | 1992:Q1 |
+| CPI10 | 10-year annual-average headline CPI inflation, from Q4 of the year before the survey to Q4 of the year that is 10 years after the survey year (40 quarters) | 1991:Q4 |
+| STOCK10 | "annual-average rate of return to equities (S&P 500)" over 10 years. Arithmetic or geometric, total or price: not checked. The PDF does not say | 1992:Q1 |
+| BOND10 | Before 2014:Q1: "annual average over the next 10 years of the return to 10-year Treasury bonds". From 2014:Q1: the "annual average yield on 10-year constant-maturity Treasury bonds" | 1992:Q1 |
+| BILL10 | 10-year annual-average return to 3-month Treasury bills | 1992:Q1 |
+
+The 2014 change of the BOND10 question is a possible break (a return, then a yield). It does not touch a window from 2019, because every survey from 2014:Q1 uses the yield question. BOND10 is not in the primary ERP (rule 1).
+
+Other terms:
+- S1 is the premium of `fa dcf implied` (percentage points per year): the premium at which the median of value/price over the list is 1. The comparison with ERP_A is at a market beta of 1.
+- GSW10 is the 10-year zero yield of the GSW curve (`fa rates`, store copy), the last row on or before the release date. It is a Treasury price, not a stock price. Its compounding unit: not checked.
+- The long-run growth L of A-001 (`docs/assumptions/A-001-terminal-growth.md`) is L = min(10-year nominal zero yield, G). G = the longer-run FOMC SEP real growth + the longer-run SEP PCE inflation (4.0% on 2026-09-16).
+- The release date is the date of the public release of a survey. Facts of the survey about the deadline: the answer deadline is before the release (mid-quarter), so the release date is the conservative date for the step. The release date of the 2026 Q1 survey, 2026-03-06, is to check against the release calendar.
+- Store copy of the SPF medians: Technology keeps it with a hash and a date, because the panel changes and the values can be revised. We commit no series. The SPF terms are open. The owner allowed a private copy.
+- `spf-release-dates.txt` (planned, Head of Technology; private store).
 
 ## 3. Fixed rules
 
 ### Rule 1. Layer A: the level, one value each year
 
-1. Let t be a date. Let the survey of t be the latest first-quarter survey that was released on or before t. This makes the layer point in time by the release date.
-2. ERP_A(t) = median STOCK10 - median BOND10 of the survey of t. Unit: percentage points per year.
-3. Growth_A(t) = median RGDP10 + median CPI10 of the same survey of t. This is a nominal growth. Unit: percentage points per year. The sum is the usual approximation of (1 + real)(1 + inflation) - 1.
-4. Unit match. The long-run growth L of Fundamental Research is nominal (A-001: L = min(10-year nominal zero yield, G), G = the FOMC SEP longer-run real growth + the 2% inflation goal). RGDP10 is real growth, so the engine adds CPI10 from the same survey. The column `source` gives the two parts (see rule 3).
-5. ERP_A has a nominal return and a nominal yield. Both hold the same expected inflation. So the difference is a premium over the 10-year Treasury yield.
+1. For a date t, the survey of t is the latest first-quarter survey with a release date on or before t. The layer is point in time by the release date.
+2. Primary ERP form: ERP_A(t) = median STOCK10 of the survey of t minus GSW10 at the release date. Unit: percentage points per year.
+3. Forecaster premium (description only, not in the file): median STOCK10 minus median BOND10 of the same survey. It is a difference of two answers, and BOND10 is a return before 2014.
+4. Primary growth form: Growth_A(t) = median RGDP10 + median CPI10 of the same survey. Unit: percentage points per year. It is the usual approximation of (1 + real)(1 + inflation) - 1.
+5. Use of the growth. RGDP10 + CPI10 maps to L only (rule 3). It never maps to revenue growth. A-001 uses PCE inflation in G, and CPI10 is CPI. The gap between the two is a limit.
 6. Between two releases, both values stay flat. The layer is a step function of the release date.
-7. A second ERP form, for description only: STOCK10 - BILL10. It does not go into the output file.
-8. The break of BOND10 in 2014. The findings report the values of 2013 and of 2014 side by side. The design does not adjust for the break. This is a limit.
+7. Variants, for description only. Each one gives a second value in the findings and does not go into the file:
+   - ERP form: STOCK10 - BOND10 (rule 1.3); STOCK10 - BILL10.
+   - Growth form: RGDP10 + PCE10 (PCE10 starts in 2007:Q1).
+   The primary forms are fixed now. The findings do not change the primary form after a run.
 
-### Rule 2. Layer B: weekly changes, conditional
+### Rule 2. Rows
 
-1. The test of the premium (`analysis/macro/2026-11-21-premium-macro-design.md`, frozen at commit 55f2e92, record R1) decides if layer B exists.
-2. Layer B exists if and only if that test gives a "yes".
-3. If the test gives a "yes", the weekly ERP change of layer B is the fitted macro part of model M1. The macro part is the coefficient of dVIX times dVIX plus the coefficient of dNFCI times dNFCI.
-4. The fit uses only data from before the week. The window expands with time.
-5. If the test gives "no share shown", layer B is zero. The view then changes only at survey releases.
-6. Growth has no layer B. No weekly series in this design holds a long-run growth view.
+For an attribution window D1 to D2 (the engine matches a row on D2):
 
-### Rule 3. Output
+1. erp_change = ERP_A(D2) - ERP_A(D1), in decimals per year. growth_change = Growth_A(D2) - Growth_A(D1), in decimals per year. The engine divides the SPF points by 100. A change of 0.40 points is written 0.0040.
+2. A window is a "release window" if a survey release date falls after D1 and on or before D2.
+3. A window with no release has a row with erp_change and growth_change EMPTY (the missing-value marker of the file contract), source "no release". The engine does not write 0, because 0 would claim "no change in the view". The reader of Fundamental Research reports that plug as "not covered by the economics view" (like the "covered part only" rule of `auto_attribute.rs`).
+4. If no survey is out at D1, the window has no release row. It has the EMPTY row of rule 2.3.
+5. The output gives the count of covered windows and of all windows.
+6. Reading of the coverage. The 10-year questions are in Q1 surveys only: about 8 releases from 2019 in about 400 weekly windows (about 2%). A window with a release takes a full year's change in one week. So layer A is mainly a yearly level check. It is not a weekly view.
 
-For an attribution window D1 to D2:
+### Rule 3. Mapping to the attribution (confirmed by the Head of Fundamental Research, 2026-11-21)
 
-1. erp_change = ERP(D2) - ERP(D1), in decimals.
-2. growth_change = Growth(D2) - Growth(D1), in decimals.
-   Unit of the file: erp_change and growth_change are decimals per year. The engine divides the SPF points by 100. Example: a change of 0.40 points is written 0.0040. The parts in `source` keep the SPF points, as published.
-3. ERP(t) = ERP_A(t) plus the sum of the layer B changes since the last survey release.
-4. If no survey is out at D1, the row for that window is absent. The engine does not fill it.
-5. The column source is "spf" when layer B is zero. It is "spf+macro" when layer B is on.
-6. Most windows contain no survey release. In those windows, erp_change comes from layer B only, or it is zero. The findings say how many windows have a release.
-7. A window with no survey release and no layer B change has a row with erp_change = 0 and growth_change = 0. Its source is "no release in window". The engine does not leave out that row.
-8. In a row with a release, `source` names the growth parts, for example "spf: RGDP10 2.0 + CPI10 2.3".
+1. The common step applies both changes together, in both views (premium view and growth view). For each stock with a value: premium = premium of D1 + erp_change, and G = G + growth_change.
+2. growth_change maps to G of A-001 (L = min(10-year zero yield, G)). It does not map to the shift of the growth path of years 1 to 10 (the free variable of the growth view). So L moves only where G binds (G is below the 10-year zero yield).
+3. The common part is that one value change (ln units, as the plug). The company part is the rest of the plug. So common + company = plug exactly.
+4. growth_change acts on every stock with a value, not only on the growth view set. The plug is split once, so nothing counts twice.
+5. For an EMPTY row, or a stock with no value, the whole plug is "not covered by the economics view". It is not split.
 
-### Rule 4. Circularity
+### Rule 4. Output
 
-1. No input comes from the stock prices of the attribution list. SPF forecasts, NFCI and the Treasury curves do not hold those prices.
-2. VIX comes from S&P 500 option prices. It is a market price of index options, not of the stocks. It moves with the stocks.
-3. So layer B can hold a part of the price move that it should explain. This is a limit.
-4. Layer B exists only if the premium test passes. That test controls for the mechanical return with the M0 model.
-5. A "yes" does not remove the limit. It shows that the macro block adds to the mechanical model out of sample.
-6. The survey layer has no link to the stock prices of the list, except through the opinions of the forecasters. Those opinions can follow the market.
+One CSV file, one table. The unit of each column is in the table.
 
-### Rule 5. Validation (pre-registered, for later)
+| Column | Meaning | Unit |
+|---|---|---|
+| date | D2, the end date of the window | YYYY-MM-DD |
+| d1 | D1, the start date of the window | YYYY-MM-DD |
+| erp_change | change of ERP_A over the window; EMPTY if no release | decimals per year |
+| growth_change | change of Growth_A over the window; EMPTY if no release | decimals per year |
+| source | allowed values: "spf" and "no release" | text |
+| growth_parts | the two growth parts, for example "RGDP10 2.0 + CPI10 2.3" (empty if no release) | SPF points, as published |
 
-1. Plug share. Over the windows of the premium test sample, report the share of the plug of `fa dcf attribute` that the common part explains. Fundamental Research gives the plug. The engine gives the common part. The share is a description. It has no p-value.
-2. Level check. At each survey date, compare ERP_A with the median-based implied premium S1 of Fundamental Research. Report both values and their gap. This is a description. A gap is not an error: the two measures differ in kind.
-3. A reading of a gap. A gap can mean that the forecasters expect a different return than the prices imply. It can also mean that the model premium holds a growth or cash-flow error of the engine.
-4. The findings give the counts of windows, of survey dates and of dropped weeks.
-5. A market-implied path is the price of the market. It is not a forecast of this repo. This holds for the VIX and for S1.
+### Rule 5. Circularity
 
-### Rule 6. Limits
+1. No input comes from the stock prices of the attribution list. The SPF medians and GSW10 do not use those prices.
+2. The forecasters can follow the market. Their opinions are a reading, not a price.
+3. GSW10 at the release date is a Treasury price. It moves with the rates, and rates also enter the attribution step "rates". ERP_A is a premium over that yield, so a rate move does not change ERP_A alone.
+
+### Rule 6. Validation and tests (pre-registered, for later)
+
+1. Plug share. Over the covered windows, report the share of the plug that the common part explains. It is a description. It has no p-value.
+2. Level check. At each survey date, compare ERP_A with S1. Report both values and the gap. A gap is not an error: the two measures differ in kind.
+3. The findings give the counts of windows, release windows and covered windows.
+4. A market-implied value (S1, a yield, a path) is the price of the market. It is not a forecast of this repo.
+5. Backtest: none applies, because it splits an attribution and moves no value or trade rule.
+6. Tests with a fixed answer, written before the first run:
+   - Step and release date. The release date, not the survey quarter, sets the step.
+   - Poison test. Change a later survey in the SPF store file. No earlier window moves.
+   - Truncation test. Cut the file after a survey. Every window up to that survey gives the same row.
+   - Unit. A change of 0.40 points gives 0.0040.
+   - Split. A synthetic plug of 3.0 points, erp_change 0.0040, a known beta and a known value sensitivity. Check: the common part; common + company = plug exactly; the sign; an EMPTY row gives "not covered".
+
+### Rule 7. Limits
 
 - The survey gives one level a year. Between releases the level is flat.
-- Each median holds about 40 forecasters. The count changes by year.
-- The surveys lag the market. A move in the market shows in the layer A level only at the next first-quarter release.
-- The BOND10 question changed in 2014:Q1 (rule 1).
-- The list of S1 holds today's S&P 500 names. This is a survivorship limit of S1. It is not a limit of the survey.
-- A survey median is an opinion. It is not a market price and not a forecast of this repo.
-- STOCK10 is a forecast of a return, not of a premium. The premium needs the BOND10 step, and the two answers can differ in their meaning.
+- Each median has about 40 forecasters. The count changes by year. The panel changes, so a revised median is possible.
+- The surveys lag the market. A market move shows only at the next first-quarter release.
+- STOCK10 has an unknown return form (arithmetic or geometric, total or price). GSW10 is a zero yield. So ERP_A may mix two units. This is a limit of the level.
+- The list of S1 has today's S&P 500 names. This is a survivorship limit of S1, not of the survey.
+- A survey median is an opinion. It is not a price and not a forecast of this repo.
 
-### Rule 7. Work split
+### Rule 8. Work split, open points, freeze
 
-1. Economics designs and builds the engine. The engine is a Rust command, for example `fa macro view --as-of D` and `fa macro view --window D1 D2`. Its code goes in `rust/src/macro_test/` or in a sibling module.
-2. Technology provides the SPF file. The file holds the first-quarter 10-year medians, with the release date of each survey. Technology gives it after its terms check.
-3. Fundamental Research reads the output file with `--common file`.
-4. Quality and Risk freezes the design and audits the build.
-5. The engine does not download. It reads the store copy in `data/raw`.
-6. The build has a test with a fixed answer before the first run. The test checks the step rule, the release date rule and the unit.
+1. Economics designs and builds the engine, a Rust command `fa macro view` (planned), in `rust/src/macro_test/` or a sibling module. It reads the store copy in `data/raw`. It does not download.
+2. Technology provides the SPF store file and `spf-release-dates.txt` (planned, Head of Technology; private store), after its terms check.
+3. Fundamental Research reads the file with `--view-file` (planned). It confirmed rule 3.
+4. Quality and Risk freezes the design and audits the build. After the freeze, a change needs a new dated record in this file. The engine does not run on the real SPF file before the freeze.
 
-### Rule 8. Open points
-
-| Point | Owner |
+| Open point | Owner |
 |---|---|
-| The SPF terms. The page says "Copyright 2026. All rights reserved." The store copy waits for the terms check. | Head of Technology |
-| The release date of each first-quarter survey before 2026 (the release calendar) | Head of Technology |
-| The code of the command | Head of Economics |
-| The CFO Survey of the Richmond Fed has no 10-year S&P return on its pages. Its site terms forbid reproduction for private or commercial gain. It is out of the design. | none (closed) |
-
-### Rule 9. Change and freeze
-
-1. Quality and Risk freezes this design. Until then, the Head of Economics can change this draft.
-2. After the freeze, a change needs a new dated record in this file.
-3. The record says if it follows a result. It names the run of record.
-4. The engine does not run on the real SPF file before the freeze.
+| SPF terms ("Copyright 2026. All rights reserved."); the private copy waits for the check | Head of Technology |
+| Release date of each first-quarter survey, from the release calendar | Head of Technology |
+| Which workbook holds each series; the return form of STOCK10; the compounding of GSW10 | Head of Technology, Head of Economics |
+| The CFO Survey (Richmond Fed) is out of the design: no 10-year S&P return, and its terms forbid reproduction | none (closed) |
 
 ## 4. Two readings of the result
 
-Each result has a second reading. The findings give both.
-
-- A small common part can mean that the market-wide view explains little of the plug. It can also mean that the engine is too coarse: one survey a year cannot follow a weekly move.
-- A large common part can mean that a market-wide risk move drives the plug. It can also mean that layer B holds the index move that it should explain (rule 4).
-- A gap between ERP_A and S1 can mean that the prices imply a different premium than the forecasters expect. It can also mean that S1 holds a model error.
-- A flat layer A is not "no change in the view". It means that the survey did not publish a new value.
+- A small common part can mean that the market-wide view explains little of the plug. It can also mean that one survey a year cannot follow a weekly move.
+- A large common part can mean that a market-wide risk move drives the plug. It can also mean that forecasters follow the market, so the view is not independent of the price.
+- A gap between ERP_A and S1 can mean that prices imply a different premium than forecasters expect. It can also mean that S1 has a model error, or that the units of ERP_A differ (rule 7).
+- A flat layer A is not "no change in the view". The survey did not publish a new value.
 
 ## 5. What we did not do
 
-- We did not run any command, read any data value or download any file.
-- We did not read the SPF file. It is not in the store.
+- We did not run any command, read any data value or download any data file. We read the documentation PDF only, for the definitions of rule 2.
+- We did not read the SPF store file. It is not in the store.
 - We did not test any number. No value in this file is a result.
-- We did not use the CFO Survey, for the reason in rule 8.
-- We did not adjust the BOND10 break.
+- We did not adjust the BOND10 break. It does not touch the primary form.
 - We did not give a growth change at weekly frequency.
-- We did not set a model input. This brief is context. A head that wants these values as an input writes an assumption record.
+- We did not set a model input.
 
 ## 6. Dated records
 
