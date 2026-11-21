@@ -25,8 +25,12 @@ valuation. Do not use it alone for a trade (`CLAUDE.md`, "Review of a valuation 
 3. Margin: free cash flow before SBC and interest, shrunk the same way. SBC is a cost.
 4. Discount rate: CAPM with the shrunk beta, the equity risk premium, and a Hull-White
    risk-free rate. Net debt and shares come from the latest balance sheet. The model
-   charges `w` times the mean ratio of the cash for businesses to revenue (A-002). The
-   charge falls to zero with the fade of the growth when the company mean is above L.
+   charges `w` times the expected ratio of the cash for businesses to revenue, 1.75% +
+   0.3925 x the past 5-year mean ratio capped at 25% (`acq_persist`, A-002). The charge falls to zero with the fade of the growth when the company mean is above L.
+   The spend has the second line of the business purchases when its value differs from the
+   first line (`acq_second`, default on). `acq_persist=off` gives the past ratio as the base.
+   The option `acq_keep` is off (the charge keeps the share L / mean, with no step at a mean
+   equal to L).
 5. Write a model file (`engine = "paths"`) and run the path engine (`rust/src/dcf/paths.rs`).
 6. Terminal value: Gordon form with the terminal growth. Its mean is L (the same number
    as the fade level), its standard deviation is 0.75%.
@@ -41,7 +45,7 @@ value, 3 no value, 2 an error. `fa dcf screen` gives one CSV row for each ticker
 | Record | Name | Value | One line |
 |---|---|---|---|
 | A-001 | One long-run growth L | min(10-year zero yield, 4.0%); terminal std 0.75% | Fade level and terminal mean. 4.0% = FOMC SEP 2026-09-16 (2.0% + 2.0%). Decided 2026-11-20 |
-| A-002 | Acquisition charge | `w` x mean spend / revenue, 5 years | `w` = weight of the history in the growth mean; fades with the growth above L. Decided 2026-11-20 |
+| A-002 | Acquisition charge | `w` x mean spend / revenue, 5 years | `w` = weight of the history in the growth mean; fades with the growth above L; second line of the purchases added when it differs (`acq_second`, proposed 2026-11-21). Decided 2026-11-20 |
 | A-003 | Floor on the growth of the base year | 0% | A base year with growth below 0% enters the company mean and the first step of the growth as 0% (`last_floor`) |
 | not written | Equity risk premium | 4.41% (std 0.75%, lower bound 2%) | Damodaran implied value, 2026-11-19 |
 | not written | Risk-free rate | 10-year zero yield of the GSW curve | Hull-White `a` 0.14, `sigma` 0.0075 |

@@ -47,6 +47,10 @@ pub const LONG_RUN_GROWTH: f64 = 0.040;
 /// The risk-free rate when the yield curve is not available (stated default, with a warning).
 pub const DEFAULT_RF: f64 = 0.042;
 
+/// The cap of the past spend ratio in the persistence fit of the charge (`Rules::acq_persist`): a mean spend above a quarter
+/// of the revenue is a change of the company, not a spend that recurs.
+pub const ACQ_PERSIST_CAP: f64 = 0.25;
+
 /// The values that the repo uses as a convention and the rules that have a number. Each has a reason in
 /// `docs/ARCHITECTURE.md`.
 #[derive(Debug, Clone, PartialEq)]
@@ -141,6 +145,20 @@ pub struct Rules {
     /// so it charges `w` of the spend. Needs no `acq_mult`. Default on (decision of 2026-11-20, record A-002); `acq_w=0`
     /// gives the old model. `acq_charge` and `acq_f` win over it.
     pub acq_w: bool,
+    /// The spend of the charge (and the real spend of the point-in-time test) has the second line of the purchases of
+    /// businesses (`YearData::acq_spend`). Default on (record A-002, decision of 2026-11-21); `acq_second=0` gives the
+    /// first line only.
+    pub acq_second: bool,
+    /// The base of the charge is the persistence fit of the past spend, not the past spend: `a + b x min(past, 25%)`, with
+    /// `past` the mean spend ratio of the margin history (`--rules acq_persist_a=..,acq_persist_b=..`; the fit of the
+    /// next 3 years on the past 5 years of the panel, `fa dcf pit --diag acq`). Default `(0.0175, 0.3925)`, the fit of half 0 (record A-002, decision of
+    /// 2026-11-21); `acq_persist=off` gives the past spend.
+    pub acq_persist: Option<(f64, f64)>,
+    /// With `acq_w` and `acq_fade`: the charge does not fall to zero when the company mean `mu` is above the fade level `L`.
+    /// It keeps the share `L / mu`, the share of the credited growth that stays (the spend buys growth in proportion to the
+    /// mean), and the share `(mu - L) / mu` fades with the growth above `L`. A mean just above `L` keeps almost all of the
+    /// charge, so the charge has no step at `mu = L`. Off: the charge falls to zero (the record A-002 rule of 2026-11-20).
+    pub acq_keep: bool,
     // ---- Used by the implied search (`fa dcf implied`, `auto_implied.rs`) only. They are not `--rules` keys and no default
     // reads a market-implied result: a market-implied value is a measurement, not an input (`docs/QUALITY-STANDARDS.md`, 6).
     /// Added to the company mean of the growth and to the growth of year 1. The long-run level and the terminal rule are
@@ -201,6 +219,9 @@ impl Default for Rules {
             acq_f: None,
             acq_mult: 0.0,
             acq_w: true,
+            acq_second: true,
+            acq_persist: Some((0.0175, 0.3925)),
+            acq_keep: false,
             acq_fade: true,
             last_floor: Some(0.0),
             margin_sigma_nu: None,
@@ -230,6 +251,8 @@ pub struct YearData {
     pub income_tax: Option<f64>,
     pub pretax_income: Option<f64>,
     pub acquisitions: Option<f64>,
+    /// `acquisitions_net_of_cash_second` (positive): the second line of the purchases of businesses (`YearData::acq_spend`).
+    pub acquisitions_second: Option<f64>,
     pub total_debt: Option<f64>,
     /// `cash_and_short_term_investments`, else `cash_and_equivalents` plus `short_term_investments`.
     pub cash: Option<f64>,
@@ -248,6 +271,18 @@ pub struct YearData {
 }
 
 impl YearData {
+    /// The cash paid for businesses in the year (positive; 0 when no line has a value). With `second`, the second line
+    /// (`acquisitions_net_of_cash_second`) is added only when its value differs from the first line, or when the first
+    /// line has no value: a filer that renames the tag between 10-Ks has the same value in both lines for one year, and
+    /// that is one purchase (trap `2026-11-20-second-business-purchase-line`). Without `second`: the first line only.
+    pub fn acq_spend(&self, second: bool) -> f64 {
+        match (self.acquisitions, self.acquisitions_second) {
+            (Some(a), Some(b)) if second && (a - b).abs() > 1e-9 * a.max(b).max(1.0) => a + b,
+            (None, Some(b)) if second => b,
+            (a, _) => a.unwrap_or(0.0),
+        }
+    }
+
     pub fn from_period(registry: &Registry, p: &PeriodData) -> YearData {
         let capex = p.get(registry, "capex_total").or_else(|| p.get(registry, "capex")).map(f64::abs);
         let interest = p.get(registry, "interest_paid").or_else(|| p.get(registry, "interest_expense")).map(f64::abs);
@@ -265,6 +300,7 @@ impl YearData {
             income_tax: p.get(registry, "income_tax_expense"),
             pretax_income: p.get(registry, "income_before_tax"),
             acquisitions: p.get(registry, "acquisitions_net_of_cash").map(f64::abs),
+            acquisitions_second: p.get(registry, "acquisitions_net_of_cash_second").map(f64::abs),
             total_debt: p.get(registry, "total_debt"),
             cash,
             shares: p.get(registry, "shares_diluted").or_else(|| p.get(registry, "shares_outstanding")),
@@ -814,7 +850,7 @@ pub fn raw_years(years: &[YearData]) -> Vec<RawYear> {
 /// the growth of each (`None` for the first year and for a jump: more than 60% and revenue of $1B or more). `bought` is
 /// the revenue that the growth history takes out for each dollar of acquisition spend (`bought * acquisitions / revenue
 /// of the year before`); 0 leaves the growth as it is.
-fn chain(years: &[YearData], organic: bool, bought: f64) ->(Vec<YearData>, Vec<Option<f64>>, RuleCounts) {
+fn chain(years: &[YearData], organic: bool, bought: f64, second: bool) ->(Vec<YearData>, Vec<Option<f64>>, RuleCounts) {
     let raws = raw_years(years);
     let mut counts = RuleCounts::default();
     let rows = clean_series(raws, &mut counts);
@@ -839,7 +875,7 @@ fn chain(years: &[YearData], organic: bool, bought: f64) ->(Vec<YearData>, Vec<O
             let cut = if i == 0 || bought == 0.0 {
                 0.0
             } else {
-                let spend = |k: usize, base: f64| data[k].acquisitions.unwrap_or(0.0).abs() / base;
+                let spend = |k: usize, base: f64| data[k].acq_spend(second) / base;
                 let a_now = spend(data.len() - 1, rows[start + i - 1].revenue);
                 let a_before = if i >= 2 && data.len() >= 2 { spend(data.len() - 2, rows[start + i - 2].revenue) } else { a_now };
                 bought * 0.5 * (a_now + a_before)
@@ -889,7 +925,7 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
     }
     // the history
     let acq_share = rules.acq_f.map_or(if rules.acq_charge { 1.0 } else { 0.0 }, |f| f.clamp(0.0, 1.0));
-    let (hist, growth_all, _) = chain(&inputs.years, rules.history_organic, if rules.acq_f.is_some() { (1.0 - acq_share) * rules.acq_mult } else { 0.0 });
+    let (hist, growth_all, _) = chain(&inputs.years, rules.history_organic, if rules.acq_f.is_some() { (1.0 - acq_share) * rules.acq_mult } else { 0.0 }, rules.acq_second);
     if hist.len() < rules.min_years {
         return Err(Refusal::ShortHistory(format!("{} fiscal years in sequence with revenue; {} are needed", hist.len(), rules.min_years)));
     }
@@ -1039,13 +1075,15 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
     };
 
     // ---- acquisitions: the mean ratio of the years of the margin history (a year with no value counts as 0)
-    let acq_vals: Vec<f64> = hist.iter().rev().take(HIST_MARGIN).filter_map(|y| Some(y.acquisitions.unwrap_or(0.0).abs() / y.revenue.filter(|r| *r > 0.0)?)).collect();
+    let acq_vals: Vec<f64> = hist.iter().rev().take(HIST_MARGIN).filter_map(|y| Some(y.acq_spend(rules.acq_second) / y.revenue.filter(|r| *r > 0.0)?)).collect();
     // acq_charge and acq_f are explicit and win over the default acq_w
     let acq_paired = rules.acq_w && !rules.acq_charge && rules.acq_f.is_none();
     let acq_share = if acq_paired { gfit.w } else { acq_share };
     // the paired charge fades with the credited growth above the fade level (the drift ramp), else it is constant
     let acq_fades = acq_paired && rules.acq_fade && drift_end < -1e-12;
-    let acq_ratio = if acq_share > 0.0 && !acq_vals.is_empty() { acq_share * acq_vals.iter().sum::<f64>() / acq_vals.len() as f64 } else { 0.0 };
+    let acq_past = if acq_vals.is_empty() { 0.0 } else { acq_vals.iter().sum::<f64>() / acq_vals.len() as f64 };
+    let acq_base = rules.acq_persist.map_or(acq_past, |(a, b)| (a + b * acq_past.min(ACQ_PERSIST_CAP)).max(0.0));
+    let acq_ratio = if acq_share > 0.0 && !acq_vals.is_empty() { acq_share * acq_base } else { 0.0 };
 
     // ---- bridge and shares
     let debt = balance.total_debt.unwrap_or_else(|| {
@@ -1162,7 +1200,7 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
         "mean ratio, fixed; SBC is a cost of the model (repo convention: a cash-equivalent cost; existing awards are in the share count)",
     );
     if acq_share > 0.0 {
-        row("acquisition charge", pct(acq_ratio), "acquisitions_net_of_cash / revenue, the years of the margin history", &format!("mean ratio times the share f (default, acq_w: f = w, the weight of the history in the growth mean, because the growth history keeps the bought growth; f = 1 with acq_charge; acq_f gives f); {}; a cost of the model (record A-002; IBM review F2 and F16)", if acq_fades { format!("year 1 as shown, then it falls linearly to zero in {ramp_n} years like the credited growth above the long-run level (acq_fade)") } else { "constant".to_string() }));
+        row("acquisition charge", pct(acq_ratio), "acquisitions_net_of_cash / revenue, the years of the margin history", &format!("mean ratio times the share f (default, acq_w: f = w, the weight of the history in the growth mean, because the growth history keeps the bought growth; f = 1 with acq_charge; acq_f gives f); {}; a cost of the model (record A-002; IBM review F2 and F16)", if acq_fades { if rules.acq_keep { format!("year 1 as shown, then it falls linearly in {ramp_n} years to the share L / mean of it, like the credited growth above the long-run level L (acq_fade, acq_keep)") } else { format!("year 1 as shown, then it falls linearly to zero in {ramp_n} years like the credited growth above the long-run level (acq_fade)") } } else { "constant".to_string() }));
     }
     row("tax rate", pct(tax), "income_tax_expense, income_before_tax", &tax_rule);
     row(
@@ -1283,11 +1321,12 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
     let _ = writeln!(tw, "rationale = {}\n", q(&format!("SBC ratio: mean of the last {} years, fixed. SBC is a cost of the model (repo convention).", sbc_vals.len())));
     if acq_ratio > 0.0 {
         if acq_fades {
-            let _ = writeln!(tw, "[process.charge]\nrole = \"charge\"\nstart = {}\ntarget = 0.0\nshape = \"ramp\"\nramp_years = {}", f(acq_ratio), ramp_n);
+            let kept = if rules.acq_keep && mu > 0.0 { g_long / mu } else { 0.0 };
+            let _ = writeln!(tw, "[process.charge]\nrole = \"charge\"\nstart = {}\ntarget = {}\nshape = \"ramp\"\nramp_years = {}", f(acq_ratio), f(acq_ratio * kept), ramp_n);
         } else {
             let _ = writeln!(tw, "[process.charge]\nrole = \"charge\"\nstart = {}\ntarget = {}\nshape = \"ramp\"\nramp_years = 2", f(acq_ratio), f(acq_ratio));
         }
-        let fade_text = if acq_fades { format!(" The charge falls linearly to zero in {ramp_n} years, as the credited growth above the long-run level does (the drift of the growth).") } else { " The charge is constant.".to_string() };
+        let fade_text = if acq_fades { if rules.acq_keep { format!(" The charge falls linearly in {ramp_n} years to the share L / mean of its year 1 value (the credited growth that stays), as the credited growth above the long-run level does (the drift of the growth).") } else { format!(" The charge falls linearly to zero in {ramp_n} years, as the credited growth above the long-run level does (the drift of the growth).") } } else { " The charge is constant.".to_string() };
         let _ = writeln!(tw, "rationale = {}\n", q(&format!("Cash paid for businesses: mean of acquisitions_net_of_cash / revenue of the last {} years, times the share f.{} The growth history keeps the bought growth, so the cost is a cost of the model (IBM review F2, F16; record A-002).", acq_vals.len(), fade_text)));
     }
     // the lower bound of the draw is 2%; a mean below it (the implied search) moves the bound to the mean

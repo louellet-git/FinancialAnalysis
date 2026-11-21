@@ -1,60 +1,60 @@
 # A-002: acquisition charge of the automatic model
-
-Updated: 2026-11-20.
+Updated: 2026-11-21.
 ## Choice
-The model charges `w` times the mean of `acquisitions_net_of_cash / revenue` of the last
-5 fiscal years. `w` is the weight of the history in the company mean of the growth (row
-"growth: company mean"). A year with no reported value counts as 0. The growth history
-stays. The charge fades with the growth that it pays for (`acq_fade`): if the company mean
-is above the fade level L, the credited growth above L falls linearly to zero along the
-drift ramp, and the charge falls from its year 1 value to zero in the same years (same
-timing). If the mean is at or below L, the charge is constant. `acq_charge` and `acq_f`
-are never faded. Defaults: `acq_w` on (`--rules acq_w=1`), `acq_fade` on (`--rules acq_fade=1`).
-
+The model charges `w` times the expected spend / revenue, 1.75% + 0.3925 x past (`acq_persist`;
+past = the mean of the last 5 fiscal years, capped at 25%; the fit of the panel, see Limits).
+Spend = `acquisitions_net_of_cash` plus `acquisitions_net_of_cash_second`, the second line only
+when its value differs from the first line or the first line has no value (`acq_second`; a tag
+renamed between 10-Ks gives the same value in both lines). `w` is the weight of the history in
+the company mean of the growth. A year with no value counts as 0. The growth history stays.
+The charge fades with the growth that it pays for (`acq_fade`): if the company mean is
+above the fade level L, the credited growth above L falls linearly to zero along the drift ramp,
+and the charge falls to zero in the same years. If the mean is at or below L, the charge is
+constant. `acq_charge` and `acq_f` are never faded. Defaults: `acq_w` on (`--rules acq_w=1`),
+`acq_fade` on (`--rules acq_fade=1`), `acq_second` on (`--rules acq_second=1`), `acq_keep` off (`--rules acq_keep=0`) (on: the charge keeps the share L / mean).
+`--rules acq_persist=off` gives the past spend as the base (the rule of 2026-11-20); `acq_persist_a`, `acq_persist_b` set a + b x min(past, 25%).
 ## Where used
-| Model | File | Parameter name |
-|---|---|---|
-| Automatic path model (`docs/models/auto-path-model.md`) | `rust/src/dcf/auto.rs` | `acq_w` = true, `acq_fade` = true |
-| Point-in-time test | `rust/src/dcf/auto_pit.rs` (`fcff_of_rules`) | real free cash flow is after acquisitions when `acq_w` is on |
-
+`docs/models/auto-path-model.md`; `rust/src/dcf/auto.rs` (`acq_w`, `acq_fade`, `acq_second`,
+`acq_persist`, `acq_keep`); `rust/src/dcf/auto_pit.rs` (`fcff_of_rules`: the same spend).
 ## Alternatives considered
 | Alternative | Command | Why not chosen |
 |---|---|---|
 | No charge (old model) | `--rules acq_w=0` | Overstates the free cash flow after acquisitions: -1.7% of revenue in year 1 |
-| Constant charge | `--rules acq_fade=0` | The charge does not fade with the credited growth: the pair holds in year 1 only |
-
+| Constant charge | `--rules acq_fade=0` | The charge does not fade with the credited growth |
+| First line only | `--rules acq_second=0` | Loses real cash paid (NVDA FY2026: $1.5B of $14.5B) |
+| Past spend as the base | `--rules acq_persist=off` | Over-charges heavy buyers: error +1.1 to +1.8% of revenue (half 1) |
 ## Why this choice
-None of the reasons uses the price. Study 2.6: a consistent pair by construction. The
-model credits the share `w` of the bought growth, so it charges the share `w` of the spend;
-no outside number; it matches the reviewed IBM `f = 0.5`. The fade keeps the pair true in
-each year (decision of the Head of Fundamental Research, review cycle 1). Direction
-from study 2.1: high spenders spend 0.55x (mean) and 0.24x (median) as much in the next 3
-years. The point-in-time test of the free cash flow is in sample and a median test, while
-the charge uses the mean spend: it supports the rule and does not select it.
-
-## Limits
-- Heavy buyers (spend above 5% of revenue, 1,650 company-years) are over-charged: free
-  cash flow error +1.8 / +1.8 / +2.4% of revenue at T+1 / T+2 / T+3 (constant charge:
-  +1.8 / +2.2 / +3.1%; old model -3.3 / -2.9 / -2.4%). A P50 at or below 0 of such a
-  company is an effect of the charge, not a value. Their band: 63.4% inside P10 to P90 (19.5%
-  below P10, 17.1% above). The spend is lumpy. Ticket `T-20261120-dcf-acq-charge-limits`.
-- 33% to 48% of company-years have no reported spend (0). In the screen 147 of 431
-  tickers (34.1%) have no charge: the tag `PaymentsToAcquireBusinessesNetOfCashAcquired` is missing.
-
-## Effect on the result
-Data of 2026-11-19 (data store commit 41116d0). `fa dcf screen`, `sp500.txt`, 4,000 paths,
-seed 7, 430 tickers, median P50 / price: old 0.4895; fading charge alone (`long_run=off`)
-0.4245; constant charge alone 0.382; both defaults 0.4745 (constant: 0.427). P50 at or below
-0: 38 (old), 39 (new), 50 (constant). ROP (price $470.87) P50: $438.34 old, $356.60 new,
--$90.95 constant. ILMN and WMB stay not positive (no drift: constant charge). `fa dcf pit`
-(`analysis/priors/auto_pit_*_2026-11-20.txt`), free cash flow after acquisitions, error
-T+1 / T+2 / T+3: -1.7 / -1.4 / -0.6% (old, `acq_f=0,acq_mult=0`), -0.4 / -0.1 / +0.6%
-(new). Worse: coverage P10 to P90 77.3 / 78.0 / 78.4% (old), 76.3 / 77.4 / 77.8% (new).
+None of the reasons uses the price. Study 2.6: a consistent pair by construction. The model
+credits the share `w` of the bought growth, so it charges the share `w` of the spend. It matches
+the reviewed IBM `f = 0.5`. The fade keeps the pair true in each year. The second line is real
+cash paid for businesses: the charge and the test must count it. The charge is an expected
+cash flow, so its base is the expected next spend, not the past spend: a heavy buyer spends
+less later (study 2.1: the next 3 years are 0.55 of the past at the mean), and a company with
+little past spend spends about 1.3 to 2.2% later. The fit is on half 0 and scored on half 1.
+## Limits and options (ticket `T-20261120-dcf-acq-charge-limits`, data store 1804f48)
+- **Level (a), adopted.** Fit: `fa dcf pit --half 0 --diag acq` (base revenue 1B and above,
+  3,488 company-years, both means capped at 25%). Through the origin (0.5226 x past) is not
+  chosen: on half 0 it makes the error of all rows worse (-0.8 to -1.4%). Class "spend above
+  5%", free cash flow error T+1 / T+2 / T+3 (% of revenue), past spend to the fit: half 1
+  +1.1 / +1.2 / +1.8 to -1.2 / -1.1 / -0.8, coverage +3.9 / +3.3 / +2.5 points; `--cut 2015
+  --half 1` +1.2 / +1.7 / +2.5 to -0.7 / -0.2 / +0.2, coverage +5.7 / +4.8 / +2.6 points. No
+  other row is worse by 2 points. Limits: the test is a median test and the charge is a mean,
+  so the sign of the error flips; real values below P10 go from 19.6% to 23.2% (half 1, T+1).
+  Screen: median P50 / price 0.4897 to 0.4966; ILMN -12.21 to -1.10; IBM 93.56 to 116.09.
+- **Step (b).** At a mean just above L the charge went to zero; at a mean at or below L it was
+  constant. With `acq_keep` the charge is `c0 x g(t) / mean` (g = the credited growth), so it
+  ends at `c0 L / mean`: no step. A pit of 3 years cannot test it. Screen: median P50 / price
+  0.4897 to 0.4576; ROP 357 to 186; HPE becomes not positive. ILMN and WMB do not change
+  (mean below L: the constant charge is the pair). With (a): median P50 / price 0.475.
+- **Second line (c).** 8 of 503 tickers of `sp500.txt` change the charge (BIIB, CBRE, J, MRK,
+  NVDA 0.05% to 0.17%, TRGP, ZBH 0 to 2.66%, ZTS). MATX, LUMN and WT have the second line only
+  before the last 5 years: no change.
 
 ## Who decided and when
 The Head of Fundamental Research, on the word of the owner of 2026-11-20 (record:
-`chiefs/louellet-git/fundamental/RECORD.md`). Review (`CLAUDE.md`, source rule 3): not done yet.
-
+`chiefs/louellet-git/fundamental/RECORD.md`). 2026-11-21, after the measurement: `acq_second`
+and `acq_persist` on; `acq_keep` off. Open question (owner: the same head): is the growth at L
+paid by organic reinvestment (then the charge goes to 0 for each mean) or in part by
+acquisitions (then `acq_keep`)? Review (source rule 3): not done.
 ## When to examine it again
-When a study of the persistence of the spend exists (panel: next 3 years =
-1.39% + 0.39 x past), or when sector data exists.
+When sector data exists.

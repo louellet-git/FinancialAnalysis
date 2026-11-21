@@ -56,8 +56,10 @@ pub(crate) fn table() -> ProcessTable {
 }
 
 /// A rule set with the table shock size for everyone and no level rule: the hand calculation of the tests.
+/// The rules of the fixed-answer tests: no own spread, no level pull, and the past spend as the charge base
+/// (`acq_persist` off), so that a test of the charge reads the spend that it sets.
 pub(crate) fn plain_rules() -> Rules {
-    Rules { own_sigma_nu: 0.0, level_kappa: 0.0, ..Rules::default() }
+    Rules { own_sigma_nu: 0.0, level_kappa: 0.0, acq_persist: None, ..Rules::default() }
 }
 
 /// Six fiscal years 2020 to 2025: revenue +10% each year from $1B, operating cash flow 20% of revenue, capex 5%, interest 2%,
@@ -540,6 +542,7 @@ fn the_coverage_counts_below_inside_and_above() {
         g_start: 0.05,
         g_mu: 0.05,
         acq_past: 0.0,
+        acq_next: 0.0,
         rev_q: [[90.0, 100.0, 110.0]; HORIZON],
         rev_act: [actual; HORIZON],
         fcff_q: [[1.0, 2.0, 3.0]; HORIZON],
@@ -1012,9 +1015,9 @@ fn the_explicit_charge_rules_win_over_acq_w_off_and_zero_spend_gives_no_charge()
     let i = inputs_with_spend();
     let run = |r: Rules| build(&i, &table(), &[], &market(), &r, BuildOptions::default()).unwrap();
     // acq_w=0 does not turn off acq_charge or acq_f
-    let m = run(parse_rules("acq_w=0,acq_charge=1,own_sigma_nu=0,level_kappa=0").unwrap());
+    let m = run(parse_rules("acq_w=0,acq_charge=1,acq_persist=off,own_sigma_nu=0,level_kappa=0").unwrap());
     assert!((m.summary.acq_ratio - 0.02).abs() < 1e-12);
-    let m = run(parse_rules("acq_w=0,acq_f=0.5,acq_mult=2,own_sigma_nu=0,level_kappa=0").unwrap());
+    let m = run(parse_rules("acq_w=0,acq_f=0.5,acq_mult=2,acq_persist=off,own_sigma_nu=0,level_kappa=0").unwrap());
     assert!((m.summary.acq_ratio - 0.01).abs() < 1e-12);
     // no spend with the default on: no charge, no process
     let none = build(&inputs(), &table(), &[], &market(), &plain_rules(), BuildOptions::default()).unwrap();
@@ -1091,4 +1094,121 @@ fn the_margin_scan_needs_all_five_links_of_the_six_years() {
     let mut full = c;
     full.rows[1].prev_ok = true;
     assert_eq!(sigma_nu_scan(&[full], &table(), &plain_rules(), None, &[4.0])[0][3].0, 2);
+}
+
+#[test]
+fn the_second_acquisition_line_is_added_only_when_it_differs_or_the_first_has_none() {
+    let year = |a: Option<f64>, b: Option<f64>| YearData { acquisitions: a, acquisitions_second: b, ..Default::default() };
+    // different value: added
+    assert_eq!(year(Some(1.5e9), Some(13.0e9)).acq_spend(true), 14.5e9);
+    // same value (a tag renamed between 10-Ks, EQT FY2021): not added
+    assert_eq!(year(Some(1_030_239_000.0), Some(1_030_239_000.0)).acq_spend(true), 1_030_239_000.0);
+    // first line missing: the second is used (ZBH, MATX, LUMN, WT)
+    assert_eq!(year(None, Some(2.0e8)).acq_spend(true), 2.0e8);
+    // no second line, no line: as before
+    assert_eq!(year(Some(3.0e8), None).acq_spend(true), 3.0e8);
+    assert_eq!(year(None, None).acq_spend(true), 0.0);
+    // acq_second=0: the first line only (the old behaviour)
+    assert_eq!(year(Some(1.5e9), Some(13.0e9)).acq_spend(false), 1.5e9);
+    assert_eq!(year(None, Some(2.0e8)).acq_spend(false), 0.0);
+    assert!(Rules::default().acq_second && !parse_rules("acq_second=0").unwrap().acq_second);
+}
+
+#[test]
+fn the_charge_reads_the_second_line_and_acq_second_off_gives_the_first_line_only() {
+    let mut i = inputs();
+    for y in i.years.iter_mut() {
+        y.acquisitions = Some(0.01 * y.revenue.unwrap());
+        y.acquisitions_second = Some(0.03 * y.revenue.unwrap());
+    }
+    let run = |i: &AutoInputs, r: Rules| build(i, &table(), &[], &market(), &r, BuildOptions::default()).unwrap();
+    let both = run(&i, Rules { acq_charge: true, ..plain_rules() });
+    let first = run(&i, Rules { acq_charge: true, acq_second: false, ..plain_rules() });
+    assert!((both.summary.acq_ratio - 0.04).abs() < 1e-12, "{}", both.summary.acq_ratio);
+    assert!((first.summary.acq_ratio - 0.01).abs() < 1e-12);
+    // the same value in both lines (a renamed tag): one purchase
+    for y in i.years.iter_mut() {
+        y.acquisitions_second = y.acquisitions;
+    }
+    let same = run(&i, Rules { acq_charge: true, ..plain_rules() });
+    assert!((same.summary.acq_ratio - 0.01).abs() < 1e-12);
+}
+
+#[test]
+fn the_kept_share_of_the_charge_has_no_step_at_a_company_mean_equal_to_l() {
+    let i = inputs_with_spend();
+    let run = |r: Rules| build(&i, &table(), &[], &market(), &r, BuildOptions::default()).unwrap();
+    let off = run(Rules { acq_w: false, ..plain_rules() });
+    let base = run(Rules { acq_keep: true, ..plain_rules() });
+    let mu = base.summary.growth_company_mean;
+    let c0 = base.summary.acq_ratio;
+    assert!(mu > 0.08 && c0 > 0.0);
+    // closed form: with L = 4%, the charge falls from c0 in year 1 to c0 L / mu in year 12 (ramp of 12 years)
+    let path = charge_path(&base, &off);
+    let kept = 0.04 / mu;
+    for t in [1usize, 6, 10] {
+        let want = c0 * (1.0 - (1.0 - kept) * (t as f64 - 1.0) / 11.0);
+        assert!((path[t - 1] - want).abs() < 1e-9, "year {t}: {} {want}", path[t - 1]);
+    }
+    // the old rule: to zero
+    let old = charge_path(&run(plain_rules()), &off);
+    assert!(old[9] < path[9] && (old[9] - c0 * (1.0 - 9.0 / 11.0)).abs() < 1e-9);
+    // no step at mu = L: L just below and just above the company mean give the same charge path (within 1e-5 of c0)
+    let below = |lc: f64| {
+        let on = run(Rules { acq_keep: true, long_cap: Some(lc), ..plain_rules() });
+        let no = run(Rules { acq_keep: true, long_cap: Some(lc), acq_w: false, ..plain_rules() });
+        (charge_path(&on, &no), on.summary.acq_ratio)
+    };
+    let (lo, c_lo) = below(mu + 1e-7);
+    let (hi, c_hi) = below(mu - 1e-7);
+    assert!((c_lo - c_hi).abs() < 1e-12);
+    for t in 0..10 {
+        assert!((lo[t] - hi[t]).abs() < 1e-5 * c0, "year {}: {} {}", t + 1, lo[t], hi[t]);
+    }
+    // without acq_keep the same two paths differ by the whole charge in year 10 (the step)
+    let step = |lc: f64| {
+        let on = run(Rules { long_cap: Some(lc), ..plain_rules() });
+        let no = run(Rules { long_cap: Some(lc), acq_w: false, ..plain_rules() });
+        charge_path(&on, &no)
+    };
+    assert!((step(mu + 1e-7)[9] - step(mu - 1e-7)[9]).abs() > 0.5 * c0 * (1.0 - 9.0 / 11.0) * 0.5);
+    assert!(!Rules::default().acq_keep && parse_rules("acq_keep=1").unwrap().acq_keep);
+}
+
+#[test]
+fn the_charge_base_can_be_the_persistence_fit_of_the_past_spend() {
+    let run = |spend: f64, r: Rules| {
+        let mut i = inputs();
+        for y in i.years.iter_mut() {
+            y.acquisitions = Some(spend * y.revenue.unwrap());
+        }
+        build(&i, &table(), &[], &market(), &r, BuildOptions::default()).unwrap()
+    };
+    let fit = Rules { acq_charge: true, ..plain_rules() };
+    // off: the past spend
+    assert!((run(0.02, fit.clone()).summary.acq_ratio - 0.02).abs() < 1e-12);
+    // on: a + b x past = 0.0175 + 0.3925 x 0.02
+    let on = Rules { acq_persist: Some((0.0175, 0.3925)), ..fit.clone() };
+    assert!((run(0.02, on.clone()).summary.acq_ratio - (0.0175 + 0.3925 * 0.02)).abs() < 1e-12);
+    // the past spend is capped at 25% of revenue
+    assert!((run(0.40, on.clone()).summary.acq_ratio - (0.0175 + 0.3925 * 0.25)).abs() < 1e-12);
+    // the default is the fit of half 0 (record A-002, 2026-11-21); the rule keys change one number of it, in any order;
+    // `acq_persist=off` gives the past spend, and any other value of that key is an error
+    assert_eq!(Rules::default().acq_persist, Some((0.0175, 0.3925)));
+    assert_eq!(parse_rules("acq_persist_b=0.4,acq_persist_a=0.01").unwrap().acq_persist, Some((0.01, 0.4)));
+    assert_eq!(parse_rules("acq_persist_b=0.4").unwrap().acq_persist, Some((0.0175, 0.4)));
+    assert!(parse_rules("acq_persist=off").unwrap().acq_persist.is_none());
+    assert!(parse_rules("acq_persist=1").is_err());
+}
+
+#[test]
+fn the_persistence_diagnosis_gives_the_fit_of_a_known_line() {
+    use crate::dcf::auto_pit::{ols, render_acq_persistence};
+    let line: Vec<(f64, f64)> = (0..10).map(|k| (k as f64 * 0.01, 0.01 + 0.5 * k as f64 * 0.01)).collect();
+    let ((a, b), _) = ols(&line).unwrap();
+    assert!((a - 0.01).abs() < 1e-12 && (b - 0.5).abs() < 1e-12);
+    let origin: Vec<(f64, f64)> = (1..10).map(|k| (k as f64 * 0.01, 3.0 * k as f64 * 0.01)).collect();
+    assert!((ols(&origin).unwrap().1 - 3.0).abs() < 1e-12);
+    assert!(ols(&[(0.0, 1.0), (0.0, 2.0), (0.0, 3.0)]).is_none());
+    assert!(render_acq_persistence(&[]).contains("PERSISTENCE OF THE ACQUISITION SPEND"));
 }
