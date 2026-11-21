@@ -71,7 +71,7 @@ anchors = [
 name = "revenue"
 statement = "income_statement"
 core = true
-note = "Top line of the income statement. The tags are the tags of a total. A filer with none of them gets the value from a formula, in this sequence. (1) A bank: net interest income and noninterest income. A bank uses the contract-revenue tag only for a small part of its income, thus this formula comes before it. (2) The contract-revenue tag (most companies after 2018) or the sales tag (before 2018). (3) A landlord with only a lease-income tag. (4) An investment company."
+note = "Top line of the income statement. The tags are the tags of a total. A filer with none of them gets the value from a formula, in this sequence. (1) A bank: net interest income and noninterest income. A bank uses the contract-revenue tag only for a small part of its income, thus this formula comes before it. (2) The contract-revenue tag (most companies after 2018) or the sales tag (before 2018). (3) A pre-2018 total tag of a filer with no other total (revenue_total_pre2018). (4) A landlord with only a lease-income tag. (5) An investment company."
 tags = [
     "us-gaap/Revenues",
     "us-gaap/RegulatedAndUnregulatedOperatingRevenue",
@@ -80,6 +80,7 @@ tags = [
 formulas = [
     "net_interest_income + noninterest_income",
     "revenue_from_contracts",
+    "revenue_total_pre2018",
     "lease_income",
     "investment_income_operating",
 ]
@@ -87,11 +88,18 @@ formulas = [
 [[variable]]
 name = "revenue_from_contracts"
 statement = "income_statement"
-note = "Revenue from contracts with customers (ASC 606). For most companies it is the full revenue. For a bank, a utility or a lessor it is a part of revenue. SalesRevenueNet is the tag for the same line before 2018; it comes after the contract tags, because a later filing gives the earlier years again with the contract tag. After it come the other pre-2018 tags of a total line: SalesRevenueGoodsNet (a seller of goods) and SalesRevenueServicesNet (a seller of services) before 2018, then the total tags of an industry (refining, utility, hospital operator, landlord). No filer in the sp500 list has both the goods tag and the services tag with no total, so the goods tag never stands for a part. A tag after the first one never replaces a value: it fills a period that has no value."
+note = "Revenue from contract with customers (ASC 606). For most companies it is the full revenue. For a bank, a utility or a lessor it is a part of revenue. SalesRevenueNet is the tag for the same line before 2018; it comes after the contract tags, because a later filing gives the earlier years again with the contract tag."
 tags = [
     "us-gaap/RevenueFromContractWithCustomerExcludingAssessedTax",
     "us-gaap/RevenueFromContractWithCustomerIncludingAssessedTax",
     "us-gaap/SalesRevenueNet",
+]
+
+[[variable]]
+name = "revenue_total_pre2018"
+statement = "income_statement"
+note = "A revenue total tag of filers before ASC 606. Use it only when no total tag exists for the period: the formula of revenue reads it after revenue_from_contracts, thus it fills an empty period only. It never replaces a value. The tags are the goods tag (a seller of goods), the services tag (a seller of services), and the total tags of an industry (refining, utility, hospital operator). RealEstateRevenueNet is the total revenue of a lessor. Excise taxes can be in these totals before 2018 (docs/traps/2026-11-21-revenue-excise-before-2018.md)."
+tags = [
     "us-gaap/SalesRevenueGoodsNet",
     "us-gaap/SalesRevenueServicesNet",
     "us-gaap/RefiningAndMarketingRevenue",
