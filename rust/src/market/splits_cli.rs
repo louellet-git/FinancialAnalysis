@@ -4,7 +4,8 @@ use super::alpaca::{Client, Keys, DATA_BASE, KEY_ID_ENV, SECRET_ENV};
 use super::keys::scrub_all;
 use super::price_cli::{collect_tickers, parse};
 use super::price_source::{FetchError, Get};
-use super::splits::{self, Split};
+use super::splits::{self, read_company_facts, Split, SplitRow};
+use super::splits_rules::{builtin_corrections, rules_for_ticker, sec_data_from_json, Event};
 use super::{today_iso, write_atomic};
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -67,20 +68,54 @@ pub fn fetch(client: &Client, tickers: &[String], start: &str, end: &str, retry_
     Ok(all)
 }
 
-pub fn meta_json(tickers: &[String], start: &str, end: &str, run_date: &str, requests: usize, rows: &[Split]) -> serde_json::Value {
-    let mut counts: BTreeMap<&str, usize> = ["match", "no_sec_fact", "mismatch"].into_iter().map(|k| (k, 0)).collect();
-    for r in rows {
-        *counts.entry(r.sec_check.as_str()).or_insert(0) += 1;
+/// The table from the Alpaca rows: the rules of `splits_rules` for each ticker (the SEC facts come from `cache`).
+pub fn build(cache: &Path, tickers: &[String], alpaca: &[Split], start: &str, log: &mut dyn FnMut(&str)) -> (Vec<SplitRow>, Vec<Event>) {
+    let corrections = builtin_corrections();
+    let (mut rows, mut events) = (Vec::new(), Vec::new());
+    for (i, t) in tickers.iter().enumerate() {
+        let sec = read_company_facts(cache, t).map(|v| sec_data_from_json(&v)).unwrap_or_default();
+        let own: Vec<Split> = alpaca.iter().filter(|s| &s.ticker == t).cloned().collect();
+        let last = super::price_cache::last_close(cache, t).map(|l| l.date);
+        let (mut r, mut e) = rules_for_ticker(t, &own, &sec, last.as_deref(), start, &corrections);
+        rows.append(&mut r);
+        events.append(&mut e);
+        if (i + 1) % 500 == 0 {
+            log(&format!("rules: {}/{} tickers", i + 1, tickers.len()));
+        }
     }
+    splits::sort_dedupe_rows(&mut rows);
+    (rows, events)
+}
+
+/// The facts of a run for the record: the window (start, end), the run date, and the counts (requests, Alpaca rows).
+pub struct RunInfo<'a> {
+    pub start: &'a str,
+    pub end: &'a str,
+    pub run_date: &'a str,
+    pub requests: usize,
+    pub alpaca_rows: usize,
+}
+
+pub fn meta_json(tickers: &[String], run: &RunInfo, rows: &[SplitRow], events: &[Event]) -> serde_json::Value {
+    let mut counts: BTreeMap<&str, usize> = ["match", "no_sec_fact", "mismatch"].into_iter().map(|k| (k, 0)).collect();
+    let mut by_source: BTreeMap<&str, usize> = BTreeMap::new();
+    for r in rows {
+        *counts.entry(r.split.sec_check.as_str()).or_insert(0) += 1;
+        *by_source.entry(r.source.as_str()).or_insert(0) += 1;
+    }
+    let n = |w: &str| events.iter().filter(|e| e.what == w).count();
     serde_json::json!({
-        "source": "Alpaca corporate actions (GET /v1/corporate-actions, types forward_split,reverse_split); sec_check against us-gaap StockholdersEquityNoteStockSplitConversionRatio1",
-        "start": start, "end": end, "run_date": run_date, "requests": requests,
-        "ticker_count": tickers.len(), "tickers": tickers, "rows": rows.len(), "sec_check_counts": counts,
+        "source": "Alpaca corporate actions (GET /v1/corporate-actions, types forward_split,reverse_split), cleaned by the rules of splits_rules.rs against the SEC cover share count (dei:EntityCommonStockSharesOutstanding) and the tag us-gaap StockholdersEquityNoteStockSplitConversionRatio1",
+        "start": run.start, "end": run.end, "run_date": run.run_date, "requests": run.requests,
+        "ticker_count": tickers.len(), "tickers": tickers, "alpaca_rows": run.alpaca_rows, "rows": rows.len(),
+        "sec_check_counts": counts, "source_counts": by_source,
+        "dropped": n("dropped"), "added": n("added"), "corrected": n("corrected"), "correction_file": n("file"),
+        "pending": rows.iter().filter(|r| r.status == "pending").count(),
     })
 }
 
-/// Write the CSV and the record. Returns the paths text for the log.
-pub fn write_files(cache: &Path, rows: &[Split], meta: &serde_json::Value) -> Result<(), String> {
+/// Write the CSV and the record.
+pub fn write_files(cache: &Path, rows: &[SplitRow], meta: &serde_json::Value) -> Result<(), String> {
     let dir = cache.join("_corporate");
     std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     write_atomic(&dir.join("splits.csv"), &splits::to_csv(rows))?;
@@ -101,12 +136,18 @@ fn get(repo: &Path, rest: &[String]) -> Result<i32, String> {
     tickers.sort();
     eprintln!("fa: splits of {} ticker(s), {start} to {end}, into {}", tickers.len(), cache.join("_corporate").display());
     let started = Instant::now();
-    let mut rows = fetch(&c, &tickers, &start, &end, Duration::from_secs(5), &mut |m| eprintln!("fa: {m}"))?;
-    splits::sort_dedupe(&mut rows);
-    splits::apply_sec_check(&mut rows, &cache);
-    let meta = meta_json(&tickers, &start, &end, &today_iso(), c.requests(), &rows);
+    let mut alpaca = fetch(&c, &tickers, &start, &end, Duration::from_secs(5), &mut |m| eprintln!("fa: {m}"))?;
+    splits::sort_dedupe(&mut alpaca);
+    let (rows, events) = build(&cache, &tickers, &alpaca, &start, &mut |m| eprintln!("fa: {m}"));
+    for e in &events {
+        eprintln!("rule: {} {} {} factor {} {}: {}", e.what, e.ticker, e.ex_date, e.factor, if e.what == "added" { "(estimated ex date)" } else { "" }, e.why);
+    }
+    let meta = meta_json(&tickers, &RunInfo { start: &start, end: &end, run_date: &today_iso(), requests: c.requests(), alpaca_rows: alpaca.len() }, &rows, &events);
     write_files(&cache, &rows, &meta)?;
-    println!("splits: {} rows, {} requests, {:.0} s; sec_check {}", rows.len(), c.requests(), started.elapsed().as_secs_f64(), meta["sec_check_counts"]);
+    println!(
+        "splits: {} Alpaca rows, {} kept, {} dropped, {} corrected, {} added from cover steps, {} pending; {} requests, {:.0} s; sec_check {}",
+        alpaca.len(), rows.len(), meta["dropped"], meta["corrected"], meta["added"], meta["pending"], c.requests(), started.elapsed().as_secs_f64(), meta["sec_check_counts"]
+    );
     Ok(0)
 }
 
@@ -161,10 +202,22 @@ mod tests {
     }
 
     #[test]
+    fn a_429_stops_the_run() {
+        let get: Get = Box::new(|_| Err("HTTP 429 for https://data.alpaca.markets/v1/corporate-actions".to_string()));
+        let c = Client::new(Keys { id: "id-1234".into(), secret: "secret-1234".into() }, get);
+        let tickers: Vec<String> = (0..BATCH + 1).map(|i| format!("Z{i}")).collect();
+        let e = fetch(&c, &tickers, "2009-01-01", "2026-11-21", Duration::ZERO, &mut |_| {}).unwrap_err();
+        assert!(e.contains("refused"), "{e}");
+        assert_eq!(c.requests(), 1, "no retry and no second batch");
+    }
+
+    #[test]
     fn meta_counts() {
-        let rows = vec![Split { ticker: "A".into(), ex_date: "2020-01-02".into(), old_rate: 1.0, new_rate: 2.0, factor: 2.0, kind: "forward".into(), sec_check: "match".into() }];
-        let m = meta_json(&["A".to_string()], "2009-01-01", "2026-11-21", "2026-11-21", 1, &rows);
+        let sp = Split { ticker: "A".into(), ex_date: "2020-01-02".into(), old_rate: 1.0, new_rate: 2.0, factor: 2.0, kind: "forward".into(), sec_check: "match".into() };
+        let rows = vec![SplitRow::new(sp, splits::SRC_MATCH, "pending", false)];
+        let m = meta_json(&["A".to_string()], &RunInfo { start: "2009-01-01", end: "2026-11-21", run_date: "2026-11-21", requests: 1, alpaca_rows: 3 }, &rows, &[]);
         assert_eq!(m["sec_check_counts"]["match"], 1);
         assert_eq!(m["sec_check_counts"]["mismatch"], 0);
+        assert_eq!((m["pending"].as_u64(), m["alpaca_rows"].as_u64()), (Some(1), Some(3)));
     }
 }

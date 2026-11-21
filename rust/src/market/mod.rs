@@ -41,6 +41,7 @@ pub mod price_cli;
 pub mod price_source;
 pub mod prices;
 pub mod splits;
+pub mod splits_rules;
 pub mod splits_cli;
 
 use serde::de::{MapAccess, Visitor};
