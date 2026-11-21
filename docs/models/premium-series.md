@@ -86,6 +86,6 @@ of the model. The value is the value at the means, not the expected value.
 
 ## Review status
 Gate of the Head of Quality and Risk on 2026-11-21 (a993e68, then ee82144): PASS-WITH-NOTES. Point-in-time tests on
-main: `analysis/priors/data/premium_series_pit_main/result.md` (Quality: PASS-WITH-NOTES). Run of record of the S&P 100
-list from 2019-01-04: `analysis/priors/data/premium_series_sp100_2019_record_main-e2557b6/`, with the label "parameters
+main: `analysis/priors/data/premium_series_pit_main/result.md` (Quality: PASS-WITH-NOTES). Runs of record of the
+lists from 2019-01-04 (S&P 100 and S&P 500): `analysis/priors/data/premium_series_sp*_2019_record_main-e2557b6/`, with the label "parameters
 in-sample" (the parameter table is fitted on all years; no cut table exists).
