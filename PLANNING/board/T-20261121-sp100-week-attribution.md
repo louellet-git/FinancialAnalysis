@@ -89,3 +89,10 @@ regression on VIX, credit, real yield, NFCI) and 4.3 (forecast revisions: growth
 Checked by this head: in the week to 11-20 the implied premium rose for all 65 S&P 100 tickers with a value at both
 dates (+0.33 to +2.27 points, median +0.78). Daily collection of the estimates and of the SPX chain asked of the Head
 of Technology (no history exists: one snapshot each).
+
+**State (2026-11-21 about 17:55 UTC):** data defect 3 fixed by the Head of Technology (store 652dc28: IBM and JNJ on the
+Nasdaq split basis to 2026-11-20). Run on 652dc28: S&P 100 -9.42% (98 companies, no stale price); premium first: facts
++0.01, time +0.09, rates +4.93, premium -10.73, growth -1.68, no model -2.03. The data audit of Technology (PR 143,
+`T-20261121-data-audit`) found share counts by class wrong in the SEC cover tag for 10 S&P 100 names; `attribute`
+weights by the model count (the diluted weighted average of the last 10-K), and for 8 of them it looks right (label in
+the result); V and BRK-B have no count until `T-20261121-shares-by-class` merges (after the pit fix). Not final.
