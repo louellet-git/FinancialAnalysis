@@ -146,3 +146,4 @@
 | premium-series D1-D3 | 2026-11-21 | claude/premium-series (ee82144): head check; PASS-WITH-NOTES; the series PIT results (61fe8de) not yet reviewed | small (head only) | |
 | selftest golden | 2026-11-21 | claude/quant-selftest-golden (401d19e): code-reviewer (Haiku) changes requested; verdict REVISE, 3 MAJ (a mask hides counts; raw option quotes in an expected file; no timeout) | measured with the batch | |
 | Cboe stop | 2026-11-21 | claude/cboe-off (4b3548e): code-reviewer (Haiku) PASS (no left-over Cboe read; mutant caught); verdict PASS WITH ONE CONDITION (A-149 and HIDDEN-ASSUMPTIONS #92 in the same PR) | measured with the batch | |
+| board check | 2026-11-21 | claude/board-check (0604c1a): code-reviewer (Haiku) PASS (read-only proved; 2 MIN on check 7); verdict PASS-WITH-NOTES | measured with the batch | |
