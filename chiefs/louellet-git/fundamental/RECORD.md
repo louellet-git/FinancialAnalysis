@@ -116,3 +116,7 @@ Done: ticket `T-20261121-dcf-engine-integration` (one curve rule, a per-ticker w
 ## 2026-11-21 about 20:10 UTC (chat)
 Words: "Can you draw me up a visual html to describe via mermaid chart? of the overall process, less words more diagrams and visuals" Done: artifact https://claude.ai/artifact/6edSJhjvtqoedfNZ1VA3uC (private).
 Words: "Hm, I think that the implied premium/implied growth should also be part of the attribution engine." Done: design change on `T-20261121-premium-company-part`: `fa dcf attribute` splits the premium and the growth plug into a common part and a company part (engine steps that add exactly), with an 8-K group line.
+
+## 2026-11-21 about 20:30 UTC (chat)
+Words: "For attribution, there are numbers in the valuation that are a direct result of the math, but there are some that are implied. The implied components require the view of the economists." and "The economists require their own engine in that regard."
+Done: design change 2 on `T-20261121-premium-company-part`: the common change of the premium and the growth comes from an Economics engine (owner: the Head of Economics) through a file interface; the math parts stay in `fa dcf attribute`. Request and interface sent to the Head of Economics.

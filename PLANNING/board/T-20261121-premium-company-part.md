@@ -56,3 +56,13 @@ the attribution engine"). Written before any code or run of it.** The split goes
    g_growth_company_pct at the end; the CSV of `fa dcf premium-series` does not change.
 Tests: the two parts add to the plug; c = 0 gives company = plug; a hand-made list with a known median; the group line of
 the 8-K names adds to the sum of their rows.
+
+**Design change 2 (owner, 2026-11-21 about 20:30 UTC: "For attribution, there are numbers in the valuation that are a
+direct result of the math, but there are some that are implied. The implied components require the view of the
+economists." and "The economists require their own engine in that regard.").** The math parts (facts, time, rates) stay in
+`fa dcf attribute`. The implied parts (premium, growth) take their common change from the view of an Economics engine
+(owner: the Head of Economics), read as a file: `--common file --common-file F` (header `date,erp_change,growth_change,
+source`, decimals, the change over the window, matched on D2). The plug then splits into "common (economics view)" and
+"company (residual)". The list median and the value-weighted mean stay as measured comparators. Condition: the inputs of
+the economics view never come from the prices that the attribution explains (else the split is circular). Dependency: the
+Economics engine and its first file (asked 2026-11-21, answer open).
