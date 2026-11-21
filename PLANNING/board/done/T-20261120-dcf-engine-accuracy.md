@@ -2,11 +2,12 @@
 id: T-20261120-dcf-engine-accuracy
 title: Measure the weak points of the stochastic DCF engine and correct them one at a time
 area: engine
-status: review
+status: done
 owner: louellet-git
 head: fundamental
 order: 1.3
 branch: claude/dcf-engine-accuracy
+merged: 81
 created: 2026-11-20
 acceptance: Each part has a measurement before the change and after it (the point-in-time test, or the standard error of the P50), a test with a fixed answer, and a record of the choice; a part that gives no measured gain is not merged.
 ---

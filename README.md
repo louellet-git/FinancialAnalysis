@@ -133,6 +133,7 @@ fa dcf assumptions [--md]   # the register of the assumptions of the automatic m
 fa dcf assumptions --effect K=V[,K=V] --tickers-file F --cache DIR --as-of D [--cut Y] [--half H]   # the screen and the point-in-time test with the default rules and with the rules: one block for a record
 fa dcf returns [--cache DIR] [--rules K=V,..] [--lag DAYS] [--out FILE]   # the point-in-time model value (P50 / price) against the later 1-year and 3-year returns
 fa dcf screen ... --implied [--rules K=V,..]      # also the cost of capital that gives the price; --rules: an alternative rule (list: fa dcf auto --help)
+fa dcf implied [--tickers-file FILE | TICKER ...] [--cache DIR] [--as-of D] [--groups FILE] [--prices FILE] [--rules K=V,..] [--out FILE] [--jobs N]   # what the price implies: cost of capital, growth, margin; medians by size, sector, industry; the premium of the whole list; no random part
 fa prices get IBM MSFT [--tickers-file rust/mapcheck/universe/sp500.txt] [--source tiingo|yahoo|nasdaq] [--full]   # price history into data/raw (network)
 fa prices show IBM [--from D] [--to D]            # rows of the cache
 fa prices last IBM JNJ                            # last close, date, source; warns when older than 5 weekdays
@@ -452,8 +453,10 @@ cargo build --release --manifest-path rust/Cargo.toml # one time
 rust/target/release/fa trade fetch                    # download the bars (Yahoo) into data/raw/trading/
 rust/target/release/fa prices intraday SPY --interval 5m --from 2020-01-01   # 5-minute bars since a date (Alpaca, free key)
 rust/target/release/fa options history SPY --from 2024-03-01 --to 2024-03-29 # option surface of past dates from daily closes (Alpaca)
-rust/target/release/fa options check IBM --date 2026-11-19 [--rate R]        # no-arbitrage checks of a stored chain at executable prices (bid and ask); upper parity bound only; without --rate the Treasury curve can be downloaded (one file), give --rate R for no network
+rust/target/release/fa options check IBM --date 2026-11-19 [--rate R] [--time HHMM] [--min-size USD] [--iv-mark POINTS] [--compare D2] [--otm | --all-strikes]      # no-arbitrage checks of a stored chain at executable prices (bid and ask); upper parity bound only; without --rate the Treasury curve can be downloaded (one file), give --rate R for no network
 rust/target/release/fa options snapshot SPY --source alpaca                  # option chain of today (Alpaca, free key); SPX and VIX too (both roots; level and volatility from put-call parity)
+rust/target/release/fa options archive [SPX SPY VIX] [--keep-days N] [--min-share X] [--force]    # copy the live Alpaca chains with the time (fa options snapshot --source alpaca skips when a live Alpaca file of today exists unless --refresh; file <date>T<hhmm>.json and a gzip copy), refuse a half chain (below 80% of the last Alpaca file; --force or --min-share X to take a real shrink), and fetch the Cboe VX settlement file; readers take --date D (last file of the date) and --time HHMM
+rust/target/release/fa vol fit heston --symbol IBM --date 2026-11-19  # fit Heston (or bates) to a stored snapshot with bid and ask; error by expiry in vol points
 rust/target/release/fa trade backtest                 # all bots, leaderboard (Rust, 1 second)
 rust/target/release/fa trade backtest --bot s14b_spy_trend_calls -v
 rust/target/release/fa trade backtest --max-risk 250  # larger risk for each trade

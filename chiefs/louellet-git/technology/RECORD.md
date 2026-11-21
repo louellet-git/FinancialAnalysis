@@ -114,3 +114,24 @@ Done: `trading/journal/README.md` (one write-up for each trade, at most 2 pages,
 ## 2026-11-20 23:49 UTC (chat)
 Words: "Great, that works. We need a way that you can get permission requests to the user once it's filtered. Lean method? I don't want a bunch of questions buried in the session."
 Done: `chiefs/ORIENTATION.md`, section 5, "Requests for the person": a refused command or a decision of the person goes to the Head of Technology, which filters it; what stays becomes one board ticket with `area: ask` and `head: owner`, and one push notification for each batch. First ask: `T-20261120-ask-rates-appendix-run`.
+
+## 2026-11-20 23:51 UTC (chat)
+Words: "Also the question should be delivered in clear terms"
+Done: the ask form in `chiefs/ORIENTATION.md`, section 5 (Question, Why it matters, Choices, Recommendation, How to answer; plain words, no internal names); the three open asks written again in that form; the push names each question in plain words.
+
+## 2026-11-20 23:52 UTC (chat)
+Words: "I need the question as a yes/no from the sessions to my phone"
+Done: an ask is a yes/no question; the session where the person answers pushes it to the phone ("Yes or no: ...? Recommended: ..."). `chiefs/ORIENTATION.md`, section 5; the three open asks written again.
+
+## 2026-11-21 00:08 UTC (chat)
+Words: "I need the question as an actual question I click y/n for, lean"
+Done: `chiefs/ORIENTATION.md`, section 5: the session where the person answers shows the question dialog (`AskUserQuestion`) with "Yes" and "No", plus a push notification to open the session.
+
+## 2026-11-21 00:11 UTC (question dialog)
+Question: "May one automatic job save the day's option prices each trading day (about 3:45 pm New York time), as a test for 20 trading days?"
+Words: "Yes (Recommended)"
+Done: the scheduled task "Daily option price save (20-day test)" (15:27 New York time, market days; SPX, SPY, VIX chains to the store; stops after 20 days). Ticket moved to `PLANNING/board/done/`.
+
+## 2026-11-21 00:37 UTC (chat)
+Words: "Is the lean method up to date? Can you move to a new repo called the-heads. I created it so it'll be separate from the chiefs."
+Done: it was not up to date (no model permission, no ask flow, no board area `ask`, no write-up row). `louellet-git/the-heads` has the general system with these rules (commit 6264abb). `lean/` is removed from `louellet-git/chiefs`, and its README points to the new repo (chiefs pull request 35).
