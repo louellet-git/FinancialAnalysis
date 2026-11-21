@@ -17,6 +17,7 @@
 
 pub mod dcf;
 pub mod board_check;
+pub mod usage;
 pub mod bonds;
 pub mod curve;
 pub mod prices;
