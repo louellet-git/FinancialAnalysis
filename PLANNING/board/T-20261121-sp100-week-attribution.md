@@ -174,3 +174,14 @@ leaving something not yet proven isn't acceptable, same w the others"; "Ensure t
    fell or stayed flat each day. 11-20: a chip basket -12.8%, defensive names +1.0%; a broad risk-off day and a sector event
    both fit; the data does not show the cause. Calendar: FOMC minutes 11-18; Fed speeches 11-19 and 11-20; no major release
    found for 11-20. To settle the cause: news, intraday prices, option data or VIX of 11-20; none is in the store.
+
+**Review of the person on the page of 7e19e33 (2026-11-21 19:52 UTC, relayed by the Head of Staff).** His words are in
+`chiefs/louellet-git/fundamental/RECORD.md`; the 9 style points are in `chiefs/louellet-git/staff/memory/owner-report-style.md`.
+The next version is a NEW file, `analysis/priors/sp10_week_page_v2_2026-11-21.md` (one page in the PDF print; the file of
+7e19e33 stays frozen for the audit of its numbers). State of the new file (2026-11-21 20:10 UTC): the title, Table 1 (the
+valuation blocks, S&P 10 and S&P 100), Table 2 (each stock by day, against the equal-weight market, the needed growth),
+the five patterns, Table 3 (what the prices imply after the fall) are written. OPEN: the section "Friday 2026-11-20 and
+the time after" is a placeholder; it waits for the text of the Head of Economics (the reason that the market gives, its
+test against our data, what the market implies after). Then: the PDF, then the Head of Staff, then the person. The numbers
+of the new file are the numbers of the frozen page and of the preliminary results; the audit of 7e19e33 applies to them.
+The S&P 100 part still waits for the review of the person.

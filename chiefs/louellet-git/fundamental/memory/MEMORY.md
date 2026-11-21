@@ -35,7 +35,7 @@ person decided. Keep this file below 60 lines. Started 2026-11-20. Dream pass: 2
 - Preliminary results first (chat and a results file); a report only after his go-ahead; conclusion inside 3 pages.
 - Macro "why" questions go to the Head of Economics; give Luc that answer with its author.
 - Each head asks "does it make sense?" before a result goes to him.
-- No "possible reason, not proven": each reason is a claim with its test; the result is proven, refuted, or "tested, no cause found".
+- Reports for him: the 9 points of `chiefs/louellet-git/staff/memory/owner-report-style.md` (title and subtitle, no status block, "Table N" with one line, "consistent with" not "proven", no "no cause found": Economics gives the market reason).
 - Each document for him has a PDF (`analysis/priors/pdf/`; pandoc to HTML with `style.css`, then a headless Chromium print).
 - What is repeatable goes into the correct engine (table on `T-20261121-dcf-engine-integration`).
 - Each pause puts the state on the board. A data problem is fixed by its owner (Technology), not left out.
