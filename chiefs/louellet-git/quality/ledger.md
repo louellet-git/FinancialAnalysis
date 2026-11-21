@@ -147,3 +147,5 @@
 | selftest golden | 2026-11-21 | claude/quant-selftest-golden (401d19e): code-reviewer (Haiku) changes requested; verdict REVISE, 3 MAJ (a mask hides counts; raw option quotes in an expected file; no timeout) | measured with the batch | |
 | Cboe stop | 2026-11-21 | claude/cboe-off (4b3548e): code-reviewer (Haiku) PASS (no left-over Cboe read; mutant caught); verdict PASS WITH ONE CONDITION (A-149 and HIDDEN-ASSUMPTIONS #92 in the same PR) | measured with the batch | |
 | board check | 2026-11-21 | claude/board-check (0604c1a): code-reviewer (Haiku) PASS (read-only proved; 2 MIN on check 7); verdict PASS-WITH-NOTES | measured with the batch | |
+| selftest golden cycle 2 | 2026-11-21 | claude/quant-selftest-golden (8579817): head check of G1-G3; PASS-WITH-NOTES | small (head only) | |
+| attribution-reality gate | 2026-11-21 | claude/attribution-reality (a0e2480, new part ee82144..a0e2480): code-reviewer + model-validator started | | week report, first in the work order |
