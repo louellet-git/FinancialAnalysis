@@ -193,3 +193,11 @@ with no cause found" was wrong on two points and is replaced. The words went to 
 Research (the page) and to the Head of Economics (the reason for the chip fall of 11-20 and the view after).
 Then: "Also this is not a title: 'The S&P 10 in the week to 20261120 does the explanation hold for each
 stock?' it's a small sentence. A title and a subtitle are required." Done: point 8 of the style page.
+
+## 2026-11-21 about 19:56 UTC (chat)
+Words: "Great, in combination I want a similar report for S&P10 but that shows me the breakdown of the
+valuation, not of the individual days of the weeks. It should show what the market valuation movement
+breaks into based on actual vs implied from the market."
+Done: the exact words went to the Head of Fundamental Research. Two pages for the S&P 10 now: (1) the week
+and each stock, with the Economics section; (2) the valuation split, actual against implied. Both come to
+me, then to the person. The S&P 100 part waits.
