@@ -11,7 +11,7 @@ story: E6.S5
 branch: claude/usage-log
 created: 2026-11-21
 acceptance: (Changed 2026-11-21, owner word: local only.) On request, `fa usage record && fa usage show` prints for each head session the agents that it started (by type), the skills that it used, and its tokens (input, output, cache), from data that a hook wrote; the hook adds less than 2 seconds to a turn, never stops a turn, and writes no text of the conversation.
-merged: pull request PRNUM (branch claude/usage-log)
+merged: pull request 209 (branch claude/usage-log)
 ---
 Owner word, 2026-11-21 (through the Head of Staff): make sure that the heads use their teams and their skills,
 and watch the tokens, with a script that "just does what it has to do". No head has to remember it.
