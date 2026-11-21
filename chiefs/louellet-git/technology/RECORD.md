@@ -172,3 +172,8 @@ Done: `chiefs/ORIENTATION.md`, section 3, "Parallel work" (a permission: indepen
 ## 2026-11-21 15:02 UTC (chat)
 Words: "Remove out the not a duty part, and make the rule lean so that it's as lean as other models"
 Done: "Parallel work" is two lines, with no "not a duty" sentence, here and in `louellet-git/the-heads`.
+
+## 2026-11-21 (dialog)
+Words: "Yes (Recommended)" to: may I move the FRED files out of the public store into local copies that each head gets with one command?
+Then: "Would it help if I just made the repo private instead?" Answer: only part of the way (the terms also prohibit storage and giving the data to a second person; private repos use paid Actions minutes; each session needs access). The plan stays.
+Done: ticket `T-20261121-fred-local`.
