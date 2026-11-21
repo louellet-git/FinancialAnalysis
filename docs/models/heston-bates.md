@@ -3,6 +3,9 @@
 Updated: 2026-11-20. Commit: not yet made.
 
 ## Purpose
+WARNING: the fitted parameters are calibrated values of option prices. They are not measurements of the company.
+Do not use them as an input of a DCF or of a forecast.
+
 The model prices European options from a characteristic function and fits a smile
 surface to the bid and ask of one stored option snapshot. It is the baseline for the later
 steps of `analysis/priors/volatility_study_2026-11-20.md`. A model price is not a market
@@ -31,24 +34,32 @@ price. The fit gives parameters, and the error of each expiry in volatility poin
 6. The loss is the sum of squares of `(model price - mid) / (vega * spread)`. Vega is the
    Black-76 vega at the mid volatility. The spread has a floor of 0.05 vol points.
 7. Levenberg-Marquardt with a numerical Jacobian, bounds by clamping, 20 random starts
-   (seed 7). LM refines the start with the lowest loss.
+   (seed 7). Stage 1: LM runs 5 iterations from each of the 3 starts with the lowest loss. Stage 2: the best one goes on
+   to 60 iterations. LM ends as "converged" (the last gain is 1e-10 of the loss or less, or the loss is under 1e-12),
+   "iteration cap" (not converged) or "damping cap" (no step lowers the loss).
 8. The reported error is the model implied volatility minus the market mid volatility.
 
 ## Outputs
-Parameters, the Feller ratio `2 kappa theta / xi^2` (under 1: `v` can reach 0), the error
-by expiry in vol points (root mean square and largest), and the run time.
+Parameters, the status of the fit, a mark "at bound" for each parameter within 0.1% of its range from a bound, the losses of
+the 3 refined starts (their spread), the Feller ratio `2 kappa theta / xi^2` (under 1: `v` can reach 0),
+the error by expiry in vol points (root mean square and largest), and the run time.
+
+A bound hit means that the quotes do not identify the parameter: do not read the parameters. A fit that is not "converged"
+is not a result. Bates on a thin chain is not unique: the 3 refined starts can end at different losses, and a new seed
+gives other parameters (IBM, 40 quotes: losses 2.8 to 3.4 for seeds 1 to 5). Heston and Bates are one-factor models and
+the jump parameters of Bates are weak on a short or thin chain.
 
 ## Assumptions
 No record in `docs/assumptions/` has a form for these choices. They are listed here.
 
 | Name | Value | One line |
 |---|---|---|
-| Bounds | kappa 0.05 to 20, xi 0.05 to 3, rho -0.99 to 0 | From the ticket. `rho` is not above 0 (fits stocks and SPX, not VIX). |
-| Bounds, other | v0 and theta 1e-4 to 4, lambda 0 to 10, mu_j -1 to 0.5, delta_j 0.01 to 1 | Set by the author. |
+| Bounds | kappa 0.05 to 20, xi 0.05 to 3, rho -0.99 to 0 | From the ticket, an author choice with no study. `rho` is not above 0 (fits stocks and SPX, not VIX). |
+| Bounds, other | v0 and theta 1e-4 to 4, lambda 0 to 10, mu_j -1 to 0.5, delta_j 0.01 to 1 | Author choice, no study. |
 | Spread filter | 1 vol point (5 for VIX) | From the ticket. `--max-spread` changes it. |
-| Spread floor | 0.05 vol points | Stops one tight quote from taking all the weight. |
-| Forward | 5 strikes nearest to the parity strike | From the ticket. Own code in `chain.rs`: the shared helper `forward_from_parity_blind` uses 3. |
-| Refined starts | 1 of 20 | The ticket does not say. Set for speed. |
+| Spread floor | 0.05 vol points | Author choice, no study. It stops one tight quote from taking all the weight. |
+| Forward | 5 strikes nearest to the parity strike | From the ticket. `chain.rs` calls `forward_from_parity_blind_n` of `option_iv.rs`; `forward_from_parity_blind` keeps 3. |
+| Refined starts | 3 of 20, 5 iterations each, then the best one | The ticket does not say. Set for speed. |
 | Time | Calendar days / 365 | No clock time in the snapshot. |
 
 ## Checks of the price
@@ -56,8 +67,9 @@ No record in `docs/assumptions/` has a form for these choices. They are listed h
   T = 1 gives 5.785155434, and the published value is 5.785155450 (difference 1.6e-8).
   The converged integral does not move by more than 1e-11 with a finer grid. The characteristic
   function equals the solution of the Riccati equations (RK4) to 1e-12, and `xi = 1e-12` gives
-  Black-76 to 1e-10. So the published T = 1 value is likely less exact than its digits. The test
-  uses 2e-8 for T = 1 and 1e-8 for T = 10. The owner decides if this is accepted.
+  Black-76 to 1e-10. An independent Gil-Pelaez price of the validator gives 5.785155434376, the same as this code. So the
+  published T = 1 value is 1.56e-8 high. The tests use 2e-8 against the published T = 1 value, 1e-10 against 5.785155434376,
+  and 1e-8 for T = 10. The owner decides if this is accepted.
 - Put-call parity holds by construction of the formula. The Gil-Pelaez put is a separate check (1e-9).
 
 ## Limits
@@ -66,7 +78,13 @@ No record in `docs/assumptions/` has a form for these choices. They are listed h
 - A model with one volatility factor fits one expiry well and the term structure badly.
 - The filter of 1 vol point leaves few quotes on a stock chain (IBM, 2026-11-19: 40 of 1700).
 - Alpaca closes have no bid and ask: do not fit them with this loss.
-- Speed (4 cores, synthetic surface of 40 expiries and 11,000 quotes): the Heston fit takes 2.6 s and the Bates fit takes 3.7 s. One expiry of 101 strikes takes 0.8 to 1.2 ms on one thread.
+- Speed. The machine has 4 cores and was shared: the load average was 5 to 7 during the runs below, so the times are
+  upper bounds. The acceptance of 5 s is for Heston only. One expiry of 101 strikes takes 0.8 to 1.3 ms on one thread.
+  Synthetic surface of 40 expiries and 11,000 quotes: Heston 7.7 to 8.6 s and Bates 10.5 to 15 s under that load (22 to 28
+  LM iterations). With one refined start the Heston fit took 2.6 s on a quiet machine. SPX, 2026-11-20 (8141 quotes, 53 series):
+  Heston 11.1 s wall and 20 s CPU (about 5 s on 4 free cores), Bates 46 s wall. The 5 s target is not met under load.
+- IBM, 2026-11-19: the 1 vol point filter keeps LEAPS only (4 series, 393 to 757 days). The short end is absent. The fit says
+  nothing about it. The bias of the European model for early exercise is not sized.
 
 ## Code and command
 | What | Path or command |

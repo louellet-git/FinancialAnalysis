@@ -104,6 +104,9 @@ pub fn lewis_j_acc<M: CharModel>(m: &M, t: f64, ks: &[f64], acc: Accuracy) -> Ve
         let b = a + w;
         let mag = adapt(m, t, a, b, ks, &sentinels, acc.panel, 0, &mut out);
         a = b;
+        if mag.is_nan() {
+            break;
+        }
         if a > 2.0 && mag < acc.tail {
             break;
         }
@@ -116,6 +119,11 @@ pub fn lewis_j_acc<M: CharModel>(m: &M, t: f64, ks: &[f64], acc: Accuracy) -> Ve
 #[allow(clippy::too_many_arguments)]
 fn adapt<M: CharModel>(m: &M, t: f64, a: f64, b: f64, ks: &[f64], sentinels: &[f64], tol: f64, depth: usize, out: &mut [f64]) -> f64 {
     let whole = panel_nodes(m, t, a, b);
+    if whole.iter().any(|(_, g)| !(g.re.is_finite() && g.im.is_finite())) {
+        // A non-finite characteristic function: the result is NaN, and the caller stops on it.
+        out.iter_mut().for_each(|o| *o = f64::NAN);
+        return f64::NAN;
+    }
     let mag = whole.iter().map(|(_, g)| g.abs()).fold(0.0, f64::max);
     let mid = 0.5 * (a + b);
     let (left, right) = (panel_nodes(m, t, a, mid), panel_nodes(m, t, mid, b));
@@ -129,7 +137,11 @@ fn adapt<M: CharModel>(m: &M, t: f64, a: f64, b: f64, ks: &[f64], sentinels: &[f
     }
     let m1 = adapt(m, t, a, mid, ks, sentinels, tol, depth + 1, out);
     let m2 = adapt(m, t, mid, b, ks, sentinels, tol, depth + 1, out);
-    m1.max(m2)
+    if m1.is_nan() || m2.is_nan() {
+        f64::NAN
+    } else {
+        m1.max(m2)
+    }
 }
 
 /// Call price (without `df`) of strike `K`: `F - sqrt(F K) J`.

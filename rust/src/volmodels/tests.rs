@@ -1,7 +1,7 @@
 //! Tests with fixed answers (ticket T-20261120-vol-1-heston-bates).
 
 use super::base::*;
-use super::calib::{fit, FitOptions};
+use super::calib::{at_bound, fit, levenberg_marquardt, FitOptions, LmStatus};
 use super::chain::{build, Filters};
 use super::cx::Cx;
 use super::fourier::*;
@@ -27,6 +27,8 @@ fn t1_published_values_of_chan() {
     println!("T=1: {c1:.9} (error {:.2e}); T=10: {c10:.9} (error {:.2e})", c1 - 5.785155450, c10 - 22.318945791);
     // The published T=1 value differs from the converged integral by 1.6e-8 (see the model document, "Checks of the price").
     assert!((c1 - 5.785155450).abs() < 2e-8, "T=1 {c1}");
+    // The converged value (an independent Gil-Pelaez price of the validator gives the same 12 digits).
+    assert!((c1 - 5.785155434376).abs() < 1e-10, "T=1 {c1}");
     assert!((c10 - 22.318945791).abs() < 1e-8, "T=10 {c10}");
 }
 
@@ -204,7 +206,7 @@ fn t6_synthetic_surface_is_recovered() {
     let truth = Heston { v0: 0.04, theta: 0.05, kappa: 2.0, xi: 0.5, rho: -0.7 };
     let set = QuoteSet { series: [7, 14, 30, 60, 90, 180, 270, 365, 540, 730].iter().map(|&d| synthetic_series(&truth, 100.0, d, 8)).collect() };
     let started = std::time::Instant::now();
-    let r = fit::<Heston>(&set, &FitOptions::default());
+    let r = fit::<Heston>(&set, &FitOptions::default()).unwrap();
     let secs = started.elapsed().as_secs_f64();
     let errs = iv_errors(&r.model, &set);
     let worst = errs.iter().map(|e| e.max_points).fold(0.0, f64::max);
@@ -297,7 +299,8 @@ fn cf_matches_the_riccati_equations() {
     }
 }
 
-/// Speed of the pricer and of a full fit (run: `cargo test --release ... speed -- --ignored --nocapture`). It prints; it asserts nothing.
+/// Speed of the pricer and of a full fit (run: `cargo test --manifest-path rust/Cargo.toml --lib volmodels::tests::speed -- --ignored --nocapture`).
+/// It prints times and asserts nothing: it is a report, not a check.
 #[test]
 #[ignore = "timing report, not a check"]
 fn speed_report() {
@@ -314,11 +317,48 @@ fn speed_report() {
     let days: Vec<i64> = (0..40).map(|i| 5 + 18 * i).collect();
     let set = QuoteSet { series: days.iter().map(|&d| synthetic_series(&truth, 100.0, d, 137)).collect() };
     let started = std::time::Instant::now();
-    let r = fit::<Heston>(&set, &FitOptions::default());
+    let r = fit::<Heston>(&set, &FitOptions::default()).unwrap();
     println!("heston fit, {} series, {} quotes: {:.2} s, {} threads, LM iterations {}, rho {:.4}", set.series.len(), set.n_quotes(), started.elapsed().as_secs_f64(), rayon::current_num_threads(), r.iterations, r.model.rho);
     let bates = Bates { heston: truth, lambda: 0.3, mu_j: -0.1, delta_j: 0.1 };
     let set = QuoteSet { series: days.iter().map(|&d| synthetic_series(&bates, 100.0, d, 137)).collect() };
     let started = std::time::Instant::now();
-    let r = fit::<Bates>(&set, &FitOptions::default());
+    let r = fit::<Bates>(&set, &FitOptions::default()).unwrap();
     println!("bates fit, {} series, {} quotes: {:.2} s, LM iterations {}, {:?}", set.series.len(), set.n_quotes(), started.elapsed().as_secs_f64(), r.iterations, r.model);
+}
+
+#[test]
+fn lm_reports_a_run_that_did_not_converge() {
+    let truth = Heston { v0: 0.04, theta: 0.05, kappa: 2.0, xi: 0.5, rho: -0.7 };
+    let set = QuoteSet { series: [30, 90, 365].iter().map(|&d| synthetic_series(&truth, 100.0, d, 8)).collect() };
+    let far = Heston { v0: 0.01, theta: 0.2, kappa: 8.0, xi: 1.5, rho: -0.2 }.to_vec();
+    let (_, _, iters, status) = levenberg_marquardt::<Heston>(&set, &far, 2);
+    assert_eq!((iters, status), (2, LmStatus::IterationCap), "two iterations do not converge from a far start");
+    assert_ne!(status, LmStatus::Converged);
+    let (_, f, _, status) = levenberg_marquardt::<Heston>(&set, &far, 60);
+    assert_eq!(status, LmStatus::Converged, "loss {f}");
+}
+
+#[test]
+fn bound_marks_and_non_finite_cf() {
+    let b = Heston::bounds();
+    assert_eq!(at_bound(&[0.04, 0.05, 20.0, 1.0, -0.5], &b), vec![false, false, true, false, false]);
+    assert_eq!(at_bound(&[0.04, 0.05, 2.0, 3.0, 0.0], &b), vec![false, false, false, true, true]);
+    let bad = Heston { v0: 0.04, theta: 0.05, kappa: f64::NAN, xi: 0.5, rho: -0.5 };
+    assert!(lewis_j(&bad, 1.0, &[0.0, 0.1]).iter().all(|v| v.is_nan()), "a NaN characteristic function gives NaN, not a number");
+    let set = QuoteSet { series: vec![synthetic_series(&CHAN, 100.0, 90, 8)] };
+    assert!(fit::<Heston>(&set, &FitOptions::default()).is_ok());
+    assert!(loss(&bad, &set).is_nan());
+}
+
+#[test]
+fn bates_surface_is_recovered_with_a_loose_tolerance() {
+    let truth = Bates { heston: Heston { v0: 0.04, theta: 0.05, kappa: 2.0, xi: 0.5, rho: -0.7 }, lambda: 0.3, mu_j: -0.1, delta_j: 0.1 };
+    let set = QuoteSet { series: [7, 14, 30, 60, 90, 180, 270, 365, 540, 730].iter().map(|&d| synthetic_series(&truth, 100.0, d, 8)).collect() };
+    let r = fit::<Bates>(&set, &FitOptions::default()).unwrap();
+    let worst = iv_errors(&r.model, &set).iter().map(|e| e.max_points).fold(0.0, f64::max);
+    println!("bates recovery: {:?}, worst {worst:.5} vol points, {:?}", r.model, r.status);
+    assert!(worst < 0.05, "worst error {worst} vol points");
+    for (name, got, want) in [("v0", r.model.heston.v0, 0.04), ("theta", r.model.heston.theta, 0.05), ("kappa", r.model.heston.kappa, 2.0), ("xi", r.model.heston.xi, 0.5), ("rho", r.model.heston.rho, -0.7), ("lambda", r.model.lambda, 0.3), ("mu_j", r.model.mu_j, -0.1), ("delta_j", r.model.delta_j, 0.1)] {
+        assert!(((got - want) / want).abs() < 0.05, "{name}: {got} against {want}");
+    }
 }

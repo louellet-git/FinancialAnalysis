@@ -6,6 +6,7 @@
 
 use super::base::{quote_from_prices, QuoteSet, Series};
 use crate::market::option_history::{occ_root, RateFn};
+use crate::market::option_iv::forward_from_parity_blind_n;
 use crate::market::options::OptionChainSnapshot;
 use crate::trading::calendar::parse_iso;
 use std::collections::BTreeMap;
@@ -53,21 +54,6 @@ impl Counts {
 /// Strikes of the median of the forward.
 pub const PARITY_STRIKES: usize = 5;
 
-/// The forward of a series: the strike where call and put mids are nearest is the guess; the median of `K + (C - P) / df`
-/// over the `PARITY_STRIKES` strikes nearest to it (with both mids) is the forward. `pairs` are `(strike, call mid, put mid)`.
-fn forward_from_parity_5(pairs: &[(f64, f64, f64)], df: f64) -> Option<f64> {
-    let ok: Vec<&(f64, f64, f64)> = pairs.iter().filter(|p| p.0 > 0.0 && p.1 > 0.0 && p.2 > 0.0).collect();
-    let guess = ok.iter().min_by(|a, b| (a.1 - a.2).abs().total_cmp(&(b.1 - b.2).abs()))?.0;
-    let mut near = ok;
-    near.sort_by(|a, b| (a.0 - guess).abs().total_cmp(&(b.0 - guess).abs()));
-    near.truncate(PARITY_STRIKES);
-    let mut f: Vec<f64> = near.iter().map(|(k, c, p)| k + (c - p) / df).collect();
-    f.sort_by(f64::total_cmp);
-    let n = f.len();
-    let median = if n % 2 == 1 { f[n / 2] } else { 0.5 * (f[n / 2 - 1] + f[n / 2]) };
-    (median > 0.5 * guess && median < 2.0 * guess).then_some(median)
-}
-
 pub fn build(snap: &OptionChainSnapshot, rate: RateFn, f: &Filters) -> Result<(QuoteSet, Counts), String> {
     let day = parse_iso(&snap.snapshot_date).ok_or_else(|| format!("bad date {}", snap.snapshot_date))?;
     let mut by_series: BTreeMap<(String, String), Vec<usize>> = BTreeMap::new();
@@ -105,7 +91,7 @@ pub fn build(snap: &OptionChainSnapshot, rate: RateFn, f: &Filters) -> Result<(Q
             }
         }
         let list: Vec<(f64, f64, f64)> = pairs.values().copied().collect();
-        let Some(forward) = forward_from_parity_5(&list, df) else {
+        let Some(forward) = forward_from_parity_blind_n(&list, df, PARITY_STRIKES) else {
             c.no_forward += idx.len();
             continue;
         };

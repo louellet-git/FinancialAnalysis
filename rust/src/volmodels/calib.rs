@@ -8,6 +8,9 @@ use super::base::{loss, residuals, CharModel, QuoteSet};
 use crate::ratemodels::rng::Rng;
 use rayon::prelude::*;
 
+/// Iterations of stage 1 of `fit` for each refined start.
+pub const STAGE1_ITER: usize = 5;
+
 #[derive(Debug, Clone)]
 pub struct FitOptions {
     /// The number of random starts (the first one is the plain start).
@@ -20,7 +23,7 @@ pub struct FitOptions {
 
 impl Default for FitOptions {
     fn default() -> Self {
-        FitOptions { starts: 20, refine: 1, seed: 7, max_iter: 60 }
+        FitOptions { starts: 20, refine: 3, seed: 7, max_iter: 60 }
     }
 }
 
@@ -32,6 +35,36 @@ pub struct FitResult<M> {
     pub iterations: usize,
     /// The loss of each refined start, after LM.
     pub refined_losses: Vec<f64>,
+    /// How LM ended for the best start.
+    pub status: LmStatus,
+    /// How LM ended for each refined start.
+    pub statuses: Vec<LmStatus>,
+}
+
+/// How a Levenberg-Marquardt run ended.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LmStatus {
+    /// The last accepted step lowered the loss by a relative 1e-10 or less.
+    Converged,
+    /// `max_iter` iterations, and the loss still fell.
+    IterationCap,
+    /// No step lowered the loss, even with the damping at its cap (a bound or a flat valley).
+    LambdaCap,
+}
+
+impl LmStatus {
+    pub fn text(self) -> &'static str {
+        match self {
+            LmStatus::Converged => "converged",
+            LmStatus::IterationCap => "NOT converged: iteration cap",
+            LmStatus::LambdaCap => "stopped: no step lowers the loss (damping cap)",
+        }
+    }
+}
+
+/// Which parameters are within 0.1% of their range from a bound.
+pub fn at_bound(p: &[f64], bounds: &[(f64, f64)]) -> Vec<bool> {
+    p.iter().zip(bounds).map(|(x, (lo, hi))| (x - lo).abs() <= 1e-3 * (hi - lo) || (hi - x).abs() <= 1e-3 * (hi - lo)).collect()
 }
 
 /// ATM volatility and skew (the slope of mid volatility on ln(K / F)) of the series with the most quotes.
@@ -84,7 +117,7 @@ fn sumsq(r: &[f64]) -> f64 {
 }
 
 /// Levenberg-Marquardt from `p0`. Returns the parameters, the loss and the number of iterations.
-pub fn levenberg_marquardt<M: CharModel>(set: &QuoteSet, p0: &[f64], max_iter: usize) -> (Vec<f64>, f64, usize) {
+pub fn levenberg_marquardt<M: CharModel>(set: &QuoteSet, p0: &[f64], max_iter: usize) -> (Vec<f64>, f64, usize, LmStatus) {
     let bounds = M::bounds();
     let np = p0.len();
     let mut p = p0.to_vec();
@@ -93,6 +126,7 @@ pub fn levenberg_marquardt<M: CharModel>(set: &QuoteSet, p0: &[f64], max_iter: u
     let mut f = sumsq(&r);
     let mut lambda = 1e-2;
     let mut iters = 0;
+    let mut status = LmStatus::IterationCap;
     while iters < max_iter {
         iters += 1;
         // Jacobian by forward differences (backward at the upper bound), the columns in parallel.
@@ -111,6 +145,7 @@ pub fn levenberg_marquardt<M: CharModel>(set: &QuoteSet, p0: &[f64], max_iter: u
         let jtj: Vec<Vec<f64>> = (0..np).map(|a| (0..np).map(|b| cols[a].iter().zip(&cols[b]).map(|(x, y)| x * y).sum()).collect()).collect();
         let g: Vec<f64> = (0..np).map(|a| cols[a].iter().zip(&r).map(|(x, y)| x * y).sum()).collect();
         let mut improved = false;
+        let mut small_gain = false;
         while lambda < 1e10 {
             let mut a = jtj.clone();
             for (i, row) in a.iter_mut().enumerate() {
@@ -130,16 +165,23 @@ pub fn levenberg_marquardt<M: CharModel>(set: &QuoteSet, p0: &[f64], max_iter: u
                 r = rq;
                 f = fq;
                 lambda = (lambda / 3.0).max(1e-9);
-                improved = rel > 1e-10;
+                improved = true;
+                small_gain = rel <= 1e-10;
                 break;
             }
             lambda *= 4.0;
         }
         if !improved {
+            // A loss under 1e-12 squared spreads is an exact fit: no step can lower it further.
+            status = if f < 1e-12 { LmStatus::Converged } else { LmStatus::LambdaCap };
+            break;
+        }
+        if small_gain {
+            status = LmStatus::Converged;
             break;
         }
     }
-    (p, f, iters)
+    (p, f, iters, status)
 }
 
 /// The start vector number `i`: the plain start for `i = 0`, else the plain start with a log-normal (a normal for rho) disturbance.
@@ -158,23 +200,32 @@ pub fn random_start<M: CharModel>(base: &[f64], seed: u64, i: usize) -> Vec<f64>
 }
 
 /// Fit: `starts` random starts, the loss at each, LM from the best `refine`, and the best result.
-pub fn fit<M: CharModel>(set: &QuoteSet, opts: &FitOptions) -> FitResult<M> {
+pub fn fit<M: CharModel>(set: &QuoteSet, opts: &FitOptions) -> Result<FitResult<M>, String> {
     let (atm, skew) = atm_and_skew(set);
     let base = M::start(atm, skew);
     let starts: Vec<Vec<f64>> = (0..opts.starts.max(1)).map(|i| random_start::<M>(&base, opts.seed, i)).collect();
     let mut scored: Vec<(f64, Vec<f64>)> = starts.into_par_iter().map(|p| (loss(&M::from_vec(&p), set), p)).collect();
     scored.retain(|(l, _)| l.is_finite());
     scored.sort_by(|a, b| a.0.total_cmp(&b.0));
-    let mut best: Option<(Vec<f64>, f64)> = None;
-    let (mut iterations, mut refined_losses) = (0, Vec::new());
+    let mut best: Option<(Vec<f64>, f64, LmStatus)> = None;
+    let (mut iterations, mut refined_losses, mut statuses) = (0, Vec::new(), Vec::new());
+    // Stage 1: each of the best starts gets `STAGE1_ITER` iterations (the same effort for each). Stage 2: the best one goes on.
     for (_, p0) in scored.iter().take(opts.refine.max(1)) {
-        let (p, f, it) = levenberg_marquardt::<M>(set, p0, opts.max_iter);
+        let (p, f, it, st) = levenberg_marquardt::<M>(set, p0, STAGE1_ITER.min(opts.max_iter));
         iterations += it;
         refined_losses.push(f);
-        if best.as_ref().is_none_or(|b| f < b.1) {
-            best = Some((p, f));
+        statuses.push(st);
+        if f.is_finite() && best.as_ref().is_none_or(|b| f < b.1) {
+            best = Some((p, f, st));
         }
     }
-    let (p, f) = best.unwrap_or((base, f64::NAN));
-    FitResult { model: M::from_vec(&p), loss: f, n_quotes: set.n_quotes(), iterations, refined_losses }
+    let (p, f, status) = best.ok_or("the loss is not finite at any start (the characteristic function gave a non-finite value)")?;
+    let (p, f, status) = if status == LmStatus::IterationCap && opts.max_iter > STAGE1_ITER {
+        let (p2, f2, it2, st2) = levenberg_marquardt::<M>(set, &p, opts.max_iter - STAGE1_ITER);
+        iterations += it2;
+        (p2, f2, st2)
+    } else {
+        (p, f, status)
+    };
+    Ok(FitResult { model: M::from_vec(&p), loss: f, n_quotes: set.n_quotes(), iterations, refined_losses, status, statuses })
 }
