@@ -210,3 +210,4 @@ the person: S&P 10 page 1 (the week and each stock), page 2 (the valuation split
 the S&P 500 (one page or a half).
 Then: "Also, I expect a small intro at the top of page 1,2, and 3 2-3 lines as an intro/necessary
 background". Done: point 9 of the style page; one line to the Head of Fundamental Research.
+Correction of the person: "My bad, 1-3 lines". Done: the style page says one to three lines.
