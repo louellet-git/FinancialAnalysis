@@ -4,8 +4,8 @@ person decided. Keep this file below 60 lines. Started 2026-11-20. Dream pass: 2
 
 ## Goal now and subsequent steps (`RECORD.md` has the words; the board has the state of each item)
 1. FIRST (2026-11-21 14:45, "hold off on other work"): valuation attribution of the week to 2026-11-20, 3 pages,
-   S&P 10 first, then S&P 100. `T-20261121-sp100-week-attribution`, branch `claude/sp100-week-attribution`.
-   Code: `fa dcf attribute --curve par` and the full bridge. Waits for the 2026-11-20 closes (Technology).
+   S&P 100 and S&P 10 (BRK-B in). Prelim results sent (`analysis/priors/sp100_week_prelim_results_2026-11-21.md`): a
+   correction of rich prices; the report waits for Luc's go-ahead. Branches `claude/premium-series` (gate), `claude/attribution-reality`.
 2. PAUSED, work committed, status on each ticket: the trade-level engine (`claude/trade-level-backtest`), the
    T1 revenue fix (`claude/t1-revenue-band`; the hold-out `--cut 2011 --base-to 2014` is still unused).
 3. Stock DCF rank: no evidence of an edge on split-corrected prices (PR 136); no weekly trade from it.
@@ -36,6 +36,7 @@ person decided. Keep this file below 60 lines. Started 2026-11-20. Dream pass: 2
 - Do not edit code with a perl one-line substitution that has `|` in it: use the Edit tool.
 
 ## Standing words of the person
+- 2026-11-21: prelim results first (chat + a results file), the report only after the go-ahead. Macro "why" questions go to the Head of Economics.
 - 2026-11-21: "Backtesting is integral to our work here": each model change and strategy has a point-in-time
   backtest written before its run; trades only from a backtested rule; blind projections tested (T1-T4).
 - The stochastic DCF engine, for stocks only; no option work in this area. Agents lean and of quality.
@@ -50,7 +51,7 @@ person decided. Keep this file below 60 lines. Started 2026-11-20. Dream pass: 2
 - Cache = data store (`GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 .../fa-data data/raw`); store 1804f48.
 - Heads (send_message): Technology session_015ReypMwF8aVDzTBhLCbEv1; Quality session_015ReypKkZtAZBTkhHTskxJg;
   Quant session_015ReypKReqsgzkZY2hCsPdF; Economics session_015ReypPG2WmExK3KRHNj1e2.
-- A reviewer asks: no push to a branch under review until the verdict.
+- No push to a branch under review until the verdict. Head of Staff (PR 161): only done-or-merged, a long block, an owner decision, a conflict.
 - Data length: SEC facts from about 2009; most prices from 2016-11-18; SPY and IBM from 1962; GSW from 1961.
 - cbo.gov refuses the cloud machine (HTTP 403); federalreserve.gov answers.
 
