@@ -68,3 +68,7 @@
 | economics historian, fix check | 2026-11-21 | econ/historian (ffa6817): head check of the diff; PASS-WITH-NOTES (FRED files not in the store yet) | small (head only) | |
 | algo paper engine, risk officer | 2026-11-21 | `claude/quant-algo-paper` (c1854de): risk-compliance-officer PASS with conditions (no order path; engine limits not tied to the sleeves, MIN by Proportion; quotes stay out of git) | about 58k (measured) | code reviewer and validator running |
 | long-history records R1, R2 | 2026-11-21 | econ/long-history-record (199e184): head check of section 9; PASS-WITH-NOTES | small (head only) | engine premium fixed before any return |
+| backtest row review | 2026-11-21 | own standards (a1594dc, fixes 4092cda): document-reviewer (Haiku) REVISE (1 MAJ: a trade recommendation out of scope); fixed | about 51k (measured) | |
+| strategy gate, risk officer | 2026-11-21 | `claude/dcf-engine-backtest` (f24f518): risk-compliance-officer REVISE (7 MAJ: in-sample design, live rule not the tested rule, gross base, stops, timing, risk header, paper tests no exit) | about 45k (measured) | validator and auditor running |
+| algo paper engine gate | 2026-11-21 | `claude/quant-algo-paper` (c1854de): code-reviewer PASS-WITH-NOTES (order-ban test weak), model-validator REVISE (4 MAJ), risk officer PASS with conditions; verdict REVISE, 5 MAJ; Monday checklist to the owner | about 205k (72k + 75k + 58k measured) | |
+| harness cycle 2 started | 2026-11-21 | `claude/backtest-environment` (aaa1ba1): model-validator and code-reviewer (Haiku) | running | |
