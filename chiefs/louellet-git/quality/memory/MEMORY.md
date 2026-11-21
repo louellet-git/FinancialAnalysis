@@ -3,9 +3,8 @@ What the next session of this head must know. Below 60 lines. Started 2026-11-20
 Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of the reviews.
 
 ## Standing words of the person
-- 2026-11-20 21:44 UTC: balance realistic risk with potential risk. Internal processes and
-  internal documents: do not be constricting and do not slow the work. Risk in trades: strict.
-  (`RECORD.md`; rule in `docs/QUALITY-STANDARDS.md`, section 3, "Proportion".)
+- 2026-11-20 21:44 UTC: realistic risk, not potential risk; internal work not slowed; trades strict
+  (QUALITY-STANDARDS section 3, "Proportion").
 - 2026-11-20: lean agents of good quality, "not obsessive and tight fisted". Few pull requests; PowerShell for Windows.
 - 2026-11-20 23:22 UTC: choose the model of each agent run for the job (permission, not a duty); the
   files stay Sonnet. The validator, auditor and code reviewer found each MAJ: keep Sonnet for that work.
@@ -18,9 +17,10 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   accepted; "docs for me are in pdf format" (a document for Luc also goes as a PDF).
 - Until 2026-11-25 11:00 Toronto (token limit 71% used): gates in the order of EPICS.md last section; one agent a gate
   where enough, Haiku for narrow checks; at most 2 builds at a time (15 GB machine; OOM on 2026-11-21).
-- HANDOVER (2026-11-21 21:05 UTC): every gate of 2026-11-21 has a verdict (ledger). Open: review the premium-series
-  PIT results (61fe8de) before the series run of record; PR 198 waits for the Fundamental head's yes on the skill text;
-  9 stray HQM files in /home/user/qa-fa-data-e06/bonds/treasury_hqm (local, untracked). A new session needs Luc's word.
+- HANDOVER (2026-11-21 21:10 UTC; Luc: "Yes, as a test"): every gate of 2026-11-21 has a verdict (ledger). Open: the
+  premium-series PIT results (61fe8de) before its run of record. Fallback session: "FA-L - Quality and Risk (fallback)".
+- Precedents: an author who moves the target mid-review: redirect the same agent by SendMessage (its context and cache
+  stay; cheaper than a new agent); ask the author to freeze until the verdict. Resume a finished agent for cycle 2.
 
 ## How a review runs here (tested 2026-11-20 and 2026-11-21)
 - One detached worktree for each review (`git worktree add --detach ../wt-qa-<name> <commit>`); build
@@ -38,8 +38,7 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
 - A record that rejects alternatives with numbers: the validator runs each one (-2.9% stated, -0.4% run).
 - A backtest: ask for a poison test of each data source it reads, not only the prices (the SEC
   restatements entered value-rank). A large change of a result after a fix: isolate code against data.
-- A fit or calibration: ask for the convergence status and the parameters on a bound (vol-1).
-- A findings file: check the statistic behind a headline (the value at the means is not the mean).
+- A fit: ask for the convergence status and the bound parameters. A headline: check its statistic (means vs mean).
 - A new mapping tag that is a fallback: check non-target companies and old periods, not only the
   latest year (the status check sees the latest year only; mapping review, 2026-11-21).
 - QA agents often rate wording, a document conflict or a text claim MAJ. Apply "Proportion": MIN when
@@ -54,7 +53,8 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   the author's own mutant only showed the long case (backtest environment, 2026-11-21).
 - A model change: ask for the P50 change by class (margin, size, no spend) in % of value, not only the
   score in % of revenue (acquisition intercept: thin margins -25%).
-- A design before a run: one primary test, a rejection rule, a fixed window count; review it before data.
+- A design before a run: one primary test, a rejection rule, a fixed window count; review it before data. A mask, a
+  default change or a page for Luc: check what it hides or moves (golden masks hid counts; --curve auto changed main).
 - Split-basis trap (skill point-in-time-test, build step 6): BKNG 25x; truncation and poison miss it.
 ## Dream pass (before a compaction, above about 75% in `get_session`, or on "dream")
-Last pass: 2026-11-21 04:10 UTC; earlier 01:25 and 00:30 UTC.
+Last pass: 2026-11-21 04:10 UTC.
