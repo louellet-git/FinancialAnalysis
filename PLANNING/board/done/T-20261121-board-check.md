@@ -2,15 +2,16 @@
 id: T-20261121-board-check
 title: Check the board rules with one script (no model tokens)
 area: planning
-status: backlog
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: technology
 order: 1.5
 story: E6.S5
-branch:
+branch: claude/board-check
 created: 2026-11-21
 acceptance: One command reads git only and prints, for each head, the rule faults of the list below with the ticket and the reason; it changes no file, it needs no network other than `git fetch`, and a fixed-answer test covers each check.
+merged: pull request 192 (branch claude/board-check)
 ---
 Owner word, 2026-11-21 (through the Head of Staff): the monitoring is "100% script-based", it "doesn't
 require the heads remembering", and it is "lean, non-invasive, not token heavy". The past fault was a system
@@ -32,3 +33,5 @@ Head of Technology.
 Owner rule, 2026-11-21: a hook or a system that constricts a head (it stops, delays or forces a step) needs
 a few days of evidence that it is better than each alternative, before it starts. A tool that only reports
 and constricts nothing can start now. This ticket is of the second kind; keep it so.
+
+QA gate: PASS-WITH-NOTES (2026-11-21). Check 7 uses --no-renames and needs one changed file outside PLANNING/board/.

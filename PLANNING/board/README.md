@@ -55,3 +55,4 @@ Free text.
 5. The queues are the files at the top of `PLANNING/board/`. The folder `done/` keeps the closed
    tickets as a record; a head does not take a ticket from it.
 6. No tool enforces these rules. Each person and each agent obeys them.
+7. `fa board check` reports the rule faults; it changes nothing.
