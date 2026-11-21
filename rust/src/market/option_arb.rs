@@ -29,6 +29,8 @@ use crate::trading::calendar::parse_iso;
 use std::collections::{BTreeMap, BTreeSet};
 
 pub const CHECK_NAMES: [&str; 7] = ["monotony", "slope", "butterfly", "calendar", "parity", "intrinsic", "bound"];
+/// The register id of each check, in the order of `CHECK_NAMES` (`arbitrage/register/<ID>.md`). A test reads the folder.
+pub const CHECK_IDS: [&str; 7] = ["OPT-MONOTONY", "OPT-SLOPE", "OPT-BUTTERFLY", "OPT-CALENDAR", "OPT-PARITY-UPPER", "OPT-INTRINSIC", "OPT-BOUND"];
 /// Index of the checks that remove a quote (intrinsic, bound).
 pub const REMOVING: [usize; 2] = [5, 6];
 const EPS: f64 = 1e-9;
@@ -124,6 +126,8 @@ pub struct SeriesRow {
     pub days: i64,
     pub quotes_used: usize,
     pub tests: [usize; 7],
+    /// Tests in `tests` that could not run: the leg that is sold has no bid (a buy-only quote). Not tested, not pass.
+    pub not_tested: [usize; 7],
     pub breaks: [usize; 7],
     /// The number of distinct quotes in at least one break of the series.
     pub distinct: usize,
@@ -168,6 +172,8 @@ pub struct Report {
     pub quotes_used: usize,
     /// Used quotes with bid 0 and an ask above 0 (buy legs only).
     pub buy_only: usize,
+    /// Used quotes with bid = ask (flagged; the check still uses them).
+    pub locked: usize,
     /// Quotes with an ask below the intrinsic value (American options): not used in the other checks.
     pub below_intrinsic: usize,
     /// Quotes with a bid above the bound (call above S, put above K): not used in the other checks.
@@ -276,6 +282,8 @@ pub fn check_chain(snap: &OptionChainSnapshot, american: bool, rate: &mut dyn Fn
         }
         if no_bid {
             rep.buy_only += 1;
+        } else if bid == ask {
+            rep.locked += 1;
         }
         rep.quotes_used += 1;
         series.entry((root, q.expiry.clone())).or_default().push(Used { symbol: q.contract_symbol.clone(), call: q.option_type == "call", strike: q.strike, bid: if no_bid { 0.0 } else { bid }, ask });
@@ -354,6 +362,9 @@ pub fn check_chain(snap: &OptionChainSnapshot, american: bool, rate: &mut dyn Fn
                     // 1 monotony: the lower-strike call is worth more; the higher-strike put is worth more.
                     row.tests[0] += 1;
                     let (cheap, dear) = if call { (b, a) } else { (a, b) }; // `dear` must be worth at least `cheap`
+                    if cheap.buy_only() {
+                        row.not_tested[0] += 1;
+                    }
                     let size = cheap.bid - dear.ask;
                     if !cheap.buy_only() && size > EPS {
                         push_break(&mut breaks, 0, root, expiry, size, &[(&cheap.symbol, cheap.bid), (&dear.symbol, dear.ask)], format!("{tag}: bid {} of {} is above ask {} of {}", cheap.bid, cheap.symbol, dear.ask, dear.symbol));
@@ -362,6 +373,9 @@ pub fn check_chain(snap: &OptionChainSnapshot, american: bool, rate: &mut dyn Fn
                     row.tests[1] += 1;
                     let width = b.strike - a.strike;
                     let (s, l) = if call { (a, b) } else { (b, a) };
+                    if s.buy_only() {
+                        row.not_tested[1] += 1;
+                    }
                     let size = s.bid - l.ask - width;
                     if !s.buy_only() && size > EPS {
                         push_break(&mut breaks, 1, root, expiry, size, &[(&s.symbol, s.bid), (&l.symbol, l.ask)], format!("{tag}: bid {} of {} less ask {} of {} is above the strike difference {}", s.bid, s.symbol, l.ask, l.symbol, width));
@@ -375,6 +389,9 @@ pub fn check_chain(snap: &OptionChainSnapshot, american: bool, rate: &mut dyn Fn
                     continue;
                 }
                 row.tests[2] += 1;
+                if m.buy_only() {
+                    row.not_tested[2] += 1;
+                }
                 let w = (b.strike - m.strike) / (b.strike - a.strike);
                 let bound = w * a.ask + (1.0 - w) * b.ask;
                 let size = m.bid - bound;
@@ -392,6 +409,9 @@ pub fn check_chain(snap: &OptionChainSnapshot, american: bool, rate: &mut dyn Fn
             }
             if let (true, Some(s)) = (american, spot) {
                 row.tests[4] += 1;
+                if c.buy_only() {
+                    row.not_tested[4] += 1;
+                }
                 let bound = s - c.strike * df;
                 let size = c.bid - p.ask - bound;
                 if !c.buy_only() && size > EPS {
@@ -441,6 +461,9 @@ pub fn check_chain(snap: &OptionChainSnapshot, american: bool, rate: &mut dyn Fn
                     let ((e1, q1), (e2, q2)) = (v[i], v[j]);
                     if let Some(row) = rows.get_mut(&(root.clone(), e2.clone())) {
                         row.tests[3] += 1;
+                        if q1.buy_only() {
+                            row.not_tested[3] += 1;
+                        }
                     }
                     let size = q1.bid - q2.ask;
                     if !q1.buy_only() && size > EPS {

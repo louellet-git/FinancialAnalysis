@@ -636,6 +636,7 @@ gives a sourced value.
 *Evidence:* `python -m scripts.verdict IBM --price 231.09 --rf-date 2026-11-18 --rating A-`.
 
 **46. The ICE data on FRED has only 3 years, and ICE does not allow redistribution.**
+*Since 2026-11-21 the code does not use ICE or Moody's series: the cost of debt of a rating is the Treasury HQM 10Y spot plus a fixed step (A-200 to A-203). The text below is the history.*
 The series start on 2023-11-20. A date before that gives an error, not an old value. Do
 not commit the cache (`data/raw/bonds/`) or put ICE values in a public file. For a
 longer history, use Moody's Aaa and Baa (from 1983 and 1986). Those are long bonds (20
@@ -724,6 +725,7 @@ could not run against the real site. The other `fa rates` commands do not need F
 FRED series in `rust/tests/fixtures/rates/fred.json` are made up (ICE data may not be
 copied into a public repo). On a network that FRED answers, run `fa bonds` and
 `fa bonds check` once before you trust a `--rating` result.
+**Changed 2026-11-21.** `fa bonds` and `--rating` no longer need FRED: the HQM curve comes from the Treasury files and the steps are a fixed table (A-200 to A-203). `fa bonds check` and `fa bonds moodys` are deleted. A HQM month is used only from its publication day (the first weekday after the 5th of the next month): the 1st-of-the-month date is the average, not the day it was known.
 **Changed 2026-11-20 (test of the orchestrator).** The refusal is for the address with no key only. With a FRED API key in
 the environment variable `FRED_API_KEY`, the FRED API answers the cloud container: 26 of 26 series in 57 seconds, and
 `fa bonds`, `fa bonds check` and `fa verdict --rating` then work on real data. With no key, the keyless address still
@@ -823,9 +825,8 @@ them in this work and we did not use TRACE. The Treasury and Fiscal Service file
 corporate bond prices. Thus the corporate comparison is at
 curve level only. The HQM curve is a monthly average (the date is the first day of the
 month; on 2026-11-17 the latest value was for 2026-10-01). Our Treasury zero curve is for
-one day. The ICE OAS is one number for the whole index (duration of about 6 to 7 years),
-and not a number for each maturity. The HQM blend of AAA, AA and A has unknown weights, so
-the mean of the three OAS is an arbitrary choice. We assume that the HQM spot rates are
+one day. The spread is one number for the whole curve (a fixed table), and not a number for each maturity. The HQM blend of AAA, AA and A has unknown weights. Since 2026-11-21 the
+comparison adds the default spread of A (the HQM reference bucket, A-201). We assume that the HQM spot rates are
 semi-annual (the Treasury slides say so; we did not read the full paper).
 *Evidence:* `fa recon bonds` output, section CORPORATE CURVE.
 
@@ -1010,7 +1011,7 @@ comparison (see the ticket `option-backtest-rust`).
 *Evidence:* `fa trade fetch` into a copy of the cache, 2026-11-19.
 
 **92. The live option chain is the Cboe delayed quote file, and it does not list each expiry that
-a bot asks for.** The file is the one that the delayed-quotes pages of cboe.com read. It is not a
+a bot asks for.** Superseded on 2026-11-21 (`T-20261121-cboe-off`): no program reads the Cboe delayed file now; `fa trade paper` refuses a live chain. The text below is the record of the old state. The file is the one that the delayed-quotes pages of cboe.com read. It is not a
 published API: Cboe can change it. The quotes are about 15 minutes late, and before the open they
 can be stale. The bots assume an expiry on each trading day, and they use `busday_offset`
 (no holiday calendar). The chain has an expiry on each trading day for about two weeks, then
@@ -1934,6 +1935,14 @@ A recovery term estimated on these years fits those years; it needs a study out 
 which is more than 2 points under the target. The rule stays off by default. The panel since 2016 has larger margin shocks than the panel before it (the cut run is below 80% before the change).
 Note of the merge with pull request 77: the numbers of (2) are on the defaults before it. On the merged defaults (`acq_w`, `acq_fade`, `long_run`) the free cash flow of the stable class is inside the band in 83.0 / 83.4 / 83.6% (half 1; `--cut 2015`: 78.5 / 79.2 / 78.2%), so the bands are no longer too wide; `margin_sigma_nu=1` gives 73.8 / 77.4 / 78.0% (half 1). The rule is not needed.
 *Evidence:* `fa dcf pit --half 0|1 --diag decline`, `--diag nu`, `--rules last_floor=-1`, `--rules margin_sigma_nu=1`; the tests `a_decline_in_the_base_year_enters_the_growth_mean_and_the_first_step_as_zero`.
+
+**287. The member list uses the ticker of its date, not the ticker of today (2026-11-21).**
+The file `fa members on DATE` reads gives the ticker that the index used on that date. A company that changed its ticker has the old name in the list, for example FB (now META). ANTM (now ELV) and HRS (now LHX) are not verified against a filing.
+The data store has a folder for the new ticker only, so the old name finds no data.
+A ticker can also belong to two companies at different dates (DD is a possible case: not verified against a filing). A join by ticker can join the wrong company.
+A run must map the old name to the company, or drop the name and count the drops.
+The first rows (1996-01-02 to 2004-04-01) have 487 to 496 names a date. Use the list from 2004-04-02.
+*Evidence:* `rust/src/market/members_cli.rs` (`fa members on`); the row in `docs/DATA-SOURCES.md`.
 
 ## Could not verify
 

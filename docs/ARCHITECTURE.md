@@ -7,7 +7,7 @@ the code disagree, the code governs.
 ## Data flow
 
 ```
-SEC EDGAR (companyfacts JSON API)      Yahoo chart     Cboe delayed quotes     FMP (key)
+SEC EDGAR (companyfacts JSON API)      Yahoo chart     Alpaca options          FMP (key)
         |                                  |                  |                   |
    rust/mapcheck (Rust: fetch, map,   rust/src/market/   rust/src/market/    rust/src/market/
    check, store file; import.rs)      prices.rs          options.rs          fmp.rs, consensus.rs
@@ -194,7 +194,7 @@ Steps for one date:
 4. Price each instrument on the curve (`rust/src/recon.rs`).
 5. Print the summary and write one CSV row for each instrument. A second file
    `<name>_curve.csv` has the curve nodes.
-6. Compare the HQM corporate spot curve with our zero curve plus the ICE spread.
+6. Compare the HQM corporate spot curve with our zero curve plus the default spread of A (the HQM reference bucket, Damodaran table).
 
 | Module (`rust/src/`) | Function |
 |---|---|
@@ -214,7 +214,7 @@ Conventions (each one is in the header of `curve.rs`):
 - **Difference.** Observed minus theoretical. A positive price difference means that the market price is above the price from our curve.
 - **Filter.** The set has market-based bills, notes and bonds that have a price, have 7 days or more to maturity and have no call date. TIPS and floating-rate notes are not in the set.
 - **Resolution.** The source gives notes and bonds in 64ths of a point. The column `resolution_bp` is the yield change of one such step. A yield difference that is smaller than this column has no information. This is large for instruments with a short life.
-- **Corporate curve.** No free official source of prices of single corporate bonds is known (see #65). Thus the comparison is at curve level: the HQM spot rate (semi-annual) against our Treasury zero rate (semi-annual) plus the mean ICE OAS of AAA, AA and A. It shows how our spread data relate to the Treasury HQM curve. It does not show a bond price difference.
+- **Corporate curve.** No free official source of prices of single corporate bonds is known (see #65). Thus the comparison is at curve level: the HQM spot rate (semi-annual) against our Treasury zero rate (semi-annual) plus the default spread of A (fixed table, `bonds.rs`, A-201). It shows how our spread data relate to the Treasury HQM curve. It does not show a bond price difference.
 
 The tests (`cargo test --manifest-path rust/Cargo.toml --locked`) use small samples and hand calculations: a par bond prices to 100 on a coupon date, a bill, a bond between coupon dates, the reprice of each par node, a flat curve. They do not use the network.
 ## Bond research: bill tests, fitted curve, rich and cheap, history (2026-11-19, branch `claude/bond-arb`)
@@ -446,7 +446,7 @@ TOML file, `Overrides`, hand DCF, bisection), `analysis.rs` (runs with overrides
 sensitivity, implied value, the fade check, the commitment check, the equity-weight fixed point),
 `backtest.rs` (point-in-time vintage backtest), `cli.rs` (`fa dcf`, `fa backtest`), `tests.rs`
 and `runner_tests.rs`. Outside `dcf/`: `rust/src/rates.rs` (Treasury curves, New York Fed rates,
-BLS CPI, FRED, inflation, cross-checks), `rust/src/bonds.rs` (ICE BofA, Moody's, HQM, ratings),
+BLS CPI, FRED, inflation, cross-checks), `rust/src/bonds.rs` (HQM, rating steps, cost of debt),
 `rust/src/verdict_rates.rs` (market `rf` and `kd_spread` in a driver model); the `Fa` struct in
 `lib.rs` keeps the method names and calls them.
 
@@ -718,7 +718,7 @@ These parts are Rust code only. The Python files `scripts/analyze.py`, `scripts/
 | `company.rs` | Typed company: periods with one value for each registry variable, the source texts and the unmapped tags. `Company::from_store` reads the content of the store file in memory, `Company::load` reads the file. Free cash flow and its margin. `series` gives the values of one metric, oldest first (a variable, `free_cash_flow` or `fcf_margin`). |
 | `market/mod.rs` | Rounding as Python `round(x, 6)`, JSON with `NaN` (written by Python), key order of a JSON object, the HTTP client with 2 seconds between requests. |
 | `market/prices.rs` | The older Yahoo loader (adjusted, as `yfinance`); cache `data/raw/<T>/prices.json`; HTTP 429 keeps the cache. `fa analyze` and `fa report` use it. New code uses the price layer below. |
-| `market/options.rs` | Cboe delayed quotes to a snapshot `data/raw/<T>/options/<date>.json`; snapshot files; `compute_chain_metrics`. |
+| `market/options.rs` | The snapshot files `data/raw/<T>/options/<date>[T<hhmm>].json` (old Cboe files, Alpaca files); `compute_chain_metrics`. |
 | `market/fmp.rs` | FMP estimates and surprises (the source of revenue estimates); key from `FMP_API_KEY`; caches `estimates.json`, `surprises.json`. |
 | `market/consensus.rs` | The consensus snapshot files (Nasdaq source: see the section on estimates below) and `yf_earnings.json` of the Python code (read only). |
 | `analyze.rs` | `flatten` (the rows of the nine sheets), `write_xlsx` (crate `rust_xlsxwriter`), the command. |
@@ -986,7 +986,7 @@ Commands:
 | Module | Function |
 |---|---|
 | `fetch.rs` | The bars of SPY, QQQ, ^VIX, ^VXN, ^VIX1D (1d, 1h, 5m) and ^IRX (1d) from the Yahoo chart endpoint. It merges each reply into the CSV file of the cache (see below). It reuses the HTTP client and the reply reader of `rust/src/futures/` (`futures::download`, `yahoo::parse_raw`). |
-| `chain.rs` | The live option chain of one underlying: the Cboe delayed quotes (JSON). It gives bid and ask for the options that the chain lists. |
+| `chain.rs` | The live option chain of one underlying: the container type and the option name parser. No client: `Chains::get` refuses (T-20261121-cboe-off). |
 | `paper.rs` | The paper trader. It refreshes the data, runs each bot again with entries blocked before the paper start, and prices the new signals on the live chain. State: `data/processed/trading/paper/<bot>.json`. |
 | `data.rs` | Reads the CSV files one time. Aligns the bars of all symbols, the vol indexes (VIX, VXN, VIX1D) and the rate on one bar index. A timestamp is an integer. |
 | `calendar.rs` | Dates, business days, and the New York time offset with the daylight saving rules (checked against every date of the cache, from 1960). |

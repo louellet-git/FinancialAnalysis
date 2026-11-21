@@ -2,7 +2,7 @@
 //!
 //! `fetch` downloads the bars into a CSV cache (Yahoo chart endpoint). The backtester reads the
 //! cache, runs each bot on its own account, and prints a leaderboard. `paper` runs the bots forward
-//! on fresh data and prices the new signals on a live option chain (`chain`, Cboe delayed quotes). All option prices are MODEL prices (see `pricing`). The code sends no order
+//! on fresh data and prices the new signals with the model (`--no-live`); the live chain is refused until an Alpaca adapter exists (T-20261121-cboe-off). All option prices are MODEL prices (see `pricing`). The code sends no order
 //! to a broker.
 
 // The code keeps the shape of the Python expressions (float operation order, NaN behavior), so a
@@ -22,6 +22,7 @@ pub mod cli;
 pub mod data;
 pub mod engine;
 pub mod fetch;
+pub mod grids;
 pub mod metrics;
 pub mod paper;
 pub mod premium;
