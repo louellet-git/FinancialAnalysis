@@ -2,12 +2,13 @@
 id: T-20261121-selftest-golden
 title: fa selftest golden, stored commands with the hash of their expected output
 area: engine
-status: review
+status: done
 owner: louellet-git
 head: quant
 story: E4.S4
 order: 0.84
 branch: claude/quant-selftest-golden
+merged: 189
 created: 2026-11-21
 requested_by: louellet-git
 acceptance: `fa selftest golden` runs the cases of one committed case file, compares the SHA-256 of each stdout (after its mask) with the stored hash, skips and names a case whose store commit is not present, exits 1 on a difference with the first 20 differing lines, never downloads; `--update REASON` writes the new hash with its reason; the first five cases pass on the current main; gate code-reviewer.

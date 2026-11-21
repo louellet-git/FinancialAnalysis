@@ -51,3 +51,5 @@ Each item says "changes a value" (the fix changes a number that a model or a che
 - P2. The row label "all days 1990s-2026": SPY starts in 1993 (`report`, `premium.rs`). Text only.
 - P3. The 1-day table uses a block step of 1, so its "t_blk" is the plain t; its window rows print no t (`premium.rs`). Text only.
 - P4. The median is `v[len / 2]`, the upper middle value for an even count (`row`, `premium.rs`, checked). Changes a value (small).
+- P5. `trading::calendar::parse_iso` (`rust/src/trading/calendar.rs`) accepts a day past the month end, as `mapcheck` `dates::parse` did before PR 196 (Quality and Risk, 2026-11-21: the same defect class). Fix with a test, in a small commit. Changes a value (a wrong date is read as a later date).
+- G1. The golden case `dcf_attribute_panel32` moves to the S&P 100 list with `--curve par` (Quality and Risk rule; `fa selftest golden`), unless Fundamental Research moves it in its next pull request. Text only.
