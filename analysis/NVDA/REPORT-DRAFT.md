@@ -6,7 +6,7 @@ Version 5 of 2026-11-21. Model date 2026-11-20. Data store `1804f48`: SEC facts 
 
 Files:
 - `analysis/NVDA/driver_model_paths.toml`: the model.
-- `analysis/NVDA/research-ledger.md`: the outside facts (L1 to L26).
+- `analysis/NVDA/research-ledger.md`: the outside facts (L1 to L27).
 - `analysis/NVDA/COMMANDS.md`: the command for each number, in the order of this report, with seed, paths and store commit.
 
 ## Result in brief
@@ -20,7 +20,7 @@ Files:
   5. The cost of capital. A premium of 3.5% gives $122.41 and 5.5% gives $88.29. A beta of 1.2 gives $132.05.
 - **Distance to the price.** The close was $145.98 on 2026-11-19. It is at about the P75. The P50 is 28.9% below it. The model value is below the close on 75.0% of the paths.
 - **Open points.** The 10-Q is not filed. The close of 2026-11-20 is not in the store.
-- **How firm the range is.** The rule for the year-1 growth was set after the earlier runs (the order is not provable from git, W1). Most changes raised the P50 (step 11: +$10.7). The last change lowered it from 108.40 to 105.09 (10,000 paths). See W15.
+- **How firm the range is.** The rule for the year-1 growth was set after the earlier runs (W1). Most steps raised the P50 (`COMMANDS.md`, section 7). The last change lowered it from 108.40 to 105.09 (10,000 paths). See W15.
 - **Other limits:** W5, W6, W13, W14.
 - **Purpose.** The owner can use this range to judge whether the price assumes more growth than the company's record and guide support. It is not a price target and not a signal to trade.
 
@@ -190,7 +190,7 @@ The limits: the 19 pairs are from one company with one upswing and one bust. The
 
 The source is `[[fade]]` of `analysis/priors/process_priors_2026-11-19.toml` (companies with growth of 50% or more in the start year) and the facts of the cache (`mapcheck`, all 10-K rows, 1,976 companies). The cells have survivor bias. The cells are too high, not too low.
 
-The cell above $100B has 12 start years. Eight are oil in 2021 and 2022 (XOM, CVX, MPC, PSX, VLO). The others are CI 2019 (a merger), MU FY26 and NVDA FY25 and FY26. So this cell is not a base rate of organic demand. It is a base rate of a price jump. The fall in years 2 and 3 is the end of the oil price.
+The cell above $100B has 12 start years. Eight are oil companies in 2021 and 2022 (XOM, CVX, MPC, PSX, VLO). The others are CI 2019 (a merger), MU FY26 and NVDA FY25 and FY26. So this cell is not a base rate of organic demand. It is a base rate of a price jump. The fall in years 2 and 3 is the end of the oil price.
 
 | Item | Cell above $100B | Cell $30B to $100B | Model at the means |
 |---|---|---|---|
@@ -263,9 +263,9 @@ Each row is one version. The P50 is for 10,000 paths. The step tables and the co
 | 4 | One number r = 0.5; the charge fades with the growth; year-1 growth from the guide times the beat of 12 pairs (47.9%) | 108.40 |
 | 5 | Marketable securities at full value; year-1 growth = guide plus half the median beat of 19 pairs (44.9%) | 105.09 (103.78 with 100,000 paths) |
 
-The collapse table (D14) has this reason. The brief of the Head of Fundamental Research (2026-11-20, before the first run) asked for a downside of the cycle of the customers' capital spend. The check of the growth process alone found a year below -30% growth on only 5.1% of the paths (`COMMANDS.md`). So the collapse table was added. The first run gave P50 145.95. That value is near the close by chance, and no input was set from it.
+The collapse table (D14) has this reason. The brief (ledger L27; from the session, not in git) asked for a downside of the cycle. The ticket also names the cycle of the capital spend of the customers as a driver (ticket line 21). The check of the growth process alone found a year below -30% growth on only 5.1% of the paths (`COMMANDS.md`). So the collapse table was added. The first run gave P50 145.95. That value is near the close by chance. No input was set from it.
 
-No input comes from the price (section 5). The Head of Fundamental Research decided r, the fade and the base of D2. The balance sheet of the page confirmed the start of D12 (3.0).
+No input comes from the price (section 5). The Head of Fundamental Research decided r, the fade and the base of D2. The balance sheet of the 8-K press release of 2026-11-17 (EX-99.1) confirmed the start of D12 (3.0).
 
 ## 8. Forward disclosures (rule R1)
 
