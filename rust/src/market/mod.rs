@@ -13,6 +13,7 @@
 //! | FRED series | FRED API (key), keyless CSV | `fred_api` (used by `rates`) |
 //! | Estimates, earnings surprises | Financial Modeling Prep (key in `FMP_API_KEY`) | `fmp` |
 //! | Stock splits (corporate actions) | Alpaca (key) | `splits`, `splits_cli` (`fa splits get`) |
+//! | S&P 500 members on a past date | A pinned commit of a public GitHub repo (no key) | `members_cli` (`fa members get`) |
 //! | Forward consensus snapshot, price targets, surprises, earnings dates | Nasdaq site API (no key) | `nasdaq_est`, `estimates_cache`, `earnings_dates` (`fa estimates`, `fa earnings`) |
 //!
 //! The cache files keep the formats of the Python code, so each reader of them still works:
@@ -44,6 +45,8 @@ pub mod prices;
 pub mod splits;
 pub mod splits_rules;
 pub mod splits_cli;
+pub mod members_cli;
+pub mod spf;
 
 use serde::de::{MapAccess, Visitor};
 use serde::ser::SerializeMap;

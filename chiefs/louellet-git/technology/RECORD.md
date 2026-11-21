@@ -181,3 +181,19 @@ Done: ticket `T-20261121-fred-local`.
 ## 2026-11-21 (dialog)
 Words: "Yes (Recommended)" to: will you make fa-data private? (The terms of Nasdaq, Yahoo, Cboe, FRED and ICE do not permit a public copy; GitHub ToS D.3.)
 Done: the store README says private (store e3b735e); the heads are told to attach fa-data before a clone. The owner changes the visibility on GitHub. The FRED move continues.
+
+## 2026-11-21 (refusals reported by the heads)
+- Fundamental Research: the permission system refused `git push origin claude/sp100-week-attribution` (its own branch). Not needed: the same commits are on GitHub through claude/premium-series. Cause not known. Do not try again in another form.
+
+## 2026-11-21 ~18:00 UTC (dialog in the Quality and Risk session, read in its transcript)
+Words: "Shared store, I accept" (the daily save of the Alpaca chains goes into the shared private store; the owner accepts the terms risk).
+Done: the note in `docs/DATA-SOURCES.md`, section "Alpaca paper trading".
+
+## 2026-11-21 (chat)
+Words: "I think we should have a head of staff, which is above you and the other heads. ... Fable is more for me to speak w and to address the other heads. I want it for overall coordination but it doesn't need to get into the weeds too much." Then: "1. I think it should go to the head of staff 2. I and the head of staff set the pace 3. I'll speak w head of staff when convenient for me"
+Done: the Head of Staff row and rules in `chiefs/ORIENTATION.md` (questions for the person go through it; the person and it set the order; no fixed report time); the session.
+## 2026-11-21 (dialog)
+Words: "Yes (Recommended)" to: may we keep the Philadelphia Fed SPF file as a private copy (not in the public repo), with only the results in the repo?
+Done: ticket `T-20261121-spf-loader`.
+Words: "Can you send a blast ensuring that models should be properly documented as per the rules?"
+Done: a message to the four heads with the rule (CLAUDE.md "Model documents"; QUALITY-STANDARDS section 4): each head lists the models of its area without a document or a record and writes them; the Quality and Risk head refuses a model change without a current document.
