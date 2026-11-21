@@ -91,6 +91,7 @@ documents, the order code passed its gate, and the public repo has no private fi
 | E6.S2 The gates are repeatable | quality | `fa selftest golden` (row 25 of `T-20261121-quant-engine-integration`; Quant builds) → the mutation-test script (row 26), `T-20261025-bridge-per-ticker-rule` | next |
 | E6.S3 Work of the person | owner | `T-20261120-owner-first-run`, `T-20261120-delete-merged-branches` → `T-20261025-keep-private-frameworks-out-of-the-public-repo` | waits for the person |
 | E6.S4 Controls of orders and of data terms | quality (technology for the terms) | the gate "Order code (paper only)" before the first order (controls 0 to 8), a terms line for each source in `docs/DATA-SOURCES.md` | now (no ticket yet) |
+| E6.S5 The rules are checked by a script, not by memory | technology (the Head of Staff reads the output) | `T-20261121-board-check` → `T-20261121-usage-log`; also this page: `T-20261121-board-epics` (staff) | next |
 
 ## Order across the epics (proposal of the Head of Staff; the person decides)
 

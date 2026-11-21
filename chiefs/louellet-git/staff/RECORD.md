@@ -64,3 +64,15 @@ like the doc standard to be followed. So making sure that ... when stuff is gett
 in a concise, clear format, ASD-[STE]100. And we're not arguing over little pieces. ... a way that we can
 not be arguing over the minutia is to have smaller documentation, more clear, more concise, high signal."
 Done: the dashboard ("How I steer"). No new rule for the heads and no message to them.
+
+## 2026-11-21 about 18:46 UTC (chat, from speech)
+Words: "Also ensuring that the heads are using their teams and their skills as is part of their requirements.
+... some kind of like non-invasive monitoring, non-invasive token monitoring ... ideally, like it's 100%
+script-based and doesn't require the heads remembering. ... what we've had in the past is like just
+overall like choking of the system. And what I want instead is like a lean ... just a script, like it's
+just running and it just does what it has to do. ... If that's not a solution that's possible ... we figure
+something else out. ... making sure that the rules that the heads have been assigned are actually being
+followed, but in a lean, non-invasive, not token heavy, and efficient way."
+Done: research on this machine (the transcript file has the token counts and the tool names; hooks run in
+cloud sessions). Two tickets for the Head of Technology in the new story E6.S5: `T-20261121-board-check`
+and `T-20261121-usage-log`.
