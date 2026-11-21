@@ -207,9 +207,11 @@ not in a chat.
    yes/no question in clear, plain words, with no internal names: **Question** (yes/no, one
    sentence), **Why it matters** (two or three sentences, with the cost if any),
    **Recommendation** (yes or no), and the session where the person answers.
-4. The session where the person answers sends the question to the phone of the person
-   (`PushNotification`, under 200 characters): "Yes or no: <question>? Recommended: <yes or no>."
-   For a question of a different head, the Head of Technology tells that head to send it.
+4. The session where the person answers asks it as a clickable question: the question dialog
+   (`AskUserQuestion`) with two options, "Yes" and "No" (the recommended one first, marked
+   "(Recommended)"), and one line of reason in each option. It also sends a push notification
+   (`PushNotification`, under 200 characters) so the person opens the session. For a question of a
+   different head, the Head of Technology tells that head to ask it.
 5. When the person answers, the head records the words in `RECORD.md`, does the work, and moves
    the ticket to `PLANNING/board/done/`.
 
