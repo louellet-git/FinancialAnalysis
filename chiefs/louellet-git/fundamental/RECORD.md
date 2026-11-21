@@ -172,3 +172,7 @@ Dream pass done before the compaction: the dashboard is rewritten (no session id
 ## 2026-11-21 19:24 UTC (words of the person, given in the session of the Head of Staff and relayed)
 Words: "I guess what I would like from the fundamental research is if we've explained the S&P 10 and we're pleased with our explanation, is there any stock where that explanation doesn't hold up? Was anything hit less? Was anything hit more? If S&P10 finished expand to S&P100. Have a one pager for the S&P10 for my review before moving on to the additional work."
 Done: one page for the S&P 10 (`analysis/priors/sp10_week_one_pager_2026-11-21.md`): the explanation, then for each of the 10 stocks whether it holds (hit more, hit less, or as expected), with the reason or "not explained". It goes to the Head of Staff first, then to the person. The S&P 100 part and the other work wait for his review.
+
+## 2026-11-21 19:29 UTC (review word of the person on the S&P 10 page, relayed by the Head of Staff)
+Words: "The report should include the entire week including 11-20. It's a huge drop."
+Done: the page now has the week by day (SPY, the equal weight of the S&P 500, each of the 10) and a block on 2026-11-20: the fall of that day was in the chip and AI-hardware companies, the yields fell, and the cause is not in our data; the missing data are named and asked (the Head of Economics: the daily view; the Head of Technology: the 8-K filings of 11-19 and 11-20).
