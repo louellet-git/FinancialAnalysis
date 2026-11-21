@@ -2,13 +2,14 @@
 id: T-20261121-backtest-environment
 title: Make one backtesting environment for the stock and option strategies of the heads
 area: trading
-status: in-progress
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: technology
 order: 1
 branch: claude/backtest-environment
 created: 2026-11-21
+merged: pull request 132 (branch claude/backtest-environment)
 acceptance: The needs of the Quant, Fundamental and Quality and Risk heads are written in this ticket; the first part that they agree on runs as one command on a copy of the data store, with a point-in-time test.
 ---
 Words of the person (2026-11-21): "Please get to work on the backtesting environment, ask the heads what they require."
@@ -97,3 +98,10 @@ Part 2 (after part 1): total return with dividends, then the risk outputs, the d
 delisted prices (a new source, terms first). The model-value strategy (a) of Fundamental Research and the
 option strategies of Quant Research use the harness when they are ready; the option fills wait for enough
 days of saved chains.
+
+Done (part 1, pull request 132): the run harness on `fa portfolio backtest`: a committed hypothesis file
+(`trading/hypotheses/`), one add-only run log for each run, written before any result (`trading/runs/`), the variant
+count from the git history plus `prior_variants`, the out-of-sample window with its inheritance and a "not clean" flag,
+the window-read record of an exploratory run, results at 0x, 1x and 2x cost, `--trades`, and `--poison-check D1,D2`.
+Opt-in (word of the person): only a head whose result a person uses for a decision needs it.
+Parts 2 and 3: ticket `T-20261121-backtest-environment-2`.

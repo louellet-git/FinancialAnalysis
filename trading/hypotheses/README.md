@@ -10,6 +10,9 @@ WARNING that names the hypothesis; a later result of that hypothesis must report
 of the gate of `docs/QUALITY-STANDARDS.md`). Other heads do not need it: exploration runs as before (word of the person,
 2026-11-21: "The backtest harness and the hypothesis file are more for the heads that require it").
 
+**Cloud sessions.** A repo clone of a cloud session is often shallow. A hypothesis run then stops with an error; run
+`git fetch --unshallow origin` first.
+
 ## Rules
 
 - Register before the first run. Commit the file first: the command refuses a file that is not in HEAD or that differs from
