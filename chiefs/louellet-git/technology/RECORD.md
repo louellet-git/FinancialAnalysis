@@ -188,3 +188,7 @@ Done: the store README says private (store e3b735e); the heads are told to attac
 ## 2026-11-21 ~18:00 UTC (dialog in the Quality and Risk session, read in its transcript)
 Words: "Shared store, I accept" (the daily save of the Alpaca chains goes into the shared private store; the owner accepts the terms risk).
 Done: the note in `docs/DATA-SOURCES.md`, section "Alpaca paper trading".
+
+## 2026-11-21 (chat)
+Words: "I think we should have a head of staff, which is above you and the other heads. ... Fable is more for me to speak w and to address the other heads. I want it for overall coordination but it doesn't need to get into the weeds too much." Then: "1. I think it should go to the head of staff 2. I and the head of staff set the pace 3. I'll speak w head of staff when convenient for me"
+Done: the Head of Staff row and rules in `chiefs/ORIENTATION.md` (questions for the person go through it; the person and it set the order; no fixed report time); the session.
