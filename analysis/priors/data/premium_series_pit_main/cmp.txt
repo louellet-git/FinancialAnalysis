@@ -1,0 +1,20 @@
+truncation 2020-03-20: base_2020-03-20.csv against trunc_2020-03-20.csv: identical (expected: identical) PASS
+poison 2020-03-20: base_2020-03-20.csv against poison_2020-03-20.csv: identical (expected: identical) PASS
+truncation 2022-06-17: base_2022-06-17.csv against trunc_2022-06-17.csv: identical (expected: identical) PASS
+poison 2022-06-17: base_2022-06-17.csv against poison_2022-06-17.csv: identical (expected: identical) PASS
+truncation 2025-04-04: base_2025-04-04.csv against trunc_2025-04-04.csv: identical (expected: identical) PASS
+poison 2025-04-04: base_2025-04-04.csv against poison_2025-04-04.csv: identical (expected: identical) PASS
+truncation 2020-04-10: base_2020-04-10.csv against trunc_2020-04-10.csv: identical (expected: identical) PASS
+poison 2020-04-10: base_2020-04-10.csv against poison_2020-04-10.csv: identical (expected: identical) PASS
+truncation 2022-07-29: base_2022-07-29.csv against trunc_2022-07-29.csv: identical (expected: identical) PASS
+poison 2022-07-29: base_2022-07-29.csv against poison_2022-07-29.csv: identical (expected: identical) PASS
+share basis of D 2020-03-20 (byte test): base_2020-03-20.csv against dbasis_2020-03-20.csv: differs (expected: identical) FAIL
+par path truncation 2025-04-04: par_base.csv against par_trunc.csv: identical (expected: identical) PASS
+par path poison 2025-04-04: par_base.csv against par_poison.csv: identical (expected: identical) PASS
+control: Treasury rows before D (par path): par_base.csv against c_par.csv: differs (expected: differs) PASS
+control: GSW rows before D: base_2025-04-04.csv against c_gsw.csv: differs (expected: differs) PASS
+control: facts before D: base_2025-04-04.csv against c_facts.csv: differs (expected: differs) PASS
+control: closes before D: base_2025-04-04.csv against c_close.csv: differs (expected: differs) PASS
+control: SPY row of D removed: base_2025-04-04.csv against c_spy.csv: differs (expected: differs) PASS
+control: stale close at D (5 tickers): base_2025-04-04.csv against c_stale.csv: differs (expected: differs) PASS
+DONE
