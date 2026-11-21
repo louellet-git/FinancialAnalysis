@@ -43,8 +43,8 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
   to the head only if the same head does it again and again.
 
 ## 4. Open now
-- E6.S5: `T-20261121-board-check` (in progress, Technology), then `T-20261121-usage-log` (the backfill
-  table of all heads comes to me), then `T-20261121-token-calculator` (on hold).
+- E6.S5: `fa board check` is on main (it needs the built `fa`; I start no build, so I ask Technology for
+  the output or read the counts in its message). Next: `T-20261121-usage-log`, then the calculator (on hold).
 - Count of all heads (2026-11-21, `get_session` cost in USD from each start): Technology 629, Fundamental
   314, Quality 220, Quant 152, Economics 97, Staff 12. The heads make 70% of the cache reads (400k to 500k
   for each head turn); 317 agent starts; 2 skill uses.
