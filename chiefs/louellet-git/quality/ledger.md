@@ -87,3 +87,4 @@
 | split table verdict | 2026-11-21 | `claude/split-table` (da40ce5): code-reviewer PASS-WITH-NOTES, data-quality-analyst REVISE; verdict REVISE (5 MAJ in the data) | about 48k code (measured) | reruns wait |
 | split-basis correction gate started | 2026-11-21 | `claude/split-basis-fix` (72d994f), store f6e66fc: model-validator, code-reviewer | running | |
 | harness conditions check | 2026-11-21 | `claude/backtest-environment` (419d305, merged 5cfcb04): head check of C1-C3; PASS-WITH-NOTES; PR may open | small (head only) | worktrees removed |
+| fa dcf market code gate | 2026-11-21 | `claude/dcf-market-level` (d444206): code-reviewer PASS-WITH-NOTES (F1: no header check, a silent wrong table on swapped columns; fix before merge) | about 120k (measured) | |
