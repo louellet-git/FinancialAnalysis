@@ -262,10 +262,13 @@ Standard template, FAIL share on 2026-11-20: S&P 500 0 of 432, next 500 5 of 406
 value (below 3%) is met for the 2,003 tickers together, not for the next 1,000 alone (3.8%).
 
 The two interest-income tags of `investment_income_operating` have a scope (registry keys
-`unclassified_only` and `scoped_min_assets_share`): they give a value only for a filer with no
-current-assets total and with a value of 1% or more of total assets (a quarter: 0.25%). Before
-this scope, 21 revenue rows of 9 companies with another business had interest income as revenue
-(APTV, AGCO, ARE, UMH, NGVT, DNTH, IMNM, PLSE, AVLN). The FAIL counts did not change.
+`unclassified_only` and `scoped_min_assets_share`): they give a value only for a filer that has no
+current-assets total in any period, and with a value of 1% or more of total assets (a quarter:
+0.25%; a total assets of 0 or less, or none, counts as unknown: no share test). Before this scope,
+120 revenue rows (60 periods for each ticker) of 13 companies with another business had interest
+income as revenue (AGCO, APTV, ARE, ASTS, AVLN, DJT, DNTH, IMNM, LSTR, NGVT, PLSE, RARE, UMH). The
+FAIL counts did not change. Known limit: UMH FY2010 (2.817M, 1.49% of total assets) still has it;
+see `docs/traps/2026-11-21-interest-income-revenue-share-limit.md`.
 
 A `WARN` is not an error of the mapping. The most frequent warnings: more than 10% of a
 rollup total has no variable (`unmapped_lines`), an earlier fiscal year has a `FAIL`

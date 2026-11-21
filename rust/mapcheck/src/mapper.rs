@@ -266,13 +266,18 @@ pub fn resolve_period_with(registry: &Registry, facts: &CompanyFacts, end: &str,
     let mut filed_dates: Vec<Option<String>> = vec![None; n];
 
     // A tag with the scope of a fund or a mortgage REIT (`unclassified_only`) gives no value to a
-    // filer that has a current-assets total, or whose value is a very small share of total assets.
+    // filer that has a current-assets total (in any period), or whose value is a very small share of total assets.
     let first_value = |name: &str| {
         let i = registry.try_var(name)?;
         let v = &registry.variables[i];
         v.tags.iter().find_map(|t| select(facts.entries(t, &v.unit), end, forms, v.period)).map(|s| s.value)
     };
-    let classified = first_value("total_current_assets").is_some();
+    // The filer decides, not the period: a filer with a current-assets total in any period has a
+    // classified balance sheet, also in a period that has only income-statement facts.
+    let classified = registry.try_var("total_current_assets").is_some_and(|i| {
+        let v = &registry.variables[i];
+        v.tags.iter().any(|t| !facts.entries(t, &v.unit).is_empty())
+    });
     let assets = first_value("total_assets").filter(|a| *a > 0.0);
     for (i, variable) in registry.variables.iter().enumerate() {
         for tag in &variable.tags {
@@ -591,6 +596,57 @@ mod tests {
         // The total of investment income of a fund has no scope.
         let (r, p) = resolve(vec![("GrossInvestmentIncomeOperating", flow(5.0)), ("AssetsCurrent", balance(900.0)), ("Assets", balance(100000.0))]);
         assert_eq!(p.get(&r, "revenue"), Some(5.0));
+    }
+
+    #[test]
+    fn scope_of_the_interest_income_tags_edge_cases() {
+        let revenue = |concepts: Vec<(&str, Vec<crate::facts::Fact>)>| {
+            let (r, p) = resolve(concepts);
+            p.get(&r, "revenue")
+        };
+        // A large share of total assets, but the filer has a current-assets total.
+        assert_eq!(revenue(vec![("InterestIncomeOperating", flow(500.0)), ("AssetsCurrent", balance(900.0)), ("Assets", balance(1000.0))]), None);
+        // Exactly 1% of total assets: a value.
+        assert_eq!(revenue(vec![("InterestIncomeOperating", flow(10.0)), ("Assets", balance(1000.0))]), Some(10.0));
+        // Just below 1%: no value.
+        assert_eq!(revenue(vec![("InterestIncomeOperating", flow(9.99)), ("Assets", balance(1000.0))]), None);
+        // Total assets of zero count as unknown: no share test.
+        assert_eq!(revenue(vec![("InterestIncomeOperating", flow(1.0)), ("Assets", balance(0.0))]), Some(1.0));
+        // Total assets unknown, no current-assets total (a fund or a mortgage REIT): a value.
+        assert_eq!(revenue(vec![("InterestIncomeOperating", flow(1.0))]), Some(1.0));
+    }
+
+    #[test]
+    fn scope_of_the_interest_income_tags_in_a_quarter() {
+        let q = |val: f64| {
+            let registry = Registry::embedded().unwrap();
+            let facts = company(vec![
+                ("InterestIncomeOperating", vec![fact(Some("2024-07-01"), "2024-09-30", val, "10-Q", "2024-11-01")]),
+                ("Assets", vec![fact(None, "2024-09-30", 1000.0, "10-Q", "2024-11-01")]),
+            ]);
+            let p = resolve_period(&registry, &facts, "2024-09-30", Forms::Quarterly);
+            p.get(&registry, "revenue")
+        };
+        // A quarter needs 0.25% of total assets (2.5), not 1% (10).
+        assert_eq!(q(5.0), Some(5.0));
+        assert_eq!(q(2.0), None);
+    }
+
+    #[test]
+    fn a_period_with_no_balance_sheet_of_a_classified_filer_has_no_interest_revenue() {
+        // The current-assets total is in the next year; the earlier year has income facts only (APTV FY2010).
+        let registry = Registry::embedded().unwrap();
+        let facts = company(vec![
+            ("InterestIncomeOperating", vec![fact(Some("2023-01-01"), "2023-12-31", 29.0, "10-K", "2025-02-01")]),
+            ("AssetsCurrent", balance(900.0)),
+            ("Assets", balance(1000.0)),
+        ]);
+        let p = resolve_period(&registry, &facts, "2023-12-31", Forms::Annual);
+        assert_eq!(p.get(&registry, "revenue"), None);
+        // An unclassified filer with no balance sheet in the period (ARCC, DX): a value.
+        let facts = company(vec![("InterestIncomeOperating", vec![fact(Some("2023-01-01"), "2023-12-31", 29.0, "10-K", "2025-02-01")])]);
+        let p = resolve_period(&registry, &facts, "2023-12-31", Forms::Annual);
+        assert_eq!(p.get(&registry, "revenue"), Some(29.0));
     }
 
     #[test]

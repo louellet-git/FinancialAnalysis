@@ -220,6 +220,9 @@ impl Registry {
             if let Some(bad) = v.unclassified_only.iter().find(|t| !v.tags.contains(t)) {
                 return Err(format!("{}: unclassified_only tag '{bad}' is not in the tags", v.name));
             }
+            if !(0.0..=1.0).contains(&v.scoped_min_assets_share) {
+                return Err(format!("{}: scoped_min_assets_share must be from 0 to 1", v.name));
+            }
             let mut formulas = Vec::new();
             for text in &v.formulas {
                 let formula = parse_formula(text, &index, &v.name)?;
@@ -421,6 +424,21 @@ tags = ["us-gaap/C"]
         let text = MINI.replace("us-gaap/C", "us-gaap/A");
         let error = Registry::load(&text).unwrap_err();
         assert!(error.contains("us-gaap/A"), "{error}");
+    }
+
+    #[test]
+    fn scoped_tag_that_is_not_in_the_tags_does_not_load() {
+        let text = MINI.replace("tags = [\"us-gaap/C\"]", "tags = [\"us-gaap/C\"]\nunclassified_only = [\"us-gaap/Z\"]");
+        assert_ne!(text, MINI);
+        let error = Registry::load(&text).unwrap_err();
+        assert!(error.contains("us-gaap/Z") && error.contains("unclassified_only"), "{error}");
+    }
+
+    #[test]
+    fn scoped_share_outside_zero_to_one_does_not_load() {
+        let text = MINI.replace("tags = [\"us-gaap/C\"]", "tags = [\"us-gaap/C\"]\nscoped_min_assets_share = 1.5");
+        let error = Registry::load(&text).unwrap_err();
+        assert!(error.contains("scoped_min_assets_share"), "{error}");
     }
 
     #[test]

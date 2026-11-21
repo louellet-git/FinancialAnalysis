@@ -23,7 +23,9 @@
 #   unclassified_only  tags (a subset of tags) that give a value only if the filer has no
 #              current-assets total (a fund or a mortgage REIT)
 #   scoped_min_assets_share  the unclassified_only tags also need a value of this share of
-#              total assets or more (a small interest income is not revenue)
+#              total assets or more (a small interest income is not revenue). A total
+#              assets of 0 or less, or none, counts as unknown: no share test. The
+#              share is for a year; a quarter uses a quarter of it. Range 0 to 1.
 #   core       true: a core DCF input
 #   memo       true: an "of which" number (a note detail, a part of one line, or a
 #              per-share number). The amount is already inside a line variable of
@@ -103,7 +105,7 @@ tags = [
 [[variable]]
 name = "investment_income_operating"
 statement = "income_statement"
-note = "Top line of an investment company: total investment income. A mortgage REIT has no revenue total: its top line is the interest income on its loans and securities (tags 2 and 3). The first tag is a total of investment income, and the others are interest income only. The tag for interest income on debt securities is not used: a biotech with no revenue has it. Tags 2 and 3 (key unclassified_only) give a value only if the filer has no current-assets total and the value is 1% or more of total assets (key scoped_min_assets_share). A company with a classified balance sheet (APTV, AGCO, a biotech with cash investments), and an equity REIT with a small interest income (ARE, UMH), have interest income that is not their revenue."
+note = "Top line of an investment company: total investment income. A mortgage REIT has no revenue total: its top line is the interest income on its loans and securities (tags 2 and 3). The first tag is a total of investment income, and the others are interest income only. The tag for interest income on debt securities is not used: a biotech with no revenue has it. Tags 2 and 3 (key unclassified_only) give a value only if the filer has no current-assets total and the value is 1% or more of total assets (key scoped_min_assets_share). A filer with a current-assets total in any period is classified for all its periods. A company with a classified balance sheet (APTV, AGCO, a biotech with cash investments), and an equity REIT with a small interest income (ARE, UMH), have interest income that is not their revenue."
 unclassified_only = [
     "us-gaap/InterestAndDividendIncomeOperating",
     "us-gaap/InterestIncomeOperating",
