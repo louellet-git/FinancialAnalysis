@@ -349,6 +349,9 @@ fa recon history [--from D] [--to D] [--out FILE]
   The difference from the fitted curve over the cached dates; persistence and half-life.
   See: fa recon history --help
 
+fa recon history --lasting [--to D] [--min-dates N] [--same-sign S] [--min-abs-bp B]
+  The securities that stay rich or cheap (rule A-117), with counts. Stored price files only, no request.
+
 fa recon explain [--date YYYY-MM-DD] [--out FILE]
   Regression of the difference on coupon, age, SOMA share, stripped share, size, original
   term and futures delivery; the old 30-year bonds. See: fa recon explain --help";
