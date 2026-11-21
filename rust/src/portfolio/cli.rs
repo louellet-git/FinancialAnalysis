@@ -1,6 +1,6 @@
 //! The command `fa portfolio backtest`.
 
-use super::strategies::{load_vintages, EqualWeight, Momentum, ValueRank};
+use super::strategies::{load_vintages, EqualWeight, Momentum, Pick, ValueRank, WeeklyValueRank};
 use super::{perf_line, Config, Prices, Rebalance, Report};
 use crate::dcf::auto::{index_from_cache, DEFAULT_TABLE};
 use crate::dcf::auto_cli::load_table;
@@ -18,17 +18,25 @@ fa portfolio backtest --strategy NAME --start D [--end D] [OPTIONS]
   traded value, SPY as the benchmark. The strategy sees the prices of the days before the rebalance date only; the
   engine trades at the close of the rebalance date. No network, no order. Price returns (no dividends).
   --strategy NAME    value-rank (automatic model value / price, equal weight in the top quintile)
+                     value-rank-weekly (the rule of docs/assumptions/A-009: each week up to 3 new tickers, the highest
+                       rank inside the sector, one for each sector, each in the top fifth of its sector, a hold of 13
+                       weeks; the sector of each ticker is today's SIC code; use it with --rebalance weekly. The engine
+                       trades each open position back to 1/39 at each rebalance (A-009 holds without a rebalance). The
+                       data checks that need the mapping status and the share-count guard are not in the backtest.)
                      momentum (12-1 month price momentum, equal weight in the top quintile)
   --cache DIR        company facts and prices (default <repo>/data/raw). The command only reads it.
   --start D          first day, YYYY-MM-DD
   --end D            last day (default: the last SPY day)
-  --rebalance R      monthly (default) or quarterly: the first trading day of the month or the quarter
+  --rebalance R      monthly (default) or quarterly: the first trading day of the month or the quarter; weekly: the Friday
+                     (the last trading day of the week if Friday is not one); the strategy sees the closes before that day
   --cost-bp N (10)   cost in basis points of each traded value (buy and sell)
   --tickers-file F   the universe: one ticker at the start of each line (default: each ticker of the cache with a price file)
   --paths N (300)    value-rank: paths of each model (100 or more)     --seed S (7): a whole number
   --table FILE       value-rank: parameter table (default analysis/priors/process_priors_2026-11-19.toml)
   --neutral sector   value-rank: the top quintile inside each Fama-French 12 sector (today's SIC code of the cache),
                      with the sector weights of the scored list; the stock choice without the sector tilt
+  --pick top|bottom  with value-rank --neutral sector: the top fifth (default) or the bottom fifth of each sector, held
+                     long (the test of the short side of A-009: does the bottom fifth return less than the equal weight)
   --out FILE        write the daily value of the portfolio, of SPY and of the equal-weight line as CSV
   --holdings FILE    write the target weights of each rebalance date as CSV (date,ticker,weight)
   Survivorship: the lists of tickers are today's lists, so the result is too good. The output has an equal-weight line of
@@ -83,7 +91,7 @@ pub fn run(repo: &Path, args: &[String]) -> u8 {
 }
 
 fn backtest(repo: &Path, args: &[String]) -> Result<(), String> {
-    let known = ["--strategy", "--cache", "--start", "--end", "--rebalance", "--cost-bp", "--tickers-file", "--paths", "--seed", "--table", "--out", "--holdings", "--neutral"];
+    let known = ["--strategy", "--cache", "--start", "--end", "--rebalance", "--cost-bp", "--tickers-file", "--paths", "--seed", "--table", "--out", "--holdings", "--neutral", "--pick"];
     let mut i = 0;
     while i < args.len() {
         if !known.contains(&args[i].as_str()) {
@@ -100,7 +108,8 @@ fn backtest(repo: &Path, args: &[String]) -> Result<(), String> {
     let rebalance = match opt(args, "--rebalance").unwrap_or("monthly") {
         "monthly" => Rebalance::Monthly,
         "quarterly" => Rebalance::Quarterly,
-        x => return Err(format!("--rebalance '{x}': monthly or quarterly")),
+        "weekly" => Rebalance::Weekly,
+        x => return Err(format!("--rebalance '{x}': monthly, quarterly or weekly")),
     };
     let cost_bp: f64 = opt(args, "--cost-bp").map_or(Ok(10.0), |v| v.parse().map_err(|_| format!("bad number for --cost-bp: '{v}'")))?;
     if !(0.0..=1000.0).contains(&cost_bp) {
@@ -143,7 +152,19 @@ fn backtest(repo: &Path, args: &[String]) -> Result<(), String> {
 
     let report = match strategy {
         "momentum" => super::run(&prices, &tickers, &Momentum, &cfg)?,
-        "value-rank" => {
+        "value-rank" | "value-rank-weekly" => {
+            let weekly = strategy == "value-rank-weekly";
+            let pick = match opt(args, "--pick") {
+                None | Some("top") => Pick::Top,
+                Some("bottom") => Pick::Bottom,
+                Some(x) => return Err(format!("--pick '{x}': top or bottom")),
+            };
+            if pick == Pick::Bottom && (weekly || opt(args, "--neutral").is_none()) {
+                return Err("--pick bottom needs --strategy value-rank with --neutral sector".into());
+            }
+            if weekly && opt(args, "--neutral").is_some() {
+                return Err("value-rank-weekly ranks inside the sector by its own rule: no --neutral".into());
+            }
             let table_file = opt(args, "--table").map(PathBuf::from).unwrap_or_else(|| repo.join(DEFAULT_TABLE));
             let (table, fade) = load_table(&table_file).map_err(|e| e.0)?;
             let registry = Registry::embedded()?;
@@ -161,7 +182,7 @@ fn backtest(repo: &Path, args: &[String]) -> Result<(), String> {
             eprintln!("value-rank: {} of {} tickers have SEC facts with the standard template", universe.len(), tickers.len());
             n_scored = Some(universe.len());
             let params = RetParams { table: &table, fade: &fade, rules: &rules, curves: curves.as_ref(), index: None, lag: 100, paths, seed };
-            let sectors = match opt(args, "--neutral") {
+            let sectors = match opt(args, "--neutral").or(weekly.then_some("sector")) {
                 None => None,
                 Some("sector") => Some(
                     universe
@@ -171,10 +192,14 @@ fn backtest(repo: &Path, args: &[String]) -> Result<(), String> {
                 ),
                 Some(x) => return Err(format!("--neutral '{x}': sector")),
             };
-            let s = ValueRank { years, series: &raw, index: index.as_deref(), params, scored: Default::default(), sectors };
-            super::run(&prices, &universe, &s, &cfg)?
+            let s = ValueRank { years, series: &raw, index: index.as_deref(), params, scored: Default::default(), sectors, pick };
+            if weekly {
+                super::run(&prices, &universe, &WeeklyValueRank { base: s, open: Default::default() }, &cfg)?
+            } else {
+                super::run(&prices, &universe, &s, &cfg)?
+            }
         }
-        x => return Err(format!("unknown strategy '{x}': value-rank or momentum")),
+        x => return Err(format!("unknown strategy '{x}': value-rank, value-rank-weekly or momentum")),
     };
     let ew = super::run(&prices, &tickers, &EqualWeight, &cfg)?;
     let info = Info { n_tickers: tickers.len(), n_scored, late, seconds: t0.elapsed().as_secs_f64() };
@@ -222,7 +247,7 @@ pub fn render(r: &Report, ew: &Report, cfg: &Config, args: &[String], info: &Inf
     let day = |d: Option<&i64>| d.map_or(String::new(), |d| mapcheck::dates::format(*d));
     let mut t = String::new();
     let _ = writeln!(t, "PORTFOLIO BACKTEST: {}. Command: fa portfolio backtest {}", r.strategy, args.join(" "));
-    let table = if r.strategy == "value-rank" { " The parameter table is in-sample (estimated on all years)." } else { "" };
+    let table = if r.strategy.starts_with("value-rank") { " The parameter table is in-sample (estimated on all years)." } else { "" };
     let _ = writeln!(
         t,
         "WARNING: the ticker list is today's list (survivorship, index addition): the result is too good. Price returns, no dividends.{table} A test, not a forecast."
