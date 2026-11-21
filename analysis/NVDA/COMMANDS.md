@@ -35,7 +35,7 @@ mkdir -p /tmp/nvda_var                  # the variant files of this document
 
 ```bash
 fa dcf drivers NVDA --model $M $K        # P10 54.92, P25 74.36, P50 103.78, P75 146.06, P90 200.40, mean 119.07 (SE 0.21), 18.1% collapses
-fa dcf drivers NVDA $K --model $M           # the default run, 10,000 paths: P10 54.72, P25 74.68, P50 105.09, P75 147.10, P90 200.29, mean 119.81 (SE 0.66)
+fa dcf drivers NVDA --model $M    # the default run, 10,000 paths (no $K): P10 54.72, P25 74.68, P50 105.09, P75 147.10, P90 200.29, mean 119.81 (SE 0.66)
 for s in 1 2 3 4 5 6 7 8 9 10 11 12 13 14; do fa dcf drivers NVDA --model $M --no-attribution --seed $s | grep "^  P10"; done
                                          # 10,000 paths: P50 from 102.70 to 105.09 (seed 7 is the highest)
 for s in 1 2 3 4 5 6 7 8 9 10 11 12 13 14; do fa dcf drivers NVDA --model $M --no-attribution --seed $s $K | grep "^  P10"; done
@@ -49,6 +49,8 @@ The first command prints also: paths with a collapse 18.1%, terminal value share
 equity value at the P50 $2,510.1B (EV $2,411.9B), the value at the means $113.93, the table of the means by year (year 1: revenue
 $524.3B, free cash flow to the firm $152.8B; year 10: revenue $1,079.5B), the attribution block (section 4), the variance block
 (70.2% / 31.6% / 23.9% removed for growth / margin / discount) and the mean path (year-10 revenue P50 $861.4B).
+
+The stakes and the guarantees per share (24.186 billion shares): marketable 44.219 + 0.5 x 65.528 = 76.983, so $3.18 at r = 0.5; all stakes 109.747, so $4.54 at r = 1; guarantees 108.5 (L12), so $4.49; marketable alone 44.219, so $1.83.
 
 The floor: `2.0 x 361.807 x 0.8960 = 648.4` ($B; the discount factor of year 1 is in the table of the means), plus 98.124 of net cash
 and stakes, over 24.186 billion shares = $30.86.
@@ -273,24 +275,47 @@ sed -e 's|^net_debt = .*|net_debt = -21141000000.0|' -e 's|^shares = .*|shares =
     -e 's|^beta = { mean = 1.676,|beta = { mean = 1.681,|' $T/step2.toml > $T/step3.toml                           # 105.93
 sed 's|^half_life = { mean = 1.25, std = 0.50, lo = 0.40, hi = 3.00 }|half_life = { mean = 1.0, std = 0.40, lo = 0.40, hi = 3.00 }|' $T/step3.toml > $T/step4.toml   # 98.69
 sed '/^\[process.charge\]/,/^half_life/ s|^target = .*|target = { mean = 0.015, std = 0.007, lo = 0.0, hi = 0.05 }|' $T/step4.toml > $T/step5.toml            # 97.65 (= v2)
-sed 's|^start = 0.0227|start = 0.0212|' $T/v2.toml > $T/step7.toml                                                # 97.76
-sed 's|^net_debt = .*|net_debt = -130888000000.0|' $T/step7.toml > $T/step8.toml                                  # 102.29
-# step 9 = $T/v3.toml: 85.07
+sed 's|^start = 0.0227|start = 0.0212|' $T/v2.toml > $T/step6.toml                                                # 97.76
+sed 's|^net_debt = .*|net_debt = -130888000000.0|' $T/step6.toml > $T/step7.toml                                  # 102.29
+# step 8 = $T/v3.toml: 85.07
 sed -e 's|^net_debt = .*|net_debt = -76015000000.0|' \
-    -e '/^\[process.charge\]/,/^ramp_years/ s|^start = .*|start = { mean = 0.13905, std = 0.02, lo = 0.015, hi = 0.40 }|' $T/v3.toml > $T/step10.toml   # 91.57
-# step 11 = version 4 (round 2) with the guide alone (40%): 97.74
-sed -e 's|^start = { mean = 0.449, std = 0.12, lo = 0.10, hi = 0.75 }|start = { mean = 0.40, std = 0.12, lo = 0.10, hi = 0.75 }|' -e 's|^net_debt = .*|net_debt = -76015000000.0|' $M > $T/step11.toml   # 97.74
-# step 12 = version 4 (round 3): year-1 growth 47.9% (the beat of 12 pairs) and net debt -76.015: 108.40
-sed -e 's|^start = { mean = 0.449, std = 0.12, lo = 0.10, hi = 0.75 }|start = { mean = 0.479, std = 0.12, lo = 0.10, hi = 0.75 }|' -e 's|^net_debt = .*|net_debt = -76015000000.0|' $M > $T/step12.toml   # 108.40
-# step 13 = back to the guide alone, 41.0%, net debt -76.015
-sed -e 's|^start = { mean = 0.449, std = 0.12, lo = 0.10, hi = 0.75 }|start = { mean = 0.41, std = 0.12, lo = 0.10, hi = 0.75 }|' -e 's|^net_debt = .*|net_debt = -76015000000.0|' $M > $T/step13.toml   # 99.06
-# step 14 = marketable securities at full value, net debt -98.124, guide alone
-sed 's|^start = { mean = 0.449, std = 0.12, lo = 0.10, hi = 0.75 }|start = { mean = 0.41, std = 0.12, lo = 0.10, hi = 0.75 }|' $M > $T/step14.toml   # 99.97
-# step 15 = the model file of this version (guide + half the all-pairs median beat: 44.9%): 10,000 paths 105.09; 100,000 paths 103.78
+    -e '/^\[process.charge\]/,/^ramp_years/ s|^start = .*|start = { mean = 0.13905, std = 0.02, lo = 0.015, hi = 0.40 }|' $T/v3.toml > $T/step9.toml   # 91.57
+# step 10 = version 4 (round 2) with the guide alone (40%): 97.74
+sed -e 's|^start = { mean = 0.449, std = 0.12, lo = 0.10, hi = 0.75 }|start = { mean = 0.40, std = 0.12, lo = 0.10, hi = 0.75 }|' -e 's|^net_debt = .*|net_debt = -76015000000.0|' $M > $T/step10.toml   # 97.74
+# step 11 = version 4 (round 3): year-1 growth 47.9% (the beat of 12 pairs) and net debt -76.015: 108.40
+sed -e 's|^start = { mean = 0.449, std = 0.12, lo = 0.10, hi = 0.75 }|start = { mean = 0.479, std = 0.12, lo = 0.10, hi = 0.75 }|' -e 's|^net_debt = .*|net_debt = -76015000000.0|' $M > $T/step11.toml   # 108.40
+# step 12 = back to the guide alone, 41.0%, net debt -76.015
+sed -e 's|^start = { mean = 0.449, std = 0.12, lo = 0.10, hi = 0.75 }|start = { mean = 0.41, std = 0.12, lo = 0.10, hi = 0.75 }|' -e 's|^net_debt = .*|net_debt = -76015000000.0|' $M > $T/step12.toml   # 99.06
+# step 13 = marketable securities at full value, net debt -98.124, guide alone
+sed 's|^start = { mean = 0.449, std = 0.12, lo = 0.10, hi = 0.75 }|start = { mean = 0.41, std = 0.12, lo = 0.10, hi = 0.75 }|' $M > $T/step13.toml   # 99.97
+# step 14 = the model file of this version (guide + half the all-pairs median beat: 44.9%): 10,000 paths 105.09; 100,000 paths 103.78
 ```
 
 The first run of version 1 without the collapse table (P50 145.95) is the version 1 file with the `[failure]` table removed. The
 Python check of the growth process alone (a year below -30% on 5.1% of the paths) is a one-time script and is not kept.
+
+The steps, 10,000 paths (P10 / P50 / P90 / mean):
+
+| Step | Change | P10 | P50 | P90 | Mean |
+|---|---|---|---|---|---|
+| 0 | Version 1 | 59.06 | 130.89 | 298.97 | 162.33 |
+| 1 | Base revenue $361.8B, year-1 growth 40%, year 1 after 2026-10-25 | 54.59 | 107.20 | 211.54 | 123.32 |
+| 2 | Margin start 66%, SBC start 2.27% | 53.74 | 105.82 | 209.23 | 121.91 |
+| 3 | Bridge of 2026-10-25, shares 24,186M, beta 1.681 | 53.82 | 105.93 | 209.43 | 122.03 |
+| 4 | Half-life 1.0 year | 52.35 | 98.69 | 188.47 | 111.94 |
+| 5 | Charge 1.5% = version 2 | 51.91 | 97.65 | 186.58 | 110.86 |
+| 6 | SBC start 2.12% | 51.99 | 97.76 | 186.70 | 110.96 |
+| 7 | Equity securities in the bridge at full value | 56.53 | 102.29 | 191.23 | 115.50 |
+| 8 | Purchases charged on a ramp of 10 years = version 3 | 44.27 | 85.07 | 174.19 | 100.17 |
+| 9 | One r = 0.5, ramp of 10 years | 47.71 | 91.57 | 183.23 | 106.58 |
+| 10 | The charge fades with the growth; year-1 growth 40% | 50.95 | 97.74 | 185.24 | 111.09 |
+| 11 | Year-1 growth 47.9% (the beat of 12 pairs) = version 4 | 55.49 | 108.40 | 208.21 | 123.85 |
+| 12 | Back to the guide, 41.0% | 51.54 | 99.06 | 188.16 | 112.65 |
+| 13 | Marketable securities at full value | 52.46 | 99.97 | 189.07 | 113.57 |
+| 14 | Guide plus half the median beat of 19 pairs (44.9%) = version 5 | 54.72 | 105.09 | 200.29 | 119.81 |
+
+Changes of the P50: step 9 +$6.5; step 10 +$6.2; step 11 +$10.7; step 12 -$9.3; step 13 +$0.9; step 14 +$5.1 (10,000 paths: 105.09 less 99.97).
+The same base against the guide with 100,000 paths is +$5.2 (103.78 less 98.60). The headline of version 5 with 100,000 paths is 54.92 / 103.78 / 200.40 / 119.07.
 
 ## 8. The engine check
 

@@ -9,7 +9,7 @@ head: fundamental
 order: 0.1
 branch: claude/nvda-valuation
 created: 2026-11-20
-acceptance: `analysis/NVDA/driver_model.toml` and a report give the value range of NVDA for each share with each driver and its source, the report passed the four steps of the review (analyst, skeptic, reviewer, auditor), and the owner approved it.
+acceptance: `analysis/NVDA/driver_model_paths.toml` (path engine; decision of the Head of Fundamental Research, 2026-11-21: a company in a state of very high growth needs a growth process that fades, which the old driver engine has not) and a report give the value range of NVDA for each share with each driver and its source, the report passed the four steps of the review (analyst, skeptic, reviewer, auditor), and the owner approved it.
 ---
 Owner word, 2026-11-20 23:21 UTC: "I want to know what NVDA is worth." It is a new ticker: the owner approves the
 report at the end (`CLAUDE.md`, "Review of a valuation report").
