@@ -232,3 +232,11 @@ what is of record (the valuation blocks and rows, the engine columns of page 3) 
 base rates and the list premium series; the beta columns of page 3; the deviations of page 1). STILL OPEN: the gate of
 claude/attribution-reality (a0e2480), then its pull request (merge main 7e88cfe into it first); the series run of record
 (after a review of the pit results of 61fe8de and with a cut table); the S&P 100 part (waits for the person).
+
+**Both branches merged; the runs of record (21:06 UTC, 2026-11-21).** Pull request 199 (claude/attribution-reality) is
+merged: main 3fc1acc. The three pieces and their PDFs are on main (`analysis/priors/`, `analysis/priors/pdf/`). Runs of
+record: `analysis/priors/data/week_2026-11-20_record_main-7e88cfe/` (the bridge of the four lists) and
+`analysis/priors/data/week_2026-11-20_record_main-3fc1acc/` (the base rates and the reality check). Not of record: the
+weekly premium series of the list, and the deviations and the expected fall by beta (one-time scripts; design R6).
+WAITS: the review of the person on the three pieces (the Head of Staff has them). THEN: the S&P 100 part (the same
+tests on 100 companies, the count against chance), and the 3-page report only after his go-ahead.
