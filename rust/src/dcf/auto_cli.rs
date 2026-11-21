@@ -62,6 +62,13 @@ fa dcf auto TICKER [OPTIONS]
                   history stays; acq_w=0: no charge; acq_charge and acq_f win over it), acq_fade (default 1: the acq_w
                   charge falls linearly to zero along the fade of the growth when the company mean is above the fade
                   level, else it is constant; acq_fade=0: constant charge)
+                  acq_second (default 1: the second line of the business purchases is added to the spend when its value
+                  differs from the first line or the first has none; 0: first line only), acq_keep (default 0: with
+                  acq_fade the charge keeps the share L / mean when the mean is above L, no step at mean = L),
+                  acq_persist_a, acq_persist_b (default 0.0 and 0.5226: the acq_w charge base is a + b x min(past spend,
+                  25%), the fit through the origin; fa dcf pit --diag acq), acq_persist=off (the past spend; after it
+                  one of the two numbers takes the default of the other). The fit applies to the acq_w charge only:
+                  acq_charge, acq_f and the chain cut of the growth history use the actual past spend
   --seed S (7)  --sims N (10000)  --no-attribution  --json  --time   (as `fa dcf drivers --model`)";
 
 pub const SCREEN_USAGE: &str = "\
@@ -203,7 +210,10 @@ fn auto_inner(repo: &Path, args: &[String]) -> R<u8> {
     let t0 = Instant::now();
     let registry = Registry::embedded().map_err(DcfError)?;
     let report = mapcheck::run::check_ticker(&registry, &cache, &ticker, MAP_PERIODS, as_of_day, true);
-    let inputs = inputs_from_report(&registry, &report);
+    let splits = super::share_basis::load_or_warn(&cache);
+    // `to`: the last date of the price file (with no price file: today, with a warning)
+    let to = super::share_basis::basis_to(&cache, &ticker, true);
+    let inputs = inputs_from_report(&registry, &report, &splits, &to);
     let map_ms = t0.elapsed().as_secs_f64() * 1000.0;
     say(&format!("{ticker} automatic model - {BANNER}"));
     say(&format!("  company: {}; mapping status {}; template {}; {} fiscal years", if inputs.name.is_empty() { "(unknown)" } else { &inputs.name }, inputs.status, inputs.template, inputs.years.len()));
@@ -660,14 +670,28 @@ pub(super) fn tickers_of(o: &Opts, cache: &Path) -> R<Vec<String>> {
 /// Stage 1 of the screen: the mapping (company facts of the cache to the standard variables, with the checks). The
 /// result does not depend on the rules. Returns the inputs and the seconds.
 pub fn map_inputs(cache: &Path, tickers: &[String], as_of_day: i64, jobs: Option<usize>) -> R<(Vec<AutoInputs>, f64)> {
+    map_inputs_with(cache, tickers, as_of_day, None, jobs)
+}
+
+/// Like `map_inputs`, but the company facts are the facts that were public on `as_of` (`mapcheck::run::check_ticker_filed`:
+/// a fact is kept when its filing date is `as_of` or earlier). The 10-K of the cache is NOT used to fill a missing input (it
+/// can be a later filing). `fa dcf auto --as-of` and `fa dcf screen --as-of` do not filter the facts: they use `map_inputs`.
+pub fn map_inputs_pit(cache: &Path, tickers: &[String], as_of: &str, as_of_day: i64, jobs: Option<usize>) -> R<(Vec<AutoInputs>, f64)> {
+    map_inputs_with(cache, tickers, as_of_day, Some(as_of), jobs)
+}
+
+fn map_inputs_with(cache: &Path, tickers: &[String], as_of_day: i64, filed_cut: Option<&str>, jobs: Option<usize>) -> R<(Vec<AutoInputs>, f64)> {
     let registry = Registry::embedded().map_err(DcfError)?;
     let t0 = Instant::now();
+    let splits = super::share_basis::load_or_warn(cache);
     let run_map = || -> Vec<AutoInputs> {
         tickers
             .par_iter()
             .map(|t| {
-                let r = mapcheck::run::check_ticker(&registry, cache, t, MAP_PERIODS, as_of_day, true);
-                inputs_from_report(&registry, &r)
+                let r = mapcheck::run::check_ticker_filed(&registry, cache, t, MAP_PERIODS, as_of_day, true, filed_cut);
+                // `to`: the last date of the price file of the ticker; no warning here (a ticker with no price file has no price and no value)
+                let to = super::share_basis::to_for(cache, t, &splits);
+                inputs_from_report(&registry, &r, &splits, &to)
             })
             .collect()
     };

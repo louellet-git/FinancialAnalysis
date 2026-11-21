@@ -5,6 +5,8 @@ every entry below was re-verified against the code/docs on 2026-07-17. If you fi
 one, add it as a new file in `docs/traps/` (`docs/traps/README.md`): one file for each trap, so that
 parallel branches do not conflict. This file keeps the older traps; correct them here.
 
+- Split-adjusted store prices against as-filed SEC shares (a split look-ahead; BKNG): `docs/traps/2026-11-21-split-adjusted-prices-against-filed-shares.md`.
+
 **Deleted evidence files (2026-11-19).** The entries 1 to 135 name Python files as evidence. These
 files are deleted: `financial_analysis/{backtest,dcf,driver_dcf,scenarios,schema,store,market_data,options}.py`,
 `analysis/{IBM,JNJ,ANT}/driver_model.py` and `scripts/visualize_dcf.py`. A trap is still a trap; its
@@ -152,7 +154,14 @@ software). This corrects only the companies that use a standard tag for software
 finds the capex, depreciation and debt lines by words in the tag name. A line can be
 missing (a capex line with an unusual name) or incorrect
 (FDX and DUK: debt is counted two times; V and MA: a line that is not depreciation).
-The printed lines show what the value contains.
+The printed lines show what the value contains. (Update 2026-11-21: the capex lines now come
+from the calculation tree: a standard variable of the line decides, and words decide only for a
+line with no standard variable; the AMD discontinued capex and the MA software line are correct.
+MCD "other productive assets" is a purchase of restaurant businesses: it is out, by its label.
+Depreciation and debt lines still use words. Open: a company tag with an unusual name and no
+standard variable is missed; one line of VSAT and URI holds PP&E and intangibles; DE and CNH
+lease lines are out until the owner decides; the oldest year of a 10-K is a change of definition,
+because the older years use the company facts. See `rust/mapcheck/README.md`, "Capex lines of the 10-K".)
 
 **44. A share count can have no scale.** McDonald's tags 716.4 for 716.4 million shares.
 The importer and the Rust mapper correct a factor of 1,000 or 1,000,000 when net income

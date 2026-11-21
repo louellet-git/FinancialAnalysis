@@ -262,3 +262,38 @@ impl Rates {
         Ok(out)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn latest_age_limit_is_inclusive() {
+        // Hand arithmetic: on = 20010, limit = 7 days. A value on day 20003 is 7 days old: kept (the rule is `> max`).
+        let s: BTreeMap<i64, f64> = [(19990, 0.01), (20003, 0.02)].into_iter().collect();
+        assert_eq!(latest(&s, 20010, 7, "x").unwrap(), (20003, 0.02));
+        // One day over: 20002 is 8 days old, so the error names the limit; the older point is not used.
+        let s: BTreeMap<i64, f64> = [(19990, 0.01), (20002, 0.03)].into_iter().collect();
+        let e = latest(&s, 20010, 7, "x").unwrap_err();
+        assert!(e.starts_with("x: latest value") && e.contains("more than 7 days old"), "{e}");
+        // A value after `on` is ignored; the same day counts as age 0.
+        let s: BTreeMap<i64, f64> = [(20010, 0.04), (20011, 0.05)].into_iter().collect();
+        assert_eq!(latest(&s, 20010, 0, "x").unwrap(), (20010, 0.04));
+        // Empty series: the "no value" error with `None` as the data start.
+        let e = latest(&BTreeMap::new(), 20010, 7, "x").unwrap_err();
+        assert!(e.contains("no value on or before") && e.contains("data starts None"), "{e}");
+    }
+
+    #[test]
+    fn cached_series_ids_count_and_unique() {
+        // 7 ratings x (OAS + EY) = 14, + 2 Moody's + 2 spreads + 8 HQM maturities = 26.
+        let ids = cached_series_ids();
+        assert_eq!(ids.len(), 26);
+        assert_eq!((ids[0].as_str(), ids[1].as_str()), ("BAMLC0A1CAAA", "BAMLC0A1CAAAEY"));
+        assert_eq!(ids.last().unwrap(), "HQMCB30YR");
+        let mut u = ids.clone();
+        u.sort();
+        u.dedup();
+        assert_eq!(u.len(), 26);
+    }
+}

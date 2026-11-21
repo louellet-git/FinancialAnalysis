@@ -38,3 +38,61 @@ Done: tickets `T-20261120-nvda-valuation` (order 0.1) and `T-20261120-valuation-
 Words: "Ensure that work we do is repeatable and contributes to the dcf engine"
 Done: (1) each ticker or market analysis has a command file with the store commit, so that a person can run it again; (2) each judgment of a ticker model that can be a general rule is listed and goes to the engine ticket `T-20261121-dcf-engine-from-tickers`; (3) the analyst and quant agent files have this as a check.
 
+
+## 2026-11-21 03:17 UTC (chat)
+Words: "I need you to begin working on testing your DCF engine on the back tester. That's the real value. You and the chief of economics will have to look for as long of data as you have, chief of economics could/should even consider periods of time that are outside the length of the stock market when that makes sense."
+Done: ticket `T-20261121-dcf-engine-backtest` (order 0.05); first runs of `fa portfolio backtest --strategy value-rank`; questions to the Head of Economics (market-level history) and the Head of Technology (older prices).
+
+## 2026-11-21 03:16 UTC (relayed by the Head of Quality and Risk)
+Words: "I need the report to be a trade recommendation, based on fundamentals. Trade recommendations should be sub 3 pages."
+Done: `analysis/NVDA/TRADE-RECOMMENDATION.md` (no trade), branch `claude/nvda-valuation` caa0082, in the gate.
+
+## 2026-11-21 03:47 UTC (chat)
+Words: "And every week you will need to propose 3 trades to begin on the live trader, beginning next Friday. A valuation engine will be required. Potentially a hedging engine when and if that's needed."
+Done: ticket `T-20261121-weekly-trade-proposals` (first Friday 2026-11-27); questions to the Head of Quality and Risk (the gate and the sleeve limits) and the Head of Technology (the live trader).
+
+## 2026-11-21 03:50 UTC (answers to two questions of this head)
+Size of each weekly trade: "Not sure, size of trades should be subject to the trade and that responsibility is of the head."
+Sides: "Anything".
+Done: record `docs/assumptions/A-009-weekly-trade-rule.md` (written before its test): buy, sector-neutral, 3 a week, 1/39 of the sleeve each, 13-week hold; a short waits for its test.
+
+## 2026-11-21 about 03:55 UTC (relayed by the Head of Quality and Risk)
+Words: weekly proposals "Paper 4 weeks, then live"; sleeve limits "Not sure".
+Done: the weekly ticket says paper for 2026-11-27 to 2026-12-18, live from about 2026-12-25 after Luc approves the limits.
+
+## 2026-11-21 04:30 UTC (chat)
+Words: "Ensure that before you have trades and we begin the weekly trades, that you have effectively back tested your future state blind projections using the DCF engine and using prior data. A recommendation should work at any time and point and when it doesn't, the model should have already priced it in such that it does work. You can speak w the economist about this."
+Done: ticket `T-20261121-blind-projection-test` (a condition before the first weekly trade, paper included); the test design is written before any run and goes to the Head of Economics for review.
+
+## 2026-11-21 04:30 UTC (chat)
+Words: "Backtesting is integral to our work here"
+Done: a standing rule of this area: each model change and each strategy has a point-in-time backtest, written before its run (check 6 of `valuation-quant` and `equity-analyst`); proposed to the Head of Quality and Risk as a standard for all areas.
+
+## 2026-11-21 about 04:50 UTC (answer to a question of this head)
+Question: if T1 does not pass by 2026-11-26, what happens on 2026-11-27? Answer: "No trades until T1 passes (Recommended)".
+Done: the ticket `T-20261121-blind-projection-test` has the decision and the written test of the T1 fix.
+
+## 2026-11-21 14:25 UTC (chat)
+Words: "We need a backtesting engine, then we will need to use our DCF engine across a variety of stocks and different points in time in combination with our backtesting engine until we find a positive expected return, any questions? We need rust for this in particular so that we can optimize our run times"
+Answers to two questions: the hold-out: "Any data that is ahead of the point in time, since we are dealing with stochastic processes they must be F_t adapted. If we're simulating a DCF in 2004, we don't use info from 2005"; the measure: "We effectively just need to know if the stock is a buy or a short, and for how long or until what price point, then we sell or buy back accordingly and that's our profit over that time period. Accounting for reality after trade would have supposedly been plaved".
+Done: ticket `T-20261121-trade-level-backtest` (signal panel, trade simulator, walk-forward rule choice).
+
+## 2026-11-21 about 14:30 UTC (chat and an answer)
+Words: "You likely need further back data, as far back as possible". Answer to the source question: "Have head of tech look into it, do what you can I mean time. This is a model calibration/expandion exercise".
+Done: data request to the Head of Technology (prices before 2016, delisted companies, index members, financials before 2009, total return; terms, cost, a private store); question to the Head of Economics on the market engine in 16 more countries (Jorda-Schularick-Taylor); the T1 revenue fix started (fundamentals from 2009, no price needed).
+
+## 2026-11-21 about 14:40 UTC (relayed by the Head of Economics)
+Words (the person's answer on the JST data, as relayed): Yes, a local copy only; only results go in the repo; a live trade on a JST result needs the permission of the JST team first.
+Done: the reader waits for the frozen design (frozen 31ed025, branch `econ/jst-design`); the condition goes into the test file.
+
+## 2026-11-21 about 14:45 UTC (chat)
+Words: "Also did you ever get me that 3 page doc on why the market has tanked this week? I want a valuation, so each piece of the overall drop should be attributable to a piece of valuation. If it's easier to do company by company then so be it, I'd like it on the S&P100. You can hold off on other work for now and focus on this."
+Done: no, the findings file of `T-20261120-valuation-move-attribution` was not written. New ticket `T-20261121-sp100-week-attribution` (first item). The trade-level engine and the T1 revenue fix are paused, with their work committed and a status note on each ticket.
+
+## 2026-11-21 about 15:10 UTC (chat)
+Words: "Start w S&P10 / Updating data should be relatively easy, speak w tech / Make sure that whenever you stop work, just make sure that it all goes on the board for later and just report on where it is, to help out future users."
+Done: the document starts with the 10 largest companies of the S&P 100 (one weight for each company). A standing rule of this head: each pause puts the state of the work on the board (the ticket says what is done, what is not, the next step), and the report says where it is.
+
+## 2026-11-21 about 17:10 UTC (in the session of the Head of Quality and Risk, relayed)
+Words: "yes approve the merge but this doesnt mean I approve that the valuation is correct"
+Done: pull request 106 (NVDA) merges. It is NOT an approval of the value: the report keeps "a range for a judgment, not a price target", and no later document or trade may say that the owner approved the NVDA value.

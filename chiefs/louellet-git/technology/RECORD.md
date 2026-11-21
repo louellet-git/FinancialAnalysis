@@ -135,3 +135,49 @@ Done: the scheduled task "Daily option price save (20-day test)" (15:27 New York
 ## 2026-11-21 00:37 UTC (chat)
 Words: "Is the lean method up to date? Can you move to a new repo called the-heads. I created it so it'll be separate from the chiefs."
 Done: it was not up to date (no model permission, no ask flow, no board area `ask`, no write-up row). `louellet-git/the-heads` has the general system with these rules (commit 6264abb). `lean/` is removed from `louellet-git/chiefs`, and its README points to the new repo (chiefs pull request 35).
+
+## 2026-11-21 02:57 UTC (chat)
+Words: "Please get to work on the backtesting environment, ask the heads what they require."
+Done: ticket `T-20261121-backtest-environment` (order 1); a question to the Quant, Fundamental and Quality and Risk heads.
+## 2026-11-21 03:00 UTC (chat)
+Words: "I think we should also get a head of economics which looks at current economic conditions/factors and is generally our economy guy. Supporting role."
+Done: a new row `Head of Economics` in `chiefs/ORIENTATION.md` (sections 1 and 2; folder `economics`, files `analysis/macro/`), the agent `macro-economist`, its row in `docs/TEAMS.md`. The person starts the session.
+
+## 2026-11-21 03:03 UTC (chat)
+Words: "You can start the head, ensure that heads every now and then will do research on what the industry does I.e what should an economics head be doing/economics team at a quant/fundamental firm be doing, same w the other heads."
+Done: `chiefs/ORIENTATION.md`, section 3, "Industry practice" (from time to time, a note of at most 1 page in the folder of the head; at most three proposed changes; not a gate). The same rule in `louellet-git/the-heads`. The session "FA-L - Head of Economics" started.
+
+## 2026-11-21 03:23 UTC (question dialog)
+Question: "May I subscribe to the Tiingo Power plan ($30 a month, with your Tiingo key) and keep its older daily prices (back to about 2009, for about 1,000 tickers) in a new private data store that only your sessions use? ..."
+Words: "No, please find a better source then if needed"
+Done: no Tiingo plan, no private store. Research of free sources whose terms permit a public copy (Quandl WIKI archive, Stooq, Alpaca, open datasets). Tiingo terms (read 2026-11-21, https://www.tiingo.com/tos section 1.6): the free plan forbids any persistent storage; paid plans are internal and personal use only.
+
+## 2026-11-21 05:04 UTC (chat)
+Words: "Remove the tests used for a decision I think that's overdoing it ?" and "The backtest harness and the hypothesis file are more for the heads that require it"
+Done: the row "Test or experiment that a person uses for a decision" removed from `louellet-git/the-heads` (commit 96eabd4). In this repo the harness is opt-in: `trading/hypotheses/README.md` says who uses it; an exploratory run that reaches a registered window is no longer refused (a WARNING names the hypothesis).
+## 2026-11-21 04:03 UTC (relayed by the Head of Quant Research; checked in its transcript)
+Words: "Before asking me anything, please look into it. Send that to the tech head."
+Done: `chiefs/ORIENTATION.md`, section 5, item 2 of "Requests for the person": research comes first; a question carries the result and a recommendation; a question that research can answer is not asked. The same rule in `louellet-git/the-heads`.
+
+## 2026-11-21 04:16 UTC (chat, then the question dialog)
+Words: "I'd rather we run the quant algo somewhere that other research firms will typically do it, but for free."
+Question: "May the quant algo engine run on a free Google Cloud e2-micro machine in us-east1 ... set up in your own Google account? ..."
+Words: "Yes (Recommended)"
+Done: ticket `T-20261121-algo-host-gcp` (order 2). The Head of Quant Research is told.
+
+## 2026-11-21 14:58 UTC (chat)
+Words: "Can you add to the-heads and to our heads that they can parallelize work when it is reasonable to"
+Done: `chiefs/ORIENTATION.md`, section 3, "Parallel work" (a permission: independent agents in their own worktrees, or two tickets that touch different files; not for work on the same files, dependent work, or more agents than the head can examine). The same rule in `louellet-git/the-heads`.
+
+## 2026-11-21 15:02 UTC (chat)
+Words: "Remove out the not a duty part, and make the rule lean so that it's as lean as other models"
+Done: "Parallel work" is two lines, with no "not a duty" sentence, here and in `louellet-git/the-heads`.
+
+## 2026-11-21 (dialog)
+Words: "Yes (Recommended)" to: may I move the FRED files out of the public store into local copies that each head gets with one command?
+Then: "Would it help if I just made the repo private instead?" Answer: only part of the way (the terms also prohibit storage and giving the data to a second person; private repos use paid Actions minutes; each session needs access). The plan stays.
+Done: ticket `T-20261121-fred-local`.
+
+## 2026-11-21 (dialog)
+Words: "Yes (Recommended)" to: will you make fa-data private? (The terms of Nasdaq, Yahoo, Cboe, FRED and ICE do not permit a public copy; GitHub ToS D.3.)
+Done: the store README says private (store e3b735e); the heads are told to attach fa-data before a clone. The owner changes the visibility on GitHub. The FRED move continues.

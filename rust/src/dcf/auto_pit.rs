@@ -74,6 +74,8 @@ pub struct PitObs {
     pub g_mu: f64,
     /// Mean of `acquisitions_net_of_cash` / revenue over the last 5 years up to T (a missing value counts as 0).
     pub acq_past: f64,
+    /// Mean of the same ratio over the 3 years after T (the real spend that the charge pays for; a measurement only).
+    pub acq_next: f64,
     /// P10, P50, P90 of the revenue of T+1 to T+3.
     pub rev_q: [[f64; 3]; HORIZON],
     pub rev_act: [f64; HORIZON],
@@ -97,7 +99,7 @@ pub fn fcff_of_rules(y: &YearData, tax: f64, rules: &Rules) -> Option<f64> {
         v -= (1.0 - tax) * y.interest_income.unwrap_or(0.0);
     }
     if rules.acq_charge || rules.acq_f.is_some() || rules.acq_w {
-        v -= y.acquisitions.unwrap_or(0.0).abs();
+        v -= y.acq_spend(rules.acq_second);
     }
     Some(v)
 }
@@ -172,7 +174,8 @@ pub fn company_observations(ticker: &str, years: &[YearData], table: &ProcessTab
             has_jump,
             g_start: model.summary.growth_start,
             g_mu: model.summary.growth_company_mean,
-            acq_past: years[..=b].iter().rev().take(5).map(|y| y.acquisitions.unwrap_or(0.0).abs() / y.revenue.filter(|r| *r > 0.0).unwrap_or(f64::INFINITY)).sum::<f64>() / years[..=b].iter().rev().take(5).count() as f64,
+            acq_past: years[..=b].iter().rev().take(5).map(|y| y.acq_spend(p.rules.acq_second) / y.revenue.filter(|r| *r > 0.0).unwrap_or(f64::INFINITY)).sum::<f64>() / years[..=b].iter().rev().take(5).count() as f64,
+            acq_next: later.iter().map(|y| y.acq_spend(p.rules.acq_second) / y.revenue.filter(|r| *r > 0.0).unwrap_or(f64::INFINITY)).sum::<f64>() / later.len() as f64,
             rev_q: [[0.0; 3]; HORIZON],
             rev_act: [0.0; HORIZON],
             fcff_q: [[0.0; 3]; HORIZON],
@@ -461,6 +464,60 @@ fn step_growth(o: &PitObs, h: usize) -> (f64, f64) {
     }
 }
 
+/// Least squares of `y` on `x`: (intercept, slope) with the intercept, and the slope through the origin.
+pub fn ols(xy: &[(f64, f64)]) -> Option<((f64, f64), f64)> {
+    let n = xy.len() as f64;
+    if xy.len() < 3 {
+        return None;
+    }
+    let (mx, my) = (xy.iter().map(|p| p.0).sum::<f64>() / n, xy.iter().map(|p| p.1).sum::<f64>() / n);
+    let sxx: f64 = xy.iter().map(|p| (p.0 - mx).powi(2)).sum();
+    let sxy: f64 = xy.iter().map(|p| (p.0 - mx) * (p.1 - my)).sum();
+    let sqq: f64 = xy.iter().map(|p| p.0 * p.0).sum();
+    let sqy: f64 = xy.iter().map(|p| p.0 * p.1).sum();
+    if sxx <= 0.0 || sqq <= 0.0 {
+        return None;
+    }
+    let b = sxy / sxx;
+    Some(((my - b * mx, b), sqy / sqq))
+}
+
+/// The persistence of the spend: the mean ratio of the 3 years after T against the mean ratio of the 5 years up to T, for
+/// the base years of the test (one row for each company-year). Least squares with an intercept and through the origin, for
+/// all company-years and for the companies of 10B and above (the rule of the panel of the conventions study, 2.1), and the
+/// ratio of the means for the classes of the past spend. The fit of a rule is made on one half and scored on the other
+/// (`--half`, `--cut`).
+pub fn render_acq_persistence(obs: &[PitObs]) -> String {
+    let mut t = String::from("\nPERSISTENCE OF THE ACQUISITION SPEND (next 3 years mean against past 5 years mean, ratio to revenue of each year)\n");
+    let mean = |v: &[&PitObs], f: &dyn Fn(&PitObs) -> f64| if v.is_empty() { f64::NAN } else { v.iter().map(|o| f(o)).sum::<f64>() / v.len() as f64 };
+    let sets: [(&str, Vec<&PitObs>); 3] = [
+        ("all sizes", obs.iter().collect()),
+        ("10B and above", obs.iter().filter(|o| o.base >= 1e10).collect()),
+        ("below 10B", obs.iter().filter(|o| o.base < 1e10).collect()),
+    ];
+    for (label, v) in &sets {
+        let xy: Vec<(f64, f64)> = v.iter().map(|o| (o.acq_past, o.acq_next)).collect();
+        match ols(&xy) {
+            Some(((a, b), k)) => t.push_str(&format!("  {label:<14} n {:>5}  next = {:.4} + {:.4} x past   next = {:.4} x past (through the origin)\n", v.len(), a, b, k)),
+            None => t.push_str(&format!("  {label:<14} n {:>5}  no fit\n", v.len())),
+        }
+    }
+    for cap in [0.10, 0.25, 0.5] {
+        let xy: Vec<(f64, f64)> = obs.iter().filter(|o| o.base >= 1e9).map(|o| (o.acq_past.min(cap), o.acq_next.min(cap))).collect();
+        if let Some(((a, b), k)) = ols(&xy) {
+            t.push_str(&format!("  1B and above, both means capped at {:.0}%  n {:>5}  next = {:.4} + {:.4} x past   next = {:.4} x past\n", cap * 100.0, xy.len(), a, b, k));
+        }
+    }
+    t.push_str("  class of the past spend    n   mean past  mean next  ratio of means  median of next / past\n");
+    for (label, lo, hi) in [("below 0.5%", 0.0, 0.005), ("0.5% to 2%", 0.005, 0.02), ("2% to 5%", 0.02, 0.05), ("above 5%", 0.05, f64::INFINITY)] {
+        let v: Vec<&PitObs> = obs.iter().filter(|o| o.acq_past >= lo && o.acq_past < hi).collect();
+        let ratios: Vec<f64> = v.iter().filter(|o| o.acq_past > 0.0).map(|o| o.acq_next / o.acq_past).collect();
+        let (mp, mn) = (mean(&v, &|o| o.acq_past), mean(&v, &|o| o.acq_next));
+        t.push_str(&format!("  {label:<22} {:>5}  {:>8.2}%  {:>8.2}%  {:>14.2}  {:>6.2}\n", v.len(), mp * 100.0, mn * 100.0, mn / mp, median_of(ratios).unwrap_or(f64::NAN)));
+    }
+    t
+}
+
 fn pc(x: Option<f64>) -> String {
     x.map_or("     -".to_string(), |v| format!("{:>+6.1}", v * 100.0))
 }
@@ -591,7 +648,10 @@ LIMITS
   - The value (the P50) is not tested here: `fa dcf returns` tests it against the later stock returns.
   - The model of the test has no failure hazard, no price and a fixed default rate; the revenue and the free cash flow do not depend on them.";
 
-pub fn load_company_years(registry: &Registry, cache: &Path, ticker: &str) -> Option<(String, Vec<YearData>)> {
+/// The fiscal years of a ticker. The share counts are on the basis of the price file of the ticker (`splits`, up to the
+/// last date of the price file: `share_basis::basis_to`).
+pub fn load_company_years(registry: &Registry, cache: &Path, ticker: &str, splits: &[crate::market::splits::Split]) -> Option<(String, Vec<YearData>)> {
+    let to = super::share_basis::to_for(cache, ticker, splits);
     let path = mapcheck::run::facts_path(cache, ticker)?;
     let facts = mapcheck::run::read_facts(&path).ok()?;
     if !facts.has_us_gaap() {
@@ -600,7 +660,7 @@ pub fn load_company_years(registry: &Registry, cache: &Path, ticker: &str) -> Op
     let ends = period_ends(&facts, &registry.anchors, Forms::Annual, None);
     let periods: Vec<_> = ends.iter().map(|e| resolve_period_with(registry, &facts, e, Forms::Annual, None)).collect();
     let template = periods.last().map(|p| filer_template(registry, p)).unwrap_or("standard").to_string();
-    Some((template, periods.iter().map(|p| YearData::from_period(registry, p)).collect()))
+    Some((template, periods.iter().map(|p| YearData::from_period(registry, p, &super::share_basis::Basis { splits, ticker, to: &to })).collect()))
 }
 
 /// The rules of a `--rules` text.
@@ -609,9 +669,10 @@ pub fn parse_rules(text: &str) -> R<Rules> {
     for part in text.split(',').filter(|p| !p.is_empty()) {
         let (k, v) = part.split_once('=').ok_or_else(|| DcfError(format!("--rules: expected K=V, got '{part}'")))?;
         // `off` is 0, only for `long_run` (0 or less is off) and for the flags (0 or 1 rules); any other key is an error
-        const OFF_KEYS: [&str; 16] = [
+        const OFF_KEYS: [&str; 19] = [
             "long_run", "history_organic", "fade_to_cap", "equity_weight_one", "terminal_rf", "margin_last", "sbc_cost", "bridge_lti", "bridge_leases",
-            "no_interest_income", "shares_latest", "stub", "mid_year", "acq_charge", "acq_w", "acq_fade",
+            "no_interest_income", "shares_latest", "stub", "mid_year", "acq_charge", "acq_w", "acq_fade", "acq_second", "acq_keep",
+            "acq_persist",
         ];
         let x: f64 = if v == "off" {
             if !OFF_KEYS.contains(&k) {
@@ -658,6 +719,18 @@ pub fn parse_rules(text: &str) -> R<Rules> {
             "acq_mult" => r.acq_mult = x,
             "acq_w" => r.acq_w = x != 0.0,
             "acq_fade" => r.acq_fade = x != 0.0,
+            "acq_second" => r.acq_second = x != 0.0,
+            "acq_keep" => r.acq_keep = x != 0.0,
+            // `acq_persist=off`: the charge base is the past spend (the rule before 2026-11-21)
+            "acq_persist" => {
+                if x != 0.0 {
+                    return Err(DcfError(format!("--rules: acq_persist takes only off (set acq_persist_a and acq_persist_b for a fit), got '{v}'")));
+                }
+                r.acq_persist = None
+            }
+            // after `acq_persist=off`, one number set takes the default of the other number
+            "acq_persist_a" => r.acq_persist.get_or_insert(ACQ_PERSIST_DEFAULT).0 = x,
+            "acq_persist_b" => r.acq_persist.get_or_insert(ACQ_PERSIST_DEFAULT).1 = x,
             "last_floor" => {
                 if !x.is_finite() {
                     return Err(DcfError(format!("--rules: last_floor must be a finite number, got '{v}'")));
@@ -699,9 +772,11 @@ pub fn pit_setup(cache: &Path, table_file: &Path, cut: Option<i32>, limit: Optio
     if let Some(l) = limit {
         tickers.truncate(l);
     }
+    // No split factor here (empty splits) on purpose: this test scores revenue and free cash flow, which are not per-share
+    // values and have no price. The share counts of these years are never read by the scored series.
     let companies: Vec<(String, Vec<YearData>)> = tickers
         .par_iter()
-        .filter_map(|t| load_company_years(&registry, cache, t).filter(|(tpl, _)| tpl == "standard").map(|(_, y)| (t.clone(), y)))
+        .filter_map(|t| load_company_years(&registry, cache, t, &[]).filter(|(tpl, _)| tpl == "standard").map(|(_, y)| (t.clone(), y)))
         .filter(|(t, _)| half.is_none_or(|h| ticker_half(t) == h))
         .collect();
     let (table, fade, label) = match cut {
@@ -710,13 +785,7 @@ pub fn pit_setup(cache: &Path, table_file: &Path, cut: Option<i32>, limit: Optio
             (t, f, format!("IN SAMPLE: parameter table {} (estimated on all years)", table_file.display()))
         }
         Some(y) => {
-            let panel = build_panel(cache, None).map_err(DcfError)?;
-            let trunc: Vec<CompanyPanel> = panel
-                .companies
-                .iter()
-                .map(|c| CompanyPanel { rows: c.rows.iter().filter(|r| r.year <= y).cloned().collect(), ..c.clone() })
-                .filter(|c| !c.rows.is_empty())
-                .collect();
+            let trunc = build_panel(cache, None).map_err(DcfError)?.up_to_year(y).companies;
             let cells = estimate_table(&trunc, 2);
             let fade = fade_cells(&trunc, &cells);
             let meta = TableMeta { date: String::new(), command: format!("estimated from the years up to {y}"), companies: trunc.len(), company_years: 0, growth_observations: 0, note: String::new() };
@@ -766,8 +835,8 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     let rules = parse_rules(opt(args, "--rules").unwrap_or(""))?;
     let half: Option<u64> = opt(args, "--half").map(|v| match v { "0" => Ok(0), "1" => Ok(1), _ => Err(DcfError(format!("bad --half '{v}': 0 or 1"))) }).transpose()?;
     let diag = opt(args, "--diag");
-    if diag.is_some_and(|d| d != "decline" && d != "nu") {
-        return Err(DcfError("--diag: the names are decline and nu".into()));
+    if diag.is_some_and(|d| d != "decline" && d != "nu" && d != "acq") {
+        return Err(DcfError("--diag: the names are decline, nu and acq".into()));
     }
 
     let t0 = Instant::now();
@@ -786,6 +855,9 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     let mut text = render(&obs, &header);
     if diag == Some("decline") {
         text.push_str(&render_decline(&obs));
+    }
+    if diag == Some("acq") {
+        text.push_str(&render_acq_persistence(&obs));
     }
     if diag == Some("nu") {
         let panel = build_panel(&cache, None).map_err(DcfError)?;

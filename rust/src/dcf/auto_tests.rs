@@ -56,8 +56,10 @@ pub(crate) fn table() -> ProcessTable {
 }
 
 /// A rule set with the table shock size for everyone and no level rule: the hand calculation of the tests.
+/// The rules of the fixed-answer tests: no own spread, no level pull, and the past spend as the charge base
+/// (`acq_persist` off), so that a test of the charge reads the spend that it sets.
 pub(crate) fn plain_rules() -> Rules {
-    Rules { own_sigma_nu: 0.0, level_kappa: 0.0, ..Rules::default() }
+    Rules { own_sigma_nu: 0.0, level_kappa: 0.0, acq_persist: None, ..Rules::default() }
 }
 
 /// Six fiscal years 2020 to 2025: revenue +10% each year from $1B, operating cash flow 20% of revenue, capex 5%, interest 2%,
@@ -206,6 +208,20 @@ fn the_regression_beta_recovers_a_known_beta_and_shrinks_it() {
     // the window ends at the as-of date: a later week does not count
     let early = mapcheck::dates::format(friday + 7 * 150);
     assert_eq!(regression_beta(&stock, &market, &early, 260, 2.0 / 3.0, "t").unwrap().weeks, 150);
+    // a bar later in the same week as the date does not count: the Monday of the last week as the date, and a wild close on
+    // the Wednesday after it, in both series, give the beta of the series without that bar
+    let last_friday = friday + 7 * 299;
+    let monday = last_friday - 4;
+    let mut stock2 = stock.clone();
+    let mut market2 = market.clone();
+    stock2.insert(299, (mapcheck::dates::format(monday), stock[298].1 * 1.01));
+    market2.insert(299, (mapcheck::dates::format(monday), market[298].1 * 1.01));
+    let date = mapcheck::dates::format(monday);
+    let with_bar = regression_beta(&stock2, &market2, &date, 260, 2.0 / 3.0, "t").unwrap();
+    let mut stock3 = stock2.clone();
+    stock3[300].1 *= 5.0; // the Friday close after the date
+    let poisoned = regression_beta(&stock3, &market2, &date, 260, 2.0 / 3.0, "t").unwrap();
+    assert_eq!(with_bar.raw, poisoned.raw);
 }
 
 #[test]
@@ -540,6 +556,7 @@ fn the_coverage_counts_below_inside_and_above() {
         g_start: 0.05,
         g_mu: 0.05,
         acq_past: 0.0,
+        acq_next: 0.0,
         rev_q: [[90.0, 100.0, 110.0]; HORIZON],
         rev_act: [actual; HORIZON],
         fcff_q: [[1.0, 2.0, 3.0]; HORIZON],
@@ -1012,9 +1029,9 @@ fn the_explicit_charge_rules_win_over_acq_w_off_and_zero_spend_gives_no_charge()
     let i = inputs_with_spend();
     let run = |r: Rules| build(&i, &table(), &[], &market(), &r, BuildOptions::default()).unwrap();
     // acq_w=0 does not turn off acq_charge or acq_f
-    let m = run(parse_rules("acq_w=0,acq_charge=1,own_sigma_nu=0,level_kappa=0").unwrap());
+    let m = run(parse_rules("acq_w=0,acq_charge=1,acq_persist=off,own_sigma_nu=0,level_kappa=0").unwrap());
     assert!((m.summary.acq_ratio - 0.02).abs() < 1e-12);
-    let m = run(parse_rules("acq_w=0,acq_f=0.5,acq_mult=2,own_sigma_nu=0,level_kappa=0").unwrap());
+    let m = run(parse_rules("acq_w=0,acq_f=0.5,acq_mult=2,acq_persist=off,own_sigma_nu=0,level_kappa=0").unwrap());
     assert!((m.summary.acq_ratio - 0.01).abs() < 1e-12);
     // no spend with the default on: no charge, no process
     let none = build(&inputs(), &table(), &[], &market(), &plain_rules(), BuildOptions::default()).unwrap();
@@ -1091,4 +1108,358 @@ fn the_margin_scan_needs_all_five_links_of_the_six_years() {
     let mut full = c;
     full.rows[1].prev_ok = true;
     assert_eq!(sigma_nu_scan(&[full], &table(), &plain_rules(), None, &[4.0])[0][3].0, 2);
+}
+
+#[test]
+fn the_second_acquisition_line_is_added_only_when_it_differs_or_the_first_has_none() {
+    let year = |a: Option<f64>, b: Option<f64>| YearData { acquisitions: a, acquisitions_second: b, ..Default::default() };
+    // different value: added
+    assert_eq!(year(Some(1.5e9), Some(13.0e9)).acq_spend(true), 14.5e9);
+    // same value (a tag renamed between 10-Ks, EQT FY2021): not added
+    assert_eq!(year(Some(1_030_239_000.0), Some(1_030_239_000.0)).acq_spend(true), 1_030_239_000.0);
+    // first line missing: the second is used (ZBH, MATX, LUMN, WT)
+    assert_eq!(year(None, Some(2.0e8)).acq_spend(true), 2.0e8);
+    // no second line, no line: as before
+    assert_eq!(year(Some(3.0e8), None).acq_spend(true), 3.0e8);
+    assert_eq!(year(None, None).acq_spend(true), 0.0);
+    // acq_second=0: the first line only (the old behaviour)
+    assert_eq!(year(Some(1.5e9), Some(13.0e9)).acq_spend(false), 1.5e9);
+    assert_eq!(year(None, Some(2.0e8)).acq_spend(false), 0.0);
+    assert!(Rules::default().acq_second && !parse_rules("acq_second=0").unwrap().acq_second);
+}
+
+#[test]
+fn the_charge_reads_the_second_line_and_acq_second_off_gives_the_first_line_only() {
+    let mut i = inputs();
+    for y in i.years.iter_mut() {
+        y.acquisitions = Some(0.01 * y.revenue.unwrap());
+        y.acquisitions_second = Some(0.03 * y.revenue.unwrap());
+    }
+    let run = |i: &AutoInputs, r: Rules| build(i, &table(), &[], &market(), &r, BuildOptions::default()).unwrap();
+    let both = run(&i, Rules { acq_charge: true, ..plain_rules() });
+    let first = run(&i, Rules { acq_charge: true, acq_second: false, ..plain_rules() });
+    assert!((both.summary.acq_ratio - 0.04).abs() < 1e-12, "{}", both.summary.acq_ratio);
+    assert!((first.summary.acq_ratio - 0.01).abs() < 1e-12);
+    // the same value in both lines (a renamed tag): one purchase
+    for y in i.years.iter_mut() {
+        y.acquisitions_second = y.acquisitions;
+    }
+    let same = run(&i, Rules { acq_charge: true, ..plain_rules() });
+    assert!((same.summary.acq_ratio - 0.01).abs() < 1e-12);
+}
+
+#[test]
+fn the_kept_share_of_the_charge_has_no_step_at_a_company_mean_equal_to_l() {
+    let i = inputs_with_spend();
+    let run = |r: Rules| build(&i, &table(), &[], &market(), &r, BuildOptions::default()).unwrap();
+    let off = run(Rules { acq_w: false, ..plain_rules() });
+    let base = run(Rules { acq_keep: true, ..plain_rules() });
+    let mu = base.summary.growth_company_mean;
+    let c0 = base.summary.acq_ratio;
+    assert!(mu > 0.08 && c0 > 0.0);
+    // closed form: with L = 4%, the charge falls from c0 in year 1 to c0 L / mu in year 12 (ramp of 12 years)
+    let path = charge_path(&base, &off);
+    let kept = 0.04 / mu;
+    for t in [1usize, 6, 10] {
+        let want = c0 * (1.0 - (1.0 - kept) * (t as f64 - 1.0) / 11.0);
+        assert!((path[t - 1] - want).abs() < 1e-9, "year {t}: {} {want}", path[t - 1]);
+    }
+    // the old rule: to zero
+    let old = charge_path(&run(plain_rules()), &off);
+    assert!(old[9] < path[9] && (old[9] - c0 * (1.0 - 9.0 / 11.0)).abs() < 1e-9);
+    // no step at mu = L: L just below and just above the company mean give the same charge path (within 1e-5 of c0)
+    let below = |lc: f64| {
+        let on = run(Rules { acq_keep: true, long_cap: Some(lc), ..plain_rules() });
+        let no = run(Rules { acq_keep: true, long_cap: Some(lc), acq_w: false, ..plain_rules() });
+        (charge_path(&on, &no), on.summary.acq_ratio)
+    };
+    let (lo, c_lo) = below(mu + 1e-7);
+    let (hi, c_hi) = below(mu - 1e-7);
+    assert!((c_lo - c_hi).abs() < 1e-12);
+    for t in 0..10 {
+        assert!((lo[t] - hi[t]).abs() < 1e-5 * c0, "year {}: {} {}", t + 1, lo[t], hi[t]);
+    }
+    // without acq_keep the same two paths differ by the whole charge in year 10 (the step)
+    let step = |lc: f64| {
+        let on = run(Rules { long_cap: Some(lc), ..plain_rules() });
+        let no = run(Rules { long_cap: Some(lc), acq_w: false, ..plain_rules() });
+        charge_path(&on, &no)
+    };
+    assert!((step(mu + 1e-7)[9] - step(mu - 1e-7)[9]).abs() > 0.5 * c0 * (1.0 - 9.0 / 11.0) * 0.5);
+    assert!(!Rules::default().acq_keep && parse_rules("acq_keep=1").unwrap().acq_keep);
+}
+
+#[test]
+fn the_charge_base_can_be_the_persistence_fit_of_the_past_spend() {
+    let run = |spend: f64, r: Rules| {
+        let mut i = inputs();
+        for y in i.years.iter_mut() {
+            y.acquisitions = Some(spend * y.revenue.unwrap());
+        }
+        build(&i, &table(), &[], &market(), &r, BuildOptions::default()).unwrap()
+    };
+    // the paired charge (`acq_w`; w = 1 here, no fade) with the fit a + b x past
+    let paired = |p: Option<(f64, f64)>| Rules { acq_w: true, acq_fade: false, acq_persist: p, ..plain_rules() };
+    let w = run(0.02, paired(None)).summary.acq_ratio / 0.02;
+    assert!(w > 0.0 && w <= 1.0);
+    // off: w x the past spend
+    assert!((run(0.02, paired(None)).summary.acq_ratio - w * 0.02).abs() < 1e-12);
+    // on: w x (a + b x past) = w x (0.0175 + 0.3925 x 0.02)
+    let on = paired(Some((0.0175, 0.3925)));
+    assert!((run(0.02, on.clone()).summary.acq_ratio - w * (0.0175 + 0.3925 * 0.02)).abs() < 1e-12);
+    // the past spend is capped at 25% of revenue
+    assert!((run(0.40, on.clone()).summary.acq_ratio - w * (0.0175 + 0.3925 * 0.25)).abs() < 1e-12);
+    // the default is the fit through the origin (record A-002, 2026-11-21): a past spend of 0 gives a charge of 0
+    assert_eq!(Rules::default().acq_persist, Some((0.0, 0.5226)));
+    assert_eq!(run(0.0, paired(Some(ACQ_PERSIST_DEFAULT))).summary.acq_ratio, 0.0);
+    assert!((run(0.02, paired(Some(ACQ_PERSIST_DEFAULT))).summary.acq_ratio - w * 0.5226 * 0.02).abs() < 1e-12);
+    // the old intercept rule at a spend of 0 charges 1.75% x w
+    assert!((run(0.0, on.clone()).summary.acq_ratio - w * 0.0175).abs() < 1e-12);
+    // acq_charge and acq_f use the past spend, not the fit
+    let explicit = Rules { acq_charge: true, acq_persist: Some((0.0175, 0.3925)), ..plain_rules() };
+    assert!((run(0.02, explicit).summary.acq_ratio - 0.02).abs() < 1e-12);
+    let f = Rules { acq_f: Some(0.5), acq_persist: Some((0.0175, 0.3925)), ..plain_rules() };
+    assert!((run(0.02, f).summary.acq_ratio - 0.5 * 0.02).abs() < 1e-12);
+    // the rule keys change one number of the default, in any order; after `off`, one number set takes the default of
+    // the other (0.0 or 0.5226, not 1.0); `acq_persist=off` gives the past spend, and any other value of that key is an error
+    assert_eq!(parse_rules("acq_persist_b=0.4,acq_persist_a=0.01").unwrap().acq_persist, Some((0.01, 0.4)));
+    assert_eq!(parse_rules("acq_persist_b=0.4").unwrap().acq_persist, Some((0.0, 0.4)));
+    assert_eq!(parse_rules("acq_persist_a=0.0175").unwrap().acq_persist, Some((0.0175, 0.5226)));
+    assert!(parse_rules("acq_persist=off").unwrap().acq_persist.is_none());
+    assert_eq!(parse_rules("acq_persist=off,acq_persist_a=0.01").unwrap().acq_persist, Some((0.01, 0.5226)));
+    assert_eq!(parse_rules("acq_persist=off,acq_persist_b=0.4").unwrap().acq_persist, Some((0.0, 0.4)));
+    assert!(parse_rules("acq_persist=1").is_err());
+}
+
+#[test]
+fn the_persistence_diagnosis_gives_the_fit_of_a_known_line() {
+    use crate::dcf::auto_pit::{ols, render_acq_persistence};
+    let line: Vec<(f64, f64)> = (0..10).map(|k| (k as f64 * 0.01, 0.01 + 0.5 * k as f64 * 0.01)).collect();
+    let ((a, b), _) = ols(&line).unwrap();
+    assert!((a - 0.01).abs() < 1e-12 && (b - 0.5).abs() < 1e-12);
+    let origin: Vec<(f64, f64)> = (1..10).map(|k| (k as f64 * 0.01, 3.0 * k as f64 * 0.01)).collect();
+    assert!((ols(&origin).unwrap().1 - 3.0).abs() < 1e-12);
+    assert!(ols(&[(0.0, 1.0), (0.0, 2.0), (0.0, 3.0)]).is_none());
+    assert!(render_acq_persistence(&[]).contains("PERSISTENCE OF THE ACQUISITION SPEND"));
+}
+
+#[test]
+fn the_price_of_a_past_date_is_the_last_close_on_or_before_it() {
+    let s: Vec<(String, f64)> = [("2026-11-02", 10.0), ("2026-11-03", 11.0), ("2026-11-06", 12.0), ("2026-11-09", 13.0)].iter().map(|(d, c)| (d.to_string(), *c)).collect();
+    assert_eq!(close_on_or_before(&s, "2026-11-03"), Some(("2026-11-03".into(), 11.0)));
+    // a Saturday and a Sunday: the Friday close
+    assert_eq!(close_on_or_before(&s, "2026-11-07"), Some(("2026-11-06".into(), 12.0)));
+    assert_eq!(close_on_or_before(&s, "2026-11-08"), Some(("2026-11-06".into(), 12.0)));
+    // a date after the last close: that close, while it is not more than 10 days old
+    assert_eq!(close_on_or_before(&s, "2026-11-19"), Some(("2026-11-09".into(), 13.0)));
+    assert_eq!(close_on_or_before(&s, "2026-11-20"), None);
+    // a date before the first close
+    assert_eq!(close_on_or_before(&s, "2026-11-01"), None);
+    // a series that is not sorted gives the same answers
+    let u: Vec<(String, f64)> = [s[3].clone(), s[0].clone(), s[2].clone(), s[1].clone()].to_vec();
+    assert_eq!(close_on_or_before(&u, "2026-11-07"), Some(("2026-11-06".into(), 12.0)));
+    assert_eq!(close_on_or_before(&u, "2026-11-19"), Some(("2026-11-09".into(), 13.0)));
+}
+
+#[test]
+fn market_at_takes_the_close_of_the_price_date_and_market_from_cache_the_last_close() {
+    let dir = std::env::temp_dir().join(format!("fa_market_at_{}", std::process::id()));
+    std::fs::create_dir_all(dir.join("ZZ")).unwrap();
+    let rows: Vec<String> = [("2026-11-02", 10.0), ("2026-11-03", 11.0), ("2026-11-06", 12.0)]
+        .iter()
+        .map(|(d, c)| format!(r#"{{"date":"{d}","open":{c},"high":{c},"low":{c},"close":{c},"volume":1}}"#))
+        .collect();
+    std::fs::write(dir.join("ZZ").join("prices.json"), format!("[{}]", rows.join(","))).unwrap();
+    let rules = plain_rules();
+    let past = market_at(&dir, "ZZ", "2026-11-04", None, Some("2026-11-04"), &rules, None, None);
+    assert_eq!(past.price, Some(11.0));
+    assert!(past.price_source.contains("2026-11-03"), "{}", past.price_source);
+    assert_eq!(past.as_of, "2026-11-04");
+    // a price of the caller wins; no price date: the last close
+    assert_eq!(market_at(&dir, "ZZ", "2026-11-04", Some(5.0), Some("2026-11-04"), &rules, None, None).price, Some(5.0));
+    assert_eq!(market_from_cache(&dir, "ZZ", "2026-11-04", None, &rules, None, None).price, Some(12.0));
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+/// The SEC facts of a company with six fiscal years 2020 to 2025 (10-K filed on 15 Feb of the next year) and 100M shares.
+fn live_facts() -> mapcheck::facts::CompanyFacts {
+    serde_json::from_str(&live_facts_text()).unwrap_or_else(|e| panic!("{e}"))
+}
+
+/// The text of the facts of [`live_facts`] (a cache file of a test).
+fn live_facts_text() -> String {
+    let dur = |tag: &str, f: &dyn Fn(i32) -> f64| -> String {
+        let rows: Vec<String> = (0..6).map(|k| format!(r#"{{"start":"{y}-01-01","end":"{y}-12-31","val":{v},"form":"10-K","filed":"{f}-02-15","fy":{y},"fp":"FY"}}"#, y = 2020 + k, v = f(k), f = 2021 + k)).collect();
+        format!(r#""{tag}":{{"units":{{"USD":[{}]}}}}"#, rows.join(","))
+    };
+    let inst = |tag: &str, unit: &str, v: f64| -> String {
+        let rows: Vec<String> = (0..6).map(|k| format!(r#"{{"end":"{y}-12-31","val":{v},"form":"10-K","filed":"{f}-02-15","fy":{y},"fp":"FY"}}"#, y = 2020 + k, f = 2021 + k)).collect();
+        format!(r#""{tag}":{{"units":{{"{unit}":[{}]}}}}"#, rows.join(","))
+    };
+    let rev = |k: i32| 1e9 * 1.1f64.powi(k);
+    let shares_w: Vec<String> = (0..6).map(|k| format!(r#"{{"start":"{y}-01-01","end":"{y}-12-31","val":1e8,"form":"10-K","filed":"{f}-02-15","fy":{y},"fp":"FY"}}"#, y = 2020 + k, f = 2021 + k)).collect();
+    let text = format!(
+        r#"{{"facts":{{"us-gaap":{{{},{},{},{},{},{},{},{}, "WeightedAverageNumberOfDilutedSharesOutstanding":{{"units":{{"shares":[{}]}}}}}}}}}}"#,
+        dur("Revenues", &rev),
+        dur("NetCashProvidedByUsedInOperatingActivities", &|k| 0.2 * rev(k)),
+        dur("PaymentsToAcquirePropertyPlantAndEquipment", &|k| 0.05 * rev(k)),
+        inst("CashAndCashEquivalentsAtCarryingValue", "USD", 5e7),
+        inst("LongTermDebt", "USD", 2e8),
+        inst("CommonStockSharesOutstanding", "shares", 1e8),
+        dur("ShareBasedCompensation", &|k| 0.03 * rev(k)),
+        inst("Assets", "USD", 2e9),
+        shares_w.join(",")
+    );
+    text
+}
+
+/// The live case: a 25:1 split on 2026-04-06, after the last 10-K (period end 2025-12-31). The share counts of the 10-K
+/// are before the split; the close of the store is split-adjusted. With the split table the model gives the same
+/// P50 / price as a company with no split (the price divided by 25 and no split row would give a value 25 times too high).
+#[test]
+fn a_split_after_the_last_10k_does_not_change_the_value_over_the_price() {
+    use super::super::auto_implied::deterministic_value;
+    use crate::market::splits::Split;
+    let reg = Registry::embedded().unwrap();
+    let day = mapcheck::dates::parse("2026-11-21").unwrap();
+    let report = mapcheck::run::check_facts(&reg, "LIVE", &live_facts(), 8, day, true);
+    let split = [Split { ticker: "LIVE".into(), ex_date: "2026-04-06".into(), old_rate: 1.0, new_rate: 25.0, factor: 25.0, kind: "forward".into(), sec_check: "match".into() }];
+    let none = inputs_from_report(&reg, &report, &[], "2026-11-21");
+    let with = inputs_from_report(&reg, &report, &split, "2026-11-21");
+    assert_eq!(none.years.len(), 6, "{:?}", none.findings);
+    let (b0, b1) = (none.balance.as_ref().unwrap(), with.balance.as_ref().unwrap());
+    assert_eq!((b0.shares, b0.shares_outstanding), (Some(1e8), Some(1e8)));
+    assert_eq!((b1.shares, b1.shares_outstanding), (Some(2.5e9), Some(2.5e9)));
+    assert!(with.years.iter().all(|y| y.shares == Some(2.5e9)));
+    let value = |i: &AutoInputs, price: f64| -> f64 {
+        let m = Market { as_of: "2026-11-21".into(), price: Some(price), ..Default::default() };
+        let model = build(i, &table(), &[], &m, &plain_rules(), BuildOptions::default()).unwrap_or_else(|e| panic!("{e:?}"));
+        deterministic_value(&spec_of(&model)).unwrap().0
+    };
+    let p = 20.0;
+    let ratio_no_split = value(&none, p) / p;
+    // the store shows the adjusted close p / 25; the shares of the model are on the same basis
+    let ratio_split = value(&with, p / 25.0) / (p / 25.0);
+    assert!((ratio_split / ratio_no_split - 1.0).abs() < 1e-9, "{ratio_split} {ratio_no_split}");
+    // the defect: the adjusted close with the share count of the 10-K
+    let ratio_defect = value(&none, p / 25.0) / (p / 25.0);
+    assert!(ratio_defect / ratio_no_split > 20.0, "{ratio_defect} {ratio_no_split}");
+}
+
+/// The SNDK case: a 1:8 split with the ex-date 2026-11-20, the price file ends on 2026-11-19 and is not adjusted for it.
+/// The `to` date is the last date of the price file, so the split is not counted and the P50 / price is the same as with
+/// no split. With `to` = today (the defect) the shares are 8 times too high and the P50 / price 8 times too low.
+#[test]
+fn a_split_after_the_last_price_date_does_not_change_the_value_over_the_price() {
+    use super::super::auto_implied::deterministic_value;
+    use super::super::share_basis::basis_to;
+    use crate::market::splits::Split;
+    let dir = std::env::temp_dir().join(format!("fa_sndk_like_{}", std::process::id()));
+    std::fs::remove_dir_all(&dir).ok();
+    std::fs::create_dir_all(dir.join("LIVE")).unwrap();
+    let row = |d: &str| format!(r#"{{"date":"{d}","open":20,"high":20,"low":20,"close":20,"volume":1}}"#);
+    std::fs::write(dir.join("LIVE").join("prices.json"), format!("[{},{}]", row("2026-11-18"), row("2026-11-19"))).unwrap();
+    std::fs::write(dir.join("LIVE").join("prices.meta.json"), r#"{"adjusted":"splits","last_date":"2026-11-19"}"#).unwrap();
+    let to = basis_to(&dir, "LIVE", false);
+    assert_eq!(to, "2026-11-19");
+
+    let reg = Registry::embedded().unwrap();
+    let day = mapcheck::dates::parse("2026-11-21").unwrap();
+    let report = mapcheck::run::check_facts(&reg, "LIVE", &live_facts(), 8, day, true);
+    let split = [Split { ticker: "LIVE".into(), ex_date: "2026-11-20".into(), old_rate: 1.0, new_rate: 8.0, factor: 8.0, kind: "forward".into(), sec_check: "match".into() }];
+    let none = inputs_from_report(&reg, &report, &[], &to);
+    let with = inputs_from_report(&reg, &report, &split, &to);
+    assert_eq!(none.years, with.years);
+    assert_eq!(none.balance, with.balance);
+    let value = |i: &AutoInputs, price: f64| -> f64 {
+        let m = Market { as_of: "2026-11-21".into(), price: Some(price), ..Default::default() };
+        let model = build(i, &table(), &[], &m, &plain_rules(), BuildOptions::default()).unwrap_or_else(|e| panic!("{e:?}"));
+        deterministic_value(&spec_of(&model)).unwrap().0
+    };
+    let p = 20.0;
+    assert_eq!(value(&none, p) / p, value(&with, p) / p);
+    // the defect: `to` = today counts the split that is not in the closes
+    let wrong = inputs_from_report(&reg, &report, &split, "2026-11-21");
+    assert_eq!(wrong.balance.as_ref().unwrap().shares, Some(8e8));
+    let ratio_wrong = value(&wrong, p) / p;
+    let ratio_right = value(&with, p) / p;
+    assert!(ratio_wrong / ratio_right < 1.0 / 7.0, "{ratio_wrong} {ratio_right}");
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+/// A truncated SPY file with fewer than 520 rows gives NO index: the beta is dropped (beta 1) and every score moves. A test
+/// that cuts SPY at a date must keep 520 rows or more, or it measures this switch and not a look-ahead (the 2018-11-23 cut
+/// of the store has 507 rows from 2016-11-18).
+#[test]
+fn a_short_spy_file_gives_no_index() {
+    let dir = std::env::temp_dir().join(format!("fa_short_spy_{}", std::process::id()));
+    std::fs::remove_dir_all(&dir).ok();
+    std::fs::create_dir_all(dir.join("SPY")).unwrap();
+    let write = |n: usize| {
+        let rows: Vec<String> = (0..n).map(|i| format!(r#"{{"date":"{}","open":1,"high":1,"low":1,"close":{},"volume":1}}"#, mapcheck::dates::format(mapcheck::dates::parse("2016-11-18").unwrap() + i as i64), 100.0 + i as f64)).collect();
+        std::fs::write(dir.join("SPY").join("prices.json"), format!("[{}]", rows.join(","))).unwrap();
+    };
+    write(507);
+    assert!(index_from_cache(&dir).is_none());
+    write(520);
+    assert_eq!(index_from_cache(&dir).map(|s| s.len()), Some(520));
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+/// A cache of the ticker LIVE: the facts of `live_facts` (100M shares in each 10-K, filed 2021 to 2026), a price file that
+/// ends on 2026-11-19 and is adjusted for the splits up to that day, and (with `ex_date`) a split table with a 1:8 split.
+fn share_basis_cache(name: &str, ex_date: Option<&str>) -> std::path::PathBuf {
+    use crate::market::splits::{to_csv, Split, SplitRow};
+    let dir = std::env::temp_dir().join(format!("fa_basis_{name}_{}", std::process::id()));
+    std::fs::remove_dir_all(&dir).ok();
+    std::fs::create_dir_all(dir.join("LIVE")).unwrap();
+    let row = |d: &str| format!(r#"{{"date":"{d}","open":20,"high":20,"low":20,"close":20,"volume":1}}"#);
+    std::fs::write(dir.join("LIVE").join("prices.json"), format!("[{},{}]", row("2026-11-18"), row("2026-11-19"))).unwrap();
+    std::fs::write(dir.join("LIVE").join("prices.meta.json"), r#"{"adjusted":"splits","last_date":"2026-11-19"}"#).unwrap();
+    std::fs::write(dir.join("LIVE").join("company_facts.json"), live_facts_text()).unwrap();
+    if let Some(d) = ex_date {
+        std::fs::create_dir_all(dir.join("_corporate")).unwrap();
+        let split = Split { ticker: "LIVE".into(), ex_date: d.into(), old_rate: 1.0, new_rate: 8.0, factor: 8.0, kind: "forward".into(), sec_check: "match".into() };
+        std::fs::write(dir.join("_corporate").join("splits.csv"), to_csv(&[SplitRow::new(split, "test", "applied", false)])).unwrap();
+    }
+    dir
+}
+
+/// The latest share count that each of the three readers of the facts gives for LIVE on the cache `dir`, each with the split
+/// table of that cache: `load_company_years` (point-in-time test), `load_vintages` (portfolio backtest) and `map_inputs`
+/// (live commands: reads the table itself). The three get `to` from `share_basis::to_for`.
+fn reader_shares(dir: &std::path::Path) -> [Option<f64>; 3] {
+    let reg = Registry::embedded().unwrap();
+    let splits = crate::market::splits::load_splits(dir).unwrap_or_default();
+    let a = load_company_years(&reg, dir, "LIVE", &splits).unwrap().1;
+    let b = crate::portfolio::strategies::load_vintages(&reg, dir, "LIVE", 0, &splits).unwrap().1;
+    let day = mapcheck::dates::parse("2026-11-21").unwrap();
+    let c = map_inputs(dir, &["LIVE".to_string()], day, Some(1)).unwrap().0;
+    [a.last().unwrap().shares, b.0.last().unwrap().1.last().unwrap().shares, c[0].years.last().unwrap().shares]
+}
+
+/// The wiring of `to` where the readers use it: a split with the ex-date AFTER the last date of the price file is not in the
+/// closes, so the share counts stay as they are (the same as with no split table). The defect `to` = today would give 8x.
+#[test]
+fn the_readers_do_not_count_a_split_after_the_last_price_date() {
+    let base = share_basis_cache("none", None);
+    let after = share_basis_cache("after", Some("2026-11-20"));
+    let want = reader_shares(&base);
+    assert_eq!(want, [Some(1e8); 3]);
+    assert_eq!(reader_shares(&after), want);
+    for d in [base, after] {
+        std::fs::remove_dir_all(d).ok();
+    }
+}
+
+/// The same cache with the ex-date ON the last price date: the closes are adjusted for it, so the share counts are 8 times.
+#[test]
+fn the_readers_count_a_split_on_or_before_the_last_price_date() {
+    let on = share_basis_cache("on", Some("2026-11-19"));
+    let before = share_basis_cache("before", Some("2026-06-01"));
+    assert_eq!(reader_shares(&on), [Some(8e8); 3]);
+    assert_eq!(reader_shares(&before), [Some(8e8); 3]);
+    for d in [on, before] {
+        std::fs::remove_dir_all(d).ok();
+    }
 }

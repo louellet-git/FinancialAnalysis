@@ -1,6 +1,6 @@
 # Model: Heston and Bates
 
-Updated: 2026-11-20. Commit: not yet made.
+Updated: 2026-11-21. Commit: not yet made.
 
 ## Purpose
 WARNING: the fitted parameters are calibrated values of option prices. They are not measurements of the company.
@@ -50,17 +50,16 @@ check it; only the best start goes to the end). A new seed gives other parameter
 the jump parameters of Bates are weak on a short or thin chain.
 
 ## Assumptions
-No record in `docs/assumptions/` has a form for these choices. They are listed here.
+Each choice has one record in `docs/assumptions/`.
 
-| Name | Value | One line |
-|---|---|---|
-| Bounds | kappa 0.05 to 20, xi 0.05 to 3, rho -0.99 to 0 | From the ticket, an author choice with no study. `rho` is not above 0 (fits stocks and SPX, not VIX). |
-| Bounds, other | v0 and theta 1e-4 to 4, lambda 0 to 10, mu_j -1 to 0.5, delta_j 0.01 to 1 | Author choice, no study. |
-| Spread filter | 1 vol point (5 for VIX) | From the ticket. `--max-spread` changes it. |
-| Spread floor | 0.05 vol points | Author choice, no study. It stops one tight quote from taking all the weight. |
-| Forward | 5 strikes nearest to the parity strike | From the ticket. `chain.rs` calls `forward_from_parity_blind_n` of `option_iv.rs`; `forward_from_parity_blind` keeps 3. |
-| Refined starts | 3 of 20, 5 iterations each, then the best one | The ticket does not say. Set for speed. |
-| Time | Calendar days / 365 | No clock time in the snapshot. |
+| Record | Name | Value | One line |
+|---|---|---|---|
+| A-131 | Bounds | kappa 0.05 to 20, xi 0.05 to 3, rho -0.99 to 0; others in the record | A bound hit means the quotes do not identify the parameter. |
+| A-132 | Spread filter | 1 vol point (5 for VIX) | From the ticket. `--max-spread` changes it. |
+| A-133 | Spread floor | 0.05 vol points | Author choice, no study. |
+| A-134 | Forward strikes | 5 nearest the parity strike | The chain check uses 3 (A-126). |
+| A-135 | Starts and iterations | 20 starts, 3 refined, 3 iterations each, seed 7 | Refined starts set for speed. |
+| A-136 | Time | Calendar days / 365 | The ticket says minutes; the code uses days. |
 
 ## Checks of the price
 - Published values (Chan 2017, equation 105 and appendix B): T = 10 gives 22.318945791 (error 1.5e-10).
@@ -73,7 +72,10 @@ No record in `docs/assumptions/` has a form for these choices. They are listed h
 - Put-call parity holds by construction of the formula. The Gil-Pelaez put is a separate check (1e-9).
 
 ## Limits
+- Limits of use: the fitted parameters are calibrated values, not measurements, and are not an input of a DCF or a forecast (help text, `rust/src/volmodels/cli.rs`); a fit that is "NOT converged" or has a parameter "at bound" is not a result (`calib.rs` `at_bound`; test `lm_reports_a_run_that_did_not_converge`).
+- Limits of use: on Alpaca indicative quotes (`quote_kind: indicative`) a difference between the model and a quote is a measurement, not a tradable price (Alpaca documentation, https://docs.alpaca.markets/docs/historical-option-data, read 2026-11-21: the indicative feed is not OPRA quotes).
 - American options (stocks, ETF): the model is European. The fit is an approximation.
+- Backtest: none applies, because the fit calibrates a surface of one snapshot. It moves no value with history and it does not forecast.
 - The snapshot has no clock time. Short expiries (1 to 2 days) have a large error in `t`.
 - A model with one volatility factor fits one expiry well and the term structure badly.
 - The filter of 1 vol point leaves few quotes on a stock chain (IBM, 2026-11-19: 40 of 1700).

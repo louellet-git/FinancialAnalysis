@@ -25,8 +25,13 @@ valuation. Do not use it alone for a trade (`CLAUDE.md`, "Review of a valuation 
 3. Margin: free cash flow before SBC and interest, shrunk the same way. SBC is a cost.
 4. Discount rate: CAPM with the shrunk beta, the equity risk premium, and a Hull-White
    risk-free rate. Net debt and shares come from the latest balance sheet. The model
-   charges `w` times the mean ratio of the cash for businesses to revenue (A-002). The
-   charge falls to zero with the fade of the growth when the company mean is above L.
+   charges `w` times the expected ratio of the cash for businesses to revenue, 0.5226
+   x the past 5-year mean ratio capped at 25%, through the origin: no past purchases, no charge (`acq_persist`, A-002; it applies to
+   the `acq_w` charge only, not to `acq_charge`, `acq_f` or the `chain` cut). The charge falls to zero with the fade of the growth when the company mean is above L.
+   The spend has the second line of the business purchases when its value differs from the
+   first line (`acq_second`, default on). `acq_persist=off` gives the past ratio as the base.
+   The option `acq_keep` is off (the charge keeps the share L / mean, with no step at a mean
+   equal to L).
 5. Write a model file (`engine = "paths"`) and run the path engine (`rust/src/dcf/paths.rs`).
 6. Terminal value: Gordon form with the terminal growth. Its mean is L (the same number
    as the fade level), its standard deviation is 0.75%.
@@ -41,7 +46,7 @@ value, 3 no value, 2 an error. `fa dcf screen` gives one CSV row for each ticker
 | Record | Name | Value | One line |
 |---|---|---|---|
 | A-001 | One long-run growth L | min(10-year zero yield, 4.0%); terminal std 0.75% | Fade level and terminal mean. 4.0% = FOMC SEP 2026-09-16 (2.0% + 2.0%). Decided 2026-11-20 |
-| A-002 | Acquisition charge | `w` x mean spend / revenue, 5 years | `w` = weight of the history in the growth mean; fades with the growth above L. Decided 2026-11-20 |
+| A-002 | Acquisition charge | `w` x mean spend / revenue, 5 years | `w` = weight of the history in the growth mean; fades with the growth above L; second line of the purchases added when it differs (`acq_second`, proposed 2026-11-21). Decided 2026-11-20 |
 | A-003 | Floor on the growth of the base year | 0% | A base year with growth below 0% enters the company mean and the first step of the growth as 0% (`last_floor`) |
 | not written | Equity risk premium | 4.41% (std 0.75%, lower bound 2%) | Damodaran implied value, 2026-11-19 |
 | not written | Risk-free rate | 10-year zero yield of the GSW curve | Hull-White `a` 0.14, `sigma` 0.0075 |
@@ -54,6 +59,16 @@ The records "not written" belong to the board ticket
 `T-20261120-model-docs-backlog`.
 
 ## Limits
+- Share basis. The price files of the store are split-adjusted up to the last date of each file. The share counts of the
+  SEC facts are not. The model multiplies each share count by the product of the factors of the splits with
+  `filing date of the fact < ex_date <= last date of the price file` (`rust/src/market/splits.rs`, `rust/src/dcf/share_basis.rs`, table
+  `<cache>/_corporate/splits.csv`; one place: `YearData::from_period`). The filing date is used, not the period end,
+  because a filing issued after a split shows the counts already adjusted for it (ASC 260). A spin-off and a class
+  change are not splits. A row with `sec_check` other than `match` is not confirmed by the SEC facts. A missing
+  table is a warning in `fa dcf auto`, `screen`, `implied` and `attribute`, and an error in `returns` and
+  `fa portfolio backtest`. `fa dcf pit` has no factor: it scores revenue and free cash flow, not values per share.
+  The classic engine (`classic.rs`, `scenarios.rs`, `verdict`, `report`, `serve`, `analyze`) has no factor: it takes
+  its shares from a curated file of the ticker, and the curator must use the post-split basis.
 - The model is a screen. Its P10 to P90 band covers 84% to 87% of real revenue in the
   point-in-time test, with known errors (`docs/HIDDEN-ASSUMPTIONS.md`, #199).
 - After a year of decline the revenue P50 stays too low (T+2 and T+3), in a few base years with a common shock (2018 to 2021; A-003)
