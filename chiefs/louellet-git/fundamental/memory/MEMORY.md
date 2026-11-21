@@ -27,14 +27,15 @@ each assumption: this head decides, with a reason that does not use the price.
   list 3.12% (model 4.41%). Energy, Telecom, NoDur above the price; BusEq far below; Utils negative.
 
 ## Lessons (tested)
-- A paired rule must stay paired in EACH year, not only in year 1 (F1 of pull request 77: ROP -$91).
+- A paired rule must stay paired in EACH year and in ONE frame (F1 of 77: ROP -$91; NVDA N1/N2: a charge that
+  faded slower than its growth, and stakes at full value with each new purchase a total loss). Before I
+  give a pairing rule in a brief, check it year by year and frame by frame.
 - Check an in-sample band error out of sample before a correction (margin bands: 95% in, 80% out).
 - Write no claim in an output text or a brief before a run supports it (V1 of pull request 81: I wrote
   "compare the mean with a price"). An agent can write numbers that no run made (V2): the record gets
   the command of each number, and I rerun two of them before the gate.
-- Two branches that change `auto.rs` conflict in `Rules::default`: check each field after a merge.
-- I made the same kind of error two times (V1 of 81, F1 of the implied file): a claim about the mean or the
-  expected value with no run. Before a claim on a statistic, run `fa dcf auto` and read the mean line.
+- Same error two times (V1 of 81, F1 of the implied file): a claim on the mean or the expected value
+  with no run. Before a claim on a statistic, run `fa dcf auto` and read the mean line.
 
 ## Standing words of the person
 - Immediate goal: the stochastic DCF engine, for stocks only; no option work in this area.
@@ -56,5 +57,4 @@ each assumption: this head decides, with a reason that does not use the price.
 - cbo.gov refuses the cloud machine (HTTP 403); federalreserve.gov answers.
 
 ## Pages
-- `responsibilities.md`: the area of this head and its boundary with the Head of Quant Research
-  (on branch `claude/dcf-market-implied` until it merges).
+- `responsibilities.md`: the area of this head and its boundary with the Head of Quant Research (in main).
