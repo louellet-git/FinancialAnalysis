@@ -26,3 +26,22 @@ claude/fred-local, not merged) cannot work. The new plan: get each series from i
 (Treasury, Fed Board, BLS, BEA, Census, NBER, Chicago Fed). Public-domain data can stay in the store.
 Moody's and ICE series have no free original source: find a substitute or drop them. Until a
 series has a replacement, its FRED file stays in the private store.
+
+Study (2026-11-21, 14 test requests with the honest name). Hosts that answer: federalreserve.gov,
+home.treasury.gov, chicagofed.org, oui.doleta.gov. BLS: the daily limit of the shared address. BEA:
+a key is necessary. NBER: bots are not permitted on the data files.
+
+| Series | Use | Replacement |
+|---|---|---|
+| T10Y3M, DFII10, T10YIE | Economics design | Compute from the Treasury nominal and real curves (equal on 3 dates) |
+| HQMCB* (8) | `bonds.rs` | Treasury HQM file (public domain; monthly, from 1984) |
+| NFCI | Economics design | Chicago Fed CSV, after a read of its terms |
+| CPIAUCNS, PAYEMS, UNRATE, CES0500000003 | CPI cross-check; others not used | BLS (loader exists) |
+| SAHMREALTIME | not used | Compute from UNRATE |
+| TB3MS, GS10 | history notes | Fed Board H.15 (Data Download Program) |
+| GDP, PCE series (6), RSAFS, ICSA | not used | BEA, Census, DOL, only when a model needs them |
+| ICE BofA (14), Moody's (6), STLFSI4, NBER (3) | `bonds.rs` (ICE OAS, Aaa/Baa); BAA10Y in the Economics design | No public original source. Drop, or find a substitute: the users decide |
+
+Order: (1) Treasury computed series and HQM; (2) NFCI; (3) BLS; (4) H.15; (5) the rest only on
+need. The ICE and Moody's drop changes the cost of debt by rating (`--rating`): the Fundamental and
+Economics heads decide the substitute.
