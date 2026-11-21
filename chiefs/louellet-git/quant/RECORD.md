@@ -45,3 +45,7 @@ Done: Read the order rules and the trading code; asked the person two decisions 
 ## 2026-11-21 04:01 UTC (question dialog)
 Words: "Where should the paper algos send their trades?" = "Wherever best"; "Where should the algos run?" = "Your laptop (Recommended)".
 Done: Venue chosen by this head: our own simulator first (live quotes, fills at bid or ask, no order leaves the repo, no rule change); an Alpaca paper account only later, with its own review and the person's confirmation. Ticket `T-20261121-algo-1-paper-engine`.
+
+## 2026-11-21 04:02 UTC (chat)
+Words: "To be honest, for your question about where, look into it."
+Done: The answer "Your laptop" is not final; this head studies where the algos should run and recommends one place.
