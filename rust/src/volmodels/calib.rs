@@ -9,7 +9,7 @@ use crate::ratemodels::rng::Rng;
 use rayon::prelude::*;
 
 /// Iterations of stage 1 of `fit` for each refined start.
-pub const STAGE1_ITER: usize = 5;
+pub const STAGE1_ITER: usize = 3;
 
 #[derive(Debug, Clone)]
 pub struct FitOptions {
@@ -33,11 +33,11 @@ pub struct FitResult<M> {
     pub loss: f64,
     pub n_quotes: usize,
     pub iterations: usize,
-    /// The loss of each refined start, after LM.
+    /// The loss of each refined start after stage 1 (`STAGE1_ITER` iterations). It is not a final loss: only the best start goes on.
     pub refined_losses: Vec<f64>,
-    /// How LM ended for the best start.
+    /// How LM ended for the best start (final).
     pub status: LmStatus,
-    /// How LM ended for each refined start.
+    /// How stage 1 ended for each refined start (not final).
     pub statuses: Vec<LmStatus>,
 }
 

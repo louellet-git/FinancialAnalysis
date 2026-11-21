@@ -127,14 +127,12 @@ fn report<M: CharModel>(set: &QuoteSet, r: &FitResult<M>, start: Instant, opts: 
     for ((n, v), b) in M::names().iter().zip(&p).zip(&marks) {
         println!("  {n:<8} {v:>10.5}{}", if *b { "  at bound" } else { "" });
     }
-    println!("  status of the best start: {}", r.status.text());
+    println!("  status of the best start (final): {}", r.status.text());
     let (lo, hi) = r.refined_losses.iter().fold((f64::INFINITY, f64::NEG_INFINITY), |a, l| (a.0.min(*l), a.1.max(*l)));
-    println!("  refined starts: {} (after the first iterations, losses {lo:.3} to {hi:.3}; {})", r.refined_losses.len(), r.statuses.iter().map(|s| s.text().split(':').next().unwrap_or("").to_string()).collect::<Vec<_>>().join(", "));
+    println!("  refined starts (stage 1, after {} iterations each, not final losses; only the best one goes on): {} (losses {lo:.3} to {hi:.3}; stage 1 status: {})", super::calib::STAGE1_ITER, r.refined_losses.len(), r.statuses.iter().map(|s| s.text().split(':').next().unwrap_or("").to_string()).collect::<Vec<_>>().join(", "));
+    println!("  uniqueness: not checked in this run (only the best start goes to the end); compare the final loss of runs with other --seed values");
     if marks.iter().any(|b| *b) {
         println!("  WARNING: a parameter is at a bound. The fit is not identified by these quotes; do not read the parameters.");
-    }
-    if hi - lo > 0.01 * lo.abs().max(1e-9) {
-        println!("  WARNING: the refined starts end at different losses. The fit is not unique; try --seed or --starts.");
     }
     if M::names().len() >= 5 {
         let feller = 2.0 * p[2] * p[1] / (p[3] * p[3]);

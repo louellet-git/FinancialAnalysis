@@ -34,19 +34,19 @@ price. The fit gives parameters, and the error of each expiry in volatility poin
 6. The loss is the sum of squares of `(model price - mid) / (vega * spread)`. Vega is the
    Black-76 vega at the mid volatility. The spread has a floor of 0.05 vol points.
 7. Levenberg-Marquardt with a numerical Jacobian, bounds by clamping, 20 random starts
-   (seed 7). Stage 1: LM runs 5 iterations from each of the 3 starts with the lowest loss. Stage 2: the best one goes on
+   (seed 7). Stage 1: LM runs 3 iterations from each of the 3 starts with the lowest loss. Stage 2: the best one goes on
    to 60 iterations. LM ends as "converged" (the last gain is 1e-10 of the loss or less, or the loss is under 1e-12),
    "iteration cap" (not converged) or "damping cap" (no step lowers the loss).
 8. The reported error is the model implied volatility minus the market mid volatility.
 
 ## Outputs
 Parameters, the status of the fit, a mark "at bound" for each parameter within 0.1% of its range from a bound, the losses of
-the 3 refined starts (their spread), the Feller ratio `2 kappa theta / xi^2` (under 1: `v` can reach 0),
+the 3 refined starts after stage 1 (not final losses: only the best start goes on to the end; the status of the best start is final), the Feller ratio `2 kappa theta / xi^2` (under 1: `v` can reach 0),
 the error by expiry in vol points (root mean square and largest), and the run time.
 
 A bound hit means that the quotes do not identify the parameter: do not read the parameters. A fit that is not "converged"
 is not a result. Bates on a thin chain is not unique: the 3 refined starts can end at different losses, and a new seed
-gives other parameters (IBM, 40 quotes: losses 2.8 to 3.4 for seeds 1 to 5). Heston and Bates are one-factor models and
+gives other parameters (IBM, 40 quotes, final losses for seeds 1 to 5: 2.238, 2.141, 2.141, 2.141, 2.141; seed 7: 1.996; all "NOT converged: iteration cap", 2026-11-21, `--rate 0.04`). Heston and Bates are one-factor models and
 the jump parameters of Bates are weak on a short or thin chain.
 
 ## Assumptions
@@ -78,11 +78,13 @@ No record in `docs/assumptions/` has a form for these choices. They are listed h
 - A model with one volatility factor fits one expiry well and the term structure badly.
 - The filter of 1 vol point leaves few quotes on a stock chain (IBM, 2026-11-19: 40 of 1700).
 - Alpaca closes have no bid and ask: do not fit them with this loss.
-- Speed. The machine has 4 cores and was shared: the load average was 5 to 7 during the runs below, so the times are
-  upper bounds. The acceptance of 5 s is for Heston only. One expiry of 101 strikes takes 0.8 to 1.3 ms on one thread.
-  Synthetic surface of 40 expiries and 11,000 quotes: Heston 7.7 to 8.6 s and Bates 10.5 to 15 s under that load (22 to 28
-  LM iterations). With one refined start the Heston fit took 2.6 s on a quiet machine. SPX, 2026-11-20 (8141 quotes, 53 series):
-  Heston 11.1 s wall and 20 s CPU (about 5 s on 4 free cores), Bates 46 s wall. The 5 s target is not met under load.
+- Speed. The acceptance of 5 s is for Heston only. Machine: 4 cores, load average 1.4 to 2.9 (`uptime`) during the runs below,
+  a machine that others also use. One expiry of 101 strikes takes 0.8 to 1.3 ms on one thread. Each refined start costs time:
+  3 refined starts cost 3 warm-ups. SPX, 2026-11-20 (8141 quotes, 53 series, `--rate 0.04`):
+  Heston with a warm-up of 5 iterations: 20 LM iterations, 3.9 s wall, 13.7 s CPU. With a warm-up of 3 iterations: 16 iterations,
+  3.3 s wall, 12.2 s CPU, the same final loss 145232.630. Bates (3 iterations): 66 iterations, 18.1 s wall, 70 s CPU, loss 114998.
+  The synthetic surface of 40 expiries and 11,000 quotes took 7.7 to 8.6 s for Heston under a load of 6 to 8 (before the warm-up
+  change; not measured again).
 - IBM, 2026-11-19: the 1 vol point filter keeps LEAPS only (4 series, 393 to 757 days). The short end is absent. The fit says
   nothing about it. The bias of the European model for early exercise is not sized.
 
@@ -90,7 +92,7 @@ No record in `docs/assumptions/` has a form for these choices. They are listed h
 | What | Path or command |
 |---|---|
 | Code | `rust/src/volmodels/` (`base`, `fourier`, `models`, `calib`, `chain`, `cli`, `cx`) |
-| Command | `fa vol fit heston\|bates --symbol T --date D [--rate R] [--expiry-max DAYS] [--max-spread V]` |
+| Command | `fa vol fit heston\|bates --symbol T --date D [--time HHMM] [--rate R] [--expiry-max DAYS] [--max-spread V] [--starts N] [--seed S]` |
 | Tests | `rust/src/volmodels/tests.rs` (`cargo test --manifest-path rust/Cargo.toml --lib volmodels`) |
 
 ## Review status
