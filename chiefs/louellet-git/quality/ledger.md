@@ -132,3 +132,4 @@
 | cost of debt cycle 2 | 2026-11-21 | claude/fred-primary (952c689): model-validator PASS-WITH-NOTES (K1, K2 closed by hand); verdict PASS-WITH-NOTES | 110k measured (both cycles) | |
 | trade grids; recon lasting; Cboe stop; revenue tags | 2026-11-21 | started: 790348a (validator + Haiku code-reviewer), ac56687 (code-reviewer + PIT), 4b3548e (Haiku code-reviewer), 91bcfa7 (data-quality + Haiku code-reviewer) | | |
 | premium test D1-D6 | 2026-11-21 | econ/premium-test-cmd (647b461): head check of the conditions; PASS-WITH-NOTES | small (head only) | |
+| arbitrage register | 2026-11-21 | claude/quant-invariants (75fddc6): code-reviewer PASS-WITH-NOTES (zero-bid measured: 0 of 143 violations depend on it), document-reviewer (Haiku) REVISE (2 MAJ: Cboe auto-read proposal, unsourced 15:27 ET); verdict REVISE (documents) | about 220k (110k + 110k measured) | |
