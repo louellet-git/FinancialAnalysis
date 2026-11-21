@@ -63,8 +63,8 @@ No random part. The result does not depend on `--jobs`.
 - The list has today's names (survivorship). Companies that left it are not in the set. This moves the rates up.
 - The windows of one company overlap. They are not independent. The pooled table counts each window.
 - Acquired revenue is in the growth. A spin-off lowers it.
-- On 2026-11-20, 103 of 500 companies of the S&P 500 list had no base-year value. The cause is a mapping gap of old
-  years (ticket `T-20261121-revenue-old-tags`, Technology) and short stores. The rates are for the other 397.
+- On 2026-11-20 (main e2557b6, after the fix of the old revenue tags, pull request 200), 58 of 500 companies of the S&P 500
+  list have no base-year value (before the fix: 103). The rates are for the other companies (439 last windows).
 - The implied growth is one path at the means, at the model premium and margin. It is not an expected value. A search
   can end at a floor or a ceiling.
 - The base of the implied growth is the revenue of the last fiscal year, not of the last twelve months. For a company
@@ -72,8 +72,8 @@ No random part. The result does not depend on `--jobs`.
   each year). A result near the maximum of a bucket is fragile (MU on 2026-11-20: 24.9% against 21.0%).
 - Direction of the survivorship error: the base rates are too high, so a percentile or "above every case" shows the
   needed growth as LESS rare than it is. This is safe for the reading "rare" and not safe for the reading "common".
-  The 103 companies with no base-year value are mostly old, large and slow (JNJ, PFE, DIS, KR): with them the median of
-  the bucket of 50B or more is lower (a rough number, not run: about 3.5% in place of 3.9%).
+  Before the fix of the old revenue tags, 103 companies had no base-year value, and most were old, large and slow. With
+  45 of them now in the set, the median of the bucket of 50B or more moved from 3.9% (46 companies) to 3.7% (50).
 - A percentile against a bucket with few cases is weak. Read the n.
 - Do not read a percentile or a flag as a signal without a review (`HIDDEN-ASSUMPTIONS.md` #260).
 

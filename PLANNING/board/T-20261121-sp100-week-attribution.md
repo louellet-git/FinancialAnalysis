@@ -240,3 +240,9 @@ record: `analysis/priors/data/week_2026-11-20_record_main-7e88cfe/` (the bridge 
 weekly premium series of the list, and the deviations and the expected fall by beta (one-time scripts; design R6).
 WAITS: the review of the person on the three pieces (the Head of Staff has them). THEN: the S&P 100 part (the same
 tests on 100 companies, the count against chance), and the 3-page report only after his go-ahead.
+
+**After the revenue fix of Technology (21:15 UTC, 2026-11-21).** Pull request 200 (main e2557b6) fills the old revenue
+periods. The week ran again on e2557b6: the attribution of the four lists is unchanged (only a new beta flag for SNDK,
+FDXF and Q). The base rates changed: 50B or more: 50 companies, median 3.7%, maximum 21.0% (before: 46, 3.9%, 21.0%).
+Page 2, Table 3, one cell is corrected ("median 3.7% (50 companies that survived)"); "5 of 9" stays. Folder:
+`analysis/priors/data/week_2026-11-20_record_main-e2557b6/`. The Head of Staff has the new PDF of page 2.

@@ -62,7 +62,7 @@ See: the required return is still low; 5 of 9 stocks need more growth than a lar
 |---|---:|---:|---|
 | Required return above bonds, S&P 100 list (preliminary) | 1.20% | 1.67% | 2019 to 2026: median 3.56%; 98% of weeks higher |
 | The same, from the index dividends (monthly estimates) | 1.37% | 1.64% | Since 1871: 24% of the months are lower |
-| Stocks above the best 10-year growth of a large company | 5 of 9 | 5 of 9 | Best case 21.0%, median 3.9% (46 companies that survived) |
+| Stocks above the best 10-year growth of a large company | 5 of 9 | 5 of 9 | Best case 21.0%, median 3.7% (50 companies that survived) |
 
 Reading: the split is consistent with a correction of expensive prices; it is not a buy signal for the group. The reason: page 1.
 
