@@ -100,6 +100,18 @@ fn block_start(windows: &[Win]) -> Date {
     windows.iter().map(|w| w.0).min().unwrap_or(0)
 }
 
+/// A one-line note when two windows overlap (inclusive dates), else None. A day in both is counted once.
+fn overlap_note(windows: &[Win]) -> Option<String> {
+    let mut w: Vec<&Win> = windows.iter().collect();
+    w.sort_by_key(|x| (x.0, x.1));
+    let pairs: Vec<String> = w.windows(2).filter(|p| p[1].0 <= p[0].1).map(|p| format!("{} / {}", p[0].2, p[1].2)).collect();
+    if pairs.is_empty() {
+        None
+    } else {
+        Some(format!("note: {} overlapping window pair(s): {}; a day in both counts once as inside", pairs.len(), pairs.join(", ")))
+    }
+}
+
 /// The calendar year of a date.
 fn year(d: Date) -> i32 {
     super::calendar::civil_from_days(d).0
@@ -154,6 +166,10 @@ pub fn command(repo: &Path, args: &[String]) -> Result<i32, String> {
     let spy = read_series(&dir.join("SPY_1d.csv"))?;
     let vix = read_series(&dir.join("_VIX_1d.csv"))?;
     let vix1d = read_series(&dir.join("_VIX1D_1d.csv"))?;
+    println!("stress windows: {}, {} windows, first start {}", stress.display(), windows.len(), iso(block_start(&windows)));
+    if let Some(note) = overlap_note(&windows) {
+        println!("{note}");
+    }
     report(&spy, &vix, &vix1d, horizon, lag, &windows, &lags)?;
     Ok(0)
 }
@@ -365,6 +381,15 @@ mod tests {
         assert!(in_window(d("2025-04-08"), &w));
         assert!(in_window(d("2025-03-27"), &w) && in_window(d("2025-05-12"), &w));
         assert!(!in_window(d("2025-05-13"), &w));
+    }
+
+    #[test]
+    fn overlapping_windows_give_a_note_and_the_real_file_has_none() {
+        assert_eq!(overlap_note(&file_windows()), None);
+        let d = |s: &str| parse_iso(s).unwrap();
+        let w = vec![(d("2020-01-01"), d("2020-01-10"), "a".to_string()), (d("2020-01-10"), d("2020-01-20"), "b".to_string()), (d("2020-02-01"), d("2020-02-02"), "c".to_string())];
+        let n = overlap_note(&w).unwrap();
+        assert!(n.contains("1 overlapping") && n.contains("a / b"), "{n}");
     }
 
     #[test]

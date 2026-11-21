@@ -126,7 +126,7 @@ pub fn keys_of(set: DataSet, ctx: &Ctx, cfg: &SyncConfig, tickers: &[String], in
             out
         }
         DataSet::Options => option_symbols.to_vec(),
-        DataSet::Rates => vec!["treasury".into(), "bls".into()],
+        DataSet::Rates => vec!["treasury".into(), "bls".into(), "hqm".into()],
         DataSet::Gsw => vec!["gsw".into()],
         DataSet::Fred => crate::bonds::cached_series_ids(),
         DataSet::Futures => futures_keys(),
@@ -200,6 +200,7 @@ fn cache_date(set: DataSet, ctx: &Ctx, key: &str) -> Option<String> {
                     _ => None,
                 }
             }
+            "hqm" => file_date(&crate::hqm::dir(c).join("meta.json")),
             _ => file_date(&c.join("rates").join("bls_cpi.json")),
         },
         DataSet::Gsw => file_date(&crate::forwards::cache_path(&ctx.repo)),

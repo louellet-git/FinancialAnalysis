@@ -13,6 +13,10 @@ close: trigger 25 or more, start at the last close below 20, end at the first cl
 the gap is 10 trading days or less, list when 3 or more closes are at 25 or more. The code has no
 window before 2016. A second view, "clean outside", also drops days with a window in the next 21 days.
 
+The gate block now runs to the last data day. An earlier window added to the file moves the block start (the
+block starts at the first window start). The run prints the file, the window count and the first start, and a note
+when two windows overlap (a day in both counts once as inside).
+
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|

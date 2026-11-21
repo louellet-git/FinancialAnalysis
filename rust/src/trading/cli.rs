@@ -187,8 +187,9 @@ pub fn run_command(store: &Store, args: &[String]) -> Result<i32, String> {
             return Err("--cut-scan and --price-grid need exactly one bot (--bot ID)".to_string());
         }
         let (step, span) = (a.step.unwrap_or(7.0), a.span.unwrap_or(42.0));
-        if !(step >= 1.0 && span >= 0.0 && step.fract() == 0.0 && span.fract() == 0.0) {
-            return Err(format!("--step needs a whole number of days of at least 1 and --span a whole number of at least 0 (got {step}, {span})"));
+        let max = grids::MAX_SPAN as f64;
+        if !(step >= 1.0 && span >= 0.0 && step.fract() == 0.0 && span.fract() == 0.0 && span <= max && step <= span.max(1.0)) {
+            return Err(format!("--step needs a whole number of days from 1 to --span, and --span a whole number from 0 to {} (got step {step}, span {span})", grids::MAX_SPAN));
         }
         let knobs = (a.spread_mult.unwrap_or(1.0), a.skew_mult.unwrap_or(1.0), a.mid_fill);
         return grids_command(&names[0], &markets, &risk, a.start.as_deref(), is_fraction, (step as i32, span as i32), (a.cut_scan, a.price_grid), knobs);
@@ -223,7 +224,7 @@ pub fn run_command(store: &Store, args: &[String]) -> Result<i32, String> {
                 failed += 1;
             }
             Ok(d) => {
-                println!("{}  ({:.1}s)", format_summary(&d.summary), d.secs);
+                println!("{}\n  time {:.1}s", format_summary(&d.summary), d.secs);
                 if !d.result.rejections.is_empty() {
                     let items: Vec<String> = d.result.rejections.iter().map(|(k, v)| format!("'{k}': {v}")).collect();
                     println!("  rejections: {{{}}}", items.join(", "));
@@ -279,7 +280,7 @@ fn grids_command(
         }
         println!("CUT SCAN of {name} ({interval} bars, {} to {}, default in-sample fraction {is_fraction}); OOS result at each cut; model prices", iso(r.date[0]), iso(r.date[r.date.len() - 1]));
         let default_cut = r.date[cut_index(r.equity.len(), is_fraction)];
-        print!("{}", grids::format_cut_scan(r.date[0], default_cut, &grids::cut_scan(&r, interval, is_fraction, step, span)));
+        print!("{}", grids::format_cut_scan(r.date[0], default_cut, &grids::cut_scan(&r, interval, is_fraction, step, span), step, span));
     }
     if price_grid {
         if cut_scan {
@@ -503,10 +504,12 @@ pub(crate) mod tests {
         assert!(e.contains("exactly one bot"), "{e}");
         let e = run_command(&store, &["--bot".into(), "s05_ic_0dte".into(), "--price-grid".into(), "--bot".into(), "s08_trend_regime".into()]).unwrap_err();
         assert!(e.contains("exactly one bot"), "{e}");
-        for bad in ["0", "2.5", "-1"] {
-            let e = run_command(&store, &["--bot".into(), "s05_ic_0dte".into(), "--cut-scan".into(), "--step".into(), bad.into()]).unwrap_err();
+        for bad in ["0", "2.5", "-1", "50"] {
+            let e = run_command(&store, &["--bot".into(), "s05_ic_0dte".into(), "--cut-scan".into(), "--step".into(), bad.into(), "--span".into(), "30".into()]).unwrap_err();
             assert!(e.contains("--step"), "{e}");
         }
+        let e = run_command(&store, &["--bot".into(), "s05_ic_0dte".into(), "--cut-scan".into(), "--span".into(), "400".into()]).unwrap_err();
+        assert!(e.contains("--span"), "{e}");
     }
 
     #[test]

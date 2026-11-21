@@ -7,6 +7,12 @@ use super::engine::{BacktestResult, Trade};
 use super::metrics::{cut_index, summarize};
 use super::stats;
 
+/// The footer of both grids.
+pub const FOOTER: &str = "a sensitivity, not a choice: no cut or knob is selected; the DSR N stays 20 and is a lower bound";
+
+/// The largest span of the cut scan, in days.
+pub const MAX_SPAN: i32 = 365;
+
 /// One row of the cut scan.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CutRow {
@@ -62,7 +68,7 @@ pub fn cut_scan(r: &BacktestResult, interval: &'static str, is_fraction: f64, st
         .collect()
 }
 
-pub fn format_cut_scan(first_bar: Date, default_cut: Date, rows: &[CutRow]) -> String {
+pub fn format_cut_scan(first_bar: Date, default_cut: Date, rows: &[CutRow], step: i32, span: i32) -> String {
     let mut s = format!("first bar of the data {}; default cut {} (the in-sample fraction)\n", iso(first_bar), iso(default_cut));
     s.push_str(&format!("{:>12} {:>9} {:>11} {:>11} {:>9}\n", "cut", "days", "oos_trades", "oos_sharpe", "t(P&L)"));
     for r in rows {
@@ -71,8 +77,9 @@ pub fn format_cut_scan(first_bar: Date, default_cut: Date, rows: &[CutRow]) -> S
     let sh: Vec<f64> = rows.iter().map(|r| r.oos_sharpe).filter(|x| x.is_finite()).collect();
     if !sh.is_empty() {
         let (lo, hi) = sh.iter().fold((f64::INFINITY, f64::NEG_INFINITY), |a, &x| (a.0.min(x), a.1.max(x)));
-        s.push_str(&format!("OOS Sharpe range over the {} cuts: {lo:.2} to {hi:.2} (same trades, same data; only the cut moves)\n", sh.len()));
+        s.push_str(&format!("OOS Sharpe range over the {} cuts within +/- {span} days, step {step}: {lo:.2} to {hi:.2} (same trades, same data; only the cut moves; it depends on the step, the span and the end of the data, so it is not the range)\n", sh.len()));
     }
+    s.push_str(&format!("{} (step {step} days, span {span} days, {} cuts)\n", FOOTER, rows.len()));
     s
 }
 
@@ -145,6 +152,8 @@ pub fn format_price_grid(rows: &[GridRow]) -> String {
         ));
     }
     s.push_str("d_mean, d_mean%, d_t: change against the baseline row. need_t2: the mean P&L of a trade (dollars) that gives t = 2 with this n and this sd.\n");
+    s.push_str("The rows can have different trade sets: a price change can add, drop or move a trade (for example s08: 3, 1, 5 and 64 trades), so d_mean compares different samples.\n");
+    s.push_str(&format!("{} ({} runs)\n", FOOTER, rows.len()));
     s
 }
 
@@ -207,9 +216,10 @@ mod tests {
         // The Sharpe at the default cut is the Sharpe of `summarize` with the same fraction.
         assert_eq!(rows[2].oos_sharpe, summarize(&r, "1d", 0.5).oos.sharpe);
         assert!(rows[0].oos_sharpe != rows[4].oos_sharpe);
-        let text = format_cut_scan(r.date[0], r.date[10], &rows);
+        let text = format_cut_scan(r.date[0], r.date[10], &rows, 2, 4);
         assert!(text.contains("first bar of the data 2024-10-04"), "{text}");
-        assert!(text.contains("OOS Sharpe range over the 5 cuts"));
+        assert!(text.contains("OOS Sharpe range over the 5 cuts within +/- 4 days, step 2"), "{text}");
+        assert!(text.contains(FOOTER) && text.contains("step 2 days, span 4 days, 5 cuts"));
     }
 
     #[test]
@@ -259,6 +269,7 @@ mod tests {
         assert!((rows[0].mean_pnl - 14.5).abs() < 1e-12 && (rows[1].mean_pnl - 29.0).abs() < 1e-12);
         let text = format_price_grid(&rows);
         assert!(text.contains("spread x2") && text.contains("+14.50"), "{text}");
+        assert!(text.contains(FOOTER) && text.contains("(5 runs)") && text.contains("different trade sets"));
         // An error of the run still restores the knobs.
         drop(l);
         log.borrow_mut().clear();

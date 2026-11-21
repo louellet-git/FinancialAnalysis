@@ -5,6 +5,7 @@ area: trading
 status: in-progress
 owner: louellet-git
 head: quant
+story: E4.S4
 order: 0.86
 branch: claude/quant-trade-grids
 created: 2026-11-21

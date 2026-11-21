@@ -425,3 +425,20 @@ fn a_premium_with_no_engine_value_gives_no_number_and_no_huge_ratio() {
     // the stand-in value of a search is finite and above any price
     assert!(NO_VALUE.is_finite() && NO_VALUE > 1e20);
 }
+
+#[test]
+fn the_list_premium_of_a_small_list_is_the_premium_of_the_implied_code() {
+    // `list_premium` (used by `fa dcf premium-series`) and the stage 3 of `implied_models` are the same functions on the same inputs
+    let list = synthetic(6);
+    let price_of = |t: &str| 8.0 + 4.0 * t[1..].parse::<f64>().unwrap();
+    let market_of = move |t: &str| Market { price: Some(price_of(t)), price_source: "test".into(), ..market() };
+    let t = table();
+    let cfg = ImpliedConfig { table: &t, fade: &[], rules: plain_rules(), cache: None };
+    let (_, from_implied, _) = implied_models(&list, &market_of, &HashMap::new(), &cfg, Some(1)).unwrap();
+    let from_list = list_premium(&list, &market_of, &cfg).unwrap();
+    let (a, b) = (from_implied.unwrap(), from_list.unwrap());
+    assert_eq!(a, b);
+    assert!(a.n >= 3 && a.found.x.is_finite(), "{a:?}");
+    // the closed meaning: at that premium the median of value / price is 1 (a solution of the search, not a bound)
+    assert_eq!(a.found.bound, Bound::Exact, "{a:?}");
+}

@@ -220,6 +220,7 @@ pub fn cached_dates(cache: &std::path::Path, from: Option<&str>, to: Option<&str
 
 pub const HELP: &str = "\
 fa recon history [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--out FILE]
+fa recon history --lasting [--from D] [--to D] [--min-dates 38] [--same-sign 0.9] [--min-abs-bp 1.9]
 
 Fit the curve for each cached price date and keep the difference of each note and bond from
 its curve. Measure how long the difference lasts: autocorrelation at 1, 5 and 10 business
@@ -227,7 +228,14 @@ days, half-life, and the change after a large difference.
 
   --from, --to  The range of dates (default: all cached files in data/raw/prices).
   --out         The panel CSV (cusip, date, res_bp, cost_bp, group).
-                Default: data/recon/richcheap_history.csv in the repository.";
+                Default: data/recon/richcheap_history.csv in the repository.
+
+  --lasting     List the securities with a lasting residual (A-117) and count them: rich, cheap, group.
+                It reads the stored price files only. It makes no request, reads no GSW file and writes no file.
+                A lasting security has at least --min-dates dates, the same sign as its mean on at least
+                --same-sign of its days, and |mean| above its mean cost and above --min-abs-bp (the fit RMSE).
+                --to D is an as-of date: no later day is read, so a later file does not change the result.
+                A candidate here is a security to study, not a trade.";
 
 fn fmt_opt(v: Option<f64>) -> String {
     v.map_or("     -".to_string(), |x| format!("{x:6.3}"))
@@ -332,6 +340,149 @@ pub fn gsw_summary(analyses: &[Analysis], ds: &crate::forwards::Dataset) -> Vec<
         .collect()
 }
 
+/// The rule of a lasting residual (A-117). The values are an author choice, not a study.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LastingRule {
+    /// Smallest number of dates of a security.
+    pub min_dates: usize,
+    /// Smallest share of the days that have the sign of the mean (0 to 1).
+    pub same_sign: f64,
+    /// |mean residual| must be above this value (bp). The default is the mean fit RMSE of the 58 days.
+    pub min_abs_bp: f64,
+}
+
+impl Default for LastingRule {
+    fn default() -> Self {
+        LastingRule { min_dates: 38, same_sign: 0.9, min_abs_bp: 1.9 }
+    }
+}
+
+/// One security that meets the rule.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LastingRow {
+    pub id: String,
+    pub n: usize,
+    /// Share of the days with the sign of the mean.
+    pub share: f64,
+    pub mean: f64,
+    pub cost: f64,
+    pub sd: f64,
+    /// Half-life (business days) of the deviation from the own mean, from the lag-1 coefficient.
+    pub half_life: Option<f64>,
+    /// Group at the last date of the security (a label).
+    pub group: &'static str,
+}
+
+/// The securities of the panel that meet the rule, sorted by |mean| (largest first), and the counts.
+#[derive(Debug, Default, PartialEq)]
+pub struct Lasting {
+    pub n_securities: usize,
+    pub rows: Vec<LastingRow>,
+}
+
+impl Lasting {
+    pub fn rich(&self) -> usize {
+        self.rows.iter().filter(|r| r.mean < 0.0).count()
+    }
+
+    pub fn cheap(&self) -> usize {
+        self.rows.iter().filter(|r| r.mean > 0.0).count()
+    }
+
+    /// Count of lasting securities for each group, in the order of `richcheap::GROUPS`; groups with 0 are left out.
+    pub fn by_group(&self) -> Vec<(&'static str, usize)> {
+        richcheap::GROUPS
+            .iter()
+            .map(|g| (*g, self.rows.iter().filter(|r| r.group == *g).count()))
+            .filter(|x| x.1 > 0)
+            .collect()
+    }
+}
+
+/// Apply the rule to the panel. All values are exact (no rounding before a test).
+pub fn lasting(panel: &Panel, rule: &LastingRule) -> Lasting {
+    let mut rows = Vec::new();
+    for (id, v) in &panel.series {
+        let n = v.len();
+        if n < rule.min_dates || n < 2 {
+            continue;
+        }
+        let nf = n as f64;
+        let mean = v.iter().map(|o| o.res).sum::<f64>() / nf;
+        let same = v.iter().filter(|o| o.res * mean > 0.0).count() as f64 / nf;
+        let cost = v.iter().map(|o| o.cost).sum::<f64>() / nf;
+        let a = mean.abs();
+        // 1e-12: a share that is exactly the limit (36 of 40 days at 0.9) passes in floating point too.
+        if same + 1e-12 < rule.same_sign || a <= cost || a <= rule.min_abs_bp {
+            continue;
+        }
+        let sd = (v.iter().map(|o| (o.res - mean).powi(2)).sum::<f64>() / (nf - 1.0)).sqrt();
+        // Lag-1 pairs of the deviation from the own mean; a gap in the dates is not a lag.
+        let by_t: BTreeMap<i64, f64> = v.iter().map(|o| (o.t, o.res - mean)).collect();
+        let pairs: Vec<(f64, f64)> = by_t.iter().filter_map(|(t, x)| by_t.get(&(t + 1)).map(|y| (*x, *y))).collect();
+        let half_life = coefficient(&pairs).and_then(|p| half_life(p, 1.0));
+        let group = v.last().map_or("other", |o| o.group);
+        rows.push(LastingRow { id: id.clone(), n, share: same, mean, cost, sd, half_life, group });
+    }
+    rows.sort_by(|a, b| b.mean.abs().total_cmp(&a.mean.abs()).then_with(|| a.id.cmp(&b.id)));
+    Lasting { n_securities: panel.series.len(), rows }
+}
+
+/// Maturity and coupon of each security, from the last analysis that has it.
+pub fn security_terms(analyses: &[Analysis]) -> BTreeMap<String, (curve::Day, Option<f64>)> {
+    let mut m = BTreeMap::new();
+    for a in analyses {
+        for r in &a.rows {
+            m.insert(r.id.clone(), (r.maturity, r.coupon));
+        }
+    }
+    m
+}
+
+pub fn lasting_report(l: &Lasting, rule: &LastingRule, dates: &[String], terms: &BTreeMap<String, (curve::Day, Option<f64>)>) -> String {
+    let mut o = String::new();
+    let (first, last) = (&dates[0], &dates[dates.len() - 1]);
+    let _ = writeln!(o, "LASTING RESIDUALS. Dates: {} business days, {first} to {last} (as-of date {last}). Securities in the panel: {}.", dates.len(), l.n_securities);
+    let _ = writeln!(
+        o,
+        "Rule (A-117): at least {} dates; the sign of the mean on at least {:.0}% of the days; |mean residual| above the mean cost and above {} bp.",
+        rule.min_dates,
+        rule.same_sign * 100.0,
+        rule.min_abs_bp
+    );
+    let _ = writeln!(o, "Residual = observed minus fitted yield (bp); plus is cheap, minus is rich. Each fit is of its own day.\n");
+    let _ = writeln!(o, "{:<10} {:<10} {:>6} {:>7} {:>10} {:>8} {:>7} {:>9}  group", "cusip", "maturity", "days", "same %", "mean bp", "cost bp", "sd bp", "half-life");
+    for r in &l.rows {
+        let (mat, _) = terms.get(&r.id).copied().unwrap_or((0, None));
+        let _ = writeln!(
+            o,
+            "{:<10} {:<10} {:>6} {:>7.1} {:>+10.2} {:>8.2} {:>7.2} {:>9}  {}",
+            r.id,
+            if mat == 0 { "-".to_string() } else { curve::iso(mat) },
+            r.n,
+            r.share * 100.0,
+            r.mean,
+            r.cost,
+            r.sd,
+            r.half_life.map_or("-".to_string(), |h| format!("{h:.1}")),
+            r.group
+        );
+    }
+    let _ = writeln!(o, "\nLasting: {} of {} securities. Rich {} (price above the curve), cheap {}.", l.rows.len(), l.n_securities, l.rich(), l.cheap());
+    let _ = writeln!(o, "By group (group at the last date of the security):");
+    for (g, n) in l.by_group() {
+        let _ = writeln!(o, "  {g:<20} {n}");
+    }
+    let _ = writeln!(
+        o,
+        "\nHalf-life: of the deviation from the own mean, in business days, from the lag-1 coefficient; '-' = not in (0,1).\n\
+         A lasting residual is a candidate after cost, not a trade: the data has no repo rate, borrow cost, tax or executable quote.\n\
+         The residual is a price gap plus model error. The sample has {} days: no unit-root test was run, and the level may be a group effect.",
+        dates.len()
+    );
+    o
+}
+
 pub fn write_panel(path: &std::path::Path, analyses: &[Analysis]) -> Result<(), String> {
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
@@ -345,31 +496,12 @@ pub fn write_panel(path: &std::path::Path, analyses: &[Analysis]) -> Result<(), 
     std::fs::write(path, text).map_err(|e| format!("{}: {e}", path.display()))
 }
 
-pub fn run_history(fa: &Fa, args: &[String]) -> Result<(), String> {
-    let (mut from, mut to, mut out) = (None, None, None);
-    let mut it = args.iter();
-    while let Some(a) = it.next() {
-        match a.as_str() {
-            "--from" => from = Some(it.next().ok_or("--from needs a value")?.clone()),
-            "--to" => to = Some(it.next().ok_or("--to needs a value")?.clone()),
-            "--out" => out = Some(std::path::PathBuf::from(it.next().ok_or("--out needs a value")?)),
-            other => return Err(format!("unknown argument '{other}'")),
-        }
-    }
-    for d in [&from, &to].into_iter().flatten() {
-        if curve::parse_iso(d).is_none() {
-            return Err(format!("'{d}' is not a date (YYYY-MM-DD)"));
-        }
-    }
-    let cache = fa.repo.join("data/raw");
-    let dates = cached_dates(&cache, from.as_deref(), to.as_deref());
-    if dates.len() < 12 {
-        return Err(format!("only {} cached price files in range (need 12 or more; see hidden assumption 69)", dates.len()));
-    }
+/// Fit each date from the stored price files. Reads files only.
+fn fit_dates(cache: &std::path::Path, dates: &[String]) -> Result<Vec<Analysis>, String> {
     let results: Vec<Result<Analysis, String>> = dates
         .par_iter()
         .map(|d| {
-            let quotes = richcheap::cached_quotes(&cache, d)?;
+            let quotes = richcheap::cached_quotes(cache, d)?;
             let day = curve::parse_iso(d).ok_or("bad date")?;
             richcheap::analyse(d, curve::add_business_days(day, 1), &quotes).map_err(|e| format!("{d}: {e}"))
         })
@@ -381,6 +513,78 @@ pub fn run_history(fa: &Fa, args: &[String]) -> Result<(), String> {
             Err(e) => eprintln!("fa recon: skipped {d}: {e}"),
         }
     }
+    Ok(analyses)
+}
+
+fn run_lasting(cache: &std::path::Path, from: Option<&str>, to: Option<&str>, rule: &LastingRule) -> Result<(), String> {
+    let dates = cached_dates(cache, from, to);
+    if dates.len() < rule.min_dates {
+        return Err(format!(
+            "only {} stored price files in range in {} (the rule needs {} or more dates). No request was made; the store copy must have the days (docs/DATA-SOURCES.md, the data store).",
+            dates.len(),
+            cache.join("prices").display(),
+            rule.min_dates
+        ));
+    }
+    let analyses = fit_dates(cache, &dates)?;
+    if analyses.len() < rule.min_dates {
+        return Err(format!("only {} dates could be fitted (the rule needs {})", analyses.len(), rule.min_dates));
+    }
+    let used: Vec<String> = analyses.iter().map(|a| a.date.clone()).collect();
+    let panel = build_panel(&analyses);
+    let l = lasting(&panel, rule);
+    print!("{}", lasting_report(&l, rule, &used, &security_terms(&analyses)));
+    Ok(())
+}
+
+pub fn run_history(fa: &Fa, args: &[String]) -> Result<(), String> {
+    let (mut from, mut to, mut out) = (None, None, None);
+    let (mut lasting_mode, mut rule, mut rule_flag) = (false, LastingRule::default(), false);
+    let mut it = args.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--from" => from = Some(it.next().ok_or("--from needs a value")?.clone()),
+            "--to" => to = Some(it.next().ok_or("--to needs a value")?.clone()),
+            "--out" => out = Some(std::path::PathBuf::from(it.next().ok_or("--out needs a value")?)),
+            "--lasting" => lasting_mode = true,
+            "--min-dates" => {
+                rule_flag = true;
+                rule.min_dates = it.next().ok_or("--min-dates needs a value")?.parse().map_err(|_| "--min-dates needs a whole number")?;
+            }
+            "--same-sign" => {
+                rule_flag = true;
+                rule.same_sign = it.next().ok_or("--same-sign needs a value")?.parse().map_err(|_| "--same-sign needs a number (0.9 is 90%)")?;
+            }
+            "--min-abs-bp" => {
+                rule_flag = true;
+                rule.min_abs_bp = it.next().ok_or("--min-abs-bp needs a value")?.parse().map_err(|_| "--min-abs-bp needs a number (bp)")?;
+            }
+            other => return Err(format!("unknown argument '{other}'")),
+        }
+    }
+    if rule_flag && !lasting_mode {
+        return Err("--min-dates, --same-sign and --min-abs-bp need --lasting".into());
+    }
+    if lasting_mode && out.is_some() {
+        return Err("--lasting writes no file; do not use --out".into());
+    }
+    if rule.min_dates < 2 || !(rule.same_sign > 0.0 && rule.same_sign <= 1.0) || !rule.min_abs_bp.is_finite() || rule.min_abs_bp < 0.0 {
+        return Err("rule values: --min-dates 2 or more, --same-sign in (0, 1] (0.9 is 90%), --min-abs-bp 0 or more".into());
+    }
+    for d in [&from, &to].into_iter().flatten() {
+        if curve::parse_iso(d).is_none() {
+            return Err(format!("'{d}' is not a date (YYYY-MM-DD)"));
+        }
+    }
+    let cache = fa.repo.join("data/raw");
+    if lasting_mode {
+        return run_lasting(&cache, from.as_deref(), to.as_deref(), &rule);
+    }
+    let dates = cached_dates(&cache, from.as_deref(), to.as_deref());
+    if dates.len() < 12 {
+        return Err(format!("only {} cached price files in range (need 12 or more; see hidden assumption 69)", dates.len()));
+    }
+    let analyses = fit_dates(&cache, &dates)?;
     if analyses.len() < 12 {
         return Err("fewer than 12 dates could be fitted".into());
     }
@@ -508,5 +712,167 @@ mod tests {
         let p = decay_panel(0.9);
         assert_eq!(security_means(&p, 41).len(), 0);
         assert_eq!(security_means(&p, 40).len(), 12);
+    }
+
+    // ---- lasting rule ----
+
+    fn series(p: &mut Panel, id: &str, vals: &[f64], cost: f64, group: &'static str) {
+        for (t, v) in vals.iter().enumerate() {
+            p.push(id, Obs { t: t as i64, res: *v, cost, group });
+        }
+    }
+
+    /// n values: `neg` days of -(mean_abs + 1) first, then the rest at a value so the mean is exact.
+    fn mixed(n: usize, wrong: usize, big: f64, small: f64) -> Vec<f64> {
+        // (n - wrong) days at `big`, `wrong` days at `small` (opposite sign).
+        (0..n).map(|i| if i < wrong { small } else { big }).collect()
+    }
+
+    #[test]
+    fn counts_of_a_synthetic_panel_by_hand() {
+        let mut p = Panel::default();
+        // A, B: rich, 40 days at -5 (mean -5, cost 1): lasting. Groups: old 30-year bond, other.
+        series(&mut p, "A", &[-5.0; 40], 1.0, "old 30-year bond");
+        series(&mut p, "B", &[-5.0; 40], 1.0, "other");
+        // C: cheap, 40 days at +3 (cost 1): lasting.
+        series(&mut p, "C", &[3.0; 40], 1.0, "other");
+        // D: mean -1.5, below the 1.9 bp floor: not lasting.
+        series(&mut p, "D", &[-1.5; 40], 0.5, "other");
+        // E: mean -5 but cost 6: not lasting.
+        series(&mut p, "E", &[-5.0; 40], 6.0, "other");
+        // F: 37 dates only: not lasting.
+        series(&mut p, "F", &[-5.0; 37], 1.0, "other");
+        // G: alternates -9 and +1 (mean -4): same sign on 50% of days: not lasting.
+        let g: Vec<f64> = (0..40).map(|i| if i % 2 == 0 { -9.0 } else { 1.0 }).collect();
+        series(&mut p, "G", &g, 1.0, "other");
+        p.finish();
+        let l = lasting(&p, &LastingRule::default());
+        assert_eq!(l.n_securities, 7);
+        let ids: Vec<&str> = l.rows.iter().map(|r| r.id.as_str()).collect();
+        assert_eq!(ids, vec!["A", "B", "C"]); // |mean| 5, 5 (id order), 3
+        assert_eq!((l.rich(), l.cheap()), (2, 1));
+        assert_eq!(l.by_group(), vec![("old 30-year bond", 1), ("other", 2)]);
+        assert!((l.rows[0].mean + 5.0).abs() < 1e-12 && (l.rows[0].share - 1.0).abs() < 1e-12);
+        assert!((l.rows[2].cost - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn exactly_38_dates_passes_and_37_fails() {
+        let mut p = Panel::default();
+        series(&mut p, "X38", &[-5.0; 38], 1.0, "other");
+        series(&mut p, "X37", &[-5.0; 37], 1.0, "other");
+        p.finish();
+        let l = lasting(&p, &LastingRule::default());
+        assert_eq!(l.rows.len(), 1);
+        assert_eq!(l.rows[0].id, "X38");
+        // --min-dates moves the edge.
+        let l = lasting(&p, &LastingRule { min_dates: 37, ..LastingRule::default() });
+        assert_eq!(l.rows.len(), 2);
+    }
+
+    #[test]
+    fn exactly_90_percent_same_sign_passes_and_less_fails() {
+        let mut p = Panel::default();
+        // 40 days, 4 of them +1 (wrong sign), 36 at -10: share 36/40 = 0.9 exactly. Mean = (36*-10 + 4)/40 = -8.9.
+        series(&mut p, "E90", &mixed(40, 4, -10.0, 1.0), 1.0, "other");
+        // 5 wrong days: 35/40 = 0.875.
+        series(&mut p, "E875", &mixed(40, 5, -10.0, 1.0), 1.0, "other");
+        // 10 days, scaled: 50 days, 5 wrong (45/50 = 0.9).
+        series(&mut p, "F90", &mixed(50, 5, 10.0, -1.0), 1.0, "other");
+        // A zero day is not the sign of the mean: 36 days at -10, 4 at 0 -> share 0.9 passes; 5 zero days -> fails.
+        series(&mut p, "Z90", &mixed(40, 4, -10.0, 0.0), 1.0, "other");
+        series(&mut p, "Z875", &mixed(40, 5, -10.0, 0.0), 1.0, "other");
+        p.finish();
+        let l = lasting(&p, &LastingRule::default());
+        let ids: Vec<&str> = l.rows.iter().map(|r| r.id.as_str()).collect();
+        assert!(ids.contains(&"E90") && ids.contains(&"F90") && ids.contains(&"Z90"), "{ids:?}");
+        assert!(!ids.contains(&"E875") && !ids.contains(&"Z875"), "{ids:?}");
+        let e90 = l.rows.iter().find(|r| r.id == "E90").unwrap();
+        assert!((e90.share - 0.9).abs() < 1e-12 && (e90.mean + 8.9).abs() < 1e-12);
+        // A higher limit removes the 90% securities.
+        let l = lasting(&p, &LastingRule { same_sign: 0.95, ..LastingRule::default() });
+        assert!(l.rows.is_empty());
+    }
+
+    #[test]
+    fn mean_must_be_above_cost_and_floor_strictly() {
+        let mut p = Panel::default();
+        series(&mut p, "EQCOST", &[-5.0; 40], 5.0, "other"); // |mean| = cost: fails
+        series(&mut p, "EQFLOOR", &[-1.9; 40], 0.5, "other"); // |mean| = 1.9: fails
+        series(&mut p, "OK", &[-1.95; 40], 0.5, "other");
+        p.finish();
+        let l = lasting(&p, &LastingRule::default());
+        assert_eq!(l.rows.len(), 1);
+        assert_eq!(l.rows[0].id, "OK");
+    }
+
+    #[test]
+    fn half_life_of_the_deviation_from_the_mean() {
+        let mut p = Panel::default();
+        let v: Vec<f64> = (0..40).map(|t| -6.0 + if t % 2 == 0 { 0.5 } else { -0.5 }).collect();
+        series(&mut p, "ALT", &v, 1.0, "other");
+        p.finish();
+        let l = lasting(&p, &LastingRule::default());
+        // Alternating deviation: lag-1 coefficient is negative, so there is no half-life.
+        assert_eq!(l.rows.len(), 1);
+        assert_eq!(l.rows[0].half_life, None);
+        let mut p = Panel::default();
+        series(&mut p, "FLAT", &[-6.0; 40], 1.0, "other");
+        p.finish();
+        assert_eq!(lasting(&p, &LastingRule::default()).rows[0].half_life, None); // no variance
+    }
+
+    /// A panel of `days` dates; the securities of the first 38 dates are rich for ever. A later day is poisoned.
+    fn panel_to(days: usize, poison_after: usize) -> Panel {
+        let mut p = Panel::default();
+        for i in 0..5 {
+            let id = format!("S{i}");
+            let v: Vec<f64> = (0..days).map(|t| if t >= poison_after { 1000.0 } else { -5.0 - i as f64 }).collect();
+            series(&mut p, &id, &v, 1.0, "other");
+        }
+        p.finish();
+        p
+    }
+
+    #[test]
+    fn a_later_day_does_not_change_an_earlier_as_of_result() {
+        // Point in time: the panel to day 40 (as of day 40) is the same, whatever follows on days 41 to 60.
+        let clean = lasting(&panel_to(40, 1000), &LastingRule::default());
+        let rows_40: Vec<Obs> = panel_to(60, 40).series["S0"][..40].to_vec();
+        let mut cut = Panel::default();
+        for (id, v) in &panel_to(60, 40).series {
+            for o in v.iter().filter(|o| o.t < 40) {
+                cut.push(id, o.clone());
+            }
+        }
+        cut.finish();
+        assert_eq!(rows_40.len(), 40);
+        assert_eq!(lasting(&cut, &LastingRule::default()), clean);
+        assert_eq!(clean.rows.len(), 5);
+        // The poisoned days, when they are read, do change the result: the test has power.
+        let full = lasting(&panel_to(60, 40), &LastingRule::default());
+        assert_ne!(full, clean);
+    }
+
+    #[test]
+    fn to_date_ignores_later_files() {
+        let dir = std::env::temp_dir().join(format!("fa_lasting_{}", std::process::id()));
+        let prices = dir.join("prices");
+        std::fs::create_dir_all(&prices).unwrap();
+        for d in ["2026-03-02", "2026-03-03", "2026-03-04", "2026-03-05"] {
+            std::fs::write(prices.join(format!("fedinvest_{d}.csv")), "x").unwrap();
+        }
+        let upto = cached_dates(&dir, None, Some("2026-03-03"));
+        assert_eq!(upto, vec!["2026-03-02", "2026-03-03"]);
+        std::fs::write(prices.join("fedinvest_2026-03-06.csv"), "x").unwrap(); // a later day arrives
+        assert_eq!(cached_dates(&dir, None, Some("2026-03-03")), upto);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn lasting_refuses_when_the_files_are_missing() {
+        let dir = std::env::temp_dir().join(format!("fa_lasting_none_{}", std::process::id()));
+        let e = run_lasting(&dir, None, None, &LastingRule::default()).unwrap_err();
+        assert!(e.contains("only 0 stored price files") && e.contains("No request was made"), "{e}");
     }
 }

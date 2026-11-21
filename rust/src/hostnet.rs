@@ -24,13 +24,13 @@ use std::time::{Duration, Instant};
 pub const USER_AGENT: &str = "FinancialAnalysis fa (personal research)";
 
 /// The host groups: (group name, host names). A host that is not here is its own group.
-pub const GROUPS: [(&str, &[&str]); 14] = [
+pub const GROUPS: [(&str, &[&str]); 15] = [
     ("sec", &["data.sec.gov", "www.sec.gov", "sec.gov"]),
     ("nasdaq", &["api.nasdaq.com"]),
     ("alpaca", &["data.alpaca.markets", "paper-api.alpaca.markets", "api.alpaca.markets"]),
     ("tiingo", &["api.tiingo.com"]),
     ("yahoo", &["query1.finance.yahoo.com", "query2.finance.yahoo.com"]),
-    ("cboe", &["cdn.cboe.com", "cdn-api.cboe.com", "www.cboe.com", "ww2.cboe.com"]),
+    ("cboe", &["cdn.cboe.com", "www.cboe.com"]),
     ("treasury", &["home.treasury.gov"]),
     ("nyfed", &["markets.newyorkfed.org"]),
     ("fred", &["api.stlouisfed.org", "fred.stlouisfed.org"]),
@@ -39,6 +39,7 @@ pub const GROUPS: [(&str, &[&str]); 14] = [
     ("treasurydirect", &["www.treasurydirect.gov", "treasurydirect.gov"]),
     ("fiscaldata", &["api.fiscaldata.treasury.gov"]),
     ("cftc", &["www.cftc.gov", "publicreporting.cftc.gov"]),
+    ("philadelphiafed", &["www.philadelphiafed.org"]),
 ];
 
 /// The group of a host name (`api.nasdaq.com` is `nasdaq`).
@@ -98,7 +99,7 @@ pub fn timeout_of(group: &str) -> u64 {
     match group {
         // The Atlanta Fed spreadsheet took 67 seconds in the cloud container (2026-11-20).
         "atlantafed" => 90,
-        "federalreserve" | "cftc" | "treasury" | "treasurydirect" | "cboe" => 60,
+        "federalreserve" | "philadelphiafed" | "cftc" | "treasury" | "treasurydirect" | "cboe" => 60,
         _ => 30,
     }
 }
@@ -343,7 +344,7 @@ mod tests {
 
     #[test]
     fn short_reasons_have_no_url() {
-        assert_eq!(reason("HTTP 403 for https://cdn-api.cboe.com/api/global/delayed_quotes/options/SPY.json"), "HTTP 403");
+        assert_eq!(reason("HTTP 403 for https://fred.stlouisfed.org/graph/fredgraph.csv?id=AAA10Y"), "HTTP 403");
         assert_eq!(reason("Cboe: HTTP 429 for https://x"), "HTTP 429");
         assert_eq!(reason("https://fred.stlouisfed.org/graph/fredgraph.csv?id=AAA10Y: io: peer closed connection without sending TLS close_notify: https://docs.rs/rustls/x#unexpected-eof"), "connection closed");
         assert_eq!(reason("https://x/y: timeout: global"), "timeout");
@@ -363,7 +364,7 @@ mod tests {
         assert!(timeout_of("cftc") >= 60 && timeout_of("federalreserve") >= 60);
         assert!(["fred", "nasdaq", "yahoo", "cftc", "other"].iter().all(|h| timeout_of(h) <= 60));
         assert_eq!(timeout_of("atlantafed"), 90);
-        assert_eq!(group_of_url("https://cdn-api.cboe.com/api/global/delayed_quotes/options/SPY.json"), "cboe");
+        assert_eq!(group_of_url("https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv"), "cboe");
     }
 
     #[test]

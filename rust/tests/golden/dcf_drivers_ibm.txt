@@ -1,0 +1,20 @@
+IBM driver DCF - seed 7, 10000 simulations, 10 years
+  Model: IBM driver-based DCF model — drivers, correlations, and capital structure.
+
+HEADLINE (value for each share)
+  P10 83.84 | P25 112.57 | P50 151.84 | P75 200.39 | P90 258.03
+  terminal value share of EV at means 64.1%; terminal growth pinned on 0.09% of paths
+  equity value at P50 $144.1B on 948.7M shares; net debt $54.0B (+56.92 a share); EV at P50 $198.1B = 3.0 x trailing revenue
+
+ENGINE CHECK (each driver at its mean)
+  engine $152.5065 | hand DCF $152.5065 | EV $198.7B, of which terminal value $127.4B
+
+ATTRIBUTION (P50 change for mean -1 std / +1 std)
+  core_margin           -31.34    +31.43
+  terminal_growth       -19.27    +26.34
+  rf                    +23.29    -18.96
+  erp                   +22.68    -18.54
+  g_software            -18.18    +21.19
+  ma_ratio              +18.75    -18.71
+  g_consulting           -9.87    +11.66
+  g_infrastructure       -5.45     +5.58

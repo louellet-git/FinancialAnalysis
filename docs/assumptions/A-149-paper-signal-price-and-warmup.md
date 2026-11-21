@@ -29,7 +29,7 @@ Paper start: the date of the first run (New York date), or `--start D`, saved in
 | A longer warm-up for each bot | Not known. No record |
 
 ## Why this choice
-The source of the chain: Cboe delayed quotes, free, no key (`chain.rs`). The reason for bid and ask:
+The source of the chain: Cboe delayed quotes, free, no key (`chain.rs`), until 2026-11-21. Superseded on 2026-11-21 (`T-20261121-cboe-off`): the Cboe page prohibits automatic downloads, so `fa trade paper` refuses a live chain and prices with the model (`--no-live`) until an Alpaca chain adapter exists. The reason for bid and ask:
 same as A-142. The warm-up lengths: author choice, no study. A bot with an indicator longer than the window
 (for example the 252-day percentile of s10, or SMA(200)) can lack bars: not known if this was checked.
 

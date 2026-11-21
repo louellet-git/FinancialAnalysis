@@ -60,8 +60,11 @@ Defaults 1, 1, false keep the old numbers. Options (`cli.rs`): `--spread-mult X`
 `--cut-scan [--step DAYS] [--span DAYS]` (one bot, `grids.rs`) prints the OOS Sharpe and the t of the trade P&L at
 each cut (the default cut moved by whole steps, 7 and 42 days by default) and the first bar date of the data.
 `--price-grid` (one bot) runs the baseline and the knobs of A-154, with the change against the baseline and the
-mean P&L that gives t = 2 (`2 sd / sqrt n`). Each prints only its table. The knobs are set before each run and
-reset after it. The default fill is already the worse
+mean P&L that gives t = 2 (`2 sd / sqrt n`). Each prints only its table, with the footer "a sensitivity, not a choice: no cut or knob is selected; the DSR N stays 20
+and is a lower bound". The scan range depends on the end of the data, the step and the span (print: "within +/- SPAN
+days, step STEP"); step 1 to span, span 0 to 365. The grid rows can have different trade sets (a price change can add or
+drop a trade). The grid runs are not counted in N = 20 of A-153: no rule or value is chosen from them, so N stays a lower bound.
+The knobs are set before each run and reset after it. The window file line is printed first (path, count, first start). The default fill is already the worse
 side (long legs pay the ask). `--mid-fill` is a better price, for reference only.
 
 ## Limits
