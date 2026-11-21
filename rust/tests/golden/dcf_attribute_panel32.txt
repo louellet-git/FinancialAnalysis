@@ -1,4 +1,5 @@
 ATTRIBUTION of the change of the price from 2026-11-13 to 2026-11-20, 32 tickers, no random part. Automatic model: a screen, not a reviewed valuation. A market-implied value is a measurement, not an input.
+  COMMON CHANGE c (the plug of each view is split in two engine steps, common and company): premium view c = +0.201 points, common (list median); growth view c = -0.387 points, common (list median).
   The value is the value of the one path at the means (not the expected value). Order of the steps: facts, time, rates, plug (implied premium or implied growth), residual; the reverse order of rates and the plug is shown. This is an accounting split of the price change with the model; it is not a cause. Facts of each date: filed on or before it; the 10-K of the cache does not fill an input. Price: last close on or before the date. Curve: last GSW row on or before the date.
 
 RESULT: 30 tickers with a value, 2 refused
@@ -57,6 +58,48 @@ GROWTH VIEW, covered part only (27 tickers, 82.7% of the market value of the lis
   implied growth (plug)                   -3.82%  (-3.82..-3.82)  top: NVDA -1.14, GOOGL -0.66, MSFT -0.47, META -0.26, AAPL -0.25
   search residual                         -0.00%  (fixed position)  top: MSFT -0.00, GOOGL -0.00, CVX +0.00, PFE +0.00, XOM -0.00
   FLAGGED (0 tickers: the implied premium at D1 below 1% (premium view), or a part above 15% of P1): 
+
+(4) FULL BRIDGE OF THE WHOLE LIST: two readings of the same change.
+FULL BRIDGE, PREMIUM view first: each ticker of the whole list once (premium view: 24 tickers, 79.4% of the value; growth view where the premium view has no value: 3, 3.2%; no model value: 5, 17.3%). The lines add to the change of the whole list. Points of the market value of the WHOLE list at D1; the other order of rates and the plugs is on the line below the table.
+  common change c of the premium view: +0.201 points, common (list median); of the growth view: -0.387 points, common (list median). Each plug is split in two engine steps: common (x1 to x1 + c) and company (the rest); the two add to the plug.
+  group                     n  weight   change |    facts    time   rates  premium-common premium-company   growth-common  growth-company   resid nomodel |      sum
+  all                      32  100.0%   -3.24% |    +0.01   +0.09   +0.00           -4.18           +1.31           -0.11           -0.12   +0.00   -0.23 |    -3.24
+  BusEq                    10   62.4%   -3.68% |    -0.00   +0.06   +0.00           -3.60           +1.32           -0.03           -0.04   +0.00   +0.00 |    -2.30
+  Money                     3    4.3%   -8.26% |    +0.00   +0.00   +0.00           +0.00           +0.00           -0.08           -0.08   -0.00   -0.19 |    -0.35
+  Enrgy                     2    3.6%   -6.06% |    +0.00   +0.01   +0.00           -0.07           -0.15           +0.00           +0.00   +0.00   +0.00 |    -0.22
+  Hlth                      2    2.7%   -4.24% |    +0.00   +0.00   +0.00           -0.11           -0.01           +0.00           +0.00   +0.00   +0.00 |    -0.12
+  Manuf                     4    2.6%   -3.96% |    +0.00   +0.00   +0.00           -0.08           -0.02           +0.00           +0.00   +0.00   +0.00 |    -0.10
+  Durbl                     1    4.4%   -1.67% |    +0.00   +0.00   +0.00           +0.00           +0.00           +0.00           +0.00   +0.00   -0.07 |    -0.07
+  Shops                     4   15.2%   -0.19% |    +0.00   +0.01   +0.00           -0.20           +0.13           +0.00           +0.00   -0.00   +0.04 |    -0.03
+  Other                     2    1.1%   -2.29% |    +0.01   +0.00   +0.00           -0.05           +0.01           +0.00           +0.00   -0.00   +0.00 |    -0.03
+  NoDur                     1    1.4%   -1.17% |    +0.00   +0.00   +0.00           -0.01           -0.01           +0.00           +0.00   -0.00   +0.00 |    -0.02
+  Telcm                     1    0.5%   -1.04% |    +0.00   +0.00   +0.00           -0.01           +0.00           +0.00           +0.00   -0.00   +0.00 |    -0.00
+  Utils                     1    0.6%   -0.40% |    +0.00   +0.00   +0.00           +0.00           +0.00           +0.00           +0.00   +0.00   -0.00 |    -0.00
+  Chems                     1    1.3%   +0.29% |    +0.00   +0.00   +0.00           -0.05           +0.05           +0.00           +0.00   +0.00   +0.00 |    +0.00
+  earnings 8-K in window    5   18.4%   -4.91% |    +0.01   +0.01   +0.00           -0.43           -0.54           -0.01           +0.06   -0.00   +0.00 |    -0.90
+  earnings 8-K in window: NVDA WMT HD PANW DIS. This group is a set of the same rows; its line is not added to the lines above.
+  the other order (plug before rates), all: rates +0.00, premium-common -4.18, premium-company +1.31, growth-common -0.11, growth-company -0.12
+  largest contributions to the change (points): NVDA -0.92 (12.6% x -7.3%, premium), GOOGL -0.53 (11.6% x -4.5%, premium), MSFT -0.37 (12.4% x -3.0%, premium), META -0.21 (5.2% x -3.9%, premium), JPM -0.19 (2.9% x -6.4%, none), AAPL -0.18 (16.5% x -1.1%, premium), UNH -0.16 (1.2% x -14.1%, growth), XOM -0.13 (2.2% x -5.9%, premium), ORCL -0.11 (1.2% x -9.1%, growth), JNJ -0.10 (2.2% x -4.6%, premium)
+FULL BRIDGE, GROWTH view first: each ticker of the whole list once (growth view: 27 tickers, 82.7% of the value; premium view where the growth view has no value: 0, 0.0%; no model value: 5, 17.3%). The lines add to the change of the whole list. Points of the market value of the WHOLE list at D1; the other order of rates and the plugs is on the line below the table.
+  common change c of the premium view: +0.201 points, common (list median); of the growth view: -0.387 points, common (list median). Each plug is split in two engine steps: common (x1 to x1 + c) and company (the rest); the two add to the plug.
+  group                     n  weight   change |    facts    time   rates  premium-common premium-company   growth-common  growth-company   resid nomodel |      sum
+  all                      32  100.0%   -3.24% |    -0.00   +0.15   +0.00           +0.00           +0.00           -1.83           -1.32   -0.00   -0.23 |    -3.24
+  BusEq                    10   62.4%   -3.68% |    -0.00   +0.12   +0.00           +0.00           +0.00           -1.02           -1.40   -0.00   +0.00 |    -2.30
+  Money                     3    4.3%   -8.26% |    +0.00   +0.00   +0.00           +0.00           +0.00           -0.08           -0.08   -0.00   -0.19 |    -0.35
+  Enrgy                     2    3.6%   -6.06% |    +0.00   +0.01   +0.00           +0.00           +0.00           -0.30           +0.08   +0.00   +0.00 |    -0.22
+  Hlth                      2    2.7%   -4.24% |    +0.00   +0.00   +0.00           +0.00           +0.00           -0.11           -0.01   +0.00   +0.00 |    -0.12
+  Manuf                     4    2.6%   -3.96% |    +0.00   +0.00   +0.00           +0.00           +0.00           -0.06           -0.05   +0.00   +0.00 |    -0.10
+  Durbl                     1    4.4%   -1.67% |    +0.00   +0.00   +0.00           +0.00           +0.00           +0.00           +0.00   +0.00   -0.07 |    -0.07
+  Shops                     4   15.2%   -0.19% |    +0.00   +0.01   +0.00           +0.00           +0.00           -0.11           +0.03   -0.00   +0.04 |    -0.03
+  Other                     2    1.1%   -2.29% |    +0.00   +0.00   +0.00           +0.00           +0.00           -0.05           +0.02   -0.00   +0.00 |    -0.03
+  NoDur                     1    1.4%   -1.17% |    +0.00   +0.00   +0.00           +0.00           +0.00           -0.03           +0.01   -0.00   +0.00 |    -0.02
+  Telcm                     1    0.5%   -1.04% |    +0.00   +0.00   +0.00           +0.00           +0.00           -0.06           +0.05   -0.00   +0.00 |    -0.00
+  Utils                     1    0.6%   -0.40% |    +0.00   +0.00   +0.00           +0.00           +0.00           +0.00           +0.00   +0.00   -0.00 |    -0.00
+  Chems                     1    1.3%   +0.29% |    +0.00   +0.00   +0.00           +0.00           +0.00           -0.03           +0.03   +0.00   +0.00 |    +0.00
+  earnings 8-K in window    5   18.4%   -4.91% |    +0.00   +0.04   +0.00           +0.00           +0.00           -0.30           -0.65   +0.00   +0.00 |    -0.90
+  earnings 8-K in window: NVDA WMT HD PANW DIS. This group is a set of the same rows; its line is not added to the lines above.
+  the other order (plug before rates), all: rates +0.00, premium-common +0.00, premium-company +0.00, growth-common -1.83, growth-company -1.32
+  largest contributions to the change (points): NVDA -0.92 (12.6% x -7.3%, growth), GOOGL -0.53 (11.6% x -4.5%, growth), MSFT -0.37 (12.4% x -3.0%, growth), META -0.21 (5.2% x -3.9%, growth), JPM -0.19 (2.9% x -6.4%, none), AAPL -0.18 (16.5% x -1.1%, growth), UNH -0.16 (1.2% x -14.1%, growth), XOM -0.13 (2.2% x -5.9%, growth), ORCL -0.11 (1.2% x -9.1%, growth), JNJ -0.10 (2.2% x -4.6%, growth)
 
 SETS (tickers with a weight): both views 24, premium only 0, growth only 3, neither 5 (a model refusal has neither)
 
