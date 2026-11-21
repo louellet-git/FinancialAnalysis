@@ -38,3 +38,21 @@ Design (Head of Fundamental Research, written before any analysis):
 4. **Rules.** A market-implied value is a measurement, not an input; the value at the means is not the expected value; no
    input of the model is set from the price; the model cannot tell a premium change from a growth change (both readings
    are shown); a residual is not a cause.
+
+**Design change (owner, 2026-11-21 about 20:10 UTC: "I think that the implied premium/implied growth should also be part of
+the attribution engine"). Written before any code or run of it.** The split goes into `fa dcf attribute` itself:
+1. The common change c of a view: the median of (x2 - x1) over the tickers of the run with that view (a single-ticker run
+   takes c from `--common-list FILE`, else c = 0 and the line says so). Option `--common vw` takes the value-weighted mean
+   in place of the median; the median is the default, fixed now.
+2. For each ticker, the plug of the view (ln N4 / N2) splits into two engine steps in sequence: common = ln V(x1 + c) -
+   ln V(x1), company = ln V(x2) - ln V(x1 + c), both at the facts, curve, beta and weight of D2 (the inputs of node N2).
+   The two add exactly to the plug (no linear step). A value at x1 + c that the engine cannot give puts the whole plug in
+   the company part, with a flag.
+3. Beta is inside the valuation (cost of equity = rf + beta x premium), so a common premium change already acts more on a
+   high-beta name; there is no beta line.
+4. The full bridge gets the columns premium-common, premium-company, growth-common, growth-company (they add to the old
+   premium and growth columns), and one group line: the tickers with an earnings 8-K (item 2.02) in the window.
+5. The CSV gets the columns c_premium, c_growth, p_premium_common_pct, p_premium_company_pct, g_growth_common_pct,
+   g_growth_company_pct at the end; the CSV of `fa dcf premium-series` does not change.
+Tests: the two parts add to the plug; c = 0 gives company = plug; a hand-made list with a known median; the group line of
+the 8-K names adds to the sum of their rows.

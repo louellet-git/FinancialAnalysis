@@ -112,3 +112,7 @@ Done: ticket `T-20261121-rates-balance-sheet` with a design written before any m
 ## 2026-11-21 about 19:30 UTC (chat)
 Words: "Is all DCF work fitting to the DCF engine?" Answer to the one-engine question: "It depends, we need some way for this all to run efficiently/smoothly. What I meant was more so that."
 Done: ticket `T-20261121-dcf-engine-integration` (one curve rule, a per-ticker weekly bridge, the common and company parts in Rust, the balance-sheet effect in the bridge if material, a cache of the point-in-time mapping for speed, the model documents). No change to the number of engines.
+
+## 2026-11-21 about 20:10 UTC (chat)
+Words: "Can you draw me up a visual html to describe via mermaid chart? of the overall process, less words more diagrams and visuals" Done: artifact https://claude.ai/artifact/6edSJhjvtqoedfNZ1VA3uC (private).
+Words: "Hm, I think that the implied premium/implied growth should also be part of the attribution engine." Done: design change on `T-20261121-premium-company-part`: `fa dcf attribute` splits the premium and the growth plug into a common part and a company part (engine steps that add exactly), with an 8-K group line.
