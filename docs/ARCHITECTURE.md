@@ -1032,6 +1032,16 @@ test checks that the code has no order endpoint. All fills are model fills.
   `data/processed/algo/STOP`, the end time (default 15:55 New York). A stop closes the position at once.
 - Files in `data/processed/algo/<date>/`: the inputs (each quote with its time and the read time), the
   journal (each decision and fill), the summary. `fa algo replay` of the same day gives the same decisions.
+- Bar mode (replay of stored bars): the strategy decides on a bar close and an order fills at the OPEN of the
+  next bar. `--latency-ms` does not apply, and the replay prints a warning. An order never fills on the input of its decision.
+- The code of `fa algo` reads the Alpaca DATA host only (`DataClient` and `DataUrl` in `source.rs` send `GET` of stock data
+  paths). A test scans each `*.rs` file of `rust/src` for an order endpoint, with an allow-list for the existing
+  GET-only uses of the trading base. A look-ahead guard refuses an input with a data time after its read time, and a
+  recorded file that is out of order.
+- Limits (printed at each start and in each summary): no market impact, no queue position, no partial fills; IEX quotes
+  are not the NBBO; a fill at the quote is not a real fill; the spread of a stored bar is assumed; the loss stop is
+  approximate; a restart on the same day resets the max loss. `fa algo` is outside the trading sleeves: a pipe test,
+  and no result is used for a decision until limits in percent of a stated paper capital exist.
 - The link to the research harness (hypothesis file, run log) is `cli::report_to_harness`: it is empty now.
 
 ## Tests

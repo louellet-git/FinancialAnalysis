@@ -8,6 +8,13 @@
 //! The code sends no order. The live source type has one read function (`QuoteFeed::read`) and no
 //! function that writes to a broker; a test checks the source text for order endpoints.
 //! All fills are simulated: a result is a pipe test, not a claim of profit.
+//!
+//! STATUS: `fa algo` is OUTSIDE the trading sleeves. It is a pipe test: no result of it is used for a decision,
+//! until limits in percent of a stated paper capital exist.
+//!
+//! LIMITS of the simulator (printed at each start and in each summary, see `LIMITS`): no market impact, no
+//! queue position, no partial fills; IEX quotes are not the NBBO; a fill at the quote is not a real fill; the
+//! spread of a stored bar is assumed.
 
 pub mod cli;
 pub mod demo;
@@ -26,11 +33,24 @@ pub struct Input {
     pub symbol: String,
     pub bid: f64,
     pub ask: f64,
-    /// `quote` or `bar`.
+    /// `quote`, `bar` (the close of a bar: the strategy decides on it) or `bar_open` (the open of the next bar: an order fills on it).
     pub kind: String,
 }
 
+/// The limits of the simulator, printed at the start and in the summary.
+pub const LIMITS: &str = "limits: simulated fills at the quote, no market impact, no queue position, no partial fills; IEX quotes are not the NBBO and a fill at the quote is not a real fill; the spread of a stored bar is assumed; the loss stop is approximate (it checks each input, the position closes at the next price)";
+
 impl Input {
+    /// A look-ahead guard: the data of an input must be known at its read time.
+    pub fn check(&self) -> Result<(), String> {
+        if !self.valid() {
+            return Err(format!("bad price (bid {}, ask {})", self.bid, self.ask));
+        }
+        if self.read_ms < self.quote_ms {
+            return Err(format!("the data time {} is after the read time {}", self.quote_ms, self.read_ms));
+        }
+        Ok(())
+    }
     pub fn mid(&self) -> f64 {
         (self.bid + self.ask) / 2.0
     }
