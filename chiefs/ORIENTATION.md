@@ -214,6 +214,9 @@ not in a chat.
    command or the question, the reason, and the refusal text. Do not get around a refusal.
 2. The Head of Technology filters: it answers what it can (a safer form, a fact, a rule that
    exists) and drops duplicates. It never runs a command that a different session was refused.
+   Research comes first (the person, 2026-11-21: "Before asking me anything, please look into it"): the
+   asking head and the Head of Technology look at the options, costs and facts, and the question
+   carries the result and a recommendation. A question that research can answer is not asked.
 3. What only the person can decide becomes one ticket: `area: ask`, `head: owner`. It is a
    yes/no question in clear, plain words, with no internal names: **Question** (yes/no, one
    sentence), **Why it matters** (two or three sentences, with the cost if any),
