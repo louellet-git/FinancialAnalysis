@@ -180,3 +180,7 @@ Done: the page now has the week by day (SPY, the equal weight of the S&P 500, ea
 ## 2026-11-21 19:30 UTC (second review word of the person on the S&P 10 page, relayed by the Head of Staff)
 Words: "And AAPL leaving something not yet proven isn't acceptable, same w the others"
 Done: a standing rule: no "possible reason, not proven" in a result; each reason is a claim with its test, and the result is proven, refuted, or "tested, no cause found" with the list of the tests. Applied: the evidence file `analysis/priors/sp10_week_tests_2026-11-21.md` (T1 to T5) and the page. Results: NVDA's fall is the fall of the chip sector (proven); the AAPL reason of this head is refuted; BRK-B and AMZN have no effect against a market that does not contain them; the cause of the chip fall of 2026-11-20 is tested with no cause found.
+
+## 2026-11-21 19:35 UTC (chat)
+Words: "Ensure that docs for me are in pdf format."
+Done: a standing rule: each document for the person has a PDF. The PDF is made from the Markdown file with pandoc (GitHub Markdown to HTML, style `analysis/priors/pdf/style.css`) and a headless Chromium print, and is kept in `analysis/priors/pdf/`. First: the S&P 10 page and its tests.

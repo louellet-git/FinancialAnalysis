@@ -36,6 +36,7 @@ person decided. Keep this file below 60 lines. Started 2026-11-20. Dream pass: 2
 - Macro "why" questions go to the Head of Economics; give Luc that answer with its author.
 - Each head asks "does it make sense?" before a result goes to him.
 - No "possible reason, not proven": each reason is a claim with its test; the result is proven, refuted, or "tested, no cause found".
+- Each document for him has a PDF (`analysis/priors/pdf/`; pandoc to HTML with `style.css`, then a headless Chromium print).
 - What is repeatable goes into the correct engine (table on `T-20261121-dcf-engine-integration`).
 - Each pause puts the state on the board. A data problem is fixed by its owner (Technology), not left out.
 - "Backtesting is integral": a point-in-time backtest before each model change or strategy; trades only from it.
