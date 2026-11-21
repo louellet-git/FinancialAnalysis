@@ -88,6 +88,22 @@ does not choose the strategy.
   itself are cut by the filing date.
 - The equal-weight line and the strategy use the same scored list, the same dates and the same cost.
 
+## Variant log (each run of the value signal, in order; outside the harness)
+
+All on store `1804f48`, start 2018-01-01, seed 7, 300 paths. Exploratory (no committed hypothesis file). The
+harness run after the harness gate counts if a number differs.
+1. value-rank, quarterly, `sp500.txt` (502 tickers), in-sample table: +4.86 a year over the equal weight of the 502.
+2. momentum, quarterly, `sp500.txt` (502): reference, not a variant of the value signal.
+3. A: value-rank, quarterly, scored list (432), in-sample table: +3.80.
+4. momentum, quarterly, scored list: reference.
+5. B: value-rank, quarterly, scored list, table cut 2016: +2.91.
+6. B on `next500.txt` scored list (406): +3.22 (mean of years +2.11, t 0.25).
+7. B at 0 bp: +3.03. 8. B at 20 bp: +2.80.
+9. B again with `--holdings` (the same values, a check).
+10. D: B with `--neutral sector`: +3.45.
+Pre-registered next (A-009, committed 0360941 at 2026-11-21 03:54:55 UTC, before any of its runs): R1 the A-009
+rule weekly; R2 the bottom fifth inside each sector (the short side test). Results go here as they come.
+
 ## What stays open (owner: the Head of Fundamental Research)
 
 1. Older prices (from 2009) for a window of 2010 to 2026 (request to the Head of Technology, 2026-11-21).
