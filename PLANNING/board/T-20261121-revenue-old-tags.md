@@ -52,7 +52,7 @@ different value for the other (a restatement: two bases). A negative result from
 2015) has no value now. Test: `gross_profit_needs_one_basis`. sp500, --periods 40: 93 values removed (default 12
 periods: 42); 133 values are new, because revenue now exists. Operating income (formula with gross profit): 1 value
 lost, OXY 2014 Q2 (1.407B). It was a mixed basis: revenue 5.133B (restated in the filing of 2015-08-04, after the
-spin-off of California Resources) less cogs 3.297B and opex 0.429B (the original filing of 2014-08-05 gave revenue
+spin-off of California Resources, probably; not confirmed) less cogs 3.297B and opex 0.429B (the original filing of 2014-08-05 gave revenue
 6.275B and opex 0.498B, which would give 2.48B). So 1.407B was wrong. A different accession number alone is not a
 rule: it removes 241 good values, so the rule needs a different value in the other filing.
 
