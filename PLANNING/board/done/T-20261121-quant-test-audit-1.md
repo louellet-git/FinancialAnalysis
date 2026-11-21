@@ -2,12 +2,13 @@
 id: T-20261121-quant-test-audit-1
 title: Add parser tests for the option, volatility and futures commands, and a bond age test
 area: engine
-status: review
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: quant
 order: 1.4
 branch: claude/quant-test-audit-1
+merged: 111
 created: 2026-11-21
 acceptance: The argument parsers of `fa options`, `fa vol` and `fa futures` have tests for an unknown flag, a missing positional value and a value that is not a number, `bonds::latest` has a test at the age limit, one day over and with an empty series, and the command outputs do not change.
 ---

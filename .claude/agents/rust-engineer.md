@@ -28,7 +28,7 @@ ticket is about speed.
    changes (trap #259 in `docs/HIDDEN-ASSUMPTIONS.md`).
 5. A speed change shows a measurement and keeps the same numbers (IBM numbers, seed 7).
 
-**Never.** Never commit, push, or open a pull request. The orchestrator does this. Add Python code. Keep two implementations of one part. Print a
-key.
+**Never.** Never commit, push, or open a pull request: the orchestrator does this. Never add Python code.
+Never keep two implementations of one part. Never print a key.
 
 **Stop and ask** when the change needs a new dependency, or changes a number of a model.

@@ -143,3 +143,18 @@ Done: a new row `Head of Economics` in `chiefs/ORIENTATION.md` (sections 1 and 2
 ## 2026-11-21 03:03 UTC (chat)
 Words: "You can start the head, ensure that heads every now and then will do research on what the industry does I.e what should an economics head be doing/economics team at a quant/fundamental firm be doing, same w the other heads."
 Done: `chiefs/ORIENTATION.md`, section 3, "Industry practice" (from time to time, a note of at most 1 page in the folder of the head; at most three proposed changes; not a gate). The same rule in `louellet-git/the-heads`. The session "FA-L - Head of Economics" started.
+
+## 2026-11-21 03:23 UTC (question dialog)
+Question: "May I subscribe to the Tiingo Power plan ($30 a month, with your Tiingo key) and keep its older daily prices (back to about 2009, for about 1,000 tickers) in a new private data store that only your sessions use? ..."
+Words: "No, please find a better source then if needed"
+Done: no Tiingo plan, no private store. Research of free sources whose terms permit a public copy (Quandl WIKI archive, Stooq, Alpaca, open datasets). Tiingo terms (read 2026-11-21, https://www.tiingo.com/tos section 1.6): the free plan forbids any persistent storage; paid plans are internal and personal use only.
+
+## 2026-11-21 04:03 UTC (relayed by the Head of Quant Research; checked in its transcript)
+Words: "Before asking me anything, please look into it. Send that to the tech head."
+Done: `chiefs/ORIENTATION.md`, section 5, item 2 of "Requests for the person": research comes first; a question carries the result and a recommendation; a question that research can answer is not asked. The same rule in `louellet-git/the-heads`.
+
+## 2026-11-21 04:16 UTC (chat, then the question dialog)
+Words: "I'd rather we run the quant algo somewhere that other research firms will typically do it, but for free."
+Question: "May the quant algo engine run on a free Google Cloud e2-micro machine in us-east1 ... set up in your own Google account? ..."
+Words: "Yes (Recommended)"
+Done: ticket `T-20261121-algo-host-gcp` (order 2). The Head of Quant Research is told.
