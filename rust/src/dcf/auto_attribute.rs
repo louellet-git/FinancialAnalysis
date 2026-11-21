@@ -747,7 +747,10 @@ pub const N_BRIDGE: usize = 7;
 pub const BRIDGE_NAMES: [&str; N_BRIDGE] =
     ["facts", "time (roll of the valuation date)", "rates", "implied premium (plug)", "implied growth (plug)", "search residual", "no model value (price change only)"];
 
-/// One line of a full bridge: a group of the whole list (all, or one sector).
+/// A list with this many weighted tickers or fewer gets one bridge line for each ticker in the text.
+pub const BRIDGE_TICKER_LINES: usize = 20;
+
+/// One line of a full bridge: a group of the whole list (all, one sector, or one ticker).
 #[derive(Debug, Clone, PartialEq)]
 pub struct BridgeLine {
     pub name: String,
@@ -773,6 +776,8 @@ pub struct Bridge {
     pub share_view: [f64; 3],
     pub all: BridgeLine,
     pub sectors: Vec<BridgeLine>,
+    /// One line for each ticker with a weight (the largest negative contribution first); they add to `all`.
+    pub tickers: Vec<BridgeLine>,
     /// The largest contributions to the change of the list: ticker, share of the list, change, contribution (all shares), the view.
     pub top: Vec<(String, f64, f64, f64, &'static str)>,
 }
@@ -843,7 +848,9 @@ pub fn full_bridge(rows: &[AttrRow], first: View) -> Option<Bridge> {
     }
     let mut sectors: Vec<BridgeLine> = by.into_iter().map(|(k, v)| bridge_line(k.to_string(), &v, whole.value1)).collect();
     sectors.sort_by(|a, b| (a.share * a.change).total_cmp(&(b.share * b.change)).then(a.name.cmp(&b.name)));
-    Some(Bridge { first, n_view, share_view, all, sectors, top })
+    let mut tickers: Vec<BridgeLine> = list.iter().map(|x| bridge_line(x.0.ticker.clone(), std::slice::from_ref(x), whole.value1)).collect();
+    tickers.sort_by(|a, b| (a.share * a.change).total_cmp(&(b.share * b.change)).then(a.name.cmp(&b.name)));
+    Some(Bridge { first, n_view, share_view, all, sectors, tickers, top })
 }
 
 fn bridge_text(b: &Bridge) -> String {
@@ -854,7 +861,9 @@ fn bridge_text(b: &Bridge) -> String {
     );
     let cells = |l: &BridgeLine| -> String { (0..N_BRIDGE).map(|k| format!("{:>8}", sgn(l.parts[k] * 100.0, 2))).collect::<Vec<_>>().join("") };
     s.push_str(&format!("  {:<8} {:>4} {:>7} {:>8} | {:>8}{:>8}{:>8}{:>8}{:>8}{:>8}{:>8} | {:>8}\n", "group", "n", "weight", "change", "facts", "time", "rates", "premium", "growth", "resid", "nomodel", "sum"));
-    for l in std::iter::once(&b.all).chain(b.sectors.iter()) {
+    // a short list (up to `BRIDGE_TICKER_LINES` tickers) also gets one line for each ticker, after the sectors
+    let per_ticker: &[BridgeLine] = if b.tickers.len() <= BRIDGE_TICKER_LINES { &b.tickers } else { &[] };
+    for l in std::iter::once(&b.all).chain(b.sectors.iter()).chain(per_ticker.iter()) {
         s.push_str(&format!("  {:<8} {:>4} {:>6.1}% {:>7}% | {} | {:>8}\n", l.name, l.n, l.share * 100.0, sgn(l.change * 100.0, 2), cells(l), sgn(l.parts.iter().sum::<f64>() * 100.0, 2)));
     }
     s.push_str(&format!(

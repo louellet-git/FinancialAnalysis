@@ -421,5 +421,12 @@ fn the_full_bridge_puts_each_ticker_in_once_and_adds_to_the_whole_change() {
     let mut d = row("D", 10.0, 5.0, 3, 10.0, 0.05);
     d.weight_of = Some("A".into());
     rows.push(d);
-    assert_eq!(full_bridge(&rows, View::Premium).unwrap().all.n, 3);
+    let b = full_bridge(&rows, View::Premium).unwrap();
+    assert_eq!(b.all.n, 3);
+    // one line for each weighted ticker; the lines add to the whole list, part by part
+    assert_eq!(b.tickers.len(), 3);
+    assert!((0..N_BRIDGE).all(|k| (b.tickers.iter().map(|l| l.parts[k]).sum::<f64>() - b.all.parts[k]).abs() < 1e-12));
+    let a = b.tickers.iter().find(|l| l.name == "A").unwrap();
+    assert!((a.share - 0.1).abs() < 1e-12 && (a.change + 0.2).abs() < 1e-12 && (a.parts[4] + 0.02).abs() < 1e-12, "{a:?}");
+    assert!(list_text(&rows).contains("\n  A    "), "a short list prints one line for each ticker");
 }

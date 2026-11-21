@@ -16,11 +16,11 @@ valuation, so each piece of the overall drop should be attributable to a piece o
 by company then so be it, I'd like it on the S&P100. You can hold off on other work for now and focus on this."
 
 Plan:
-1. Code: `fa dcf attribute --curve fedinvest` (the NSS fit of `fa recon rich-cheap` to the FedInvest prices of each date, in
-   the GSW units). Check: the fit against GSW on 2026-11-13 (10-year zero 5.169% against 5.135%; the level differs, so one
+1. Code: `fa dcf attribute --curve par` (the NSS fit of `fa recon rich-cheap` to the Treasury par yields of each date; also `--curve fedinvest`), in
+   the GSW units. Check on 2026-11-13, 10-year zero: par 5.129%, FedInvest 5.169%, GSW 5.135%; one
    source at both dates).
-2. Data (Head of Technology): the 2026-11-20 closes, `fedinvest_2026-11-20.csv`, the S&P 100 member list.
-3. Run: `fa dcf attribute --tickers-file <sp100> --from 2026-11-13 --to 2026-11-20 --curve fedinvest`, and the S&P 500 as
+2. Data (Head of Technology): the 2026-11-20 closes and the S&P 100 member list (FedInvest and GSW have no 11-20 row).
+3. Run: `fa dcf attribute --tickers-file <sp100> --from 2026-11-13 --to 2026-11-20 --curve par`, the S&P 10 list, and the S&P 500 as
    a check.
 4. Document: `analysis/priors/sp100_week_attribution_2026-11-20.md`. The parts are an accounting split with the model, not
    causes. The value at the means is not the expected value.
@@ -33,3 +33,6 @@ both suites pass: 833 + 17 + 1). The list `rust/mapcheck/universe/sp100.txt` (10
 A first run to 2026-11-19 (the store ends there): S&P 100 -5.41%; premium-first bridge: rates +2.43, implied premium
 -6.10, implied growth -0.76, no model value -1.05 points. Waits for: the 2026-11-20 closes in the store (Head of
 Technology, refresh in progress). Next: the run to 2026-11-20, the document, the review.
+Owner words, 2026-11-21 about 15:40 UTC: start with the S&P 100, then break down the model valuation of each company of the
+S&P 10 so that the sum of the parts is the change of the S&P 10. Done in code: the full bridge has one line for each
+ticker for a list of 20 tickers or fewer; the S&P 10 list is `analysis/priors/data/sp10_2026-11-13.txt`.

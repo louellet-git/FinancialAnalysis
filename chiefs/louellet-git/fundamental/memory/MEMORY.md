@@ -2,17 +2,15 @@
 For the next session of this head: the judgments about value that are not in the code, and what the
 person decided. Keep this file below 60 lines. Started 2026-11-20. Dream pass: 2026-11-21 03:40 UTC.
 
-## Goal now and subsequent steps (`RECORD.md` has the words)
-1. 2026-11-21 03:17: "testing your DCF engine on the back tester. That's the real value", over the longest
-   data, with the Head of Economics (also periods outside the stock market). Ticket
-   `T-20261121-dcf-engine-backtest`, worktree `../wt-bt`. Part 1 done (fb3d31c): value-rank +2.91 points
-   a year over the equal weight of the S&P scored list, 2018-2026, t 1.62 (table cut at 2016). Next:
-   sector-neutral rank; prices from 2009 (Technology); market-level model in Rust on Economics data.
-2. NVDA (PR 106): report reviewed (four steps). 2026-11-21 03:16 "trade recommendation, based on
-   fundamentals, sub 3 pages": `TRADE-RECOMMENDATION.md` = no trade (caa0082), gate at Quality, then Luc.
-3. Acquisition charge (`../wt-acq`, 32957b8): at the gate (validator + code reviewer). Then PR; the
-   title says that the output of auto, screen, implied, attribute, pit and returns changes.
-4. Attribution: merged (PR 107). Findings file waits for the 2026-11-20 closes and the Economics brief.
+## Goal now and subsequent steps (`RECORD.md` has the words; the board has the state of each item)
+1. FIRST (2026-11-21 14:45, "hold off on other work"): valuation attribution of the week to 2026-11-20, 3 pages,
+   S&P 10 first, then S&P 100. `T-20261121-sp100-week-attribution`, branch `claude/sp100-week-attribution`.
+   Code: `fa dcf attribute --curve par` and the full bridge. Waits for the 2026-11-20 closes (Technology).
+2. PAUSED, work committed, status on each ticket: the trade-level engine (`claude/trade-level-backtest`), the
+   T1 revenue fix (`claude/t1-revenue-band`; the hold-out `--cut 2011 --base-to 2014` is still unused).
+3. Stock DCF rank: no evidence of an edge on split-corrected prices (PR 136); no weekly trade from it.
+4. NVDA (PR 106) waits for Luc. JST (18 countries) design frozen by Economics: the reader is next after item 2.
+5. Rule of the person: each pause puts the state on the board and the report says where the work is.
 
 ## Decisions of this head (records A-001 to A-003; no reason uses the price)
 - One long-run growth L = min(10-year zero yield, 4.0%) (FOMC SEP). Acquisition charge = w x expected
