@@ -123,7 +123,7 @@ Cost of capital at the means: 12.55% in each year (risk-free 5.14% plus beta 1.6
 - One frame and one number r apply to the stakes and the purchases (IBM rule F16).
 - The marketable securities are at full value. They have marks and gains.
 - The non-marketable securities are at r times the carrying value.
-- A future purchase is charged at (1 - r) times the four-quarter rate: ($17.502B - $4.702B + $58.100B) / $361.8B = 19.6%, divided by 0.79 because tax does not cover the purchases.
+- A future purchase is charged at (1 - r) times the four-quarter rate: ($17.502B - $4.702B + $58.100B) / $361.8B = 19.6%, divided by 0.79 because tax does not cover the purchases. On the page basis ($4.952B for nine months FY26, not the XBRL $4.702B) the charge start is 13.86%, against 13.90% on the XBRL basis (both 13.9% at one decimal).
 - The base r is 0.5. There are no terms and no data for r. The value 0.5 says that the model does not know.
 - The charge fades with the growth that it pays for (record A-002). It has the half-life of D3. In years 1 to 3 its mean is 58% of the start. The panel gives 0.55 (study 2.1, `analysis/priors/dcf_conventions_study_2026-11-20.md`). This is a cross-check.
 
@@ -182,7 +182,7 @@ Other rows (P50): collapse multiple 0.5 gives $101.53 and 4.0 gives $109.98. Gro
 |---|---|---|---|---|---|---|
 | All pairs (Q1 FY23 to Q3 FY27) | 19 | 18 | +5.57% | +5.61% | -17.23% | +22.79% |
 | Before Q4 FY24 | 7 | 6 | +2.32% | +4.74% | -17.23% | +22.79% |
-| Q4 FY24 to Q3 FY27 | 12 | 12 | +5.65% | +6.12% | +2.47% | +10.52% |
+| Q4 FY24 to Q3 FY27 | 12 | 12 | +5.65% | +6.13% | +2.47% | +10.52% |
 
 The limits: the 19 pairs are from one company with one upswing and one bust. The guide of Q4 has a wider band (3%, and 2% in all earlier guides) and an extra week.
 
@@ -190,11 +190,11 @@ The limits: the 19 pairs are from one company with one upswing and one bust. The
 
 The source is `[[fade]]` of `analysis/priors/process_priors_2026-11-19.toml` (companies with growth of 50% or more in the start year) and the facts of the cache (`mapcheck`, all 10-K rows, 1,976 companies). The cells have survivor bias. The cells are too high, not too low.
 
-The cell above $100B has 12 start years. Eight are oil companies in 2021 and 2022 (XOM, CVX, MPC, PSX, VLO). The others are CI 2019 (a merger), MU FY26 and NVDA FY25 and FY26. So this cell is not a base rate of organic demand. It is a base rate of a price jump. The fall in years 2 and 3 is the end of the oil price.
+The cache has 12 start years above $100B (10-K rows, `COMMANDS.md` section 4). The prior cell `[[fade]]` counts 14 starts (its `n_start`; row "Starts" below). The growth rows give their own n. Of the 12 in the cache, eight are oil companies in 2021 and 2022 (XOM, CVX, MPC, PSX, VLO). The others are CI 2019 (a merger), MU FY26 and NVDA FY25 and FY26. So this cell is not a base rate of organic demand. It is a base rate of a price jump. The fall in years 2 and 3 is the end of the oil price.
 
 | Item | Cell above $100B | Cell $30B to $100B | Model at the means |
 |---|---|---|---|
-| Starts | 14 | 42 | |
+| Starts (`n_start` of the prior cell) | 14 | 42 | |
 | Median growth, year 1 (n) | +44.7% (12) | +12.5% (39) | +44.9% |
 | Median growth, year 2 (n) | -13.3% (11) | -0.5% (38) | +24.4% |
 | Median growth, year 3 (n) | -5.5% (11) | +3.3% (36) | +14.2% |
@@ -205,7 +205,7 @@ The cell above $100B has 12 start years. Eight are oil companies in 2021 and 202
 | A bust in the cache | MU: revenue $30.8B (FY22) to $15.5B (FY23), -49.5%; operating margin -37% | | Collapse hazard 2% a year; shock 15% |
 
 D3 and D7 sit above the base rate for these reasons.
-- The cells are small (11 company-years above $100B), they are mostly oil, and they hold busts. The model has busts in 18.1% of the paths, but the median path has none.
+- The cells are small (above $100B: 14 starts in the prior cell, 11 with a year-2 growth), they are mostly oil, and they hold busts. The model has busts in 18.1% of the paths, but the median path has none.
 - NVDA reported +17.9% to +22.0% a quarter for the last five quarters. The guide is +4.2% in 13 weeks, not a fall. The company beat the guide in 18 of 19 quarters.
 - The cells say that growth falls to zero or below in years 2 and 3. The model has +24% and +14%. This is the largest difference with the base rate.
 - A half-life of 0.4 years follows the cell. The P50 is $88.75. A half-life of 0.6 years follows the panel of all sizes. The P50 is $92.45. The base gives $103.78. So D3 is above the base rate by $11.3 to $15.0.
@@ -232,9 +232,9 @@ One number alone makes the P50 equal to $145.98, with all other numbers at base.
 | Beta (D15) * | 1.681 | 1.04 |
 | Long-run margin before SBC (D7) * | 48.5% (GAAP 45%) | no solution up to 78% |
 
-The close needs one of these. A year-1 growth of 72% is far above the base (45%) and the full median beat (49%). A fade twice as slow needs a different view of the company. A premium of 2.7% or a beta of 1.0 means a cost of capital about 2.5 points lower. A margin alone cannot reach the close. A lower number in one place can be paid by a higher number in another place.
+The close needs one of these. A year-1 growth of 72% is far above the base (45%) and the full median beat (49%). A fade twice as slow needs a different view of the company. A premium of 2.7% or a beta of 1.0 means a cost of capital about 2.8 points lower (1.681 x 1.69 = 2.84). A margin alone cannot reach the close. A lower number in one place can be paid by a higher number in another place.
 
-NVDA fell from $206.69 (2026-11-03) to $155.46 (2026-11-17), or -24.8%, before the release. The release came after the close of 2026-11-17. The price fell from $155.46 to $145.98 (-6.1%) in the two sessions after it. The model has no fact for the fall before the release. The release has a result 7.3% above the guide and a guide of +4.2% on Q3. The second fact may explain the later days. The model does not use the fall.
+NVDA fell from $206.69 (2026-11-03) to $155.46 (2026-11-17), or -24.8%, before the release. The price path is consistent with a release after the close of 2026-11-17 (no file in the store gives the time). The price fell from $155.46 to $145.98 (-6.1%) in the two sessions after it. The model has no fact for the fall before the release. The release has a result 7.3% above the guide and a guide of +4.2% on Q3. The second fact may explain the later days. The model does not use the fall.
 
 ## 6. Comparison with the automatic screen
 

@@ -14,7 +14,7 @@ the same model with the same seed gives the same text.
 - Data store `data/raw` (the repo `louellet-git/fa-data`): commit **`1804f48`**. Get it with
   `git clone --depth 1 https://github.com/louellet-git/fa-data data/raw` (`CLAUDE.md`, "Data"). The NVDA facts, prices
   (to 2026-11-19, close $145.98) and estimates are those of `a1dffb5` (SEC facts and estimates of 2026-11-20). The store of
-  `1804f48` adds the 8-K earnings releases of 21 quarters (Q4 FY22 to Q3 FY27) in `data/raw/NVDA/filings/8k/`.
+  `1804f48` adds the 8-K earnings releases of 20 quarters (Q4 FY22 to Q3 FY27: 20 final releases, plus the preliminary release of 2022-08-08) in `data/raw/NVDA/filings/8k/`.
 - The prices of other tickers are newer in `1804f48`. This changes `fa dcf auto` a little: beta 1.675 and P50 16.57 at `1804f48`
   against 1.681 and 16.55 at `a1dffb5`. The model file has the beta of `a1dffb5` (1.681); the difference has no effect that matters.
 - In the commands below `C=data/raw` and `M=analysis/NVDA/driver_model_paths.toml`.
@@ -204,7 +204,7 @@ cd - > /dev/null
 stats() { awk '{print $NF}' | tr -d '%+' | sort -g | awk '{b[NR]=$1; s+=$1; if($1>0)pos++} END{n=NR; printf "n=%d beats=%d min=%.2f max=%.2f mean=%.2f median=%.2f\n", n,pos,b[1],b[n],s/n,(n%2?b[(n+1)/2]:(b[n/2]+b[n/2+1])/2)}'; }
 stats < /tmp/nvda_pairs.txt                   # all 19: n=19 beats=18 min=-17.23 max=22.79 mean=5.61 median=5.57
 head -7 /tmp/nvda_pairs.txt | stats           # before Q4 FY24: n=7 beats=6 min=-17.23 max=22.79 mean=4.74 median=2.32
-tail -12 /tmp/nvda_pairs.txt | stats          # Q4 FY24 to Q3 FY27: n=12 beats=12 min=2.47 max=10.52 mean=6.12 median=5.65
+tail -12 /tmp/nvda_pairs.txt | stats          # Q4 FY24 to Q3 FY27: n=12 beats=12 min=2.47 max=10.52 mean=6.13 median=5.65
 ```
 
 The output has 19 lines (20 final releases; the last guide is for Q4 FY27 and is not reported; the store has no guide before the
