@@ -144,3 +144,4 @@
 | S&P 10 pages, conditions | 2026-11-21 | claude/attribution-reality (087f13d): head check of F1, F2, P3 and the new numbers; PASS-WITH-NOTES; pieces may go to the owner | small (head only) | |
 | premium-series branch | 2026-11-21 | claude/premium-series (a993e68): code-reviewer approve (0 MAJ), model-validator PASS-WITH-NOTES (MAJ only for the series run of record: in-sample table), document-reviewer (Haiku) REVISE (3 MAJ, lowered to conditions D1-D3); verdict PASS WITH CONDITIONS | about 340k (3 agents, measured) | |
 | premium-series D1-D3 | 2026-11-21 | claude/premium-series (ee82144): head check; PASS-WITH-NOTES; the series PIT results (61fe8de) not yet reviewed | small (head only) | |
+| selftest golden | 2026-11-21 | claude/quant-selftest-golden (401d19e): code-reviewer (Haiku) changes requested; verdict REVISE, 3 MAJ (a mask hides counts; raw option quotes in an expected file; no timeout) | measured with the batch | |
