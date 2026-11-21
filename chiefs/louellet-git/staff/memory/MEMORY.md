@@ -56,6 +56,5 @@ Rules: `chiefs/ORIENTATION.md`, sections 1, 5 and 8. Decisions of the person: `.
 - The week report (E2.S1) comes to me before it goes to the person. My sense check of the preliminary
   results (2026-11-21): one fact counted two times; market or model; 1.2-1.7% against 4.41%. The head
   agreed and adds a second model (`fa dcf market`: the lowest quarter of the history, not the lowest of all).
-- Rule point, seen 2026-11-21: six tickets are on a branch only, not on main (arb-invariants, cboe-off,
-  recon-lasting, revenue-old-tags, selftest-golden, trade-grids). "Ticket first" asks for the ticket on
-  main before the work. Say it once to Quant and Technology at their next done message; no separate note.
+- Rule point (2026-11-21): six tickets were on a branch only, not on main. Say it once to Quant and
+  Technology at their next done message; `fa board check` will show it after that.
