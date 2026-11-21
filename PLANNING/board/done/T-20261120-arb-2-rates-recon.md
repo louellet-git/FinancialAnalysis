@@ -2,12 +2,13 @@
 id: T-20261120-arb-2-rates-recon
 title: Reconcile the rate curves and the bond series of the data store
 area: engine
-status: review
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: quant
 order: 1.2
 branch: claude/upbeat-cori-a4ykf5
+merged: 100
 created: 2026-11-20
 acceptance: A findings note with an evidence table gives the differences between the GSW curve and the Treasury par curve, and between the corporate curves (HQM, ICE BofA) and the Treasury zero curve plus the spread, for the dates of the store, with the command that gives each number, and the auditor passes it.
 ---
