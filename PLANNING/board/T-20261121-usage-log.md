@@ -41,3 +41,7 @@ Limits:
   push of a new ref from a cloud session is not tested yet.
 - No workflow run can start from these refs (`chiefs/ORIENTATION.md`, section 6).
 - Start `risk-compliance-officer` one time on the content of the file before the first push.
+
+Owner rule, 2026-11-21: a hook or a system that constricts a head (it stops, delays or forces a step) needs
+a few days of evidence that it is better than each alternative, before it starts. A tool that only reports
+and constricts nothing can start now. This ticket is of the second kind; keep it so.

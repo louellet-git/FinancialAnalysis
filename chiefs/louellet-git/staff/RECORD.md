@@ -76,3 +76,10 @@ followed, but in a lean, non-invasive, not token heavy, and efficient way."
 Done: research on this machine (the transcript file has the token counts and the tool names; hooks run in
 cloud sessions). Two tickets for the Head of Technology in the new story E6.S5: `T-20261121-board-check`
 and `T-20261121-usage-log`.
+
+## 2026-11-21 about 18:49 UTC (chat, from speech)
+Words: "Anything that you like to implement that is like [hooks] or scripts or managing the heads needs to
+have like a few days worth of evidence to prove that it's actually better than any alternative. I've just
+had too much issue with overly constricting hooks. So unless there's a hook or system that has no
+constrictions, then you can implement that. But just make sure that you're testing before constricting."
+Done: the rule is in the two monitoring tickets and in the dashboard. Both tickets are report-only.
