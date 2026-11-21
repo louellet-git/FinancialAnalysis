@@ -194,7 +194,7 @@ Steps for one date:
 4. Price each instrument on the curve (`rust/src/recon.rs`).
 5. Print the summary and write one CSV row for each instrument. A second file
    `<name>_curve.csv` has the curve nodes.
-6. Compare the HQM corporate spot curve with our zero curve plus the ICE spread.
+6. Compare the HQM corporate spot curve with our zero curve plus the default spread of A (the HQM reference bucket, Damodaran table).
 
 | Module (`rust/src/`) | Function |
 |---|---|
@@ -214,7 +214,7 @@ Conventions (each one is in the header of `curve.rs`):
 - **Difference.** Observed minus theoretical. A positive price difference means that the market price is above the price from our curve.
 - **Filter.** The set has market-based bills, notes and bonds that have a price, have 7 days or more to maturity and have no call date. TIPS and floating-rate notes are not in the set.
 - **Resolution.** The source gives notes and bonds in 64ths of a point. The column `resolution_bp` is the yield change of one such step. A yield difference that is smaller than this column has no information. This is large for instruments with a short life.
-- **Corporate curve.** No free official source of prices of single corporate bonds is known (see #65). Thus the comparison is at curve level: the HQM spot rate (semi-annual) against our Treasury zero rate (semi-annual) plus the mean ICE OAS of AAA, AA and A. It shows how our spread data relate to the Treasury HQM curve. It does not show a bond price difference.
+- **Corporate curve.** No free official source of prices of single corporate bonds is known (see #65). Thus the comparison is at curve level: the HQM spot rate (semi-annual) against our Treasury zero rate (semi-annual) plus the default spread of A (fixed table, `bonds.rs`, A-201). It shows how our spread data relate to the Treasury HQM curve. It does not show a bond price difference.
 
 The tests (`cargo test --manifest-path rust/Cargo.toml --locked`) use small samples and hand calculations: a par bond prices to 100 on a coupon date, a bill, a bond between coupon dates, the reprice of each par node, a flat curve. They do not use the network.
 ## Bond research: bill tests, fitted curve, rich and cheap, history (2026-11-19, branch `claude/bond-arb`)
@@ -446,7 +446,7 @@ TOML file, `Overrides`, hand DCF, bisection), `analysis.rs` (runs with overrides
 sensitivity, implied value, the fade check, the commitment check, the equity-weight fixed point),
 `backtest.rs` (point-in-time vintage backtest), `cli.rs` (`fa dcf`, `fa backtest`), `tests.rs`
 and `runner_tests.rs`. Outside `dcf/`: `rust/src/rates.rs` (Treasury curves, New York Fed rates,
-BLS CPI, FRED, inflation, cross-checks), `rust/src/bonds.rs` (ICE BofA, Moody's, HQM, ratings),
+BLS CPI, FRED, inflation, cross-checks), `rust/src/bonds.rs` (HQM, rating steps, cost of debt),
 `rust/src/verdict_rates.rs` (market `rf` and `kd_spread` in a driver model); the `Fa` struct in
 `lib.rs` keeps the method names and calls them.
 

@@ -37,3 +37,19 @@ Done: Sent the open permission request (the refused run of the step-2 appendix s
 ## 2026-11-21 00:10 UTC (question dialog)
 Words: "May the Quant head make a separate branch for each task, so each change is reviewed alone?" = "Yes (Recommended)"; "Run once the rates calculation that the safety system stopped (an auditor already checked those tables)?" = "No (Recommended)".
 Done: New tickets get their own branch `claude/quant-<ticket>` from `origin/main`. The work already on `claude/upbeat-cori-a4ykf5` (arb-1b, arb-2, vol-1, vol-7, arb-4 step 1; each reviewed alone) goes in one pull request. The appendix run is not done. Both ask tickets move to `done/`.
+
+## 2026-11-21 17:50 UTC
+Words: "Do we have reconciliation between the VIX and option train IVs? Are we monitoring that?"
+Done: Answer: no. Nothing calculates the VIX from our SPX chain, and nothing monitors it. The VIX replication is now one relation of the register below.
+
+## 2026-11-21 17:55 UTC
+Words: "I think that you should probably have a list or like a folder of arbitrage theories. That should generally always be true. And we should also have code that's running autonomously to make sure that that's the case. Fleshing this out will probably require some research to see how regular quant firms do this, and then how we should do this as well, and fitting it into our systems, / expanding our systems if need be."
+Done: Ticket `T-20261121-arb-invariants` (branch `claude/quant-invariants`): research of industry practice first, then a register of no-arbitrage relations (one file for each relation) and one command that checks all of them on the newest data each day.
+
+## 2026-11-21 18:05 UTC
+Words: "I think for quant work, we're going to require as continuous as possible"
+Done: The arbitrage register ticket now aims at a continuous capture in market hours and a check on each new snapshot, not one daily copy. Research of the Alpaca limits and the e2-micro capacity first (`analysis/priors/continuous_option_data_2026-11-21.md`); then a recommendation to the Head of Technology (host and data plan are its area).
+
+## 2026-11-21 18:10 UTC (through the Head of Fundamental Research)
+Words (to the Head of Fundamental Research, about 18:50 UTC): "Great, make sure that whatever is repeatable/should be expected of future work like this is built into the correct engine." Then: "Send the same request of work to quant research for its engine/processes."
+Done: An inventory of the steps of the quant studies that a person, an agent or a shell did by hand; for each one, the engine and the owner; the table on the board before the code (ticket `T-20261121-quant-engine-integration`).

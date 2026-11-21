@@ -17,7 +17,8 @@ Rules: `chiefs/ORIENTATION.md` (sections 3 to 8). Decisions of the person: `../R
   `fa options check` (84, 100), rates reconciliation steps 1-2 (84, 100), `fa vol fit` Heston/Bates (100),
   `fa options archive` (100), parser and bond tests (111), limits of use (115). No tradable break so far.
 - Data: the Technology scheduled task copies SPX, SPY, VIX (Alpaca indicative) each market day from 2026-11-23,
-  20 days (to about 2026-12-22). The Cboe host refuses the cloud (HTTP 403): no NBBO copy.
+  20 days (to about 2026-12-22). Cboe refuses the cloud (HTTP 403). The store fa-data is private from 2026-11-21:
+  a new session attaches it (add_repo, read) before the clone.
 
 ## Next steps (queue `head: quant`)
 - From 2026-11-24 (two copied days): `arb-3` (box rate by the NY Fed regression, SPX against SPY, two-day
@@ -26,20 +27,21 @@ Rules: `chiefs/ORIENTATION.md` (sections 3 to 8). Decisions of the person: `../R
 - Then `vol-2` (SABR, local volatility) on the `volmodels` base.
 - About 2026-12-22: the Head of Technology asks me what the 20 days showed; then the person answers whether to
   get real quotes (laptop at 15:45 ET or a paid source). My recommendation so far: no.
-- Test audit: next after several more merges (last 2026-11-21: speed proposals refused, suite ~10 s).
 
 ## Lessons from this session (tested)
 - Reviews found what I missed in each code ticket: a fit that hid non-convergence (vol-1), an 80% check that
-  could lock the archive for good (vol-7). For any fit or automatic job: print the status and the way to recover.
+  could lock the archive for good (vol-7), tests that a wrong formula passed (vol-2: no fixed answer off the money).
+  For a formula: a fixed answer from an independent source at each branch, and a mutant that must fail.
 - An agent report can be wrong on one fact (vol-1 "converged"): run the real command myself before I pass it on.
+- A defect report of a different head can be false (rates duplicate row, 2026-11-21): check it against the data
+  before an agent starts a fix. The fix branch `claude/quant-rates-dup` is dropped; it does not merge.
 - `fa recon bonds`, `fa recon explain`, `fa futures check` download each missing file (two agent downloads,
   2026-11-20): the brief says "check the cache first"; `rates-credit-quant.md` says it too.
 - One branch for each ticket (person, 2026-11-21): `claude/quant-<ticket>` from `origin/main`. Parallel agents
   get worktrees from the branch; I bring their work in with a patch or a cherry-pick and test it myself.
 - A value factor for a past date: `fa dcf implied --as-of D` or `fa dcf attribute`; `fa dcf auto --as-of` and
   `fa dcf screen --as-of` read later filings (look-ahead; Fundamental, PR 107).
-- Alpaca: the proxy adds only the secret header. `APCA_API_KEY_ID` is in the environment "ALL ACCESS" from a
-  restart; set `APCA_API_SECRET_KEY` to a dummy value. Without it, the Head of Technology runs a real-day test.
+- Alpaca: the proxy adds only the secret header; `APCA_API_KEY_ID` from the environment, a dummy secret value.
 - A backtest of momentum on today's index list has survivorship bias (`fa portfolio backtest` warns of it);
   no point-in-time member list exists in the store.
 
@@ -57,5 +59,4 @@ Rules: `chiefs/ORIENTATION.md` (sections 3 to 8). Decisions of the person: `../R
 - `responsibilities.md`: the split of work between Quant Research and Fundamental Research.
 - Stress windows for backtests: `analysis/macro/2026-11-21-stress-windows.md` (Head of Economics; 13 windows).
 
-## Dream pass
-Last pass: 2026-11-21 (context at 82% of the compaction threshold). Next: before the next compaction.
+Dream pass: last 2026-11-21 (82% of the threshold); next before the next compaction.

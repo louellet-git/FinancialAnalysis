@@ -5,6 +5,7 @@ area: engine
 status: backlog
 owner: louellet-git
 head: quant
+story: E4.S3
 order: 5
 branch:
 created: 2026-11-20
@@ -58,3 +59,5 @@ and no arbitrage test on closes of different times.
 ## Commands
 
 `fa vol varcurve --symbol SPX` (the forward variance from the strip), `fa vol fit bergomi2f --symbol SPX [--date D]`, `fa vol price bergomi2f --params ...`, `fa vol check bergomi2f`.
+
+Needed by (2026-11-21): vol-6 (the joint SPX and VIX fit) builds on it. No check or strategy of the owner needs this model now, so it goes after the work that serves a decision of the owner (Head of Staff, 2026-11-21).

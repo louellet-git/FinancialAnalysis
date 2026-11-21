@@ -36,7 +36,8 @@ USAGE:
   BOT           the bots to step (default: all bots)
   --start D     paper start date for a bot with no saved state (default: today, New York)
   --no-refresh  use the cached data only (no download of bars)
-  --no-live     price the signals with the model (needed now: the live option chain is refused)
+  --no-live     price the signals with the model (needed now: the live option chain is refused);
+                with --no-refresh too, only cached bars are read (no Yahoo download)
   --equity N    the starting equity (default 2000)
   --max-risk N  the maximum loss of one trade is N dollars; it replaces --risk
   --risk F      the maximum loss of one trade as a fraction of equity (default 0.03)

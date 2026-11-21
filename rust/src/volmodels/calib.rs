@@ -116,13 +116,17 @@ fn sumsq(r: &[f64]) -> f64 {
     r.iter().map(|x| x * x).sum()
 }
 
-/// Levenberg-Marquardt from `p0`. Returns the parameters, the loss and the number of iterations.
+/// Levenberg-Marquardt from `p0` for the residuals of a model on a quote set. Returns the parameters, the loss and the number of iterations.
 pub fn levenberg_marquardt<M: CharModel>(set: &QuoteSet, p0: &[f64], max_iter: usize) -> (Vec<f64>, f64, usize, LmStatus) {
-    let bounds = M::bounds();
+    lm_core(&|p: &[f64]| residuals(&M::from_vec(p), set), &M::bounds(), p0, max_iter)
+}
+
+/// The core of `levenberg_marquardt` for any residual function (SABR uses it with its own residuals).
+pub fn lm_core(resid: &(dyn Fn(&[f64]) -> Vec<f64> + Sync), bounds: &[(f64, f64)], p0: &[f64], max_iter: usize) -> (Vec<f64>, f64, usize, LmStatus) {
     let np = p0.len();
     let mut p = p0.to_vec();
-    clamp_into(&mut p, &bounds);
-    let mut r = residuals(&M::from_vec(&p), set);
+    clamp_into(&mut p, bounds);
+    let mut r = resid(&p);
     let mut f = sumsq(&r);
     let mut lambda = 1e-2;
     let mut iters = 0;
@@ -137,7 +141,7 @@ pub fn levenberg_marquardt<M: CharModel>(set: &QuoteSet, p0: &[f64], max_iter: u
                 let step = if p[j] + h <= bounds[j].1 { h } else { -h };
                 let mut q = p.clone();
                 q[j] += step;
-                let rj = residuals(&M::from_vec(&q), set);
+                let rj = resid(&q);
                 
                 rj.iter().zip(&r).map(|(a, b)| (a - b) / step).collect()
             })
@@ -156,8 +160,8 @@ pub fn levenberg_marquardt<M: CharModel>(set: &QuoteSet, p0: &[f64], max_iter: u
                 continue;
             };
             let mut q: Vec<f64> = p.iter().zip(&delta).map(|(x, d)| x + d).collect();
-            clamp_into(&mut q, &bounds);
-            let rq = residuals(&M::from_vec(&q), set);
+            clamp_into(&mut q, bounds);
+            let rq = resid(&q);
             let fq = sumsq(&rq);
             if fq.is_finite() && fq < f {
                 let rel = (f - fq) / f.max(1e-300);

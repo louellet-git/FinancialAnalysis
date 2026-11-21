@@ -2,13 +2,14 @@
 id: T-20261121-split-basis-fix
 title: Put each past price on the share basis of its SEC vintage (split look-ahead), and add a live split guard
 area: engine
-status: in-progress
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: fundamental
 order: 0.01
 branch: claude/dcf-engine-backtest
 created: 2026-11-21
+merged: pull request 136 (2026-11-21)
 acceptance: A backtest or a study that compares a past model value per share with a past price uses a price on the share basis of the vintage of that date; a test multiplies all prices before a later date by k and shows that no earlier decision changes; a live split guard stops a pick whose share count of the last 10-K and the current share basis differ by a split; the runs that the defect touched run again once, as new logged variants, after a test file written before them.
 ---
 Found by the strategy gate (Head of Quality and Risk, 2026-11-21, CRIT F1). The price files of the store are
