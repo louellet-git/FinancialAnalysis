@@ -98,3 +98,11 @@ table. The first three dates (2020-03-20, 2022-06-17, 2025-04-04) are in `analys
 pass; the IBM headline is unchanged; the S&P 10 smoke test gives -9.96%). After the green check: merge, then the run of
 record of the week on main (the commands of pages 2 and 3 with `--curve par`), then merge main into
 claude/attribution-reality. The second branch waits for its gate verdict (a0e2480).
+
+**Golden case (20:49 UTC, 2026-11-21).** Pull request 190 is merged (main 7e88cfe). It changed the output of
+`fa dcf attribute`, and the stored-output test of the Head of Quant Research (`fa selftest golden`, case
+`dcf_attribute_panel32`) failed on main. Pull request 195 (claude/golden-attribute-pr190) has the new expected text;
+it waits for the look of the Head of Quant Research and the green check; then merge it.
+TO DO in the pull request of claude/attribution-reality: run `fa selftest golden` (it needs the data store of the case
+as data/raw; FA_REPO names the repo root) and update each case that the new default curve and the beta flag change,
+with a reason. Rule from now on: `fa selftest golden` is a release check of each change of a command output.
