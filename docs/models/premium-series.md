@@ -55,7 +55,7 @@ of the model. The value is the value at the means, not the expected value.
 | A-031 | Stale-price rule | close older than the SPY close | A ticker is out of ret_w |
 | A-033 | Anchor rule | last SPY close on or before the Friday; 7 days | SPY is the calendar |
 | A-015 | Search range of the premium | -4% to 20% | S1 search |
-| A-029 | Common change | list median | Used in the S2 bridge |
+| A-012 | Age of a price and of a curve row | 10 days (price); 3 days (GSW row) | Past close; the curve rule |
 
 ## Limits
 - The list has today's names (survivorship). The premium is a residual: a growth or cash-flow error of the model
@@ -63,6 +63,16 @@ of the model. The value is the value at the means, not the expected value.
 - S1 sets the median of value / price to 1 by design. A large part of its weekly change is mechanical.
 - The GSW curve and the par fit have different fits. The switch week can show a step in `zero10` and in S1.
 - A list premium or a ratio is not a signal without a review (`HIDDEN-ASSUMPTIONS.md` #260).
+- Coverage gap (checked on 2026-11-21, store 0340bc1). A ticker with the mapping status FAIL at an anchor has no value
+  at that anchor: it is not in S1, and with no share count it is not in `s2_change`. Examples: BRK-B, V and NEE have no
+  value on 2020-03-20 and on 2022-06-17. BRK-B and V have a value on 2026-11-20; NEE has none. COP has a value on
+  2022-06-17; on 2020-03-20 its share count has a scale defect (1,123,536). The columns `n_value` and `n_ret` of each
+  row show the coverage of that week.
+- The series run of record. S1 uses the parameter table `process_priors_2026-11-19.toml`, which is fitted on all years.
+  A weekly S1 from 2019 thus uses later priors: this is a look-ahead in the table. The run of record uses a table cut
+  before its first year (`--table`), or its header states this look-ahead.
+- The switch week. `s2_rates` and `s2_premium` mix the GSW curve at the previous anchor and the par curve at the
+  current anchor. Week to 2026-11-20: rates +5.23 with the mix, +5.08 with the par curve at both dates.
 
 ## Code and command
 | What | Path or command |

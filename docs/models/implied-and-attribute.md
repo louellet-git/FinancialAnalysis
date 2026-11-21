@@ -40,7 +40,7 @@ rates and the implied premium (or growth)? Both are measurements. No input of th
 - `fedinvest`: the NSS curve that `fa recon rich-cheap` fits to the FedInvest prices of the last file on or before the date.
 - `par`: the same NSS fit to the Treasury par yield curve of the last row on or before the date. The tenors are
   1 to 30 years (`PAR_TENORS`); the fit does not go beyond 30 years. Each tenor is a par bond.
-- Rule of the code (being added by another change, not yet in this branch): a par fit with a root-mean-square error
+- Rule of the code (`par_fit_rmse`, `load_curve_par`): a par fit with a root-mean-square error
   above `PAR_FIT_MAX_RMSE_BP` = 5.0 bp is not used (A-028).
 
 ## The full bridge
@@ -51,7 +51,7 @@ rates and the implied premium (or growth)? Both are measurements. No input of th
   The two readings are two readings of one price change. The model cannot tell them apart.
 - A list of 20 tickers or fewer (`BRIDGE_TICKER_LINES`) gets one line for each ticker (A-032).
 - Stale price: a close older than the SPY close of the same date leaves every sum (A-031).
-  The list of the tickers left out is printed (rule of the code, being added).
+  `fa dcf attribute` prints the list of the tickers left out. `fa dcf premium-series` does not print it.
 - One group line: the tickers with an SEC 8-K item 2.02 in the window.
 
 ## Split of the plug: common part and company part
