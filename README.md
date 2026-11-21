@@ -176,11 +176,15 @@ of a change to the engine run it (not in CI: the store is private).
 rust/target/release/fa selftest golden                       # run all cases; exit 1 on a difference (first 20 lines)
 rust/target/release/fa selftest golden --case dcf_drivers_ibm
 rust/target/release/fa selftest golden --update "why the output changes" --case NAME   # or --all
+rust/target/release/fa selftest golden --record-inputs --case NAME   # write the input list of a case
 ```
 
-Each case names the store commit that it needs; a case whose commit is not the HEAD of `data/raw` is SKIPPED, not
-passed. A mask hides only lines that vary (timing lines); any other mask needs a `why`. The command never downloads:
-it runs only commands of an allow list that read the cache. `--update` needs a reason; the reason and the date go
+Each case lists the input files that it reads, each with its SHA-256 (`fa selftest golden --record-inputs --case NAME`
+writes the list with `strace`, Linux only; without it, write the list by hand and add a `note`). A listed input that is
+missing or has another hash makes the case SKIPPED, with the file named; it is never a pass. An input that the list
+misses can only make the case FAIL (the output changes), never pass: then add the file to the list. A run where all cases
+are skipped says "0 of N cases ran" and exits 0. The `store` commit is information only. A mask hides only lines that vary (timing lines); any other mask needs a `why`. The command never downloads:
+it runs only commands of an allow list that read the cache, and a case whose command asks for the network FAILS and names the request. `--update` needs a reason; it rewrites the input hashes and the expected text together, and the reason and the date go
 into the case file, and the expected text goes into `rust/tests/golden/NAME.txt`, so the pull request shows the change.
 `fa selftest golden --help` has the details.
 
