@@ -42,3 +42,8 @@ Done: `analysis/NVDA/TRADE-RECOMMENDATION.md` (no trade), branch `claude/nvda-va
 ## 2026-11-21 03:47 UTC (chat)
 Words: "And every week you will need to propose 3 trades to begin on the live trader, beginning next Friday. A valuation engine will be required. Potentially a hedging engine when and if that's needed."
 Done: ticket `T-20261121-weekly-trade-proposals` (first Friday 2026-11-27); questions to the Head of Quality and Risk (the gate and the sleeve limits) and the Head of Technology (the live trader).
+
+## 2026-11-21 03:50 UTC (answers to two questions of this head)
+Size of each weekly trade: "Not sure, size of trades should be subject to the trade and that responsibility is of the head."
+Sides: "Anything".
+Done: record `docs/assumptions/A-009-weekly-trade-rule.md` (written before its test): buy, sector-neutral, 3 a week, 1/39 of the sleeve each, 13-week hold; a short waits for its test.
