@@ -15,7 +15,9 @@ The fit applies to the `acq_w` charge only. `acq_charge`, `acq_f` and the `chain
 | Past spend as the base | `--rules acq_persist=off` | Over-charges heavy buyers: error +1.1 to +1.8% of revenue (half 1) |
 | Intercept rule 1.75% + 0.3925 x past | `--rules acq_persist_a=0.0175,acq_persist_b=0.3925` | Charges about 1.5% of revenue to a company with no purchases and credits no growth for it (KR, AZO, COST) |
 ## Why this choice
-None of the reasons uses the price. Study 2.6: a consistent pair by construction. The charge pays for the credited growth: the model credits the share `w` of the bought growth, so it charges the share `w` of the spend. A company with no past purchases has no bought growth in its history, so it gets no charge (pairing). The base is the expected next spend, not the past spend: a heavy buyer spends less later (study 2.1: the next 3 years are 0.55 of the past at the mean). The slope is the half-0 fit through the origin (`fa dcf pit --half 0 --diag acq`: 0.5226). The fade keeps the pair true in each year. The second line is real cash paid for businesses. Choice order: cycle 1 measured the past spend, the intercept rule and the rule through the origin (table below); the rule was chosen after those scores were seen. Its reason is the pairing.
+None of the reasons uses the price. Study 2.6: a consistent pair by construction. The charge pays for the credited growth: the model credits the share `w` of the bought growth, so it charges the share `w` of the spend. A company with no past purchases has no bought growth in its history, so it gets no charge (pairing). The base is the expected next spend, not the past spend: a heavy buyer spends less later (study 2.1: the next 3 years are 0.55 of the past at the mean). The slope is the half-0 fit through the origin (`fa dcf pit --half 0 --diag acq`: 0.5226). The fade keeps the pair true in each year. The second line is real cash paid for businesses. Choice order: cycle 1 measured the past spend, the intercept rule and the rule through the origin (table below); the rule was chosen after those scores were seen. Its reason is the pairing. The rule gives up about 0.8 points of
+error (% of revenue) against the intercept rule below 5% of spend, and 0.3 to 0.9 points against the past spend at
+0.5% to 5% (tables below).
 ## Measurements (store 1804f48, seed 7, 2000 paths each, 5,097 company-years of 636 companies)
 Commands: `fa dcf pit --cache data/raw --half 1 [--cut 2015] --rules R`; R = none (default),
 `acq_persist=off` (past), `acq_persist_a=0.0175,acq_persist_b=0.3925` (intercept). Free cash flow error T+1 / T+2 / T+3 in % of revenue, half 1; inside P10 to P90 at T+1; real below P10 / above P90 at T+1.
@@ -39,6 +41,9 @@ P50 default (intercept): KR 67.39 (3.99); AZO 2630 (2539); COST 413 (335); MCK 2
   share below P10 rises (19.6% to 23.3%). The test is a median test; the charge is a mean.
 - **F3.** The hold-out splits by company only. The half-0 fit uses years after 2015: the cut at 2015 is
   not out of time for the charge. The rule form was chosen after a look at the half-1 slopes. Swapped halves (fit on half 1: 0.5297 x past, or 0.0206 + 0.3670 x past; score on `--half 0`, "above 5%"): inside 71.0 (origin) and 71.5 (intercept); error -0.9 / -1.5 / -1.0 and -0.6 / -1.3 / -1.0. The score is the same there; the intercept is better by about 1 point in the classes below 5%.
+- **F4.** The fit applies to the `acq_w` charge only; `acq_charge` and `acq_f` use the past spend, and the
+  `chain` cut uses the actual past spend. **F5.** Each figure names its command and paths (Measurements).
+  **F6.** "Why this choice" has no P50 / price figure; the screen figures above are a measurement only.
 - Step at L: `acq_keep` removes it (ROP 357 to 186); a pit of 3 years cannot test it. 8 of 503 tickers change
   with the second line (BIIB, CBRE, J, MRK, NVDA, TRGP, ZBH, ZTS).
 - The panel (`rust/src/dcf/panel.rs`, about line 295) reads the first acquisition line only. Known limit; not changed.
