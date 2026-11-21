@@ -3,17 +3,21 @@ What the next session of this head must know. Keep this file below 60 lines. Sta
 Rules: `chiefs/ORIENTATION.md`, section 8. Decisions of the person: `../RECORD.md`.
 
 ## Goal now
-- `vol-1-heston-bates` (order 2): code in the worktree `/home/user/wt-vol1` (local branch
-  `wt/vol-1-heston-bates`). Open: the 5 s fit target, the T=1 published value (1.6e-8, flagged for the
-  validator and the person), the live SPX fit (Head of Technology or a restarted session), the gate.
-- `arb-2` step 2 waits for 60 days of FedInvest prices (`store-arb-data`, Head of Technology).
+- Merged on 2026-11-21 (pull request 100): vol-1 (fa vol fit), vol-7 steps 2-3 (fa options archive), arb-1b,
+  arb-2, arb-4 step 1. Open in my queue: `arb-4` (steps 2-3: VIX parity forward against VX, ZQ/SR3 strip;
+  the two step-1 notes are in the ticket), `arb-3` (box rate, SPX against SPY, two-day `--compare`).
+- Data: the Technology scheduled task copies SPX, SPY, VIX each market day from 2026-11-23 (20 days).
 
 ## Next steps
-- `arb-1b-chain-check-depth` (1.3). `arb-3` and `arb-4` (3.1, 3.2) wait for the chain copy (`vol-7`) and
-  for the futures data. Open for the person: `vol-7` before `vol-1`; a branch for each ticket.
-- After several merges: a test audit with `test-engineer` (`chiefs/ORIENTATION.md`, section 3).
+- From 2026-11-24 (two copied days): `arb-3`; the out-of-sample test of vol-1 (fit day D, price D + 1).
+- Then `vol-2` (SABR, local volatility) on the new `volmodels` base.
+- Test audit done 2026-11-21: proposals 3 and 4 in `T-20261121-quant-test-audit-1`; 1, 2 (speed) refused:
+  the suite is ~10 s and the build >2 min. Next audit after several more merges.
+- Findings for the person: no tradable break so far; the SPX feed is indicative (not executable).
 
 ## Tested rules
+- A value factor for a past date: use `fa dcf implied --as-of D` or `fa dcf attribute` (SEC facts filed by D).
+  `fa dcf auto --as-of` and `fa dcf screen --as-of` read later filings: look-ahead (Fundamental, PR 107, 2026-11-21).
 - `fa recon bonds`, `fa recon explain` and `fa futures check` download each missing file (two agent downloads on
   2026-11-20). Brief: "check the cache first". Agent file `rates-credit-quant.md` changed for this.
 - An agent report can be wrong on one fact (vol-1: "converged" against the program's "NOT converged"):
@@ -45,6 +49,7 @@ Rules: `chiefs/ORIENTATION.md`, section 8. Decisions of the person: `../RECORD.m
 - The computer of the person is a Windows laptop. Give commands for PowerShell.
 
 ## Pages
+- `../industry-2026-11-21.md`: industry practice (SR 26-2, overfitting bar, NBBO data, box rate method).
 - `responsibilities.md`: the split of work between Quant Research and Fundamental Research.
 
 ## Dream pass
