@@ -580,6 +580,7 @@ data, run it, and test it. No hand input and no network. An automatic model is a
 | `auto.rs` | The builder `build`. Input: the standard variables of the company (`AutoInputs`, `YearData`), the parameter table with its fade cells, the market (`Market`: GSW curve, price, beta). Output: the model file (TOML, `engine = "paths"`), one row for each number with source and rule (`ExplainRow`), the warnings. It refuses (`Refusal`) with a reason. The helpers (`ar1_fit`, `own_sigma`, `tax_rate`, `regression_beta`, `load_curve`) are public and tested with a hand calculation. |
 | `auto_cli.rs` | `fa dcf auto TICKER` (map from the cache, build, print, run with `paths_cli::run`, price-implied values) and `fa dcf screen` (one row for each ticker; rayon over tickers). |
 | `auto_pit.rs` | `fa dcf pit`: the point-in-time test. `model_at` makes the model from the fiscal years up to the base year only. |
+| `assumptions.rs` | The register of the assumptions (`fa dcf assumptions`): one static row for each assumption, the default read from `Rules::default()`, the record, the state. `--effect` runs the screen and the point-in-time test twice (reuse of `screen_rows` and `pit_observations`). Its tests make the link to `docs/assumptions/`. |
 | `auto_tests.rs` | Unit tests: each rule on small data with a fixed answer, the refusals, the point-in-time property, the screen on 1 and on 4 threads. |
 | `calibrate.rs` (added) | `FadeCell`, `FadeFile`, `slow_half_life`, `level_spread_ratio`: the fade table as data. |
 | `calib_report.rs` (added) | `fade_cells`: `fa dcf calibrate --out FILE` now writes the `[[fade]]` cells after the AR(1) cells. |
@@ -628,6 +629,32 @@ revenue; its coverage P10 to P90 is 1 point lower (76.3 / 77.4 / 77.8% against 7
 
 **`fa dcf pit [--cut YEAR] [--rules K=V,..] [--paths N] [--out FILE]`.** The point-in-time test (see #199 for its limits).
 
+**`fa dcf implied [--tickers-file FILE | TICKER ...] [--cache DIR] [--as-of D] [--prices FILE] [--rules K=V,..] [--groups FILE] [--out FILE] [--jobs N]`**
+(`auto_implied.rs`, ticket `T-20261120-dcf-market-implied`). It shows what the market price implies for each ticker and for groups. It has no
+random part: the value is the value of the one path at the means (`PathEngine::deterministic`: each parameter at its mean, each shock zero). A
+market-implied value is a measurement. No default and no rule of the builder reads it (`docs/QUALITY-STANDARDS.md`, section 6).
+Three searches (bisection) move one number each and keep all others. Each step builds the model again with changed `Rules`, so each cap, fade and
+guard of the builder applies: (1) the mean of the equity risk premium, range -4% to +20% (the report has the implied cost of capital of year 1,
+`model_rate_of`); (2) `Rules::growth_shift`, range -30 to +60 points, added to the company mean of the growth and to the growth of year 1 (the
+long-run level and the terminal rule follow the builder for that mean); (3) `Rules::margin_shift`, range -50 to +50 points, added to the start and
+to the target of the margin. The two shifts are not `--rules` keys; they are 0 by default and change no model. For a premium below 2% the lower
+bound of the draw moves to the mean (the default model keeps 2%). A search with no solution gives the bound and a flag in the column `flags`
+(`premium<`, `growth>`: the price needs a number below or above the bound). A value that does not have the expected direction on the ends of the
+range and at the model number gets the flag `:nm` (a company with a negative terminal cash flow has a value that rises with the premium). A jump of the
+value (the engine gives no value for a part of the range) gives a bound, not a number. The columns are in the CSV header of `auto_implied.rs`.
+The groups (all, size, sector, industry with 5 tickers or more) give P25, P50 and P75 of: value / price, implied less model cost of capital, growth
+of years 1 to 10, and margin of year 10 (FCFF after SBC and the charge over revenue), and the value at the premium of the list over the price. The
+sector and the industry come from `--groups FILE` (CSV `ticker,sector,industry`) if given, else from the SIC code of the cache (`mapcheck::sec::company_sic`, sector = Fama-French 12 name by `ff12_sector`, industry = the code with its description) through the one function `groups_of`; a ticker with no code has no group. The code is the code of the filer today (trap #170); this command values today only, so that limit does not apply to it. A quartile cell with more than 20% bounds (`<` or `>`) has a `*`: a quartile of censored values is not a measured number. The industries are in the order of their size.
+The premium of the list is the premium for which the median of value / price over the tickers
+with a value and a price is 1.0. The value at the means is not the expected value: for most tickers it lies between the P50 and the simulated mean (median 0.89 of the mean). The price enters the builder only through the equity weight (`E / (E + debt)`), as in `fa dcf auto`; the price
+cache gives the last close, not the close of `--as-of`. Two runs give the same bytes, and the result does not depend on `--jobs` (a test compares 1 and 4 threads).
+
+**`fa dcf assumptions [--md]`** (ticket `T-20261120-dcf-assumption-register`). The register `assumptions.rs` has one row for each assumption of the automatic model that a person could choose: record number, name, `--rules` key, default, place in the code, record, state (`decided <date>` or `convention, not studied`). The default text is read from `Rules::default()`. A test fails when the section "Choice" of a record does not have the default, when a key is not in `parse_rules`, or when a field of `Rules` is neither in the table nor in the short list of options (`NOT_ASSUMPTIONS` in the tests). `fa dcf auto --explain` names the record number of a row that has a record. Procedure of a study: skill `assumption-study`.
+
+**`fa dcf assumptions --effect K=V,.. --tickers-file F --cache DIR --as-of D`** prints one block for a record: median P50 / price, P50 at or below 0, median `ln(new/old)` of the P50, and the point-in-time errors and coverage at T+1 to T+3, with the command, the seed, the as-of date and the cache commit. It reuses the functions of `fa dcf screen` and `fa dcf pit` (`screen_rows`, `pit_observations`). The point-in-time part runs on the companies of the ticker list (`--half` and `--cut` as in `fa dcf pit`). `--effect` with no value is an error (exit code 2).
+
+**Two medians of P50 / price.** The records `docs/assumptions/A-001-terminal-growth.md` and `docs/assumptions/A-002-acquisition-charge.md`, and the model document `docs/models/auto-path-model.md`, give 0.4745. The scratch programs made it from the screen CSV, which rounds the ratio to 3 decimals. `--effect` uses the unrounded values: 0.4747 for the same data and the same rules (before the floor of record A-003).
+
 **The investigation of 2026-11-20** (ticket `T-20261120-dcf-investigation`; findings `analysis/priors/dcf_investigation_2026-11-20.md`;
 traps #260 to #270).
 
@@ -637,6 +664,7 @@ traps #260 to #270).
 | `[discount]` (`process.rs`, `paths.rs`) | `stub_years`, `year1_share`, `mid_year`. Not set: the end-of-year rule of before (the hand models do not change). |
 | `fa dcf screen --implied` (`auto_cli.rs`) | `implied_discount_rate`: the cost of capital of year 1 that gives the price (a search on the premium). New CSV columns: `model_rate`, `implied_rate`, `sbc_ratio`, `net_debt`, `shares`, `beta`, `equity_weight`. |
 | `fa dcf returns` (`auto_returns.rs`) | The P50 / price of the point-in-time model (date: end of the fiscal year + 100 days) against the later 1-year and 3-year price returns: rank correlations by year and pooled, quintiles inside each year, size buckets, the years as clusters. About 10 s for 420 companies. Result: `analysis/priors/auto_returns_2026-11-20.txt`. |
+| `fa portfolio backtest` (`rust/src/portfolio/`) | One portfolio backtester. `mod.rs`: the engine (positions, daily close value, cost in basis points on each traded value, cash, SPY as benchmark; total and annual return, volatility, maximum drawdown, turnover, cost). `strategies.rs`: the reference strategies `value-rank` (the function `model_p50` of `auto_returns.rs`, with the fiscal years of a vintage: only the SEC facts filed before the date) and `momentum` (12-1 months); both take the top quintile with equal weight. `EqualWeight` is the reference line of the whole list. `cli.rs`: the command. A strategy reads prices through a `View` that holds the days before the rebalance date; the engine trades at the close of that date. The engine reads the cache only. The ticker lists are today's lists (survivorship; trap file `docs/traps/2026-11-20-portfolio-backtest.md`). |
 | `filer_template` (`rust/mapcheck/src/checks.rs`) | Also domestic and split deposit lines, deposit-taking lenders, lenders with no current-assets total, real estate at gross less depreciation, sales-type leases of real estate (#264). |
 
 Screen of `sp500.txt` before and after the four corrections (2026-11-19 data, 4,000 paths): median P50 / price 0.480 and 0.489; P50 at or
@@ -983,3 +1011,11 @@ ticket `option-backtest-rust`).
 `cargo test --manifest-path rust/mapcheck/Cargo.toml`: the tests of `mapcheck`. The suites make no network calls and start no
 Python program; HTTP is replaced by a function that the test gives, and files are in a temp folder.
 No Python test remains (the last 211 Python tests were deleted on 2026-11-19 after each case had a Rust test).
+
+### `rust/src/volmodels/` — Heston and Bates by Fourier methods (2026-11-20)
+
+Rust only. Ticket `T-20261120-vol-1-heston-bates`. Model document: `docs/models/heston-bates.md`.
+Files: `cx.rs` (complex type), `base.rs` (trait `CharModel`, quote set, loss, error in vol points),
+`fourier.rs` (Lewis integral with adaptive Gauss-Legendre, Carr-Madan FFT), `models.rs`
+(`Heston`, `Bates`), `calib.rs` (Levenberg-Marquardt), `chain.rs` (snapshot to quote set, with
+counts of dropped quotes), `cli.rs` (`fa vol fit`). Prices are model prices, fitted to mids of bid and ask.

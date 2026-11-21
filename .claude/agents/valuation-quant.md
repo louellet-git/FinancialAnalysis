@@ -9,6 +9,7 @@ skills:
   - investigation-report
   - release-checks
   - ticket-workflow
+  - assumption-study
 ---
 
 # Valuation quant

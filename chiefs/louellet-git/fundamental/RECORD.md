@@ -20,6 +20,16 @@ Done: no new work starts. The two jobs in progress are completed and committed (
 Words: "Proceed with your work"
 Done: the parked work starts again. The data store `louellet-git/fa-data` is the cache (`data/raw`). Next: the full runs of the conventions decision, the gate request, then the engine accuracy ticket.
 
+## 2026-11-20 22:27 UTC (chat)
+Words: "Merging rules are those site by head of tech"
+Done: the merge rule is `chiefs/ORIENTATION.md`, section 4: the head merges its own pull request after a gate pass and a green check, with no new question. Applied first to pull request 77.
+
+## 2026-11-20 22:27 UTC (correction)
+The rule of the entry above is in `chiefs/ORIENTATION.md`, section 6 ("Reviews and merges", rule 3), not section 4.
+
+## 2026-11-20 23:09 UTC (chat)
+Words: "I think you might have deleted an old ticket, that's not how we should handle those, speak w tech head"
+Done: question to the Head of Technology; the rule is now in `PLANNING/board/README.md` (a merged ticket moves to `PLANNING/board/done/` with `status: done` and `merged:`; never deleted). The two deletions on my branches are replaced by the move.
 ## 2026-11-20 23:21 UTC (chat)
 Words: "I need to know why the market crashed today and over past few days, generally what I'm looking for is an understanding of where the market valuation WENT. This is a large task that requires its own models being built, and probably will start with you doing one stock at a time until you've built a general enough model to explain. I want to know what NVDA is worth."
 Done: tickets `T-20261120-nvda-valuation` (order 0.1) and `T-20261120-valuation-move-attribution` (order 0.2); data request to the Head of Technology.
@@ -27,3 +37,4 @@ Done: tickets `T-20261120-nvda-valuation` (order 0.1) and `T-20261120-valuation-
 ## 2026-11-21 01:04 UTC (chat)
 Words: "Ensure that work we do is repeatable and contributes to the dcf engine"
 Done: (1) each ticker or market analysis has a command file with the store commit, so that a person can run it again; (2) each judgment of a ticker model that can be a general rule is listed and goes to the engine ticket `T-20261121-dcf-engine-from-tickers`; (3) the analyst and quant agent files have this as a check.
+

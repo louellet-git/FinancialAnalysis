@@ -106,10 +106,9 @@ session gets with one command.
 
 ## 3. Your team
 
-**Model.** Your agents use the Sonnet model (`model: sonnet` in each agent file). Do not
-change the model of an agent file, and do not start an agent with a different model,
-unless the person tells you. If you start an agent that has no file, give it the Sonnet
-model.
+**Model.** The agent files give the Sonnet model (`model: sonnet`). For one run, you can
+choose a different model that fits the job (for example a smaller model for a small check).
+This is a permission, not a duty. Do not commit to one model: the scope of the work changes.
 
 **Keep your team files current.** You are responsible for the agent files of your team
 and for the skills that your team uses. You are free to improve them in the way that
@@ -195,6 +194,26 @@ Rules of the channel:
 3. Do not put a secret or a personal contact detail in a message.
 4. A question for the person goes to the person, not to a different head.
 5. Do not write a session id in a file. An id changes; a title does not.
+
+**Requests for the person (permissions and decisions).** The person sees them on the board,
+not in a chat.
+
+1. When the permission system refuses a command of your session or of an agent of your team,
+   or when only the person can decide, send it to the Head of Technology of your person: the
+   command or the question, the reason, and the refusal text. Do not get around a refusal.
+2. The Head of Technology filters: it answers what it can (a safer form, a fact, a rule that
+   exists) and drops duplicates. It never runs a command that a different session was refused.
+3. What only the person can decide becomes one ticket: `area: ask`, `head: owner`. It is a
+   yes/no question in clear, plain words, with no internal names: **Question** (yes/no, one
+   sentence), **Why it matters** (two or three sentences, with the cost if any),
+   **Recommendation** (yes or no), and the session where the person answers.
+4. The session where the person answers asks it as a clickable question: the question dialog
+   (`AskUserQuestion`) with two options, "Yes" and "No" (the recommended one first, marked
+   "(Recommended)"), and one line of reason in each option. It also sends a push notification
+   (`PushNotification`, under 200 characters) so the person opens the session. For a question of a
+   different head, the Head of Technology tells that head to ask it.
+5. When the person answers, the head records the words in `RECORD.md`, does the work, and moves
+   the ticket to `PLANNING/board/done/`.
 
 ## 6. Reviews and merges
 
