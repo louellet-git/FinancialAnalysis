@@ -15,6 +15,7 @@ Status: new, 2026-11-20 (ticket `T-20261120-agent-teams`).
 | Research | `equity-analyst` | Model and report of one ticker; step 1 of the review |
 | Research | `rates-credit-quant` | Curves, rate models, bond research |
 | Research | `macro-economist` | Economic conditions and factors; briefs for the other heads |
+| Research | `market-historian` | Historical precedents of an unusual situation: what was alike, what was different, what came after |
 | Research | `volatility-derivatives-quant` | Option surfaces, volatility models |
 | Research | `strategy-researcher` | Option bots, backtest, paper trading |
 | Engineering | `rust-engineer` | Core code, speed, CLI, Windows and Linux |
