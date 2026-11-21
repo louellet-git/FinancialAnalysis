@@ -255,7 +255,11 @@ agent.
    one for each line. Keep code changes and document changes in separate pull requests
    when the documents can go first with no check.
 4. After a pull request with code is open, push again only to correct a finding or a
-   failed check. Each push starts a new run.
+   failed check. Each push starts a new run. The path filter reads the whole diff of the
+   pull request, not the one commit, so a documents-only or record-only push to a pull
+   request whose diff already touches `rust/` still runs the check. Put a record or a
+   document commit on a branch with no open code pull request, or hold it until that
+   pull request merges.
 5. Re-run a failed check one time at most. No empty commit, and no close and reopen of a
    pull request, to start a check.
 6. Do not add a workflow, a job, a matrix, a schedule or a trigger, and do not remove the
