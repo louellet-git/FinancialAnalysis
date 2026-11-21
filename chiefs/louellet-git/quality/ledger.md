@@ -76,3 +76,6 @@
 | acquisition charge cycle 2, validator | 2026-11-21 | `claude/dcf-acq-charge-limits` (4566c41): PASS-WITH-NOTES | about 45k (measured) | code check running |
 | strategy gate, auditor | 2026-11-21 | `claude/dcf-engine-backtest` (f24f518): PASS-WITH-NOTES (each number reproduces; commit order consistent) | about 52k (measured) | |
 | long-history findings, fix check | 2026-11-21 | econ/long-history-findings (21676f8): head check; R3 committed as written after the first run; run of record named; PASS-WITH-NOTES | small (head only) | |
+| acquisition charge, cycle 2 verdict | 2026-11-21 | `claude/dcf-acq-charge-limits` (4566c41): validator PASS-WITH-NOTES, code-reviewer (Haiku) REVISE (F-1: form chosen after the half-1 scores); head decision cycle 2 of 2: accept on the pairing reason and the swapped halves; PASS-WITH-NOTES | about 60k code (measured) | decision text for the PR body sent |
+| harness cycle 2, validator | 2026-11-21 | `claude/backtest-environment` (aaa1ba1): PASS-WITH-NOTES; M1-M4 closed with real plants; N1 (git failure fails open), N5 (prior_variants 5 against 14 runs) | about 79k (measured) | code reviewer running |
+| fa dcf market code gate | 2026-11-21 | `claude/dcf-market-level` (d444206, diff from c8ceaac): code-reviewer started | running | |
