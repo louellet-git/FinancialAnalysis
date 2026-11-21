@@ -63,3 +63,24 @@ Done: a standing rule of this area: each model change and each strategy has a po
 ## 2026-11-21 about 04:50 UTC (answer to a question of this head)
 Question: if T1 does not pass by 2026-11-26, what happens on 2026-11-27? Answer: "No trades until T1 passes (Recommended)".
 Done: the ticket `T-20261121-blind-projection-test` has the decision and the written test of the T1 fix.
+
+## 2026-11-21 14:25 UTC (chat)
+Words: "We need a backtesting engine, then we will need to use our DCF engine across a variety of stocks and different points in time in combination with our backtesting engine until we find a positive expected return, any questions? We need rust for this in particular so that we can optimize our run times"
+Answers to two questions: the hold-out: "Any data that is ahead of the point in time, since we are dealing with stochastic processes they must be F_t adapted. If we're simulating a DCF in 2004, we don't use info from 2005"; the measure: "We effectively just need to know if the stock is a buy or a short, and for how long or until what price point, then we sell or buy back accordingly and that's our profit over that time period. Accounting for reality after trade would have supposedly been plaved".
+Done: ticket `T-20261121-trade-level-backtest` (signal panel, trade simulator, walk-forward rule choice).
+
+## 2026-11-21 about 14:30 UTC (chat and an answer)
+Words: "You likely need further back data, as far back as possible". Answer to the source question: "Have head of tech look into it, do what you can I mean time. This is a model calibration/expandion exercise".
+Done: data request to the Head of Technology (prices before 2016, delisted companies, index members, financials before 2009, total return; terms, cost, a private store); question to the Head of Economics on the market engine in 16 more countries (Jorda-Schularick-Taylor); the T1 revenue fix started (fundamentals from 2009, no price needed).
+
+## 2026-11-21 about 14:40 UTC (relayed by the Head of Economics)
+Words (the person's answer on the JST data, as relayed): Yes, a local copy only; only results go in the repo; a live trade on a JST result needs the permission of the JST team first.
+Done: the reader waits for the frozen design (frozen 31ed025, branch `econ/jst-design`); the condition goes into the test file.
+
+## 2026-11-21 about 14:45 UTC (chat)
+Words: "Also did you ever get me that 3 page doc on why the market has tanked this week? I want a valuation, so each piece of the overall drop should be attributable to a piece of valuation. If it's easier to do company by company then so be it, I'd like it on the S&P100. You can hold off on other work for now and focus on this."
+Done: no, the findings file of `T-20261120-valuation-move-attribution` was not written. New ticket `T-20261121-sp100-week-attribution` (first item). The trade-level engine and the T1 revenue fix are paused, with their work committed and a status note on each ticket.
+
+## 2026-11-21 about 15:10 UTC (chat)
+Words: "Start w S&P10 / Updating data should be relatively easy, speak w tech / Make sure that whenever you stop work, just make sure that it all goes on the board for later and just report on where it is, to help out future users."
+Done: the document starts with the 10 largest companies of the S&P 100 (one weight for each company). A standing rule of this head: each pause puts the state of the work on the board (the ticket says what is done, what is not, the next step), and the report says where it is.
