@@ -7,13 +7,13 @@ Model document: `docs/models/implied-and-attribute.md`.
 The `par` curve is the NSS fit to the Treasury par yields of 8 tenors: 1, 2, 3, 5, 7, 10, 20 and 30 years
 (`PAR_TENORS`). The fit is not used beyond 30 years. The model needs the 10-year zero yield and the curve to 30 years
 only. Fit-quality limit: `PAR_FIT_MAX_RMSE_BP` = 5.0 bp (root-mean-square error of the fit, unit: basis point).
-A fit above the limit is not used. This limit is being added to the code by another change. It is a rule of the
-code that will be there.
+A fit above the limit is not used: the command stops with the error of the fit. This is a rule of the code
+(`rust/src/dcf/auto.rs`, `par_fit_rmse` and `load_curve_par`).
 
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Attribution, premium series | `rust/src/dcf/auto.rs` | `PAR_TENORS`, `par_fit`, `PAR_FIT_MAX_RMSE_BP` (to be added) |
+| Attribution, premium series | `rust/src/dcf/auto.rs` | `PAR_TENORS`, `par_fit`, `PAR_FIT_MAX_RMSE_BP`  |
 
 ## Alternatives considered
 Not known. No other limit was tested in a file that was read.

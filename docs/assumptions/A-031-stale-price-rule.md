@@ -7,7 +7,7 @@ Model document: `docs/models/implied-and-attribute.md`.
 For a date, the last close of a ticker on or before the date is stale when it is older than the last SPY close on or
 before the same date. A stale close at D1 or D2 takes the ticker out of every sum of the bridge. The row and the CSV
 keep the ticker with a flag. In `fa dcf premium-series`, the same rule takes the ticker out of ret_w. The list of the
-tickers left out is printed (rule of the code, being added by another change).
+tickers left out is printed by `fa dcf attribute`. `fa dcf premium-series` does not print the list.
 
 ## Where used
 | Model | File | Parameter name |
