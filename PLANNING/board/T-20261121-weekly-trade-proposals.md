@@ -38,3 +38,8 @@ word for word: "When the VIX closes at 25 or more (the trigger of analysis/macro
 stated P10 and P5 are not reliable; in the three stress windows of 2024-2026 the tail below P10 was 20-33%." Also the
 backtested figures of the rule: hit rate 50.8% (+3.4 points over the base rate), 13-week P10 -15.2% and P5 -20.7%,
 the worst year 2025. No size rule for stress now (a rule fitted to three seen windows has no test).
+
+**Status 2026-11-21 (strategy gate cycle 2: PASS-WITH-NOTES on the negative result):** on prices with the split basis,
+rule A-009 fails its decision rule (R1-hold -1.10 points a year against the equal weight, t -0.58, 3 of 9 years;
+`analysis/priors/dcf_engine_backtest_rerun_2026-11-21.md`). No weekly proposal uses A-009, and no weekly proposal has
+a backed rule now. A new rule needs its own test, written before its run. Luc chooses the next path.

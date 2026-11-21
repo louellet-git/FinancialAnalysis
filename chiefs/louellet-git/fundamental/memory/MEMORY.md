@@ -30,6 +30,8 @@ person decided. Keep this file below 60 lines. Started 2026-11-20. Dream pass: 2
 - A backtest of the model uses a parameter table cut before its first year (in-sample table: +0.9
   points a year of look-ahead, 2026-11-21).
 - Compare a stock strategy with the equal weight of the SAME scored list, by year, with a t value.
+- 2026-11-21, after the split fix: the stock-level DCF rank shows NO EVIDENCE of an edge (A-009 R1-hold -1.10, t -0.58);
+  the market-level premium passes 1893-2016 (PR 133). Weekly stock trades have no backed rule.
 - The price files are split-adjusted to TODAY. A past value per share against a past price needs the share basis of
   the vintage (CRIT F1, 2026-11-21: BKNG 25x; R1 +6.56 became +0.71). A truncation test cannot see it.
 - No claim before a run supports it; rerun two numbers of an agent before the gate.
