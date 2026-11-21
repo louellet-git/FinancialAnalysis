@@ -69,3 +69,10 @@ and AA. Seed 7, 300 paths, 10 bp. Each run once, as new variants 15 and later of
    entry and an exit trade. It is built and tested before the reruns. Order of the code: the split code of the
    Head of Technology (`market::splits`) merges first; this branch then uses it and deletes `dcf::splits`. If the
    reruns run before that switch, they run again once after it, and the two outputs must be byte-identical.
+7. Change before any rerun (2026-11-21): the table is made again with the code of the run (`fa dcf calibrate --cache
+   <store 58e54a2> --cut 2016 --no-bands`), because the mapping of `main` changed since the first table (for
+   example the capex of pull request 122): 1,456 companies and 9,860 company-years, against 1,452 and 9,834. File
+   `trading/hypotheses/data/process_priors_cut2016.toml`, SHA-256 7ef838b06475b7b4 (without the `command =` line:
+   4ea1c17c7be14563). The reason is the same code for the table and the model, not a result. The list of the runs is
+   `trading/hypotheses/data/a009_list.txt` (427 tickers: the 432 scored, less BALL, EW, EXE, GPN and HWM; GSAT is not
+   in the list). The primary run R1-hold is registered as `trading/hypotheses/a009-weekly-hold-v1.toml`.
