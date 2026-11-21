@@ -159,3 +159,4 @@
 | cycle-model brief fixes | 2026-11-21 | econ/brief-cycle-models (5823444): head check of B1, B2, NFCI; PASS-WITH-NOTES | small (head only) | |
 | premium-series PIT on main | 2026-11-21 | claude/premium-series-pit-main (d6fc735): head check of P1-P4 (split basis cache, par path, main commit, five dates, six controls); PASS-WITH-NOTES; the run of record needs a cut table or "parameters in-sample" | small (head only) | |
 | usage log | 2026-11-21 | claude/usage-log (ece8f08): code-reviewer (Haiku) PASS (privacy on the real transcript; counts equal to jq; leak mutant caught); verdict PASS-WITH-NOTES | measured with the batch | |
+| stale bridge fix | 2026-11-22 | claude/premium-series-stale-bridge (0545ce8): head read of the 4-line fix and its fixed-answer test (found by my MIN note "mark_stale returns 0 silently"); PASS | small (head only) | |
