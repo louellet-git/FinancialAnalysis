@@ -33,6 +33,8 @@ pub struct SecData {
     /// (filing date, ratio): a later filing gives a period again with a share count that is 1.8 times or more, or
     /// 0.55 times or less, of the first filing (the earlier periods are changed by a split).
     pub recasts: Vec<(String, f64)>,
+    /// (period end, weighted average basic shares) as first filed, sorted by end date.
+    pub counts: Vec<(String, f64)>,
 }
 
 pub fn sec_data_from_json(v: &serde_json::Value) -> SecData {
@@ -46,8 +48,9 @@ pub fn sec_data_from_json(v: &serde_json::Value) -> SecData {
         }
     }
     let mut first: Option<String> = None;
-    for group in ["dei", "us-gaap"] {
-        for tag in v["facts"][group].as_object().into_iter().flat_map(|m| m.values()) {
+    // All groups of facts (a filer can have only `ffd`, as the current CORE has).
+    for group in v["facts"].as_object().into_iter().flat_map(|m| m.values()) {
+        for tag in group.as_object().into_iter().flat_map(|m| m.values()) {
             for unit in tag["units"].as_object().into_iter().flat_map(|m| m.values()) {
                 for f in unit.as_array().map(Vec::as_slice).unwrap_or(&[]) {
                     if let Some(d) = f["filed"].as_str() {
@@ -59,34 +62,90 @@ pub fn sec_data_from_json(v: &serde_json::Value) -> SecData {
             }
         }
     }
-    SecData { cover: by_date.into_iter().collect(), tag: sec_facts_from_json(v), first_filed: first, recasts: recasts_from_json(v) }
+    SecData { cover: by_date.into_iter().collect(), tag: sec_facts_from_json(v), first_filed: first, recasts: recasts_from_json(v), counts: counts_from_json(v) }
 }
 
-/// The recasts of the weighted average share counts (see `SecData::recasts`).
-pub fn recasts_from_json(v: &serde_json::Value) -> Vec<(String, f64)> {
-    let mut out: Vec<(String, f64)> = Vec::new();
-    for tag in ["WeightedAverageNumberOfSharesOutstandingBasic", "WeightedAverageNumberOfDilutedSharesOutstanding", "WeightedAverageNumberOfSharesOutstandingBasicAndDiluted"] {
-        let mut groups: BTreeMap<(String, String), Vec<(String, f64)>> = BTreeMap::new();
-        for f in v["facts"]["us-gaap"][tag]["units"]["shares"].as_array().map(Vec::as_slice).unwrap_or(&[]) {
-            if let (Some(s), Some(e), Some(x), Some(fl)) = (f["start"].as_str(), f["end"].as_str(), f["val"].as_f64(), f["filed"].as_str()) {
-                if x > 0.0 {
-                    groups.entry((s.to_string(), e.to_string())).or_default().push((fl.to_string(), x));
-                }
+const WEIGHTED_TAGS: [&str; 3] = ["WeightedAverageNumberOfSharesOutstandingBasic", "WeightedAverageNumberOfDilutedSharesOutstanding", "WeightedAverageNumberOfSharesOutstandingBasicAndDiluted"];
+
+/// The weighted average share counts of a tag by period: (start, end) -> [(filed, value, form)]. A value of an
+/// 8-K is left out (PNFP: a pro forma value of the merger, filed with the 10-K).
+fn weighted_groups(v: &serde_json::Value, tag: &str) -> BTreeMap<(String, String), Vec<(String, f64)>> {
+    let mut groups: BTreeMap<(String, String), Vec<(String, f64)>> = BTreeMap::new();
+    for f in v["facts"]["us-gaap"][tag]["units"]["shares"].as_array().map(Vec::as_slice).unwrap_or(&[]) {
+        if f["form"].as_str().is_some_and(|x| x.starts_with("8-K")) {
+            continue;
+        }
+        if let (Some(s), Some(e), Some(x), Some(fl)) = (f["start"].as_str(), f["end"].as_str(), f["val"].as_f64(), f["filed"].as_str()) {
+            if x > 0.0 {
+                groups.entry((s.to_string(), e.to_string())).or_default().push((fl.to_string(), x));
             }
         }
-        for g in groups.values_mut() {
-            g.sort_by(|a, b| a.0.cmp(&b.0));
-            let (_, first) = g[0].clone();
-            for (filed, x) in g.iter().skip(1) {
+    }
+    for g in groups.values_mut() {
+        g.sort_by(|a, b| a.0.cmp(&b.0));
+    }
+    groups
+}
+
+/// The recasts of the weighted average share counts (see `SecData::recasts`). A later filing counts only if its
+/// filing date differs from the first one, and a ratio counts only if at least 2 periods show it (within 5%).
+pub fn recasts_from_json(v: &serde_json::Value) -> Vec<(String, f64)> {
+    // (filed, ratio, period)
+    let mut cand: Vec<(String, f64, (String, String, String))> = Vec::new();
+    for tag in WEIGHTED_TAGS {
+        for ((s, e), g) in weighted_groups(v, tag) {
+            let (first_filed, first) = g[0].clone();
+            for (filed, x) in g.iter().filter(|(d, _)| *d != first_filed) {
                 let r = x / first;
                 if r >= 1.8 || r <= 0.55 {
-                    out.push((filed.clone(), r));
+                    cand.push((filed.clone(), r, (tag.to_string(), s.clone(), e.clone())));
                 }
             }
         }
     }
-    out.sort_by(|a, b| a.0.cmp(&b.0));
+    let mut out: Vec<(String, f64)> = Vec::new();
+    for (filed, r, _) in &cand {
+        let mut periods: Vec<&(String, String, String)> = cand.iter().filter(|(_, r2, _)| (r2 / r - 1.0).abs() <= 0.05).map(|(_, _, p)| p).collect();
+        periods.sort();
+        periods.dedup();
+        if periods.len() >= 2 {
+            out.push((filed.clone(), *r));
+        }
+    }
+    out.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.total_cmp(&b.1)));
+    out.dedup();
     out
+}
+
+/// The weighted average basic share counts as first filed: (period end, value), sorted by end date.
+pub fn counts_from_json(v: &serde_json::Value) -> Vec<(String, f64)> {
+    let mut by_end: BTreeMap<String, (String, f64)> = BTreeMap::new();
+    for tag in &WEIGHTED_TAGS[..1] {
+        for ((_, e), g) in weighted_groups(v, tag) {
+            let (filed, x) = g[0].clone();
+            let slot = by_end.entry(e).or_insert((filed.clone(), x));
+            if filed < slot.0 {
+                *slot = (filed, x);
+            }
+        }
+    }
+    by_end.into_iter().map(|(e, (_, x))| (e, x)).collect()
+}
+
+/// A reverse or forward row has a flat count series when the count of the period before the ex date and the counts
+/// of the periods that end 95 to 300 days after it are within 10% of each other. No count after it: not flat.
+pub fn flat_across(counts: &[(String, f64)], ex: &str) -> bool {
+    let Some(exd) = days(ex) else { return false };
+    let dd = |e: &str| days(e).unwrap_or(i32::MIN);
+    let Some((_, before)) = counts.iter().rfind(|(e, _)| dd(e) < exd && exd - dd(e) <= 400) else { return false };
+    let afters: Vec<f64> = counts.iter().filter(|(e, _)| dd(e) >= exd + 95 && dd(e) <= exd + 300).map(|(_, v)| *v).collect();
+    !afters.is_empty() && afters.iter().all(|a| (0.9..=1.1).contains(&(a / before)))
+}
+
+/// A recast of the share counts that agrees with the factor (5%): a filing within 400 days after the ex date.
+pub fn recast_confirms_row(recasts: &[(String, f64)], ex: &str, factor: f64) -> bool {
+    let Some(exd) = days(ex) else { return false };
+    recasts.iter().any(|(filed, x)| days(filed).is_some_and(|d| d > exd && d <= exd + 400) && (x / factor - 1.0).abs() <= 0.05)
 }
 
 /// The ratios that a company uses for a split: (new, old). 3 is 3:1 forward, (1, 3) is 1:3 reverse.
@@ -241,6 +300,7 @@ pub fn rules_for_ticker(ticker: &str, alpaca: &[Split], sec: &SecData, price_las
             rows.push(SplitRow::new(s, SRC_MATCH, status, false));
             continue;
         }
+        let by_recast = recast_confirms_row(&sec.recasts, &s.ex_date, s.factor);
         let unconfirmed = |s: Split| SplitRow::new(s.clone(), if s.sec_check == "no_sec_fact" { SRC_NO_FACT } else { SRC_UNCONFIRMED }, status, false);
         match evidence(&sec.cover, &s.ex_date, s.factor) {
             Evidence::Confirms => rows.push(SplitRow::new(s, SRC_COVER, status, false)),
@@ -251,12 +311,17 @@ pub fn rules_for_ticker(ticker: &str, alpaca: &[Split], sec: &SecData, price_las
                     events.push(ev(&c, "corrected", format!("cover count steps {r:.4} times; Alpaca factor {} replaced by {n}:{o}", s.factor)));
                     rows.push(SplitRow::new(c, SRC_CORRECTED, status, false));
                 }
+                _ if is_simple(s.factor) && by_recast => rows.push(SplitRow::new(s, SRC_RECAST, status, false)),
                 _ if is_simple(s.factor) => {
                     events.push(ev(&s, "kept", format!("simple factor; the cover count steps {r:.4} times (a merger or an offering can explain it): not confirmed")));
                     rows.push(unconfirmed(s));
                 }
                 _ => events.push(ev(&s, "dropped", format!("cover count steps {r:.4} times: not the factor, and the factor is not a simple ratio"))),
             },
+            Evidence::TooNew | Evidence::NoCover if is_simple(s.factor) && by_recast => rows.push(SplitRow::new(s, SRC_RECAST, status, false)),
+            Evidence::TooNew | Evidence::NoCover if is_simple(s.factor) && s.factor < 1.0 && flat_across(&sec.counts, &s.ex_date) => {
+                events.push(ev(&s, "dropped", "the share count series is flat across the reverse split: a spin-off or no split".into()));
+            }
             Evidence::TooNew | Evidence::NoCover if is_simple(s.factor) => {
                 events.push(ev(&s, "kept", "simple factor; no cover count to check it: not confirmed".into()));
                 rows.push(unconfirmed(s));
@@ -282,6 +347,10 @@ pub fn rules_for_ticker(ticker: &str, alpaca: &[Split], sec: &SecData, price_las
             continue;
         }
         if !recast_confirms(&sec.recasts, d1, d2, r) {
+            continue;
+        }
+        if corrections.iter().any(|c| c.ticker == ticker && c.ex_date == *e2 && c.action == "drop") {
+            events.push(Event { ticker: ticker.into(), ex_date: e2.clone(), factor: n / o, what: "dropped", why: "correction file: drop (cover step)".into() });
             continue;
         }
         let explained = rows.iter().any(|x| days(&x.split.ex_date).is_some_and(|d| d > d1 && d <= d2 + 10));
@@ -315,7 +384,7 @@ mod tests {
         v.iter().map(|(d, x)| (d.to_string(), *x)).collect()
     }
     fn data(c: &[(&str, f64)]) -> SecData {
-        SecData { cover: cover(c), tag: vec![], first_filed: Some("2010-01-01".into()), recasts: vec![] }
+        SecData { cover: cover(c), tag: vec![], first_filed: Some("2010-01-01".into()), recasts: vec![], counts: vec![] }
     }
     fn run(a: &[Split], d: &SecData) -> (Vec<SplitRow>, Vec<Event>) {
         rules_for_ticker("T", a, d, Some("2026-11-19"), "2009-01-01", &[])
@@ -425,15 +494,79 @@ mod tests {
 
     #[test]
     fn recasts_of_the_share_counts() {
-        let v = serde_json::json!({"facts": {"us-gaap": {"WeightedAverageNumberOfSharesOutstandingBasic": {"units": {"shares": [
-            {"start": "2017-01-01", "end": "2017-03-31", "val": 100, "filed": "2017-05-01"},
-            {"start": "2017-01-01", "end": "2017-03-31", "val": 200, "filed": "2018-05-01"},
-            {"start": "2017-04-01", "end": "2017-06-30", "val": 100, "filed": "2017-08-01"},
-            {"start": "2017-04-01", "end": "2017-06-30", "val": 101, "filed": "2018-08-01"}]}}}}});
-        assert_eq!(recasts_from_json(&v), vec![("2018-05-01".to_string(), 2.0)]);
+        let w = |s: &str, e: &str, x: u64, f: &str, form: &str| serde_json::json!({"start": s, "end": e, "val": x, "filed": f, "form": form});
+        let doc = |list: Vec<serde_json::Value>| serde_json::json!({"facts": {"us-gaap": {"WeightedAverageNumberOfSharesOutstandingBasic": {"units": {"shares": list}}}}});
+        let v = doc(vec![
+            w("2017-01-01", "2017-03-31", 100, "2017-05-01", "10-Q"),
+            w("2017-01-01", "2017-03-31", 200, "2018-05-01", "10-Q"),
+            w("2017-04-01", "2017-06-30", 100, "2017-08-01", "10-Q"),
+            w("2017-04-01", "2017-06-30", 202, "2018-08-01", "10-Q"),
+            w("2017-07-01", "2017-09-30", 100, "2017-11-01", "10-Q"),
+            w("2017-07-01", "2017-09-30", 101, "2018-11-01", "10-Q"),
+        ]);
+        assert_eq!(recasts_from_json(&v), vec![("2018-05-01".to_string(), 2.0), ("2018-08-01".to_string(), 2.02)]);
         assert!(recast_confirms(&[("2018-05-01".into(), 2.0)], days("2018-01-31").unwrap(), days("2018-04-30").unwrap(), 2.05));
         assert!(!recast_confirms(&[("2018-05-01".into(), 2.0)], days("2018-01-31").unwrap(), days("2018-04-30").unwrap(), 3.0));
         assert!(!recast_confirms(&[("2017-05-01".into(), 2.0)], days("2018-01-31").unwrap(), days("2018-04-30").unwrap(), 2.0), "a filing before the step");
+        // one period with a change is no recast
+        let one = doc(vec![w("2017-01-01", "2017-03-31", 100, "2017-05-01", "10-Q"), w("2017-01-01", "2017-03-31", 200, "2018-05-01", "10-Q")]);
+        assert!(recasts_from_json(&one).is_empty());
+        // PNFP: a pro forma value of an 8-K and a value with the same filing date are no recast
+        let pnfp = doc(vec![
+            w("2025-01-01", "2025-12-31", 76_863_389, "2026-03-02", "10-K"),
+            w("2025-01-01", "2025-12-31", 139_296_000, "2026-03-02", "10-K"),
+            w("2024-01-01", "2024-12-31", 77_000_000, "2025-03-01", "10-K"),
+            w("2024-01-01", "2024-12-31", 140_000_000, "2026-03-03", "8-K"),
+            w("2023-01-01", "2023-12-31", 77_000_000, "2024-03-01", "10-K"),
+            w("2023-01-01", "2023-12-31", 140_000_000, "2026-03-03", "8-K"),
+        ]);
+        assert!(recasts_from_json(&pnfp).is_empty());
+    }
+
+    #[test]
+    fn a_recast_confirms_a_row_and_a_flat_series_drops_a_reverse_row() {
+        // GSAT: 1:15, no cover count, the periods before are recast
+        let mut d = data(&[]);
+        d.recasts = vec![("2025-08-07".into(), 1.0 / 15.0), ("2025-11-06".into(), 0.0667)];
+        let (rows, ev) = run(&[sp("2025-02-11", 1.0, 15.0)], &d);
+        assert_eq!((rows.len(), rows[0].source.as_str(), ev.len()), (1, SRC_RECAST, 0));
+        // IDT: a reverse row with a flat count series
+        let mut f = data(&[]);
+        f.counts = vec![("2018-01-31".into(), 24.6), ("2018-04-30".into(), 24.65), ("2018-07-31".into(), 24.66)];
+        let (rows, ev) = run(&[sp("2018-03-27", 1.0, 2.0)], &f);
+        assert!(rows.is_empty());
+        assert!(ev[0].why.contains("flat"));
+        // the same series with a step stays; so does a series with no period after the ex date
+        let mut g = data(&[]);
+        g.counts = vec![("2018-01-31".into(), 49.2), ("2018-07-31".into(), 24.6)];
+        assert_eq!(run(&[sp("2018-03-27", 1.0, 2.0)], &g).0.len(), 1);
+        f.counts.truncate(1);
+        assert_eq!(run(&[sp("2018-03-27", 1.0, 2.0)], &f).0.len(), 1);
+        // a forward row is not tested by this rule
+        let mut h = data(&[]);
+        h.counts = vec![("2018-01-31".into(), 24.6), ("2018-07-31".into(), 24.6)];
+        assert_eq!(run(&[sp("2018-03-27", 2.0, 1.0)], &h).0.len(), 1);
+    }
+
+    #[test]
+    fn first_filing_date_from_any_group() {
+        // CORE: the facts have only the group `ffd`
+        let v = serde_json::json!({"facts": {"ffd": {"X": {"units": {"USD": [{"end": "2026-09-30", "val": 1, "filed": "2026-11-16"}]}}}}});
+        assert_eq!(sec_data_from_json(&v).first_filed.as_deref(), Some("2026-11-16"));
+        let mut d = data(&[]);
+        d.first_filed = Some("2026-11-16".into());
+        assert!(run(&[sp("2016-06-28", 2.0, 1.0)], &d).0.is_empty());
+    }
+
+    #[test]
+    fn a_correction_drops_a_cover_step_row() {
+        let mut d = data(&[("2026-01-31", 77.0), ("2026-04-30", 151.0), ("2026-07-31", 151.1)]);
+        d.recasts = vec![("2026-05-06".into(), 1.96)];
+        assert_eq!(run(&[], &d).0.len(), 1);
+        let c = parse_corrections("ticker,ex_date,action,old_rate,new_rate,reason\nT,2026-04-30,drop,1,1,merger\n").unwrap();
+        let (rows, ev) = rules_for_ticker("T", &[], &d, None, "2009-01-01", &c);
+        assert!(rows.is_empty());
+        assert!(ev[0].why.contains("correction file"));
     }
 
     #[test]

@@ -20,6 +20,7 @@ pub const HEADER: &str = "ticker,ex_date,old_rate,new_rate,factor,kind,sec_check
 /// reply, no id, no announcement, record or payable date.
 pub const SRC_MATCH: &str = "alpaca corporate actions; checked against SEC";
 pub const SRC_COVER: &str = "alpaca corporate actions; confirmed by SEC cover-count step";
+pub const SRC_RECAST: &str = "alpaca corporate actions; confirmed by SEC share-count recast";
 pub const SRC_NO_FACT: &str = "alpaca corporate actions; no SEC fact";
 pub const SRC_UNCONFIRMED: &str = "alpaca corporate actions; not confirmed by SEC";
 pub const SRC_STEP: &str = "SEC cover-count step";
