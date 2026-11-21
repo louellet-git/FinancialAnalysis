@@ -31,6 +31,8 @@ pub enum Record {
 }
 
 pub const DECIDED_2026_11_20: &str = "decided 2026-11-20";
+/// A record of an option that is measured and not adopted (A-010).
+pub const MEASURED_NOT_ADOPTED: &str = "measured 2026-11-21, not adopted";
 pub const CONVENTION: &str = "convention, not studied";
 
 /// One assumption.
@@ -80,6 +82,7 @@ pub static TABLE: &[Assumption] = &[
     row!("A-001", "one long-run growth (fade level and terminal mean)", "long_run", |r| r.long_run.map_or("off".into(), pct1), "long_run", Record::File("A-001-terminal-growth.md"), DECIDED_2026_11_20, &["growth: long run", "terminal growth"]),
     row!("A-002", "acquisition charge (share w of the mean spend)", "acq_w", |r| flag_text("acq_w", r.acq_w), "acq_w", Record::File("A-002-acquisition-charge.md"), DECIDED_2026_11_20, &["acquisition charge"]),
     row!("A-002", "acquisition charge fades with the credited growth", "acq_fade", |r| flag_text("acq_fade", r.acq_fade), "acq_fade", Record::File("A-002-acquisition-charge.md"), DECIDED_2026_11_20, &[]),
+    row!("A-010", "acquisition charge is a draw with the spend variation of the company (an option, off)", "acq_cv", |r| flag_text("acq_cv", r.acq_cv), "acq_cv", Record::File("A-010-acquisition-draw.md"), MEASURED_NOT_ADOPTED, &["acquisition charge"]),
     row!("A-003", "floor on the growth of a base year that fell", "last_floor", |r| r.last_floor.map_or("off".into(), |x| format!("{:.0}%", x * 100.0)), "last_floor", Record::File("A-003-base-year-decline-floor.md"), DECIDED_2026_11_20, &[]),
     row!("none", "margin: weight of the table in the shock size (an option, off)", "margin_sigma_nu", |r| r.margin_sigma_nu.map_or("off".into(), |x| format!("{x}")), "margin_sigma_nu", Record::None, CONVENTION, &[]),
     row!("none", "statutory tax rate (when the effective rate is not stable)", "none", |r| pct2(r.statutory_tax), "statutory_tax", Record::None, CONVENTION, &[]),
@@ -454,7 +457,7 @@ mod tests {
             assert!(block.contains(&format!("{}:", a.field)), "the field '{}' is not set in the block `impl Default for Rules` of {}", a.field, a.file);
             assert_eq!(a.id == "none", !matches!(a.record, Record::File(_)));
             if a.id != "none" {
-                assert_eq!(a.state, DECIDED_2026_11_20);
+                assert!(a.state == DECIDED_2026_11_20 || a.state == MEASURED_NOT_ADOPTED, "{}: {}", a.name, a.state);
             }
         }
     }

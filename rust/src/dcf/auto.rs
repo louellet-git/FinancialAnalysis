@@ -160,6 +160,21 @@ pub struct Rules {
     pub last_floor: Option<f64>,
     /// The weight (in years) of the table shock in the shock size of the margin. `None`: `own_sigma_nu`.
     pub margin_sigma_nu: Option<f64>,
+    /// The acquisition charge is a draw, not a fixed ratio: its size has the variation of the company's own spend history
+    /// (the coefficient of variation of the ratios of the margin history years, `acq_cv_of`). The mean stays. Off: the
+    /// fixed charge of A-002 (`--rules acq_cv=0`).
+    pub acq_cv: bool,
+}
+
+/// The population standard deviation of the spend ratios of a company (`acquisitions_net_of_cash` / revenue, one value for
+/// each year of the margin history). 0 if there are fewer than 2 values.
+pub fn acq_sd_of(vals: &[f64]) -> f64 {
+    let n = vals.len();
+    if n < 2 {
+        return 0.0;
+    }
+    let m = vals.iter().sum::<f64>() / n as f64;
+    (vals.iter().map(|v| (v - m).powi(2)).sum::<f64>() / n as f64).sqrt()
 }
 
 impl Default for Rules {
@@ -204,6 +219,7 @@ impl Default for Rules {
             acq_fade: true,
             last_floor: Some(0.0),
             margin_sigma_nu: None,
+            acq_cv: false,
             growth_shift: 0.0,
             margin_shift: 0.0,
         }
@@ -1306,10 +1322,17 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
     let _ = writeln!(tw, "[process.sbc]\nrole = \"sbc\"\nstart = {}\ntarget = {}\nshape = \"ramp\"\nramp_years = 2", f(sbc_ratio), f(sbc_ratio));
     let _ = writeln!(tw, "rationale = {}\n", q(&format!("SBC ratio: mean of the last {} years, fixed. SBC is a cost of the model (repo convention).", sbc_vals.len())));
     if acq_ratio > 0.0 {
+        // acq_cv: the year-1 charge is a draw with the standard deviation of the own spend ratios (the whole spend: the cash
+        // flow of the test pays the whole spend, the charge is the share w of its mean); the shock of later years is that
+        // size over the charge of year 1, times the charge of the year (`sigma_level`), so it falls with the fade; floor 0
+        let sd0 = if rules.acq_cv { acq_sd_of(&acq_vals) } else { 0.0 };
+        let cv = sd0 / acq_ratio;
+        let start_text = if cv > 0.0 { draw(acq_ratio, sd0, 0.0, 1.0) } else { f(acq_ratio) };
+        let shock_text = if cv > 0.0 { format!("\nsigma = 1e-9\nsigma_level = {}\nlo = 0.0\nhi = 1.0", f(cv)) } else { String::new() };
         if acq_fades {
-            let _ = writeln!(tw, "[process.charge]\nrole = \"charge\"\nstart = {}\ntarget = 0.0\nshape = \"ramp\"\nramp_years = {}", f(acq_ratio), ramp_n);
+            let _ = writeln!(tw, "[process.charge]\nrole = \"charge\"\nstart = {}\ntarget = 0.0\nshape = \"ramp\"\nramp_years = {}{}", start_text, ramp_n, shock_text);
         } else {
-            let _ = writeln!(tw, "[process.charge]\nrole = \"charge\"\nstart = {}\ntarget = {}\nshape = \"ramp\"\nramp_years = 2", f(acq_ratio), f(acq_ratio));
+            let _ = writeln!(tw, "[process.charge]\nrole = \"charge\"\nstart = {}\ntarget = {}\nshape = \"ramp\"\nramp_years = 2{}", start_text, f(acq_ratio), shock_text);
         }
         let fade_text = if acq_fades { format!(" The charge falls linearly to zero in {ramp_n} years, as the credited growth above the long-run level does (the drift of the growth).") } else { " The charge is constant.".to_string() };
         let _ = writeln!(tw, "rationale = {}\n", q(&format!("Cash paid for businesses: mean of acquisitions_net_of_cash / revenue of the last {} years, times the share f.{} The growth history keeps the bought growth, so the cost is a cost of the model (IBM review F2, F16; record A-002).", acq_vals.len(), fade_text)));

@@ -91,3 +91,27 @@ too wide); T2 to T4 pass (`analysis/priors/blind_projection_test_2026-11-21.md`)
   command), once, with the fixed model. All must pass. If the score of half 1 fails, the fix fails: report it
   to Luc; a second fix needs a new written test.
 - `fa dcf drivers IBM` stays $83.84 / $151.84 / $258.03; a changed value gets its record (`docs/assumptions/`).
+
+**Fix chosen (before the score of half 1).** The blind score of this fix is half 1 only (`fa dcf pit --cut 2015 --half 1`,
+once). The full-sample T1 and the T2 to T4 runs after it are not blind: they were designed after the first T1 failed, and
+half 0 fitted the fix.
+- Rule `acq_cv` (`--rules acq_cv=1`; default off until the score of half 1): the cash paid for businesses is a draw, not a
+  fixed ratio. Year 1 of the charge process is a draw with mean = the charge of A-002 (w times the mean spend ratio) and
+  standard deviation = the population standard deviation of the company's own spend ratios (the last 5 years, the whole
+  spend, not w times it); the shock of later years is that size over the year-1 charge, times the charge of the year (it
+  falls with the fade); the floor is 0 and the cap is 1. Numbers set by a procedure: none (no tuned number).
+- Reason (fact of half 0): the margin of the next year is not the cause. Its one-step z after the cut is 6.5% below -1.28
+  and 7.9% above +1.28 (sd 1.07), so the margin band is not thin. The thin low tail is the acquisition outflow: the real
+  free cash flow subtracts the cash paid for businesses, the model charged it as a fixed ratio. Free cash flow below P10
+  by the spend of the target year (T+1): 10.9% with spend below 0.5% of revenue, 58.4% with spend above 5%. Lower side
+  of the band that the real values need: 1.88 times the model band (T+1), upper side 1.06.
+- Alternatives on half 0 (8 half-0 runs in all, 5 of them diagnoses): (1) shock = cv of the charge, w times smaller
+  size: 17.4/73.7/8.9 at T+1; (2) whole-spend size with a floor of 0.25 on w: 15.7/75.6/8.7; (3) whole-spend size with no
+  floor on w (chosen, no extra number): 15.3/75.8/8.9. A heavier tail than the normal (lumpy deals) was not tried.
+- Revenue: no rule. No fact of half 0 or of the history gave a rule that is not a fit; revenue at T+3 (3.2/88.4/8.4 on
+  half 0) is expected to fail on half 1 too. This is reported, not fixed.
+- Half 0 before (T1 rule, `--half 0`, "all", below/inside/above at T+1, T+2, T+3):
+  free cash flow 18.6/70.3/11.1, 16.4/72.4/11.3, 15.6/72.3/12.1; revenue 5.8/84.3/9.9, 5.1/84.3/10.6, 3.2/88.7/8.1.
+  After (`acq_cv=1`): free cash flow 15.3/75.8/8.9, 11.8/79.0/9.2, 11.0/78.6/10.4; revenue 5.9/84.0/10.1, 5.1/84.3/10.6,
+  3.2/88.4/8.4. Half 0 at T+1 still has 15.3% below P10 (rule 5 to 15).
+- Files of the runs: `/tmp/claude-0/-home-user-FinancialAnalysis/5f637b6c-5bd4-5e2d-967a-4d70bf24bed7/scratchpad/t1fix/`.
