@@ -33,6 +33,7 @@ pub mod paths_cli;
 pub mod process;
 pub mod panel;
 pub mod scenarios;
+pub mod share_basis;
 pub mod stats;
 pub mod verdict;
 mod ziggurat_tables;

@@ -173,6 +173,7 @@ mod tests {
             end: "2024-12-31".into(),
             forms: Forms::Annual,
             filed: None,
+            filed_of: Vec::new(),
             values: vec![None; n],
             sources: vec![None; n],
             raw_extras: Default::default(),

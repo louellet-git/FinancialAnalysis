@@ -30,3 +30,36 @@ The rule of the entry above is in `chiefs/ORIENTATION.md`, section 6 ("Reviews a
 ## 2026-11-20 23:09 UTC (chat)
 Words: "I think you might have deleted an old ticket, that's not how we should handle those, speak w tech head"
 Done: question to the Head of Technology; the rule is now in `PLANNING/board/README.md` (a merged ticket moves to `PLANNING/board/done/` with `status: done` and `merged:`; never deleted). The two deletions on my branches are replaced by the move.
+
+## 2026-11-21 03:17 UTC (chat)
+Words: "I need you to begin working on testing your DCF engine on the back tester. That's the real value. You and the chief of economics will have to look for as long of data as you have, chief of economics could/should even consider periods of time that are outside the length of the stock market when that makes sense."
+Done: ticket `T-20261121-dcf-engine-backtest` (order 0.05); first runs of `fa portfolio backtest --strategy value-rank`; questions to the Head of Economics (market-level history) and the Head of Technology (older prices).
+
+## 2026-11-21 03:16 UTC (relayed by the Head of Quality and Risk)
+Words: "I need the report to be a trade recommendation, based on fundamentals. Trade recommendations should be sub 3 pages."
+Done: `analysis/NVDA/TRADE-RECOMMENDATION.md` (no trade), branch `claude/nvda-valuation` caa0082, in the gate.
+
+## 2026-11-21 03:47 UTC (chat)
+Words: "And every week you will need to propose 3 trades to begin on the live trader, beginning next Friday. A valuation engine will be required. Potentially a hedging engine when and if that's needed."
+Done: ticket `T-20261121-weekly-trade-proposals` (first Friday 2026-11-27); questions to the Head of Quality and Risk (the gate and the sleeve limits) and the Head of Technology (the live trader).
+
+## 2026-11-21 03:50 UTC (answers to two questions of this head)
+Size of each weekly trade: "Not sure, size of trades should be subject to the trade and that responsibility is of the head."
+Sides: "Anything".
+Done: record `docs/assumptions/A-009-weekly-trade-rule.md` (written before its test): buy, sector-neutral, 3 a week, 1/39 of the sleeve each, 13-week hold; a short waits for its test.
+
+## 2026-11-21 about 03:55 UTC (relayed by the Head of Quality and Risk)
+Words: weekly proposals "Paper 4 weeks, then live"; sleeve limits "Not sure".
+Done: the weekly ticket says paper for 2026-11-27 to 2026-12-18, live from about 2026-12-25 after Luc approves the limits.
+
+## 2026-11-21 04:30 UTC (chat)
+Words: "Ensure that before you have trades and we begin the weekly trades, that you have effectively back tested your future state blind projections using the DCF engine and using prior data. A recommendation should work at any time and point and when it doesn't, the model should have already priced it in such that it does work. You can speak w the economist about this."
+Done: ticket `T-20261121-blind-projection-test` (a condition before the first weekly trade, paper included); the test design is written before any run and goes to the Head of Economics for review.
+
+## 2026-11-21 04:30 UTC (chat)
+Words: "Backtesting is integral to our work here"
+Done: a standing rule of this area: each model change and each strategy has a point-in-time backtest, written before its run (check 6 of `valuation-quant` and `equity-analyst`); proposed to the Head of Quality and Risk as a standard for all areas.
+
+## 2026-11-21 about 04:50 UTC (answer to a question of this head)
+Question: if T1 does not pass by 2026-11-26, what happens on 2026-11-27? Answer: "No trades until T1 passes (Recommended)".
+Done: the ticket `T-20261121-blind-projection-test` has the decision and the written test of the T1 fix.

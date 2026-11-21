@@ -288,7 +288,19 @@ impl YearData {
         }
     }
 
-    pub fn from_period(registry: &Registry, p: &PeriodData) -> YearData {
+    /// The three share counts are multiplied by `F(ticker, s)` (`share_basis::Basis`), so that they are on the share basis of
+    /// today, the basis of the split-adjusted closes of the store. `s` is the FILING date of the fact that the model
+    /// takes for the count (the `filed` of the tag fact of the variable that gives the value: `PeriodData::filed_of`), not the period end: a filing issued
+    /// after a split shows the counts already adjusted for it (ASC 260), so only the splits after the filing count. When
+    /// the value has no tag fact (a formula value), `s` is the filing date of the period (`PeriodData::filed`), and
+    /// when that is missing, the period end. The cover-page share count (dei) is not used by the model. This is the one
+    /// place of the correction.
+    pub fn from_period(registry: &Registry, p: &PeriodData, basis: &super::share_basis::Basis) -> YearData {
+        // the filing date of the variable that gives the value, else the filing of the period, else the period end
+        let factor = |name: &str| -> f64 { basis.factor(p.filed_of(registry, name).or(p.filed.as_deref()).unwrap_or(&p.end)) };
+        // `shares` is the diluted count, and the count at the end of the period when there is no diluted count
+        let diluted_name = if p.get(registry, "shares_diluted").is_some() { "shares_diluted" } else { "shares_outstanding" };
+        let (f_diluted, f_out, f_basic) = (factor(diluted_name), factor("shares_outstanding"), factor("shares_basic"));
         let capex = p.get(registry, "capex_total").or_else(|| p.get(registry, "capex")).map(f64::abs);
         let interest = p.get(registry, "interest_paid").or_else(|| p.get(registry, "interest_expense")).map(f64::abs);
         let cash = p
@@ -308,12 +320,12 @@ impl YearData {
             acquisitions_second: p.get(registry, "acquisitions_net_of_cash_second").map(f64::abs),
             total_debt: p.get(registry, "total_debt"),
             cash,
-            shares: p.get(registry, "shares_diluted").or_else(|| p.get(registry, "shares_outstanding")),
+            shares: p.get(registry, "shares_diluted").or_else(|| p.get(registry, "shares_outstanding")).map(|v| v * f_diluted),
             interest_income: p.get(registry, "interest_income").map(f64::abs),
             long_term_investments: p.get(registry, "long_term_investments"),
             operating_leases: p.get(registry, "operating_lease_liabilities"),
-            shares_outstanding: p.get(registry, "shares_outstanding"),
-            shares_basic: p.get(registry, "shares_basic"),
+            shares_outstanding: p.get(registry, "shares_outstanding").map(|v| v * f_out),
+            shares_basic: p.get(registry, "shares_basic").map(|v| v * f_basic),
             dividends: p.get(registry, "dividends_paid").map(f64::abs),
         }
     }
@@ -343,8 +355,8 @@ pub struct BalanceData {
 }
 
 impl BalanceData {
-    pub fn from_period(registry: &Registry, p: &PeriodData, form: &str) -> BalanceData {
-        let y = YearData::from_period(registry, p);
+    pub fn from_period(registry: &Registry, p: &PeriodData, form: &str, basis: &super::share_basis::Basis) -> BalanceData {
+        let y = YearData::from_period(registry, p, basis);
         BalanceData {
             end: p.end.clone(),
             form: form.to_string(),
@@ -402,7 +414,12 @@ pub struct AutoInputs {
 }
 
 /// The inputs of a mapping report of `mapcheck`.
-pub fn inputs_from_report(registry: &Registry, r: &mapcheck::run::TickerReport) -> AutoInputs {
+///
+/// The share counts are on the share basis of the price file (`splits`, see `market/splits.rs` and `share_basis.rs`): each count gets the factor of
+/// the splits after the filing date of its fact up to `to`, the last date of the price file of the ticker
+/// (`share_basis::basis_to`; the closes are adjusted only up to that date) (`YearData::from_period`).
+pub fn inputs_from_report(registry: &Registry, r: &mapcheck::run::TickerReport, splits: &[crate::market::splits::Split], to: &str) -> AutoInputs {
+    let basis = super::share_basis::Basis { splits, ticker: &r.ticker, to };
     let mut out = AutoInputs {
         ticker: r.ticker.clone(),
         name: r.name.clone(),
@@ -413,20 +430,20 @@ pub fn inputs_from_report(registry: &Registry, r: &mapcheck::run::TickerReport) 
         ..Default::default()
     };
     if let Some(c) = &r.company {
-        out.years = c.annual.iter().map(|p| YearData::from_period(registry, p)).collect();
+        out.years = c.annual.iter().map(|p| YearData::from_period(registry, p, &basis)).collect();
         // The latest period with a balance sheet: a later 10-Q first, then the fiscal year.
         let last_year = c.annual.last();
         let newer_quarter = c.quarterly.last().filter(|q| last_year.is_none_or(|y| q.end > y.end));
         let usable = |b: &BalanceData| b.cash.is_some() && b.shares.is_some();
         let mut balance = None;
         if let Some(q) = newer_quarter {
-            let b = BalanceData::from_period(registry, q, "10-Q");
+            let b = BalanceData::from_period(registry, q, "10-Q", &basis);
             if usable(&b) {
                 balance = Some(b);
             }
         }
         if balance.is_none() {
-            balance = last_year.map(|y| BalanceData::from_period(registry, y, "10-K"));
+            balance = last_year.map(|y| BalanceData::from_period(registry, y, "10-K", &basis));
         }
         out.balance = balance;
     }

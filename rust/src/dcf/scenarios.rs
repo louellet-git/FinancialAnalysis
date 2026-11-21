@@ -133,6 +133,8 @@ pub fn capital_structure_for(company: &Company) -> Result<CapitalStructure, DcfE
             ))
         }
     };
+    // No split factor: these models take their shares from a curated file of the ticker; the curator must use the
+    // post-split basis.
     let shares = latest.shares_outstanding.filter(|s| *s != 0.0).or(latest.shares_diluted.filter(|s| *s != 0.0));
     let shares = match shares {
         Some(s) => s,

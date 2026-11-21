@@ -1,0 +1,40 @@
+{
+  "code": {
+    "commit": "292b6dcbd28093d27f7c963fc876619aa8de6b89",
+    "dirty": false
+  },
+  "command": [
+    "--strategy",
+    "value-rank-weekly",
+    "--hold",
+    "true",
+    "--start",
+    "2018-01-01",
+    "--end",
+    "2018-11-26",
+    "--rebalance",
+    "weekly",
+    "--tickers-file",
+    "trading/hypotheses/data/a009_list.txt",
+    "--cache",
+    "<store>",
+    "--table",
+    "trading/hypotheses/data/process_priors_cut2016.toml",
+    "--trades",
+    "<path outside the repository>"
+  ],
+  "history_incomplete": null,
+  "kind": "window-read",
+  "run": {
+    "end": "2018-11-26",
+    "start": "2018-01-01"
+  },
+  "run_time_utc": "20261121T075019Z",
+  "store": "<store>",
+  "strategy": "value-rank-weekly",
+  "window": {
+    "owner": "a009-weekly-hold-v1",
+    "read_hypothesis": "a009-weekly-hold-v1",
+    "start": "2018-01-01"
+  }
+}

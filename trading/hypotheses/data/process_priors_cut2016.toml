@@ -1,0 +1,1849 @@
+[meta]
+date = "2026-11-19"
+command = "fa dcf calibrate --cache /home/user/fa-data-split --out trading/hypotheses/data/process_priors_cut2016.toml --reps 200 --draws 2000 --cut 2016"
+companies = 1456
+company_years = 9860
+growth_observations = 8327
+note = "AR(1) y_t = mean + phi (y_t-1 - mean) + sigma e_t. phi = within estimate with the Nickell correction. Growth: jumps above 60% removed. Margins: absolute value up to 1. Size = revenue of the year before. No sector cells (the cache has no SIC code). Survivorship: see docs/ARCHITECTURE.md."
+
+[[cell]]
+size = "all"
+template = "all"
+corr_growth_operating_margin = 0.230128
+corr_growth_operating_margin_se = 0.034177
+corr_growth_fcf_margin = 0.003325
+corr_growth_fcf_margin_se = 0.032416
+
+[cell.growth]
+phi = 0.137199
+phi_se = 0.038754
+half_life = 0.348959
+mean = 0.08388
+mean_se = 0.003739
+mean_sd_units = 0.151494
+sigma = 0.20169
+n_obs = 6754
+n_units = 1188
+phi_pooled = 0.253445
+phi_pooled_se = 0.029505
+phi_fe = -0.057984
+phi_fe_se = 0.030993
+phi_ah = 0.187016
+phi_ah_se = 0.043119
+sigma_pooled = 0.222813
+mean_pooled = 0.08177
+
+[cell.growth_excess]
+phi = 0.142435
+phi_se = 0.039865
+half_life = 0.355666
+mean = -0.016524
+mean_se = 0.00372
+mean_sd_units = 0.15383
+sigma = 0.198218
+n_obs = 6754
+n_units = 1188
+phi_pooled = 0.263052
+phi_pooled_se = 0.0303
+phi_fe = -0.053798
+phi_fe_se = 0.031863
+phi_ah = 0.190704
+phi_ah_se = 0.045327
+sigma_pooled = 0.220019
+mean_pooled = -0.01897
+
+[cell.operating_margin]
+phi = 0.430296
+phi_se = 0.036773
+half_life = 0.821964
+mean = 0.125171
+mean_se = 0.004481
+mean_sd_units = 0.148443
+sigma = 0.092263
+n_obs = 5957
+n_units = 936
+phi_pooled = 0.724917
+phi_pooled_se = 0.020288
+phi_fe = 0.198912
+phi_fe_se = 0.029001
+phi_ah = 0.331836
+phi_ah_se = 0.051814
+sigma_pooled = 0.108212
+mean_pooled = 0.13325
+
+[cell.fcf_margin]
+phi = 0.351452
+phi_se = 0.038166
+half_life = 0.662865
+mean = 0.115891
+mean_se = 0.004347
+mean_sd_units = 0.154001
+sigma = 0.104199
+n_obs = 7463
+n_units = 1155
+phi_pooled = 0.680299
+phi_pooled_se = 0.018553
+phi_fe = 0.140655
+phi_fe_se = 0.030664
+phi_ah = 0.267371
+phi_ah_se = 0.049648
+sigma_pooled = 0.125801
+mean_pooled = 0.122654
+
+[[cell]]
+size = "all"
+template = "standard"
+corr_growth_operating_margin = 0.254374
+corr_growth_operating_margin_se = 0.038565
+corr_growth_fcf_margin = 0.031125
+corr_growth_fcf_margin_se = 0.03649
+
+[cell.growth]
+phi = 0.136197
+phi_se = 0.045364
+half_life = 0.347677
+mean = 0.079856
+mean_se = 0.004194
+mean_sd_units = 0.144169
+sigma = 0.199706
+n_obs = 5298
+n_units = 945
+phi_pooled = 0.246764
+phi_pooled_se = 0.033845
+phi_fe = -0.060387
+phi_fe_se = 0.036218
+phi_ah = 0.183993
+phi_ah_se = 0.048638
+sigma_pooled = 0.220919
+mean_pooled = 0.077651
+
+[cell.growth_excess]
+phi = 0.146724
+phi_se = 0.047622
+half_life = 0.361165
+mean = -0.020444
+mean_se = 0.004165
+mean_sd_units = 0.146419
+sigma = 0.194755
+n_obs = 5298
+n_units = 945
+phi_pooled = 0.264097
+phi_pooled_se = 0.03514
+phi_fe = -0.051987
+phi_fe_se = 0.037974
+phi_ah = 0.198537
+phi_ah_se = 0.052883
+sigma_pooled = 0.216498
+mean_pooled = -0.02312
+
+[cell.operating_margin]
+phi = 0.441691
+phi_se = 0.037811
+half_life = 0.848255
+mean = 0.116476
+mean_se = 0.004389
+mean_sd_units = 0.141788
+sigma = 0.092226
+n_obs = 5562
+n_units = 869
+phi_pooled = 0.711973
+phi_pooled_se = 0.021698
+phi_fe = 0.209191
+phi_fe_se = 0.029791
+phi_ah = 0.346904
+phi_ah_se = 0.055598
+sigma_pooled = 0.106959
+mean_pooled = 0.12374
+
+[cell.fcf_margin]
+phi = 0.395066
+phi_se = 0.047039
+half_life = 0.746361
+mean = 0.085335
+mean_se = 0.003952
+mean_sd_units = 0.132597
+sigma = 0.086541
+n_obs = 6163
+n_units = 949
+phi_pooled = 0.687418
+phi_pooled_se = 0.023351
+phi_fe = 0.177002
+phi_fe_se = 0.037572
+phi_ah = 0.318182
+phi_ah_se = 0.065889
+sigma_pooled = 0.10452
+mean_pooled = 0.090861
+
+[[cell]]
+size = "all"
+template = "bank"
+corr_growth_fcf_margin = -0.013805
+corr_growth_fcf_margin_se = 0.066406
+
+[cell.growth]
+phi = 0.128124
+phi_se = 0.108277
+half_life = 0.337338
+mean = 0.092046
+mean_se = 0.010117
+mean_sd_units = 0.083567
+sigma = 0.218675
+n_obs = 793
+n_units = 132
+phi_pooled = 0.181448
+phi_pooled_se = 0.075035
+phi_fe = -0.060602
+phi_fe_se = 0.087065
+phi_ah = 0.189785
+phi_ah_se = 0.138479
+sigma_pooled = 0.225617
+mean_pooled = 0.091474
+
+[cell.growth_excess]
+phi = 0.136423
+phi_se = 0.10434
+half_life = 0.347967
+mean = -0.009137
+mean_se = 0.010154
+mean_sd_units = 0.083276
+sigma = 0.222611
+n_obs = 793
+n_units = 132
+phi_pooled = 0.171516
+phi_pooled_se = 0.074867
+phi_fe = -0.053932
+phi_fe_se = 0.083816
+phi_ah = 0.183218
+phi_ah_se = 0.131696
+sigma_pooled = 0.229205
+mean_pooled = -0.009405
+
+[cell.fcf_margin]
+phi = 0.196862
+phi_se = 0.063787
+half_life = 0.426485
+mean = 0.291375
+mean_se = 0.012931
+mean_sd_units = 0.147002
+sigma = 0.172071
+n_obs = 800
+n_units = 121
+phi_pooled = 0.408325
+phi_pooled_se = 0.059195
+phi_fe = 0.016269
+phi_fe_se = 0.052383
+phi_ah = 0.111315
+phi_ah_se = 0.080749
+sigma_pooled = 0.192389
+mean_pooled = 0.29464
+
+[[cell]]
+size = "all"
+template = "insurer"
+corr_growth_fcf_margin = 0.077655
+corr_growth_fcf_margin_se = 0.130864
+
+[cell.growth]
+phi = 0.215309
+phi_se = 0.106748
+half_life = 0.451361
+mean = 0.062048
+mean_se = 0.014129
+mean_sd_units = 0.227799
+sigma = 0.124894
+n_obs = 317
+n_units = 49
+phi_pooled = 0.479901
+phi_pooled_se = 0.148552
+phi_fe = 0.024921
+phi_fe_se = 0.086612
+phi_ah = 0.30688
+phi_ah_se = 0.157328
+sigma_pooled = 0.148876
+mean_pooled = 0.059403
+
+[cell.growth_excess]
+phi = 0.139498
+phi_se = 0.092045
+half_life = 0.351903
+mean = -0.038121
+mean_se = 0.014279
+mean_sd_units = 0.232762
+sigma = 0.126178
+n_obs = 317
+n_units = 49
+phi_pooled = 0.435321
+phi_pooled_se = 0.159273
+phi_fe = -0.03688
+phi_fe_se = 0.07537
+phi_ah = 0.207838
+phi_ah_se = 0.136518
+sigma_pooled = 0.157598
+mean_pooled = -0.043186
+
+[cell.fcf_margin]
+phi = 0.570478
+phi_se = 0.181332
+half_life = 1.234938
+mean = 0.15544
+mean_se = 0.023043
+mean_sd_units = 0.13329
+sigma = 0.109946
+n_obs = 195
+n_units = 31
+phi_pooled = 0.62887
+phi_pooled_se = 0.073013
+phi_fe = 0.308306
+phi_fe_se = 0.138348
+phi_ah = 0.58899
+phi_ah_se = 0.169714
+sigma_pooled = 0.115695
+mean_pooled = 0.156391
+
+[[cell]]
+size = "all"
+template = "reit"
+corr_growth_operating_margin = -0.080112
+corr_growth_operating_margin_se = 0.088734
+corr_growth_fcf_margin = -0.220116
+corr_growth_fcf_margin_se = 0.103565
+
+[cell.growth]
+phi = 0.081074
+phi_se = 0.101921
+half_life = 0.275892
+mean = 0.145865
+mean_se = 0.020916
+mean_sd_units = 0.248632
+sigma = 0.232523
+n_obs = 327
+n_units = 58
+phi_pooled = 0.223829
+phi_pooled_se = 0.105617
+phi_fe = -0.104352
+phi_fe_se = 0.081895
+phi_ah = 0.055657
+phi_ah_se = 0.076849
+sigma_pooled = 0.275869
+mean_pooled = 0.1454
+
+[cell.growth_excess]
+phi = 0.051959
+phi_se = 0.099973
+half_life = 0.234384
+mean = 0.04449
+mean_se = 0.020945
+mean_sd_units = 0.253872
+sigma = 0.229338
+n_obs = 327
+n_units = 58
+phi_pooled = 0.215896
+phi_pooled_se = 0.106322
+phi_fe = -0.127781
+phi_fe_se = 0.080563
+phi_ah = 0.025273
+phi_ah_se = 0.078232
+sigma_pooled = 0.276078
+mean_pooled = 0.043251
+
+[cell.operating_margin]
+phi = 0.32939
+phi_se = 0.159807
+half_life = 0.624168
+mean = 0.286012
+mean_se = 0.024163
+mean_sd_units = 0.164013
+sigma = 0.095222
+n_obs = 299
+n_units = 50
+phi_pooled = 0.715631
+phi_pooled_se = 0.072692
+phi_fe = 0.108095
+phi_fe_se = 0.126848
+phi_ah = 0.256042
+phi_ah_se = 0.147293
+sigma_pooled = 0.117159
+mean_pooled = 0.295156
+
+[cell.fcf_margin]
+phi = 0.4812
+phi_se = 0.147746
+half_life = 0.947606
+mean = 0.255698
+mean_se = 0.028361
+mean_sd_units = 0.197833
+sigma = 0.168232
+n_obs = 305
+n_units = 54
+phi_pooled = 0.607533
+phi_pooled_se = 0.068619
+phi_fe = 0.211811
+phi_fe_se = 0.112487
+phi_ah = 0.241248
+phi_ah_se = 0.195718
+sigma_pooled = 0.194602
+mean_pooled = 0.262656
+
+[[cell]]
+size = "<1B"
+template = "all"
+corr_growth_operating_margin = 0.2523
+corr_growth_operating_margin_se = 0.064295
+corr_growth_fcf_margin = -0.003367
+corr_growth_fcf_margin_se = 0.045566
+
+[cell.growth]
+phi = 0.20522
+phi_se = 0.062976
+half_life = 0.437683
+mean = 0.158791
+mean_se = 0.00812
+mean_sd_units = 0.186939
+sigma = 0.282548
+n_obs = 2446
+n_units = 564
+phi_pooled = 0.243974
+phi_pooled_se = 0.038692
+phi_fe = -0.05508
+phi_fe_se = 0.046984
+phi_ah = 0.239774
+phi_ah_se = 0.060873
+sigma_pooled = 0.308316
+mean_pooled = 0.158263
+
+[cell.growth_excess]
+phi = 0.19758
+phi_se = 0.06257
+half_life = 0.427443
+mean = 0.056622
+mean_se = 0.008187
+mean_sd_units = 0.192386
+sigma = 0.28125
+n_obs = 2446
+n_units = 564
+phi_pooled = 0.249436
+phi_pooled_se = 0.038922
+phi_fe = -0.060783
+phi_fe_se = 0.046732
+phi_ah = 0.239234
+phi_ah_se = 0.061375
+sigma_pooled = 0.308405
+mean_pooled = 0.056104
+
+[cell.operating_margin]
+phi = 0.504005
+phi_se = 0.066533
+half_life = 1.011644
+mean = 0.119118
+mean_se = 0.009718
+mean_sd_units = 0.191512
+sigma = 0.118887
+n_obs = 1980
+n_units = 425
+phi_pooled = 0.731158
+phi_pooled_se = 0.026659
+phi_fe = 0.190191
+phi_fe_se = 0.048405
+phi_ah = 0.393757
+phi_ah_se = 0.080137
+sigma_pooled = 0.140971
+mean_pooled = 0.137844
+
+[cell.fcf_margin]
+phi = 0.387298
+phi_se = 0.050895
+half_life = 0.730736
+mean = 0.149797
+mean_se = 0.008841
+mean_sd_units = 0.200426
+sigma = 0.137761
+n_obs = 2672
+n_units = 553
+phi_pooled = 0.662136
+phi_pooled_se = 0.023056
+phi_fe = 0.114838
+phi_fe_se = 0.038333
+phi_ah = 0.300766
+phi_ah_se = 0.065396
+sigma_pooled = 0.168731
+mean_pooled = 0.163337
+
+[[cell]]
+size = "<1B"
+template = "standard"
+corr_growth_operating_margin = 0.296998
+corr_growth_operating_margin_se = 0.062801
+corr_growth_fcf_margin = 0.058783
+corr_growth_fcf_margin_se = 0.062287
+
+[cell.growth]
+phi = 0.197959
+phi_se = 0.081596
+half_life = 0.42795
+mean = 0.165763
+mean_se = 0.010206
+mean_sd_units = 0.163069
+sigma = 0.29875
+n_obs = 1630
+n_units = 400
+phi_pooled = 0.222535
+phi_pooled_se = 0.046748
+phi_fe = -0.073629
+phi_fe_se = 0.059982
+phi_ah = 0.227573
+phi_ah_se = 0.074836
+sigma_pooled = 0.321904
+mean_pooled = 0.165248
+
+[cell.growth_excess]
+phi = 0.187995
+phi_se = 0.081697
+half_life = 0.414725
+mean = 0.064257
+mean_se = 0.010267
+mean_sd_units = 0.169304
+sigma = 0.29662
+n_obs = 1630
+n_units = 400
+phi_pooled = 0.230864
+phi_pooled_se = 0.047301
+phi_fe = -0.080959
+phi_fe_se = 0.060141
+phi_ah = 0.232189
+phi_ah_se = 0.076538
+sigma_pooled = 0.321134
+mean_pooled = 0.063547
+
+[cell.operating_margin]
+phi = 0.519013
+phi_se = 0.071343
+half_life = 1.056907
+mean = 0.098585
+mean_se = 0.009522
+mean_sd_units = 0.183801
+sigma = 0.119162
+n_obs = 1765
+n_units = 382
+phi_pooled = 0.716477
+phi_pooled_se = 0.029114
+phi_fe = 0.200213
+phi_fe_se = 0.051679
+phi_ah = 0.432216
+phi_ah_se = 0.090254
+sigma_pooled = 0.140387
+mean_pooled = 0.114777
+
+[cell.fcf_margin]
+phi = 0.467109
+phi_se = 0.062884
+half_life = 0.910607
+mean = 0.086041
+mean_se = 0.009088
+mean_sd_units = 0.174235
+sigma = 0.126785
+n_obs = 1837
+n_units = 401
+phi_pooled = 0.651491
+phi_pooled_se = 0.032382
+phi_fe = 0.163516
+phi_fe_se = 0.046114
+phi_ah = 0.374915
+phi_ah_se = 0.08382
+sigma_pooled = 0.153761
+mean_pooled = 0.094823
+
+[[cell]]
+size = "<1B"
+template = "bank"
+corr_growth_fcf_margin = -0.05758
+corr_growth_fcf_margin_se = 0.055467
+
+[cell.growth]
+phi = 0.257897
+phi_se = 0.101454
+half_life = 0.511474
+mean = 0.118745
+mean_se = 0.014035
+mean_sd_units = 0.136847
+sigma = 0.23401
+n_obs = 546
+n_units = 100
+phi_pooled = 0.23358
+phi_pooled_se = 0.073916
+phi_fe = 0.026328
+phi_fe_se = 0.078603
+phi_ah = 0.301725
+phi_ah_se = 0.137702
+sigma_pooled = 0.249102
+mean_pooled = 0.118722
+
+[cell.growth_excess]
+phi = 0.266026
+phi_se = 0.098929
+half_life = 0.523462
+mean = 0.016852
+mean_se = 0.014264
+mean_sd_units = 0.143315
+sigma = 0.235682
+n_obs = 546
+n_units = 100
+phi_pooled = 0.229706
+phi_pooled_se = 0.074254
+phi_fe = 0.032622
+phi_fe_se = 0.076544
+phi_ah = 0.292286
+phi_ah_se = 0.132972
+sigma_pooled = 0.252029
+mean_pooled = 0.016579
+
+[cell.fcf_margin]
+phi = 0.22331
+phi_se = 0.093332
+half_life = 0.462347
+mean = 0.308225
+mean_se = 0.013548
+mean_sd_units = 0.158854
+sigma = 0.150971
+n_obs = 586
+n_units = 98
+phi_pooled = 0.455449
+phi_pooled_se = 0.066916
+phi_fe = 0.023241
+phi_fe_se = 0.07507
+phi_ah = 0.038913
+phi_ah_se = 0.102967
+sigma_pooled = 0.172332
+mean_pooled = 0.314775
+
+[[cell]]
+size = "<1B"
+template = "reit"
+corr_growth_operating_margin = -0.075878
+corr_growth_operating_margin_se = 0.094742
+corr_growth_fcf_margin = -0.24025
+corr_growth_fcf_margin_se = 0.125679
+
+[cell.growth]
+phi = 0.114258
+phi_se = 0.120846
+half_life = 0.319527
+mean = 0.183804
+mean_se = 0.02957
+mean_sd_units = 0.273172
+sigma = 0.289041
+n_obs = 208
+n_units = 47
+phi_pooled = 0.197755
+phi_pooled_se = 0.11636
+phi_fe = -0.115267
+phi_fe_se = 0.092143
+phi_ah = 0.060399
+phi_ah_se = 0.087015
+sigma_pooled = 0.333267
+mean_pooled = 0.185113
+
+[cell.growth_excess]
+phi = 0.089424
+phi_se = 0.119199
+half_life = 0.287093
+mean = 0.077291
+mean_se = 0.029885
+mean_sd_units = 0.279151
+sigma = 0.286325
+n_obs = 208
+n_units = 47
+phi_pooled = 0.196272
+phi_pooled_se = 0.117235
+phi_fe = -0.134231
+phi_fe_se = 0.091162
+phi_ah = 0.039606
+phi_ah_se = 0.089297
+sigma_pooled = 0.334098
+mean_pooled = 0.077858
+
+[cell.operating_margin]
+phi = 0.333595
+phi_se = 0.180028
+half_life = 0.631382
+mean = 0.287083
+mean_se = 0.032092
+mean_sd_units = 0.171939
+sigma = 0.115174
+n_obs = 199
+n_units = 39
+phi_pooled = 0.68666
+phi_pooled_se = 0.081897
+phi_fe = 0.071388
+phi_fe_se = 0.136772
+phi_ah = 0.263037
+phi_ah_se = 0.152693
+sigma_pooled = 0.13844
+mean_pooled = 0.294528
+
+[cell.fcf_margin]
+phi = 0.386895
+phi_se = 0.186686
+half_life = 0.729935
+mean = 0.261537
+mean_se = 0.032781
+mean_sd_units = 0.211604
+sigma = 0.183005
+n_obs = 198
+n_units = 43
+phi_pooled = 0.53275
+phi_pooled_se = 0.078401
+phi_fe = 0.086758
+phi_fe_se = 0.136978
+phi_ah = 0.143397
+phi_ah_se = 0.201289
+sigma_pooled = 0.216471
+mean_pooled = 0.270508
+
+[[cell]]
+size = "1-10B"
+template = "all"
+corr_growth_operating_margin = 0.141899
+corr_growth_operating_margin_se = 0.035279
+corr_growth_fcf_margin = -0.017984
+corr_growth_fcf_margin_se = 0.037123
+
+[cell.growth]
+phi = 0.23241
+phi_se = 0.034246
+half_life = 0.475002
+mean = 0.052395
+mean_se = 0.003419
+mean_sd_units = 0.05284
+sigma = 0.133219
+n_obs = 2983
+n_units = 591
+phi_pooled = 0.146834
+phi_pooled_se = 0.035812
+phi_fe = 0.004813
+phi_fe_se = 0.026684
+phi_ah = 0.094881
+phi_ah_se = 0.046859
+sigma_pooled = 0.14128
+mean_pooled = 0.053441
+
+[cell.growth_excess]
+phi = 0.237589
+phi_se = 0.03893
+half_life = 0.482286
+mean = -0.051221
+mean_se = 0.003394
+mean_sd_units = 0.056073
+sigma = 0.127428
+n_obs = 2983
+n_units = 591
+phi_pooled = 0.166347
+phi_pooled_se = 0.039577
+phi_fe = 0.008847
+phi_fe_se = 0.030311
+phi_ah = 0.102636
+phi_ah_se = 0.053494
+sigma_pooled = 0.136597
+mean_pooled = -0.049672
+
+[cell.operating_margin]
+phi = 0.414719
+phi_se = 0.056489
+half_life = 0.78753
+mean = 0.130606
+mean_se = 0.005147
+mean_sd_units = 0.098203
+sigma = 0.07622
+n_obs = 2886
+n_units = 516
+phi_pooled = 0.694686
+phi_pooled_se = 0.035819
+phi_fe = 0.168348
+phi_fe_se = 0.043919
+phi_ah = 0.234813
+phi_ah_se = 0.062876
+sigma_pooled = 0.08976
+mean_pooled = 0.133311
+
+[cell.fcf_margin]
+phi = 0.358225
+phi_se = 0.057078
+half_life = 0.675191
+mean = 0.100992
+mean_se = 0.004946
+mean_sd_units = 0.107359
+sigma = 0.083194
+n_obs = 3396
+n_units = 596
+phi_pooled = 0.699205
+phi_pooled_se = 0.029806
+phi_fe = 0.126312
+phi_fe_se = 0.044908
+phi_ah = 0.241952
+phi_ah_se = 0.091998
+sigma_pooled = 0.095496
+mean_pooled = 0.103251
+
+[[cell]]
+size = "1-10B"
+template = "standard"
+corr_growth_operating_margin = 0.146642
+corr_growth_operating_margin_se = 0.037586
+corr_growth_fcf_margin = -0.021706
+corr_growth_fcf_margin_se = 0.040725
+
+[cell.growth]
+phi = 0.254095
+phi_se = 0.029199
+half_life = 0.505929
+mean = 0.054069
+mean_se = 0.003804
+mean_sd_units = 0.055307
+sigma = 0.135295
+n_obs = 2529
+n_units = 508
+phi_pooled = 0.163328
+phi_pooled_se = 0.03711
+phi_fe = 0.019956
+phi_fe_se = 0.022624
+phi_ah = 0.100574
+phi_ah_se = 0.038191
+sigma_pooled = 0.143789
+mean_pooled = 0.05486
+
+[cell.growth_excess]
+phi = 0.277618
+phi_se = 0.032335
+half_life = 0.540883
+mean = -0.050541
+mean_se = 0.003761
+mean_sd_units = 0.057212
+sigma = 0.127908
+n_obs = 2529
+n_units = 508
+phi_pooled = 0.197278
+phi_pooled_se = 0.042024
+phi_fe = 0.038149
+phi_fe_se = 0.024964
+phi_ah = 0.126131
+phi_ah_se = 0.045695
+sigma_pooled = 0.137331
+mean_pooled = -0.048976
+
+[cell.operating_margin]
+phi = 0.412978
+phi_se = 0.057381
+half_life = 0.783783
+mean = 0.125584
+mean_se = 0.005042
+mean_sd_units = 0.094933
+sigma = 0.077842
+n_obs = 2728
+n_units = 486
+phi_pooled = 0.674064
+phi_pooled_se = 0.038431
+phi_fe = 0.166926
+phi_fe_se = 0.044619
+phi_ah = 0.239176
+phi_ah_se = 0.06398
+sigma_pooled = 0.089962
+mean_pooled = 0.128012
+
+[cell.fcf_margin]
+phi = 0.412445
+phi_se = 0.070637
+half_life = 0.782641
+mean = 0.087395
+mean_se = 0.00431
+mean_sd_units = 0.093367
+sigma = 0.067677
+n_obs = 3030
+n_units = 533
+phi_pooled = 0.725889
+phi_pooled_se = 0.030338
+phi_fe = 0.16878
+phi_fe_se = 0.055023
+phi_ah = 0.227558
+phi_ah_se = 0.112999
+sigma_pooled = 0.077708
+mean_pooled = 0.090811
+
+[[cell]]
+size = "1-10B"
+template = "bank"
+corr_growth_fcf_margin = 0.072476
+corr_growth_fcf_margin_se = 0.120283
+
+[cell.growth]
+phi = -0.007847
+phi_se = 0.151382
+half_life = 0.0
+mean = 0.042983
+mean_se = 0.011584
+mean_sd_units = 0.0
+sigma = 0.135233
+n_obs = 161
+n_units = 29
+phi_pooled = -0.097619
+phi_pooled_se = 0.112003
+phi_fe = -0.181343
+phi_fe_se = 0.1224
+phi_ah = -0.110723
+phi_ah_se = 0.179959
+sigma_pooled = 0.136585
+mean_pooled = 0.045395
+
+[cell.growth_excess]
+phi = -0.001874
+phi_se = 0.16207
+half_life = 0.0
+mean = -0.057626
+mean_se = 0.011507
+mean_sd_units = 0.0
+sigma = 0.143296
+n_obs = 161
+n_units = 29
+phi_pooled = -0.102665
+phi_pooled_se = 0.115445
+phi_fe = -0.176514
+phi_fe_se = 0.130985
+phi_ah = -0.099422
+phi_ah_se = 0.184325
+sigma_pooled = 0.143436
+mean_pooled = -0.054312
+
+[cell.fcf_margin]
+phi = 0.149874
+phi_se = 0.093988
+half_life = 0.365206
+mean = 0.244543
+mean_se = 0.028756
+mean_sd_units = 0.121097
+sigma = 0.205302
+n_obs = 167
+n_units = 27
+phi_pooled = 0.321775
+phi_pooled_se = 0.073899
+phi_fe = -0.033297
+phi_fe_se = 0.076843
+phi_ah = 0.203042
+phi_ah_se = 0.189897
+sigma_pooled = 0.222196
+mean_pooled = 0.242483
+
+[[cell]]
+size = "1-10B"
+template = "insurer"
+
+[cell.growth]
+phi = 0.262901
+phi_se = 0.196252
+half_life = 0.518832
+mean = 0.031459
+mean_se = 0.010569
+mean_sd_units = 0.0
+sigma = 0.113334
+n_obs = 165
+n_units = 29
+phi_pooled = 0.156578
+phi_pooled_se = 0.073552
+phi_fe = 0.038865
+phi_fe_se = 0.153828
+phi_ah = 0.190092
+phi_ah_se = 0.07314
+sigma_pooled = 0.112839
+mean_pooled = 0.032767
+
+[cell.growth_excess]
+phi = 0.128738
+phi_se = 0.139853
+half_life = 0.338125
+mean = -0.071851
+mean_se = 0.010794
+mean_sd_units = 0.031056
+sigma = 0.113484
+n_obs = 165
+n_units = 29
+phi_pooled = 0.065036
+phi_pooled_se = 0.068913
+phi_fe = -0.067291
+phi_fe_se = 0.111608
+phi_ah = 0.071952
+phi_ah_se = 0.050498
+sigma_pooled = 0.116276
+mean_pooled = -0.070345
+
+[[cell]]
+size = "10-30B"
+template = "all"
+corr_growth_operating_margin = 0.331075
+corr_growth_operating_margin_se = 0.077342
+corr_growth_fcf_margin = -0.024999
+corr_growth_fcf_margin_se = 0.056985
+
+[cell.growth]
+phi = 0.267414
+phi_se = 0.078039
+half_life = 0.525526
+mean = 0.0076
+mean_se = 0.00531
+mean_sd_units = 0.06243
+sigma = 0.142554
+n_obs = 835
+n_units = 178
+phi_pooled = 0.129517
+phi_pooled_se = 0.054383
+phi_fe = 0.024707
+phi_fe_se = 0.060203
+phi_ah = 0.091809
+phi_ah_se = 0.076174
+sigma_pooled = 0.149143
+mean_pooled = 0.013246
+
+[cell.growth_excess]
+phi = 0.370826
+phi_se = 0.074944
+half_life = 0.698721
+mean = -0.087062
+mean_se = 0.00518
+mean_sd_units = 0.055856
+sigma = 0.131853
+n_obs = 835
+n_units = 178
+phi_pooled = 0.212399
+phi_pooled_se = 0.051708
+phi_fe = 0.103871
+phi_fe_se = 0.056898
+phi_ah = 0.156648
+phi_ah_se = 0.086299
+sigma_pooled = 0.138946
+mean_pooled = -0.079905
+
+[cell.operating_margin]
+phi = 0.471907
+phi_se = 0.132001
+half_life = 0.922999
+mean = 0.134476
+mean_se = 0.009071
+mean_sd_units = 0.100844
+sigma = 0.083559
+n_obs = 706
+n_units = 151
+phi_pooled = 0.756928
+phi_pooled_se = 0.062739
+phi_fe = 0.187406
+phi_fe_se = 0.09932
+phi_ah = 0.388787
+phi_ah_se = 0.264609
+sigma_pooled = 0.09254
+mean_pooled = 0.129009
+
+[cell.fcf_margin]
+phi = 0.216395
+phi_se = 0.11337
+half_life = 0.452846
+mean = 0.087191
+mean_se = 0.008848
+mean_sd_units = 0.109898
+sigma = 0.064802
+n_obs = 886
+n_units = 179
+phi_pooled = 0.759976
+phi_pooled_se = 0.045717
+phi_fe = 0.002076
+phi_fe_se = 0.089761
+phi_ah = 0.07747
+phi_ah_se = 0.103463
+sigma_pooled = 0.079018
+mean_pooled = 0.083634
+
+[[cell]]
+size = "10-30B"
+template = "standard"
+corr_growth_operating_margin = 0.332143
+corr_growth_operating_margin_se = 0.088318
+corr_growth_fcf_margin = -0.03019
+corr_growth_fcf_margin_se = 0.059519
+
+[cell.growth]
+phi = 0.280099
+phi_se = 0.083671
+half_life = 0.544665
+mean = 0.003635
+mean_se = 0.005877
+mean_sd_units = 0.064995
+sigma = 0.147785
+n_obs = 717
+n_units = 153
+phi_pooled = 0.146947
+phi_pooled_se = 0.058375
+phi_fe = 0.032856
+phi_fe_se = 0.064336
+phi_ah = 0.124611
+phi_ah_se = 0.08296
+sigma_pooled = 0.154281
+mean_pooled = 0.010047
+
+[cell.growth_excess]
+phi = 0.404451
+phi_se = 0.082615
+half_life = 0.765717
+mean = -0.094357
+mean_se = 0.005716
+mean_sd_units = 0.05647
+sigma = 0.135084
+n_obs = 717
+n_units = 153
+phi_pooled = 0.24627
+phi_pooled_se = 0.056167
+phi_fe = 0.127558
+phi_fe_se = 0.062264
+phi_ah = 0.2065
+phi_ah_se = 0.095949
+sigma_pooled = 0.141757
+mean_pooled = -0.084919
+
+[cell.operating_margin]
+phi = 0.502644
+phi_se = 0.120488
+half_life = 1.007667
+mean = 0.136119
+mean_se = 0.009281
+mean_sd_units = 0.098006
+sigma = 0.082391
+n_obs = 684
+n_units = 144
+phi_pooled = 0.760098
+phi_pooled_se = 0.063303
+phi_fe = 0.213691
+phi_fe_se = 0.090353
+phi_ah = 0.382266
+phi_ah_se = 0.314174
+sigma_pooled = 0.090458
+mean_pooled = 0.13251
+
+[cell.fcf_margin]
+phi = 0.248646
+phi_se = 0.140197
+half_life = 0.498049
+mean = 0.081936
+mean_se = 0.008792
+mean_sd_units = 0.108132
+sigma = 0.059461
+n_obs = 821
+n_units = 165
+phi_pooled = 0.795512
+phi_pooled_se = 0.053418
+phi_fe = 0.028202
+phi_fe_se = 0.110656
+phi_ah = 0.086028
+phi_ah_se = 0.139061
+sigma_pooled = 0.072908
+mean_pooled = 0.081206
+
+[[cell]]
+size = "30-100B"
+template = "all"
+corr_growth_operating_margin = 0.094183
+corr_growth_operating_margin_se = 0.100307
+corr_growth_fcf_margin = -0.052788
+corr_growth_fcf_margin_se = 0.062428
+
+[cell.growth]
+phi = 0.24613
+phi_se = 0.076331
+half_life = 0.494436
+mean = 0.011759
+mean_se = 0.008182
+mean_sd_units = 0.039653
+sigma = 0.14025
+n_obs = 372
+n_units = 78
+phi_pooled = 0.120338
+phi_pooled_se = 0.061467
+phi_fe = 0.004237
+phi_fe_se = 0.05868
+phi_ah = 0.252902
+phi_ah_se = 0.103054
+sigma_pooled = 0.143271
+mean_pooled = 0.016045
+
+[cell.growth_excess]
+phi = 0.257425
+phi_se = 0.083818
+half_life = 0.510784
+mean = -0.08001
+mean_se = 0.008248
+mean_sd_units = 0.047875
+sigma = 0.136676
+n_obs = 372
+n_units = 78
+phi_pooled = 0.147321
+phi_pooled_se = 0.065628
+phi_fe = 0.012913
+phi_fe_se = 0.064332
+phi_ah = 0.214096
+phi_ah_se = 0.110241
+sigma_pooled = 0.140343
+mean_pooled = -0.076612
+
+[cell.operating_margin]
+phi = 0.378917
+phi_se = 0.13791
+half_life = 0.714262
+mean = 0.118665
+mean_se = 0.012733
+mean_sd_units = 0.083226
+sigma = 0.037545
+n_obs = 303
+n_units = 60
+phi_pooled = 0.935741
+phi_pooled_se = 0.029472
+phi_fe = 0.11824
+phi_fe_se = 0.105576
+phi_ah = 0.305218
+phi_ah_se = 0.404016
+sigma_pooled = 0.046802
+mean_pooled = 0.139774
+
+[cell.fcf_margin]
+phi = 0.208858
+phi_se = 0.189687
+half_life = 0.442595
+mean = 0.097871
+mean_se = 0.013218
+mean_sd_units = 0.097867
+sigma = 0.078403
+n_obs = 388
+n_units = 76
+phi_pooled = 0.550791
+phi_pooled_se = 0.173797
+phi_fe = -0.010756
+phi_fe_se = 0.149141
+phi_ah = 0.218579
+phi_ah_se = 0.314591
+sigma_pooled = 0.106048
+mean_pooled = 0.101896
+
+[[cell]]
+size = "30-100B"
+template = "standard"
+corr_growth_operating_margin = 0.09398
+corr_growth_operating_margin_se = 0.098871
+corr_growth_fcf_margin = -0.099893
+corr_growth_fcf_margin_se = 0.093018
+
+[cell.growth]
+phi = 0.328585
+phi_se = 0.078847
+half_life = 0.622796
+mean = 0.004525
+mean_se = 0.009297
+mean_sd_units = 0.031735
+sigma = 0.140696
+n_obs = 307
+n_units = 66
+phi_pooled = 0.202453
+phi_pooled_se = 0.059783
+phi_fe = 0.062988
+phi_fe_se = 0.059701
+phi_ah = 0.330773
+phi_ah_se = 0.09458
+sigma_pooled = 0.142987
+mean_pooled = 0.010891
+
+[cell.growth_excess]
+phi = 0.36123
+phi_se = 0.080123
+half_life = 0.680731
+mean = -0.087015
+mean_se = 0.009321
+mean_sd_units = 0.044297
+sigma = 0.133142
+n_obs = 307
+n_units = 66
+phi_pooled = 0.247883
+phi_pooled_se = 0.056499
+phi_fe = 0.08764
+phi_fe_se = 0.06034
+phi_ah = 0.32284
+phi_ah_se = 0.091933
+sigma_pooled = 0.136036
+mean_pooled = -0.081374
+
+[cell.operating_margin]
+phi = 0.378917
+phi_se = 0.13791
+half_life = 0.714262
+mean = 0.118665
+mean_se = 0.012733
+mean_sd_units = 0.083226
+sigma = 0.037545
+n_obs = 303
+n_units = 60
+phi_pooled = 0.935741
+phi_pooled_se = 0.029472
+phi_fe = 0.11824
+phi_fe_se = 0.105576
+phi_ah = 0.305218
+phi_ah_se = 0.404016
+sigma_pooled = 0.046802
+mean_pooled = 0.139774
+
+[cell.fcf_margin]
+phi = 0.280743
+phi_se = 0.102525
+half_life = 0.54565
+mean = 0.088345
+mean_se = 0.011734
+mean_sd_units = 0.0901
+sigma = 0.031544
+n_obs = 355
+n_units = 69
+phi_pooled = 0.940915
+phi_pooled_se = 0.023692
+phi_fe = 0.050028
+phi_fe_se = 0.080301
+phi_ah = -0.139229
+phi_ah_se = 0.276437
+sigma_pooled = 0.041294
+mean_pooled = 0.126103
+
+[[fade]]
+size = "all"
+threshold = 0.2
+n_start = 1573
+start_mean = 0.48455
+start_median = 0.345578
+group_mean = 0.08177
+
+[[fade.step]]
+k = 1
+n = 1341
+p10 = -0.078759
+p50 = 0.177914
+p90 = 0.579652
+
+[[fade.step]]
+k = 2
+n = 1130
+p10 = -0.112377
+p50 = 0.111976
+p90 = 0.47088
+
+[[fade.step]]
+k = 3
+n = 903
+p10 = -0.118334
+p50 = 0.100115
+p90 = 0.435824
+
+[[fade.step]]
+k = 5
+n = 557
+p10 = -0.198663
+p50 = 0.033275
+p90 = 0.277546
+
+[[fade]]
+size = "all"
+threshold = 0.3
+n_start = 971
+start_mean = 0.633679
+start_median = 0.467119
+group_mean = 0.08177
+
+[[fade.step]]
+k = 1
+n = 825
+p10 = -0.095067
+p50 = 0.204042
+p90 = 0.690282
+
+[[fade.step]]
+k = 2
+n = 685
+p10 = -0.134495
+p50 = 0.119781
+p90 = 0.528727
+
+[[fade.step]]
+k = 3
+n = 530
+p10 = -0.168463
+p50 = 0.119548
+p90 = 0.510979
+
+[[fade.step]]
+k = 5
+n = 317
+p10 = -0.219268
+p50 = 0.039609
+p90 = 0.302578
+
+[[fade]]
+size = "all"
+threshold = 0.5
+n_start = 428
+start_mean = 0.951514
+start_median = 0.762096
+group_mean = 0.08177
+
+[[fade.step]]
+k = 1
+n = 362
+p10 = -0.174886
+p50 = 0.254332
+p90 = 0.999126
+
+[[fade.step]]
+k = 2
+n = 298
+p10 = -0.208844
+p50 = 0.140519
+p90 = 0.672447
+
+[[fade.step]]
+k = 3
+n = 226
+p10 = -0.250938
+p50 = 0.133776
+p90 = 0.612198
+
+[[fade.step]]
+k = 5
+n = 125
+p10 = -0.200142
+p50 = 0.033985
+p90 = 0.379853
+
+[[fade]]
+size = "<1B"
+threshold = 0.2
+n_start = 858
+start_mean = 0.552831
+start_median = 0.396337
+group_mean = 0.158263
+
+[[fade.step]]
+k = 1
+n = 712
+p10 = -0.034459
+p50 = 0.238109
+p90 = 0.72385
+
+[[fade.step]]
+k = 2
+n = 567
+p10 = -0.057876
+p50 = 0.170232
+p90 = 0.579056
+
+[[fade.step]]
+k = 3
+n = 421
+p10 = -0.114057
+p50 = 0.140809
+p90 = 0.512108
+
+[[fade.step]]
+k = 5
+n = 217
+p10 = -0.097118
+p50 = 0.112118
+p90 = 0.348276
+
+[[fade]]
+size = "<1B"
+threshold = 0.3
+n_start = 582
+start_mean = 0.698127
+start_median = 0.505464
+group_mean = 0.158263
+
+[[fade.step]]
+k = 1
+n = 484
+p10 = -0.052229
+p50 = 0.267412
+p90 = 0.963253
+
+[[fade.step]]
+k = 2
+n = 384
+p10 = -0.076711
+p50 = 0.179217
+p90 = 0.634131
+
+[[fade.step]]
+k = 3
+n = 277
+p10 = -0.168751
+p50 = 0.16723
+p90 = 0.610638
+
+[[fade.step]]
+k = 5
+n = 136
+p10 = -0.119822
+p50 = 0.116926
+p90 = 0.377148
+
+[[fade]]
+size = "<1B"
+threshold = 0.5
+n_start = 297
+start_mean = 0.994348
+start_median = 0.797968
+group_mean = 0.158263
+
+[[fade.step]]
+k = 1
+n = 254
+p10 = -0.102091
+p50 = 0.315513
+p90 = 1.123368
+
+[[fade.step]]
+k = 2
+n = 201
+p10 = -0.144673
+p50 = 0.185562
+p90 = 0.761556
+
+[[fade.step]]
+k = 3
+n = 143
+p10 = -0.268467
+p50 = 0.190033
+p90 = 0.666702
+
+[[fade.step]]
+k = 5
+n = 68
+p10 = -0.119235
+p50 = 0.116926
+p90 = 0.532418
+
+[[fade]]
+size = "1-10B"
+threshold = 0.2
+n_start = 539
+start_mean = 0.393742
+start_median = 0.307818
+group_mean = 0.053441
+
+[[fade.step]]
+k = 1
+n = 469
+p10 = -0.091773
+p50 = 0.141515
+p90 = 0.412053
+
+[[fade.step]]
+k = 2
+n = 417
+p10 = -0.117778
+p50 = 0.079068
+p90 = 0.345689
+
+[[fade.step]]
+k = 3
+n = 355
+p10 = -0.114704
+p50 = 0.092634
+p90 = 0.341256
+
+[[fade.step]]
+k = 5
+n = 243
+p10 = -0.247935
+p50 = 0.009805
+p90 = 0.240602
+
+[[fade]]
+size = "1-10B"
+threshold = 0.3
+n_start = 285
+start_mean = 0.529713
+start_median = 0.421047
+group_mean = 0.053441
+
+[[fade.step]]
+k = 1
+n = 245
+p10 = -0.12467
+p50 = 0.144874
+p90 = 0.457555
+
+[[fade.step]]
+k = 2
+n = 213
+p10 = -0.150976
+p50 = 0.078874
+p90 = 0.431471
+
+[[fade.step]]
+k = 3
+n = 176
+p10 = -0.148761
+p50 = 0.121306
+p90 = 0.385539
+
+[[fade.step]]
+k = 5
+n = 124
+p10 = -0.316484
+p50 = 0.010543
+p90 = 0.268773
+
+[[fade]]
+size = "1-10B"
+threshold = 0.5
+n_start = 91
+start_mean = 0.856787
+start_median = 0.685535
+group_mean = 0.053441
+
+[[fade.step]]
+k = 1
+n = 75
+p10 = -0.334411
+p50 = 0.131792
+p90 = 0.523122
+
+[[fade.step]]
+k = 2
+n = 65
+p10 = -0.204032
+p50 = 0.077914
+p90 = 0.521668
+
+[[fade.step]]
+k = 3
+n = 58
+p10 = -0.17654
+p50 = 0.140932
+p90 = 0.487223
+
+[[fade.step]]
+k = 5
+n = 40
+p10 = -0.381845
+p50 = -0.004271
+p90 = 0.148817
+
+[[fade]]
+size = "10-30B"
+threshold = 0.2
+n_start = 112
+start_mean = 0.432995
+start_median = 0.325428
+group_mean = 0.013246
+
+[[fade.step]]
+k = 1
+n = 102
+p10 = -0.326699
+p50 = 0.059341
+p90 = 0.403939
+
+[[fade.step]]
+k = 2
+n = 93
+p10 = -0.232019
+p50 = 0.004299
+p90 = 0.313329
+
+[[fade.step]]
+k = 3
+n = 79
+p10 = -0.199033
+p50 = 0.037625
+p90 = 0.258325
+
+[[fade.step]]
+k = 5
+n = 58
+p10 = -0.308213
+p50 = -0.01112
+p90 = 0.13459
+
+[[fade]]
+size = "10-30B"
+threshold = 0.3
+n_start = 63
+start_mean = 0.57791
+start_median = 0.438152
+group_mean = 0.013246
+
+[[fade.step]]
+k = 1
+n = 57
+p10 = -0.26893
+p50 = 0.119498
+p90 = 0.547657
+
+[[fade.step]]
+k = 2
+n = 51
+p10 = -0.276849
+p50 = -0.010854
+p90 = 0.309319
+
+[[fade.step]]
+k = 3
+n = 45
+p10 = -0.247229
+p50 = 0.029861
+p90 = 0.243857
+
+[[fade.step]]
+k = 5
+n = 30
+p10 = -0.302628
+p50 = -0.032869
+p90 = 0.096664
+
+[[fade]]
+size = "10-30B"
+threshold = 0.5
+n_start = 24
+start_mean = 0.891075
+start_median = 0.804001
+group_mean = 0.013246
+
+[[fade.step]]
+k = 1
+n = 19
+p10 = -0.150442
+p50 = 0.188078
+p90 = 0.817222
+
+[[fade.step]]
+k = 2
+n = 18
+p10 = -0.438007
+p50 = -0.012619
+p90 = 0.330522
+
+[[fade.step]]
+k = 3
+n = 13
+p10 = -0.3211
+p50 = 0.009813
+p90 = 0.217816
+
+[[fade.step]]
+k = 5
+n = 8
+p10 = -0.230781
+p50 = -0.074346
+p90 = -0.00662
+
+[[fade]]
+size = "30-100B"
+threshold = 0.2
+n_start = 46
+start_mean = 0.462422
+start_median = 0.339673
+group_mean = 0.016045
+
+[[fade.step]]
+k = 1
+n = 41
+p10 = -0.085029
+p50 = 0.095397
+p90 = 0.344403
+
+[[fade.step]]
+k = 2
+n = 39
+p10 = -0.161642
+p50 = 0.029062
+p90 = 0.308478
+
+[[fade.step]]
+k = 3
+n = 36
+p10 = -0.080749
+p50 = 0.049867
+p90 = 0.287898
+
+[[fade.step]]
+k = 5
+n = 29
+p10 = -0.225536
+p50 = -0.030843
+p90 = 0.137133
+
+[[fade]]
+size = "30-100B"
+threshold = 0.3
+n_start = 34
+start_mean = 0.540396
+start_median = 0.408842
+group_mean = 0.016045
+
+[[fade.step]]
+k = 1
+n = 32
+p10 = -0.143562
+p50 = 0.067188
+p90 = 0.309128
+
+[[fade.step]]
+k = 2
+n = 30
+p10 = -0.158384
+p50 = 0.029698
+p90 = 0.330101
+
+[[fade.step]]
+k = 3
+n = 27
+p10 = -0.11086
+p50 = 0.055706
+p90 = 0.270098
+
+[[fade.step]]
+k = 5
+n = 23
+p10 = -0.253942
+p50 = -0.030843
+p90 = 0.186141
+
+[[fade]]
+size = "30-100B"
+threshold = 0.5
+n_start = 14
+start_mean = 0.804966
+start_median = 0.635727
+group_mean = 0.016045
+
+[[fade.step]]
+k = 1
+n = 12
+p10 = -0.143562
+p50 = -0.018895
+p90 = 0.15141
+
+[[fade.step]]
+k = 2
+n = 12
+p10 = -0.328649
+p50 = -0.012189
+p90 = 0.431729
+
+[[fade.step]]
+k = 3
+n = 10
+p10 = -0.127249
+p50 = 0.030139
+p90 = 0.148781
+
+[[fade.step]]
+k = 5
+n = 7
+p10 = -0.296348
+p50 = 0.006452
+p90 = 0.166638

@@ -34,9 +34,14 @@ risks.
    test that fails before and passes after.
 5. A change of an assumption value changes its record in `docs/assumptions/` and the
    model document in `docs/models/` in the same change.
+6. Backtest each change (owner, 2026-11-21: "Backtesting is integral to our work here"). Give
+   the point-in-time result before and after: `fa dcf pit --cut 2015`, and for a change that
+   reaches a strategy, `fa portfolio backtest` with a parameter table cut before its start.
+   Write the test before its run, and do not choose a rule on the years that score it.
 
-**Never.** Never commit, push, or open a pull request. The orchestrator does this. Change a closed decision (`REVIEW.md`, `DRIVER-REVIEW.md`) or a
-rule of `PLANNING/RULES.md`. Keep two implementations of one part.
+**Never.** Never commit, push, or open a pull request (the orchestrator does this). Never change a closed
+decision (`REVIEW.md`, `DRIVER-REVIEW.md`) or a rule of `PLANNING/RULES.md`. Never keep two implementations
+of one part.
 
 **Stop and ask** when a fix needs a change of a closed decision or a rule, when the IBM
 numbers change and you cannot show why, or when you need a new data variable.
