@@ -78,7 +78,7 @@ Economics). It replaces the pass rules of T2 to T4 above. T1 does not change.
 
 **Result of the one run (2026-11-21 04:49 UTC):** T1 FAILS (the free cash flow low tail is too thin, revenue at T+3
 too wide); T2 to T4 pass (`analysis/priors/blind_projection_test_2026-11-21.md`). Owner decision, 2026-11-21
-04:55 UTC: "No trades until T1 passes", paper included.
+04:50 UTC: "No trades until T1 passes", paper included.
 
 **The test of the T1 fix (written before any run of a fix):**
 - Development on `fa dcf pit --cut 2015 --half 0` only. The agent may look at half 0 as often as needed. It

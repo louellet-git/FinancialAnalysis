@@ -60,6 +60,6 @@ Done: ticket `T-20261121-blind-projection-test` (a condition before the first we
 Words: "Backtesting is integral to our work here"
 Done: a standing rule of this area: each model change and each strategy has a point-in-time backtest, written before its run (check 6 of `valuation-quant` and `equity-analyst`); proposed to the Head of Quality and Risk as a standard for all areas.
 
-## 2026-11-21 04:55 UTC (answer to a question of this head)
+## 2026-11-21 about 04:50 UTC (answer to a question of this head)
 Question: if T1 does not pass by 2026-11-26, what happens on 2026-11-27? Answer: "No trades until T1 passes (Recommended)".
 Done: the ticket `T-20261121-blind-projection-test` has the decision and the written test of the T1 fix.
