@@ -62,3 +62,20 @@ premium-series`), the percentile of the list premium of D1 and of D2 in the rows
 the window when the cache has it. A measurement: no input of the model is set from it. An assumption record for the buckets
 and the window; the model documents updated; tests with fixed answers; a poison test (a window that ends after D does not
 enter).
+
+**State (2026-11-21 about 20:10 UTC):** R1, R2 and `--top N` are built (44205b7; suites 885 + 17 + 1; not at the gate yet).
+Real run, S&P 100 `--top 10 --reality`: the list premium 1.21% at D1 (percentile 0 of the 410 weeks before) and 1.67% at
+D2 (percentile 2); bucket 50B or more: n 46, median 3.9%, 90th 10.0%, maximum 21.0%; 103 of 500 companies have no
+base-year value (the mapping gap of old years, ticket `T-20261121-revenue-old-tags` of Technology, and short stores).
+
+**More repeatable steps (design before code, 2026-11-21):**
+R3. The late-reaction check. In the study, the premium rise of one week mostly reversed the week before (the yields rose
+first; the stocks followed). `fa dcf attribute --prior-window`: with the window D1 to D2 of n days, also run D0 to D1 and
+D0 to D2 (D0 = D1 less n days, moved to the last SPY trading day on or before it), and print the three "all" lines of the
+premium-first bridge with the common change of each, in a block "(6) PRIOR WINDOW". No new CSV column.
+R4. One curve rule: `--curve auto`, the default of `fa dcf attribute`: GSW at both dates when its row is at most 3 days
+older than each date; else the par fit at both dates (one source at both dates); the text names the source. With GSW at
+both dates the output is the same as `--curve gsw`. `fa dcf premium-series` keeps its rule for each anchor (A-027).
+R5. `fa dcf premium-series --per-ticker FILE`: a second CSV with one row for each week and ticker (the bridge line of the
+ticker in points of the list, the price change, the weight), so the weekly table of a small list comes from one command.
+The main CSV contract with Economics does not change.
