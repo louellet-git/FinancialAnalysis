@@ -36,6 +36,12 @@ Rules: `chiefs/ORIENTATION.md`, sections 1, 5 and 8. Decisions of the person: `.
   story with no path to its end, old ticket text, a head that starts before it finishes.
 - The order across the epics in `EPICS.md` is a proposal; the person has not agreed to it yet.
 
+## Monitoring (owner word 2026-11-21: script only, no memory of a head, not token heavy, never a choke)
+- Story E6.S5: `T-20261121-board-check` (the board rules from git) then `T-20261121-usage-log` (a Stop hook
+  counts agents, skills and tokens from the transcript file). Technology builds; I read the output.
+- Until they exist: the hand checks of the board-check ticket, only when I look at the board for a
+  different reason.
+
 ## Watch list
 - E1 (stock trades) is on hold: no rule passed, T1 fails, and the person paused the fix for the week study.
 - PR #131 (`fa algo`) waits for the live run of the person on Monday 2026-11-23.
