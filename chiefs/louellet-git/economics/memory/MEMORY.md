@@ -3,11 +3,12 @@ What the next session of this head must know. Keep this file below 60 lines. Sta
 Rules: `chiefs/ORIENTATION.md`, section 8. Decisions of the person: `../RECORD.md`.
 
 ## Goal now
-- `T-20261121-economics-first-brief` (branch `econ/first-brief`): industry note and the first brief
-  (`analysis/macro/2026-11-21-conditions-and-the-oct-nov-drawdown.md`). It answers the question of the
-  Head of Fundamental Research (premium against AI-capex growth, 2026-10-06 to 2026-11-19), who cites it
-  in the findings of `T-20261120-valuation-move-attribution`. Gate: document-reviewer and auditor,
-  through the Head of Quality and Risk. After the pass: pull request, then tell Fundamental Research.
+- First brief and industry note: merged (#116). Fundamental Research cites the brief.
+- `T-20261121-economics-stress-windows`: PASS-WITH-NOTES; pull request open. Quant Research uses it.
+- `T-20261121-economics-long-history` (branch `econ/long-history`): the design draft for the market-level
+  DCF test of Fundamental Research (`T-20261121-dcf-engine-backtest`). Waits for that head to confirm two
+  choices (real excess return; real 10Y), then the review. Data: Technology ticket
+  `T-20261121-economics-data`, Shiller first.
 
 ## Next steps
 - Data request sent to the Head of Technology (2026-11-21): labor, GDP, PCE, NFCI, total OAS, ALFRED
@@ -21,6 +22,8 @@ Rules: `chiefs/ORIENTATION.md`, section 8. Decisions of the person: `../RECORD.m
 - `fa rates nyfed --date <old date>` gives the latest value when the date is not in the cache: treat it as no data.
 - The store copy: `data/raw` in a worktree has a tracked `.gitkeep`, so `git clone` into it fails.
   Clone to a separate folder and copy it in.
+- Quality and Risk asks for: the main finding first, the store commit, a source column in each table,
+  and an exact numbered rule where a window or a date comes from a rule. Put these in each brief.
 - An agent brief came at about 1,700 words for "2 pages": give a word limit (about 1,200) in the brief.
 
 ## Pages

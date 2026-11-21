@@ -2,12 +2,13 @@
 id: T-20261121-economics-first-brief
 title: Write the industry-practice note of the Head of Economics and the first macro brief
 area: docs
-status: review
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: economics
 order: 1
 branch: econ/first-brief
+merged: #116
 created: 2026-11-21
 acceptance: chiefs/louellet-git/economics/industry-2026-11-21.md and one brief in analysis/macro/ are on main, and each number of the brief has a source and a data date.
 ---
