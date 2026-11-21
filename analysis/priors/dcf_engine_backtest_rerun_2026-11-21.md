@@ -56,6 +56,17 @@ The deciles have no order: decile 0 +0.27%, decile 1 +0.56%, decile 9 +0.41%, th
 - The harness log: `trading/runs/a009-weekly-hold-v1/` (two logged runs of the same command, the second a
   reproduction on the HEAD build).
 
+## Gate (strategy gate cycle 2, Head of Quality and Risk, 2026-11-21: PASS-WITH-NOTES)
+
+- The first logged run of R1-hold used a binary of 2b77809 (a build that was not HEAD); the rerun on the HEAD build is
+  byte-identical. The harness counts the rerun as variant 21 of the family, not 20.
+- Robustness (validator): with no exclusion -2.47 a year (t -1.16); with no split ticker at all -1.37 (t -0.69).
+- The reading is **no evidence of an edge**, not evidence of no edge: with a yearly spread of about 5 points and 9
+  years, a true +2 points a year could not be seen.
+- A truncation test of this store keeps `prices.meta.json` as it is: the cut prices stay adjusted to the original
+  `last_date`, so the split factor must use that date too. A test that unadjusts the prices must cut the meta file
+  with them.
+
 ## What it means
 
 - The earlier stock-level edge (R1 +6.56 a year, t 3.44) came from the split look-ahead. With the share counts on
