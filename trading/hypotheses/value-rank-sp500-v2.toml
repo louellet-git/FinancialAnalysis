@@ -1,0 +1,38 @@
+# Registered before the first run (see README.md in this folder). Do not change this file after its first run:
+# a change is a new id.
+# v2 of value-rank-sp500-v1: the same hypothesis, with the fields that the harness now requires (prior_variants,
+# oos_prior_exposure). v1 stays as it was at its first logged run (its SHA-256 is in that run log).
+id = "value-rank-sp500-v2"
+parent = "value-rank-sp500-v1"
+oos_inherits = "value-rank-sp500-v1"
+date = "2026-11-21"
+hypothesis = """
+Each month, the top quintile of the S&P 500 names by automatic model value (P50) over price, held with equal weight,
+has a higher annual return than the equal-weight line of the same names, after a cost of 10 bp on each traded value.
+The model value is built from the SEC facts known before each rebalance date (vintages). Test period: from 2018-01-01.
+Prior exposure: exploratory runs over 2018-01 to 2026-11 were seen before this file (pull request 104: +19.02% a year
+against +14.56%). Thus the out-of-sample window from 2023-01-01 is NOT clean for this hypothesis, and the parameter table
+(fitted on all years through 2025) is in the sample of the model on any read of that window. This file is an example of
+the harness, not evidence of an edge.
+"""
+strategy = "value-rank"
+universe = "rust/mapcheck/universe/sp500.txt"
+oos_start = "2023-01-01"
+
+# Variants tried before this file, counted from the record of the review (docs/traps/2026-11-20-portfolio-backtest.md) and
+# of the work on the harness: (1) the first version of the strategy (35% of the days in cash); (2) the review run with the
+# facts of 2022-06-01 on multiplied by 1000; (3) the fixed run (+19.02% against +14.56%, pull request 104); (4) the momentum
+# run on the same list; (5) the exploratory value-rank run of 2018 to 2026-11 on the harness before the first logged run.
+# Double count: none of these 5 is a logged run file. The logged run of v1 (trading/runs/value-rank-sp500-v1/) is counted by the
+# run log, not by this number, so it is not counted twice. Not in this number: the exploratory value-rank runs of Fundamental
+# Research (about 14). This is a count of the runs that are known; there can be more, so read it as "at least 5".
+prior_variants = 5
+
+# The window was seen before this file (the exploratory runs reached 2026-11).
+oos_prior_exposure = true
+
+[params]
+paths = 300
+seed = 7
+rebalance = "monthly"
+cost_bp = 10

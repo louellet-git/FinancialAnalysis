@@ -48,6 +48,9 @@ pub struct Fact {
     pub val: Option<f64>,
     pub form: Option<String>,
     pub filed: Option<String>,
+    /// The accession number of the filing that holds the fact (SEC `accn`).
+    #[serde(default)]
+    pub accn: Option<String>,
 }
 
 impl Fact {
@@ -106,6 +109,24 @@ impl CompanyFacts {
             }
         }
         set.into_iter().collect()
+    }
+
+    /// The accession number of the annual filing of each filing day (YYYY-MM-DD). If a day has more than one annual
+    /// filing, the smallest accession number is given.
+    pub fn annual_accessions(&self) -> BTreeMap<String, String> {
+        let mut out: BTreeMap<String, String> = BTreeMap::new();
+        for f in self.facts.values().flat_map(|ns| ns.values()).flat_map(|c| c.units.values().flatten()) {
+            if !Forms::Annual.has(f.form.as_deref()) {
+                continue;
+            }
+            if let (Some(d), Some(a)) = (f.filed.as_deref().and_then(|d| d.get(..10)), f.accn.as_deref()) {
+                let e = out.entry(d.to_string()).or_insert_with(|| a.to_string());
+                if a < e.as_str() {
+                    *e = a.to_string();
+                }
+            }
+        }
+        out
     }
 
     /// The facts as they were on `cutoff` (YYYY-MM-DD): only the facts filed on that day or before. A fact with no filing
@@ -266,6 +287,7 @@ pub mod testing {
             val: Some(val),
             form: Some(form.to_string()),
             filed: Some(filed.to_string()),
+            accn: None,
         }
     }
 
