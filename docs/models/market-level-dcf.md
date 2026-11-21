@@ -1,11 +1,11 @@
 # Market-level dividend DCF (the premium that the S&P composite price implies)
 
-Ticket: `T-20261121-dcf-engine-backtest`, plan item 3. Code: `rust/src/dcf/market.rs`.
-
+Ticket: `T-20261121-dcf-engine-backtest`, plan item 3. Code: `rust/src/dcf/market.rs`, `market_score.rs`.
 ## Purpose
 For each month t, find the equity risk premium (erp) for which a dividend DCF with the fade of the
 automatic model gives the S&P composite price of month t. This is a measurement: the price is the
-input of the search, and no model input comes from the price. The command does not score.
+input of the search, and no model input comes from the price. With `--score` it also scores the premium against the later real excess return by the frozen design
+(`analysis/macro/2026-11-21-long-history-design.md`); the run of record is 3f5a6e3.
 
 ## Data
 `macro/shiller/shiller_monthly.csv` of the data store (Shiller, `ie_data.xls`). Columns used:
@@ -57,4 +57,4 @@ summary gives, by decade, the months, the no-root months, and the median, P10 an
 - The variants L = 1.0% and 3.0%, and N = 5 and 20, run once each after the base. No choice among them.
 
 ## Command
-`fa dcf market --shiller FILE --cpi FILE --out FILE [--long-real G] [--fade-years N]`
+`fa dcf market --shiller FILE --cpi FILE --out FILE [--long-real G] [--fade-years N]`; to score: add `--tb3ms FILE --nber FILE --gs10 FILE --months-out FILE --score FILE` (the command of record: `analysis/priors/market_score_complete_2026-11-21.command.txt`).
