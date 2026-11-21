@@ -4,14 +4,14 @@
 
 Background: the chip companies made the largest part of the fall of Friday (page 1). 16 companies of the S&P 500 have
 the SEC industry code of semiconductors. "Expected" has two measures here: the beta of the stock times the fall of the
-market, and the fall of the model value if the stock had the same change as the median S&P 500 company.
+market, and the fall of the model value if the stock had the same change as the median S&P 500 company. Page 3 of 3.
 
-No. The chip companies fell much more than expected. They fell 16.4% on average. Their betas give 9.4%, and the
-market-wide change of the model value gives 4.4%. Each of the 15 companies fell more than its two expected values.
+No. The chip companies fell much more than expected. The 14 with a beta fell 16.7% on average, and their betas give
+9.4%. The 13 with a model value fell 16.3%, and the market-wide change of the model value gives 4.3%. Each company
+fell more than each expected value that it has.
 
 **Table 1: Each chip company against its expected fall** (percent; the largest difference first).
-See: 9 of 14 are more than 1 deviation below the beta line (chance gives about 2), and the fall is larger where the
-needed growth is higher.
+See: 9 of 14 are more than 1 deviation below the beta line, and the fall is larger where the needed growth is higher.
 
 | Stock | Change | Expected by beta | Difference, in deviations | Expected by value | Needed growth, 11-13 to 11-20 |
 |---|---:|---:|---:|---:|---:|
@@ -30,22 +30,25 @@ needed growth is higher.
 | AVGO | -12.3 | -10.3 | -0.4 | -4.4 | 30.7% to 28.2% |
 | MCHP | -10.1 | -9.6 | -0.1 | -5.9 | 13.9% to 11.9% |
 | Q (new company) | -12.6 | no beta | | -5.3 | 9.1% to 6.9% |
-| **Mean of the group** | **-16.4** | **-9.4** | | **-4.4** | |
+| **Mean of the group** | **-16.4** | **-9.4** | | **-4.3** | |
 
 Expected by beta: beta times the equal-weight S&P 500 (-6.56%); the difference is in weekly deviations (104 weeks).
 Expected by value: the lower yields, and the cut of expected growth of the median S&P 500 company, in the model of the stock.
 
 **What to see**
 
-- **The group as a whole.** The 485 other companies of the S&P 500 fell 6.3% on average. The chips fell 16.4%, which
-  is 7 points more than their betas give. Weighted by market value, the group fell 19.5%.
-- **The size goes with the needed growth.** Correlation -0.63 (13 companies). The 6 companies that needed a growth of
-  24% or more each year fell 18.6% on average; the 7 others fell 14.2%.
-- **In valuation terms.** The price change of the median chip company is a cut of expected growth 2.4 times that of
-  the median S&P 500 company (4.8 points against 2.0 points).
+- **The group as a whole.** The 485 other companies of the S&P 500 fell 6.3% on average. The chips fell 16.4% (15
+  companies), about 7 points more than their betas give. Weighted by market value, the group fell 19.5%.
+- **9 of 14 below 1 deviation.** A normal distribution gives about 2. The companies of one sector move together, thus
+  this is one event of the sector, not 9 independent events.
+- **The size goes with the needed growth.** Correlation -0.63 for 13 companies (AMD is at the bound of the search and
+  INTC has no value). The 6 companies that needed 24% or more each year fell 18.6% on average; the 7 others fell
+  14.2%. This is a description of one week. A part of the link is mechanical: a high needed growth is a long horizon.
+- **In valuation terms.** The model reads the price change of the median chip company as a cut of expected growth 2.4
+  times that of the median S&P 500 company (4.8 points against 2.0 points).
 - **The exceptions.** AVGO and TXN need a high growth but fell 12% to 13%. FSLR makes solar panels, not chips.
 - **The same fall outside the code.** Chip equipment and AI hardware fell as much: LRCX -18.9%, KLAC -16.7%,
   DELL -19.3%, SMCI -19.4%, ANET -15.0%. This is consistent with the reason on page 1 (the AI build-out).
 
-Status of the numbers: preliminary; not audited. SWKS has no close of 11-20 in our data and is left out. Sources:
-`data/week_2026-11-20_chips/`.
+Status: preliminary numbers; the deviations come from a one-time script. An implied number is a measurement, not an
+input. SWKS has no close of 11-20 at the source and is left out. Sources: `data/week_2026-11-20_chips/`.

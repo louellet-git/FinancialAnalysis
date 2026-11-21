@@ -205,3 +205,13 @@ Each of the three pieces has an intro of 1 to 3 lines and is one page in the PDF
 `analysis/priors/data/week_2026-11-20_chips/` (README there). State: sent to the Head of Staff and to the Head of
 Quality and Risk. NOT done: the audit of pages 2 and 3; SWKS has no close of 2026-11-20 in the store (told to the Head
 of Technology); the expected fall by beta and the deviations are a one-time script, not engine code (design R6).
+
+**Review round of the three pieces (20:11 UTC, 2026-11-21).** Applied: the points of the Head of Staff (page 2: the meaning
+of a required return below zero, the two values of the yields block, the level 1.2% to 1.7% against the 4.41% of the
+model; page 1: the forecast sentence removed; one source for the needed growth, the run of page 2) and the conditions
+of Quality (F1: the base rates now come from `fa dcf baserates` on the S&P 500 list as of 2026-11-20, output in
+`analysis/priors/data/baserates_sp500_2026-11-20/`: 46 companies, median 3.9%, maximum 21.0%; F2: the labels of Table 3;
+P3: page 3 names AMD and INTC, "a description of one week", like-for-like means). OPEN: page 1 has no reason for Monday
+to Thursday (about 60% of the fall); the Head of Economics prepares a table of the press reasons with tests (its auditor
+first); when it comes, put it on page 1 as a table, keep one page, make the PDF, send the commit to the Head of Staff
+and to Quality. SWKS: the close of 11-20 is missing at the source (Technology tries again on 2026-11-26).
