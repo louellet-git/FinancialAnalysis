@@ -18,8 +18,10 @@ USAGE:
   fa rates nyfed --rate SOFR|EFFR|OBFR|TGCR|BGCR [--date D]
   fa rates inflation [--date D]                   breakevens, 5y5y forward, CPI (BLS)
   fa rates fred --series ID [--start D] [--raw]   any FRED series
+  fa rates derived --out DIR [--from-year Y] [--to-year Y]  T10Y3M, DFII10, T10YIE from the Treasury curves, FRED form
   fa rates check [--days N]                       cross-check against FRED (exit 1 on mismatch)
   fa bonds [snapshot] [--date D]                  every rating, Moody's Aaa/Baa, HQM corporate curve
+  fa bonds hqm-compare --xls FILE... --fred-dir DIR  Treasury HQM spot files against FRED HQMCB*YR
   fa bonds spread|yield|over10y --rating A- [--date D]
                                                   ICE OAS, index yield, or yield minus UST 10Y
   fa bonds moodys --grade Aaa|Baa [--date D]      Moody's seasoned corporate yield
@@ -132,6 +134,20 @@ fn bonds(fa: &Fa, rest: &[String]) -> financial_analysis::Result<ExitCode> {
             print_json(&fa.moodys(&grade, date)?)
         }
         "hqm" => print_json(&fa.hqm_curve(date)?),
+        "hqm-compare" => {
+            // fa bonds hqm-compare --xls FILE [--xls FILE ...] --fred-dir DIR: the Treasury HQM files against the FRED files
+            let xls: Vec<std::path::PathBuf> = args.windows(2).filter(|w| w[0] == "--xls").map(|w| w[1].clone().into()).collect();
+            let Some(dir) = flag(&args, "--fred-dir") else { return Ok(usage_error("bonds hqm-compare needs --xls FILE and --fred-dir DIR")) };
+            if xls.is_empty() {
+                return Ok(usage_error("bonds hqm-compare needs --xls FILE"));
+            }
+            match financial_analysis::hqm::compare_files(&xls, std::path::Path::new(&dir)) {
+                Ok(r) => print_json(&r.iter().map(|c| serde_json::json!({
+                    "maturity": c.maturity, "months_in_both": c.both, "equal": c.equal, "off_by_0.01": c.off_by_one_hundredth,
+                    "larger": c.larger, "max_diff": c.max_diff, "first_treasury": c.first_ours, "first_fred": c.first_fred})).collect::<Vec<_>>()),
+                Err(e) => return Ok(usage_error(&e)),
+            }
+        }
         "check" => {
             let results = match days_flag(&args, 90) {
                 Ok(d) => fa.check_bonds(d)?,
@@ -174,6 +190,15 @@ fn rates(fa: &Fa, rest: &[String]) -> financial_analysis::Result<ExitCode> {
             print_json(&fa.fred(&series, flag(&args, "--start").as_deref(), has(&args, "--raw"))?)
         }
         "inflation" => print_json(&fa.inflation(date)?),
+        "derived" => {
+            let Some(out) = flag(&args, "--out") else { return Ok(usage_error("rates derived needs --out DIR")) };
+            let year = |n: &str| flag(&args, n).map(|v| v.parse::<i64>().map_err(|_| format!("bad {n} '{v}'")));
+            let (from, to) = match (year("--from-year").transpose(), year("--to-year").transpose()) {
+                (Ok(f), Ok(t)) => (f, t),
+                (Err(m), _) | (_, Err(m)) => return Ok(usage_error(&m)),
+            };
+            print_json(&fa.rates_derived(std::path::Path::new(&out), from, to)?)
+        }
         "check" => {
             let results = match days_flag(&args, 30) {
                 Ok(d) => fa.check(d)?,

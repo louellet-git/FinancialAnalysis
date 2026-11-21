@@ -27,6 +27,8 @@ pub mod explain;
 pub mod billdiag;
 pub mod forwards;
 pub mod rates;
+pub mod rates_derived;
+pub mod hqm;
 pub mod refdata;
 pub mod verdict_rates;
 
@@ -348,6 +350,16 @@ impl Fa {
         data(|| {
             let h = self.source().fred_series(series, rates::parse_on(start)?, !raw)?;
             Ok(h.into_iter().map(|(d, v)| (mapcheck::dates::format(d), v)).collect())
+        })
+    }
+
+    /// Write T10Y3M, DFII10 and T10YIE (computed from the Treasury curves) as FRED-form CSV files into `dir`.
+    /// Gives `(series, rows)`. `from_year` defaults to the first year of the nominal curves.
+    pub fn rates_derived(&self, dir: &std::path::Path, from_year: Option<i64>, to_year: Option<i64>) -> Result<Vec<(String, usize)>> {
+        data(|| {
+            let mut r = self.source();
+            let to = to_year.unwrap_or_else(|| curve::civil_from_days(r.today).0);
+            r.write_derived(dir, from_year.unwrap_or(rates::treasury_first_year(false)), to)
         })
     }
 

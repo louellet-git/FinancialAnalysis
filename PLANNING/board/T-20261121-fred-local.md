@@ -45,3 +45,16 @@ a key is necessary. NBER: bots are not permitted on the data files.
 Order: (1) Treasury computed series and HQM; (2) NFCI; (3) BLS; (4) H.15; (5) the rest only on
 need. The ICE and Moody's drop changes the cost of debt by rating (`--rating`): the Fundamental and
 Economics heads decide the substitute.
+
+Decisions of the users (2026-11-21). Fundamental: no valuation model reads the ICE or Moody's files
+(fixed `kd_spread` in each model); HQM plus a fixed step for each rating is enough, with an
+assumption record that gives the source of each step. Economics: drop BAA10Y from the premium design
+(recorded in the design before any run).
+
+Step 1 done (branch claude/fred-primary). `fa rates derived` writes T10Y3M, DFII10 and T10YIE from the
+Treasury curves: 472, 471 and 472 days equal to FRED (2025-01-02 to 2026-11-20), no difference. The
+Treasury nominal file starts in 1990, so T10Y3M 1982-1989 is not available. `fa bonds hqm-compare`
+reads the Treasury HQM spot files (`.xls`, home.treasury.gov/data/treasury-coupon-issues-and-corporate-bond-yield-curve/corporate-bond-yield-curve):
+154 of 154 months equal to FRED HQMCB*YR (FRED HQM is the spot rate, not the par yield).
+Next: an HQM fetch and cache step; `bonds.rs` reads HQM from Treasury; the rating step table and its
+record; NFCI from the Chicago Fed; then the FRED files and the FRED code leave.
