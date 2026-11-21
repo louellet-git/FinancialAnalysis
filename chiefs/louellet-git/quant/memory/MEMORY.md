@@ -14,6 +14,10 @@ Rules: `chiefs/ORIENTATION.md`, section 8. Decisions of the person: `../RECORD.m
 - After several merges: a test audit with `test-engineer` (`chiefs/ORIENTATION.md`, section 3).
 
 ## Tested rules
+- `fa recon bonds`, `fa recon explain` and `fa futures check` download each missing file (two agent downloads on
+  2026-11-20). Brief: "check the cache first". Agent file `rates-credit-quant.md` changed for this.
+- An agent report can be wrong on one fact (vol-1: "converged" against the program's "NOT converged"):
+  run the real command myself before I pass a number on.
 - A merged ticket moves to `PLANNING/board/done/` with `status: done` and `merged: <pull request>`; never delete it.
 - Open a pull request only after the gate verdict, and merge `origin/main` once just before: one check run.
 - 2026-11-21, the person: a separate branch for each task (`claude/quant-<ticket>`, from `origin/main`).
