@@ -1,6 +1,6 @@
 # A-037: rule for the 8-K release file of a window
 
-Updated: 2026-11-21. Commit: not known (branch `claude/attribution-reality`, not committed).
+Updated: 2026-11-21. Commit: a0e2480 (branch `claude/attribution-reality`).
 Model document: `docs/models/baserates-and-reality.md`.
 
 ## Choice
@@ -32,3 +32,7 @@ Head of Fundamental Research, 2026-11-21.
 
 ## When to examine it again
 When the cache stores the release text in a fixed file name, or when Technology adds a parser.
+
+## Limit (added 2026-11-21, gate note)
+Step 3 uses the change time of a file. A copy of the cache sets a new change time. The file that the rule takes can
+then differ between two copies of the same cache. The path is information for a reader; no number uses it.

@@ -1,6 +1,6 @@
 # A-036: counting rules of the reality check (one row for each SEC number, percentile below, cut after the common change)
 
-Updated: 2026-11-21. Commit: not known (branch `claude/attribution-reality`, not committed).
+Updated: 2026-11-21. Commit: a0e2480 (branch `claude/attribution-reality`).
 Model document: `docs/models/baserates-and-reality.md`.
 
 ## Choice

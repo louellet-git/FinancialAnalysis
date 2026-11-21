@@ -17,7 +17,7 @@ rates and the implied premium (or growth)? Both are measurements. No input of th
 | The automatic model | `rust/src/dcf/auto.rs` and the table (`analysis/priors/process_priors_2026-11-19.toml`) | The builder runs again for each search step |
 | Price | `--prices FILE`, or the last close; with `--price-date`, the last close on or before it | At most 10 days older (A-012) |
 | Facts | With `--as-of` or `--from/--to`: facts filed on or before the date | A 10-K of the cache does not fill a missing input (see the rule below) |
-| Curve, beta | `--curve auto` (default, being built; A-027), `gsw`, `fedinvest` or `par`; SPY of the date | One source at both dates. A GSW row older than 3 days is flagged (A-012). See "Curve" below |
+| Curve, beta | `--curve auto` (default; A-027), `gsw`, `fedinvest` or `par`; SPY of the date | One source at both dates. A GSW row older than 3 days is flagged (A-012). See "Curve" below |
 | Groups | SIC code of the cache (today's code), or `--groups FILE` | Fama-French 12 sector; industry with 5 tickers or more |
 
 ## Method (short)

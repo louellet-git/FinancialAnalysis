@@ -41,8 +41,8 @@ See: the company column shows where a stock differs: NVDA and META lost more; AA
 | BRK-B | 4.8% | -3.9% | +0.37 | -0.80 | +0.25 | | -0.18 | 2.66% to 3.16% | 9.8% to 8.6% |
 | **S&P 10** | 100% | **-9.96%** | **+5.89** | **-16.90** | **+2.44** | **-1.39** | **-9.96** | | |
 
-The last two columns: 11-13 to 11-20. Needed growth: the revenue growth of each year for 10 years that the
-price needs. Required return: above bonds; AVGO and LLY have no value and are read as growth.
+Last two columns: 11-13 to 11-20. Required return: above bonds (AVGO, LLY: no value, read as growth). Needed growth: each year
+for 10 years from the last fiscal year, with the margin and required return of the model; not a forecast, too high for a fast grower.
 
 **What the implied numbers mean**
 
@@ -52,9 +52,8 @@ price needs. Required return: above bonds; AVGO and LLY have no value and are re
   rose 0.34 points; its value is very sensitive to the required return, thus its company part is large (+3.08).
 - **A required return below zero (NVDA, META).** The price was above the model value at any return. For these stocks
   the growth reading is the valid one. In the growth reading the company part of NVDA is -2.69: the same result.
-- **Two values for the yields block.** Lower yields add more value when the required return is low (the far years weigh more).
-- **The level.** The model uses a required return of 4.41% above bonds (an assumption). The price gives 1.2% to 1.7%:
-  the market pays for more growth than the model has. The comparison with history does not depend on which is right.
+- **Two values for the yields block.** Lower yields add more value when the required return is low.
+- **The level.** The model uses a required return of 4.41%; the price gives 1.2% to 1.7%, thus it pays for more growth.
 
 **Table 3: The implied numbers against history** (before: 11-13 or October; after: 11-20 or November).
 See: the required return is still low; 5 of 9 stocks need more growth than a large company ever had.
@@ -63,7 +62,7 @@ See: the required return is still low; 5 of 9 stocks need more growth than a lar
 |---|---:|---:|---|
 | Required return above bonds, S&P 100 list (preliminary) | 1.20% | 1.67% | 2019 to 2026: median 3.56%; 98% of weeks higher |
 | The same, from the index dividends (monthly estimates) | 1.37% | 1.64% | Since 1871: 24% of the months are lower |
-| Stocks above the best 10-year growth of a large company | 5 of 9 | 5 of 9 | Best case 21.0%, median 3.9% (46 companies) |
+| Stocks above the best 10-year growth of a large company | 5 of 9 | 5 of 9 | Best case 21.0%, median 3.9% (46 companies that survived) |
 
 Reading: the split is consistent with a correction of expensive prices; it is not a buy signal for the group. The reason: page 1.
 

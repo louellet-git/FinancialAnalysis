@@ -1,6 +1,6 @@
 # A-034: size buckets of the base rates (edges 1B, 10B, 50B of base-year revenue)
 
-Updated: 2026-11-21. Commit: not known (branch `claude/attribution-reality`, not committed).
+Updated: 2026-11-21. Commit: a0e2480 (branch `claude/attribution-reality`).
 Model document: `docs/models/baserates-and-reality.md`.
 
 ## Choice

@@ -1,6 +1,6 @@
 # A-035: window of the base rates (10 fiscal years, end dates 10 years apart plus or minus 45 days, public years only)
 
-Updated: 2026-11-21. Commit: not known (branch `claude/attribution-reality`, not committed).
+Updated: 2026-11-21. Commit: a0e2480 (branch `claude/attribution-reality`).
 Model document: `docs/models/baserates-and-reality.md`.
 
 ## Choice

@@ -1,6 +1,6 @@
 # Model: base rates of growth and the reality check (`fa dcf baserates`, `fa dcf attribute --reality`)
 
-Updated: 2026-11-21. Commit: not known (branch `claude/attribution-reality`, not committed).
+Updated: 2026-11-21. Commit: a0e2480 (branch `claude/attribution-reality`).
 
 Backtest: none applies, because these commands measure and do not forecast. Their point-in-time check is the poison test of a later year: a window that ends after the date D must not enter. A test with fixed answers covers it (`rust/src/dcf/auto_baserate_tests.rs`, `auto_reality_tests.rs`).
 
@@ -35,7 +35,7 @@ implied premium of the list, against those past numbers. Both are measurements. 
 8. `--top N`: keep the N largest companies by market value at D1. The common change and the list premium come from
    the full list before the cut (A-036).
 
-## Rules of the code that are being built (not in this branch yet)
+## More rules of the code
 - `fa dcf attribute --prior-window` (ticket item R3): with the window D1 to D2 of n days, also run D0 to D1 and D0 to
   D2. D0 is D1 less n days, moved to the last SPY trading day on or before it. The text prints the three "all" lines of
   the premium-first bridge, with the common change of each, in a block "(6) PRIOR WINDOW". No new CSV column.
@@ -67,6 +67,13 @@ No random part. The result does not depend on `--jobs`.
   years (ticket `T-20261121-revenue-old-tags`, Technology) and short stores. The rates are for the other 397.
 - The implied growth is one path at the means, at the model premium and margin. It is not an expected value. A search
   can end at a floor or a ceiling.
+- The base of the implied growth is the revenue of the last fiscal year, not of the last twelve months. For a company
+  that grows fast the needed growth is thus too high by some points (a rough number: about 4 points at a growth of 50%
+  each year). A result near the maximum of a bucket is fragile (MU on 2026-11-20: 24.9% against 21.0%).
+- Direction of the survivorship error: the base rates are too high, so a percentile or "above every case" shows the
+  needed growth as LESS rare than it is. This is safe for the reading "rare" and not safe for the reading "common".
+  The 103 companies with no base-year value are mostly old, large and slow (JNJ, PFE, DIS, KR): with them the median of
+  the bucket of 50B or more is lower (a rough number, not run: about 3.5% in place of 3.9%).
 - A percentile against a bucket with few cases is weak. Read the n.
 - Do not read a percentile or a flag as a signal without a review (`HIDDEN-ASSUMPTIONS.md` #260).
 
@@ -78,5 +85,6 @@ No random part. The result does not depend on `--jobs`.
 | Tests | `rust/src/dcf/auto_baserate_tests.rs`, `auto_reality_tests.rs` |
 
 ## Review status
-Not reviewed. No skeptic, reviewer or auditor looked at the commands. First real run: S&P 100, `--top 10 --reality`
-(ticket `T-20261121-dcf-engine-integration`, state note); no run of record exists.
+Gate of the Head of Quality and Risk on 2026-11-21 (a0e2480; code-reviewer and model-validator): PASS-WITH-NOTES. The base
+rate row of the S&P 500 list as of 2026-11-20 reproduces; a truncation test and a poison test gave byte-identical output.
+No run of record on main exists before the merge of the branch.
