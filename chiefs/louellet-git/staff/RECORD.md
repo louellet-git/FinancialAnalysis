@@ -211,3 +211,19 @@ the S&P 500 (one page or a half).
 Then: "Also, I expect a small intro at the top of page 1,2, and 3 2-3 lines as an intro/necessary
 background". Done: point 9 of the style page; one line to the Head of Fundamental Research.
 Correction of the person: "My bad, 1-3 lines". Done: the style page says one to three lines.
+
+## 2026-11-21 about 21:05 UTC (question dialog)
+Question: the Head of Quality and Risk asks to hand its role to a new session; shall we use this as the one
+test of a smaller context (a new session takes the next reviews, the old session stays open as a fallback,
+I compare the two for lost facts, repeated work and tokens)? Answer of the person: "Yes, as a test
+(Recommended)".
+Done: steps sent to the Head of Quality and Risk (handover in its memory, a new title for the old session,
+no new gate there). The person starts the new session; I do not. The test and its measures are in the
+Head of Staff file, part 4.
+
+## 2026-11-21 about 21:19 UTC (question dialog)
+Question: the usage script cannot send its counts out of a session machine; shall the counts stay on each
+machine, with the script output in the token ledger of each head? Answer of the person: "Let's not get
+overly complicated".
+Done: the simplest form. The counts stay on each machine; a head runs `fa usage show` when I ask. No push
+path, no permission rule, no tie to the ledger. I read the cost by head myself (`get_session`).
