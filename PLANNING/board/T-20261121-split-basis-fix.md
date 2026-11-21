@@ -47,3 +47,13 @@ and AA. Seed 7, 300 paths, 10 bp. Each run once, as new variants 15 and later of
    15 and more). The weekly trades start on paper only if T1 passes (see the blind projection ticket) AND T2 to T4
    pass on corrected prices. The paper weeks are the first window that the design did not use: they confirm or
    not. Survivorship cannot be bounded with the store (F7).
+4. Additions (2026-11-21, before any rerun; comments of the Head of Quality and Risk):
+   - **Decision rule for A-009.** A-009 is the rule of the weekly proposals only if R1-hold gives: a mean yearly
+     excess over the equal weight above 0, a raw t of 2.0 or more, the excess above 0 in at least 7 of 9 years,
+     and T2 to T4 pass on corrected prices. The deflated t is reported. If R1-hold fails, no weekly proposal uses
+     A-009, and the head tells Luc.
+   - **The paper weeks test the process, not the edge.** 4 weeks with a 13-week hold close no position. The first
+     real confirmation is a later fresh window of at least one year, or older prices if the store gets them.
+   - **The 13 excluded tickers** (12 `mismatch` and AA): only DD is in the scored list, and the old R1 held none of
+     them (0 of 17,511 holding rows; `awk -F, '$2==T' R1_h.csv` for each ticker). The exclusion cannot drive the
+     result. If the gate of the split table changes a row, the reruns wait for that change.
