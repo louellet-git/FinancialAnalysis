@@ -1,7 +1,9 @@
 # Proposal: the limits of the paper sleeves
 
 Author: Head of Quality and Risk, 2026-11-21. Ticket: `PLANNING/board/T-20261120-paper-desk.md`, decision 2
-("Recommendation: the Head of Quality and Risk proposes the limits"). This is a proposal. The owner decides.
+("Recommendation: the Head of Quality and Risk proposes the limits"). Approved by the owner on 2026-11-21
+(about 17:10 UTC: "sure, but we are able to short stock and long stock, programs can and will place orders"),
+with the two changes in the live pilot table below.
 The values are conventions for a first paper book. They are not fitted to a result. Change them after the
 first quarter of paper results.
 
@@ -34,10 +36,10 @@ live results exist:
 |---|---|
 | One position | At most 5% of the live sleeve capital at entry (3 new names a week fill about 60% in 4 weeks) |
 | Gross exposure | At most 100%; no new position when the sum is at the limit |
-| Side and instrument | Long common stock only. No short sale and no option until a hedging engine passes its gate |
+| Side and instrument | Long and short common stock (owner, 2026-11-21). A short follows the short-sale row above (borrow cost, maximum loss, at most 5%). No option until a hedging engine passes its gate |
 | Loss in one day | 2% of the live sleeve: no new position next week until the head writes why |
 | Stop of the sleeve | A fall of 8% from the peak: close to cash; the owner decides the restart |
-| Orders | A person places each order. The repo sends no order (`CLAUDE.md`) |
+| Orders | Owner, 2026-11-21: "programs can and will place orders". Until a rule change of the same weight changes `CLAUDE.md` ("It does not send orders to a broker") and QUALITY-STANDARDS section 8 ("No order code"), the repo sends no order and a person places each order |
 
 ## Checks
 - Before each trade: the head of the sleeve checks the limits in the write-up (`trading/journal/README.md`).
