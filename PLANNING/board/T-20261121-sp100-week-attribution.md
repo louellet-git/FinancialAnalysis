@@ -111,3 +111,10 @@ CMCSA 92.26 to 91.95, ED 96.70 to 99.31). The final runs use the merged code and
 `docs/models/implied-and-attribute.md` states the rule: with a cut, the 10-K supplement fills an input only when its
 filing date is on or before the cut, and the 10-K capex lines replace the company-facts capex (`fa dcf pit` does not use
 this path).
+
+**State (2026-11-21 about 21:30 UTC):** the data defects are closed. PR 152 (b01b66a, the point-in-time 10-K fill) gives
+V, BRK-B, COP, NEE and 19 more a value; PR 156 (Technology): the share counts by class need no code change (V 1,907M:
+"the diluted weighted average of the 10-K, as converted"; BRK-B 2,157.3M class B equivalents). The runs of
+`analysis/priors/data/week_2026-11-20_main-b01b66a/` are the runs of the data of record: S&P 100 -9.22% (100
+companies), S&P 10 -9.96% (`sp10_2026-11-13_v2.txt`, BRK-B in place of WMT). Open: the code gate of this branch, then
+the go-ahead of the owner on the results; the document stays a DRAFT until then.
