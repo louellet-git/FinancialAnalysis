@@ -53,3 +53,7 @@ Done: The answer "Your laptop" is not final; this head studies where the algos s
 ## 2026-11-21 04:03 UTC (chat)
 Words: "Before asking me anything, please look into it. Send that to the tech head."
 Done: Standing rule for this head: research a question before it goes to the person, and send it through the Head of Technology, not by a direct question dialog. The study of where the algos run goes to the Head of Technology when the research is done.
+
+## 2026-11-21 04:09 UTC (relayed by the Head of Technology, its chat)
+Words: "I'd rather we run the quant algo somewhere that other research firms will typically do it, but for free."
+Done: The study of where the algo engine runs now compares always-free cloud tiers near Alpaca (us-east4).
