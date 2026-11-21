@@ -1,6 +1,7 @@
 //! The command `fa portfolio backtest`.
 
-use super::strategies::{load_vintages, EqualWeight, Momentum, ValueRank};
+use super::harness::{self, Hypothesis};
+use super::strategies::{load_vintages, load_vintages_with, EqualWeight, Momentum, ValueRank};
 use super::{perf_line, Config, Prices, Rebalance, Report};
 use crate::dcf::auto::{index_from_cache, DEFAULT_TABLE};
 use crate::dcf::auto_cli::load_table;
@@ -28,6 +29,13 @@ fa portfolio backtest --strategy NAME --start D [--end D] [OPTIONS]
   --paths N (300)    value-rank: paths of each model (100 or more)     --seed S (7): a whole number
   --table FILE       value-rank: parameter table (default analysis/priors/process_priors_2026-11-19.toml)
   --out FILE         write the daily value of the portfolio and of SPY as CSV
+  --hypothesis FILE  a registered hypothesis (trading/hypotheses/<id>.toml, committed): the file gives strategy, params and tickers
+                     file (a value of the command that differs from the file is an error); the run writes the add-only log
+                     trading/runs/<id>/<UTC time>.json and prints the variant counts. No file: an exploratory run, no log.
+  --trades FILE      write the trades as CSV: date, ticker, action, weight before and after, price, signal, filing accession
+  --poison-check D   run again with each fact filed after D and each close after D multiplied by a factor that differs by
+                     ticker; fail if a target weight or a trade before D differs (D is YYYY-MM-DD)
+  Each run prints the result at 0x, 1x and 2x the cost, and the flag oos-read (the end is after oos_start of the hypothesis).
   Survivorship: the lists of tickers are today's lists, so the result is too good. The output has an equal-weight line of
   the whole list for the comparison.";
 
@@ -79,19 +87,25 @@ pub fn run(repo: &Path, args: &[String]) -> u8 {
     }
 }
 
-fn backtest(repo: &Path, args: &[String]) -> Result<(), String> {
-    let known = ["--strategy", "--cache", "--start", "--end", "--rebalance", "--cost-bp", "--tickers-file", "--paths", "--seed", "--table", "--out"];
-    let mut i = 0;
-    while i < args.len() {
-        if !known.contains(&args[i].as_str()) {
-            return Err(format!("unknown option '{}' (fa portfolio --help)", args[i]));
+fn backtest(repo: &Path, args_in: &[String]) -> Result<(), String> {
+    let hyp: Option<(Hypothesis, harness::FileProof)> = match opt(args_in, "--hypothesis") {
+        Some(f) => {
+            let file = PathBuf::from(f);
+            let proof = harness::prove_committed(repo, &file)?;
+            let h = Hypothesis::parse(&std::fs::read_to_string(&file).map_err(|e| format!("{f}: {e}"))?)?;
+            let stem = file.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+            if stem != h.id {
+                return Err(format!("the id '{}' of the hypothesis is not the file name '{stem}'", h.id));
+            }
+            Some((h, proof))
         }
-        match args.get(i + 1) {
-            Some(v) if !v.starts_with("--") => {}
-            _ => return Err(format!("option '{}' needs a value", args[i])),
-        }
-        i += 2;
-    }
+        None => None,
+    };
+    let merged: Vec<String> = match &hyp {
+        Some((h, _)) => h.merge_args(args_in, repo)?,
+        None => args_in.to_vec(),
+    };
+    let args = &merged[..];
     let strategy = opt(args, "--strategy").ok_or("--strategy is needed: value-rank or momentum")?;
     let cache: PathBuf = opt(args, "--cache").map(PathBuf::from).unwrap_or_else(|| repo.join("data").join("raw"));
     let rebalance = match opt(args, "--rebalance").unwrap_or("monthly") {
@@ -109,6 +123,7 @@ fn backtest(repo: &Path, args: &[String]) -> Result<(), String> {
     }
     let seed: u64 = opt(args, "--seed").map_or(Ok(7), |v| v.parse().map_err(|_| format!("--seed '{v}': a whole number")))?;
     let start = day_of(args, "--start")?.ok_or("--start is needed")?;
+    let poison_day = day_of(args, "--poison-check")?;
 
     let t0 = std::time::Instant::now();
     let mut tickers = match opt(args, "--tickers-file") {
@@ -136,36 +151,141 @@ fn backtest(repo: &Path, args: &[String]) -> Result<(), String> {
     };
     let cfg = Config { start, end, rebalance, cost_bp };
     let late = tickers.iter().filter(|t| prices.0.get(*t).and_then(|s| s.first()).is_some_and(|f| f.0 > start)).count();
-    let mut n_scored = None;
 
-    let report = match strategy {
-        "momentum" => super::run(&prices, &tickers, &Momentum, &cfg)?,
-        "value-rank" => {
-            let table_file = opt(args, "--table").map(PathBuf::from).unwrap_or_else(|| repo.join(DEFAULT_TABLE));
-            let (table, fade) = load_table(&table_file).map_err(|e| e.0)?;
-            let registry = Registry::embedded()?;
-            let rules = parse_rules("").map_err(|e| e.0)?;
-            let curves = std::fs::read_to_string(cache.join("rates").join("gsw_feds200628.csv")).ok().and_then(|t| crate::forwards::parse_gsw(&t).ok());
-            let index = index_from_cache(&cache);
-            let years: BTreeMap<String, _> = tickers
-                .par_iter()
-                .filter_map(|t| {
-                    let (tpl, y) = load_vintages(&registry, &cache, t, start)?;
-                    (tpl == "standard").then(|| (t.clone(), y))
-                })
-                .collect();
-            let universe: Vec<String> = tickers.iter().filter(|t| years.contains_key(*t)).cloned().collect();
-            eprintln!("value-rank: {} of {} tickers have SEC facts with the standard template", universe.len(), tickers.len());
-            n_scored = Some(universe.len());
-            let params = RetParams { table: &table, fade: &fade, rules: &rules, curves: curves.as_ref(), index: None, lag: 100, paths, seed };
-            let s = ValueRank { years, series: &raw, index: index.as_deref(), params, scored: Default::default() };
-            super::run(&prices, &universe, &s, &cfg)?
-        }
-        x => return Err(format!("unknown strategy '{x}': value-rank or momentum")),
+    // What a value-rank run needs besides the prices (loaded once; the poison run uses the same).
+    let vr = if strategy == "value-rank" {
+        let table_file = opt(args, "--table").map(PathBuf::from).unwrap_or_else(|| repo.join(DEFAULT_TABLE));
+        let (table, fade) = load_table(&table_file).map_err(|e| e.0)?;
+        let registry = Registry::embedded()?;
+        let rules = parse_rules("").map_err(|e| e.0)?;
+        let curves = std::fs::read_to_string(cache.join("rates").join("gsw_feds200628.csv")).ok().and_then(|t| crate::forwards::parse_gsw(&t).ok());
+        Some((table, fade, registry, rules, curves))
+    } else {
+        None
     };
+    let index = if vr.is_some() { index_from_cache(&cache) } else { None };
+    // One run of the strategy on the given closes. `poison`: the day after which each fact is multiplied by a factor of its ticker.
+    let run_with = |raw: &BTreeMap<String, Vec<(String, f64)>>, prices: &Prices, index: Option<&[(String, f64)]>, poison: Option<&str>, cfg: &Config| -> Result<(Report, Option<usize>, Vec<String>), String> {
+        match (strategy, &vr) {
+            ("momentum", _) => Ok((super::run(prices, &tickers, &Momentum, cfg)?, None, tickers.clone())),
+            ("value-rank", Some((table, fade, registry, rules, curves))) => {
+                let years: BTreeMap<String, _> = tickers
+                    .par_iter()
+                    .filter_map(|t| {
+                        let (tpl, y) = match poison {
+                            None => load_vintages(registry, &cache, t, start)?,
+                            Some(day) => load_vintages_with(registry, &cache, t, start, |f| harness::poison_facts(f, day, harness::fact_factor(t)))?,
+                        };
+                        (tpl == "standard").then(|| (t.clone(), y))
+                    })
+                    .collect();
+                let universe: Vec<String> = tickers.iter().filter(|t| years.contains_key(*t)).cloned().collect();
+                if poison.is_none() {
+                    eprintln!("value-rank: {} of {} tickers have SEC facts with the standard template", universe.len(), tickers.len());
+                }
+                let params = RetParams { table, fade, rules, curves: curves.as_ref(), index: None, lag: 100, paths, seed };
+                let s = ValueRank { years, series: raw, index, params, scored: Default::default(), signals: Default::default() };
+                let n = universe.len();
+                Ok((super::run(prices, &universe, &s, cfg)?, Some(n), universe))
+            }
+            (x, _) => Err(format!("unknown strategy '{x}': value-rank or momentum")),
+        }
+    };
+    let (report, n_scored, universe) = run_with(&raw, &prices, index.as_deref(), None, &cfg)?;
     let ew = super::run(&prices, &tickers, &EqualWeight, &cfg)?;
     let info = Info { n_tickers: tickers.len(), n_scored, late, seconds: t0.elapsed().as_secs_f64() };
-    print!("{}", render(&report, &ew, &cfg, args, &info));
+    print!("{}", render(&report, &ew, &cfg, args_in, &info));
+
+    // The harness: the cost levels, the labels, the out-of-sample flag, the poison check, the run log.
+    let (zero, two) = harness::cost_levels(&prices, &universe, &report, &cfg)?;
+    let mut h = String::new();
+    let _ = writeln!(h, "\nRUN HARNESS");
+    let _ = writeln!(h, "{}; {}", harness::UNIVERSE_LABEL, harness::PRICE_LABEL);
+    let _ = writeln!(h, "costs (the same strategy, the same target weights and dates; cost {} bp is 1x):", cost_bp);
+    for (name, r) in [("cost 0x", &zero), ("cost 1x", &report), ("cost 2x", &two)] {
+        let _ = writeln!(h, "{}", perf_line(name, &r.fund));
+    }
+    let oos = hyp.as_ref().map(|(hy, _)| harness::oos_read(end, hy.oos_day()));
+    match (&hyp, oos) {
+        (Some((hy, _)), Some(read)) => {
+            let _ = writeln!(h, "hypothesis {} (registered {}), out-of-sample window from {}", hy.id, hy.date, hy.oos_start);
+            let _ = writeln!(h, "oos-read: {read}");
+            if read {
+                let _ = writeln!(h, "WARNING: the run ends after oos_start ({}): it reads the out-of-sample window. Do not tune on this result.", hy.oos_start);
+            }
+        }
+        _ => {
+            let _ = writeln!(h, "exploratory run: no hypothesis file, not usable for a decision");
+        }
+    }
+    let mut poison_text = None;
+    let mut poison_error = None;
+    if let (Some(pd), Some(day)) = (poison_day, opt(args, "--poison-check")) {
+        let poisoned_raw: BTreeMap<String, Vec<(String, f64)>> = raw.iter().map(|(t, s)| (t.clone(), harness::poison_series(s, day, t))).collect();
+        let poisoned_index = index.as_ref().map(|s| harness::poison_series(s, day, "SPY"));
+        let pcfg = Config { end: end.min(pd - 1), ..cfg.clone() };
+        let result = run_with(&poisoned_raw, &Prices::from_raw(&poisoned_raw), poisoned_index.as_deref(), Some(day), &pcfg).and_then(|(p, _, _)| harness::poison_compare(&report, &p, pd));
+        match result {
+            Ok(n) => {
+                let t = format!("poison check {day}: PASS ({n} rebalances before {day} identical)");
+                let _ = writeln!(h, "{t}");
+                poison_text = Some(t);
+            }
+            Err(e) => {
+                let t = format!("poison check {day}: FAIL: {e}");
+                let _ = writeln!(h, "{t}");
+                poison_text = Some(t);
+                poison_error = Some(e);
+            }
+        }
+    }
+    if let Some(path) = opt(args, "--trades") {
+        std::fs::write(path, harness::trades_csv(&report.trades, None)).map_err(|e| format!("{path}: {e}"))?;
+        let _ = writeln!(h, "trades: {} written to {path}", report.trades.len());
+    }
+    let mut log_path = None;
+    if let Some((hy, proof)) = &hyp {
+        let (code, dirty) = harness::code_state(repo);
+        let (store, store_dirty) = harness::store_state(&cache);
+        let level = |r: &Report| harness::perf_json(&r.fund);
+        let stamp = harness::utc_stamp(harness::now_secs());
+        let (path, n_id, n_strategy) = harness::write_run_log(&repo.join("trading").join("runs"), &hy.id, &hy.strategy, &stamp, |n_id, n_strategy| {
+            serde_json::json!({
+                "id": hy.id,
+                "strategy": hy.strategy,
+                "parent": hy.parent,
+                "run_time_utc": stamp,
+                "labels": { "universe": harness::UNIVERSE_LABEL, "prices": harness::PRICE_LABEL },
+                "code_commit": code,
+                "code_dirty": dirty,
+                "store_commit": store,
+                "store_dirty": store_dirty,
+                "hypothesis": {
+                    "file": proof.path, "sha256": proof.sha256, "commit": proof.commit, "commit_time": proof.commit_time,
+                    "registered": hy.date, "oos_start": hy.oos_start, "universe": hy.universe, "params": hy.params, "text": hy.hypothesis,
+                },
+                "oos_read": oos,
+                "variant_count": { "hypothesis": n_id, "strategy": n_strategy },
+                "config": {
+                    "command": args_in, "effective_arguments": args, "cache": cache.display().to_string(),
+                    "start": mapcheck::dates::format(start), "end": mapcheck::dates::format(end), "rebalance": format!("{rebalance:?}"),
+                    "cost_bp": cost_bp, "paths": paths, "seed": seed, "n_tickers": tickers.len(), "n_scored": n_scored,
+                    "first_position": report.dates.first().map(|d| mapcheck::dates::format(*d)), "rebalances": report.rebalances, "trades": report.trades.len(),
+                },
+                "results": {
+                    "cost_0x": level(&zero), "cost_1x": level(&report), "cost_2x": level(&two),
+                    "spy": harness::perf_json(&report.bench_perf), "equal_weight": harness::perf_json(&ew.fund),
+                    "turnover_total": report.turnover_total, "cost_total": report.cost_total,
+                },
+                "poison_check": poison_text,
+            })
+        })?;
+        let _ = writeln!(h, "runs of this hypothesis: {n_id}; runs of strategy {}: {n_strategy}", hy.strategy);
+        let _ = writeln!(h, "run log: {}", path.display());
+        log_path = Some(path);
+    }
+    print!("{h}");
+    let _ = log_path;
     if let Some(path) = opt(args, "--out") {
         let mut csv = String::from("date,portfolio,spy\n");
         for k in 0..report.dates.len() {
@@ -173,7 +293,10 @@ fn backtest(repo: &Path, args: &[String]) -> Result<(), String> {
         }
         std::fs::write(path, csv).map_err(|e| format!("{path}: {e}"))?;
     }
-    Ok(())
+    match poison_error {
+        Some(e) => Err(format!("poison check failed: {e}")),
+        None => Ok(()),
+    }
 }
 
 /// Counts for the header of the output.

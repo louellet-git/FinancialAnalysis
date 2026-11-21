@@ -47,26 +47,32 @@ impl Strategy for EqualWeight {
 /// 12-1 month price momentum: the close one month before the date over the close one year before, less 1.
 pub struct Momentum;
 
+impl Momentum {
+    /// The 12-1 month momentum of a ticker on the date of the view (None: no fresh close or not enough history).
+    fn score(view: &View, t: &str) -> Option<f64> {
+        let yesterday = view.date() - 1;
+        let (last_day, _) = view.last_close(t)?;
+        if yesterday - last_day > FRESH {
+            return None;
+        }
+        let at = |day: i64| view.close_asof(t, day).ok().flatten().filter(|(d, _)| day - d <= FRESH).map(|x| x.1);
+        let (recent, old) = (at(yesterday - 30)?, at(yesterday - 365)?);
+        Some(recent / old - 1.0)
+    }
+}
+
 impl Strategy for Momentum {
     fn name(&self) -> &str {
         "momentum"
     }
 
     fn weights(&self, view: &View, universe: &[String]) -> Result<Vec<(String, f64)>, String> {
-        let yesterday = view.date() - 1;
-        let scored = universe
-            .iter()
-            .filter_map(|t| {
-                let (last_day, _) = view.last_close(t)?;
-                if yesterday - last_day > FRESH {
-                    return None;
-                }
-                let at = |day: i64| view.close_asof(t, day).ok().flatten().filter(|(d, _)| day - d <= FRESH).map(|x| x.1);
-                let (recent, old) = (at(yesterday - 30)?, at(yesterday - 365)?);
-                Some((t.clone(), recent / old - 1.0))
-            })
-            .collect();
+        let scored = universe.iter().filter_map(|t| Some((t.clone(), Momentum::score(view, t)?))).collect();
         Ok(top_quintile(scored))
+    }
+
+    fn signal(&self, view: &View, ticker: &str) -> Option<(f64, String)> {
+        Momentum::score(view, ticker).map(|x| (x, String::new()))
     }
 }
 
@@ -79,18 +85,29 @@ pub struct ValueRank<'a> {
     pub params: RetParams<'a>,
     /// The number of scored tickers at each rebalance, in the order of the calls.
     pub scored: std::sync::Mutex<Vec<usize>>,
+    /// The signal (model P50 over the price) and the accession number of the filing of the vintage, by rebalance day and ticker.
+    pub signals: std::sync::Mutex<BTreeMap<(i64, String), (f64, String)>>,
 }
 
 /// The fiscal years of one company as the SEC facts showed them after each annual filing: `(filing day, years)` in
 /// date order. The years of a vintage come from the facts filed on that day or before, so a later restatement is not in it.
+/// The second list has the accession number of the annual filing of each vintage (same order; it can be empty in a test).
 #[derive(Debug, Clone, Default, PartialEq)]
-pub struct Vintages(pub Vec<(i64, Vec<YearData>)>);
+pub struct Vintages(pub Vec<(i64, Vec<YearData>)>, pub Vec<String>);
 
 impl Vintages {
     /// The years of the latest vintage filed before `day` (empty if there is none).
     pub fn known(&self, day: i64) -> &[YearData] {
-        let i = self.0.partition_point(|(f, _)| *f < day);
-        i.checked_sub(1).map_or(&[], |k| self.0[k].1.as_slice())
+        self.index(day).map_or(&[], |k| self.0[k].1.as_slice())
+    }
+
+    /// The accession number of the filing of the vintage that `known(day)` gives.
+    pub fn known_accession(&self, day: i64) -> Option<&str> {
+        self.1.get(self.index(day)?).map(String::as_str)
+    }
+
+    fn index(&self, day: i64) -> Option<usize> {
+        self.0.partition_point(|(f, _)| *f < day).checked_sub(1)
     }
 }
 
@@ -109,12 +126,20 @@ pub fn vintages_of(registry: &Registry, facts: &CompanyFacts, from: i64) -> Opti
     let days: Vec<(i64, String)> = facts.annual_filing_dates().into_iter().filter_map(|d| Some((mapcheck::dates::parse(&d)?, d))).collect();
     let first = days.partition_point(|(f, _)| *f < from).saturating_sub(1);
     let list = days[first..].iter().map(|(f, d)| (*f, years(&facts.filed_up_to(d)))).collect();
-    Some((template, Vintages(list)))
+    let accns = facts.annual_accessions();
+    let accn_list = days[first..].iter().map(|(_, d)| accns.get(d).cloned().unwrap_or_default()).collect();
+    Some((template, Vintages(list, accn_list)))
 }
 
 /// The vintages of a ticker from the cache (see [`vintages_of`]).
 pub fn load_vintages(registry: &Registry, cache: &Path, ticker: &str, from: i64) -> Option<(String, Vintages)> {
-    let facts = mapcheck::run::read_facts(&mapcheck::run::facts_path(cache, ticker)?).ok()?;
+    load_vintages_with(registry, cache, ticker, from, |_| {})
+}
+
+/// As [`load_vintages`], but `change` can edit the facts before the vintages are made (the poison check uses it).
+pub fn load_vintages_with(registry: &Registry, cache: &Path, ticker: &str, from: i64, change: impl FnOnce(&mut CompanyFacts)) -> Option<(String, Vintages)> {
+    let mut facts = mapcheck::run::read_facts(&mapcheck::run::facts_path(cache, ticker)?).ok()?;
+    change(&mut facts);
     vintages_of(registry, &facts, from)
 }
 
@@ -132,14 +157,19 @@ impl Strategy for ValueRank<'_> {
         self.scored.lock().map(|n| n.clone()).unwrap_or_default()
     }
 
+    fn signal(&self, view: &View, ticker: &str) -> Option<(f64, String)> {
+        self.signals.lock().ok()?.get(&(view.date(), ticker.to_string())).cloned()
+    }
+
     fn weights(&self, view: &View, universe: &[String]) -> Result<Vec<(String, f64)>, String> {
         let date = mapcheck::dates::format(view.date());
         let index = self.index.map(|m| before(m, &date));
         let params = RetParams { index, ..self.params_copy() };
-        let scored: Vec<(String, f64)> = universe
+        let scored: Vec<(String, f64, String)> = universe
             .par_iter()
             .filter_map(|t| {
-                let years = self.years.get(t)?.known(view.date());
+                let vintages = self.years.get(t)?;
+                let years = vintages.known(view.date());
                 let end = mapcheck::dates::parse(years.last()?.end.get(..10)?)?;
                 if view.date() - end > 550 {
                     return None; // the last known year is too old
@@ -151,13 +181,18 @@ impl Strategy for ValueRank<'_> {
                 let series = before(self.series.get(t)?, &date);
                 let (p50, _) = model_p50(t, years, &mapcheck::dates::format(day), p0, series, &params)?;
                 let ratio = p50 / p0;
-                (ratio.is_finite() && p50 > 0.0).then(|| (t.clone(), ratio))
+                (ratio.is_finite() && p50 > 0.0).then(|| (t.clone(), ratio, vintages.known_accession(view.date()).unwrap_or_default().to_string()))
             })
             .collect();
         if let Ok(mut n) = self.scored.lock() {
             n.push(scored.len());
         }
-        Ok(top_quintile(scored))
+        if let Ok(mut sig) = self.signals.lock() {
+            for (t, x, accn) in &scored {
+                sig.insert((view.date(), t.clone()), (*x, accn.clone()));
+            }
+        }
+        Ok(top_quintile(scored.into_iter().map(|(t, x, _)| (t, x)).collect()))
     }
 }
 
@@ -218,9 +253,9 @@ mod tests {
     }
 
     const FACTS: &str = r#"{"facts":{"us-gaap":{"Revenues":{"units":{"USD":[
-        {"start":"2019-01-01","end":"2019-12-31","val":100,"form":"10-K","filed":"2020-02-20"},
-        {"start":"2019-01-01","end":"2019-12-31","val":1000,"form":"10-K/A","filed":"2021-03-01"},
-        {"start":"2020-01-01","end":"2020-12-31","val":120,"form":"10-K","filed":"2021-02-19"}]}}}}}"#;
+        {"start":"2019-01-01","end":"2019-12-31","val":100,"form":"10-K","filed":"2020-02-20","accn":"0000000001-20-000001"},
+        {"start":"2019-01-01","end":"2019-12-31","val":1000,"form":"10-K/A","filed":"2021-03-01","accn":"0000000001-21-000002"},
+        {"start":"2020-01-01","end":"2020-12-31","val":120,"form":"10-K","filed":"2021-02-19","accn":"0000000001-21-000001"}]}}}}}"#;
 
     #[test]
     fn a_vintage_has_the_value_of_the_filings_before_the_date_not_the_restatement() {
@@ -228,6 +263,9 @@ mod tests {
         let facts: CompanyFacts = serde_json::from_str(FACTS).unwrap();
         let (_, v) = vintages_of(&reg, &facts, 0).unwrap();
         assert_eq!(v.0.len(), 3);
+        assert_eq!(v.known_accession(d("2021-03-02")), Some("0000000001-21-000002")); // the filing of the vintage in use
+        assert_eq!(v.known_accession(d("2021-03-01")), Some("0000000001-21-000001"));
+        assert_eq!(v.known_accession(d("2020-02-20")), None);
         assert!(v.known(d("2020-02-20")).is_empty()); // filed on the day: not before it
         let y = v.known(d("2020-02-21"));
         assert_eq!((y.len(), y[0].revenue), (1, Some(100.0)));
@@ -289,7 +327,7 @@ mod tests {
     fn vintages(k: usize) -> Vintages {
         let v1: Vec<YearData> = (0..8).map(|i| fy(k, i, 1.0)).collect();
         let v2: Vec<YearData> = (0..9).map(|i| fy(k, i, poison_scale(k))).collect();
-        Vintages(vec![(d("2020-02-20"), v1), (d("2021-02-19"), v2)])
+        Vintages(vec![(d("2020-02-20"), v1), (d("2021-02-19"), v2)], vec![])
     }
 
     /// Daily closes from 2017-01-01 to 2021-12-31; from `poison_from` on the close is larger by a factor that differs by ticker.
@@ -317,7 +355,7 @@ mod tests {
         let series: BTreeMap<String, Vec<(String, f64)>> = (0..N).map(|k| (format!("T{k:02}"), closes(k, poison_from))).collect();
         let prices = crate::portfolio::Prices::from_raw(&series);
         let index = market();
-        let s = ValueRank { years: years.clone(), series: &series, index: Some(&index), params, scored: Default::default() };
+        let s = ValueRank { years: years.clone(), series: &series, index: Some(&index), params, scored: Default::default(), signals: Default::default() };
         let universe: Vec<String> = series.keys().cloned().collect();
         s.weights(&View::new(d(at), &prices), &universe).unwrap()
     }
@@ -329,7 +367,7 @@ mod tests {
     #[test]
     fn value_rank_weights_do_not_move_with_a_fact_filed_after_the_date() {
         let at = "2020-09-01"; // after vintage 1, 17 months before vintage 2
-        let clean: BTreeMap<String, Vintages> = (0..N).map(|k| (format!("T{k:02}"), Vintages(vec![vintages(k).0.remove(0)]))).collect();
+        let clean: BTreeMap<String, Vintages> = (0..N).map(|k| (format!("T{k:02}"), Vintages(vec![vintages(k).0.remove(0)], vec![]))).collect();
         let (a, b) = (rank(&clean, "2030-01-01", at), rank(&all_vintages(), "2030-01-01", at));
         assert_eq!(a.len(), 2, "12 scored tickers: the top 2");
         assert_eq!(a, b);
