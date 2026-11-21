@@ -81,3 +81,11 @@ and frozen before any regression). This head gives two weekly point-in-time seri
 of `fa dcf implied --price-date`; S2: the premium part of the `attribute` bridge), for the S&P 500 and the S&P 100, after
 the point-in-time mapping fix merges. This head keeps the stock-level part (common against stock-specific; growth news
 against discount-rate news). The data audit of the store is with the Head of Technology (owner request, 17:15 UTC).
+
+**Premium research plan (2026-11-21 about 17:40 UTC):** `analysis/priors/implied_premium_research_plan_2026-11-21.md`
+(an agent; not reviewed). Recommendation: first item 4.1 (the weekly split of the premium change into the part common to
+all names and the part of each name, 2 to 5 years of `fa dcf attribute`); it is the base of 4.2 (the Economics
+regression on VIX, credit, real yield, NFCI) and 4.3 (forecast revisions: growth news against discount-rate news).
+Checked by this head: in the week to 11-20 the implied premium rose for all 65 S&P 100 tickers with a value at both
+dates (+0.33 to +2.27 points, median +0.78). Daily collection of the estimates and of the SPX chain asked of the Head
+of Technology (no history exists: one snapshot each).
