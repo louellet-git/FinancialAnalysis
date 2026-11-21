@@ -1318,7 +1318,7 @@ fn a_split_after_the_last_10k_does_not_change_the_value_over_the_price() {
     let reg = Registry::embedded().unwrap();
     let day = mapcheck::dates::parse("2026-11-21").unwrap();
     let report = mapcheck::run::check_facts(&reg, "LIVE", &live_facts(), 8, day, true);
-    let split = [Split { ticker: "LIVE".into(), ex_date: "2026-04-06".into(), old_rate: 1.0, new_rate: 25.0, factor: 25.0, kind: "forward".into(), sec_check: "match".into(), source: String::new() }];
+    let split = [Split { ticker: "LIVE".into(), ex_date: "2026-04-06".into(), old_rate: 1.0, new_rate: 25.0, factor: 25.0, kind: "forward".into(), sec_check: "match".into(), ..Default::default() }];
     let none = inputs_from_report(&reg, &report, &[], "2026-11-21");
     let with = inputs_from_report(&reg, &report, &split, "2026-11-21");
     assert_eq!(none.years.len(), 6, "{:?}", none.findings);
@@ -1360,7 +1360,7 @@ fn a_split_after_the_last_price_date_does_not_change_the_value_over_the_price() 
     let reg = Registry::embedded().unwrap();
     let day = mapcheck::dates::parse("2026-11-21").unwrap();
     let report = mapcheck::run::check_facts(&reg, "LIVE", &live_facts(), 8, day, true);
-    let split = [Split { ticker: "LIVE".into(), ex_date: "2026-11-20".into(), old_rate: 1.0, new_rate: 8.0, factor: 8.0, kind: "forward".into(), sec_check: "match".into(), source: String::new() }];
+    let split = [Split { ticker: "LIVE".into(), ex_date: "2026-11-20".into(), old_rate: 1.0, new_rate: 8.0, factor: 8.0, kind: "forward".into(), sec_check: "match".into(), ..Default::default() }];
     let none = inputs_from_report(&reg, &report, &[], &to);
     let with = inputs_from_report(&reg, &report, &split, &to);
     assert_eq!(none.years, with.years);

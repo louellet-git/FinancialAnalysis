@@ -290,17 +290,17 @@ impl YearData {
 
     /// The three share counts are multiplied by `F(ticker, s)` (`splits::Basis`), so that they are on the share basis of
     /// today, the basis of the split-adjusted closes of the store. `s` is the FILING date of the fact that the model
-    /// takes for the count (the `filed` of that tag fact: `PeriodData::filed_of`), not the period end: a filing issued
+    /// takes for the count (the `filed` of the tag fact of the variable that gives the value: `PeriodData::filed_of`), not the period end: a filing issued
     /// after a split shows the counts already adjusted for it (ASC 260), so only the splits after the filing count. When
     /// the value has no tag fact (a formula value), `s` is the filing date of the period (`PeriodData::filed`), and
     /// when that is missing, the period end. The cover-page share count (dei) is not used by the model. This is the one
     /// place of the correction.
     pub fn from_period(registry: &Registry, p: &PeriodData, basis: &super::splits::Basis) -> YearData {
-        let factor = |names: &[&str]| -> f64 {
-            let filed = names.iter().find_map(|n| p.get(registry, n).and(p.filed_of(registry, n))).or(p.filed.as_deref()).unwrap_or(&p.end);
-            basis.factor(filed)
-        };
-        let (f_diluted, f_out, f_basic) = (factor(&["shares_diluted", "shares_basic", "shares_outstanding"]), factor(&["shares_outstanding"]), factor(&["shares_basic"]));
+        // the filing date of the variable that gives the value, else the filing of the period, else the period end
+        let factor = |name: &str| -> f64 { basis.factor(p.filed_of(registry, name).or(p.filed.as_deref()).unwrap_or(&p.end)) };
+        // `shares` is the diluted count, and the count at the end of the period when there is no diluted count
+        let diluted_name = if p.get(registry, "shares_diluted").is_some() { "shares_diluted" } else { "shares_outstanding" };
+        let (f_diluted, f_out, f_basic) = (factor(diluted_name), factor("shares_outstanding"), factor("shares_basic"));
         let capex = p.get(registry, "capex_total").or_else(|| p.get(registry, "capex")).map(f64::abs);
         let interest = p.get(registry, "interest_paid").or_else(|| p.get(registry, "interest_expense")).map(f64::abs);
         let cash = p

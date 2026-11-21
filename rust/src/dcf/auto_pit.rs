@@ -772,6 +772,8 @@ pub fn pit_setup(cache: &Path, table_file: &Path, cut: Option<i32>, limit: Optio
     if let Some(l) = limit {
         tickers.truncate(l);
     }
+    // No split factor here (empty splits) on purpose: this test scores revenue and free cash flow, which are not per-share
+    // values and have no price. The share counts of these years are never read by the scored series.
     let companies: Vec<(String, Vec<YearData>)> = tickers
         .par_iter()
         .filter_map(|t| load_company_years(&registry, cache, t, &[]).filter(|(tpl, _)| tpl == "standard").map(|(_, y)| (t.clone(), y)))

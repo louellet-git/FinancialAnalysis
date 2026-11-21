@@ -581,7 +581,7 @@ mod tests {
             let t = format!("T{k:02}");
             let kk = kf.filter(|_| splitter(k));
             if let Some(f) = kk {
-                splits.push(Split { ticker: t.clone(), ex_date: D.into(), old_rate: 1.0, new_rate: f, factor: f, kind: "forward".into(), sec_check: "match".into(), source: String::new() });
+                splits.push(Split { ticker: t.clone(), ex_date: D.into(), old_rate: 1.0, new_rate: f, factor: f, kind: "forward".into(), sec_check: "match".into(), ..Default::default() });
             }
             let v = Vintages(
                 vintages(k)
@@ -651,7 +651,7 @@ mod tests {
     #[test]
     fn the_share_count_takes_the_split_factor_of_the_filing_date_not_the_period_end() {
         let reg = Registry::embedded().unwrap();
-        let splits = [Split { ticker: "X".into(), ex_date: D.into(), old_rate: 1.0, new_rate: 25.0, factor: 25.0, kind: "forward".into(), sec_check: "match".into(), source: String::new() }];
+        let splits = [Split { ticker: "X".into(), ex_date: D.into(), old_rate: 1.0, new_rate: 25.0, factor: 25.0, kind: "forward".into(), sec_check: "match".into(), ..Default::default() }];
         let basis = Basis { splits: &splits, ticker: "X", to: TODAY };
         let fy2020 = period_of(&reg, &fy(0, 8, 1.0)); // period end 2020-12-31, filed 2021-02-20 (before the split)
         let counts = |p: &mapcheck::mapper::PeriodData| {
@@ -674,6 +674,15 @@ mod tests {
         let mut formula = fy2020.clone();
         formula.filed_of = vec![None; formula.values.len()];
         assert_eq!(counts(&formula), (Some(2500.0), Some(2500.0)));
+        // a value with no tag fact does not take the filing of another variable: the diluted count (a formula value, no
+        // `filed_of`) takes the filing of the period (2021-02-20: factor 25) although the count at the end is filed later
+        let mut other = fy2020.clone();
+        other.filed_of[reg.try_var("shares_diluted").unwrap()] = None;
+        other.filed_of[reg.try_var("shares_outstanding").unwrap()] = Some("2021-08-01".into());
+        assert_eq!(counts(&other), (Some(2500.0), Some(100.0)));
+        // the same, with the filing of the period after the split: the diluted count has the factor 1
+        other.filed = Some("2021-08-01".into());
+        assert_eq!(counts(&other), (Some(100.0), Some(100.0)));
         // no filing date at all: the period end
         formula.filed = None;
         assert_eq!(counts(&formula), (Some(2500.0), Some(2500.0)));

@@ -59,6 +59,16 @@ The records "not written" belong to the board ticket
 `T-20261120-model-docs-backlog`.
 
 ## Limits
+- Share basis. The price files of the store are split-adjusted up to the last date of each file. The share counts of the
+  SEC facts are not. The model multiplies each share count by the product of the factors of the splits with
+  `filing date of the fact < ex_date <= last date of the price file` (`rust/src/dcf/splits.rs`, table
+  `<cache>/_corporate/splits.csv`; one place: `YearData::from_period`). The filing date is used, not the period end,
+  because a filing issued after a split shows the counts already adjusted for it (ASC 260). A spin-off and a class
+  change are not splits. A row with `sec_check` other than `match` is not confirmed by the SEC facts. A missing
+  table is a warning in `fa dcf auto`, `screen`, `implied` and `attribute`, and an error in `returns` and
+  `fa portfolio backtest`. `fa dcf pit` has no factor: it scores revenue and free cash flow, not values per share.
+  The classic engine (`classic.rs`, `scenarios.rs`, `verdict`, `report`, `serve`, `analyze`) has no factor: it takes
+  its shares from a curated file of the ticker, and the curator must use the post-split basis.
 - The model is a screen. Its P10 to P90 band covers 84% to 87% of real revenue in the
   point-in-time test, with known errors (`docs/HIDDEN-ASSUMPTIONS.md`, #199).
 - After a year of decline the revenue P50 stays too low (T+2 and T+3), in a few base years with a common shock (2018 to 2021; A-003)

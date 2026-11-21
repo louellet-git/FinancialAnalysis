@@ -15,7 +15,7 @@
 use std::path::{Path, PathBuf};
 
 /// One row of `splits.csv`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Split {
     pub ticker: String,
     /// `YYYY-MM-DD`
@@ -28,12 +28,18 @@ pub struct Split {
     pub kind: String,
     /// `match`, `no_sec_fact` or `mismatch`
     pub sec_check: String,
-    /// Where the row comes from (the eighth column; empty in a file with seven columns).
+    /// Where the row comes from (empty when the file has no `source` column).
     pub source: String,
+    /// `applied` or `pending` ("applied" when the file has no `status` column). A pending row is NOT skipped in code: the
+    /// `to` date (the last date of the price file) leaves out a split that is after the last close.
+    pub status: String,
+    /// True when the ex-date is an estimate (false when the file has no `ex_date_estimated` column).
+    pub ex_date_estimated: bool,
 }
 
-const HEADER: &str = "ticker,ex_date,old_rate,new_rate,factor,kind,sec_check,source";
-const HEADER_7: &str = "ticker,ex_date,old_rate,new_rate,factor,kind,sec_check";
+/// The columns that a file must have. The columns are read by name: their sequence does not matter, and a column that is
+/// not named here or below (`source`, `status`, `ex_date_estimated`) is ignored.
+const REQUIRED: [&str; 7] = ["ticker", "ex_date", "old_rate", "new_rate", "factor", "kind", "sec_check"];
 
 /// The file of a cache.
 pub fn splits_path(cache: &Path) -> PathBuf {
@@ -43,25 +49,46 @@ pub fn splits_path(cache: &Path) -> PathBuf {
 /// The rows of a `splits.csv` text.
 pub fn parse_splits(text: &str, name: &str) -> Result<Vec<Split>, String> {
     let mut lines = text.lines().map(str::trim).filter(|l| !l.is_empty());
-    let n_fields = match lines.next() {
-        Some(h) if h == HEADER => 8,
-        Some(h) if h == HEADER_7 => 7,
-        Some(h) => return Err(format!("{name}: the header is '{h}', expected '{HEADER}'")),
+    let header: Vec<&str> = match lines.next() {
+        Some(h) => h.split(',').map(str::trim).collect(),
         None => return Err(format!("{name}: the file is empty")),
     };
+    let col = |c: &str| header.iter().position(|h| *h == c);
+    for c in REQUIRED {
+        if col(c).is_none() {
+            return Err(format!("{name}: the header has no column '{c}' (expected at least {})", REQUIRED.join(",")));
+        }
+    }
+    let at = |c: &str| col(c).unwrap_or(usize::MAX);
+    let (i_ticker, i_ex, i_old, i_new, i_factor, i_kind, i_check) = (at("ticker"), at("ex_date"), at("old_rate"), at("new_rate"), at("factor"), at("kind"), at("sec_check"));
+    let (i_source, i_status, i_est) = (col("source"), col("status"), col("ex_date_estimated"));
     let mut out = Vec::new();
     for (i, line) in lines.enumerate() {
         let f: Vec<&str> = line.split(',').map(str::trim).collect();
-        if f.len() != n_fields {
-            return Err(format!("{name}: row {} has {} fields, expected {n_fields}", i + 1, f.len()));
+        if f.len() != header.len() {
+            return Err(format!("{name}: row {} has {} fields, the header has {}", i + 1, f.len(), header.len()));
         }
         let num = |k: usize| -> Result<f64, String> {
             f[k].parse::<f64>().ok().filter(|x| x.is_finite() && *x > 0.0).ok_or_else(|| format!("{name}: row {}: '{}' is not a positive number", i + 1, f[k]))
         };
-        if f[1].len() != 10 || f[1].as_bytes()[4] != b'-' || f[1].as_bytes()[7] != b'-' {
-            return Err(format!("{name}: row {}: ex_date '{}' is not YYYY-MM-DD", i + 1, f[1]));
+        let ex = f[i_ex];
+        if ex.len() != 10 || ex.as_bytes()[4] != b'-' || ex.as_bytes()[7] != b'-' {
+            return Err(format!("{name}: row {}: ex_date '{ex}' is not YYYY-MM-DD", i + 1));
         }
-        out.push(Split { ticker: f[0].to_uppercase(), ex_date: f[1].to_string(), old_rate: num(2)?, new_rate: num(3)?, factor: num(4)?, kind: f[5].to_string(), sec_check: f[6].to_string(), source: f.get(7).map_or(String::new(), |s| s.to_string()) });
+        let text = |k: Option<usize>| k.map_or(String::new(), |k| f[k].to_string());
+        let status = text(i_status);
+        out.push(Split {
+            ticker: f[i_ticker].to_uppercase(),
+            ex_date: ex.to_string(),
+            old_rate: num(i_old)?,
+            new_rate: num(i_new)?,
+            factor: num(i_factor)?,
+            kind: f[i_kind].to_string(),
+            sec_check: f[i_check].to_string(),
+            source: text(i_source),
+            status: if status.is_empty() { "applied".into() } else { status },
+            ex_date_estimated: i_est.is_some_and(|k| f[k].eq_ignore_ascii_case("true")),
+        });
     }
     Ok(out)
 }
@@ -171,7 +198,7 @@ mod tests {
     use super::*;
 
     fn sp(t: &str, d: &str, factor: f64, check: &str) -> Split {
-        Split { ticker: t.into(), ex_date: d.into(), old_rate: 1.0, new_rate: factor, factor, kind: if factor < 1.0 { "reverse" } else { "forward" }.into(), sec_check: check.into(), source: String::new() }
+        Split { ticker: t.into(), ex_date: d.into(), old_rate: 1.0, new_rate: factor, factor, kind: if factor < 1.0 { "reverse" } else { "forward" }.into(), sec_check: check.into(), ..Default::default() }
     }
     const TODAY: &str = "2026-11-21";
 
@@ -261,10 +288,21 @@ mod tests {
     fn the_file_text_is_read() {
         let s = parse_splits(CSV, "t").unwrap();
         assert_eq!(s.len(), 3);
-        assert_eq!(s[0], Split { ticker: "BKNG".into(), ex_date: "2026-04-06".into(), old_rate: 1.0, new_rate: 25.0, factor: 25.0, kind: "forward".into(), sec_check: "match".into(), source: String::new() });
+        assert_eq!(s[0], Split { ticker: "BKNG".into(), ex_date: "2026-04-06".into(), old_rate: 1.0, new_rate: 25.0, factor: 25.0, kind: "forward".into(), sec_check: "match".into(), source: String::new(), status: "applied".into(), ex_date_estimated: false });
         assert_eq!(s[1].factor, 0.1);
         let eight = parse_splits("ticker,ex_date,old_rate,new_rate,factor,kind,sec_check,source\nBKNG,2026-04-06,1,25,25,forward,match,alpaca\n", "t").unwrap();
         assert_eq!(eight[0].source, "alpaca");
+        // the 10-column header (status and ex_date_estimated), a pending row is read and kept
+        let ten = "ticker,ex_date,old_rate,new_rate,factor,kind,sec_check,source,status,ex_date_estimated\nSNDK,2026-11-20,1,8,8,forward,no_sec_fact,alpaca (checked),pending,true\nBKNG,2026-04-06,1,25,25,forward,match,alpaca,applied,false\n";
+        let t = parse_splits(ten, "t").unwrap();
+        assert_eq!((t[0].ticker.as_str(), t[0].factor, t[0].status.as_str(), t[0].ex_date_estimated), ("SNDK", 8.0, "pending", true));
+        assert_eq!((t[1].status.as_str(), t[1].ex_date_estimated, t[1].source.as_str()), ("applied", false, "alpaca"));
+        // the columns are read by name: another sequence and an unknown column
+        let by_name = "extra,sec_check,kind,factor,new_rate,old_rate,ex_date,ticker\nq,match,forward,25,25,1,2026-04-06,BKNG\n";
+        let b = parse_splits(by_name, "t").unwrap();
+        assert_eq!((b[0].ticker.as_str(), b[0].ex_date.as_str(), b[0].factor, b[0].sec_check.as_str(), b[0].status.as_str()), ("BKNG", "2026-04-06", 25.0, "match", "applied"));
+        // a required column is missing
+        assert!(parse_splits("ticker,ex_date,old_rate,new_rate,factor,kind\nBKNG,2026-04-06,1,25,25,forward\n", "t").is_err());
         assert!(parse_splits("a,b\n", "t").is_err());
         assert!(parse_splits("", "t").is_err());
         assert!(parse_splits(&CSV.replace("25,25,forward", "25,x,forward"), "t").is_err());
