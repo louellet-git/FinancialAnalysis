@@ -146,3 +146,13 @@ sure how we want to like particularly deal with that. Something lean, non-invasi
 Done: no new rule. I read what each head session asks of the person (`list_sessions`, the field
 `needs_action`; one call, no tokens of a head) and I take those items. Method in the Head of Staff file,
 part 3. First item found: the go-ahead for the week report (Fundamental Research).
+
+## 2026-11-21 about 19:24 UTC (question dialog, then chat)
+Question: shall the Head of Fundamental Research write the 3-page week report now? Answer of the person:
+"Is it ready?" My answer: the results are preliminary; the code gate and the run of record are open.
+Words, then: "I guess what I would like from the fundamental research is if we've explained the S&P 10 and
+we're pleased with our explanation, is there any stock where that explanation doesn't hold up? Was anything
+hit less? Was anything hit more? If S&P10 finished expand to S&P100. Have a one pager for the S&P10 for my
+review before moving on to the additional work."
+Done: the exact words went to the Head of Fundamental Research. Next result: one page for the S&P 10, to
+me first, then to the person. The S&P 100 part waits for the review of the person.
