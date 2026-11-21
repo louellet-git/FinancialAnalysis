@@ -120,3 +120,4 @@
 | fundamental model documents | 2026-11-21 | claude/fundamental-model-docs (a9653db): two document-reviewers; PASS with one condition (renumber A-004 to A-008 to A-022 to A-026) | about 149k (63k + 86k measured) | |
 | cycle-2 head checks | 2026-11-21 | pit-supplement-fill 300030b (T1-T3 closed) and fundamental documents a65e2a3 (A-022 to A-026; no clash): both PASS-WITH-NOTES; PR 149 (order rule) merged with owner approval | small (head only) | |
 | quant docs part 2; view engine design | 2026-11-21 | claude/quant-model-docs-2 (f8245fe): document-reviewer started; econ/view-engine-design (29e4eb5): model-validator + document-reviewer (Haiku) started | | |
+| quant docs part 2 | 2026-11-21 | claude/quant-model-docs-2 (f8245fe): document-reviewer PASS-WITH-NOTES (3 MIN); verdict PASS-WITH-NOTES | about 50k | |
