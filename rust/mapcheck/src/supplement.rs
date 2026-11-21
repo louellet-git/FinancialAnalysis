@@ -56,7 +56,7 @@ pub struct Supplement {
     filing: Filing,
     variables: HashMap<String, String>,
     /// Point in time: (filing date of the 10-K, cut date). None: no limit.
-    cut: Option<(Option<String>, String)>,
+    cut: Option<Cut>,
 }
 
 /// The folder of the latest filing of a ticker in the cache (None: no filing).
@@ -75,6 +75,35 @@ pub fn latest_filing_folder(cache: &Path, ticker: &str) -> Option<PathBuf> {
         .max_by_key(key)
 }
 
+/// A date as (year, month, day), parsed from the first 10 characters (YYYY-MM-DD). A bad date gives None.
+pub fn parse_ymd(text: &str) -> Option<(i32, u32, u32)> {
+    let t = text.get(..10)?;
+    let b = t.as_bytes();
+    if b[4] != b'-' || b[7] != b'-' {
+        return None;
+    }
+    let (y, m, d) = (t[..4].parse::<i32>().ok()?, t[5..7].parse::<u32>().ok()?, t[8..10].parse::<u32>().ok()?);
+    let leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
+    let days = match m {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 if leap => 29,
+        2 => 28,
+        _ => return None,
+    };
+    (d >= 1 && d <= days).then_some((y, m, d))
+}
+
+/// The point-in-time limit of a supplement. A date that does not parse gives no fill.
+#[derive(Clone)]
+struct Cut {
+    /// Filing date of the 10-K as given (None: not known).
+    filed_text: Option<String>,
+    filed: Option<(i32, u32, u32)>,
+    cut_text: String,
+    cut: Option<(i32, u32, u32)>,
+}
+
 impl Supplement {
     pub fn new(registry: &Registry, filing: Filing) -> Supplement {
         Supplement { filing, variables: variable_of_tag(registry), cut: None }
@@ -83,7 +112,7 @@ impl Supplement {
     /// Limit the supplement to a date. It fills only if the 10-K was public on `cut` or before (`filed`, YYYY-MM-DD;
     /// None: the date is not known, no fill), and only for a fiscal year that ends on `cut` or before.
     pub fn with_cut(mut self, filed: Option<String>, cut: &str) -> Supplement {
-        self.cut = Some((filed, cut.to_string()));
+        self.cut = Some(Cut { filed: filed.as_deref().and_then(parse_ymd), filed_text: filed, cut_text: cut.to_string(), cut: parse_ymd(cut) });
         self
     }
 
@@ -94,11 +123,14 @@ impl Supplement {
 
     /// With a cut: the reason why the supplement gives no value at all (None: it can fill).
     pub fn blocked(&self) -> Option<String> {
-        let (filed, cut) = self.cut.as_ref()?;
-        match filed {
-            None => Some(format!("10-K {} not used: its filing date is not in the company facts or the filing folder", self.filing.accession)),
-            Some(d) if d.as_str() > cut.as_str() => Some(format!("10-K {} not used: filed {d}, after the date {cut}", self.filing.accession)),
-            Some(_) => None,
+        let c = self.cut.as_ref()?;
+        let acc = &self.filing.accession;
+        match (&c.filed_text, c.filed, c.cut) {
+            (None, _, _) => Some(format!("10-K {acc} not used: its filing date is not in the company facts or the filing folder")),
+            (Some(t), None, _) => Some(format!("10-K {acc} not used: its filing date {t} is not a date")),
+            (_, _, None) => Some(format!("10-K {acc} not used: the date {} is not a date", c.cut_text)),
+            (Some(t), Some(f), Some(cut)) if f > cut => Some(format!("10-K {acc} not used: filed {t}, after the date {}", c.cut_text)),
+            _ => None,
         }
     }
 
@@ -106,7 +138,7 @@ impl Supplement {
     fn open(&self, end: &str) -> bool {
         match &self.cut {
             None => true,
-            Some((_, cut)) => self.blocked().is_none() && end.get(..10).is_some_and(|e| e <= cut.as_str()),
+            Some(c) => self.blocked().is_none() && parse_ymd(end).zip(c.cut).is_some_and(|(e, cut)| e <= cut),
         }
     }
 
@@ -326,6 +358,19 @@ mod tests {
         // A fiscal year that ends after the cut: no fill.
         let s = Supplement::new(&registry, f).with_cut(Some("2024-01-01".into()), "2024-06-30");
         assert!(s.fill(&registry, "2024-12-31", "capex").is_none());
+    }
+
+    #[test]
+    fn cut_supplement_with_a_bad_date_gives_no_fill() {
+        let (registry, f) = capex_supplement();
+        for (filed, cut) in [(Some("2025-13-40"), "2030-01-01"), (Some("20250220"), "2030-01-01"), (Some("2025-02-20"), "soon")] {
+            let s = Supplement::new(&registry, f.clone()).with_cut(filed.map(String::from), cut);
+            assert!(s.fill(&registry, "2024-12-31", "capex").is_none(), "{filed:?} {cut}");
+            assert!(s.lines("2024-12-31", "capex").is_none());
+            assert!(s.blocked().unwrap().contains("not a date"));
+        }
+        assert_eq!(parse_ymd("2024-02-29T10:00:00"), Some((2024, 2, 29)));
+        assert_eq!(parse_ymd("2025-02-29"), None);
     }
 
     #[test]
