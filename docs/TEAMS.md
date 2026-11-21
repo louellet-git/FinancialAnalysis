@@ -27,7 +27,7 @@ Status: new, 2026-11-20 (ticket `T-20261120-agent-teams`).
 | QA | `auditor` | Sources and recalculation; step 4 |
 | QA | `test-engineer` | Test plan, fixed answers, point-in-time, CI (on request); test audit of an area (each head, from time to time) |
 | QA | `code-reviewer` | Correctness of a diff and the repo rules |
-| Risk | `risk-compliance-officer` | Model risk, no orders, terms, secrets, conflict of interest, hygiene (on request) |
+| Risk | `risk-compliance-officer` | Model risk, paper orders only (and their controls), terms, secrets, conflict of interest, hygiene (on request) |
 
 QA agents and the risk officer have read and run tools only. They have no edit tool and
 no write tool, because the documentation of Claude Code cannot limit a write tool to one

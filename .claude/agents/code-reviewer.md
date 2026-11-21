@@ -22,7 +22,8 @@ you ask for), and the result of build, tests and clippy on the changed crate.
 **Checks:**
 1. Correctness: units and scales, dates and time zones, `unwrap` on data that can be
    missing, division by zero, swallowed errors, unseeded randomness.
-2. Rules: Rust only, one implementation of a part, no order code, no secret, honest
+2. Rules: Rust only, one implementation of a part, no live order code (paper orders only, with the controls of
+   QUALITY-STANDARDS section 8), no secret, honest
    client name, models read standard variable names only.
 3. Frozen files (`analysis/IBM/report/*`, `REVIEW.md`, `DRIVER-REVIEW.md`) and `data/`
    are not in the diff.

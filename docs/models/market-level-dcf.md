@@ -1,6 +1,8 @@
 # Market-level dividend DCF (the premium that the S&P composite price implies)
 
 Ticket: `T-20261121-dcf-engine-backtest`, plan item 3. Code: `rust/src/dcf/market.rs`, `market_score.rs`.
+
+Backtest: `fa dcf market --score` (out of sample, 1893 to 2016; pull request 133: out-of-sample R2 0.119 against 0.087 for the base model).
 ## Purpose
 For each month t, find the equity risk premium (erp) for which a dividend DCF with the fade of the
 automatic model gives the S&P composite price of month t. This is a measurement: the price is the

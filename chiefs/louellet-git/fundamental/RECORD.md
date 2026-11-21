@@ -30,6 +30,14 @@ The rule of the entry above is in `chiefs/ORIENTATION.md`, section 6 ("Reviews a
 ## 2026-11-20 23:09 UTC (chat)
 Words: "I think you might have deleted an old ticket, that's not how we should handle those, speak w tech head"
 Done: question to the Head of Technology; the rule is now in `PLANNING/board/README.md` (a merged ticket moves to `PLANNING/board/done/` with `status: done` and `merged:`; never deleted). The two deletions on my branches are replaced by the move.
+## 2026-11-20 23:21 UTC (chat)
+Words: "I need to know why the market crashed today and over past few days, generally what I'm looking for is an understanding of where the market valuation WENT. This is a large task that requires its own models being built, and probably will start with you doing one stock at a time until you've built a general enough model to explain. I want to know what NVDA is worth."
+Done: tickets `T-20261120-nvda-valuation` (order 0.1) and `T-20261120-valuation-move-attribution` (order 0.2); data request to the Head of Technology.
+
+## 2026-11-21 01:04 UTC (chat)
+Words: "Ensure that work we do is repeatable and contributes to the dcf engine"
+Done: (1) each ticker or market analysis has a command file with the store commit, so that a person can run it again; (2) each judgment of a ticker model that can be a general rule is listed and goes to the engine ticket `T-20261121-dcf-engine-from-tickers`; (3) the analyst and quant agent files have this as a check.
+
 
 ## 2026-11-21 03:17 UTC (chat)
 Words: "I need you to begin working on testing your DCF engine on the back tester. That's the real value. You and the chief of economics will have to look for as long of data as you have, chief of economics could/should even consider periods of time that are outside the length of the stock market when that makes sense."
@@ -84,3 +92,7 @@ Done: no, the findings file of `T-20261120-valuation-move-attribution` was not w
 ## 2026-11-21 about 15:10 UTC (chat)
 Words: "Start w S&P10 / Updating data should be relatively easy, speak w tech / Make sure that whenever you stop work, just make sure that it all goes on the board for later and just report on where it is, to help out future users."
 Done: the document starts with the 10 largest companies of the S&P 100 (one weight for each company). A standing rule of this head: each pause puts the state of the work on the board (the ticket says what is done, what is not, the next step), and the report says where it is.
+
+## 2026-11-21 about 17:10 UTC (in the session of the Head of Quality and Risk, relayed)
+Words: "yes approve the merge but this doesnt mean I approve that the valuation is correct"
+Done: pull request 106 (NVDA) merges. It is NOT an approval of the value: the report keeps "a range for a judgment, not a price target", and no later document or trade may say that the owner approved the NVDA value.
