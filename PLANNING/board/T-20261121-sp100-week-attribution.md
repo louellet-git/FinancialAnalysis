@@ -36,3 +36,14 @@ Technology, refresh in progress). Next: the run to 2026-11-20, the document, the
 Owner words, 2026-11-21 about 15:40 UTC: start with the S&P 100, then break down the model valuation of each company of the
 S&P 10 so that the sum of the parts is the change of the S&P 10. Done in code: the full bridge has one line for each
 ticker for a list of 20 tickers or fewer; the S&P 10 list is `analysis/priors/data/sp10_2026-11-13.txt`.
+
+**Data defects found (2026-11-21 about 15:55 UTC; owner word: "If there's a problem with the data, that needs to be fixed"):**
+1. mapcheck, point-in-time mapping (`run.rs`, `check_ticker_filed` with a filed cut): no fill from the filing supplement,
+   so V, BRK-B, COP and NEE fail at a past date (`fa dcf implied V --as-of 2026-11-13`: "mapping status FAIL"), and V and
+   BRK-B have no share count (no weight). Sent to the Head of Technology (the owner of mapcheck) with a proposed fix: use
+   the supplement only when its filing was public on the date. Open until the fix merges.
+2. The store file `rates/treasury_nominal_2026.csv` (58e54a2) has the 11/20/2026 row two times. The reader keeps one;
+   sent to the Head of Technology.
+Not data defects (model limits, stated in the document): AMZN and INTC have a value below 0 at the means (AMZN FY2025:
+operating cash flow 139.5B, capex 131.8B, and the model counts all capex and stock pay as a cost); TSLA, AMD and PLTR
+need a premium or a growth outside the search range; banks, insurers and REITs have no model template.
