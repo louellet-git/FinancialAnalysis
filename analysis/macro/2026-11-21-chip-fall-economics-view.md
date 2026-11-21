@@ -55,3 +55,21 @@ Reading: the lag effect is real in direction, but it is small. The GSW 10-year z
 - No intraday prices, no option data, no VIX close for 11-20 in the store.
 - The implied growth comes from the automatic model, not a reviewed valuation.
 - Disclosure: the agents of this repo run on Anthropic models. The press of 11-19 and 11-20 names the Anthropic IPO. This note makes no valuation of Anthropic.
+
+## Monday 11-16 to Thursday 11-19: the reasons by day (added 2026-11-21, about 20:40 UTC)
+
+Main answer: the press gives one main reason for the four days: a spreading doubt that the AI build-out will pay for its cost and its debt, after the exit of the NVDA CEO (announced 11-12). Our data is consistent with it: on three of the four days the most indebted AI names and the chips fell most, and the banks fell each day. Thursday adds a growth scare from weak data. A rate-rise story is not supported: the yields fell on each day.
+
+Group returns are equal-weight means of daily closes (store fa-data 1e2739c). Groups: chips NVDA, AVGO, AMD, MU, AMAT; neoclouds CRWV, IREN, SMCI; buyers MSFT, GOOGL, AMZN, META, ORCL; banks JPM, BAC, C, WFC, GS; cyclicals CAT, DE, GM, F, HON, UNP; defensives JNJ, PG, KO, PEP, WMT, DUK, SO. Yields: Treasury par, `rates/treasury_nominal_2026.csv`.
+
+| Day | Reason in the press (source, page read 2026-11-21) | Our data | Result |
+|---|---|---|---|
+| Mon 11-16 | Chips hit again; a US rule limits remote access of Chinese companies to advanced AI chips. Bloomberg wrap (swissinfo), 11-16 22:05: "Chipmakers got hit again, with a sector gauge sinking 5.3%." | Chips -5.3%, neoclouds -7.6%, buyers -3.2%, SPY -1.9%; 10-year -3 bp | Consistent: an AI and chip day, not a rate day |
+| Tue 11-17 | Rich AI valuations, high rates, the midterms; banks fell on the risk of less AI spending. AP (Choe), 11-17 4:14 PM: "high interest rates would mean less borrowed money to fund further growth" | Banks -1.8%, neoclouds -2.4%, defensives -1.2%, chips +0.1%; equal weight -1.4% against SPY -1.0%; 10-year -2 bp | Consistent for the AI-financing worry (banks and neoclouds). The "high rates" part is about the level, not a change: yields fell |
+| Wed 11-18 | NVDA results did not stop the worry. Bloomberg wrap, 11-18 22:40: "Those worries overshadowed the firm's solid sales outlook and a boost to its stock-buyback program." Hawkish FOMC minutes (IBTimes, 4:48 PM). | NVDA -2.9% while the other chips rose (AMD +5.3% per the press; chip group +1.2%); buyers +0.7%; equal weight -0.1%; 10-year -3 bp | Consistent: an NVDA-specific day. The minutes did not lift yields, so they did not drive stocks |
+| Thu 11-19 | The Anthropic IPO was "not an AI all-clear"; doubt about "the industry's borrowing binge" and "debt-heavy neoclouds" (Bloomberg wrap, 22:40). Weak data: jobless claims 203k (197k expected), Philly Fed 6.3 (20.0 expected) (Newsquawk on ZeroHedge, 11-19). | Neoclouds -4.6%, chips -3.8%, buyers -3.1%, cyclicals -2.2%, defensives -1.5%, banks -1.4%; 2-year -4 bp, 10-year -3 bp | Consistent with both: AI-debt doubt (neoclouds fell most) and a growth scare (cyclicals below defensives, short yields down) |
+| All four days | A rate-rise story (the hawkish minutes, the expected December rise) | Yields fell or were flat each day (2-year -12 bp, 10-year -11 bp over the four days); rate-sensitive REITs (O, PLD, AMT, SPG) rose +0.4% on the day of the minutes | Not supported as the cause of these four days |
+
+Also from Fundamental Research (their shell sums, not audited): the falls of the four days rank weakly with the beta of each company (r = -0.36, about 80 S&P 100 companies) and not with the rate sensitivity (r = -0.14). This agrees with a broad risk-off and not with a rate story.
+
+Limits: daily closes only; the groups are small and chosen by hand; "consistent with", not proof. The neocloud group has 3 names in the store (NBIS is not in the store). The AMD +5.3% of 11-18 is from the press, not checked in the store.
