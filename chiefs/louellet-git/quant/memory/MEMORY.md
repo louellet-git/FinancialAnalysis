@@ -11,7 +11,8 @@ Rules: `chiefs/ORIENTATION.md`, section 8. Decisions of the person: `../RECORD.m
 ## Next steps
 - From 2026-11-24 (two copied days): `arb-3`; the out-of-sample test of vol-1 (fit day D, price D + 1).
 - Then `vol-2` (SABR, local volatility) on the new `volmodels` base.
-- Now due: a test audit with `test-engineer` (several merges in my area; `chiefs/ORIENTATION.md`, section 3).
+- Test audit done 2026-11-21: proposals 3 and 4 in `T-20261121-quant-test-audit-1`; 1, 2 (speed) refused:
+  the suite is ~10 s and the build >2 min. Next audit after several more merges.
 - Findings for the person: no tradable break so far; the SPX feed is indicative (not executable).
 
 ## Tested rules
