@@ -502,8 +502,8 @@ The code is in `rust/src/trading/`. It has 22 bots. Each bot has a research note
 Data sources (free, no key, no login). `fa trade fetch` gets the bars from the Yahoo
 chart endpoint. It waits 2 seconds between two requests. If Yahoo answers HTTP 429, the
 command waits, tries one more time, and then stops; the cache files stay as they are.
-`fa trade paper` gets the live option chain from the Cboe delayed quotes (about 15 minutes
-late). Yahoo is not a source of option chains: it refuses a program that has no browser
+`fa trade paper` prices with the model (`--no-live`; add `--no-refresh` to read only the cached bars, with no Yahoo download). It refuses a live option chain: the Cboe
+page prohibits automatic downloads, and the Alpaca chain has no adapter yet (T-20261121-cboe-off). Yahoo is not a source of option chains: it refuses a program that has no browser
 identity (HTTP 429 at the crumb request).
 
 Limits that you must know before you trade:
@@ -549,7 +549,7 @@ The table of all data sets with their sources, keys and commands is `docs/DATA-S
 | Financial statements | SEC EDGAR companyfacts XBRL API | None |
 | Daily prices | Tiingo (key), Yahoo chart endpoint, Nasdaq site API, Alpaca (free keys; last: IEX close, history from 2020-07-27) | `TIINGO_API_KEY`; `APCA_API_KEY_ID` and `APCA_API_SECRET_KEY` (none for Yahoo and Nasdaq) |
 | Intraday bars (1 and 5 minutes), option chain snapshots, option closes of past dates | Alpaca Market Data API (free plan) | `APCA_API_KEY_ID` and `APCA_API_SECRET_KEY` |
-| Option chains | Cboe delayed quotes (about 15 minutes late) | None |
+| Option chains | Alpaca indicative feed (Cboe delayed quotes are not read) | Alpaca keys |
 | Analyst estimates and earnings surprises | Financial Modeling Prep | `FMP_API_KEY` in `.env` or the environment |
 | Forward consensus snapshot, earnings dates | No source in Rust: cache files of the earlier Python code | None |
 | Treasury par yield curves, nominal and real (TIPS) | U.S. Treasury | None |

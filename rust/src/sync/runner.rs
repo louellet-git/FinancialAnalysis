@@ -13,7 +13,7 @@ use super::config::SyncConfig;
 use super::ledger::Ledger;
 use super::plan::{last_date_of_file, KeyInfo, PlanItem, CALENDAR_DAYS, CALENDAR_KEY, DEFAULT_INTRADAY_DAYS};
 use crate::hostnet;
-use crate::market::{self, alpaca, earnings_dates, estimates_cache, intraday, nasdaq_est, options, options_cli, price_cache, price_source};
+use crate::market::{self, alpaca, earnings_dates, estimates_cache, intraday, nasdaq_est, options_cli, price_cache, price_source};
 use mapcheck::http::Client as SecClient;
 use mapcheck::registry::Registry;
 use std::path::PathBuf;
@@ -353,25 +353,14 @@ impl RealRunner {
     fn job_options(&self, item: &PlanItem) -> JobOutcome {
         let today = self.ctx.today_text();
         let s = item.key.as_str();
-        let first = options::fetch_option_chain(&self.ctx.cache, s, self.force, &today, &|u| market::download(u));
-        match first {
-            Ok((snap, options::Source::Cache)) => self.done(item, Status::Current, format!("snapshot of {today} ({} quotes)", snap.quotes.len()), 0),
-            Ok((snap, options::Source::Cboe)) => self.done(item, Status::Updated, format!("cboe, {} quotes", snap.quotes.len()), 1),
-            Err(e) => {
-                if e.contains("stopped") {
-                    return JobOutcome::new(Status::Failed, e);
-                }
-                if let Some(code) = hostnet::block_code(e.trim_start_matches("Cboe: ")) {
-                    hostnet::block("cboe", code, &e);
-                }
-                if self.keys.alpaca {
-                    match options_cli::snapshot_alpaca(&self.ctx.repo, &self.ctx.cache, s, &today, self.force) {
-                        Ok(line) => return self.done(item, Status::Updated, format!("alpaca indicative feed (Cboe: {}); {}", short(&e), hostnet::plain(&line)), 1),
-                        Err(e2) => return self.fail(item, &format!("{e}; alpaca: {e2}")),
-                    }
-                }
-                self.fail(item, &e)
-            }
+        // The Cboe delayed quotes are not read (T-20261121-cboe-off). Alpaca is the only source; without keys the item fails.
+        if !self.keys.alpaca {
+            return self.fail(item, "no Alpaca keys (APCA_API_KEY_ID and APCA_API_SECRET_KEY); the Cboe delayed quotes are not used (T-20261121-cboe-off)");
+        }
+        match options_cli::snapshot_alpaca(&self.ctx.repo, &self.ctx.cache, s, &today, self.force) {
+            Ok(line) if line.contains("exists") => self.done(item, Status::Current, hostnet::plain(&line), 0),
+            Ok(line) => self.done(item, Status::Updated, format!("alpaca indicative feed; {}", hostnet::plain(&line)), 1),
+            Err(e) => self.fail(item, &format!("alpaca: {e}")),
         }
     }
 

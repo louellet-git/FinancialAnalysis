@@ -1011,7 +1011,7 @@ comparison (see the ticket `option-backtest-rust`).
 *Evidence:* `fa trade fetch` into a copy of the cache, 2026-11-19.
 
 **92. The live option chain is the Cboe delayed quote file, and it does not list each expiry that
-a bot asks for.** The file is the one that the delayed-quotes pages of cboe.com read. It is not a
+a bot asks for.** Superseded on 2026-11-21 (`T-20261121-cboe-off`): no program reads the Cboe delayed file now; `fa trade paper` refuses a live chain. The text below is the record of the old state. The file is the one that the delayed-quotes pages of cboe.com read. It is not a
 published API: Cboe can change it. The quotes are about 15 minutes late, and before the open they
 can be stale. The bots assume an expiry on each trading day, and they use `busday_offset`
 (no holiday calendar). The chain has an expiry on each trading day for about two weeks, then

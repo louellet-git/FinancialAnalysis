@@ -242,11 +242,8 @@ pub fn make_plan(inp: &PlanInput) -> Plan {
                             (if alpaca { vec!["alpaca".into(), "yahoo".into()] } else { vec!["yahoo".into()] }, intraday_requests(inp.ctx, key, alpaca))
                         }
                         DataSet::Options => {
-                            let mut h = vec!["cboe".to_string()];
-                            if inp.keys.alpaca {
-                                h.push("alpaca".into());
-                            }
-                            (h, 1)
+                            // Alpaca only (the Cboe delayed quotes are not read: T-20261121-cboe-off). No keys: the job fails with a message.
+                            (vec!["alpaca".to_string()], 1)
                         }
                         DataSet::Rates => {
                             if key == "treasury" {
@@ -288,7 +285,7 @@ pub fn make_plan(inp: &PlanInput) -> Plan {
     // What a missing key would add (said once, in the summary).
     let wants = |s: DataSet| inp.sets.contains(&s);
     if !inp.keys.alpaca && (wants(DataSet::Prices) || wants(DataSet::Intraday) || wants(DataSet::Options)) {
-        plan.hints.push("APCA_API_KEY_ID and APCA_API_SECRET_KEY would add Alpaca (prices, intraday bars, option chain as a second source)".into());
+        plan.hints.push("APCA_API_KEY_ID and APCA_API_SECRET_KEY would add Alpaca (prices, intraday bars, option chain, the only source of the option data set)".into());
     }
     if !inp.keys.tiingo && wants(DataSet::Prices) {
         plan.hints.push("TIINGO_API_KEY would add Tiingo (prices with split and dividend adjusted history of more than 30 years)".into());

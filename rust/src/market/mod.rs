@@ -7,7 +7,7 @@
 //! | Data | Source | Module |
 //! |---|---|---|
 //! | Daily prices | Tiingo (key), Alpaca (key), Yahoo chart endpoint, Nasdaq site API | `price_source`, `price_cache` (`fa prices`); `prices` is the older Yahoo loader |
-//! | Option chain | Cboe delayed quotes; Alpaca indicative feed (key) | `options`, `options_cli`, `alpaca` |
+//! | Option chain | Alpaca indicative feed (key) | `options`, `options_cli`, `alpaca` |
 //! | Past option surface | Alpaca option bars (key) | `option_history`, `option_iv` |
 //! | Intraday bars | Alpaca (key) | `intraday`, `alpaca` |
 //! | FRED series | FRED API (key), keyless CSV | `fred_api` (used by `rates`) |
