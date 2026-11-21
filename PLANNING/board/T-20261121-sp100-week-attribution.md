@@ -185,3 +185,15 @@ the time after" is a placeholder; it waits for the text of the Head of Economics
 test against our data, what the market implies after). Then: the PDF, then the Head of Staff, then the person. The numbers
 of the new file are the numbers of the frozen page and of the preliminary results; the audit of 7e19e33 applies to them.
 The S&P 100 part still waits for the review of the person.
+
+**Two pages for the S&P 10, version 2 (2026-11-21 20:03 UTC).** The person asked for a second page (the valuation split,
+actual against implied; his words are in the RECORD). Files: `analysis/priors/sp10_week_page_v2_2026-11-21.md` (page 1:
+the days, the stocks, the view of the Head of Economics on Friday 11-20 and the time after) and
+`analysis/priors/sp10_week_valuation_page_2026-11-21.md` (page 2: the blocks, a row for each stock, the implied numbers
+against history). PDF of each in `analysis/priors/pdf/`; each is one page. The audit of 7e19e33 (REVISE, 0 critical) is
+applied: a corrections block in `sp10_week_tests_2026-11-21.md`; NVDA is 2.7 deviations against the market and 1.1
+against the other chips. State: both pages are sent to the Head of Staff (with the audit verdict) and the commit to the
+Head of Quality and Risk for the check of the difference. NOT done: the audit of page 2 (its numbers come from the run
+`data/week_2026-11-20_main-b01b66a/`, code at the gate); the run of record; the S&P 100 part (waits for the person).
+Open point: the implied growth of the Economics note (NVDA 29.8% on 11-20, store 1e2739c, `fa dcf implied`) and of this
+head (29.3%, store 0340bc1, `fa dcf attribute`) differ by 0.5 points; page 1 gives the Economics numbers as "about".

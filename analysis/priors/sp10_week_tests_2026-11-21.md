@@ -7,6 +7,31 @@ on these outputs (awk), not yet engine code (design R6 of `T-20261121-dcf-engine
 change less its beta times the market; the equal weight of the S&P 500 (-6.56% in the week) is the market here.
 A result has one of three forms: proven, refuted, or tested with no cause found.
 
+## Corrections after the audit (2026-11-21 20:03 UTC)
+
+The Head of Quality and Risk audited this file and the page at 7e19e33: REVISE, no critical defect. The prices, the
+changes, the betas, the daily table, the sector means, the yields and the NVDA facts passed. These points did not, and
+the text below them is NOT corrected in place. The two pages of version 2 (`sp10_week_page_v2_2026-11-21.md`,
+`sp10_week_valuation_page_2026-11-21.md`) use only the corrected numbers.
+
+- **Words.** "PROVEN" and "REFUTED" are too strong for one week of data. Read them as "consistent with" and "not
+  supported". About 5 tests on about 80 rows: one result at the 5% level can occur by chance.
+- **S1, NVDA deviations.** The deviation of the rest of NVDA is 4.35% (sample deviation of the weekly return less beta
+  times the SPY return, 104 weeks to 2026-11-13). The rest of NVDA is thus -2.0 deviations (SPY) and -2.7 (equal
+  weight), not -2.2 and -3.0. NVDA less the mean of the 6 other chips: -5.9 points, deviation 5.52%, thus 1.1
+  deviations, not 1.5. Calculated again by this head (a one-time script) with the same result as the auditor.
+- **S2, T1.** The count is 83 companies. Without the sector, the needed growth against the raw change is r -0.32
+  (t -2.55); against the rest it is r -0.09. The thirds are: middle -6.6% (rest -1.1), highest -11.0% (rest -2.9).
+  Result: the needed growth is not independent of the sector in this week. Not "refuted".
+- **S3, T2.** The model value of AAPL rose 35% (112 to 151) with the annual report, and the price rose 7.3%. The price
+  rose less than the value; the claim "the price had not risen with the report" is not refuted. The sums: 66 companies,
+  r +0.07. Falling weeks (SPY at -2.5% or lower): 5 weeks, mean rest of AAPL -0.55%.
+- **S4, T3.** On 11-18 the 6 other chips rose 1.1%, but NVDA fell 2.9%. The sentence "the chips rose the day after the
+  report" does not show that the report is not a reason. The support for the sector reading is the fall of 7 of 7
+  chips. AMD fell 2.4 points less than NVDA.
+- **S5, T4.** Falling weeks, mean rest: AMZN +0.95% (5 weeks), BRK-B +2.16%. The values in T4 are wrong.
+- The numbers of S2, S3 and S5 are those of the auditor; this head did not calculate them again.
+
 ## T1. "A stock that needs less growth had less to lose" (BRK-B, and the 10 as a group)
 Claim: the implied 10-year growth of 2026-11-13 ranks the falls of the week. 82 S&P 100 companies with a growth value.
 - Implied growth against the change: r = -0.47 (t -4.8). Against the rest: r = -0.27 (t -2.5); rank correlation -0.25.
