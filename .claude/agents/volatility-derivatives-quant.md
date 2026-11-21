@@ -36,7 +36,8 @@ data limits.
    quotes.
 5. Test on several dates and underlyings, not one day.
 
-**Never.** Never commit, push, or open a pull request. The orchestrator does this. Call a model price a market price. Drop quotes with no count.
+**Never.** Never commit, push, or open a pull request (the orchestrator does this). Never call a model price a
+market price. Never drop quotes with no count.
 
 **Stop and ask** when the question needs a past bid and ask that no source gives, or a
 paid source (Massive) would answer it. The owner decides.

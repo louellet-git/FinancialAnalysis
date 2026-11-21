@@ -2,11 +2,12 @@
 id: T-20261120-dcf-market-implied
 title: Show what the market price implies for each stock, industry and sector
 area: engine
-status: review
+status: done
 owner: louellet-git
 head: fundamental
 order: 1.2
 branch: claude/dcf-market-implied
+merged: 99
 created: 2026-11-20
 acceptance: `fa dcf implied` gives, for each ticker with a price, the cost of capital, the revenue growth and the margin that the price implies, with the model value of each, and the medians by sector, industry and size; two runs give the same numbers; a findings file shows the first run.
 ---

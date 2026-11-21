@@ -649,6 +649,17 @@ The premium of the list is the premium for which the median of value / price ove
 with a value and a price is 1.0. The value at the means is not the expected value: for most tickers it lies between the P50 and the simulated mean (median 0.89 of the mean). The price enters the builder only through the equity weight (`E / (E + debt)`), as in `fa dcf auto`; the price
 cache gives the last close, not the close of `--as-of`. Two runs give the same bytes, and the result does not depend on `--jobs` (a test compares 1 and 4 threads).
 
+**`fa dcf attribute [--tickers-file FILE | TICKER ...] --from D1 --to D2 [--cache DIR] [--rules K=V,..] [--groups FILE] [--out FILE] [--jobs N]`**
+(`auto_attribute.rs`, ticket `T-20261120-valuation-move-attribution`). It splits the change of a price between two dates. It has no random part and
+uses the value at the means (not the expected value). A market-implied value is a measurement, not an input. The price of each date is the value of the
+model of that date at the implied premium. The steps run in a fixed order: facts of D2 (facts filed on or before the date, `map_inputs_pit`; the 10-K of
+the cache does not fill an input), rates (curve of D2), the free variable of the price (premium, with the equity weight and the beta of D2; or, in a second
+chain, the growth shift at the model premium), and the rest (the roll of the valuation date and the search residual). The reverse order of rates and free
+variable is printed. A chain exists only when both searches have an exact solution. A list gives one CSV row for each ticker, medians by size and sector,
+and the sum weighted by price x shares at D1 (only tickers with the view). `fa dcf implied --price-date D` uses the close of D, the curve, the beta and
+the facts of D. Note: `--as-of` of `fa dcf auto` and `fa dcf screen` does not filter facts by the filing date; `fa dcf implied --as-of` and
+`fa dcf attribute` do. The beta now uses only the bars on or before the date, so `fa dcf returns` can give other numbers for a date in the middle of a week (a run as of today with no partial week does not change).
+
 **`fa dcf assumptions [--md]`** (ticket `T-20261120-dcf-assumption-register`). The register `assumptions.rs` has one row for each assumption of the automatic model that a person could choose: record number, name, `--rules` key, default, place in the code, record, state (`decided <date>` or `convention, not studied`). The default text is read from `Rules::default()`. A test fails when the section "Choice" of a record does not have the default, when a key is not in `parse_rules`, or when a field of `Rules` is neither in the table nor in the short list of options (`NOT_ASSUMPTIONS` in the tests). `fa dcf auto --explain` names the record number of a row that has a record. Procedure of a study: skill `assumption-study`.
 
 **`fa dcf assumptions --effect K=V,.. --tickers-file F --cache DIR --as-of D`** prints one block for a record: median P50 / price, P50 at or below 0, median `ln(new/old)` of the P50, and the point-in-time errors and coverage at T+1 to T+3, with the command, the seed, the as-of date and the cache commit. It reuses the functions of `fa dcf screen` and `fa dcf pit` (`screen_rows`, `pit_observations`). The point-in-time part runs on the companies of the ticker list (`--half` and `--cut` as in `fa dcf pit`). `--effect` with no value is an error (exit code 2).

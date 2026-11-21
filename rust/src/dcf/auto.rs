@@ -474,8 +474,11 @@ fn weekly(prices: &[(String, f64)]) -> Vec<(i64, f64)> {
 /// two series are skipped (a return needs two weeks in sequence). At least 104 weekly returns are needed.
 pub fn regression_beta(stock: &[(String, f64)], market: &[(String, f64)], as_of: &str, weeks: usize, weight: f64, name: &str) -> Option<BetaFit> {
     let cut = week_of(as_of)?;
-    let s: std::collections::HashMap<i64, f64> = weekly(stock).into_iter().filter(|(w, _)| *w <= cut).collect();
-    let m = weekly(market);
+    // the bars after the date are cut first: the weekly bar of the week of the date takes the last close on or before the date
+    let day = as_of.get(..10)?;
+    let upto = |v: &[(String, f64)]| -> Vec<(String, f64)> { v.iter().filter(|(d, _)| d.get(..10).is_some_and(|d| d <= day)).cloned().collect() };
+    let s: std::collections::HashMap<i64, f64> = weekly(&upto(stock)).into_iter().filter(|(w, _)| *w <= cut).collect();
+    let m = weekly(&upto(market));
     let mut pairs: Vec<(f64, f64, i64)> = Vec::new();
     for k in 1..m.len() {
         let (w0, w1) = (m[k - 1].0, m[k].0);
@@ -530,10 +533,31 @@ pub fn index_from_cache(cache: &std::path::Path) -> Option<Vec<(String, f64)>> {
 /// The market inputs of a ticker from the cache: the curve, the last close, the regression beta of 5 years of
 /// weekly returns against SPY (the index series of the trading cache). No network.
 pub fn market_from_cache(cache: &std::path::Path, ticker: &str, as_of: &str, price: Option<f64>, rules: &Rules, curve: Option<&CurveNumbers>, index: Option<&[(String, f64)]>) -> Market {
+    market_at(cache, ticker, as_of, price, None, rules, curve, index)
+}
+
+/// Longest gap in days between the price date and the last close that is used for it (a halted ticker has no price).
+pub const PRICE_GAP_DAYS: i64 = 10;
+
+/// The last close on or before `date` of a series `(date, close)`, if it is not more than `PRICE_GAP_DAYS` older than `date`.
+pub fn close_on_or_before(series: &[(String, f64)], date: &str) -> Option<(String, f64)> {
+    let day = mapcheck::dates::parse(date.get(..10)?)?;
+    // the latest date at or before `date` (the series need not be sorted)
+    let (d, c) = series.iter().filter(|(d, c)| d.get(..10).is_some_and(|d| d <= &date[..10]) && c.is_finite() && *c > 0.0).max_by(|a, b| a.0[..10].cmp(&b.0[..10]))?;
+    let age = day - mapcheck::dates::parse(d.get(..10)?)?;
+    (age <= PRICE_GAP_DAYS).then(|| (d.clone(), *c))
+}
+
+/// `market_from_cache` with a price date: `price_on = Some(D)` takes the last close on or before `D` (`close_on_or_before`)
+/// when `price` is `None`. `price_on = None`: the last close of the cache. The beta, the curve date and the model date are
+/// those of `as_of`.
+#[allow(clippy::too_many_arguments)]
+pub fn market_at(cache: &std::path::Path, ticker: &str, as_of: &str, price: Option<f64>, price_on: Option<&str>, rules: &Rules, curve: Option<&CurveNumbers>, index: Option<&[(String, f64)]>) -> Market {
     let stock = price_series(cache, ticker);
-    let (price, source) = match (price, &stock) {
-        (Some(p), _) => (Some(p), "--price".to_string()),
-        (None, Some(s)) => s.last().map(|(d, c)| (Some(*c), format!("last close of the price cache ({d})"))).unwrap_or((None, String::new())),
+    let (price, source) = match (price, &stock, price_on) {
+        (Some(p), _, _) => (Some(p), "--price".to_string()),
+        (None, Some(s), Some(d)) => close_on_or_before(s, d).map(|(day, c)| (Some(c), format!("close of {day} (last on or before {d})"))).unwrap_or((None, String::new())),
+        (None, Some(s), None) => s.last().map(|(d, c)| (Some(*c), format!("last close of the price cache ({d})"))).unwrap_or((None, String::new())),
         _ => (None, String::new()),
     };
     let beta = match (&stock, index) {

@@ -1,0 +1,124 @@
+{
+  "code_commit": "e3af8ec978f35f02883eef55e861268bd41b5d93",
+  "code_dirty": false,
+  "config": {
+    "cache": "/home/user/fa-data",
+    "command": [
+      "--hypothesis",
+      "trading/hypotheses/value-rank-sp500-v1.toml",
+      "--start",
+      "2018-01-01",
+      "--end",
+      "2022-12-31",
+      "--cache",
+      "/home/user/fa-data",
+      "--trades",
+      "/tmp/claude-0/-home-user/93b82429-52bd-5ac2-b515-0ec814ae8eea/scratchpad/trades.csv",
+      "--poison-check",
+      "2022-06-01"
+    ],
+    "cost_bp": 10.0,
+    "effective_arguments": [
+      "--hypothesis",
+      "trading/hypotheses/value-rank-sp500-v1.toml",
+      "--start",
+      "2018-01-01",
+      "--end",
+      "2022-12-31",
+      "--cache",
+      "/home/user/fa-data",
+      "--trades",
+      "/tmp/claude-0/-home-user/93b82429-52bd-5ac2-b515-0ec814ae8eea/scratchpad/trades.csv",
+      "--poison-check",
+      "2022-06-01",
+      "--strategy",
+      "value-rank",
+      "--tickers-file",
+      "/home/user/wt-btenv/rust/../rust/mapcheck/universe/sp500.txt",
+      "--paths",
+      "300",
+      "--seed",
+      "7",
+      "--rebalance",
+      "monthly",
+      "--cost-bp",
+      "10"
+    ],
+    "end": "2022-12-31",
+    "first_position": "2018-01-02",
+    "n_scored": 431,
+    "n_tickers": 502,
+    "paths": 300,
+    "rebalance": "Monthly",
+    "rebalances": 60,
+    "seed": 7,
+    "start": "2018-01-01",
+    "trades": 4244
+  },
+  "hypothesis": {
+    "commit": "e3af8ec978f35f02883eef55e861268bd41b5d93",
+    "commit_time": "2026-11-21T03:24:41+00:00",
+    "file": "trading/hypotheses/value-rank-sp500-v1.toml",
+    "oos_start": "2023-01-01",
+    "params": {
+      "cost_bp": 10,
+      "paths": 300,
+      "rebalance": "monthly",
+      "seed": 7
+    },
+    "registered": "2026-11-21",
+    "sha256": "4f0308300eaf0f935ac1893aeb55d1393db555c30e896271766521d31ea998b7",
+    "text": "Each month, the top quintile of the S&P 500 names by automatic model value (P50) over price, held with equal weight,\nhas a higher annual return than the equal-weight line of the same names, after a cost of 10 bp on each traded value.\nThe model value is built from the SEC facts known before each rebalance date (vintages). Test period: from 2018-01-01.\nPrior exposure: exploratory runs over 2018-01 to 2026-11 were seen before this file (pull request 104: +19.02% a year\nagainst +14.56%). Thus the out-of-sample window from 2023-01-01 is NOT clean for this hypothesis; it is an example of\nthe harness, not evidence of an edge.\n",
+    "universe": "rust/mapcheck/universe/sp500.txt"
+  },
+  "id": "value-rank-sp500-v1",
+  "labels": {
+    "prices": "prices: market prices (closes), not a model price",
+    "universe": "universe: names of today (survivor bias)"
+  },
+  "oos_read": false,
+  "parent": null,
+  "poison_check": "poison check 2022-06-01: PASS (53 rebalances before 2022-06-01 identical)",
+  "results": {
+    "cost_0x": {
+      "annual": 0.17306049731104145,
+      "max_drawdown": -0.3919601132116499,
+      "total": 1.2181210179008262,
+      "volatility": 0.23682858062256104
+    },
+    "cost_1x": {
+      "annual": 0.17029776666561625,
+      "max_drawdown": -0.3921201230427517,
+      "total": 1.192169742316596,
+      "volatility": 0.23682274692687486
+    },
+    "cost_2x": {
+      "annual": 0.16754163240246633,
+      "max_drawdown": -0.39228018258276776,
+      "total": 1.16652291916833,
+      "volatility": 0.23681887981769195
+    },
+    "cost_total": 0.01720064188378528,
+    "equal_weight": {
+      "annual": 0.11394051327351273,
+      "max_drawdown": -0.38457881752619627,
+      "total": 0.7135351491693624,
+      "volatility": 0.22552594662633527
+    },
+    "spy": {
+      "annual": 0.07322021999741124,
+      "max_drawdown": -0.34104746704498423,
+      "total": 0.42288945938906886,
+      "volatility": 0.21625074564846639
+    },
+    "turnover_total": 5.883419544594279
+  },
+  "run_time_utc": "20261121T032649Z",
+  "store_commit": "33d673bf3f9ec7139a62f482388594dc7006fc29",
+  "store_dirty": true,
+  "strategy": "value-rank",
+  "variant_count": {
+    "hypothesis": 1,
+    "strategy": 1
+  }
+}

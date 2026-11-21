@@ -86,6 +86,11 @@ struct Args {
     switches: Vec<String>,
 }
 
+/// A flat rate (decimal) from a flag: a finite number; a negative rate is allowed.
+pub fn parse_rate(r: &str) -> Result<f64, String> {
+    r.parse::<f64>().ok().filter(|x| x.is_finite()).ok_or_else(|| format!("bad --rate '{r}'"))
+}
+
 impl Args {
     fn parse(rest: &[String], values: &[&str], switches: &[&str]) -> Result<Args, String> {
         let mut a = Args::default();
@@ -276,7 +281,7 @@ fn snapshot(repo: &Path, rest: &[String]) -> Result<i32, String> {
         }
         "alpaca" => {
             let roots = a.flag("--roots").map(|r| r.split(',').map(|x| x.trim().to_uppercase()).filter(|x| !x.is_empty()).collect::<Vec<_>>());
-            let flat = a.flag("--rate").map(|r| r.parse::<f64>().map_err(|_| format!("bad --rate '{r}'"))).transpose()?;
+            let flat = a.flag("--rate").map(parse_rate).transpose()?;
             println!("{}", snapshot_alpaca_with(repo, &cache, &ticker, &today, a.has("--refresh"), roots, flat)?);
         }
         other => return Err(format!("unknown source '{other}' (use cboe or alpaca)")),
@@ -342,7 +347,7 @@ fn history(repo: &Path, rest: &[String]) -> Result<i32, String> {
             return Err("--moneyness needs 0 < LO < HI".into());
         }
     }
-    let flat_rate: Option<f64> = a.flag("--rate").map(|r| r.parse().map_err(|_| format!("bad --rate '{r}'"))).transpose()?;
+    let flat_rate: Option<f64> = a.flag("--rate").map(parse_rate).transpose()?;
     let keys = Keys::read(repo).ok_or_else(|| format!("{} and {} are not both set in the environment or in .env", alpaca::KEY_ID_ENV, alpaca::SECRET_ENV))?;
     let cache = super::price_cli::cache_dir(repo);
     let given_level = a
@@ -402,7 +407,7 @@ fn check(repo: &Path, rest: &[String]) -> Result<i32, String> {
     let a = Args::parse(rest, &["--date", "--time", "--rate", "--top", "--min-size", "--iv-mark", "--compare"], &["--otm", "--all-strikes"])?;
     let ticker = a.symbol.clone().ok_or("give a symbol: fa options check IBM --date 2026-11-19")?;
     let date = a.flag("--date").ok_or("give --date D (a stored snapshot)")?;
-    let flat = a.flag("--rate").map(|r| r.parse::<f64>().map_err(|_| format!("bad --rate '{r}'"))).transpose()?;
+    let flat = a.flag("--rate").map(parse_rate).transpose()?;
     let top = a.flag("--top").map(|n| n.parse::<usize>().map_err(|_| format!("bad --top '{n}'"))).transpose()?.unwrap_or(10);
     let cache = super::price_cli::cache_dir(repo);
     let snap = options::load_snapshot_at(&cache, &ticker, Some(date), a.flag("--time"))?;
@@ -512,6 +517,24 @@ mod tests {
         assert!(Args::parse(&v(&["spy", "--bad"]), &[], &[]).is_err());
         assert!(Args::parse(&v(&["spy", "qqq"]), &[], &[]).is_err());
         assert_eq!(weekdays("2024-03-01", "2024-03-05"), ["2024-03-01", "2024-03-04", "2024-03-05"]);
+    }
+
+    #[test]
+    fn check_and_history_lines_are_rejected_before_any_file() {
+        let v = |x: &[&str]| x.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        let none = Path::new("/nonexistent");
+        let err = |r: Result<i32, String>| r.unwrap_err();
+        assert!(err(check(none, &v(&["IBM", "--date", "2026-11-19", "--bogus", "1"]))).contains("unknown option"));
+        assert!(err(check(none, &v(&["--date", "2026-11-19"]))).contains("give a symbol"));
+        assert!(err(check(none, &v(&["IBM"]))).contains("--date"));
+        assert!(err(check(none, &v(&["IBM", "--date", "2026-11-19", "--rate", "abc"]))).contains("bad --rate"));
+        assert!(err(check(none, &v(&["IBM", "--date", "2026-11-19", "--top", "x"]))).contains("bad --top"));
+        assert!(err(history(none, &v(&["IBM", "--max-days", "x"]))).contains("--date D"));
+        assert!(err(history(none, &v(&["IBM", "--date", "2026-11-19", "--rate", "abc"]))).contains("bad --rate"));
+        assert!(err(check(none, &v(&["IBM", "--date", "2026-11-19", "--rate", "nan"]))).contains("bad --rate"));
+        assert_eq!(parse_rate("-0.01"), Ok(-0.01));
+        let a = Args::parse(&v(&["ibm", "--date", "2026-11-19", "--rate", "0.04", "--otm"]), &["--date", "--rate"], &["--otm"]).unwrap();
+        assert_eq!((a.symbol.as_deref(), a.flag("--date"), a.flag("--rate"), a.has("--otm")), (Some("IBM"), Some("2026-11-19"), Some("0.04"), true));
     }
 
     #[test]

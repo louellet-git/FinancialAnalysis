@@ -139,3 +139,15 @@ Done: it was not up to date (no model permission, no ask flow, no board area `as
 ## 2026-11-21 02:57 UTC (chat)
 Words: "Please get to work on the backtesting environment, ask the heads what they require."
 Done: ticket `T-20261121-backtest-environment` (order 1); a question to the Quant, Fundamental and Quality and Risk heads.
+## 2026-11-21 03:00 UTC (chat)
+Words: "I think we should also get a head of economics which looks at current economic conditions/factors and is generally our economy guy. Supporting role."
+Done: a new row `Head of Economics` in `chiefs/ORIENTATION.md` (sections 1 and 2; folder `economics`, files `analysis/macro/`), the agent `macro-economist`, its row in `docs/TEAMS.md`. The person starts the session.
+
+## 2026-11-21 03:03 UTC (chat)
+Words: "You can start the head, ensure that heads every now and then will do research on what the industry does I.e what should an economics head be doing/economics team at a quant/fundamental firm be doing, same w the other heads."
+Done: `chiefs/ORIENTATION.md`, section 3, "Industry practice" (from time to time, a note of at most 1 page in the folder of the head; at most three proposed changes; not a gate). The same rule in `louellet-git/the-heads`. The session "FA-L - Head of Economics" started.
+
+## 2026-11-21 03:23 UTC (question dialog)
+Question: "May I subscribe to the Tiingo Power plan ($30 a month, with your Tiingo key) and keep its older daily prices (back to about 2009, for about 1,000 tickers) in a new private data store that only your sessions use? ..."
+Words: "No, please find a better source then if needed"
+Done: no Tiingo plan, no private store. Research of free sources whose terms permit a public copy (Quandl WIKI archive, Stooq, Alpaca, open datasets). Tiingo terms (read 2026-11-21, https://www.tiingo.com/tos section 1.6): the free plan forbids any persistent storage; paid plans are internal and personal use only.
