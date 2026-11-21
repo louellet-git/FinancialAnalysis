@@ -1,25 +1,19 @@
 //! Option chain snapshots and their metrics (the Rust form of `options.py`).
 //!
-//! The source is the Cboe delayed quotes file of one underlying (`trading::chain` reads the same
-//! file for the paper trader). It has all listed expiries, with bid, ask, last trade, implied
-//! volatility, volume and open interest. The Python code used yfinance (Yahoo). Two things are
-//! different: the implied volatility is the one of Cboe (a fraction, as 0.31), and the spot price is the
-//! last price of the underlying in the same Cboe file (about 15 minutes late), not the last daily
-//! close.
+//! The live source is the Alpaca option chain (`options_cli`, `alpaca`). The Cboe delayed quotes are not
+//! read any more: the Cboe page prohibits automatic downloads (ticket T-20261121-cboe-off). The files
+//! of older Cboe pulls stay in the store; they have no `source` field and the snapshot format reads them.
 //!
-//! A pull is a dated snapshot, `data/raw/<T>/options/<YYYY-MM-DD>.json` (one for each day; a second
-//! pull of the same day reads the file unless `refresh`). The format is the format of the Python code.
+//! A pull is a dated snapshot, `data/raw/<T>/options/<YYYY-MM-DD>.json` (Cboe, old) or
+//! `<YYYY-MM-DD>T<hhmm>.json` (Alpaca, with the time). The format is the format of the Python code.
 //! The metrics (`compute_chain_metrics`) are the same calculation as in Python: fixtures from the Python
 //! functions are in `rust/tests/fixtures/market/options_metrics.json`.
 
-use super::{clean, lenient_json, round6, ticker_dir, write_atomic};
+use super::{lenient_json, round6, ticker_dir, write_atomic};
 use crate::trading::calendar::iso;
-use crate::trading::chain::parse_option;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-
-pub const URL: &str = "https://cdn-api.cboe.com/api/global/delayed_quotes/options/{symbol}.json";
 
 /// Moneyness targets for the skew (the downside put wing against the upside call wing).
 pub const SKEW_PUT_MONEYNESS: f64 = 0.90;
@@ -56,7 +50,7 @@ pub struct OptionChainSnapshot {
     #[serde(default)]
     pub spot_price: Option<f64>,
     pub quotes: Vec<OptionQuote>,
-    /// Where the quotes came from: `alpaca` or `alpaca-history`. A file with no value is a Cboe delayed snapshot.
+    /// Where the quotes came from: `alpaca` or `alpaca-history`. A file with no value is an old Cboe delayed snapshot (no new one is made).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<String>,
     /// The feed of the source (`indicative` for Alpaca live chains).
@@ -208,113 +202,6 @@ pub fn load_snapshot_at(cache: &Path, ticker: &str, date: Option<&str>, time: Op
     let path = files.get(&stem).cloned().unwrap_or_else(|| snapshot_path(cache, ticker, &stem));
     let text = read_text(&path).map_err(|e| format!("No option-chain snapshot for {} on {date}{} at {}: {e}", ticker.to_uppercase(), time.map(|t| format!(" at {t} UTC")).unwrap_or_default(), path.display()))?;
     serde_json::from_str(&lenient_json(&text)).map_err(|e| format!("{}: {e}", path.display()))
-}
-
-// ---------------------------------------------------------------------------
-// The Cboe file
-// ---------------------------------------------------------------------------
-
-#[derive(Deserialize)]
-struct Reply {
-    data: Data,
-}
-
-#[derive(Deserialize)]
-struct Data {
-    symbol: String,
-    #[serde(default)]
-    current_price: Option<f64>,
-    #[serde(default)]
-    options: Vec<Opt>,
-}
-
-#[derive(Deserialize)]
-struct Opt {
-    option: String,
-    #[serde(default)]
-    bid: Option<f64>,
-    #[serde(default)]
-    ask: Option<f64>,
-    #[serde(default)]
-    iv: Option<f64>,
-    #[serde(default)]
-    volume: Option<f64>,
-    #[serde(default)]
-    open_interest: Option<f64>,
-    #[serde(default)]
-    last_trade_price: Option<f64>,
-}
-
-pub fn url(ticker: &str) -> String {
-    URL.replace("{symbol}", &ticker.to_uppercase())
-}
-
-fn count(x: Option<f64>) -> Option<i64> {
-    clean(x).map(|v| v as i64)
-}
-
-/// The snapshot of a Cboe reply. A contract of another root (the adjusted options, `B1IBM...`) is not in it.
-/// The quotes are in the order of the Python code: expiry, call before put, strike.
-pub fn snapshot_from_cboe(bytes: &[u8], ticker: &str, snapshot_date: &str) -> Result<OptionChainSnapshot, String> {
-    let ticker = ticker.to_uppercase();
-    let reply: Reply = serde_json::from_slice(bytes).map_err(|e| format!("Cboe reply for {ticker} is not the expected JSON: {e}"))?;
-    if !reply.data.symbol.eq_ignore_ascii_case(&ticker) {
-        return Err(format!("Cboe reply is for {}, not {ticker}", reply.data.symbol));
-    }
-    let spot = clean(reply.data.current_price);
-    let mut quotes = Vec::new();
-    for o in &reply.data.options {
-        let Some((expiry, call, thousandths)) = parse_option(&o.option, &ticker) else { continue };
-        let strike = thousandths as f64 / 1000.0;
-        quotes.push(OptionQuote {
-            contract_symbol: o.option.clone(),
-            option_type: if call { "call" } else { "put" }.to_string(),
-            expiry: iso(expiry),
-            strike,
-            last_price: clean(o.last_trade_price),
-            bid: clean(o.bid),
-            ask: clean(o.ask),
-            volume: count(o.volume),
-            open_interest: count(o.open_interest),
-            implied_volatility: clean(o.iv),
-            in_the_money: spot.map(|s| if call { strike < s } else { strike > s }),
-        });
-    }
-    quotes.sort_by(|a, b| (&a.expiry, &a.option_type).cmp(&(&b.expiry, &b.option_type)).then(a.strike.total_cmp(&b.strike)));
-    Ok(OptionChainSnapshot { ticker, snapshot_date: snapshot_date.to_string(), spot_price: spot, quotes, source: None, feed: None, quote_kind: None, note: None, snapshot_time: None })
-}
-
-#[derive(Debug, PartialEq)]
-pub enum Source {
-    Cache,
-    Cboe,
-}
-
-/// The option chain: today's snapshot from the cache, or the Cboe file (and a new snapshot file).
-pub fn fetch_option_chain(
-    cache: &Path,
-    ticker: &str,
-    refresh: bool,
-    today: &str,
-    fetch: &dyn Fn(&str) -> Result<Vec<u8>, String>,
-) -> Result<(OptionChainSnapshot, Source), String> {
-    let ticker = ticker.to_uppercase();
-    // Only the plain `<date>.json` of the Cboe path is a cache hit: a timed Alpaca file of today is a different source
-    // (indicative quotes), and `fa analyze` expects the Cboe chain.
-    let plain = snapshot_path(cache, &ticker, today);
-    if !refresh && plain.is_file() {
-        match read_text(&plain).and_then(|t| serde_json::from_str::<OptionChainSnapshot>(&lenient_json(&t)).map_err(|e| e.to_string())) {
-            Ok(snapshot) => return Ok((snapshot, Source::Cache)),
-            Err(e) => eprintln!("fa: corrupt options snapshot for {ticker} ({e}); asking Cboe again"),
-        }
-    }
-    let bytes = fetch(&url(&ticker)).map_err(|e| format!("Cboe: {e}"))?;
-    let snapshot = snapshot_from_cboe(&bytes, &ticker, today)?;
-    if snapshot.quotes.is_empty() {
-        eprintln!("fa: no listed options found for {ticker}; saving an empty snapshot");
-    }
-    save_snapshot(&snapshot, cache)?;
-    Ok((snapshot, Source::Cboe))
 }
 
 // ---------------------------------------------------------------------------
@@ -484,40 +371,25 @@ mod tests {
         assert!(n_quotes > 500, "the fixtures hold the real IBM and JNJ chains: {n_quotes}");
     }
 
-    /// A small Cboe reply: two expiries, one adjusted option of another root, one option with no quote.
-    fn cboe_reply() -> Vec<u8> {
-        serde_json::json!({
-            "timestamp": "2026-11-19 17:40:51",
-            "data": {
-                "symbol": "TEST", "current_price": 100.0,
-                "options": [
-                    {"option": "TEST261218P00100000", "bid": 4.7, "ask": 4.9, "iv": 0.32, "volume": 60.0, "open_interest": 400.0, "last_trade_price": 4.8},
-                    {"option": "TEST261120C00110000", "bid": 0.0, "ask": 0.0, "iv": 0.0, "volume": 0.0, "open_interest": 30.0, "last_trade_price": 1.2},
-                    {"option": "TEST261120C00100000", "bid": 4.9, "ask": 5.1, "iv": 0.30, "volume": 120.0, "open_interest": 800.0, "last_trade_price": 5.0},
-                    {"option": "TEST261120P00100000", "bid": 4.7, "ask": 4.9, "iv": 0.31, "volume": 40.0, "open_interest": 500.0, "last_trade_price": 4.8},
-                    {"option": "B1TEST261120C00100000", "bid": 1.0, "ask": 2.0, "iv": 0.5, "volume": 1.0, "open_interest": 1.0, "last_trade_price": 1.5},
-                    {"option": "TEST261120P00097500", "bid": null, "ask": null, "iv": null, "volume": null, "open_interest": null, "last_trade_price": null}
-                ]
-            }
-        })
-        .to_string()
-        .into_bytes()
+    fn q(symbol: &str, call: bool, expiry: &str, strike: f64, (bid, ask, iv): (Option<f64>, Option<f64>, Option<f64>), (volume, oi): (Option<i64>, Option<i64>), last: Option<f64>) -> OptionQuote {
+        OptionQuote { contract_symbol: symbol.into(), option_type: if call { "call" } else { "put" }.into(), expiry: expiry.into(), strike, last_price: last, bid, ask, volume, open_interest: oi, implied_volatility: iv, in_the_money: Some(if call { strike < 100.0 } else { strike > 100.0 }) }
+    }
+
+    /// A small snapshot: two expiries, one option with no quote (a hand-made fixture, no Cboe reply).
+    fn small_snapshot(date: &str) -> OptionChainSnapshot {
+        let quotes = vec![
+            q("TEST261120C00100000", true, "2026-11-20", 100.0, (Some(4.9), Some(5.1), Some(0.30)), (Some(120), Some(800)), Some(5.0)),
+            q("TEST261120C00110000", true, "2026-11-20", 110.0, (Some(0.0), Some(0.0), Some(0.0)), (Some(0), Some(30)), Some(1.2)),
+            q("TEST261120P00097500", false, "2026-11-20", 97.5, (None, None, None), (None, None), None),
+            q("TEST261120P00100000", false, "2026-11-20", 100.0, (Some(4.7), Some(4.9), Some(0.31)), (Some(40), Some(500)), Some(4.8)),
+            q("TEST261218P00100000", false, "2026-12-18", 100.0, (Some(4.7), Some(4.9), Some(0.32)), (Some(60), Some(400)), Some(4.8)),
+        ];
+        OptionChainSnapshot { ticker: "TEST".into(), snapshot_date: date.into(), spot_price: Some(100.0), quotes, source: None, feed: None, quote_kind: None, note: None, snapshot_time: None }
     }
 
     #[test]
-    fn cboe_reply_becomes_a_snapshot_in_the_python_order() {
-        let s = snapshot_from_cboe(&cboe_reply(), "test", "2026-11-19").unwrap();
-        assert_eq!((s.ticker.as_str(), s.spot_price, s.quotes.len()), ("TEST", Some(100.0), 5));
-        let symbols: Vec<&str> = s.quotes.iter().map(|q| q.contract_symbol.as_str()).collect();
-        assert_eq!(symbols, ["TEST261120C00100000", "TEST261120C00110000", "TEST261120P00097500", "TEST261120P00100000", "TEST261218P00100000"]);
-        let call = &s.quotes[0];
-        assert_eq!((call.strike, call.expiry.as_str(), call.volume, call.open_interest), (100.0, "2026-11-20", Some(120), Some(800)));
-        assert_eq!((call.last_price, call.bid, call.ask, call.implied_volatility), (Some(5.0), Some(4.9), Some(5.1), Some(0.30)));
-        assert_eq!(call.in_the_money, Some(false));
-        assert_eq!(s.quotes[2].strike, 97.5);
-        assert_eq!(s.quotes[2].in_the_money, Some(false)); // put at 97.5, spot 100
-        assert_eq!(s.quotes[2].bid, None);
-        assert_eq!(s.quotes[3].in_the_money, Some(false)); // put at 100, spot 100: not in the money
+    fn metrics_of_a_small_snapshot() {
+        let s = small_snapshot("2026-11-19");
         let m = compute_chain_metrics(&s);
         assert_eq!(m.expiries[0].atm_strike, Some(100.0));
         assert_eq!(m.expiries[0].atm_iv, Some(0.305));
@@ -525,16 +397,9 @@ mod tests {
     }
 
     #[test]
-    fn a_reply_for_another_symbol_is_an_error() {
-        let e = snapshot_from_cboe(&cboe_reply(), "OTHER", "2026-11-19").unwrap_err();
-        assert!(e.contains("not OTHER"), "{e}");
-        assert!(snapshot_from_cboe(b"<html>", "TEST", "2026-11-19").is_err());
-    }
-
-    #[test]
-    fn persistence_round_trip_listing_and_the_same_day_rule() {
+    fn persistence_round_trip_and_listing() {
         let dir = std::env::temp_dir().join(format!("fa-options-{}", std::process::id()));
-        let mut s = snapshot_from_cboe(&cboe_reply(), "TEST", "2026-11-18").unwrap();
+        let mut s = small_snapshot("2026-11-18");
         save_snapshot(&s, &dir).unwrap();
         s.snapshot_date = "2026-11-19".into();
         save_snapshot(&s, &dir).unwrap();
@@ -544,23 +409,6 @@ mod tests {
         assert_eq!(list_snapshots(&dir, "NONE"), Vec::<String>::new());
         assert!(load_snapshot(&dir, "NONE", None).unwrap_err().contains("No option-chain snapshots"));
         assert!(load_snapshot(&dir, "TEST", Some("1999-01-01")).unwrap_err().contains("on 1999-01-01"), "a date that has no file");
-        // Same day: the file is read, and there is no request.
-        let never = |_: &str| -> Result<Vec<u8>, String> { panic!("no request expected") };
-        let (got, source) = fetch_option_chain(&dir, "test", false, "2026-11-19", &never).unwrap();
-        assert_eq!((got, source), (s.clone(), Source::Cache));
-        // A new day: one request, and a new file.
-        let reply = cboe_reply();
-        let fetch = |u: &str| -> Result<Vec<u8>, String> {
-            assert!(u.ends_with("/options/TEST.json"), "{u}");
-            Ok(reply.clone())
-        };
-        let (got, source) = fetch_option_chain(&dir, "TEST", false, "2026-11-20", &fetch).unwrap();
-        assert_eq!((got.snapshot_date.as_str(), source), ("2026-11-20", Source::Cboe));
-        assert!(snapshot_path(&dir, "TEST", "2026-11-20").is_file());
-        // A failed request leaves no file.
-        let fail = |u: &str| -> Result<Vec<u8>, String> { Err(format!("HTTP 404 for {u}")) };
-        assert!(fetch_option_chain(&dir, "TEST", false, "2026-11-21", &fail).unwrap_err().contains("HTTP 404"));
-        assert!(!snapshot_path(&dir, "TEST", "2026-11-21").exists());
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -574,17 +422,13 @@ mod tests {
     }
 
     #[test]
-    fn a_timed_alpaca_file_of_today_is_not_a_cboe_cache_hit() {
+    fn a_timed_alpaca_file_has_its_own_name() {
         let dir = std::env::temp_dir().join(format!("fa-options-timed-{}", std::process::id()));
-        let mut s = snapshot_from_cboe(&cboe_reply(), "TEST", "2026-11-21").unwrap();
+        let mut s = small_snapshot("2026-11-21");
         s.source = Some("alpaca".into());
         s.snapshot_time = Some("2026-11-21T15:27Z".into());
         let timed = save_snapshot(&s, &dir).unwrap();
         assert!(timed.to_string_lossy().ends_with("2026-11-21T1527.json"), "{}", timed.display());
-        let reply = cboe_reply();
-        let fetch = |_: &str| -> Result<Vec<u8>, String> { Ok(reply.clone()) };
-        let (_, source) = fetch_option_chain(&dir, "TEST", false, "2026-11-21", &fetch).unwrap();
-        assert_eq!(source, Source::Cboe, "the Cboe path asks Cboe; it does not read the Alpaca file");
         std::fs::remove_dir_all(&dir).ok();
     }
 }

@@ -39,3 +39,32 @@ Done: live-pilot limits added to `proposal-sleeve-limits.md`; a gate form for th
 ## 2026-11-21 ~03:55 UTC (dialog)
 Words (four answers): live start "Paper 4 weeks, then live"; sleeve limits "Not sure"; PR 102 "Merge now"; Deere lease equipment "I'm not sure".
 Done: the weekly process runs on paper from 2026-11-27 for 4 weeks; live from about 2026-12-25 only after the owner approves limits. The proposed limits apply to paper as an interim rule (no real money). The Deere and CNH lease lines stay out (the interim rule) until the owner decides. PR 102 merged.
+
+## 2026-11-21 04:29 and 04:30 UTC (relayed verbatim by the Head of Fundamental Research)
+Words: "Ensure that before you have trades and we begin the weekly trades, that you have effectively back tested your future state blind projections using the DCF engine and using prior data. A recommendation should work at any time and point and when it doesn't, the model should have already priced it in such that it does work." And: "Backtesting is integral to our work here".
+Done: the blind-projection tests T1 to T4 (ticket `T-20261121-blind-projection-test`) are a condition of the strategy gate before the first weekly trade, paper included. A row "Backtest" in `docs/QUALITY-STANDARDS.md`, section 4.
+
+## 2026-11-21 05:33 UTC (my decision; no word of the person)
+The public copy of a split table from the Alpaca corporate-actions API: allowed as derived facts only (ticker, ex_date, ratio, factor, kind, sec_check, source), each checked against the SEC split tag where one exists; no raw Alpaca payload and no Alpaca-only field in the public store. Alpaca terms for redistribution are not read; this is written in `docs/DATA-SOURCES.md`. The person can reverse this.
+
+## 2026-11-21 14:37 UTC (my decision; no word of the person)
+Point-in-time S&P 500 members (fja05680/sp500): kept out of the public store (the base file comes from a book with no stated redistribution right); each head fetches a pinned commit into a local cache, checked by SHA-256 and logged in each run. The person can reverse this.
+
+## 2026-11-21 15:27 UTC (owner word, relayed by the Head of Fundamental Research)
+Words: "Hold off on writing the doc until I give my go ahead on the results". Effect: the document gate of the sp100 week attribution (validator, document reviewer, auditor) waits for Luc's go-ahead. The code gate of `fa dcf attribute` (1019078) continues.
+
+## 2026-11-21 about 17:10 UTC (owner words, in this session)
+1. NVDA, PR 106: "yes approve the merge but this doesnt mean I approve that the valuation is correct". Effect: PR 106 may merge (L5 merge approval). It is not an approval of the value; the report stays "a range for a judgment", and no trade may cite it as approved by the owner. PR 109 (the NVDA records A-004 to A-008) merged.
+2. Sleeve limits: "sure, but we are able to short stock and long stock, programs can and will place orders". Effect: the limits of `proposal-sleeve-limits.md` are approved, except two rows of the live pilot: shorts are allowed, and a person does not place each order. The words "programs can and will place orders" conflict with CLAUDE.md ("It does not send orders to a broker") and QUALITY-STANDARDS section 8 ("No order code"). Those rules stay in force until a rule change of the same weight is written and reviewed; I asked the owner for the scope.
+3. Deere D1: the owner asked for the standard and the reason. No decision yet; the interim rule (the lease lines out) stays.
+
+## 2026-11-21 about 17:20 UTC (owner answers to my two questions)
+- Orders: "Paper orders first". Effect: a rule change in CLAUDE.md, README.md, QUALITY-STANDARDS (section 3 CRIT row, section 5 gate "Order code", section 8 six controls) and three agent files. Paper endpoint only; a live order needs a new owner approval and a review of the same weight. The change goes through risk-compliance-officer and document-reviewer before the pull request.
+- Deere D1: "Enhance the DCF engine." Effect: a sum-of-parts evaluator for companies with a captive finance arm (industrial FCFF plus a bank-style finance arm), owned by Fundamental Research (ticket T-20261119-evaluator-bank or a new one). The interim rule (the lease lines out) stays until it exists.
+
+## 2026-11-21 about 18:00 UTC (owner answer, in this session)
+Question: the daily save of the Alpaca SPX, SPY and VIX option chains (from 2026-11-23) into the shared private store, which merlan1996 also reads, against the Alpaca terms ("solely for your own personal and non-commercial purposes"; no copy to another server for distribution). Answer: "Shared store, I accept". Effect: the save stays in the shared private store; the owner accepts the terms risk; nothing of it goes into the public repo.
+Also (my decision, 17:58 UTC): the Cboe delayed-quote reads stop (the Cboe page prohibits auto-extraction); existing private copies stay with the stated risk; no new copy.
+
+## 2026-11-21 about 21:05 UTC (owner answer, relayed by the Head of Staff)
+Question: a new session for the Head of Quality and Risk, as a test. Answer: "Yes, as a test". Effect: a new session takes the next gates; this session stays open as a fallback, titled "FA-L - Quality and Risk (fallback)", takes no new gate, and answers the new session's questions (each question is a fact that the handover lost; the Head of Staff counts them).

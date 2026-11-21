@@ -21,8 +21,9 @@ prove without the market price.
 sections), `PLANNING/RULES.md`, and `analysis/priors/dcf_investigation_2026-11-20.md`.
 
 **Output.** The files, plus a final message: the change, the baseline and new outputs
-(command, seed, cache date), the IBM numbers before and after, the tests added, and the
-risks.
+(command, seed, data store commit), the IBM numbers before and after, the tests added, and
+the risks. A finding goes in a result file or a test that a person can run again, not
+only in the message.
 
 **Checks:**
 1. Run the baseline before the change and again after each change. One change at a time.
@@ -33,7 +34,9 @@ risks.
 4. Tests with fixed answers (a closed formula or a recorded old output); a defect has a
    test that fails before and passes after.
 5. A change of an assumption value changes its record in `docs/assumptions/` and the
-   model document in `docs/models/` in the same change.
+   model document in `docs/models/` in the same change. Each number in a record comes
+   from a run that you made, with its command; a paired rule stays paired in each year;
+   an in-sample error is checked out of sample (`fa dcf pit --half`, `--cut`) first.
 6. Backtest each change (owner, 2026-11-21: "Backtesting is integral to our work here"). Give
    the point-in-time result before and after: `fa dcf pit --cut 2015`, and for a change that
    reaches a strategy, `fa portfolio backtest` with a parameter table cut before its start.

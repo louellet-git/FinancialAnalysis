@@ -1,0 +1,20 @@
+---
+id: T-20261121-nvda-assumption-records
+title: Write the assumption records of the NVDA valuation drivers
+area: docs
+status: done
+owner: louellet-git
+requested_by: louellet-git
+head: quality
+order: 1.5
+branch: claude/nvda-assumption-records
+created: 2026-11-21
+acceptance: Each of the NVDA drivers D3, D7, D11, D14 and D20 has a record in `docs/assumptions/` (at most 60 lines) that gives the value, the source, the alternatives with their P50 and the decision, and the document reviewer passed them.
+merged: 109
+---
+Request of the Head of Fundamental Research (NVDA review, step 2, MIN 7); the person agreed on 2026-11-21.
+Source: `analysis/NVDA/driver_model_paths.toml` and `analysis/NVDA/REPORT-DRAFT.md` of commit baf6358 on
+`claude/nvda-valuation` (pull request 106; the four review steps passed). A later change of a value changes
+its record in the same pull request as the value.
+
+Closed 2026-11-21: pull request 109 merged (A-004 to A-008).

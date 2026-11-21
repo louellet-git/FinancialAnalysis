@@ -5,9 +5,11 @@
 //! terminal growth against the 5y5y forward inflation. Only `rf` changes: the growth drivers
 //! are nominal and keep the model values.
 //!
-//! `--rating R` (needs `--rf-date`): the `kd_spread` driver mean becomes the ICE BofA index
-//! effective yield for that rating minus the UST 10Y on the same date, so the mean pre-tax
-//! cost of debt is the market yield for the rating.
+//! `--rating R` (needs `--rf-date`): the `kd_spread` driver mean becomes the cost of debt of
+//! that rating minus the UST 10Y on the same date. The cost of debt is the UST 10Y of the date,
+//! plus the HQM basis (the HQM 10Y spot minus the UST 10Y mean of the same month), plus the fixed
+//! step of the rating row (`bonds.rs`, records A-200 to A-203). So the mean pre-tax cost of debt is
+//! that cost of debt.
 
 use crate::dcf::model::ModelSpec;
 use crate::rates::{obs_text, parse_on, round6, Rates, Res};
@@ -81,22 +83,21 @@ pub fn rates_context(model: &ModelSpec, rates: &mut Rates, rf_date: &str, base_d
 pub fn credit_context(model: &ModelSpec, rates: &mut Rates, rating: &str, rf_date: &str, rf: f64) -> Res<(ModelSpec, CreditContext)> {
     let on = parse_on(Some(rf_date))?;
     let spread = rates.spread_over_10y(rating, on)?;
-    let sp_day = mapcheck::dates::parse(&spread.date).ok_or("bad date")?;
-    let index_yield = rates.corporate_yield(rating, Some(sp_day))?;
-    let oas = rates.credit_spread(rating, Some(sp_day))?;
+    let basis = rates.hqm_basis(on)?;
+    let bucket = crate::bonds::rating_bucket(rating)?;
     let model_spread = model.driver("kd_spread").map_err(|e| e.0)?.mean;
     let tax = model.driver("tax_rate").map_err(|e| e.0)?.mean;
     let kd = round6(rf + spread.value);
     let ctx = CreditContext {
         rating: rating.to_string(),
-        index: crate::bonds::rating_bucket(rating)?.to_string(),
+        index: bucket.to_string(),
         kd_spread: spread.clone(),
         model_kd_spread: model_spread,
         kd_spread_change_vs_model: round6(spread.value - model_spread),
-        index_yield: index_yield.value,
-        oas: oas.value,
-        moodys_aaa: rates.moodys_yield("Aaa", Some(sp_day))?.value,
-        moodys_baa: rates.moodys_yield("Baa", Some(sp_day))?.value,
+        hqm_spot: basis.hqm,
+        ust_mean_10y: basis.ust_mean,
+        basis: basis.basis,
+        step: crate::bonds::rating_step(bucket),
         kd_pretax: kd,
         kd_after_tax: round6(kd * (1.0 - tax)),
         tax_rate: tax,

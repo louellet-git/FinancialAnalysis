@@ -10,7 +10,8 @@ parts:
 - **Options trading research.** A backtester and a paper trader for SPY/QQQ option
   strategies.
 
-The repo gives analysis only. It does not send orders to a broker. It is not investment
+The repo gives analysis. A program may send orders to the Alpaca paper account only (controls in
+`docs/QUALITY-STANDARDS.md`, section 8). No program sends a live order. It is not investment
 advice.
 
 Agents: read `CLAUDE.md` first. Open work: `PLANNING/board/`. The agent teams: `docs/TEAMS.md`. The head sessions: `chiefs/ORIENTATION.md`. The quality standards: `docs/QUALITY-STANDARDS.md`.
@@ -146,9 +147,12 @@ fa earnings calendar [IBM...] [--tickers-file F] [--from D] [--days 60]   # Nasd
 fa earnings dates IBM JNJ [--tolerance 1]         # past report dates against the SEC 8-K list (mapcheck fetch --submissions TICKER)
 fa sync [IBM MSFT...] [--tickers-file F] [--only A,B] [--skip A,B] [--force] [--dry-run] [--max-minutes N] [--bond-days N]   # bring all old data sets up to date, one queue for each host; --bond-days N asks for the FedInvest prices of the last N market days (network)
 fa sync --status [IBM...]                         # one line for each data set: current, old, no data; no request
+fa board check [--json]                         # the rule faults of the ticket board, for each head; reads git only (run `git fetch` first), changes no file, exit 0
 fa verdict IBM [--price 228.53] [--simulations 10000] [--seed 7] [--rf-date today] [--rf-base-date 2026-07-16] [--rating A-]
 fa rates [snapshot|yield|curve|history|nyfed|inflation|fred|check] [--date D]   # JSON
-fa bonds [snapshot|spread|yield|over10y|moodys|hqm|check] [--rating A-] [--date D]   # JSON
+fa bonds [snapshot|step|yield|over10y|hqm] [--rating A-] [--date D]   # JSON
+fa bonds hqm get [--force]                        # the Treasury HQM files into data/raw/bonds/treasury_hqm/
+fa bonds hqm-compare --xls FILE... --fred-dir DIR # the Treasury HQM files against FRED HQMCB*YR
 ```
 
 More options of `fa dcf drivers` (each analysis of the three first passes and of the IBM
@@ -165,6 +169,28 @@ snapshots, because the source gives only current data. A run on the same day rea
 disk; `fa analyze --refresh` gets new data. Prices come from the Yahoo chart endpoint. Yahoo
 often answers HTTP 429 (too many requests) to a cloud container: then the program says so and
 keeps the cache file. The forward consensus (EPS, price targets, ratings), the surprises and the earnings dates come from the Nasdaq site API (no key): `fa estimates get` and `fa earnings calendar` write the cache, `fa analyze` reads it (see `docs/HIDDEN-ASSUMPTIONS.md`, #215 to #229). Revenue estimates need `FMP_API_KEY`.
+
+### Golden cases (`fa selftest golden`)
+
+`rust/tests/golden/cases.toml` lists commands with the SHA-256 of their expected output. The author and the reviewer
+of a change to the engine run it (not in CI: the store is private).
+
+```bash
+rust/target/release/fa selftest golden                       # run all cases; exit 1 on a difference (first 20 lines)
+rust/target/release/fa selftest golden --case dcf_drivers_ibm
+rust/target/release/fa selftest golden --update "why the output changes" --case NAME   # or --all
+rust/target/release/fa selftest golden --record-inputs --case NAME   # write the input list of a case
+```
+
+Each case lists the input files that it reads, each with its SHA-256 (`fa selftest golden --record-inputs --case NAME`
+writes the list with `strace`, Linux only; without it, write the list by hand and add a `note`). A listed input that is
+missing or has another hash makes the case SKIPPED, with the file named; it is never a pass. An input that the list
+misses can only make the case FAIL (the output changes), never pass: then add the file to the list. A run where all cases
+are skipped says "0 of N cases ran" and exits 0. The `store` commit is information only. A mask hides only lines that vary (timing lines); any other mask needs a `why`. The command never downloads:
+it runs only commands of an allow list that read the cache, and a case whose command asks for the network FAILS and names the request. `--update` needs a reason; it rewrites the input hashes and the expected text together, and the reason and the date go
+into the case file, and the expected text goes into `rust/tests/golden/NAME.txt`, so the pull request shows the change.
+A case that runs longer than the deadline (default 30 minutes, `--timeout-mins N`) is killed and FAILS. The expected texts are public: a case must not print raw option quotes (the options case uses `--top 0`).
+`fa selftest golden --help` has the details.
 
 ## Standard input variables
 
@@ -276,19 +302,20 @@ inflation part of a rate change is large, examine the growth drivers too.
 ### Corporate bonds and the cost of debt
 
 The engine uses `kd = rf + kd_spread`. `fa bonds` (Rust, `rust/src/bonds.rs`) gives market
-values for `kd_spread`. The data come through the FRED CSV file (see
-`docs/HIDDEN-ASSUMPTIONS.md` #128 if FRED does not answer).
+values for `kd_spread`. The cost of debt of a rating is the Treasury HQM 10-year spot yield
+plus a fixed step for the rating row, with the HQM basis (`docs/models/cost-of-debt.md`).
 
 ```bash
-fa bonds                       # all ratings, Moody's, HQM curve
+fa bonds hqm get               # the Treasury HQM files into data/raw/bonds/treasury_hqm/
+fa bonds                       # all ratings (HQM + step), HQM curve
 fa bonds over10y --rating A-   # the market kd_spread for a rating
-fa bonds check                 # Moody's minus UST 10Y against FRED (exit 1 on a mismatch)
 ```
 
-`over10y` is the yield of the ICE BofA index for the rating minus the Treasury 10-year
-yield on the same date. This is the definition of `kd_spread` in the engine. The rating
-can be S&P (`A-`) or Moody's (`A3`). The index has no notches, thus `A-` uses the `A`
-index.
+`over10y` is the cost of debt of the rating (UST 10-year of the date + the HQM basis + the step of
+the rating row) minus the Treasury 10-year yield on the date. This is the definition of `kd_spread` in the
+engine. The rating can be S&P (`A-`) or Moody's (`A3`). Each notch with a row in the
+Damodaran table has its own step (`A-` +0.11 points); a notch with no row takes its letter grade.
+The bucket `A` is the HQM reference bucket (step 0).
 
 To use the market spread in a verdict, add `--rating` to a run with `--rf-date`:
 
@@ -386,7 +413,7 @@ saved company data (`data/processed/<TICKER>.json`). The charts need the network
 | Stock | The standard variables of the latest fiscal years with value and source, the status (PASS, WARN, FAIL, N/A), the company type and the findings. | `mapcheck` library, cache `data/raw/` |
 | Monte Carlo DCF | P10 to P90 of the value for each share, the chance that the price is too high, and the verdict. Optional: the market rates of today and a credit rating. | `fa verdict` (Rust) |
 | Rates | The nominal and real Treasury curves, SOFR, EFFR, breakevens, the 5y5y forward and CPI. | `fa rates` (Rust) |
-| Bonds | The ICE BofA yield and spread for each rating, Moody's Aaa and Baa, the HQM corporate curve. | `fa bonds` (Rust) |
+| Bonds | The cost of debt and the step for each rating (HQM + step), the HQM corporate curve. | `fa bonds` (Rust) |
 | Option bots | The text of `trading/research/LEADERBOARD.md`. | file |
 
 Limits:
@@ -456,6 +483,7 @@ rust/target/release/fa trade fetch                    # download the bars (Yahoo
 rust/target/release/fa prices intraday SPY --interval 5m --from 2020-01-01   # 5-minute bars since a date (Alpaca, free key)
 rust/target/release/fa options history SPY --from 2024-03-01 --to 2024-03-29 # option surface of past dates from daily closes (Alpaca)
 rust/target/release/fa options check IBM --date 2026-11-19 [--rate R] [--time HHMM] [--min-size USD] [--iv-mark POINTS] [--compare D2] [--otm | --all-strikes]      # no-arbitrage checks of a stored chain at executable prices (bid and ask); upper parity bound only; without --rate the Treasury curve can be downloaded (one file), give --rate R for no network
+rust/target/release/fa arb run --symbol SPX --date 2026-11-20 --rate 0.04 [--time HHMM] [--out PATH]      # the register checks (arbitrage/register/) on one stored snapshot: one table (id, class, status, tested, pass, break, not tested, dropped legs) and a JSON file; cache only, never downloads; exit 0 with breaks
 rust/target/release/fa options snapshot SPY --source alpaca                  # option chain of today (Alpaca, free key); SPX and VIX too (both roots; level and volatility from put-call parity)
 rust/target/release/fa options archive [SPX SPY VIX] [--keep-days N] [--min-share X] [--force]    # copy the live Alpaca chains with the time (fa options snapshot --source alpaca skips when a live Alpaca file of today exists unless --refresh; file <date>T<hhmm>.json and a gzip copy), refuse a half chain (below 80% of the last Alpaca file; --force or --min-share X to take a real shrink), and fetch the Cboe VX settlement file; readers take --date D (last file of the date) and --time HHMM
 rust/target/release/fa vol fit heston --symbol IBM --date 2026-11-19  # fit Heston (or bates) to a stored snapshot with bid and ask; error by expiry in vol points
@@ -475,8 +503,8 @@ The code is in `rust/src/trading/`. It has 22 bots. Each bot has a research note
 Data sources (free, no key, no login). `fa trade fetch` gets the bars from the Yahoo
 chart endpoint. It waits 2 seconds between two requests. If Yahoo answers HTTP 429, the
 command waits, tries one more time, and then stops; the cache files stay as they are.
-`fa trade paper` gets the live option chain from the Cboe delayed quotes (about 15 minutes
-late). Yahoo is not a source of option chains: it refuses a program that has no browser
+`fa trade paper` prices with the model (`--no-live`; add `--no-refresh` to read only the cached bars, with no Yahoo download). It refuses a live option chain: the Cboe
+page prohibits automatic downloads, and the Alpaca chain has no adapter yet (T-20261121-cboe-off). Yahoo is not a source of option chains: it refuses a program that has no browser
 identity (HTTP 429 at the crumb request).
 
 Limits that you must know before you trade:
@@ -522,7 +550,7 @@ The table of all data sets with their sources, keys and commands is `docs/DATA-S
 | Financial statements | SEC EDGAR companyfacts XBRL API | None |
 | Daily prices | Tiingo (key), Yahoo chart endpoint, Nasdaq site API, Alpaca (free keys; last: IEX close, history from 2020-07-27) | `TIINGO_API_KEY`; `APCA_API_KEY_ID` and `APCA_API_SECRET_KEY` (none for Yahoo and Nasdaq) |
 | Intraday bars (1 and 5 minutes), option chain snapshots, option closes of past dates | Alpaca Market Data API (free plan) | `APCA_API_KEY_ID` and `APCA_API_SECRET_KEY` |
-| Option chains | Cboe delayed quotes (about 15 minutes late) | None |
+| Option chains | Alpaca indicative feed (Cboe delayed quotes are not read) | Alpaca keys |
 | Analyst estimates and earnings surprises | Financial Modeling Prep | `FMP_API_KEY` in `.env` or the environment |
 | Forward consensus snapshot, earnings dates | No source in Rust: cache files of the earlier Python code | None |
 | Treasury par yield curves, nominal and real (TIPS) | U.S. Treasury | None |
@@ -530,9 +558,8 @@ The table of all data sets with their sources, keys and commands is `docs/DATA-S
 | CPI-U, headline and core | Bureau of Labor Statistics, API v1 | None |
 | Zero-coupon yields and forward rates (fitted curve, GSW) | Federal Reserve Board, `feds200628.csv` | None |
 | Cross-check of the rates and CPI | FRED (St. Louis Fed): the API with a key, else the CSV with no key | `FRED_API_KEY` (optional) |
-| Corporate bond spreads and yields for each rating | ICE BofA indexes, through FRED (last 3 years only) | None |
-| Moody's seasoned Aaa and Baa yields | Moody's, through FRED | None |
-| HQM corporate bond yield curve | U.S. Treasury, through FRED | None |
+| Rating step table (default spread of each rating) | A. Damodaran, January 2026 (fixed table in the code) | None |
+| HQM corporate bond yield curve | U.S. Treasury (files) | None |
 
 The pipeline supports US-GAAP filers on EDGAR. ETFs and IFRS filers cause an
 `UnsupportedFilingError`. Segment revenue is not available from companyfacts

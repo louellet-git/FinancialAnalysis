@@ -1,0 +1,6 @@
+2020-03-20 trunc: byte-identical to baseline (all rows, all columns)
+2020-03-20 poison: byte-identical to baseline (all rows, all columns)
+2022-06-17 trunc: byte-identical to baseline (all rows, all columns)
+2022-06-17 poison: byte-identical to baseline (all rows, all columns)
+2025-04-04 trunc: byte-identical to baseline (all rows, all columns)
+2025-04-04 poison: byte-identical to baseline (all rows, all columns)

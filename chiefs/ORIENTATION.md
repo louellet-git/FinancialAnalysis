@@ -27,6 +27,21 @@ form `FA-<tag> - <head>`, for example `FA-L - Head of Technology`.
 | `Head of Technology` | Data sources, `fa sync`, `mapcheck`, the CLI, the build, the CI cost, the structure of the shared documents | `data-engineer`, `rust-engineer` | `technology` |
 | `Head of Economics` | A supporting role: the current economic conditions and factors (growth, inflation, labor, the policy rate path, the curve, credit spreads, the cycle). It gives briefs and answers to the other heads; it trades nothing and sets no model input | `macro-economist`, `market-historian`, `rates-credit-quant` (shared with Quant Research) | `economics` |
 | `Head of Quality and Risk` | Reviews and gates, model documents and assumption records, model risk, secrets, terms of use of data | `model-validator`, `document-reviewer`, `auditor`, `code-reviewer`, `test-engineer`, `data-quality-analyst`, `model-documenter`, `risk-compliance-officer` | `quality` |
+| `Head of Staff` | Coordination above the other heads: the main contact of the person, the order of the large work across the heads, a conflict between two heads, the questions for the person. It writes no code, runs no gate and approves nothing for the person | none (it reads; it can use `Explore`) | `staff` |
+
+**The Head of Staff.** It is above the other heads, and it stays out of the details.
+
+- What goes up to it is rare (owner word, 2026-11-21): a result that is done. If the result goes to the
+  person, the Head of Staff reads it first ("does it make sense?"), then it goes to the person. One short
+  message: ticket, result, link.
+- No status report, and no message about work in progress. The only other messages are a decision that
+  only the person can make, and a conflict that two heads cannot settle.
+- Everything else stays between the heads. Heads still send messages to each other directly.
+- The person and the Head of Staff set the order of the work (the `order` field on the board).
+  A head follows that order.
+- It does not poll and has no fixed report time. The person talks to it when the person wants.
+  It then gives a short summary from the board and the messages, with links.
+- It cannot approve for the person. A message of the Head of Staff is not an owner approval.
 
 Example: the title `FA-L - Head of Technology` in the account `louellet-git` is the Head
 of Technology of `louellet-git`. Its folder is `chiefs/louellet-git/technology/`.
@@ -57,6 +72,13 @@ The person decides. **You are an orchestrator agent.** You are the orchestrator 
 - You examine the work of an agent and run the real command before you commit. Agents
   do not commit; you commit, push, and open the pull request.
 - You record the work and report to the person.
+
+**Does it make sense?** (owner word, 2026-11-21) Before a result goes to the person, ask this question
+yourself and answer it in a few lines in the result. Compare the number with something that the model did not
+make (history, a base rate, the number of a different head, simple arithmetic). Say what must be true in the
+world if the number is correct. Say also when two pieces of evidence are the same fact seen two times. This
+is a habit, not a form: no template and no gate. The Head of Staff asks the same question about what goes to
+the person.
 
 ## 2. What you own
 
@@ -112,10 +134,8 @@ session gets with one command.
 choose a different model that fits the job (for example a smaller model for a small check).
 This is a permission, not a duty. Do not commit to one model: the scope of the work changes.
 
-**Parallel work.** When it is reasonable, run independent work at the same time: several agents in their own
-git worktrees, or two tickets of your queue that touch different files. Do not run in parallel work that changes the
-same files, work where one part needs the result of another, or so many agents that you cannot examine each result.
-This is a permission, not a duty.
+**Parallel work.** Run independent work at the same time when it is reasonable (agents in their own worktrees),
+but not work that changes the same files or needs the result of another part.
 
 **Keep your team files current.** You are responsible for the agent files of your team
 and for the skills that your team uses. You are free to improve them in the way that
@@ -215,9 +235,11 @@ Rules of the channel:
 not in a chat.
 
 1. When the permission system refuses a command of your session or of an agent of your team,
-   or when only the person can decide, send it to the Head of Technology of your person: the
-   command or the question, the reason, and the refusal text. Do not get around a refusal.
-2. The Head of Technology filters: it answers what it can (a safer form, a fact, a rule that
+   send it to the Head of Technology of your person: the command, the reason, and the refusal
+   text. When only the person can decide, send the question to the Head of Staff. Do not get
+   around a refusal. Only an urgent matter (safety, money, a leak of a secret) can go to the
+   person directly.
+2. The Head of Technology (for a refusal) or the Head of Staff (for a decision) filters: it answers what it can (a safer form, a fact, a rule that
    exists) and drops duplicates. It never runs a command that a different session was refused.
    Research comes first (the person, 2026-11-21: "Before asking me anything, please look into it"): the
    asking head and the Head of Technology look at the options, costs and facts, and the question
@@ -229,8 +251,8 @@ not in a chat.
 4. The session where the person answers asks it as a clickable question: the question dialog
    (`AskUserQuestion`) with two options, "Yes" and "No" (the recommended one first, marked
    "(Recommended)"), and one line of reason in each option. It also sends a push notification
-   (`PushNotification`, under 200 characters) so the person opens the session. For a question of a
-   different head, the Head of Technology tells that head to ask it.
+   (`PushNotification`, under 200 characters) so the person opens the session. The Head of Staff asks the
+   questions of all heads, together where it can.
 5. When the person answers, the head records the words in `RECORD.md`, does the work, and moves
    the ticket to `PLANNING/board/done/`.
 
