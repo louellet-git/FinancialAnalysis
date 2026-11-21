@@ -2,13 +2,13 @@
 id: T-20261121-board-check
 title: Check the board rules with one script (no model tokens)
 area: planning
-status: backlog
+status: in-progress
 owner: louellet-git
 requested_by: louellet-git
 head: technology
 order: 1.5
 story: E6.S5
-branch:
+branch: claude/board-check
 created: 2026-11-21
 acceptance: One command reads git only and prints, for each head, the rule faults of the list below with the ticket and the reason; it changes no file, it needs no network other than `git fetch`, and a fixed-answer test covers each check.
 ---
