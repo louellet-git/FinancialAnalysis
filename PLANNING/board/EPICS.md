@@ -74,8 +74,8 @@ S&P 100, and each head runs its checks from the store with no network.
 
 | Story | Lead | Tickets, in order | Mark |
 |---|---|---|---|
-| E5.S1 The store has no known defect | technology | `T-20261121-data-audit` → `T-20261121-share-count-scale-guard`, `T-20261121-missing-price-files`, `T-20261119-filing-values-in-variables` | now |
-| E5.S2 Each source is permitted | technology | `T-20261121-fred-local` → `T-20261121-economics-data` → `T-20261121-daily-history` (a decision of the person) | now |
+| E5.S1 The store has no known defect | technology | `T-20261121-data-audit` → `T-20261121-revenue-old-tags`, `T-20261121-share-count-scale-guard`, `T-20261121-missing-price-files`, `T-20261119-filing-values-in-variables` | now |
+| E5.S2 Each source is permitted | technology | `T-20261121-cboe-off`, `T-20261121-fred-local` → `T-20261121-economics-data` → `T-20261121-daily-history` (a decision of the person) | now |
 | E5.S3 Work with no network | technology | `T-20261121-cache-only-switch`, `T-20261120-store-arb-data-rest`, `T-20261120-sync-chains` | next |
 | E5.S4 Live view | technology | `T-20261119-live-data-stream` | next (last) |
 
