@@ -14,6 +14,9 @@ pub struct PeriodData {
     pub forms: Forms,
     /// The filing date of the revenue fact, or the latest filing date of the facts in use.
     pub filed: Option<String>,
+    /// The filing date of the fact that gave the value of each registry variable (a tag value only: `None` for a value
+    /// that a formula or a 10-K line gave), in the registry sequence. Empty in a period that was not made by the mapper.
+    pub filed_of: Vec<Option<String>>,
     /// One entry for each registry variable, in the registry sequence.
     pub values: Vec<Option<f64>>,
     pub sources: Vec<Option<String>>,
@@ -24,6 +27,11 @@ pub struct PeriodData {
 impl PeriodData {
     pub fn get(&self, registry: &Registry, name: &str) -> Option<f64> {
         registry.try_var(name).and_then(|i| self.values[i])
+    }
+
+    /// The filing date of the tag fact that gave the value of a variable (`None`: no value, or a formula value).
+    pub fn filed_of(&self, registry: &Registry, name: &str) -> Option<&str> {
+        registry.try_var(name).and_then(|i| self.filed_of.get(i)).and_then(|d| d.as_deref())
     }
 
     pub fn source(&self, registry: &Registry, name: &str) -> &str {
@@ -367,7 +375,7 @@ pub fn resolve_period_with(registry: &Registry, facts: &CompanyFacts, end: &str,
         }
     }
 
-    let mut period = PeriodData { end: end.to_string(), forms, filed, values, sources, raw_extras };
+    let mut period = PeriodData { end: end.to_string(), forms, filed, filed_of: filed_dates, values, sources, raw_extras };
     if let (Forms::Annual, Some(fill)) = (forms, fill) {
         let critical = crate::checks::critical_for(crate::checks::filer_template(registry, &period));
         if TRIGGERS.iter().any(|name| critical.contains(name) && period.get(registry, name).is_none()) {

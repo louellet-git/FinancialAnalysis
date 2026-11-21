@@ -3,6 +3,7 @@
 
 use super::{Strategy, View};
 use crate::dcf::auto::YearData;
+use crate::dcf::splits::{Basis, Split};
 use mapcheck::checks::filer_template;
 use mapcheck::facts::{period_ends, CompanyFacts, Forms};
 use mapcheck::mapper::resolve_period_with;
@@ -199,13 +200,21 @@ impl Vintages {
 
 /// The vintages of a company from its facts, and its template. The vintages before the last one filed before `from`
 /// are not made: no decision from `from` on uses them.
-pub fn vintages_of(registry: &Registry, facts: &CompanyFacts, from: i64) -> Option<(String, Vintages)> {
+///
+/// The share counts are on the basis of `today` (`splits`, see `dcf/splits.rs`), the basis of the closes of the store.
+pub fn vintages_of(registry: &Registry, ticker: &str, facts: &CompanyFacts, from: i64, splits: &[Split], today: &str) -> Option<(String, Vintages)> {
     if !facts.has_us_gaap() {
         return None;
     }
     let ends = |f: &CompanyFacts| period_ends(f, &registry.anchors, Forms::Annual, None);
     let years = |f: &CompanyFacts| -> Vec<YearData> {
-        ends(f).iter().map(|e| YearData::from_period(registry, &resolve_period_with(registry, f, e, Forms::Annual, None))).collect()
+        ends(f)
+            .iter()
+            .map(|e| {
+                let p = resolve_period_with(registry, f, e, Forms::Annual, None);
+                YearData::from_period(registry, &p, &Basis { splits, ticker, today })
+            })
+            .collect()
     };
     let last = ends(facts).last().map(|e| resolve_period_with(registry, facts, e, Forms::Annual, None))?;
     let template = filer_template(registry, &last).to_string();
@@ -216,9 +225,9 @@ pub fn vintages_of(registry: &Registry, facts: &CompanyFacts, from: i64) -> Opti
 }
 
 /// The vintages of a ticker from the cache (see [`vintages_of`]).
-pub fn load_vintages(registry: &Registry, cache: &Path, ticker: &str, from: i64) -> Option<(String, Vintages)> {
+pub fn load_vintages(registry: &Registry, cache: &Path, ticker: &str, from: i64, splits: &[Split], today: &str) -> Option<(String, Vintages)> {
     let facts = mapcheck::run::read_facts(&mapcheck::run::facts_path(cache, ticker)?).ok()?;
-    vintages_of(registry, &facts, from)
+    vintages_of(registry, ticker, &facts, from, splits, today)
 }
 
 /// The part of an ISO-dated series before `date` (text).
@@ -414,7 +423,7 @@ mod tests {
     fn a_vintage_has_the_value_of_the_filings_before_the_date_not_the_restatement() {
         let reg = Registry::embedded().unwrap();
         let facts: CompanyFacts = serde_json::from_str(FACTS).unwrap();
-        let (_, v) = vintages_of(&reg, &facts, 0).unwrap();
+        let (_, v) = vintages_of(&reg, "T", &facts, 0, &[], "2026-11-21").unwrap();
         assert_eq!(v.0.len(), 3);
         assert!(v.known(d("2020-02-20")).is_empty()); // filed on the day: not before it
         let y = v.known(d("2020-02-21"));
@@ -424,7 +433,7 @@ mod tests {
         let y = v.known(d("2021-03-02"));
         assert_eq!((y[0].revenue, y[1].revenue), (Some(1000.0), Some(120.0)));
         // `from` drops the vintages that no decision from that day on uses (keeps the last one before it)
-        let (_, v) = vintages_of(&reg, &facts, d("2021-02-25")).unwrap();
+        let (_, v) = vintages_of(&reg, "T", &facts, d("2021-02-25"), &[], "2026-11-21").unwrap();
         assert_eq!(v.0.len(), 2);
         assert_eq!(v.known(d("2021-02-25")).len(), 2);
     }
@@ -498,16 +507,174 @@ mod tests {
     }
 
     fn rank(years: &BTreeMap<String, Vintages>, poison_from: &str, at: &str) -> Vec<(String, f64)> {
+        let series: BTreeMap<String, Vec<(String, f64)>> = (0..N).map(|k| (format!("T{k:02}"), closes(k, poison_from))).collect();
+        with_rank(years, &series, at, |s, view, universe| s.weights(view, universe).unwrap())
+    }
+
+    /// Runs `f` on a `ValueRank` of the fixture (curve none, 100 paths, seed 7).
+    fn with_rank<T>(years: &BTreeMap<String, Vintages>, series: &BTreeMap<String, Vec<(String, f64)>>, at: &str, f: impl FnOnce(&ValueRank, &View, &[String]) -> T) -> T {
         let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
         let (table, fade) = crate::dcf::auto_cli::load_table(&repo.join(crate::dcf::auto::DEFAULT_TABLE)).map_err(|e| e.0).unwrap();
         let rules = crate::dcf::auto_pit::parse_rules("").map_err(|e| e.0).unwrap();
         let params = RetParams { table: &table, fade: &fade, rules: &rules, curves: None, index: None, lag: 100, paths: 100, seed: 7 };
-        let series: BTreeMap<String, Vec<(String, f64)>> = (0..N).map(|k| (format!("T{k:02}"), closes(k, poison_from))).collect();
-        let prices = crate::portfolio::Prices::from_raw(&series);
+        let prices = crate::portfolio::Prices::from_raw(series);
         let index = market();
-        let s = ValueRank { years: years.clone(), series: &series, index: Some(&index), params, scored: Default::default(), sectors: None, pick: Pick::Top };
+        let s = ValueRank { years: years.clone(), series, index: Some(&index), params, scored: Default::default(), sectors: None, pick: Pick::Top };
         let universe: Vec<String> = series.keys().cloned().collect();
-        s.weights(&View::new(d(at), &prices), &universe).unwrap()
+        f(&s, &View::new(d(at), &prices), &universe)
+    }
+
+    // ---- the split basis: the k-test ----
+
+    /// A `PeriodData` with the values of a `YearData` (the variables that the model reads).
+    fn period_of(reg: &Registry, y: &YearData) -> mapcheck::mapper::PeriodData {
+        let mut values = vec![None; reg.variables.len()];
+        let mut put = |name: &str, v: Option<f64>| {
+            if let (Some(i), Some(v)) = (reg.try_var(name), v) {
+                values[i] = Some(v);
+            }
+        };
+        put("revenue", y.revenue);
+        put("operating_cash_flow", y.operating_cash_flow);
+        put("capex_total", y.capex);
+        put("sbc_total", y.sbc);
+        put("income_tax_expense", y.income_tax);
+        put("income_before_tax", y.pretax_income);
+        put("total_debt", y.total_debt);
+        put("cash_and_short_term_investments", y.cash);
+        put("shares_diluted", y.shares);
+        put("shares_outstanding", y.shares_outstanding);
+        let n = values.len();
+        // every value comes from a tag fact filed on `y.filed`
+        let filed_of = values.iter().map(|v| v.map(|_| y.filed.clone())).collect();
+        mapcheck::mapper::PeriodData { end: y.end.clone(), forms: Forms::Annual, filed: Some(y.filed.clone()), filed_of, values, sources: vec![None; n], raw_extras: Default::default() }
+    }
+
+    /// The same period as shown in another filing (a later 10-K that repeats it as a comparative).
+    fn filed_on(mut p: mapcheck::mapper::PeriodData, filed: &str) -> mapcheck::mapper::PeriodData {
+        p.filed = Some(filed.to_string());
+        p.filed_of = p.values.iter().map(|v| v.map(|_| filed.to_string())).collect();
+        p
+    }
+
+    const TODAY: &str = "2026-11-21";
+    /// The ex-date of the split of the k-test; the decisions of the test are before it.
+    const D: &str = "2021-06-01";
+
+    fn splitter(k: usize) -> bool {
+        k.is_multiple_of(3)
+    }
+
+    type Closes = BTreeMap<String, Vec<(String, f64)>>;
+
+    /// The fixture company set with a k:1 split on `D` for the tickers T00, T03, T06 and T09 (`kf` None: no split). The SEC
+    /// facts before `D` are unchanged; a fact dated after `D` has the shares times k. The closes before `D` are divided by k
+    /// (the store adjusts them). The vintages go through `YearData::from_period` with the rows of `splits`.
+    fn k_copy(kf: Option<f64>) -> (BTreeMap<String, Vintages>, Closes) {
+        let reg = Registry::embedded().unwrap();
+        let mut splits = Vec::new();
+        let mut years = BTreeMap::new();
+        let mut series = BTreeMap::new();
+        for k in 0..N {
+            let t = format!("T{k:02}");
+            let kk = kf.filter(|_| splitter(k));
+            if let Some(f) = kk {
+                splits.push(Split { ticker: t.clone(), ex_date: D.into(), old_rate: 1.0, new_rate: f, factor: f, kind: "forward".into(), sec_check: "match".into(), source: String::new() });
+            }
+            let v = Vintages(
+                vintages(k)
+                    .0
+                    .into_iter()
+                    .map(|(day, ys)| {
+                        let ys = ys
+                            .iter()
+                            .map(|y| {
+                                let mut raw = y.clone();
+                                // a fact that is filed after the split shows the counts of the new basis
+                                let after = raw.filed.as_str() > D;
+                                let m = if after { kk.unwrap_or(1.0) } else { 1.0 };
+                                raw.shares = raw.shares.map(|s| s * m);
+                                raw.shares_outstanding = raw.shares_outstanding.map(|s| s * m);
+                                let p = period_of(&reg, &raw);
+                                YearData::from_period(&reg, &p, &Basis { splits: &splits, ticker: &t, today: TODAY })
+                            })
+                            .collect();
+                        (day, ys)
+                    })
+                    .collect(),
+            );
+            years.insert(t.clone(), v);
+            let c = closes(k, "2030-01-01").into_iter().map(|(day, x)| (day.clone(), match kk { Some(f) if day.as_str() < D => x / f, _ => x })).collect();
+            series.insert(t, c);
+        }
+        (years, series)
+    }
+
+    #[test]
+    fn the_k_test_no_decision_before_the_split_date_changes() {
+        let (years0, series0) = k_copy(None);
+        for kf in [2.0, 25.0, 0.1] {
+            let (years1, series1) = k_copy(Some(kf));
+            for at in ["2020-09-01", "2021-05-01"] {
+                let a = with_rank(&years0, &series0, at, |s, v, u| (s.score(v, u), s.weights(v, u).unwrap()));
+                let b = with_rank(&years1, &series1, at, |s, v, u| (s.score(v, u), s.weights(v, u).unwrap()));
+                assert_eq!(a.0.len(), N, "k {kf} at {at}: all tickers scored");
+                assert_eq!(a.1, b.1, "k {kf} at {at}: the decision");
+                for ((ta, ra), (tb, rb)) in a.0.iter().zip(&b.0) {
+                    assert_eq!(ta, tb);
+                    assert!((ra / rb - 1.0).abs() < 1e-9, "k {kf} at {at} {ta}: P50/price {ra} {rb}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_k_test_fails_without_the_correction() {
+        // control: the same data with the factor 1 (the defect) moves the P50 / price of the splitters by k
+        let (years0, series0) = k_copy(None);
+        let (_, series1) = k_copy(Some(25.0));
+        let at = "2020-09-01";
+        let a = with_rank(&years0, &series0, at, |s, v, u| s.score(v, u));
+        let b = with_rank(&years0, &series1, at, |s, v, u| s.score(v, u));
+        for ((t, ra), (_, rb)) in a.iter().zip(&b) {
+            let k: usize = t[1..].parse().unwrap();
+            if splitter(k) {
+                assert!(rb / ra > 15.0, "{t}: {ra} {rb}"); // the defect: too high by about the split factor
+            } else {
+                assert!((rb / ra - 1.0).abs() < 1e-9, "{t}: {ra} {rb}");
+            }
+        }
+    }
+
+    #[test]
+    fn the_share_count_takes_the_split_factor_of_the_filing_date_not_the_period_end() {
+        let reg = Registry::embedded().unwrap();
+        let splits = [Split { ticker: "X".into(), ex_date: D.into(), old_rate: 1.0, new_rate: 25.0, factor: 25.0, kind: "forward".into(), sec_check: "match".into(), source: String::new() }];
+        let basis = Basis { splits: &splits, ticker: "X", today: TODAY };
+        let fy2020 = period_of(&reg, &fy(0, 8, 1.0)); // period end 2020-12-31, filed 2021-02-20 (before the split)
+        let counts = |p: &mapcheck::mapper::PeriodData| {
+            let y = YearData::from_period(&reg, p, &basis);
+            (y.shares, y.shares_outstanding)
+        };
+        // a split after the filing: the factor (the 10-K shows the old basis)
+        assert_eq!(counts(&fy2020), (Some(2500.0), Some(2500.0)));
+        // a split between the period end and the filing: the filing shows the new basis already: the factor is 1
+        assert_eq!(counts(&filed_on(fy2020.clone(), "2021-08-01")), (Some(100.0), Some(100.0)));
+        // the restated comparative of a later filing: 1
+        assert_eq!(counts(&filed_on(fy2020.clone(), "2022-02-20")), (Some(100.0), Some(100.0)));
+        // the filing date of the split itself: the ex-date is not after the filing: 1
+        assert_eq!(counts(&filed_on(fy2020.clone(), D)), (Some(100.0), Some(100.0)));
+        // one period with the diluted count from one filing and the count at the end from another: each has its own factor
+        let mut mixed = fy2020.clone();
+        mixed.filed_of[reg.try_var("shares_outstanding").unwrap()] = Some("2021-08-01".into());
+        assert_eq!(counts(&mixed), (Some(2500.0), Some(100.0)));
+        // a value with no tag fact (a formula value) takes the filing date of the period
+        let mut formula = fy2020.clone();
+        formula.filed_of = vec![None; formula.values.len()];
+        assert_eq!(counts(&formula), (Some(2500.0), Some(2500.0)));
+        // no filing date at all: the period end
+        formula.filed = None;
+        assert_eq!(counts(&formula), (Some(2500.0), Some(2500.0)));
     }
 
     fn all_vintages() -> BTreeMap<String, Vintages> {

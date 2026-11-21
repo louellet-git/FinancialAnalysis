@@ -1280,3 +1280,63 @@ fn market_at_takes_the_close_of_the_price_date_and_market_from_cache_the_last_cl
     assert_eq!(market_from_cache(&dir, "ZZ", "2026-11-04", None, &rules, None, None).price, Some(12.0));
     std::fs::remove_dir_all(&dir).ok();
 }
+
+/// The SEC facts of a company with six fiscal years 2020 to 2025 (10-K filed on 15 Feb of the next year) and 100M shares.
+fn live_facts() -> mapcheck::facts::CompanyFacts {
+    let dur = |tag: &str, f: &dyn Fn(i32) -> f64| -> String {
+        let rows: Vec<String> = (0..6).map(|k| format!(r#"{{"start":"{y}-01-01","end":"{y}-12-31","val":{v},"form":"10-K","filed":"{f}-02-15","fy":{y},"fp":"FY"}}"#, y = 2020 + k, v = f(k), f = 2021 + k)).collect();
+        format!(r#""{tag}":{{"units":{{"USD":[{}]}}}}"#, rows.join(","))
+    };
+    let inst = |tag: &str, unit: &str, v: f64| -> String {
+        let rows: Vec<String> = (0..6).map(|k| format!(r#"{{"end":"{y}-12-31","val":{v},"form":"10-K","filed":"{f}-02-15","fy":{y},"fp":"FY"}}"#, y = 2020 + k, f = 2021 + k)).collect();
+        format!(r#""{tag}":{{"units":{{"{unit}":[{}]}}}}"#, rows.join(","))
+    };
+    let rev = |k: i32| 1e9 * 1.1f64.powi(k);
+    let shares_w: Vec<String> = (0..6).map(|k| format!(r#"{{"start":"{y}-01-01","end":"{y}-12-31","val":1e8,"form":"10-K","filed":"{f}-02-15","fy":{y},"fp":"FY"}}"#, y = 2020 + k, f = 2021 + k)).collect();
+    let text = format!(
+        r#"{{"facts":{{"us-gaap":{{{},{},{},{},{},{},{},{}, "WeightedAverageNumberOfDilutedSharesOutstanding":{{"units":{{"shares":[{}]}}}}}}}}}}"#,
+        dur("Revenues", &rev),
+        dur("NetCashProvidedByUsedInOperatingActivities", &|k| 0.2 * rev(k)),
+        dur("PaymentsToAcquirePropertyPlantAndEquipment", &|k| 0.05 * rev(k)),
+        inst("CashAndCashEquivalentsAtCarryingValue", "USD", 5e7),
+        inst("LongTermDebt", "USD", 2e8),
+        inst("CommonStockSharesOutstanding", "shares", 1e8),
+        dur("ShareBasedCompensation", &|k| 0.03 * rev(k)),
+        inst("Assets", "USD", 2e9),
+        shares_w.join(",")
+    );
+    serde_json::from_str(&text).unwrap_or_else(|e| panic!("{e}"))
+}
+
+/// The live case: a 25:1 split on 2026-04-06, after the last 10-K (period end 2025-12-31). The share counts of the 10-K
+/// are before the split; the close of the store is split-adjusted. With the split table the model gives the same
+/// P50 / price as a company with no split (the price divided by 25 and no split row would give a value 25 times too high).
+#[test]
+fn a_split_after_the_last_10k_does_not_change_the_value_over_the_price() {
+    use super::super::auto_implied::deterministic_value;
+    use super::super::splits::Split;
+    let reg = Registry::embedded().unwrap();
+    let day = mapcheck::dates::parse("2026-11-21").unwrap();
+    let report = mapcheck::run::check_facts(&reg, "LIVE", &live_facts(), 8, day, true);
+    let split = [Split { ticker: "LIVE".into(), ex_date: "2026-04-06".into(), old_rate: 1.0, new_rate: 25.0, factor: 25.0, kind: "forward".into(), sec_check: "match".into(), source: String::new() }];
+    let none = inputs_from_report(&reg, &report, &[], "2026-11-21");
+    let with = inputs_from_report(&reg, &report, &split, "2026-11-21");
+    assert_eq!(none.years.len(), 6, "{:?}", none.findings);
+    let (b0, b1) = (none.balance.as_ref().unwrap(), with.balance.as_ref().unwrap());
+    assert_eq!((b0.shares, b0.shares_outstanding), (Some(1e8), Some(1e8)));
+    assert_eq!((b1.shares, b1.shares_outstanding), (Some(2.5e9), Some(2.5e9)));
+    assert!(with.years.iter().all(|y| y.shares == Some(2.5e9)));
+    let value = |i: &AutoInputs, price: f64| -> f64 {
+        let m = Market { as_of: "2026-11-21".into(), price: Some(price), ..Default::default() };
+        let model = build(i, &table(), &[], &m, &plain_rules(), BuildOptions::default()).unwrap_or_else(|e| panic!("{e:?}"));
+        deterministic_value(&spec_of(&model)).unwrap().0
+    };
+    let p = 20.0;
+    let ratio_no_split = value(&none, p) / p;
+    // the store shows the adjusted close p / 25; the shares of the model are on the same basis
+    let ratio_split = value(&with, p / 25.0) / (p / 25.0);
+    assert!((ratio_split / ratio_no_split - 1.0).abs() < 1e-9, "{ratio_split} {ratio_no_split}");
+    // the defect: the adjusted close with the share count of the 10-K
+    let ratio_defect = value(&none, p / 25.0) / (p / 25.0);
+    assert!(ratio_defect / ratio_no_split > 20.0, "{ratio_defect} {ratio_no_split}");
+}

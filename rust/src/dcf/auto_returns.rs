@@ -338,6 +338,9 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     if limit > 0 {
         tickers.truncate(limit as usize);
     }
+    // the closes of the store are split-adjusted to today: the share counts must be on the same basis (a missing file is an error)
+    let splits = super::splits::load_splits(&cache).map_err(DcfError)?;
+    let today = crate::market::today_iso();
     let curves = std::fs::read_to_string(cache.join("rates").join("gsw_feds200628.csv")).ok().and_then(|t| crate::forwards::parse_gsw(&t).ok());
     let index = index_from_cache(&cache);
     let p = RetParams { table: &table, fade: &fade, rules: &rules, curves: curves.as_ref(), index: index.as_deref(), lag, paths, seed };
@@ -345,7 +348,7 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     let mut obs: Vec<RetObs> = tickers
         .par_iter()
         .flat_map(|t| {
-            let Some((tpl, years)) = load_company_years(&registry, &cache, t) else { return Vec::new() };
+            let Some((tpl, years)) = load_company_years(&registry, &cache, t, &splits, &today) else { return Vec::new() };
             if tpl != "standard" {
                 return Vec::new();
             }
@@ -369,6 +372,7 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         if curves.is_some() { "GSW" } else { "none (fixed rate)" },
         if index.is_some() { "SPY" } else { "none (beta 1)" }
     );
+    text.push_str(&super::splits::check_report(&splits, &tickers));
     let ratio: Vec<f64> = obs.iter().map(|o| o.ratio()).collect();
     let mut s = ratio.clone();
     s.sort_by(|a, b| a.total_cmp(b));

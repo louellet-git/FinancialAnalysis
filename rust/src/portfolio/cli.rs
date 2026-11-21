@@ -149,6 +149,7 @@ fn backtest(repo: &Path, args: &[String]) -> Result<(), String> {
     let cfg = Config { start, end, rebalance, cost_bp };
     let late = tickers.iter().filter(|t| prices.0.get(*t).and_then(|s| s.first()).is_some_and(|f| f.0 > start)).count();
     let mut n_scored = None;
+    let mut split_note = String::new();
 
     let report = match strategy {
         "momentum" => super::run(&prices, &tickers, &Momentum, &cfg)?,
@@ -171,10 +172,14 @@ fn backtest(repo: &Path, args: &[String]) -> Result<(), String> {
             let rules = parse_rules("").map_err(|e| e.0)?;
             let curves = std::fs::read_to_string(cache.join("rates").join("gsw_feds200628.csv")).ok().and_then(|t| crate::forwards::parse_gsw(&t).ok());
             let index = index_from_cache(&cache);
+            // the closes are split-adjusted to today: the share counts of each vintage go to the same basis (a missing file is an error)
+            let splits = crate::dcf::splits::load_splits(&cache)?;
+            let today = crate::market::today_iso();
+            split_note = crate::dcf::splits::check_report(&splits, &tickers);
             let years: BTreeMap<String, _> = tickers
                 .par_iter()
                 .filter_map(|t| {
-                    let (tpl, y) = load_vintages(&registry, &cache, t, start)?;
+                    let (tpl, y) = load_vintages(&registry, &cache, t, start, &splits, &today)?;
                     (tpl == "standard").then(|| (t.clone(), y))
                 })
                 .collect();
@@ -203,7 +208,7 @@ fn backtest(repo: &Path, args: &[String]) -> Result<(), String> {
     };
     let ew = super::run(&prices, &tickers, &EqualWeight, &cfg)?;
     let info = Info { n_tickers: tickers.len(), n_scored, late, seconds: t0.elapsed().as_secs_f64() };
-    print!("{}", render(&report, &ew, &cfg, args, &info));
+    print!("{split_note}{}", render(&report, &ew, &cfg, args, &info));
     if let Some(path) = opt(args, "--out") {
         // the equal-weight line of the list, on the dates of the strategy (empty where it has no value on that date)
         let ew_at: BTreeMap<i64, f64> = ew.dates.iter().copied().zip(ew.nav.iter().copied()).collect();

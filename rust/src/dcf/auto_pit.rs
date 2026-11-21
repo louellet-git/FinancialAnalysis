@@ -648,7 +648,8 @@ LIMITS
   - The value (the P50) is not tested here: `fa dcf returns` tests it against the later stock returns.
   - The model of the test has no failure hazard, no price and a fixed default rate; the revenue and the free cash flow do not depend on them.";
 
-pub fn load_company_years(registry: &Registry, cache: &Path, ticker: &str) -> Option<(String, Vec<YearData>)> {
+/// The fiscal years of a ticker. The share counts are on the basis of `today` (`splits`, see `splits.rs`).
+pub fn load_company_years(registry: &Registry, cache: &Path, ticker: &str, splits: &[super::splits::Split], today: &str) -> Option<(String, Vec<YearData>)> {
     let path = mapcheck::run::facts_path(cache, ticker)?;
     let facts = mapcheck::run::read_facts(&path).ok()?;
     if !facts.has_us_gaap() {
@@ -657,7 +658,7 @@ pub fn load_company_years(registry: &Registry, cache: &Path, ticker: &str) -> Op
     let ends = period_ends(&facts, &registry.anchors, Forms::Annual, None);
     let periods: Vec<_> = ends.iter().map(|e| resolve_period_with(registry, &facts, e, Forms::Annual, None)).collect();
     let template = periods.last().map(|p| filer_template(registry, p)).unwrap_or("standard").to_string();
-    Some((template, periods.iter().map(|p| YearData::from_period(registry, p)).collect()))
+    Some((template, periods.iter().map(|p| YearData::from_period(registry, p, &super::splits::Basis { splits, ticker, today })).collect()))
 }
 
 /// The rules of a `--rules` text.
@@ -771,7 +772,7 @@ pub fn pit_setup(cache: &Path, table_file: &Path, cut: Option<i32>, limit: Optio
     }
     let companies: Vec<(String, Vec<YearData>)> = tickers
         .par_iter()
-        .filter_map(|t| load_company_years(&registry, cache, t).filter(|(tpl, _)| tpl == "standard").map(|(_, y)| (t.clone(), y)))
+        .filter_map(|t| load_company_years(&registry, cache, t, &[], "").filter(|(tpl, _)| tpl == "standard").map(|(_, y)| (t.clone(), y)))
         .filter(|(t, _)| half.is_none_or(|h| ticker_half(t) == h))
         .collect();
     let (table, fade, label) = match cut {
