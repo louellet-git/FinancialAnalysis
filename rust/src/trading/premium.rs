@@ -74,7 +74,7 @@ fn row(name: &str, x: &[f64], mask: &[bool], lag: usize, block: usize) -> Row {
     let pos = v.iter().filter(|&&a| a > 0.0).count() as f64 / v.len().max(1) as f64;
     v.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let median = if v.is_empty() { f64::NAN } else { v[v.len() / 2] };
-    let blk: Vec<f64> = (0..x.len()).step_by(block).filter(|&i| mask[i]).map(|i| x[i]).collect();
+    let blk: Vec<f64> = (0..x.len()).step_by(block.max(1)).filter(|&i| mask[i]).map(|i| x[i]).collect();
     Row { name: name.to_string(), n, mean, median, pos, t_nw, t_block: stats::t_mean(&blk) }
 }
 
@@ -105,16 +105,31 @@ pub fn command(repo: &Path, args: &[String]) -> Result<i32, String> {
             o => return Err(format!("unknown option '{o}'")),
         }
     }
+    if horizon == 0 {
+        return Err("--horizon needs a whole number of at least 1".to_string());
+    }
     let dir = Store::from_env(repo).dir().to_path_buf();
     let spy = read_series(&dir.join("SPY_1d.csv"))?;
     let vix = read_series(&dir.join("_VIX_1d.csv"))?;
     let vix1d = read_series(&dir.join("_VIX1D_1d.csv"))?;
+    report(&spy, &vix, &vix1d, horizon, lag)?;
+    Ok(0)
+}
+
+/// The two tables for the three series. An error when the series have no common day or no VIX1D day.
+fn report(spy: &super::data::Series, vix: &super::data::Series, vix1d: &super::data::Series, horizon: usize, lag: usize) -> Result<(), String> {
+    if horizon == 0 {
+        return Err("horizon must be at least 1".to_string());
+    }
     let at = |s: &super::data::Series, d: Date| s.date.binary_search(&d).ok();
     // Common dates of SPY and VIX.
-    let days: Vec<usize> = (0..spy.len()).filter(|&i| at(&vix, spy.date[i]).is_some()).collect();
+    let days: Vec<usize> = (0..spy.len()).filter(|&i| at(vix, spy.date[i]).is_some()).collect();
     let dates: Vec<Date> = days.iter().map(|&i| spy.date[i]).collect();
+    if dates.len() <= horizon {
+        return Err(format!("SPY and VIX have {} common days, not more than the horizon {horizon}: no premium can be computed", dates.len()));
+    }
     let spy_c: Vec<f64> = days.iter().map(|&i| spy.px.close[i]).collect();
-    let vix_c: Vec<f64> = dates.iter().map(|&d| vix.px.close[at(&vix, d).unwrap_or(0)]).collect();
+    let vix_c: Vec<f64> = dates.iter().map(|&d| vix.px.close[at(vix, d).unwrap_or(0)]).collect();
     println!("SPY and VIX common days: {} ({} to {}). Model prices: none; this is implied against realised variance.", dates.len(), iso(dates[0]), iso(dates[dates.len() - 1]));
 
     let p = premium_30d(&spy_c, &vix_c, horizon);
@@ -161,7 +176,7 @@ pub fn command(repo: &Path, args: &[String]) -> Result<i32, String> {
     let mut d1 = Vec::new();
     for j in 1..vix1d.len() {
         let d = vix1d.date[j];
-        if let (Some(k), true) = (at(&spy, d), vix1d.px.open[j].is_finite()) {
+        if let (Some(k), true) = (at(spy, d), vix1d.px.open[j].is_finite()) {
             if k == 0 || spy.date[k - 1] >= d {
                 continue;
             }
@@ -170,6 +185,9 @@ pub fn command(repo: &Path, args: &[String]) -> Result<i32, String> {
             oc.push(iv - (spy.px.close[k] / spy.px.open[k]).ln().powi(2));
             d1.push(d);
         }
+    }
+    if d1.is_empty() {
+        return Err("no day where VIX1D and SPY overlap (check _VIX1D_1d.csv and SPY_1d.csv)".to_string());
     }
     let m_all = vec![true; cc.len()];
     let m_w: Vec<bool> = d1.iter().map(|&d| in_window(d)).collect();
@@ -189,7 +207,7 @@ pub fn command(repo: &Path, args: &[String]) -> Result<i32, String> {
             println!("{:<34} {:>6} {:>10.6} {:>10.6} {:>7.1}", r.name, r.n, r.mean, r.median, 100.0 * r.pos);
         }
     }
-    Ok(0)
+    Ok(())
 }
 
 #[cfg(test)]
@@ -198,24 +216,64 @@ mod tests {
 
     #[test]
     fn premium_of_a_synthetic_series_has_a_fixed_answer() {
-        // VIX 20 (variance 0.04). SPY log returns alternate +1% and -1%: realised = 0.0001 x 252 = 0.0252.
-        let mut spy = vec![100.0];
-        for i in 0..30 {
-            let last = spy[i];
-            spy.push(last * if i % 2 == 0 { 0.01f64.exp() } else { (-0.01f64).exp() });
+        // SPY log returns r1..r4 = +1%, -2%, +3%, -1% (all different); VIX 20, 25, 30, 10, 15; horizon 2.
+        // Realised variance of day t = (r(t+1)^2 + r(t+2)^2) x 252/2; implied = (VIX/100)^2.
+        // t=0: 0.04   - (0.0001+0.0004) x 126 = 0.04   - 0.063  = -0.0230
+        // t=1: 0.0625 - (0.0004+0.0009) x 126 = 0.0625 - 0.1638 = -0.1013
+        // t=2: 0.09   - (0.0009+0.0001) x 126 = 0.09   - 0.126  = -0.0360
+        let mut spy = vec![100.0_f64];
+        for r in [0.01_f64, -0.02, 0.03, -0.01] {
+            let last = *spy.last().unwrap();
+            spy.push(last * r.exp());
         }
-        let vix = vec![20.0; spy.len()];
-        let p = premium_30d(&spy, &vix, 21);
-        assert_eq!(p.len(), 31 - 21);
-        for (_, v) in &p {
-            assert!((v - 0.0148).abs() < 1e-12, "{v}");
+        let vix = [20.0, 25.0, 30.0, 10.0, 15.0];
+        let p = premium_30d(&spy, &vix, 2);
+        let want = [-0.0230, -0.1013, -0.0360];
+        assert_eq!(p.len(), 3);
+        for (k, (t, v)) in p.iter().enumerate() {
+            assert_eq!(*t, k);
+            assert!((v - want[k]).abs() < 1e-12, "t {t}: {v}");
         }
-        // The last 21 days have no full future window, so the signal never uses a missing day.
-        assert_eq!(p.last().map(|x| x.0), Some(9));
-        // Constant series: mean 0.0148 and the share of positive days is 1.
+        // The last `horizon` days have no full future window, so the signal never uses a missing day.
+        assert_eq!(p.last().map(|x| x.0), Some(2));
+        // The statistics of the three values: mean -0.0534333, no positive day.
         let x: Vec<f64> = p.iter().map(|x| x.1).collect();
-        let r = row("t", &x, &vec![true; x.len()], 3, 21);
-        assert!((r.mean - 0.0148).abs() < 1e-12 && r.pos == 1.0);
+        let r = row("t", &x, &[true; 3], 1, 2);
+        assert!((r.mean - (-0.160_3 / 3.0)).abs() < 1e-12 && r.pos == 0.0 && r.n == 3);
+        assert!((r.median - (-0.036)).abs() < 1e-12, "median is the middle of the three sorted values");
+    }
+
+    fn series(days: &[&str], close: &[f64]) -> super::super::data::Series {
+        let mut s = super::super::data::Series::default();
+        for (d, &c) in days.iter().zip(close) {
+            s.date.push(parse_iso(d).unwrap());
+            s.minute.push(0);
+            s.utc.push(0);
+            s.px.open.push(c);
+            s.px.high.push(c);
+            s.px.low.push(c);
+            s.px.close.push(c);
+            s.px.volume.push(0.0);
+        }
+        s
+    }
+
+    #[test]
+    fn bad_input_is_an_error_not_a_panic() {
+        let a = series(&["2024-01-02", "2024-01-03", "2024-01-04"], &[100.0, 101.0, 102.0]);
+        let b = series(&["2024-02-02", "2024-02-03", "2024-02-04"], &[20.0, 20.0, 20.0]);
+        // Horizon 0 (the command and the report).
+        let e = report(&a, &a, &a, 0, 1).unwrap_err();
+        assert!(e.contains("horizon"), "{e}");
+        let tmp = std::env::temp_dir().join("fa-no-such-cache-premium");
+        let e = command(&tmp, &["--horizon".into(), "0".into()]).unwrap_err();
+        assert!(e.contains("--horizon"), "{e}");
+        // No common day of SPY and VIX.
+        let e = report(&a, &b, &b, 1, 1).unwrap_err();
+        assert!(e.contains("common days"), "{e}");
+        // Common days, but no VIX1D day that overlaps with SPY.
+        let e = report(&a, &a, &b, 1, 1).unwrap_err();
+        assert!(e.contains("VIX1D"), "{e}");
     }
 
     #[test]

@@ -4,7 +4,7 @@ use super::bots;
 use super::calendar::parse_iso;
 use super::data::{load_market, MarketData, Store};
 use super::engine::{run, BacktestResult, RiskConfig};
-use super::metrics::{format_summary, summarize, Summary};
+use super::metrics::{cut_index, format_summary, summarize, Summary};
 use super::stats;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
@@ -32,7 +32,9 @@ USAGE:
   --skew-mult X    multiply the model skew slope and curve by X (default 1)
   --mid-fill       fill at the mid price (no spread): a better price, a reference only
   --trials N       print the out-of-sample t of the trade P&L and the deflated Sharpe ratio for N trials
-  --sr-var V       variance of the daily Sharpe ratios of the trials (default 1/T)
+  --sr-var V       variance of the daily Sharpe ratios of the trials (default 1/T, a proxy: the
+                   sampling variance of one Sharpe ratio under no edge; the true V of the
+                   trials is not known, and a low V makes the DSR too high)
   --out FILE        write the leaderboard as a CSV file (only if all bots run)
   --trades-dir DIR  write the trades and the equity curve of each bot as CSV files
   -v                print the last trades of each bot
@@ -122,6 +124,11 @@ pub fn run_command(store: &Store, args: &[String]) -> Result<i32, String> {
         return Ok(0);
     }
     let a = parse_args(args)?;
+    if let Some(f) = a.is_fraction {
+        if !(f > 0.0 && f < 1.0) {
+            return Err(format!("--is-fraction must be above 0 and below 1 (got {f}): it needs bars on both sides of the cut"));
+        }
+    }
     let known = bots::names(a.include_templates);
     let names: Vec<String> = if a.bots.is_empty() { known.iter().map(|s| s.to_string()).collect() } else { a.bots.clone() };
     let missing: Vec<&String> = names.iter().filter(|n| !known.contains(&n.as_str())).collect();
@@ -221,7 +228,7 @@ pub fn run_command(store: &Store, args: &[String]) -> Result<i32, String> {
 /// Out-of-sample t of the mean trade P&L (dollars, and as a share of the max loss) and the deflated Sharpe ratio.
 fn print_robust(r: &BacktestResult, is_fraction: f64, n_trials: usize, sr_var: Option<f64>) {
     let n = r.equity.len();
-    let cut = if n == 0 { 0 } else { r.date[(n as f64 * is_fraction) as usize] as i64 * 1440 + r.minute[(n as f64 * is_fraction) as usize] as i64 };
+    let cut = if n == 0 { 0 } else { r.date[cut_index(n, is_fraction)] as i64 * 1440 + r.minute[cut_index(n, is_fraction)] as i64 };
     let oos: Vec<&super::engine::Trade> = r.trades.iter().filter(|t| t.entry_time.key() >= cut).collect();
     let pnl: Vec<f64> = oos.iter().map(|t| t.pnl).collect();
     let all_pnl: Vec<f64> = r.trades.iter().map(|t| t.pnl).collect();
@@ -406,6 +413,12 @@ pub(crate) mod tests {
         assert!(parse_args(&["--max-risk".into()]).is_err());
         assert!(parse_args(&["--max-risk".into(), "abc".into()]).is_err());
         assert!(parse_date("--start", &Some("2024-13-1".into())).is_err());
+        // A fraction outside (0, 1) is an error with a message, not a panic.
+        let store0 = Store::new(std::env::temp_dir().join("fa-no-such-cache"));
+        for bad in ["1", "0", "1.5", "-0.2"] {
+            let e = run_command(&store0, &["--is-fraction".into(), bad.into()]).unwrap_err();
+            assert!(e.contains("--is-fraction"), "{e}");
+        }
         // An unknown bot gives exit code 2 before any data is read.
         let store = Store::new(std::env::temp_dir().join("fa-no-such-cache"));
         assert_eq!(run_command(&store, &["--bot".into(), "nope".into()]).unwrap(), 2);

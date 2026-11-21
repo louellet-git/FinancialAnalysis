@@ -147,6 +147,22 @@ mod tests_alpha {
         // With lag 0 and a full mask the NW t is the plain t with the population sd.
         let (m, t, n) = nw_mean_t(&a, &[true; 8], 0);
         assert!((m, n) == (5.0, 8) && (t - 5.0 / (2.0 / 8f64.sqrt())).abs() < 1e-9);
+        // Lag 2 on x = [5,1,4,2,6,6], full mask, so the Bartlett weights 1 - l/(L+1) are 2/3 and 1/3.
+        // mean 4; g = [1,-3,0,-2,2,2]; T = 6.
+        // T*gamma0 = 1+9+0+4+4+4 = 22.
+        // T*gamma1 = (-3)(1) + 0(-3) + (-2)(0) + 2(-2) + 2(2) = -3.
+        // T*gamma2 = 0(1) + (-2)(-3) + 2(0) + 2(-2) = 2.
+        // T*omega = 22 + 2(2/3)(-3) + 2(1/3)(2) = 22 - 4 + 4/3 = 58/3 = 19.3333.
+        // var = omega*T/n^2 = (58/3)/36 = 0.537037; t = 4/sqrt(var) = 5.45840.
+        // With weight 1 (no Bartlett taper) T*omega would be 22 - 6 + 4 = 20 and t = 5.3666.
+        let x = [5.0, 1.0, 4.0, 2.0, 6.0, 6.0];
+        let (m2, t2, n2) = nw_mean_t(&x, &[true; 6], 2);
+        assert_eq!((m2, n2), (4.0, 6));
+        assert!((t2 - 4.0 / (58.0 / 3.0 / 36.0_f64).sqrt()).abs() < 1e-12, "{t2}");
+        assert!((t2 - 5.458_4).abs() < 1e-4, "{t2}");
+        // Lag 1: weight 1/2; T*omega = 22 + 2(1/2)(-3) = 19; t = 4/sqrt(19/36).
+        let (_, t1, _) = nw_mean_t(&x, &[true; 6], 1);
+        assert!((t1 - 4.0 / (19.0 / 36.0_f64).sqrt()).abs() < 1e-12, "{t1}");
         assert!((norm_inv(0.975) - 1.959_963_985).abs() < 1e-6);
         // One trial: SR0 = 0. SR 0.1, T 101, normal: Phi(0.1 * 10 / sqrt(1.005)) = 0.8407.
         let (sr0, p) = deflated_sharpe(0.1, 101, 0.0, 3.0, 1, 0.01);
