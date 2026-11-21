@@ -176,7 +176,7 @@ fn parse(rest: &[String]) -> Result<Parsed, String> {
                 } else if x == "--min-share" {
                     p.min_share = v.parse::<f64>().ok().filter(|n| (0.0..=1.0).contains(n)).ok_or_else(|| format!("bad --min-share '{v}' (0 to 1)"))?;
                 } else {
-                    p.rate = Some(v.parse::<f64>().map_err(|_| format!("bad --rate '{v}'"))?);
+                    p.rate = Some(super::options_cli::parse_rate(v)?);
                 }
                 i += 2;
             }
