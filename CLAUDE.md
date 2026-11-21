@@ -73,8 +73,8 @@ The repo gives analysis. It does not send orders to a broker.
   different language. A different language is permitted where it fits the work better than Rust:
   SQL for a database, a shell command, the CI workflow file, the HTML of a report page, a small
   one-time script. If you are not sure, use Rust.
-- **Data.** The data cache (`data/raw`) comes from the data store, the repo `louellet-git/fa-data`:
-  `git clone --depth 1 https://github.com/louellet-git/fa-data data/raw`. Do not start a bulk download
+- **Data.** The data cache (`data/raw`) comes from the data store, the private repo `louellet-git/fa-data`
+  (in a cloud session, attach it first, read access): `git clone --depth 1 https://github.com/louellet-git/fa-data data/raw`. Do not start a bulk download
   from the sources. Only the Head of Technology of `louellet-git` writes the store
   (`docs/DATA-SOURCES.md`, "The data store").
 - **SEC contact.** The SEC contact is in `sec_contact.toml` (a project address, public on purpose).
