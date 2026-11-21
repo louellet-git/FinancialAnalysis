@@ -2,7 +2,8 @@
 //! (ticket `T-20261121-dcf-engine-backtest`, plan item 3). Model document: `docs/models/market-level-dcf.md`.
 //!
 //! A measurement. The price is the input of the search; no model input comes from the price. All values are real, in
-//! money of month t-1 (the last CPI that was known at month t). The cash flow is the dividend only.
+//! the money of month t, deflated with the CPI known at t (CPIK(t): the Shiller December step before 1913, CPIAUCNS of
+//! month t-1 from 1913-02). The cash flow is the dividend only.
 
 use super::auto_cli::Opts;
 use super::stats::{percentile, sorted_copy};
@@ -65,41 +66,62 @@ pub struct MarketRow {
     pub status: &'static str,
 }
 
-fn opt_f(s: &str) -> Option<f64> {
+/// One numeric cell. A blank cell and `na` (and `.` when `dot` is true, the FRED mark) are missing. Any other text that
+/// does not parse as a finite number is an error that names the file, the line and the column.
+fn cell(s: &str, dot: bool, file: &str, line: usize, col: &str) -> R<Option<f64>> {
     let s = s.trim();
-    if s.is_empty() || s.eq_ignore_ascii_case("na") {
-        None
-    } else {
-        s.parse().ok()
+    if s.is_empty() || s.eq_ignore_ascii_case("na") || (dot && s == ".") {
+        return Ok(None);
+    }
+    match s.parse::<f64>() {
+        Ok(x) if x.is_finite() => Ok(Some(x)),
+        _ => e(format!("{file}, line {line}, column {col}: '{s}' is not a number")),
     }
 }
 
-/// The reader of `shiller_monthly.csv`. Columns: month, price, dividend, earnings, cpi, gs10, cape, estimate, note.
-pub fn read_shiller(text: &str) -> R<Vec<Obs>> {
+/// The columns that the Shiller reader needs. Other columns (cape, note) may exist.
+const SHILLER_COLUMNS: [&str; 7] = ["month", "price", "dividend", "earnings", "cpi", "gs10", "estimate"];
+
+/// The reader of `shiller_monthly.csv`. The header names the columns (month, price, dividend, earnings, cpi, gs10,
+/// estimate, and others that are not used); a missing name is an error. `file` is for the messages.
+pub fn read_shiller(text: &str, file: &str) -> R<Vec<Obs>> {
+    let mut lines = text.lines().enumerate();
+    let header: Vec<&str> = lines.next().ok_or_else(|| DcfError(format!("{file}: empty file")))?.1.split(',').map(str::trim).collect();
+    let mut col = [0usize; 7];
+    for (k, name) in SHILLER_COLUMNS.iter().enumerate() {
+        col[k] = header.iter().position(|h| h == name).ok_or_else(|| DcfError(format!("{file}: the header has no column '{name}' (header: {})", header.join(","))))?;
+    }
     let mut out: Vec<Obs> = Vec::new();
-    for (i, line) in text.lines().enumerate() {
-        if i == 0 || line.trim().is_empty() {
+    for (i, line) in lines {
+        let ln = i + 1;
+        if line.trim().is_empty() {
             continue;
         }
-        let f: Vec<&str> = line.splitn(9, ',').collect();
-        if f.len() < 8 {
-            return e(format!("line {}: fewer than 8 columns", i + 1));
+        let f: Vec<&str> = line.splitn(header.len(), ',').collect();
+        if f.len() < header.len() {
+            return e(format!("{file}, line {ln}: {} columns, the header has {}", f.len(), header.len()));
         }
-        let (ys, ms) = f[0].split_once('-').ok_or_else(|| DcfError(format!("line {}: bad month '{}'", i + 1, f[0])))?;
-        let year: i32 = ys.parse().map_err(|_| DcfError(format!("line {}: bad year", i + 1)))?;
-        let month: u32 = ms.parse().map_err(|_| DcfError(format!("line {}: bad month", i + 1)))?;
-        let (Some(price), Some(cpi), Some(gs10)) = (opt_f(f[1]), opt_f(f[4]), opt_f(f[5])) else {
-            return e(format!("line {}: price, cpi or gs10 is missing", i + 1));
+        let (ys, ms) = f[col[0]].split_once('-').ok_or_else(|| DcfError(format!("{file}, line {ln}: bad month '{}'", f[col[0]])))?;
+        let year: i32 = ys.parse().map_err(|_| DcfError(format!("{file}, line {ln}: bad year '{ys}'")))?;
+        let month: u32 = ms.parse().map_err(|_| DcfError(format!("{file}, line {ln}: bad month '{ms}'")))?;
+        let num = |k: usize| cell(f[col[k]], false, file, ln, SHILLER_COLUMNS[k]);
+        let (Some(price), Some(cpi), Some(gs10)) = (num(1)?, num(4)?, num(5)?) else {
+            return e(format!("{file}, line {ln}: price, cpi or gs10 is missing"));
         };
         if let Some(p) = out.last() {
-            if (p.year, p.month) >= (year, month) || (p.year * 12 + p.month as i32 + 1) != year * 12 + month as i32 {
-                return e(format!("line {}: months are not consecutive", i + 1));
+            if (p.year * 12 + p.month as i32 + 1) != year * 12 + month as i32 {
+                return e(format!("{file}, line {ln}: months are not consecutive"));
             }
         }
-        out.push(Obs { year, month, price, dividend: opt_f(f[2]), earnings: opt_f(f[3]), cpi, gs10, estimate: f[7].trim() == "true" });
+        let estimate = match f[col[6]].trim() {
+            "true" => true,
+            "false" | "" => false,
+            x => return e(format!("{file}, line {ln}, column estimate: '{x}' is not true or false")),
+        };
+        out.push(Obs { year, month, price, dividend: num(2)?, earnings: num(3)?, cpi, gs10, estimate });
     }
     if out.is_empty() {
-        return e("no data rows");
+        return e(format!("{file}: no data rows"));
     }
     Ok(out)
 }
@@ -147,25 +169,33 @@ pub fn solve_erp(d0: f64, g0: f64, l: f64, n: usize, rr: f64, price: f64) -> Res
 /// The CPIAUCNS series of FRED, by month. A blank value is not stored.
 pub type Fred = HashMap<(i32, u32), f64>;
 
-/// The reader of a monthly FRED file (observation_date,ID; a blank or "." value is a month without a value). It reads
-/// CPIAUCNS, TB3MS, GS10 and the NBER commercial paper rate.
-pub fn read_fred_monthly(text: &str) -> R<Fred> {
+/// The reader of a monthly FRED file (observation_date,ID). A blank value and "." are a month without a value; any
+/// other text that is not a number is an error. A file without a value is an error. `file` is for the messages.
+pub fn read_fred_monthly(text: &str, file: &str) -> R<Fred> {
     let mut out = Fred::new();
-    for (i, line) in text.lines().enumerate() {
-        if i == 0 || line.trim().is_empty() {
+    let mut lines = text.lines().enumerate();
+    if lines.next().is_none() {
+        return e(format!("{file}: empty file"));
+    }
+    for (i, line) in lines {
+        let ln = i + 1;
+        if line.trim().is_empty() {
             continue;
         }
-        let (d, v) = line.split_once(',').ok_or_else(|| DcfError(format!("cpi line {}: no comma", i + 1)))?;
+        let (d, v) = line.split_once(',').ok_or_else(|| DcfError(format!("{file}, line {ln}: no comma")))?;
         let mut p = d.split('-');
         let (Some(ys), Some(ms)) = (p.next(), p.next()) else {
-            return e(format!("cpi line {}: bad date '{d}'", i + 1));
+            return e(format!("{file}, line {ln}: bad date '{d}'"));
         };
         let (Ok(y), Ok(m)) = (ys.parse::<i32>(), ms.parse::<u32>()) else {
-            return e(format!("cpi line {}: bad date '{d}'", i + 1));
+            return e(format!("{file}, line {ln}: bad date '{d}'"));
         };
-        if let Some(x) = opt_f(v) {
+        if let Some(x) = cell(v, true, file, ln, "value")? {
             out.insert((y, m), x);
         }
+    }
+    if out.is_empty() {
+        return e(format!("{file}: no value in the file"));
     }
     Ok(out)
 }
@@ -354,15 +384,24 @@ fn command_inner(args: &[String]) -> R<()> {
     }
     let file = o.get("--shiller").ok_or_else(|| DcfError("--shiller FILE is needed".into()))?;
     let out = o.get("--out").ok_or_else(|| DcfError("--out FILE is needed".into()))?;
+    if scoring {
+        // check the options before any work
+        for opt in ["--cpi", "--tb3ms", "--nber", "--gs10"] {
+            if o.get(opt).is_none() {
+                return e(format!("--score needs {opt} FILE"));
+            }
+        }
+    }
     let l: f64 = o.num("--long-real", 0.02)?;
     let n: usize = o.num("--fade-years", 10)?;
     if n < 2 {
         return e("--fade-years must be at least 2");
     }
+    let read = |p: &str| -> R<Fred> { read_fred_monthly(&std::fs::read_to_string(p).map_err(|x| DcfError(format!("{p}: {x}")))?, p) };
     let text = std::fs::read_to_string(file).map_err(|x| DcfError(format!("{file}: {x}")))?;
-    let obs = read_shiller(&text)?;
+    let obs = read_shiller(&text, file)?;
     let fred = match o.get("--cpi") {
-        Some(p) => Some(read_fred_monthly(&std::fs::read_to_string(p).map_err(|x| DcfError(format!("{p}: {x}")))?)?),
+        Some(p) => Some(read(p)?),
         None => None,
     };
     let rows = compute(&obs, fred.as_ref(), l, n)?;
@@ -370,12 +409,9 @@ fn command_inner(args: &[String]) -> R<()> {
     println!("MARKET level: dividend DCF, real terms, L = {:.2}%, fade {n} years, {} months, {file}. A measurement: the price is the input of the search.", l * 100.0, rows.len());
     print!("{}", summary(&rows));
     if let Some(score) = o.get("--score") {
-        let read = |opt: &str| -> R<Fred> {
-            let p = o.get(opt).ok_or_else(|| DcfError(format!("--score needs {opt} FILE")))?;
-            read_fred_monthly(&std::fs::read_to_string(p).map_err(|x| DcfError(format!("{p}: {x}")))?)
-        };
+        let get = |opt: &str| -> R<Fred> { read(o.get(opt).unwrap_or_default()) };
         let cpi = fred.as_ref().ok_or_else(|| DcfError("--score needs --cpi FILE".into()))?;
-        let inputs = super::market_score::Inputs { cpi, tb3ms: &read("--tb3ms")?, nber: &read("--nber")?, gs10: &read("--gs10")? };
+        let inputs = super::market_score::Inputs { cpi, tb3ms: &get("--tb3ms")?, nber: &get("--nber")?, gs10: &get("--gs10")? };
         let report = super::market_score::run(&obs, &inputs)?;
         std::fs::write(score, &report.score_text).map_err(|x| DcfError(format!("{score}: {x}")))?;
         if let Some(m) = o.get("--months-out") {

@@ -124,12 +124,61 @@ fn no_root_gives_status() {
 #[test]
 fn reader_reads_the_columns_and_the_note() {
     let t = "month,price,dividend,earnings,cpi,gs10,cape,estimate,note\n1871-01,4.44,0.26,0.4,12.4,5.32,,false,\n1871-02,4.5,,,12.8,5.3,,true,a note, with comma\n";
-    let o = read_shiller(t).unwrap();
+    let o = read_shiller(t, "f.csv").unwrap();
     assert_eq!(o.len(), 2);
     assert_eq!(o[0].dividend, Some(0.26));
     assert_eq!(o[1].dividend, None);
     assert!(o[1].estimate);
-    assert!(read_shiller("h\n1871-01,1,1,1,1,1,,false,\n1871-03,1,1,1,1,1,,false,\n").is_err());
+    let h = "month,price,dividend,earnings,cpi,gs10,cape,estimate,note\n";
+    assert!(read_shiller(&format!("{h}1871-01,1,1,1,1,1,,false,\n1871-03,1,1,1,1,1,,false,\n"), "f.csv").is_err());
+}
+
+const HDR: &str = "month,price,dividend,earnings,cpi,gs10,cape,estimate,note\n";
+
+#[test]
+fn shiller_header_is_checked_by_name() {
+    // price and gs10 swapped in the header: the columns are read by name, so the values land right
+    let swapped = "month,gs10,dividend,earnings,cpi,price,cape,estimate,note\n1871-01,5.3,0.26,0.4,12.4,4.44,,false,\n";
+    let o = read_shiller(swapped, "f.csv").unwrap();
+    assert_eq!((o[0].price, o[0].gs10), (4.44, 5.3));
+    // a missing name is an error that names the file and the column
+    let e = read_shiller("month,price,dividend,earnings,cpi,rate,estimate\n1871-01,1,1,1,1,1,false\n", "f.csv").unwrap_err();
+    assert!(e.0.contains("f.csv") && e.0.contains("gs10"), "{}", e.0);
+    // a header of a different file
+    assert!(read_shiller("observation_date,CPIAUCNS\n1913-01-01,9.8\n", "f.csv").is_err());
+}
+
+#[test]
+fn shiller_text_value_is_an_error_and_na_and_blank_are_missing() {
+    let e = read_shiller(&format!("{HDR}1871-01,4.44,abc,0.4,12.4,5.3,,false,\n"), "f.csv").unwrap_err();
+    assert!(e.0.contains("f.csv") && e.0.contains("line 2") && e.0.contains("dividend") && e.0.contains("abc"), "{}", e.0);
+    let o = read_shiller(&format!("{HDR}1871-01,4.44,na,,12.4,5.3,,false,\n"), "f.csv").unwrap();
+    assert_eq!((o[0].dividend, o[0].earnings), (None, None));
+    // a text price is an error, not a missing price
+    assert!(read_shiller(&format!("{HDR}1871-01,x,1,1,12.4,5.3,,false,\n"), "f.csv").is_err());
+    // a blank price is missing, and the row is refused with its own message
+    let e = read_shiller(&format!("{HDR}1871-01,,1,1,12.4,5.3,,false,\n"), "f.csv").unwrap_err();
+    assert!(e.0.contains("missing"), "{}", e.0);
+}
+
+#[test]
+fn fred_reader_errors_name_the_file() {
+    let e = read_fred_monthly("observation_date,TB3MS\n1934-01-01,abc\n", "TB3MS.csv").unwrap_err();
+    assert!(e.0.contains("TB3MS.csv") && e.0.contains("line 2") && e.0.contains("abc"), "{}", e.0);
+    // "." and blank are missing
+    let f = read_fred_monthly("observation_date,GS10\n1953-04-01,.\n1953-05-01,\n1953-06-01,2.5\n", "GS10.csv").unwrap();
+    assert_eq!(f.len(), 1);
+    // a file with only a header, and an empty file, are errors
+    assert!(read_fred_monthly("observation_date,TB3MS\n", "TB3MS.csv").unwrap_err().0.contains("TB3MS.csv"));
+    assert!(read_fred_monthly("", "TB3MS.csv").is_err());
+}
+
+#[test]
+fn score_without_a_bill_file_fails_before_any_work() {
+    let args: Vec<String> = ["--shiller", "/nonexistent/shiller.csv", "--cpi", "/nonexistent/c.csv", "--out", "/nonexistent/o.csv", "--score", "/nonexistent/s.txt"].iter().map(|s| s.to_string()).collect();
+    let e = command_inner(&args).unwrap_err();
+    // the error is the missing option, not the unreadable Shiller file
+    assert!(e.0.contains("--tb3ms"), "{}", e.0);
 }
 
 #[test]
@@ -234,7 +283,7 @@ fn fred_file_is_needed_from_1913_and_a_missing_month_gives_no_cpi() {
 
 #[test]
 fn cpiaucns_reader_skips_blank_values() {
-    let f = read_fred_monthly("observation_date,CPIAUCNS\n1913-01-01,9.800\n2025-10-01,\n2025-11-01,324.1\n").unwrap();
+    let f = read_fred_monthly("observation_date,CPIAUCNS\n1913-01-01,9.800\n2025-10-01,\n2025-11-01,324.1\n", "CPIAUCNS.csv").unwrap();
     assert_eq!(f.get(&(1913, 1)), Some(&9.8));
     assert_eq!(f.get(&(2025, 10)), None);
     assert_eq!(f.get(&(2025, 11)), Some(&324.1));
