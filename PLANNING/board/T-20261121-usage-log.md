@@ -101,7 +101,7 @@ shows the faults). Tokens on a branch with no ticket go to "no ticket".
 - If a private place is better than this public repo, the private store `louellet-git/fa-data` is the
   alternative. The Head of Technology decides after the test.
 
-Gate: the hook runs only if the environment variable FA_USAGE_RECORD=1. The repo does not set it. The owner sets it in his own cloud environment. The repo holds no account id and no hash.
+Gate: the hook runs only if the environment variable FA_USAGE_RECORD=1, and it pushes only if USAGE_PUSH=1. The repo sets neither. The owner sets both, only in his own cloud environment. The repo holds no account id and no hash. The file keeps a ticket id only if the board maps the branch (else "no ticket"), and an agent or skill name only if it is a name of the repo or a built-in type (else "(other)").
 
 Build (2026-11-21, branch claude/usage-log): `fa usage record` and `fa usage show` (rust/src/usage.rs);
 the hook `.claude/hooks/usage-record.sh` in `.claude/settings.json` (Stop). The hook reads its input and

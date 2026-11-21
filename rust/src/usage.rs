@@ -182,11 +182,65 @@ fn stream_file(path: &Path, is_agent: bool, agent_type: &str, acc: &mut Acc) {
     }
 }
 
-/// Count one session. `branch_to_ticket` maps a git branch to a ticket id.
+const BUILTIN_AGENTS: [&str; 7] =
+    ["general-purpose", "Explore", "Plan", "web-fetch", "claude-code-guide", "statusline-setup", "claude"];
+
+/// The names that may go into a usage file: the agents and skills of the repo, and the built-in agent types.
+/// Any other name (it can be private) is written as "(other)".
+#[derive(Debug, Default)]
+pub struct Names {
+    agents: std::collections::HashSet<String>,
+    skills: std::collections::HashSet<String>,
+}
+
+impl Names {
+    /// Read `.claude/agents/<name>.md` and `.claude/skills/<name>/` of the repo.
+    pub fn from_repo(repo: &Path) -> Names {
+        let mut n = Names::default();
+        if let Ok(rd) = std::fs::read_dir(repo.join(".claude").join("agents")) {
+            for e in rd.flatten() {
+                let p = e.path();
+                if p.extension().is_some_and(|x| x == "md") {
+                    if let Some(st) = p.file_stem().and_then(|s| s.to_str()) {
+                        n.agents.insert(st.to_string());
+                    }
+                }
+            }
+        }
+        if let Ok(rd) = std::fs::read_dir(repo.join(".claude").join("skills")) {
+            for e in rd.flatten() {
+                if e.path().is_dir() {
+                    if let Some(st) = e.file_name().to_str() {
+                        n.skills.insert(st.to_string());
+                    }
+                }
+            }
+        }
+        n
+    }
+    fn agent(&self, t: &str) -> String {
+        if t.is_empty() || t == "(none)" || t == "(unknown)" || BUILTIN_AGENTS.contains(&t) || self.agents.contains(t) {
+            t.to_string()
+        } else {
+            "(other)".into()
+        }
+    }
+    fn skill(&self, t: &str) -> String {
+        if t == "(none)" || self.skills.contains(t) {
+            t.to_string()
+        } else {
+            "(other)".into()
+        }
+    }
+}
+
+/// Count one session. `branch_to_ticket` maps a git branch to a ticket id; a branch that the board does
+/// not know gives "no ticket" (a branch name can be private). `names` limits the agent and skill names.
 pub fn count(
     transcript: &Path,
     subagents: Option<&Path>,
     branch_to_ticket: &BTreeMap<String, String>,
+    names: &Names,
     head: Option<&str>,
 ) -> Summary {
     let mut acc = Acc {
@@ -214,11 +268,8 @@ pub fn count(
     }
     let mut rows: BTreeMap<(String, bool, String), Row> = BTreeMap::new();
     for (branch, is_agent, ty, t) in acc.msgs.into_values() {
-        let ticket = if branch.is_empty() {
-            "no ticket".to_string()
-        } else {
-            branch_to_ticket.get(&branch).cloned().unwrap_or(branch)
-        };
+        let ticket = branch_to_ticket.get(&branch).cloned().unwrap_or_else(|| "no ticket".to_string());
+        let ty = names.agent(&ty);
         let key = (ticket.clone(), is_agent, ty.clone());
         let r = rows.entry(key).or_insert_with(|| Row {
             ticket,
@@ -238,9 +289,17 @@ pub fn count(
         session,
         date: acc.last_ts.chars().take(10).collect(),
         rows: rows.into_values().collect(),
-        agent_calls: acc.agent_calls,
-        skill_calls: acc.skill_calls,
+        agent_calls: relabel(acc.agent_calls, |t| names.agent(t)),
+        skill_calls: relabel(acc.skill_calls, |t| names.skill(t)),
     }
+}
+
+fn relabel(m: BTreeMap<String, u64>, f: impl Fn(&str) -> String) -> BTreeMap<String, u64> {
+    let mut o = BTreeMap::new();
+    for (k, v) in m {
+        *o.entry(f(&k)).or_insert(0) += v;
+    }
+    o
 }
 
 /// Branch -> ticket id, from the `branch` field of the tickets in `board` and `board/done`.
@@ -374,7 +433,7 @@ pub fn command(repo: &Path, args: &[String]) -> Result<i32, String> {
             let t = transcript.ok_or_else(|| format!("record needs --transcript\n{USAGE}"))?;
             let o = out.ok_or_else(|| format!("record needs --out\n{USAGE}"))?;
             let bm = branch_map(&board.unwrap_or_else(|| repo.join("PLANNING").join("board")));
-            let s = count(&t, subagents.as_deref(), &bm, head.as_deref());
+            let s = count(&t, subagents.as_deref(), &bm, &Names::from_repo(repo), head.as_deref());
             let json = serde_json::to_string_pretty(&s).map_err(|e| e.to_string())?;
             if let Some(p) = o.parent() {
                 let _ = std::fs::create_dir_all(p);
@@ -443,13 +502,46 @@ mod tests {
         d
     }
 
+    fn names_of(d: &Path) -> Names {
+        std::fs::create_dir_all(d.join(".claude").join("agents")).unwrap();
+        std::fs::create_dir_all(d.join(".claude").join("skills").join("release-checks")).unwrap();
+        std::fs::write(d.join(".claude").join("agents").join("rust-engineer.md"), "x").unwrap();
+        Names::from_repo(d)
+    }
+
+    #[test]
+    fn private_names_become_other_and_unknown_branch_is_no_ticket() {
+        let d = tmpdir("priv");
+        let (p, sub) = fixture(&d);
+        let names = names_of(&d);
+        let mut bm = BTreeMap::new();
+        bm.insert("claude/usage-log".to_string(), "T-20261121-usage-log".to_string());
+        // a private branch, a private agent type and a private skill name
+        let text = std::fs::read_to_string(&p).unwrap().replace("\"main\"", "\"claude/luc-private-thing\"")
+            .replace("rust-engineer", "luc-secret-agent").replace("release-checks", "luc-secret-skill");
+        std::fs::write(&p, text).unwrap();
+        let s = count(&p, Some(&sub), &bm, &names, None);
+        assert!(s.rows.iter().any(|r| r.ticket == "no ticket"));
+        assert!(s.rows.iter().all(|r| r.ticket == "no ticket" || r.ticket.starts_with("T-")));
+        assert_eq!(s.agent_calls.get("(other)"), Some(&1));
+        assert_eq!(s.skill_calls.get("(other)"), Some(&1));
+        let json = serde_json::to_string(&s).unwrap();
+        assert!(!json.contains("luc-"), "{json}");
+        // a name of the repo and a built-in type stay
+        assert_eq!(names.agent("rust-engineer"), "rust-engineer");
+        assert_eq!(names.agent("Explore"), "Explore");
+        assert_eq!(names.skill("release-checks"), "release-checks");
+        assert_eq!(names.skill("other-skill"), "(other)");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
     #[test]
     fn counts_a_repeated_id_one_time() {
         let d = tmpdir("count");
         let (p, sub) = fixture(&d);
         let mut bm = BTreeMap::new();
         bm.insert("claude/usage-log".to_string(), "T-20261121-usage-log".to_string());
-        let s = count(&p, Some(&sub), &bm, None);
+        let s = count(&p, Some(&sub), &bm, &names_of(&d), None);
         assert_eq!(s.session, "abcdef12");
         assert_eq!(s.head, "abcdef12");
         assert_eq!(s.date, "2026-11-21");
@@ -458,9 +550,9 @@ mod tests {
         let h = find("T-20261121-usage-log", "head");
         assert_eq!((h.messages, h.tokens), (1, Tokens { input: 2, output: 30, cache_read: 100, cache_write: 5 }));
         let a = find("T-20261121-usage-log", "agent");
-        assert_eq!(a.agent_type, "data-engineer");
+        assert_eq!(a.agent_type, "(other)");
         assert_eq!(a.tokens, Tokens { input: 3, output: 4, cache_read: 20, cache_write: 6 });
-        let n = find("main", "head");
+        let n = find("no ticket", "head");
         assert_eq!(n.tokens.total(), 58);
         assert_eq!(s.agent_calls.get("rust-engineer"), Some(&1));
         assert_eq!(s.skill_calls.get("release-checks"), Some(&1));
@@ -502,10 +594,10 @@ mod tests {
     fn table_has_fixed_sums() {
         let d = tmpdir("table");
         let (p, sub) = fixture(&d);
-        let mut s = count(&p, Some(&sub), &BTreeMap::new(), Some("technology"));
+        let mut s = count(&p, Some(&sub), &BTreeMap::new(), &names_of(&d), Some("technology"));
         s.session = "abcdef12".into();
         let t = render_table(&[s]);
-        let l = t.lines().find(|l| l.starts_with("claude/usage-log") && l.contains("agent:data-engineer")).unwrap();
+        let l = t.lines().find(|l| l.starts_with("no ticket") && l.contains("agent:(other)")).unwrap();
         assert!(l.split_whitespace().collect::<Vec<_>>().ends_with(&["3", "4", "20", "6"]), "{l}");
         assert!(t.contains("Sums by head"));
         let head_sum = t.lines().skip_while(|l| !l.starts_with("Sums by head")).nth(1).unwrap();

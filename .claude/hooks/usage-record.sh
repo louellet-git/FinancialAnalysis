@@ -3,7 +3,8 @@
 # Reads the hook JSON on stdin. Never stops or slows a turn: it exits 0 always, and it is silent.
 # Rules: ticket T-20261121-usage-log. No text of the conversation, no model name, no path in the file.
 #   - GATE: runs only if the environment variable FA_USAGE_RECORD=1. The repo never sets it. The owner
-#     sets it in the settings of his own cloud environment, so it is on in his sessions only.
+#     sets both FA_USAGE_RECORD=1 and USAGE_PUSH=1, and only in the settings of his own cloud
+#     environment, so both are on in his sessions only.
 #     The repo holds no account id and no hash of one.
 #   - runs only if rust/target/release/fa exists
 #   - finds the repo root from "cwd" of the hook input (walk up to the folder with .git);
