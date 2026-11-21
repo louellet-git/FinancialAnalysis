@@ -49,6 +49,8 @@ struct RawVariable {
     unclassified_only: Vec<String>,
     #[serde(default)]
     scoped_min_assets_share: f64,
+    #[serde(default)]
+    companyfacts_of: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -119,6 +121,9 @@ pub struct Variable {
     /// The scoped tags give a value only if it is at least this share of total assets (0: no test).
     /// An equity REIT has a small interest income on a classified-looking balance sheet.
     pub scoped_min_assets_share: f64,
+    /// A copy of the company-facts value of the named variable, made before the 10-K lines
+    /// replace it (the variable has no tag and no formula).
+    pub companyfacts_of: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -205,7 +210,11 @@ impl Registry {
                 other => return Err(format!("{}: statement '{other}' is not known", v.name)),
             };
             // A variable with no tag gets its value from a formula only.
-            if v.tags.is_empty() && v.formulas.is_empty() {
+            if let Some(target) = &v.companyfacts_of {
+                if !v.tags.is_empty() || !v.formulas.is_empty() || !index.contains_key(target.as_str()) {
+                    return Err(format!("{}: companyfacts_of '{target}' needs a known variable and no tag and no formula", v.name));
+                }
+            } else if v.tags.is_empty() && v.formulas.is_empty() {
                 return Err(format!("{}: no tags and no formula", v.name));
             }
             let mut tags = Vec::new();
@@ -251,6 +260,7 @@ impl Registry {
                 memo: v.memo,
                 unclassified_only: v.unclassified_only.clone(),
                 scoped_min_assets_share: v.scoped_min_assets_share,
+                companyfacts_of: v.companyfacts_of.clone(),
             });
         }
 

@@ -62,6 +62,13 @@ fa dcf auto TICKER [OPTIONS]
                   history stays; acq_w=0: no charge; acq_charge and acq_f win over it), acq_fade (default 1: the acq_w
                   charge falls linearly to zero along the fade of the growth when the company mean is above the fade
                   level, else it is constant; acq_fade=0: constant charge)
+                  acq_second (default 1: the second line of the business purchases is added to the spend when its value
+                  differs from the first line or the first has none; 0: first line only), acq_keep (default 0: with
+                  acq_fade the charge keeps the share L / mean when the mean is above L, no step at mean = L),
+                  acq_persist_a, acq_persist_b (default 0.0 and 0.5226: the acq_w charge base is a + b x min(past spend,
+                  25%), the fit through the origin; fa dcf pit --diag acq), acq_persist=off (the past spend; after it
+                  one of the two numbers takes the default of the other). The fit applies to the acq_w charge only:
+                  acq_charge, acq_f and the chain cut of the growth history use the actual past spend
   --seed S (7)  --sims N (10000)  --no-attribution  --json  --time   (as `fa dcf drivers --model`)";
 
 pub const SCREEN_USAGE: &str = "\

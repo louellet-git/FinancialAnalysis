@@ -122,10 +122,9 @@ the 10-K (`mapcheck fetch --filings --gaps`), the program reads the filing
 2. **Share count of a company with share classes.** The value is the largest class.
    If the sum of the classes agrees with net income divided by EPS, and the largest
    class does not, the value is the sum (classes with the same rights).
-3. **Capex.** The sum of the capex lines in the investing section of the cash-flow
-   statement, company tags included. A line is a capex line because of its tag name or
-   its label. A line that is a different standard variable (capitalized software) is
-   not included.
+3. **Capex.** The sum of the equipment lines in the investing section of the cash-flow
+   statement, company tags included (the lines are found with the calculation tree: see
+   "Capex lines of the 10-K"). Capitalized software is a different standard variable.
 4. **No capex line.** If the investing section has lines but no capex line, capex is 0.
    The filer does not show capex because the amount is small for this filer.
 
@@ -133,6 +132,51 @@ One 10-K gives the values for its three fiscal years. The source text of each va
 starts with `filing <accession number>`, and the check `filled_from_filing` gives a
 warning: a person must read the lines that the value contains. Only revenue, capex and
 the share count can get a value from the filing.
+
+## Capex lines of the 10-K
+
+For each fiscal year that the latest 10-K holds (three), the lines of the 10-K give the
+standard variables `capex` (equipment) and `capitalized_software`, also when the company
+facts have a value (`src/supplement.rs`, `Supplement::lines`). An older year keeps the
+company-facts value. The company-facts value stays in `capex_companyfacts` and
+`capitalized_software_companyfacts` (registry key `companyfacts_of`; models do not read them).
+`capex_total` is the sum of the two (rule R2). The source text is `10-K lines <accession>:`
+and the tags of the lines that it sums. It is not a gap fill: it gives no `filled_from_filing`
+warning. `fa` reads the values from the store file that `mapcheck import` writes.
+
+The rule on the calculation tree (`filing::capex_lines_in`): go down from the investing
+total (with discontinued operations, from the total of the continuing operations).
+
+1. A line with the standard variable `capex` or `capitalized_software` is a capex line, if it
+   is a payment (its contribution to the total is negative) and its label does not say
+   "business" or "acquisition" (MCD labels `PaymentsToAcquireOtherProductiveAssets` "Purchases of restaurant businesses").
+2. A line with any other standard variable (purchased intangibles, businesses, investments,
+   proceeds) is not, and its parts are not.
+3. A line with no standard variable (a company tag, or a standard tag that the registry
+   does not have) is a capex line if it is a payment and its tag name or label says
+   equipment, property, capital expenditure or software. Only this last step uses words.
+   The words are substring matches. A line that combines equipment and software (SYM) is
+   equipment. A line for equipment and intangibles together (VSAT, URI) is equipment (a limit:
+   it can hold some intangibles). Lines that are left out by name: a business acquisition,
+   intangibles and licenses, and lease lines of DE ("equipment on lease") and CNH ("assets under
+   lease"), until the owner decides; the rental fleet of URI stays in (rule R2).
+4. A line below a capex line is not counted again; the parts of a line with a different standard
+   variable are not counted.
+
+Both variables of one fiscal year come from one source. The company-facts value stays for that
+year (the source text says why) if a capex line of the tree has no consolidated value (RYN: the
+value has a segment member only), or if the walk found no equipment line and left a line out
+(no explicit zero). If the filing has equipment lines and no software line, capitalized software
+has no value in that year. The oldest year of a 10-K has the note "oldest year of this 10-K":
+the years before it use the company facts, with a different line definition (software or lease
+lines can be in the 10-K years only), thus a growth rate across this edge is not clean.
+
+Known limits: a company tag with an unusual name and no standard variable is missed
+(`eqr_NonRealEstateCapitalAdditions`). BMNR and VNOM keep an explicit 0 (a purchase line with no
+consolidated value, the same as the base). A line whose name or label starts with "Proceeds" is a sale and is out. Real estate development counts as capex for a REIT
+(VMRK, MAC): these companies had no capex value before. `crosscheck` maps the company facts
+without the filing (`main.rs`, `cmd_crosscheck`); its filing side uses the rule above, thus its capex agreement (98% on `batch50.txt`) shows how close the company facts are to the filing lines, not the new values. The warning `filled_from_filing` is gone for CI, COP, PSX, TKO, TPL and URI,
+because their value is now a replaced value, not a gap fill.
 
 ## The checks
 
@@ -204,16 +248,20 @@ lines for capex, depreciation and amortization, and total debt. The two values c
 from different methods (tag names, and the structure of the statements of the filer),
 and the filing is the source of truth. It uses no outside data source.
 
-Limits: the filing lines are found by words in the tag name, thus a line can be missing
-or incorrect; read the printed lines. Facts with two or more segment members are not
-used. The standard variables use the filing values only for a critical input that has
+Limits: a line that has no standard variable is found by words in the tag name or label (see
+"Capex lines of the 10-K"), thus a line can be missing or incorrect; read the printed lines.
+A line for property, plant and equipment together with intangible assets (URI) counts as
+equipment. `crosscheck` maps the company facts only (no filing values): its filing side applies
+the exclusions of the rule above, and it shows how good the company-facts value is. Facts with two or more segment members are not
+used. The standard variables use the filing lines for capex and capitalized software
+(see "Capex lines of the 10-K") and the filing values for a critical input that has
 no value (see "Values from the 10-K").
 
-## Results (2026-11-20)
+## Results (2026-11-20; the S&P 500 row 2026-11-21, after the capex lines of the 10-K)
 
 | Set | Companies | PASS | WARN | FAIL | N/A | ERROR |
 |---|---|---|---|---|---|---|
-| `universe/sp500.txt` (the S&P 500 members) | 503 | 68 | 433 | 0 | 2 | 0 |
+| `universe/sp500.txt` (the S&P 500 members) | 503 | 69 | 432 | 0 | 2 | 0 |
 | `universe/next500.txt` (the 500 companies after them in the SEC list) | 500 | 20 | 459 | 5 | 16 | 0 |
 | `universe/next1000.txt` (the 1,000 companies after the first two lists) | 1000 | 42 | 840 | 30 | 88 | 0 |
 | `universe/panel32.txt` (used to build the registry) | 32 | 7 | 25 | 0 | 0 | 0 |
@@ -222,8 +270,8 @@ no value (see "Values from the 10-K").
 
 S&P 500: each company with a 10-K has a value for each critical input. The 2 `N/A` are
 new companies with no 10-K yet (HONA, VYLR). Company types: 23 banks, 19 insurers,
-19 REITs, 440 with the standard template. 24 companies get a critical input from the
-10-K (16 capex, 7 share count, 2 revenue); for 5 of them capex is 0 because the filing
+19 REITs, 440 with the standard template. 18 companies get a critical input from the
+10-K as a gap fill (10 capex, 7 share count, 2 revenue; one company has two); for 5 of them (ABNB, APO, APP, COIN, VEEV) capex is 0 because the filing
 has no capex line.
 
 Next 500: 37 companies get a critical input from the 10-K. The 16 `N/A`: 10 new
