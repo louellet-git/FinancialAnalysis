@@ -16,8 +16,8 @@ Rules: `chiefs/ORIENTATION.md`, section 8. Decisions of the person: `../RECORD.m
 ## Tested rules
 - A merged ticket moves to `PLANNING/board/done/` with `status: done` and `merged: <pull request>`; never delete it.
 - Open a pull request only after the gate verdict, and merge `origin/main` once just before: one check run.
-- 2026-11-20: this session can push only to `claude/upbeat-cori-a4ykf5`. Use it for each ticket, one
-  ticket at a time, until the person gives a different branch.
+- 2026-11-21, the person: a separate branch for each task (`claude/quant-<ticket>`, from `origin/main`).
+  `claude/upbeat-cori-a4ykf5` keeps the work that was on it before this answer.
 - 2026-11-20: the proxy of this environment adds only the header `APCA-API-SECRET-KEY` for
   `data.alpaca.markets` (`get_environment`, network secrets). The key id (`APCA_API_KEY_ID`) is not
   in a running shell: each Alpaca request gives HTTP 401. The Head of Technology added the variable

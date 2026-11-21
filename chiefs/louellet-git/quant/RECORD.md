@@ -33,3 +33,7 @@ Done: Continue with the queue after each ticket with no wait, until the person s
 ## 2026-11-20 23:46 UTC (chat)
 Words: "If there are permission requests, they go to the tech head, please let it know."
 Done: Sent the open permission request (the refused run of the step-2 appendix script) and the rule to the Head of Technology.
+
+## 2026-11-21 00:10 UTC (question dialog)
+Words: "May the Quant head make a separate branch for each task, so each change is reviewed alone?" = "Yes (Recommended)"; "Run once the rates calculation that the safety system stopped (an auditor already checked those tables)?" = "No (Recommended)".
+Done: New tickets get their own branch `claude/quant-<ticket>` from `origin/main`. The work already on `claude/upbeat-cori-a4ykf5` (arb-1b, arb-2, vol-1, vol-7, arb-4 step 1; each reviewed alone) goes in one pull request. The appendix run is not done. Both ask tickets move to `done/`.
