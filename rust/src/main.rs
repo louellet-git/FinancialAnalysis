@@ -58,6 +58,8 @@ USAGE:
   fa earnings calendar [TICKER...] [--tickers-file F] [--from D] [--days N]
                                                   Nasdaq earnings calendar scan, then the next report date of each ticker
   fa earnings dates TICKER... [--tolerance N]     past report dates against the SEC filing list (8-K item 2.02), next date
+  fa macro premium-test --series FILE [--cache DIR] [--local DIR] [--out FILE] [--exclude-from D --exclude-to D] [--list sp500|sp100]
+                                                  frozen test of the weekly change of the implied premium (fa macro premium-test --help)
   fa recon bonds [--date D] [--out FILE]          bond values from our rates vs market prices (see: fa recon help)
   fa recon bills [--date D]                       tests of each cause of the bill difference of recon bonds
   fa recon rich-cheap [--date D] [--out FILE]     fitted NSS curve, difference of each security, rich and cheap candidates
@@ -288,6 +290,10 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
             Err(e) => Ok(usage_error(&e)),
         },
         Some("vol") => match financial_analysis::volmodels::cli::run(&fa.repo, &args[1..]) {
+            Ok(code) => Ok(ExitCode::from(code as u8)),
+            Err(e) => Ok(usage_error(&e)),
+        },
+        Some("macro") => match financial_analysis::macro_test::command(&fa.repo, &args[1..]) {
             Ok(code) => Ok(ExitCode::from(code as u8)),
             Err(e) => Ok(usage_error(&e)),
         },
