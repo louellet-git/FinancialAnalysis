@@ -57,4 +57,4 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   default change or a page for Luc: check what it hides or moves (golden masks hid counts; --curve auto changed main).
 - Split-basis trap (skill point-in-time-test, build step 6): BKNG 25x; truncation and poison miss it.
 ## Dream pass (before a compaction, above about 75% in `get_session`, or on "dream")
-Last pass: 2026-11-21 04:10 UTC.
+Last pass: 2026-11-21 22:20 UTC (before a compaction; handover lines current).
