@@ -1,0 +1,59 @@
+# Market-level dividend DCF (the premium that the S&P composite price implies)
+
+Ticket: `T-20261121-dcf-engine-backtest`, plan item 3. Code: `rust/src/dcf/market.rs`.
+
+## Purpose
+For each month t, find the equity risk premium (erp) for which a dividend DCF with the fade of the
+automatic model gives the S&P composite price of month t. This is a measurement. The price is the
+input of the search. No model input comes from the price. The command does not compute later
+returns and does not score the result.
+
+## Data
+`macro/shiller/shiller_monthly.csv` of the data store (Shiller, `ie_data.xls`). Columns used:
+price, dividend (annual rate), cpi, gs10 (percent), estimate. The command has one reader for it.
+
+## Design (fixed before the first run)
+All values are real. The money unit is the money of month t-1 (the last CPI known at t).
+1. Known dividend. Month t of year Y, from 1936: the dividend of December of year Y-1 if the month
+   is April or later, else of December of year Y-2. Reason: the annual figure is complete only
+   about 3 months after the year ends. Before 1936: always December of year Y-2 (a lag of 12 months
+   or more), because the annual figures were published late. The first row is 1883-01.
+2. Known CPI: the CPI of month t-1. The gs10 and the price are those of month t.
+3. D_real(t) = D_known x CPI(t-1) / CPI(month of D_known).
+4. Real rate: rr(t) = gs10(t) / 100 - ((CPI(t-1) / CPI(t-121))^(1/10) - 1).
+5. Start growth g0: the annualized real growth of the known annual dividend over the last 10 known
+   years. Clamp to -10% and +20%.
+6. Fade: the real growth goes linearly from g0 in year 1 to L in year N, then stays L.
+   Defaults: L = 2.0% (`--long-real`, record A-001), N = 10 (`--fade-years`, at least 2).
+7. Value: V = sum of D_k / (1 + r)^k for k = 1 to N, plus D_N (1 + L) / (r - L) / (1 + r)^N, with
+   r = rr + erp.
+8. Implied erp: the root of V = price by bisection on -10% to +30%, with r > L. Without a root the
+   row has erp_implied = "none" and a status code: `no_root_low` (the price is above the value at
+   the lowest erp of the range), `no_root_high` (below the value at 30%), `no_root_rate` (no erp in
+   the range gives r > L), `no_dividend` (the dividend is not positive).
+9. Gordon baseline: erp_gordon = D_real (1 + L) / price + L - rr. With g0 = L the DCF value equals
+   the Gordon value, so the two premiums are equal.
+
+## Difference from A-001
+A-001 caps L at the 10-year yield. This model does not: real rates were negative in many years,
+and the cap would give a negative L.
+
+## Output
+CSV with one row a month from the first month with 10 known years of dividend and 120 months of
+CPI: month, price_real, d_known_real, g0, rr, erp_implied, erp_gordon, estimate, status. The
+estimate column is copied from the file. The stdout summary gives, by decade, the number of months,
+the number with no root, and the median, P10 and P90 of erp_implied. It is a description.
+
+## Limits
+- Dividends only. Buybacks are not in the cash flow. They were large after 1982, so the premium of
+  later decades is higher than a total-payout premium.
+- The index is the S&P composite as it is now. It has survivorship.
+- Before 1926 the series is the Cowles reconstruction.
+- The annual values of dividend are interpolated to months in the source. The model reads only the
+  December values.
+- The last months of the file are estimates (the `estimate` column).
+- The variants L = 1.0% and 3.0%, and N = 5 and 20, are run once each, after the base run. The
+  model does not choose among them.
+
+## Command
+`fa dcf market --shiller FILE --out FILE [--long-real G] [--fade-years N]`
