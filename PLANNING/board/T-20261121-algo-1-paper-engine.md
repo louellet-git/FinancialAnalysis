@@ -2,7 +2,7 @@
 id: T-20261121-algo-1-paper-engine
 title: Build an algo engine that trades live quotes in our own paper simulator
 area: trading
-status: in-progress
+status: review
 owner: louellet-git
 requested_by: louellet-git
 head: quant
