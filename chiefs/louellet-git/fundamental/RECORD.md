@@ -92,3 +92,7 @@ Done: the document starts with the S&P 100 bridge; a second bridge has the 10 la
 ## 2026-11-21 about 15:50 UTC (chat)
 Words: "If there's a problem with the data, that needs to be fixed."
 Done: two data defects found and sent to the Head of Technology, the owner of the files (the point-in-time mapping does not use the filing supplement, so V, BRK-B, COP and NEE fail at a past date; a duplicate row in the Treasury par file). The model limits (AMZN and INTC below 0, TSLA, AMD and PLTR outside the search range, banks with no template) are not data defects; the document states them.
+
+## 2026-11-21 about 16:50 UTC (chat)
+Words: "Can we break down higher implied risk premium? Is there any research work that can be done on this assumption for understanding it/quantifying it better / Hold off on writing the doc until I give my go ahead on the results / While you research that, please do the same break down analysis over the past 2 months for the S&P10"
+Done: the document is on hold (draft kept, no review started) until the owner approves the results. Research on the implied premium starts (a plan with literature, data and first measurements). The S&P 10 breakdown runs week by week over 2026-09-18 to 2026-11-20, plus one bridge over the whole period.

@@ -65,3 +65,12 @@ about 3.5 pages: cut after the final run). Open: data defects 1 and 3 (Head of T
 the final run; the review of the document (validator, document reviewer, auditor). A point for the validator: in the
 premium reading the rates part is large for names with an implied premium near 0 (AAPL about +10% of its price for
 -23 bp); the growth reading and the order range are in the draft.
+
+**State (2026-11-21 about 17:05 UTC). Owner: "Hold off on writing the doc until I give my go ahead on the results"; the
+document and its review are ON HOLD (draft kept).** New owner items: (a) the S&P 10 breakdown over 2 months, done:
+`analysis/priors/data/sp10_2m/` (nine weekly runs 2026-09-18 to 11-20 and one run over the whole period; store f634633,
+`--curve par`). Whole period: -13.18% = facts +4.77 (AAPL FY2026 10-K, filed 2026-11-03: revenue 416.2B to 478.8B,
+operating cash flow 111.5B to 145.1B), time +1.10, rates +1.39, premium -10.14, growth -9.79 (NVDA -9.16: no premium
+view over the period), no model -0.51 (AMZN, TSLA). (b) Research on the implied premium: an agent writes
+`analysis/priors/implied_premium_research_plan_2026-11-21.md` (literature, data inventory, first measurements, 3 to 5
+proposals); the Head of Economics is asked whether it owns the market-level part.
