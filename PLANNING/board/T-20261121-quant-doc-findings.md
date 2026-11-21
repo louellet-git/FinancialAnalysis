@@ -47,7 +47,7 @@ Each item says "changes a value" (the fix changes a number that a model or a che
 - R6. The "lasting residual" rule of the step 2 note is in an `awk` script only (`analysis/priors/rates_recon_step2_2026-11-20.md`), not in code. Text only. FIXED 2026-11-21: `fa recon history --lasting` (A-117, ticket `T-20261121-recon-lasting`).
 
 ## Variance premium test (records A-150 to A-154; added 2026-11-21 from `docs/models/variance-premium-test.md`)
-- P1. The 2016-2026 block ends at a fixed date: `report` in `rust/src/trading/premium.rs` sets `w16` to 2016-01-05 to 2026-11-19 (checked). A day after 2026-11-19 goes into the row "1993 to 2015 (no windows defined)" with a wrong label. The window list is a hand copy of `analysis/macro/stress-windows.csv`, and no test links them. Changes a value (a row of the table).
+- P1 (FIXED in T-20261121-trade-grids: the windows come from the file, the block ends at the last day of the data). The 2016-2026 block ends at a fixed date: `report` in `rust/src/trading/premium.rs` sets `w16` to 2016-01-05 to 2026-11-19 (checked). A day after 2026-11-19 goes into the row "1993 to 2015 (no windows defined)" with a wrong label. The window list is a hand copy of `analysis/macro/stress-windows.csv`, and no test links them. Changes a value (a row of the table).
 - P2. The row label "all days 1990s-2026": SPY starts in 1993 (`report`, `premium.rs`). Text only.
 - P3. The 1-day table uses a block step of 1, so its "t_blk" is the plain t; its window rows print no t (`premium.rs`). Text only.
 - P4. The median is `v[len / 2]`, the upper middle value for an even count (`row`, `premium.rs`, checked). Changes a value (small).

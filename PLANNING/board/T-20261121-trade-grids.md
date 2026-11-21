@@ -2,7 +2,7 @@
 id: T-20261121-trade-grids
 title: Robustness grids of the strategy tests (stress windows from the file, lags, cut scan, price grid)
 area: trading
-status: in-progress
+status: review
 owner: louellet-git
 head: quant
 story: E4.S4
