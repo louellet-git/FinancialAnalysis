@@ -206,7 +206,7 @@ pub fn total_debt_alternatives(registry: &Registry, p: &PeriodData) -> Vec<(&'st
 }
 
 /// The parts of a rollup that have a value, after the one-line substitutions.
-fn rollup_parts(p: &PeriodData, rollup: &crate::registry::Rollup) -> Vec<usize> {
+fn rollup_parts(registry: &Registry, p: &PeriodData, rollup: &crate::registry::Rollup) -> Vec<usize> {
     let mut parts = rollup.parts.clone();
     for (one_line, replaces) in &rollup.combined {
         // The filer shows one line: use it in place of the parts that have no value.
@@ -217,6 +217,14 @@ fn rollup_parts(p: &PeriodData, rollup: &crate::registry::Rollup) -> Vec<usize> 
         }
     }
     parts.retain(|&i| p.values[i].is_some());
+    // A "_second" variable is a second line of the same kind. A filer can rename the tag between
+    // 10-Ks, and then both tags have the same value: this is one amount, counted one time.
+    let copy_of_first = |i: usize| {
+        let name = registry.variables[i].name.strip_suffix("_second");
+        let first = name.and_then(|n| registry.try_var(n));
+        first.is_some_and(|f| p.values[f].is_some_and(|v| v != 0.0 && Some(v) == p.values[i]))
+    };
+    parts.retain(|&i| !copy_of_first(i));
     parts
 }
 
@@ -394,7 +402,7 @@ pub fn check_period_as(registry: &Registry, p: &PeriodData, template: &str) -> P
     // --- Rollups: was a value lost, or counted two times? ---
     for rollup in &registry.rollups {
         let Some(total) = p.values[rollup.total] else { continue };
-        let parts = rollup_parts(p, rollup);
+        let parts = rollup_parts(registry, p, rollup);
         if parts.is_empty() || total == 0.0 {
             continue;
         }
@@ -745,6 +753,27 @@ mod tests {
         let mut all: Vec<_> = good().into_iter().filter(|(n, _)| !extra.iter().any(|(m, _)| m == n)).collect();
         all.extend(extra);
         all
+    }
+
+    #[test]
+    fn second_acquisition_line_with_the_same_value_is_counted_one_time_in_the_investing_rollup() {
+        let registry = Registry::embedded().unwrap();
+        let parts_of = |second: f64| {
+            let facts = company(vec![
+                ("Revenues", flow(1000.0)),
+                ("NetCashProvidedByUsedInInvestingActivities", flow(-200.0)),
+                ("PaymentsToAcquireBusinessesNetOfCashAcquired", flow(100.0)),
+                ("PaymentsToAcquireBusinessTwoNetOfCashAcquired", flow(second)),
+            ]);
+            let p = resolve_period(&registry, &facts, END, Forms::Annual);
+            let rollup = registry.rollups.iter().find(|r| r.name == "investing_cash_flow").unwrap();
+            let names: Vec<String> = rollup_parts(&registry, &p, rollup).iter().map(|&i| registry.variables[i].name.clone()).collect();
+            names
+        };
+        // A filer renamed the tag between 10-Ks (EQT FY2021): the same amount under both tags.
+        assert_eq!(parts_of(100.0), ["acquisitions_net_of_cash"]);
+        // NVDA: two different lines, both are parts.
+        assert_eq!(parts_of(40.0), ["acquisitions_net_of_cash", "acquisitions_net_of_cash_second"]);
     }
 
     #[test]
