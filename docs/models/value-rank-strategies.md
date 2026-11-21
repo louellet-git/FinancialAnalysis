@@ -1,9 +1,9 @@
 # Model: value-rank strategies of the portfolio backtest (`fa portfolio backtest`, `fa portfolio calibrate`)
 
 Updated: 2026-11-21. Commit: 90ed737 (base of the branch). This document is for the value strategies only.
+The strategy `momentum` belongs to the Head of Quant Research. No order goes to a broker.
 
 Backtest: the runs of record of pull request 136 (`analysis/priors/dcf_engine_backtest_rerun_2026-11-21.md`): no evidence of an edge.
-The strategy `momentum` belongs to the Head of Quant Research. No order goes to a broker.
 
 ## Purpose
 Test whether the P50 / price of the automatic model (`docs/models/auto-path-model.md`) ranks stocks well enough
