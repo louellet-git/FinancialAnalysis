@@ -25,7 +25,7 @@ form `FA-<tag> - <head>`, for example `FA-L - Head of Technology`.
 | `Head of Quant Research` | Pricing models (rates, volatility) and signals (bonds, option strategies, backtests) | `rates-credit-quant`, `volatility-derivatives-quant`, `strategy-researcher` | `quant` |
 | `Head of Fundamental Research` | Company value: the DCF engines, the automatic model, the models for banks and other company types, ticker reports | `valuation-quant`, `equity-analyst` | `fundamental` |
 | `Head of Technology` | Data sources, `fa sync`, `mapcheck`, the CLI, the build, the CI cost, the structure of the shared documents | `data-engineer`, `rust-engineer` | `technology` |
-| `Head of Economics` | A supporting role: the current economic conditions and factors (growth, inflation, labor, the policy rate path, the curve, credit spreads, the cycle). It gives briefs and answers to the other heads; it trades nothing and sets no model input | `macro-economist`, `rates-credit-quant` (shared with Quant Research) | `economics` |
+| `Head of Economics` | A supporting role: the current economic conditions and factors (growth, inflation, labor, the policy rate path, the curve, credit spreads, the cycle). It gives briefs and answers to the other heads; it trades nothing and sets no model input | `macro-economist`, `market-historian`, `rates-credit-quant` (shared with Quant Research) | `economics` |
 | `Head of Quality and Risk` | Reviews and gates, model documents and assumption records, model risk, secrets, terms of use of data | `model-validator`, `document-reviewer`, `auditor`, `code-reviewer`, `test-engineer`, `data-quality-analyst`, `model-documenter`, `risk-compliance-officer` | `quality` |
 
 Example: the title `FA-L - Head of Technology` in the account `louellet-git` is the Head
@@ -214,6 +214,9 @@ not in a chat.
    command or the question, the reason, and the refusal text. Do not get around a refusal.
 2. The Head of Technology filters: it answers what it can (a safer form, a fact, a rule that
    exists) and drops duplicates. It never runs a command that a different session was refused.
+   Research comes first (the person, 2026-11-21: "Before asking me anything, please look into it"): the
+   asking head and the Head of Technology look at the options, costs and facts, and the question
+   carries the result and a recommendation. A question that research can answer is not asked.
 3. What only the person can decide becomes one ticket: `area: ask`, `head: owner`. It is a
    yes/no question in clear, plain words, with no internal names: **Question** (yes/no, one
    sentence), **Why it matters** (two or three sentences, with the cost if any),
