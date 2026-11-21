@@ -181,3 +181,7 @@ Done: ticket `T-20261121-fred-local`.
 ## 2026-11-21 (dialog)
 Words: "Yes (Recommended)" to: will you make fa-data private? (The terms of Nasdaq, Yahoo, Cboe, FRED and ICE do not permit a public copy; GitHub ToS D.3.)
 Done: the store README says private (store e3b735e); the heads are told to attach fa-data before a clone. The owner changes the visibility on GitHub. The FRED move continues.
+
+## 2026-11-21 (dialog)
+Words: "Yes (Recommended)" to: may we keep the Philadelphia Fed SPF file as a private copy (not in the public repo), with only the results in the repo?
+Done: ticket `T-20261121-spf-loader`.
