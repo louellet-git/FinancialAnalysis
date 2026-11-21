@@ -27,6 +27,8 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   `git -C /home/user/qa-fa-data worktree add --detach <path> <commit>`. Name the store commit in each
   brief and verdict. A fetch that only adds files does not disturb a running review.
 - Alpaca from a cloud session: dummy key variables give HTTP 401 (the proxy does not add the key id).
+- SEC pages: a zero-padded CIK path gives HTTP 301; use `curl -L` or the CIK with no zeros, with the
+  contact of `sec_contact.toml`. One request for one page is not a bulk download.
 - In each brief: no download of many tickers (only the Head of Technology starts one), no network
   unless the request needs it.
 - An agent's verdict can disagree with its own levels (PASS-WITH-NOTES with a MAJ). Set the verdict
@@ -48,10 +50,15 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   no value, data or trade can change. Each time I changed a level, I said so in the verdict.
 - Precedent: in cycle 2, a limit that is measured and written in the record passes, with a ticket as
   a condition (no third cycle). The automatic model is a screen.
+- A valuation report is not limited to two cycles: step 2 repeats until the skeptic accepts (`CLAUDE.md`).
+- A valuation with a charge for future spending: check that the frames agree (an asset held at full value
+  and each future purchase a total loss is two frames; NVDA round 2). Ask for the range across frames.
+- Haiku did well on narrow checks with a fixed list (byte comparisons, a 5-point diff check); it found
+  the same defect as the Sonnet validator in vol-1 cycle 2. Keep Sonnet for open attacks.
 
 ## Pages
 - No page.
 
 ## Dream pass
 Before a compaction (above about 75% of the threshold in `get_session`) or on "dream".
-Last pass: 2026-11-21 00:30 UTC (context 67%).
+Last pass: 2026-11-21 01:25 UTC (context 81%); first pass 00:30 UTC.
