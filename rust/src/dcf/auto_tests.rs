@@ -513,7 +513,7 @@ fn no_later_value_enters_the_model_of_a_base_year() {
     let c = model_at("ACME", &y, 6, &table(), &[], &rules).unwrap();
     assert_ne!(a.toml, c.toml);
     // the real values of the observation come from the later years only
-    let obs = company_observations("ACME", &y, &table(), &[], &PitParams { rules: &rules, paths: 200, seed: 7, min_year: None });
+    let obs = company_observations("ACME", &y, &table(), &[], &PitParams { rules: &rules, paths: 200, seed: 7, min_year: None, max_year: None });
     assert_eq!(obs.len(), 2, "the base years are the fifth and the sixth year");
     let o = &obs[1];
     assert_eq!(o.base, y[5].revenue.unwrap());
@@ -524,7 +524,13 @@ fn no_later_value_enters_the_model_of_a_base_year() {
     // the band of the first base year is made from the first five years only: a change of the sixth year does not move it
     let mut y2 = y.clone();
     y2[5].revenue = Some(y2[5].revenue.unwrap() * 2.0);
-    let again = company_observations("ACME", &y2, &table(), &[], &PitParams { rules: &rules, paths: 200, seed: 7, min_year: None });
+    // --base-to: the same two base years, a limit at the label of the first one keeps it, unchanged
+    let to_first = company_observations("ACME", &y, &table(), &[], &PitParams { rules: &rules, paths: 200, seed: 7, min_year: None, max_year: Some(obs[0].year) });
+    assert_eq!(to_first.len(), 1);
+    assert_eq!((to_first[0].year, to_first[0].rev_q, to_first[0].fcff_q), (obs[0].year, obs[0].rev_q, obs[0].fcff_q));
+    let before_all = company_observations("ACME", &y, &table(), &[], &PitParams { rules: &rules, paths: 200, seed: 7, min_year: None, max_year: Some(obs[0].year - 1) });
+    assert!(before_all.is_empty());
+    let again = company_observations("ACME", &y2, &table(), &[], &PitParams { rules: &rules, paths: 200, seed: 7, min_year: None, max_year: None });
     assert_eq!(obs[0].rev_q, again[0].rev_q);
     assert_eq!(obs[0].fcff_q, again[0].fcff_q);
 }
@@ -561,6 +567,7 @@ fn the_coverage_counts_below_inside_and_above() {
         rev_act: [actual; HORIZON],
         fcff_q: [[1.0, 2.0, 3.0]; HORIZON],
         fcff_act: [Some(actual / 50.0); HORIZON],
+        acq_act: [0.0; HORIZON],
     };
     let o = vec![obs(80.0), obs(95.0), obs(100.0), obs(105.0), obs(120.0)];
     let c = coverage(&o, Series::Revenue, 0, &|_| true);
@@ -1462,4 +1469,39 @@ fn the_readers_count_a_split_on_or_before_the_last_price_date() {
     for d in [on, before] {
         std::fs::remove_dir_all(d).ok();
     }
+}
+
+#[test]
+fn the_acquisition_draw_has_the_standard_deviation_of_the_own_spend_history() {
+    // closed formula: the ratios 0.04, 0, 0.04, 0, 0.04 have mean 0.024 and population variance 0.000384
+    let v = [0.04, 0.0, 0.04, 0.0, 0.04];
+    assert!((acq_sd_of(&v) - 0.000384f64.sqrt()).abs() < 1e-12);
+    assert_eq!(acq_sd_of(&[0.03]), 0.0);
+    assert_eq!(acq_sd_of(&[0.02, 0.02, 0.02]), 0.0);
+    // a model: spend 0 / 4% of revenue in alternate years (the last 5 years: 0.04, 0, 0.04, 0, 0.04)
+    let mut i = inputs();
+    let n = i.years.len();
+    for (k, y) in i.years.iter_mut().enumerate() {
+        y.acquisitions = Some(if (n - 1 - k).is_multiple_of(2) { 0.04 } else { 0.0 } * y.revenue.unwrap());
+    }
+    let run = |r: Rules| build(&i, &table(), &[], &market(), &r, BuildOptions::default()).unwrap();
+    let off = run(plain_rules());
+    let on = run(Rules { acq_cv: true, ..plain_rules() });
+    // the mean of the charge does not change
+    assert_eq!(off.summary.acq_ratio, on.summary.acq_ratio);
+    let c0 = on.summary.acq_ratio;
+    assert!(c0 > 0.0);
+    // off: a fixed charge (no shock). on: a draw with the standard deviation of the whole spend, and the shock of later
+    // years is that size over the charge of year 1, times the charge of the year
+    let (so, sn) = (spec_of(&off), spec_of(&on));
+    assert_eq!(so.process["charge"].sigma_level, 0.0);
+    let start_std = |s: &StartSpec| match s {
+        StartSpec::Value(p) => p.std(),
+        StartSpec::Tied(_) => panic!("tied"),
+    };
+    assert_eq!(start_std(&so.process["charge"].start), 0.0);
+    let ch = &sn.process["charge"];
+    assert!((start_std(&ch.start) - 0.000384f64.sqrt()).abs() < 1e-9, "{}", start_std(&ch.start));
+    assert!((ch.sigma_level - 0.000384f64.sqrt() / c0).abs() < 1e-9);
+    assert!(parse_rules("acq_cv=1").unwrap().acq_cv && !Rules::default().acq_cv && !parse_rules("acq_cv=off").unwrap().acq_cv);
 }

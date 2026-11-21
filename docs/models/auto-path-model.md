@@ -48,6 +48,7 @@ value, 3 no value, 2 an error. `fa dcf screen` gives one CSV row for each ticker
 | A-001 | One long-run growth L | min(10-year zero yield, 4.0%); terminal std 0.75% | Fade level and terminal mean. 4.0% = FOMC SEP 2026-09-16 (2.0% + 2.0%). Decided 2026-11-20 |
 | A-002 | Acquisition charge | `w` x mean spend / revenue, 5 years | `w` = weight of the history in the growth mean; fades with the growth above L; second line of the purchases added when it differs (`acq_second`, proposed 2026-11-21). Decided 2026-11-20 |
 | A-003 | Floor on the growth of the base year | 0% | A base year with growth below 0% enters the company mean and the first step of the growth as 0% (`last_floor`) |
+| A-010 | Acquisition charge as a draw | off (`--rules acq_cv=1`) | The charge has the spend variation of the company (standard deviation of the own spend ratios). Measured 2026-11-21 on `fa dcf pit --cut 2015`: it fixes the thin low tail of the free cash flow band on half 1, but T1 still fails on revenue at T+3. Not adopted |
 | not written | Equity risk premium | 4.41% (std 0.75%, lower bound 2%) | Damodaran implied value, 2026-11-19 |
 | not written | Risk-free rate | 10-year zero yield of the GSW curve | Hull-White `a` 0.14, `sigma` 0.0075 |
 | not written | Horizon | 10 years | Repo convention |

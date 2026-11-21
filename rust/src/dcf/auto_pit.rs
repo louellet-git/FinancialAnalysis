@@ -49,7 +49,8 @@ fa dcf pit [OPTIONS]
   --cache DIR      company facts (default <repo>/data/raw)
   --table FILE     parameter table (default analysis/priors/process_priors_2026-11-19.toml)
   --cut YEAR       estimate the table again from the years up to YEAR; use base years from YEAR on (out of sample)
-  --paths N (2000) paths for each model          --seed S (7)
+  --base-to YEAR   score the base years up to YEAR only (with --cut: the years from the cut to YEAR; the table does not change)
+  --paths N (2000) paths for each model         --seed S (7)
   --rules K=V,..   change a rule; each is a number (a flag is 0 or 1). The list: `fa dcf auto --help`
   --out FILE       write the text of the result to FILE
   --limit N        use the first N companies only (a quick check)
@@ -81,6 +82,8 @@ pub struct PitObs {
     pub rev_act: [f64; HORIZON],
     pub fcff_q: [[f64; 3]; HORIZON],
     pub fcff_act: [Option<f64>; HORIZON],
+    /// `acquisitions_net_of_cash` of T+1 to T+3 over the revenue of T (a missing value counts as 0). A diagnosis only.
+    pub acq_act: [f64; HORIZON],
 }
 
 /// The free cash flow of a fiscal year as the model defines it.
@@ -138,6 +141,8 @@ pub struct PitParams<'a> {
     pub seed: u64,
     /// Base years before this label year are not used (the out of sample test).
     pub min_year: Option<i32>,
+    /// Base years after this label year are not used (`--base-to`). The table and the models do not change.
+    pub max_year: Option<i32>,
 }
 
 /// All observations of one company.
@@ -146,7 +151,7 @@ pub fn company_observations(ticker: &str, years: &[YearData], table: &ProcessTab
     let rows = clean_series(raw_years(years), &mut counts);
     let mut out = Vec::new();
     for (b, year, has_jump) in base_years(years) {
-        if p.min_year.is_some_and(|m| year < m) {
+        if p.min_year.is_some_and(|m| year < m) || p.max_year.is_some_and(|m| year > m) {
             continue;
         }
         let Ok(model) = model_at(ticker, years, b, table, fade, p.rules) else { continue };
@@ -180,6 +185,7 @@ pub fn company_observations(ticker: &str, years: &[YearData], table: &ProcessTab
             rev_act: [0.0; HORIZON],
             fcff_q: [[0.0; 3]; HORIZON],
             fcff_act: [None; HORIZON],
+            acq_act: [0.0; HORIZON],
         };
         let mut ok = true;
         for (h, year_h) in later.iter().enumerate() {
@@ -190,6 +196,7 @@ pub fn company_observations(ticker: &str, years: &[YearData], table: &ProcessTab
                 None => ok = false,
             }
             obs.fcff_act[h] = fcff_of_rules(year_h, tax, p.rules);
+            obs.acq_act[h] = year_h.acquisitions.unwrap_or(0.0).abs() / model.summary.base_revenue;
         }
         if !ok {
             continue;
@@ -615,6 +622,51 @@ pub fn sigma_nu_scan(companies: &[CompanyPanel], table: &ProcessTable, rules: &R
     out
 }
 
+/// The position of a real revenue in the band of the model on the scale of one normal standard deviation:
+/// `ln(a / P50) / (ln(P90 / P10) / 2.5631)` (2.5631 = twice the 90th percentile of the standard normal). 1 = one sd of the
+/// band. `None` if the band or the value is not positive.
+pub fn band_z(a: f64, q: &[f64; 3]) -> Option<f64> {
+    if a > 0.0 && q[0] > 0.0 && q[1] > 0.0 && q[2] > q[0] {
+        Some((a / q[1]).ln() / ((q[2] / q[0]).ln() / 2.563_103_131))
+    } else {
+        None
+    }
+}
+
+/// The text of `--diag rev`: the revenue of T+1 to T+3 on the scale of the band (`band_z`), for all rows, by the width of
+/// the band of T+1 and by the sign of the growth of the base year. For each cell: n, the mean of z, and the root mean
+/// square of z below 0 and above 0 (a calibrated normal band has 1.00 and 1.00).
+pub fn render_rev_diag(obs: &[PitObs]) -> String {
+    let mut out = String::new();
+    let _ = writeln!(out, "\nDIAGNOSIS: the revenue band on the scale of one standard deviation of the band");
+    let _ = writeln!(out, "  z = ln(real / P50) / (ln(P90 / P10) / 2.563). Cells: n, the percentiles 10, 25, 75, 90 of z (a calibrated normal band: -1.28 -0.67 +0.67 +1.28).");
+    let width = |o: &PitObs| (o.rev_q[0][2] / o.rev_q[0][0]).ln() / 2.563_103_131;
+    let classes: Vec<(&str, Box<dyn Fn(&PitObs) -> bool>)> = vec![
+        ("all", Box::new(|_| true)),
+        ("band T+1 sd < 6%", Box::new(move |o| width(o) < 0.06)),
+        ("band T+1 sd 6 to 10%", Box::new(move |o| (0.06..0.10).contains(&width(o)))),
+        ("band T+1 sd 10 to 15%", Box::new(move |o| (0.10..0.15).contains(&width(o)))),
+        ("band T+1 sd 15 to 25%", Box::new(move |o| (0.15..0.25).contains(&width(o)))),
+        ("band T+1 sd >= 25%", Box::new(move |o| width(o) >= 0.25)),
+        ("growth of T < 0%", Box::new(|o| o.g_last.is_some_and(|g| g < 0.0))),
+        ("growth of T >= 0%", Box::new(|o| o.g_last.is_some_and(|g| g >= 0.0))),
+    ];
+    for (name, keep) in &classes {
+        let mut cells = Vec::new();
+        for h in 0..HORIZON {
+            let z: Vec<f64> = obs.iter().filter(|o| keep(o)).filter_map(|o| band_z(o.rev_act[h], &o.rev_q[h])).collect();
+            let s = sorted_copy(&z);
+            if s.is_empty() {
+                cells.push(format!("T+{} n    0", h + 1));
+                continue;
+            }
+            cells.push(format!("T+{} n {:>4} {:>+5.2} {:>+5.2} {:>+5.2} {:>+5.2}", h + 1, s.len(), percentile(&s, 10.0), percentile(&s, 25.0), percentile(&s, 75.0), percentile(&s, 90.0)));
+        }
+        let _ = writeln!(out, "  {:<22} {}", name, cells.join("   "));
+    }
+    out
+}
+
 /// The text of `--diag nu`.
 pub fn render_sigma_nu(scan: &[[(usize, f64, usize); 4]], grid: &[f64], label: &str) -> String {
     let mut out = String::new();
@@ -636,6 +688,129 @@ pub fn render_sigma_nu(scan: &[[(usize, f64, usize); 4]], grid: &[f64], label: &
     for k in 0..4 {
         let best = (0..grid.len()).max_by(|a, b| (scan[*a][k].1).total_cmp(&scan[*b][k].1)).unwrap_or(0);
         let _ = writeln!(out, "  best nu by mean log density, {}: {}", names[k], grid[best]);
+    }
+    out
+}
+
+/// The standardised one-year margin residuals of the panel: for each company and each target year with 5 margin values in
+/// sequence before it, `(next - start_mean) / start_sd` of the margin model with the default shock size. Returns
+/// `(target year, z, margin range class)`. No pit run, no price.
+pub fn margin_z_rows(companies: &[CompanyPanel], table: &ProcessTable, rules: &Rules) -> Vec<(i32, f64, usize)> {
+    let mut out = Vec::new();
+    for c in companies.iter().filter(|c| c.template == "standard") {
+        let rows = &c.rows;
+        for j in (HIST_MARGIN - 1)..rows.len().saturating_sub(1) {
+            let t = j + 1;
+            if !rows[j + 1 - HIST_MARGIN..=t].iter().skip(1).all(|r| r.prev_ok) {
+                continue;
+            }
+            let ms: Vec<Option<f64>> = rows[j + 1 - HIST_MARGIN..=t].iter().map(|r| r.fcf_margin()).collect();
+            if ms.iter().any(|m| m.is_none_or(|v| v.abs() > MARGIN_LIMIT)) {
+                continue;
+            }
+            let ms: Vec<f64> = ms.into_iter().flatten().collect();
+            let (hist, next) = (&ms[..HIST_MARGIN], ms[HIST_MARGIN]);
+            let Some((mp, _)) = margin_params(table, BUCKET_LABELS[bucket(rows[j].revenue)], "standard", rules.margin_pool_se) else { continue };
+            let range = hist.iter().cloned().fold(f64::NEG_INFINITY, f64::max) - hist.iter().cloned().fold(f64::INFINITY, f64::min);
+            let class = if range < 0.05 { 0 } else if range < 0.10 { 1 } else { 2 };
+            let sg = own_sigma(hist, &mp, rules.margin_sigma_nu.unwrap_or(rules.own_sigma_nu));
+            let fit = ar1_fit_w(hist, Some(hist[HIST_MARGIN - 1]), &Ar1Params { sigma: sg, ..mp.clone() }, None);
+            out.push((rows[t].year, (next - fit.start_mean) / fit.start_sd, class));
+        }
+    }
+    out
+}
+
+/// The position of a real value in the band, as the share of the half-width: `(P50 - a) / (P50 - P10)` below the P50 and
+/// `(a - P50) / (P90 - P50)` above it, with the side. A value on the P10 or the P90 is 1.
+fn band_position(a: f64, q: &[f64; 3]) -> Option<(bool, f64)> {
+    if a < q[1] {
+        (q[1] > q[0]).then(|| (true, (q[1] - a) / (q[1] - q[0])))
+    } else {
+        (q[2] > q[1]).then(|| (false, (a - q[1]) / (q[2] - q[1])))
+    }
+}
+
+/// The text of `--diag fcf`: (a) the bands by base year; (b) the width of the band that the real values need on each
+/// side (the position of the value at the 90th percentile over all values, counted on that side: a band with this factor
+/// on that side has 10% of all values outside on that side); (c) the margin of the next year against the normal of the
+/// model, by target year, with the share below the P10, above the P90, and the standard deviation of z.
+pub fn render_fcf_diag(obs: &[PitObs], z: &[(i32, f64, usize)], cut: Option<i32>) -> String {
+    let mut out = String::new();
+    let _ = writeln!(out, "\nDIAGNOSIS: the free cash flow band");
+    let _ = writeln!(out, "  (a) by base year (below P10 / inside / above P90, percent), free cash flow T+1 and T+3, and revenue T+3");
+    let mut years: Vec<i32> = obs.iter().map(|o| o.year).collect();
+    years.sort();
+    years.dedup();
+    for y in years {
+        let keep = move |o: &PitObs| o.year == y;
+        let (f1, f3, r3) = (coverage(obs, Series::Fcff, 0, &keep), coverage(obs, Series::Fcff, 2, &keep), coverage(obs, Series::Revenue, 2, &keep));
+        let _ = writeln!(out, "  {y}  n {:>5}   fcf T+1 {}   fcf T+3 {}   rev T+3 {}", f1.n, pct_cell(&f1), pct_cell(&f3), pct_cell(&r3));
+    }
+    let _ = writeln!(out, "  (b) width factor of each side of the band that gives 10% outside on that side (1.00 = the band of the model)");
+    for (s, name) in [(Series::Fcff, "fcf"), (Series::Revenue, "rev")] {
+        for h in 0..HORIZON {
+            let (mut lo, mut hi, mut n) = (Vec::new(), Vec::new(), 0usize);
+            for o in obs {
+                let (a, q) = match s {
+                    Series::Fcff => match o.fcff_act[h] {
+                        Some(a) => (a, o.fcff_q[h]),
+                        None => continue,
+                    },
+                    Series::Revenue => (o.rev_act[h], o.rev_q[h]),
+                };
+                n += 1;
+                match band_position(a, &q) {
+                    Some((true, p)) => lo.push(p),
+                    Some((false, p)) => hi.push(p),
+                    None => {}
+                }
+            }
+            let side = |v: &mut Vec<f64>| -> f64 {
+                v.sort_by(|a, b| a.total_cmp(b));
+                // 10% of all n values are above the factor: the value at rank (len - 0.1 n)
+                let k = v.len() as f64 - 0.1 * n as f64;
+                if v.is_empty() || k < 1.0 { 0.0 } else { v[(k.floor() as usize - 1).min(v.len() - 1)] }
+            };
+            let _ = writeln!(out, "  {name} T+{}: lower side {:.2}, upper side {:.2}  (n {n})", h + 1, side(&mut lo), side(&mut hi));
+        }
+    }
+    let _ = writeln!(out, "  (d) free cash flow below P10 / inside / above P90 by the acquisition spend of the target year (share of the revenue of T)");
+    for (label, lo, hi) in [("none or below 0.5%", 0.0, 0.005), ("0.5% to 2%", 0.005, 0.02), ("2% to 5%", 0.02, 0.05), ("above 5%", 0.05, f64::INFINITY)] {
+        let mut cells = Vec::new();
+        for h in 0..HORIZON {
+            let c = coverage(obs, Series::Fcff, h, &move |o: &PitObs| o.acq_act[h] >= lo && o.acq_act[h] < hi);
+            cells.push(format!("T+{} n {:>5} {}", h + 1, c.n, pct_cell(&c)));
+        }
+        let _ = writeln!(out, "  {:<20} {}", label, cells.join("   "));
+    }
+    let _ = writeln!(out, "  (c) margin of the next year against the normal of the model (z); the normal has 10.0% below -1.28, 10.0% above +1.28, sd 1");
+    let line = |sel: &dyn Fn(&(i32, f64, usize)) -> bool| -> Option<String> {
+        let v: Vec<f64> = z.iter().filter(|x| sel(x)).map(|x| x.1).collect();
+        if v.len() < 20 {
+            return None;
+        }
+        let n = v.len() as f64;
+        let m = v.iter().sum::<f64>() / n;
+        let sd = (v.iter().map(|x| (x - m).powi(2)).sum::<f64>() / n).sqrt();
+        let lo = v.iter().filter(|x| **x < -1.281_551_565_5).count() as f64 / n * 100.0;
+        let hi = v.iter().filter(|x| **x > 1.281_551_565_5).count() as f64 / n * 100.0;
+        Some(format!("n {:>5}  below {:>5.1}%  above {:>5.1}%  mean {:>+6.2}  sd {:.2}", v.len(), lo, hi, m, sd))
+    };
+    let c = cut.unwrap_or(i32::MAX);
+    let mut ty: Vec<i32> = z.iter().map(|x| x.0).collect();
+    ty.sort();
+    ty.dedup();
+    if let Some(t) = line(&move |x| x.0 <= c) {
+        let _ = writeln!(out, "  targets up to the cut : {t}");
+    }
+    if let Some(t) = line(&move |x| x.0 > c) {
+        let _ = writeln!(out, "  targets after the cut : {t}");
+    }
+    for y in ty.into_iter().filter(|y| *y > c.saturating_sub(4)) {
+        if let Some(t) = line(&move |x| x.0 == y) {
+            let _ = writeln!(out, "  target {y}: {t}");
+        }
     }
     out
 }
@@ -669,10 +844,10 @@ pub fn parse_rules(text: &str) -> R<Rules> {
     for part in text.split(',').filter(|p| !p.is_empty()) {
         let (k, v) = part.split_once('=').ok_or_else(|| DcfError(format!("--rules: expected K=V, got '{part}'")))?;
         // `off` is 0, only for `long_run` (0 or less is off) and for the flags (0 or 1 rules); any other key is an error
-        const OFF_KEYS: [&str; 19] = [
+        const OFF_KEYS: [&str; 20] = [
             "long_run", "history_organic", "fade_to_cap", "equity_weight_one", "terminal_rf", "margin_last", "sbc_cost", "bridge_lti", "bridge_leases",
             "no_interest_income", "shares_latest", "stub", "mid_year", "acq_charge", "acq_w", "acq_fade", "acq_second", "acq_keep",
-            "acq_persist",
+            "acq_persist", "acq_cv",
         ];
         let x: f64 = if v == "off" {
             if !OFF_KEYS.contains(&k) {
@@ -731,6 +906,7 @@ pub fn parse_rules(text: &str) -> R<Rules> {
             // after `acq_persist=off`, one number set takes the default of the other number
             "acq_persist_a" => r.acq_persist.get_or_insert(ACQ_PERSIST_DEFAULT).0 = x,
             "acq_persist_b" => r.acq_persist.get_or_insert(ACQ_PERSIST_DEFAULT).1 = x,
+            "acq_cv" => r.acq_cv = x != 0.0,
             "last_floor" => {
                 if !x.is_finite() {
                     return Err(DcfError(format!("--rules: last_floor must be a finite number, got '{v}'")));
@@ -760,6 +936,8 @@ pub struct PitSetup {
     pub fade: Vec<FadeCell>,
     pub label: String,
     pub cut: Option<i32>,
+    /// Score only the base years up to this label year (`--base-to`). `None`: all.
+    pub base_to: Option<i32>,
 }
 
 /// Load the companies of the standard template and the table (`cut`: estimated again from the years up to `cut`). `only`: keep these tickers. `half`: one half of the tickers (`ticker_half`).
@@ -792,12 +970,12 @@ pub fn pit_setup(cache: &Path, table_file: &Path, cut: Option<i32>, limit: Optio
             (ProcessTable { meta, cell: cells }, fade, format!("OUT OF SAMPLE: parameter table estimated from the years up to {y}; base years {y} and later"))
         }
     };
-    Ok(PitSetup { companies, table, fade, label, cut })
+    Ok(PitSetup { companies, table, fade, label, cut, base_to: None })
 }
 
 /// The observations of the test for one set of rules.
 pub fn pit_observations(setup: &PitSetup, paths: usize, seed: u64, rules: &Rules) -> Vec<PitObs> {
-    setup.companies.par_iter().flat_map(|(t, years)| company_observations(t, years, &setup.table, &setup.fade, &PitParams { rules, paths, seed, min_year: setup.cut })).collect()
+    setup.companies.par_iter().flat_map(|(t, years)| company_observations(t, years, &setup.table, &setup.fade, &PitParams { rules, paths, seed, min_year: setup.cut, max_year: setup.base_to })).collect()
 }
 
 /// `fa dcf pit`. Returns the exit code.
@@ -816,7 +994,7 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         println!("{USAGE}");
         return Ok(());
     }
-    let known = ["--cache", "--table", "--cut", "--paths", "--seed", "--rules", "--out", "--limit", "--half", "--diag"];
+    let known = ["--cache", "--table", "--cut", "--paths", "--seed", "--rules", "--out", "--limit", "--half", "--diag", "--base-to"];
     let mut i = 0;
     while i < args.len() {
         if known.contains(&args[i].as_str()) {
@@ -835,12 +1013,17 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     let rules = parse_rules(opt(args, "--rules").unwrap_or(""))?;
     let half: Option<u64> = opt(args, "--half").map(|v| match v { "0" => Ok(0), "1" => Ok(1), _ => Err(DcfError(format!("bad --half '{v}': 0 or 1"))) }).transpose()?;
     let diag = opt(args, "--diag");
-    if diag.is_some_and(|d| d != "decline" && d != "nu" && d != "acq") {
-        return Err(DcfError("--diag: the names are decline, nu and acq".into()));
+    if diag.is_some_and(|d| d != "decline" && d != "nu" && d != "acq" && d != "fcf" && d != "rev") {
+        return Err(DcfError("--diag: the names are decline, nu, acq, fcf and rev".into()));
     }
 
     let t0 = Instant::now();
-    let setup = pit_setup(&cache, &table_file, cut, limit, None, half)?;
+    let base_to: Option<i32> = opt(args, "--base-to").map(|v| v.parse().map_err(|_| DcfError(format!("bad --base-to '{v}'")))).transpose()?;
+    let mut setup = pit_setup(&cache, &table_file, cut, limit, None, half)?;
+    setup.base_to = base_to;
+    if let Some(b) = base_to {
+        setup.label.push_str(&format!("; scored base years up to {b} only"));
+    }
     let load_s = t0.elapsed().as_secs_f64();
     let t1 = Instant::now();
     let obs = pit_observations(&setup, paths, seed, &rules);
@@ -858,6 +1041,15 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     }
     if diag == Some("acq") {
         text.push_str(&render_acq_persistence(&obs));
+    }
+    if diag == Some("rev") {
+        text.push_str(&render_rev_diag(&obs));
+    }
+    if diag == Some("fcf") {
+        let panel = build_panel(&cache, None).map_err(DcfError)?;
+        let comps: Vec<CompanyPanel> = panel.companies.into_iter().filter(|c| half.is_none_or(|h| ticker_half(&c.ticker) == h)).collect();
+        let z = margin_z_rows(&comps, &setup.table, &rules);
+        text.push_str(&render_fcf_diag(&obs, &z, cut));
     }
     if diag == Some("nu") {
         let panel = build_panel(&cache, None).map_err(DcfError)?;
