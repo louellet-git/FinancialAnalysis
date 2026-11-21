@@ -67,7 +67,7 @@ Outside the US stock market:
 1. P1 = dividend yield + long-run real dividend growth - real 10-year yield.
 2. P2 = (1 / CAPE10) - real 10-year yield.
 
-Real 10-year yield = GS10 less the trailing 10-year CPI change (a choice to record). The long-run real
+Real 10-year yield = GS10 less the trailing 10-year CPI change (confirmed by the Head of Fundamental Research, 2026-11-21). The long-run real
 dividend growth is a fixed number from data before t only.
 
 (c) **Engine premium.** The implied premium of the engine (Fundamental Research).
@@ -83,6 +83,10 @@ dividend growth is a fixed number from data before t only.
 Known traps:
 
 - **Look-ahead.** Lag earnings by 3 months and CPI by 1 month. Use the data as of each date.
+  Shiller D and E are annual values interpolated to months. Thus a value of D or E at month t
+  uses data of the full year. Rule: a test value at month t uses only the annual D and E of the
+  years that ended before t (plus the 3-month lag for E). If a run does not follow this rule,
+  it states the look-ahead that remains. (Agreed with the Head of Fundamental Research, 2026-11-21.)
   Shiller's file is a later revision. This is a limit.
 - **Survivorship.** The US is a winner market. This is why the JST test is in the plan.
 - **Reconstruction.** The index before 1926 is a reconstruction, not a traded price.
