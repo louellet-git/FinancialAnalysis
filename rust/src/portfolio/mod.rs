@@ -91,6 +91,8 @@ pub trait Strategy: Sync {
 pub enum Rebalance {
     Monthly,
     Quarterly,
+    /// The Friday of each week, or the last trading day of the week if Friday is not one.
+    Weekly,
 }
 
 #[derive(Debug, Clone)]
@@ -101,9 +103,26 @@ pub struct Config {
     pub cost_bp: f64,
 }
 
-/// The first day of each new month (or quarter) of the calendar, from `start` to `end` (the first day counts).
+/// The week of a day number (weeks start on Monday; day 0 is Thursday 1970-01-01).
+fn week_of(day: i64) -> i64 {
+    (day + 3).div_euclid(7)
+}
+
+/// The first day of each new month (or quarter) of the calendar, from `start` to `end` (the first day counts). For
+/// `Weekly`: the last trading day of each week, which is the Friday if it is a trading day; a day counts if it is a Friday
+/// or the next trading day of the calendar is in a later week (the last day of the data, if it is not a Friday, does not count).
 pub fn rebalance_days(cal: &[i64], start: i64, end: i64, r: Rebalance) -> Vec<i64> {
     let mut out = Vec::new();
+    if r == Rebalance::Weekly {
+        let days: Vec<i64> = cal.iter().copied().filter(|d| *d >= start && *d <= end).collect();
+        for (i, &d) in days.iter().enumerate() {
+            let friday = (d + 3).rem_euclid(7) == 4;
+            if friday || days.get(i + 1).is_some_and(|n| week_of(*n) != week_of(d)) {
+                out.push(d);
+            }
+        }
+        return out;
+    }
     let mut last = String::new();
     for &d in cal.iter().filter(|d| **d >= start && **d <= end) {
         let t = mapcheck::dates::format(d);
@@ -111,6 +130,7 @@ pub fn rebalance_days(cal: &[i64], start: i64, end: i64, r: Rebalance) -> Vec<i6
         let key = match r {
             Rebalance::Monthly => format!("{y}-{m:02}"),
             Rebalance::Quarterly => format!("{y}-Q{}", (m - 1) / 3),
+            Rebalance::Weekly => unreachable!("handled above"),
         };
         if key != last {
             out.push(d);
@@ -345,6 +365,18 @@ mod tests {
         assert_eq!(m, ["2020-01-27", "2020-02-01", "2020-03-01", "2020-04-01", "2020-05-01"]);
         let q: Vec<String> = rebalance_days(&cal, cal[0], cal[99], Rebalance::Quarterly).iter().map(|d| mapcheck::dates::format(*d)).collect();
         assert_eq!(q, ["2020-01-27", "2020-04-01"]);
+    }
+
+    #[test]
+    fn weekly_days_are_the_friday_or_the_last_trading_day_of_the_week() {
+        let d = |s: &str| mapcheck::dates::parse(s).unwrap();
+        // Weekdays from Monday 2020-01-27 to Friday 2020-02-14, less the holiday Friday 2020-02-07, plus Wednesday 2020-02-19
+        // (a week that the data ends before its Friday).
+        let mut cal: Vec<i64> = (d("2020-01-27")..=d("2020-02-14")).filter(|x| (x + 3).rem_euclid(7) < 5).filter(|x| *x != d("2020-02-07")).collect();
+        cal.extend([d("2020-02-17"), d("2020-02-18"), d("2020-02-19")]);
+        let days: Vec<String> = rebalance_days(&cal, d("2020-01-29"), d("2020-02-19"), Rebalance::Weekly).iter().map(|x| mapcheck::dates::format(*x)).collect();
+        // the start is a Wednesday: the first day is the Friday 01-31, not the start day
+        assert_eq!(days, ["2020-01-31", "2020-02-06", "2020-02-14"]);
     }
 
     #[test]

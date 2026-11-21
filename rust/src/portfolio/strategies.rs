@@ -54,6 +54,79 @@ pub fn top_quintile_by_sector(scored: Vec<(String, f64)>, sector_of: &BTreeMap<S
     out
 }
 
+/// Which fifth of each sector a sector-neutral strategy holds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Pick {
+    /// The highest scores.
+    #[default]
+    Top,
+    /// The lowest scores (the short side test of A-009; held long here, to compare it with the equal weight).
+    Bottom,
+}
+
+/// The bottom quintile inside each sector, with the same sector weights as [`top_quintile_by_sector`]: the lowest scores
+/// of each sector. Ties go to the first ticker name, as for the top.
+pub fn bottom_quintile_by_sector(scored: Vec<(String, f64)>, sector_of: &BTreeMap<String, String>) -> Vec<(String, f64)> {
+    top_quintile_by_sector(scored.into_iter().map(|(t, x)| (t, -x)).collect(), sector_of)
+}
+
+/// A sector with fewer scored tickers than this in one week is ranked with "Other" (A-009 item 3).
+pub const MIN_SECTOR: usize = 5;
+
+/// One candidate of the weekly rule: the ticker, its sector, its rank (the mid-rank percentile inside the sector, 1 is
+/// the best) and its score.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Ranked {
+    pub ticker: String,
+    pub sector: String,
+    pub rank: f64,
+    pub score: f64,
+    /// The ticker is in the top fifth of its sector (the first `max(1, n / 5)` places).
+    pub top_fifth: bool,
+}
+
+/// The rank of each scored ticker inside its sector (A-009 item 3). A sector with fewer than `MIN_SECTOR` scored tickers
+/// is ranked with "Other". With `n` tickers in the sector and the place `p` (0 for the highest score; ties go to the first
+/// ticker name), rank = `(n - p - 0.5) / n`.
+pub fn rank_in_sector(scored: &[(String, f64)], sector_of: &BTreeMap<String, String>) -> Vec<Ranked> {
+    let mut count: BTreeMap<&str, usize> = BTreeMap::new();
+    for (t, _) in scored {
+        *count.entry(sector_of.get(t).map_or("Other", String::as_str)).or_default() += 1;
+    }
+    let mut groups: BTreeMap<&str, Vec<&(String, f64)>> = BTreeMap::new();
+    for item in scored {
+        let s = sector_of.get(&item.0).map_or("Other", String::as_str);
+        let s = if count[s] < MIN_SECTOR { "Other" } else { s };
+        groups.entry(s).or_default().push(item);
+    }
+    let mut out = Vec::new();
+    for (s, mut g) in groups {
+        g.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        let n = g.len();
+        let k = (n / 5).max(1);
+        for (p, (t, x)) in g.into_iter().enumerate() {
+            out.push(Ranked { ticker: t.clone(), sector: s.to_string(), rank: (n as f64 - p as f64 - 0.5) / n as f64, score: *x, top_fifth: p < k });
+        }
+    }
+    out
+}
+
+/// The new tickers of one week (A-009 item 4): up to `max_new`, the highest rank, not held, at most one for each sector,
+/// each in the top fifth of its sector. Within a sector the first candidate is the highest not held in the top fifth.
+/// Order of the result: the highest rank first; equal ranks go to the higher score, then the first ticker name.
+pub fn choose_new(ranked: &[Ranked], held: &dyn Fn(&str) -> bool, max_new: usize) -> Vec<String> {
+    let mut best: BTreeMap<&str, &Ranked> = BTreeMap::new();
+    for r in ranked.iter().filter(|r| r.top_fifth && !held(&r.ticker)) {
+        let better = |a: &Ranked, b: &Ranked| a.rank.total_cmp(&b.rank).then_with(|| a.score.total_cmp(&b.score)).then_with(|| b.ticker.cmp(&a.ticker)).is_gt();
+        if best.get(r.sector.as_str()).is_none_or(|cur| better(r, cur)) {
+            best.insert(r.sector.as_str(), r);
+        }
+    }
+    let mut v: Vec<&Ranked> = best.into_values().collect();
+    v.sort_by(|a, b| b.rank.total_cmp(&a.rank).then_with(|| b.score.total_cmp(&a.score)).then_with(|| a.ticker.cmp(&b.ticker)));
+    v.into_iter().take(max_new).map(|r| r.ticker.clone()).collect()
+}
+
 /// Equal weight in each ticker of the universe with a fresh close: the reference for the survivorship of the list.
 pub struct EqualWeight;
 
@@ -107,6 +180,8 @@ pub struct ValueRank<'a> {
     /// With a sector of each ticker: the top quintile inside each sector, with the sector weights of the scored list
     /// (`top_quintile_by_sector`). `None`: the top quintile of the whole list.
     pub sectors: Option<BTreeMap<String, String>>,
+    /// With `sectors`: the top or the bottom quintile of each sector.
+    pub pick: Pick,
 }
 
 /// The fiscal years of one company as the SEC facts showed them after each annual filing: `(filing day, years)` in
@@ -161,6 +236,19 @@ impl Strategy for ValueRank<'_> {
     }
 
     fn weights(&self, view: &View, universe: &[String]) -> Result<Vec<(String, f64)>, String> {
+        let scored = self.score(view, universe);
+        Ok(match (&self.sectors, self.pick) {
+            (Some(s), Pick::Top) => top_quintile_by_sector(scored, s),
+            (Some(s), Pick::Bottom) => bottom_quintile_by_sector(scored, s),
+            (None, _) => top_quintile(scored),
+        })
+    }
+}
+
+impl ValueRank<'_> {
+    /// The score (P50 / price) of each ticker with a model value on the date of the view, in the order of the universe. The
+    /// count of scored tickers is kept for the report. Both the quarterly and the weekly strategy use this one function.
+    pub fn score(&self, view: &View, universe: &[String]) -> Vec<(String, f64)> {
         let date = mapcheck::dates::format(view.date());
         let index = self.index.map(|m| before(m, &date));
         let params = RetParams { index, ..self.params_copy() };
@@ -185,17 +273,67 @@ impl Strategy for ValueRank<'_> {
         if let Ok(mut n) = self.scored.lock() {
             n.push(scored.len());
         }
-        Ok(match &self.sectors {
-            Some(s) => top_quintile_by_sector(scored, s),
-            None => top_quintile(scored),
-        })
+        scored
     }
-}
 
-impl ValueRank<'_> {
     fn params_copy(&self) -> RetParams<'_> {
         let p = &self.params;
         RetParams { table: p.table, fade: p.fade, rules: p.rules, curves: p.curves, index: p.index, lag: p.lag, paths: p.paths, seed: p.seed }
+    }
+}
+
+/// A-009 item 8: an open position is dropped on the rebalance this many days (13 weeks) or more after its entry.
+pub const WEEKLY_HOLD_DAYS: i64 = 91;
+/// A-009 item 4: new tickers each week, at most.
+pub const WEEKLY_NEW: usize = 3;
+/// A-009 item 7: the number of open positions, at most; each has the weight 1 / this.
+pub const WEEKLY_MAX: usize = 39;
+
+/// One week of the A-009 rule on the open positions (ticker -> entry day): drop the old ones, choose the new ones from the
+/// scores, enter them on `date`. The cap of `WEEKLY_MAX` positions holds also when a holiday shifts an exit by one week.
+/// Returns the tickers entered.
+pub fn weekly_step(open: &mut BTreeMap<String, i64>, date: i64, scored: &[(String, f64)], sector_of: &BTreeMap<String, String>) -> Vec<String> {
+    open.retain(|_, entry| date - *entry < WEEKLY_HOLD_DAYS);
+    let ranked = rank_in_sector(scored, sector_of);
+    let room = WEEKLY_MAX.saturating_sub(open.len()).min(WEEKLY_NEW);
+    let new = choose_new(&ranked, &|t| open.contains_key(t), room);
+    for t in &new {
+        open.insert(t.clone(), date);
+    }
+    new
+}
+
+/// The weekly rule of A-009 (`--strategy value-rank-weekly`): the scores of [`ValueRank`] (the same function, the same
+/// vintage, curve, beta and freshness rules), the rank inside the sector, up to 3 new tickers each week, a hold of 13
+/// weeks. The state is the open positions with their entry day: the engine calls `weights` in date order, once for each
+/// rebalance date, and the strategy must be used for one run only.
+///
+/// Difference from A-009: the engine trades each open position back to 1/39 at each rebalance, so a position that rose
+/// is cut and a position that fell is added. A-009 holds without a rebalance. The data checks of A-009 item 5 that the
+/// backtest has are in the score (last fiscal year at most 550 days old, P50 above 0). The mapping status and the
+/// share-count guard are not in the backtest.
+pub struct WeeklyValueRank<'a> {
+    /// The scorer. Its `sectors` must be set.
+    pub base: ValueRank<'a>,
+    pub open: std::sync::Mutex<BTreeMap<String, i64>>,
+}
+
+impl Strategy for WeeklyValueRank<'_> {
+    fn name(&self) -> &str {
+        "value-rank-weekly"
+    }
+
+    fn scored_counts(&self) -> Vec<usize> {
+        self.base.scored_counts()
+    }
+
+    fn weights(&self, view: &View, universe: &[String]) -> Result<Vec<(String, f64)>, String> {
+        let sectors = self.base.sectors.as_ref().ok_or("value-rank-weekly needs the sector of each ticker")?;
+        let scored = self.base.score(view, universe);
+        let mut open = self.open.lock().map_err(|_| "the open positions are locked".to_string())?;
+        weekly_step(&mut open, view.date(), &scored, sectors);
+        let w = 1.0 / WEEKLY_MAX as f64;
+        Ok(open.keys().map(|t| (t.clone(), w)).collect())
     }
 }
 
@@ -367,7 +505,7 @@ mod tests {
         let series: BTreeMap<String, Vec<(String, f64)>> = (0..N).map(|k| (format!("T{k:02}"), closes(k, poison_from))).collect();
         let prices = crate::portfolio::Prices::from_raw(&series);
         let index = market();
-        let s = ValueRank { years: years.clone(), series: &series, index: Some(&index), params, scored: Default::default(), sectors: None };
+        let s = ValueRank { years: years.clone(), series: &series, index: Some(&index), params, scored: Default::default(), sectors: None, pick: Pick::Top };
         let universe: Vec<String> = series.keys().cloned().collect();
         s.weights(&View::new(d(at), &prices), &universe).unwrap()
     }
@@ -392,5 +530,134 @@ mod tests {
         let at = "2020-09-01";
         let years = all_vintages();
         assert_eq!(rank(&years, "2030-01-01", at), rank(&years, at, at));
+    }
+
+    // ---- the short side test and the weekly rule (A-009) ----
+
+    #[test]
+    fn the_bottom_quintile_of_each_sector_has_the_sector_weights_of_the_list() {
+        // The data of the top test: A has 10 tickers (score = index), B has 2, Z has no sector.
+        let mut scored: Vec<(String, f64)> = (0..10).map(|i| (format!("A{i}"), i as f64)).collect();
+        scored.extend([("B0".to_string(), 5.0), ("B1".to_string(), 1.0), ("Z".to_string(), 0.0)]);
+        let sectors: BTreeMap<String, String> = (0..10).map(|i| (format!("A{i}"), "A".to_string())).chain([("B0".into(), "B".into()), ("B1".into(), "B".into())]).collect();
+        let w = bottom_quintile_by_sector(scored, &sectors);
+        // A: weight 10/13 over its bottom 2 (A0, A1); B: 2/13 on its bottom 1 (B1); Other: 1/13 on Z
+        let n = 13.0;
+        let want = [("A0", 5.0 / n), ("A1", 5.0 / n), ("B1", 2.0 / n), ("Z", 1.0 / n)];
+        assert_eq!(w.len(), want.len());
+        for ((t, x), (wt, wx)) in w.iter().zip(want) {
+            assert_eq!(t, wt);
+            assert!((x - wx).abs() < 1e-12, "{t} {x} {wx}");
+        }
+    }
+
+    /// Scores of 4 sectors: X and Y have 10 tickers (X0..X9 score i; Y0..Y9 score i + 0.5), Z and W have 5 (Z0..Z4 score i;
+    /// W0..W4 score i - 0.5).
+    fn four_sectors() -> (Vec<(String, f64)>, BTreeMap<String, String>) {
+        let mut scored = Vec::new();
+        let mut sectors = BTreeMap::new();
+        for (s, n, add) in [("X", 10, 0.0), ("Y", 10, 0.5), ("Z", 5, 0.0), ("W", 5, -0.5)] {
+            for i in 0..n {
+                scored.push((format!("{s}{i}"), i as f64 + add));
+                sectors.insert(format!("{s}{i}"), s.to_string());
+            }
+        }
+        (scored, sectors)
+    }
+
+    #[test]
+    fn a_small_sector_is_ranked_with_other_and_the_rank_is_the_mid_rank_percentile() {
+        // V has 3 scored tickers, and 2 tickers have no sector: together 5 in "Other".
+        let scored: Vec<(String, f64)> = [("V0", 5.0), ("V1", 4.0), ("V2", 3.0), ("N0", 2.0), ("N1", 1.0)].iter().map(|(t, x)| (t.to_string(), *x)).collect();
+        let sectors: BTreeMap<String, String> = ["V0", "V1", "V2"].iter().map(|t| (t.to_string(), "V".to_string())).collect();
+        let r = rank_in_sector(&scored, &sectors);
+        assert!(r.iter().all(|x| x.sector == "Other"));
+        let rank_of = |t: &str| r.iter().find(|x| x.ticker == t).unwrap().rank;
+        for (t, want) in [("V0", 0.9), ("V1", 0.7), ("V2", 0.5), ("N0", 0.3), ("N1", 0.1)] {
+            assert!((rank_of(t) - want).abs() < 1e-12, "{t}");
+        }
+        assert_eq!(r.iter().filter(|x| x.top_fifth).map(|x| x.ticker.as_str()).collect::<Vec<_>>(), ["V0"]);
+    }
+
+    #[test]
+    fn the_weekly_choice_is_one_for_each_sector_in_the_top_fifth_and_fewer_than_3_when_fewer_qualify() {
+        let (scored, sectors) = four_sectors();
+        let mut open = BTreeMap::new();
+        let d0 = d("2020-01-31");
+        // Week 1: the best of each sector is X9 (rank 0.95, score 9), Y9 (0.95, 9.5), Z4 (0.9, 4), W4 (0.9, 3.5).
+        // Highest rank first, then the higher score: Y9, X9, Z4. W4 is the fourth: not taken (3 at most).
+        assert_eq!(weekly_step(&mut open, d0, &scored, &sectors), ["Y9", "X9", "Z4"]);
+        // Week 2: Y9, X9, Z4 are held. W4 (0.9); the next in the top 2 of X and Y (X8 0.85, Y8 0.85 with the higher score).
+        // Z has a top fifth of 1 place (held): no Z candidate. The third place goes to Y8, not to X8.
+        assert_eq!(weekly_step(&mut open, d0 + 7, &scored, &sectors), ["W4", "Y8", "X8"]);
+        // Week 3: all top-fifth places of the 4 sectors are held: no trade (fewer than 3).
+        assert!(weekly_step(&mut open, d0 + 14, &scored, &sectors).is_empty());
+        assert_eq!(open.len(), 6);
+        // One sector with a free place gives one trade
+        let mut few = BTreeMap::new();
+        let only_w: Vec<(String, f64)> = scored.iter().filter(|x| x.0.starts_with('W')).cloned().collect();
+        assert_eq!(weekly_step(&mut few, d0, &only_w, &sectors), ["W4"]);
+    }
+
+    #[test]
+    fn a_ticker_outside_the_top_fifth_is_never_chosen() {
+        let (scored, sectors) = four_sectors();
+        let ranked = rank_in_sector(&scored, &sectors);
+        // X9 held, X8 held: the next X ticker, X7, is not in the top 2 of 10.
+        let held = |t: &str| t == "X9" || t == "X8";
+        let new = choose_new(&ranked, &held, 10);
+        assert!(!new.iter().any(|t| t.starts_with('X')), "{new:?}");
+        assert_eq!(new, ["Y9", "Z4", "W4"]);
+    }
+
+    #[test]
+    fn the_position_is_dropped_13_weeks_or_91_days_after_the_entry() {
+        let d0 = d("2020-01-31");
+        let mut open: BTreeMap<String, i64> = [("A".to_string(), d0), ("B".to_string(), d0 + 7)].into_iter().collect();
+        weekly_step(&mut open, d0 + 90, &[], &BTreeMap::new());
+        assert_eq!(open.len(), 2, "90 days: held");
+        weekly_step(&mut open, d0 + 91, &[], &BTreeMap::new());
+        assert_eq!(open.keys().collect::<Vec<_>>(), ["B"], "91 days: A is dropped, B (84 days) stays");
+        weekly_step(&mut open, d0 + 98, &[], &BTreeMap::new());
+        assert!(open.is_empty());
+        // 13 weekly Fridays: the entry of week 1 is dropped at week 14 (the call of index 13)
+        let (scored, sectors) = four_sectors();
+        let mut open = BTreeMap::new();
+        weekly_step(&mut open, d0, &scored, &sectors);
+        for k in 1..13 {
+            weekly_step(&mut open, d0 + 7 * k, &[], &sectors);
+            assert_eq!(open.len(), 3, "week {k}");
+        }
+        weekly_step(&mut open, d0 + 7 * 13, &[], &sectors);
+        assert!(open.is_empty());
+    }
+
+    #[test]
+    fn at_most_39_positions_are_open() {
+        let (scored, sectors) = four_sectors();
+        let d0 = d("2020-01-31");
+        // 38 open positions from last week: room for 1 new
+        let mut open: BTreeMap<String, i64> = (0..38).map(|i| (format!("H{i:02}"), d0 - 7)).collect();
+        assert_eq!(weekly_step(&mut open, d0, &scored, &sectors), ["Y9"]);
+        assert_eq!(open.len(), 39);
+        assert!(weekly_step(&mut open, d0 + 7, &scored, &sectors).is_empty());
+        assert_eq!(open.len(), 39);
+        // 3 a week for 12 weeks and no exit yet: 36, then 39 at the 13th week
+        let mut open = BTreeMap::new();
+        let mut n = 0;
+        for k in 0..13 {
+            // each week 4 new sectors of 5 tickers with new names: no ticker is held, 3 qualify
+            let mut sc = Vec::new();
+            let mut sec = BTreeMap::new();
+            for s in ["P", "Q", "R", "T"] {
+                for i in 0..5 {
+                    let t = format!("{s}{k:02}_{i}");
+                    sc.push((t.clone(), i as f64));
+                    sec.insert(t, format!("{s}{k:02}"));
+                }
+            }
+            n += weekly_step(&mut open, d0 + 7 * k, &sc, &sec).len();
+        }
+        assert_eq!((n, open.len()), (39, 39));
     }
 }
