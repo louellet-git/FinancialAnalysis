@@ -35,3 +35,7 @@ Done: a request to the Head of Fundamental Research for an NVDA trade recommenda
 ## 2026-11-21 03:47 UTC (relayed verbatim by the Head of Fundamental Research; not yet confirmed to me in chat)
 Words: "And every week you will need to propose 3 trades to begin on the live trader, beginning next Friday. A valuation engine will be required. Potentially a hedging engine when and if that's needed."
 Done: live-pilot limits added to `proposal-sleeve-limits.md`; a gate form for the weekly proposal sent to the Head of Fundamental Research; a question to the owner on live against paper for the first weeks.
+
+## 2026-11-21 ~03:55 UTC (dialog)
+Words (four answers): live start "Paper 4 weeks, then live"; sleeve limits "Not sure"; PR 102 "Merge now"; Deere lease equipment "I'm not sure".
+Done: the weekly process runs on paper from 2026-11-27 for 4 weeks; live from about 2026-12-25 only after the owner approves limits. The proposed limits apply to paper as an interim rule (no real money). The Deere and CNH lease lines stay out (the interim rule) until the owner decides. PR 102 merged.
