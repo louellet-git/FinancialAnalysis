@@ -50,6 +50,9 @@ The deciles have no order: decile 0 +0.27%, decile 1 +0.56%, decile 9 +0.41%, th
   Friday) are a rebalance day only if the next trading day is in the data: calendar knowledge, not a price, but not
   point in time; stated as a limit, not changed.
 - A hazard for any test that cuts SPY: the beta is dropped with no message under 520 rows.
+- The beta needs 104 weekly pairs and 520 SPY rows, and the store starts 2016-11-18. So the decisions of about the
+  first two years (2018 and most of 2019 for a short cut, 2018 for the full data) run with beta 1 in every world. A
+  warning line when the beta is dropped is a code change after the code gate.
 - Store `58e54a2` (the split table of record; prices as `1804f48`). The table cut 2016 of the run code:
   `trading/hypotheses/data/process_priors_cut2016.toml`. The list: `trading/hypotheses/data/a009_list.txt`
   (426 tickers run). Excluded before the runs: GSAT, BALL, EW, EXE, GPN, HWM.
