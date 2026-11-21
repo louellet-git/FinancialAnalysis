@@ -62,7 +62,7 @@ State: alpha-1 stopped at gate 1; no strategy goes to paper now.
 | E4.S2 Checks of prices that must agree | quant | the arbitrage register (`T-20261121-arb-invariants`, in review on its branch) → `T-20261120-arb-3-index-parity-box` → `T-20261120-arb-4-futures-basis` (steps 2 and 3); the two checks become relations of the register | now |
 | E4.S3 Volatility models | quant | `T-20261120-vol-2-sabr-localvol` (the SVI part; the bot leg prices need it) | next |
 | E4.S4 The studies are engine code, and their defects are closed | quant | `T-20261121-quant-engine-integration` with its builds (`T-20261121-trade-grids`, `T-20261121-recon-lasting`, `T-20261121-selftest-golden`, on their branches), `T-20261121-quant-doc-findings` (B1 to B4 before a new bot result) | now, next |
-| E4.S5 Paper desk | owner | `T-20261120-paper-desk` (decision 1 is decided: the Alpaca paper account), `T-20261119-options-paper-test` | hold (no strategy passed) |
+| E4.S5 Paper desk | owner | `T-20261120-paper-desk` (decision 1 is decided: the Alpaca paper account), `T-20261119-options-paper-test`, `T-20261121-paper-alpaca-chain` (the chain source after the Cboe stop) | hold (no strategy passed) |
 
 Wait list (no check and no strategy needs them now; each ticket says so): `vol-3-bergomi-2f`,
 `vol-4-rough-bergomi`, `vol-5-quintic-pdv`, `vol-6-joint-spx-vix`. They start when a strategy or a check
@@ -75,8 +75,8 @@ S&P 100, and each head runs its checks from the store with no network.
 
 | Story | Lead | Tickets, in order | Mark |
 |---|---|---|---|
-| E5.S1 The store has no known defect | technology | `T-20261121-data-audit` → `T-20261121-revenue-old-tags`, `T-20261121-share-count-scale-guard`, `T-20261121-missing-price-files`, `T-20261119-filing-values-in-variables` | now |
-| E5.S2 Each source is permitted | technology | `T-20261121-cboe-off`, `T-20261121-fred-local` → `T-20261121-economics-data` → `T-20261121-daily-history` (a decision of the person) | now |
+| E5.S1 The store has no known defect | technology | `T-20261121-data-audit` → `T-20261121-revenue-old-tags` (on its branch), `T-20261121-share-count-scale-guard`, `T-20261121-missing-price-files`, `T-20261119-filing-values-in-variables` | now |
+| E5.S2 Each source is permitted | technology | `T-20261121-cboe-off` (done), `T-20261121-fred-local` → `T-20261121-economics-data` → `T-20261121-daily-history` (a decision of the person) | now |
 | E5.S3 Work with no network | technology | `T-20261121-cache-only-switch`, `T-20261120-store-arb-data-rest`, `T-20261120-sync-chains` | next |
 | E5.S4 Live view | technology | `T-20261119-live-data-stream` | next (last) |
 
@@ -91,7 +91,11 @@ documents, the order code passed its gate, and the public repo has no private fi
 | E6.S2 The gates are repeatable | quality | `fa selftest golden` (row 25 of `T-20261121-quant-engine-integration`; Quant builds) → the mutation-test script (row 26), `T-20261025-bridge-per-ticker-rule` | next |
 | E6.S3 Work of the person | owner | `T-20261120-owner-first-run`, `T-20261120-delete-merged-branches` → `T-20261025-keep-private-frameworks-out-of-the-public-repo` | waits for the person |
 | E6.S4 Controls of orders and of data terms | quality (technology for the terms) | the gate "Order code (paper only)" before the first order (controls 0 to 8), a terms line for each source in `docs/DATA-SOURCES.md` | now (no ticket yet) |
-| E6.S5 The rules are checked by a script, not by memory | technology (the Head of Staff reads the output) | `T-20261121-board-check` → `T-20261121-usage-log` → `T-20261121-token-calculator` (on hold: needs the data); also this page: `T-20261121-board-epics` (staff) | next |
+| E6.S5 The rules are checked by a script, not by memory | technology (the Head of Staff reads the output) | `T-20261121-board-check` (done; run `fa board check`) → `T-20261121-usage-log` → `T-20261121-token-calculator` (on hold: needs the data); also this page: `T-20261121-board-epics` (staff) | next |
+
+To close (the Head of Quality and Risk reported them done or replaced on 2026-11-21; the files are still
+open on `main`): `T-20261121-nvda-assumption-records`, `T-20261120-agent-teams-first-run`,
+`T-20261025-p1-validators-redteam`.
 
 ## Order across the epics
 
