@@ -181,3 +181,7 @@ Done: ticket `T-20261121-fred-local`.
 ## 2026-11-21 (dialog)
 Words: "Yes (Recommended)" to: will you make fa-data private? (The terms of Nasdaq, Yahoo, Cboe, FRED and ICE do not permit a public copy; GitHub ToS D.3.)
 Done: the store README says private (store e3b735e); the heads are told to attach fa-data before a clone. The owner changes the visibility on GitHub. The FRED move continues.
+
+## 2026-11-21 (chat)
+Words: "Can you send a blast ensuring that models should be properly documented as per the rules?"
+Done: a message to the four heads with the rule (CLAUDE.md "Model documents"; QUALITY-STANDARDS section 4): each head lists the models of its area without a document or a record and writes them; the Quality and Risk head refuses a model change without a current document.
