@@ -10,8 +10,8 @@ short rate, not the overnight rate. Other choices: `gsw2y` to `gsw30y`, `SVENY..
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| `fa models` | `rust/src/ratemodels/cli.rs` lines 68-95, 111 | `--series` default `gsw1y` |
-| Module note | `rust/src/ratemodels/mod.rs` lines 11-12 | "a proxy of the short rate" |
+| `fa models` (`docs/models/short-rate-models.md`) | `rust/src/ratemodels/cli.rs` | `--series` default `gsw1y` |
+| Module note | `rust/src/ratemodels/mod.rs` | "a proxy of the short rate" |
 
 ## Alternatives considered
 | Alternative | Why not chosen |
@@ -20,12 +20,12 @@ short rate, not the overnight rate. Other choices: `gsw2y` to `gsw30y`, `SVENY..
 | A 3-month bill rate | Not known. |
 
 ## Why this choice
-The GSW file is a long daily history (title in `forwards.rs`: "1961 to the Present"; the start of the 1Y column is not checked). The code does not give a
-reason for 1 year. Author choice, no study.
+The GSW file is a long daily history (title in `forwards.rs`: "1961 to the Present"). The start of the 1Y column is not checked.
+The code gives no reason for 1 year. Author choice, no study.
 
 ## Effect on the result
-Not known. A 1-year yield has a term premium and an expected path of the short rate, so kappa,
-theta and sigma are for the 1-year yield and not for the overnight rate. The code has no test of another series.
+Not known. A 1-year yield has a term premium and an expected path of the short rate.
+So kappa, theta and sigma are for the 1-year yield, not for the overnight rate. The code has no test of another series.
 
 ## Who decided and when
 Not known. Ticket `T-20261119-stochastic-dcf-drivers` (2026-11-19).

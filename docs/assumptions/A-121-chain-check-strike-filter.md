@@ -10,19 +10,19 @@ A series with no forward is not filtered.
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Static arbitrage check | `rust/src/market/option_arb.rs:295-317` (factors at 305) | `CheckOpts.otm` |
-| Static arbitrage check | `rust/src/market/options_cli.rs:424` | `otm` |
-| Option history, fill from mids | `rust/src/market/option_history.rs:186`, `355` | `usable` (same factors) |
+| Static arbitrage check (`docs/models/options-static-arbitrage-check.md`) | `rust/src/market/option_arb.rs` (factors at 305) | `CheckOpts.otm` |
+| Static arbitrage check | `rust/src/market/options_cli.rs` | `otm` |
+| Option history, fill from mids | `rust/src/market/option_history.rs` | `usable` (same factors) |
 
 ## Alternatives considered
 | Alternative | Why not chosen |
 |---|---|
 | All strikes | Not known. Kept as the default for American chains and as `--all-strikes`. |
-| Strictly out of the money (K >= F for a call) | Not known. The Heston fit uses it (`volmodels/chain.rs:105-108`). |
+| Strictly out of the money (K >= F for a call) | Not known. The Heston fit uses it (`volmodels/chain.rs`). |
 
 ## Why this choice
-Reason in the help text: the deep in-the-money quotes of the indicative feed are modified and wide (`CHECK_USAGE`, `options_cli.rs:76`).
-The band of 1 % is the band of the option history (`option_history.rs:185`: the early-exercise premium of an in-the-money American option is not in the model).
+Reason in the help text: the deep in-the-money quotes of the indicative feed are modified and wide (`CHECK_USAGE`, `options_cli.rs`).
+The band of 1 % is the band of the option history (`option_history.rs`: the early-exercise premium of an in-the-money American option is not in the model).
 The help text says the rule is "the rule of the volatility fit". This is not right: the fit of `volmodels` keeps out-of-the-money quotes with no 1 % band. A person must correct the text or the rule.
 No study of the width 1 %: author choice.
 

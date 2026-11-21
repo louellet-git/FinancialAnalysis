@@ -12,8 +12,8 @@ Sign: `res_bp` = observed yield minus fitted yield. Plus is cheap. Minus is rich
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Rich and cheap | `rust/src/richcheap.rs` lines 49-53 (`survives`) | `z.abs() >= 2.0`, `years >= 0.25` |
-| Fit RMSE | `rust/src/richcheap.rs` lines 172-176 | `noise_bp` (in-fit securities) |
+| Rich and cheap (`docs/models/treasury-fit-rich-cheap.md`) | `rust/src/richcheap.rs` (`survives`) | `z.abs() >= 2.0`, `years >= 0.25` |
+| Fit RMSE | `rust/src/richcheap.rs` | `noise_bp` (in-fit securities) |
 
 ## Alternatives considered
 | Alternative | Why not chosen |
@@ -23,7 +23,7 @@ Sign: `res_bp` = observed yield minus fitted yield. Plus is cheap. Minus is rich
 
 ## Why this choice
 The cost and the fit error are the noise that a residual must exceed (comment `richcheap.rs`
-lines 49-50). The value 2 for `z` is an author choice, no study. The note
+). The value 2 for `z` is an author choice, no study. The note
 `rates_recon_step2_2026-11-20.md` section 3.4 uses a stricter "lasting" rule (38 dates,
 same sign on 90% of days, `|mean|` above cost and 1.9 bp). That rule is in the shell
 script of the note, not in the code. The note calls it "mine, set before the run, not tuned".

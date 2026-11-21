@@ -9,7 +9,7 @@ A quote with a spread below the floor gets the weight of a quote with the floor 
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Heston, Bates | `rust/src/volmodels/base.rs:63-64` | `MIN_SPREAD` |
+| Heston, Bates (`docs/models/heston-bates.md`) | `rust/src/volmodels/base.rs` | `MIN_SPREAD` |
 
 ## Alternatives considered
 | Alternative | Why not chosen |

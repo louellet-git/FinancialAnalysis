@@ -9,8 +9,8 @@ Updated: 2026-11-21. Commit: not yet made.
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Heston, Bates | `rust/src/volmodels/chain.rs:66-75` | `days`, `t` |
-| Option checks | `rust/src/market/option_arb.rs:289-290` | the same rule (A-125) |
+| Heston, Bates (`docs/models/heston-bates.md`) | `rust/src/volmodels/chain.rs` | `days`, `t` |
+| Option checks | `rust/src/market/option_arb.rs` | the same rule (A-125) |
 
 ## Alternatives considered
 | Alternative | Why not chosen |

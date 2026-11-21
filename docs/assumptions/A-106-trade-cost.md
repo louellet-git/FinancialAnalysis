@@ -12,18 +12,18 @@ has none). The `SELL` column is taken as the bid side.
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Rich and cheap | `rust/src/richcheap.rs` lines 137-141, 189-195, 261 | `file_spread`, `tick_bp`, `tick.max(1.0)` |
-| Assumed bid-ask | `rust/src/richcheap.rs` lines 283-300 | `ba_source = "assumed"` |
-| Buckets | `rust/src/recon.rs` lines 155-171 | `bucket` |
+| Rich and cheap (`docs/models/treasury-fit-rich-cheap.md`) | `rust/src/richcheap.rs` | `file_spread`, `tick_bp`, `tick.max(1.0)` |
+| Assumed bid-ask | `rust/src/richcheap.rs` | `ba_source = "assumed"` |
+| Buckets | `rust/src/recon.rs` | `bucket` |
 
 ## Alternatives considered
 | Alternative | Why not chosen |
 |---|---|
 | Round trip (two legs) | Not in the code. Step 2 note says the round trip is about twice the cost. |
-| Repo, borrow, tax, impact | Not in the data (`richcheap.rs` lines 94-98). |
+| Repo, borrow, tax, impact | Not in the data (`richcheap.rs` ). |
 
 ## Why this choice
-Author choice, no study. The comment at line 138 says `SELL` equals `END OF DAY` for most
+Author choice, no study. The comment in `richcheap.rs` says `SELL` equals `END OF DAY` for most
 notes. The median fill is a convention.
 
 ## Effect on the result

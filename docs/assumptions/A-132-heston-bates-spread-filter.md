@@ -10,9 +10,9 @@ Only out-of-the-money quotes with bid above 0 and ask above bid are tested. A se
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Heston, Bates | `rust/src/volmodels/chain.rs:18-26` | `Filters.max_spread` |
-| Heston, Bates | `rust/src/volmodels/chain.rs:14`, `105-113` | `MIN_QUOTES`, the test of the spread |
-| Heston, Bates | `rust/src/volmodels/cli.rs:74` | `--max-spread` |
+| Heston, Bates (`docs/models/heston-bates.md`) | `rust/src/volmodels/chain.rs` | `Filters.max_spread` |
+| Heston, Bates | `rust/src/volmodels/chain.rs` | `MIN_QUOTES`, the test of the spread |
+| Heston, Bates | `rust/src/volmodels/cli.rs` | `--max-spread` |
 
 ## Alternatives considered
 | Alternative | Why not chosen |

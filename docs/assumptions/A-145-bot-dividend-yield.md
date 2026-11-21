@@ -4,10 +4,10 @@ Updated: 2026-11-21. Commit: not yet made.
 
 ## Choice
 The dividend yield of SPY and QQQ is 0. `bs_price` and `bs_delta` have no dividend input
-(`rust/src/trading/pricing.rs:41-71`). The forward of the model is spot times exp(rate * T), with no
+(`rust/src/trading/pricing.rs`). The forward of the model is spot times exp(rate * T), with no
 dividend. The model option is European: no early exercise, no assignment.
-This choice is not written as a decision in any file of the repo. The code hides it. The leaderboard lists
-it as a limit: "early assignment, dividends and real expiry calendars before 2022 are not modeled"
+No file of the repo records this as a decision. The code does not state it.
+The leaderboard lists it as a limit: "early assignment, dividends and real expiry calendars before 2022 are not modeled"
 (`trading/research/LEADERBOARD.md`).
 
 ## Where used
@@ -36,5 +36,5 @@ the most exposed (s08, s14, s14b). No number.
 Not known. Python code, then the Rust port (commit e692700, 2026-11-19).
 
 ## When to examine it again
-Before a trade of a bot with an expiry of more than 5 sessions. When a real chain history of SPY or QQQ
-exists. Report to a person or a review: decide whether to add a yield.
+Before a trade of a bot with an expiry of more than 5 sessions. When a real chain history of SPY or QQQ exists.
+A person or a review must decide whether to add a yield (finding B1, `T-20261121-quant-doc-findings`).

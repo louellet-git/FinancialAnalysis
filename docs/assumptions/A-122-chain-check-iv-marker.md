@@ -3,16 +3,18 @@
 Updated: 2026-11-21. Commit: not yet made.
 
 ## Choice
-A quote is marked when its Black-76 implied volatility of the mid differs by more than 0.10 (10 volatility points)
-from the median of up to 2 neighbours below and 2 above, in strike order, in the same series and type.
-At least 2 neighbours must have a volatility. A quote with no bid has no mid and no marker.
-The marker is a flag: the checks still use the quote. `--iv-mark POINTS` sets it; 0 turns it off.
+A quote gets a marker when its Black-76 implied volatility of the mid is more than 0.10 (10 volatility points) from a median.
+- The median is of up to 2 neighbours below and 2 above, in strike order, in the same series and type.
+- At least 2 neighbours must have a volatility.
+- A quote with no bid has no mid and no marker.
+- The marker is a flag. The checks still use the quote.
+- `--iv-mark POINTS` sets the limit. 0 turns the marker off.
 
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Static arbitrage check | `rust/src/market/option_arb.rs:72` (default), `226-237` (marker) | `CheckOpts.iv_mark` |
-| Static arbitrage check | `rust/src/market/options_cli.rs:420` | `--iv-mark` |
+| Static arbitrage check (`docs/models/options-static-arbitrage-check.md`) | `rust/src/market/option_arb.rs` (`CheckOpts` default, marker code) | `CheckOpts.iv_mark` |
+| Static arbitrage check | `rust/src/market/options_cli.rs` | `--iv-mark` |
 
 ## Alternatives considered
 | Alternative | Why not chosen |
@@ -21,7 +23,7 @@ The marker is a flag: the checks still use the quote. `--iv-mark POINTS` sets it
 | Fewer or more neighbours; a mean in place of the median | Not known. |
 
 ## Why this choice
-Ticket `T-20261120-arb-1b-chain-check-depth`, item 2, asks for the marker but gives no number. The help text says "a smile moves a few points between strikes; a stale quote moves more" (`options_cli.rs:73`).
+Ticket `T-20261120-arb-1b-chain-check-depth`, item 2, asks for the marker but gives no number. The help text says "a smile moves a few points between strikes; a stale quote moves more" (`options_cli.rs`).
 The value 10 and the 2 + 2 neighbours: author choice, no study.
 Cause: on IBM 2026-11-19 the largest breaks came from one stale quote each (ticket text).
 

@@ -12,8 +12,8 @@ With no spot, these three checks do not run (no message in the table).
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Static arbitrage check | `rust/src/market/option_arb.rs:287`, `318-342` | `spot`, checks 6 and 7 |
-| Static arbitrage check | `rust/src/market/option_arb.rs:386-400` | check 5 (parity) |
+| Static arbitrage check (`docs/models/options-static-arbitrage-check.md`) | `rust/src/market/option_arb.rs` | `spot`, checks 6 and 7 |
+| Static arbitrage check | `rust/src/market/option_arb.rs` | check 5 (parity) |
 
 ## Alternatives considered
 | Alternative | Why not chosen |
@@ -22,7 +22,7 @@ With no spot, these three checks do not run (no message in the table).
 | A spot with a time stamp from the same minute | Not known. The Cboe file has no time. |
 
 ## Why this choice
-A stock has no bid and no ask, so S is a last price of the same file (code comment, `option_arb.rs:13-14`).
+A stock has no bid and no ask, so S is a last price of the same file (code comment, `option_arb.rs`).
 `CHECK_USAGE` says only the upper parity bound is tested, because the lower bound needs the dividends. A reason for the missing dividend term in the upper bound: not known.
 No person's decision on S is recorded.
 

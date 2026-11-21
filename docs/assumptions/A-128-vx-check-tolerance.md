@@ -8,7 +8,7 @@ A monthly VX contract fails the check when the settle of the Cboe daily file dif
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Futures check | `rust/src/futures/check.rs:21-22`, `53` | `VX_TOLERANCE` |
+| Futures check (`docs/models/futures-check.md`) | `rust/src/futures/check.rs` | `VX_TOLERANCE` |
 
 ## Alternatives considered
 | Alternative | Why not chosen |
@@ -17,9 +17,9 @@ A monthly VX contract fails the check when the settle of the Cboe daily file dif
 | Exact equality | Not known. |
 
 ## Why this choice
-The code comment says: "Settlement prices in the two Cboe files are given to 4 digits." A rounding of 4 digits is 0.00005, which is 100 times smaller than 0.005.
+The code comment says: "Settlement prices in the two Cboe files are given to 4 digits." A rounding of 4 digits is 0.00005. That is 100 times smaller than 0.005.
 So the comment does not explain the value. The reason for 0.005: not known (author choice, no study).
-The test uses a difference of 0.006 (fails) and 0.004 (passes) (`check.rs:214-215`).
+The test uses a difference of 0.006 (fails) and 0.004 (passes) (`check.rs`).
 
 ## Effect on the result
 A difference between 0.00005 and 0.005 passes. For a VX price near 20, that is a relative difference up to 0.025%. No run with another tolerance is recorded.

@@ -10,12 +10,12 @@ Dickey-Fuller critical value (constant, no trend). The normal value 1.96 is not 
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Calibration | `rust/src/ratemodels/calib.rs` lines 30-32, 377-383, 856 | `MR_T_THRESHOLD` |
+| Calibration (`docs/models/treasury-fit-rich-cheap.md`) | `rust/src/ratemodels/calib.rs` | `MR_T_THRESHOLD` |
 
 ## Alternatives considered
 | Alternative | Why not chosen |
 |---|---|
-| 1.96 (normal) | Too small near a unit root (comment, `calib.rs` lines 30-31). |
+| 1.96 (normal) | Too small near a unit root (comment, `calib.rs` ). |
 | A formal unit root test with a p-value | Not in the code. Not known. |
 
 ## Why this choice

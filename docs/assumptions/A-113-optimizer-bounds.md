@@ -15,10 +15,10 @@ Updated: 2026-11-21. Commit: not yet made.
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| CIR | `rust/src/ratemodels/calib.rs` lines 533-559 | bounds in `nll`, edge checks |
-| CKLS ML | `rust/src/ratemodels/calib.rs` lines 774-795 | `x[2] < -1.0 || x[2] > 3.0` |
-| CKLS GMM | `rust/src/ratemodels/calib.rs` lines 624-656 | `(lo, hi, step) = (-1.0, 3.0, 0.02)` |
-| Simulation domain | `rust/src/ratemodels/models.rs` lines 307-309 | gamma in [0, 3] |
+| CIR (`docs/models/short-rate-models.md`) | `rust/src/ratemodels/calib.rs` | bounds in `nll`, edge checks |
+| CKLS ML | `rust/src/ratemodels/calib.rs` | `x[2] < -1.0 || x[2] > 3.0` |
+| CKLS GMM | `rust/src/ratemodels/calib.rs` | `(lo, hi, step) = (-1.0, 3.0, 0.02)` |
+| Simulation domain | `rust/src/ratemodels/models.rs` | gamma in [0, 3] |
 
 ## Alternatives considered
 | Alternative | Why not chosen |

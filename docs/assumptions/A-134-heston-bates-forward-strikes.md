@@ -10,9 +10,9 @@ The fit keeps out-of-the-money quotes only: a call with K < F or a put with K >=
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Heston, Bates | `rust/src/volmodels/chain.rs:55`, `94` | `PARITY_STRIKES` (5) |
-| Heston, Bates | `rust/src/volmodels/chain.rs:105-108` | the out-of-the-money rule |
-| Forward | `rust/src/market/option_iv.rs:80-107` | `forward_from_parity_blind_n` |
+| Heston, Bates (`docs/models/heston-bates.md`) | `rust/src/volmodels/chain.rs` | `PARITY_STRIKES` (5) |
+| Heston, Bates | `rust/src/volmodels/chain.rs` | the out-of-the-money rule |
+| Forward | `rust/src/market/option_iv.rs` | `forward_from_parity_blind_n` |
 
 ## Alternatives considered
 | Alternative | Why not chosen |

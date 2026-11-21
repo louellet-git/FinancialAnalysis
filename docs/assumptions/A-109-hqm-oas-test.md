@@ -3,15 +3,15 @@
 Updated: 2026-11-21. Commit: not yet made.
 
 ## Choice
-The curve-level test of `fa recon bonds` compares the HQM spot rate of each tenor (1, 2, 3, 5, 7,
-10, 20, 30 years) with the Treasury zero rate (semi-annual) of our curve plus one spread. The
-spread is the equal-weight mean of the ICE BofA OAS of AAA, AA and A on the date. The same
+The curve-level test of `fa recon bonds` compares two rates for each tenor (1, 2, 3, 5, 7, 10, 20, 30 years).
+The first is the HQM spot rate. The second is the Treasury zero rate (semi-annual) of our curve plus one spread.
+The spread is the equal-weight mean of the ICE BofA OAS of AAA, AA and A on the date. The same
 spread is added at all tenors. The HQM value is a monthly average. Our zero rate is for one day.
 
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Recon bonds | `rust/src/recon.rs` lines 285-327 (`hqm_rows`) | `mean_oas`, `res_bp: 0.5` |
+| Recon bonds (`docs/models/treasury-fit-rich-cheap.md`) | `rust/src/recon.rs` (`hqm_rows`) | `mean_oas`, `res_bp: 0.5` |
 | HQM tenors | `rust/src/bonds.rs` (const `HQM_MATURITIES`) | `HQM_MATURITIES` |
 
 ## Alternatives considered

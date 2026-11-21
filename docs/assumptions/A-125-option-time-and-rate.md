@@ -6,14 +6,14 @@ Updated: 2026-11-21. Commit: not yet made.
 - Time: `t` = calendar days from the snapshot date to the expiry, divided by 365. No clock time, no day-count by instrument.
 - Rate: `--rate R` (one flat decimal rate), else the Treasury par curve of the snapshot date, linear in `t`, flat outside the first and last tenor.
 - Discount factor: `df = exp(-r t)`. The curve gives a par yield and the code uses it as a continuous rate.
-- The rate is asked for `max(t, 1/365)` years (`option_arb.rs:291`).
+- The rate is asked for `max(t, 1/365)` years (`option_arb.rs`).
 
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Static arbitrage check | `rust/src/market/option_arb.rs:289-292` | `t`, `r`, `df` |
-| Option history | `rust/src/market/option_history.rs:167-169`, `333-334` | `t`, `df` |
-| Rate function | `rust/src/market/options_cli.rs:179-193`, `304-317` | `rate_fn`, `interpolate_curve` |
+| Static arbitrage check (`docs/models/options-static-arbitrage-check.md`) | `rust/src/market/option_arb.rs` | `t`, `r`, `df` |
+| Option history | `rust/src/market/option_history.rs` | `t`, `df` |
+| Rate function | `rust/src/market/options_cli.rs` | `rate_fn`, `interpolate_curve` |
 
 ## Alternatives considered
 | Alternative | Why not chosen |

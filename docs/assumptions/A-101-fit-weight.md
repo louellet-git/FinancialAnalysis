@@ -9,17 +9,17 @@ fit of clean prices. A price error times the weight is a yield error. The residu
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Treasury fit | `rust/src/fit.rs` lines 86-106 (`make_inst`) | `Inst.weight` |
-| Duration step | `rust/src/fit.rs` line 91 | `h = 1e-4` (yield step of the duration) |
+| Treasury fit (`docs/models/treasury-fit-rich-cheap.md`) | `rust/src/fit.rs` (`make_inst`) | `Inst.weight` |
+| Duration step | `rust/src/fit.rs` | `h = 1e-4` (yield step of the duration) |
 
 ## Alternatives considered
 | Alternative | Why not chosen |
 |---|---|
-| Equal weight on price | A long bond would dominate because its price moves more (`fit.rs` lines 16-20). |
+| Equal weight on price | A long bond would dominate because its price moves more (`fit.rs` ). |
 | Bid-ask weight | Not in the code. Not known if it was tested. |
 
 ## Why this choice
-Comment in `fit.rs` lines 16-20: each security is one yield observation. The comment names
+Comment in `fit.rs`: each security is one yield observation. The comment names
 the weight 1/duration of Bliss. No other source in the repo. Test
 `weight_turns_price_error_into_yield_error` checks the first-order link.
 

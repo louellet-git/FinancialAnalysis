@@ -3,21 +3,24 @@
 Updated: 2026-11-21. Commit: not yet made.
 
 ## Choice
-- 20 starts (the first is the plain start from the at-the-money variance and the skew; the others are the plain start times a log-normal disturbance with scale 0.5, and rho plus a normal with scale 0.3).
-- The 3 starts with the lowest loss get 3 LM iterations each (stage 1, `STAGE1_ITER`). The best one goes on to at most 60 iterations (stage 2).
-- Seed 7. `--starts N` and `--seed S` replace the first and the last.
+- 20 starts (`FitOptions::default`).
+  - The first start is the plain start from the at-the-money variance and the skew.
+  - The other starts are the plain start with a log-normal disturbance (scale 0.5) on the variances and a normal disturbance (scale 0.3) on rho.
+- The 3 starts with the lowest loss get 3 LM iterations each (stage 1, `STAGE1_ITER`).
+- If the best start ends stage 1 at the iteration cap, it goes on to stage 2. `max_iter` is 60 in total, so stage 2 gets 57 iterations.
+- Seed 7. `--starts N` sets the number of starts. `--seed S` sets the seed.
 
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Heston, Bates | `rust/src/volmodels/calib.rs:12`, `26` | `STAGE1_ITER`, `FitOptions::default` |
-| Heston, Bates | `rust/src/volmodels/calib.rs:188-198` | `random_start` |
-| Heston, Bates | `rust/src/volmodels/cli.rs:77-81` | `--starts`, `--seed` |
+| Heston, Bates (`docs/models/heston-bates.md`) | `rust/src/volmodels/calib.rs` | `STAGE1_ITER`, `FitOptions::default` |
+| Heston, Bates | `rust/src/volmodels/calib.rs` | `random_start` |
+| Heston, Bates | `rust/src/volmodels/cli.rs` | `--starts`, `--seed` |
 
 ## Alternatives considered
 | Alternative | Why not chosen |
 |---|---|
-| 5 iterations in stage 1 | The older text of the model document says 5. It was set to 3 for speed (SPX Heston: 3.3 s against 3.9 s wall, same loss 145232.630). |
+| 5 iterations in stage 1 | The older text of the model document says 5. It was set to 3 for speed (SPX Heston, 2026-11-20, `--rate 0.04`: 3.3 s against 3.9 s wall, same loss 145232.630; the full command is not recorded, see `docs/models/heston-bates.md`, Limits). |
 | Refine all 20 starts | Cost. A start costs a warm-up. |
 
 ## Why this choice

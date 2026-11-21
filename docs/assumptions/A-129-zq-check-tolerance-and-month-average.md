@@ -11,9 +11,9 @@ Updated: 2026-11-21. Commit: not yet made.
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Futures check | `rust/src/futures/check.rs:23-24`, `110` | `ZQ_TOLERANCE` |
-| Futures check | `rust/src/futures/check.rs:94-103` | `expected_average` |
-| Futures check | `rust/src/futures/check.rs:135` | the start (first day minus 7) |
+| Futures check (`docs/models/futures-check.md`) | `rust/src/futures/check.rs` | `ZQ_TOLERANCE` |
+| Futures check | `rust/src/futures/check.rs` | `expected_average` |
+| Futures check | `rust/src/futures/check.rs` | the start (first day minus 7) |
 
 ## Alternatives considered
 | Alternative | Why not chosen |
@@ -23,7 +23,7 @@ Updated: 2026-11-21. Commit: not yet made.
 
 ## Why this choice
 `docs/HIDDEN-ASSUMPTIONS.md` #76 names the tolerance (5 bp) and the weak point: the check can fail when the FOMC changes the target range inside the month.
-The code comment gives the same warning (`check.rs:23`). No study of the width 5 bp: author choice. The 7 days of start: not known.
+The code comment gives the same warning (`check.rs`). No study of the width 5 bp: author choice. The 7 days of start: not known.
 
 ## Effect on the result
 Example: the target moves by 25 bp on day d after the date of the check. The price already includes it, but the expected rate carries the old rate.

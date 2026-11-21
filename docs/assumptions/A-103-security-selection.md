@@ -12,10 +12,10 @@ securities, securities with no yield solution. The panel of `fa recon history` u
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Treasury fit | `rust/src/fit.rs` lines 253-295 (`select`) | `min_years` (0.25) |
-| Rich and cheap | `rust/src/richcheap.rs` line 145, lines 155-170 | `select(settle, quotes, 0.25)` |
-| History panel | `rust/src/history.rs` lines 199 and 341 | `r.years >= 0.5` |
-| Bond listing | `rust/src/recon.rs` lines 84-95 | under 7 days skipped |
+| Treasury fit (`docs/models/treasury-fit-rich-cheap.md`) | `rust/src/fit.rs` (`select`) | `min_years` (0.25) |
+| Rich and cheap | `rust/src/richcheap.rs` | `select(settle, quotes, 0.25)` |
+| History panel | `rust/src/history.rs` | `r.years >= 0.5` |
+| Bond listing | `rust/src/recon.rs` | under 7 days skipped |
 
 ## Alternatives considered
 | Alternative | Why not chosen |
@@ -24,7 +24,7 @@ securities, securities with no yield solution. The panel of `fa recon history` u
 | Other minimum life | Not known. No study. |
 
 ## Why this choice
-Convention for a coupon curve: the curve is for notes and bonds (`fit.rs` lines 3-5).
+Convention for a coupon curve: the curve is for notes and bonds (`fit.rs` ).
 The minimum life of 3 months and 6 months is an author choice, no study.
 
 ## Effect on the result

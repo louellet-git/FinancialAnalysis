@@ -10,8 +10,8 @@ Every other symbol is American and gets all seven checks. OEX is American and is
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Static arbitrage check | `rust/src/market/option_arb.rs:39-43` | `EUROPEAN_INDEXES`, `is_european` |
-| Static arbitrage check | `rust/src/market/options_cli.rs:415`, `424` | `american`, `otm` |
+| Static arbitrage check (`docs/models/options-static-arbitrage-check.md`) | `rust/src/market/option_arb.rs` | `EUROPEAN_INDEXES`, `is_european` |
+| Static arbitrage check | `rust/src/market/options_cli.rs` | `american`, `otm` |
 
 ## Alternatives considered
 | Alternative | Why not chosen |
@@ -21,9 +21,9 @@ Every other symbol is American and gets all seven checks. OEX is American and is
 
 ## Why this choice
 Ticket `T-20261120-arb-1b-chain-check-depth`, item 4: "an explicit list of the European indexes (SPX, XSP, NDX, RUT, VIX)".
-The code comment says that a test keeps the list equal to the index names of `option_history::index_info` (`option_arb.rs:36`).
+The code comment says that a test keeps the list equal to the index names of `option_history::index_info` (`option_arb.rs`).
 The other symbols (SPXW, NDXP, XND, RUTW, VIXW, DJX, XEO) are not in the ticket: author choice, no study.
-The VIX options settle on a VIX future, not on the index, so the VIX checks are untested (`option_arb.rs:37`).
+The VIX options settle on a VIX future, not on the index, so the VIX checks are untested (`option_arb.rs`).
 
 ## Effect on the result
 Not known. No run compares the two settings.

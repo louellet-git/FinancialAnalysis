@@ -4,7 +4,7 @@ Updated: 2026-11-21. Commit: not yet made.
 
 ## Purpose
 WARNING: a residual is a model residual, not a trade. The data have no repo rate, borrow cost, tax or
-executable quote (`docs/HIDDEN-ASSUMPTIONS.md` #112, `rust/src/richcheap.rs` lines 94-98).
+executable quote (`docs/HIDDEN-ASSUMPTIONS.md` #112, `rust/src/richcheap.rs` ).
 
 The model fits one smooth discount curve to the end-of-day prices of the Treasury notes and bonds of one
 date. The difference of each security from the curve, in yield, shows which security is rich or cheap
@@ -54,12 +54,14 @@ For a person who studies Treasury pricing. It is not an input of a DCF.
 - A candidate is a security to study. It is not an arbitrage and not a trade (`richcheap.rs` `LIMITS_ALL`).
 - Do not use prices as executable quotes: they are end-of-day bid prices.
 - The residual is a price gap plus model error. Fit RMSE is 1.46 to 2.50 bp (mean 1.90) over 58 days; 2.77 bp for 10Y to 20Y on 2026-11-18.
-- The residual of a security is mostly a fixed level for that security. After the own mean is removed it lasts about 1 to 3 days (note step 2, section 3.3).
-- The lasting rich bonds are the original 30-year bonds of 2036 to 2040: a group effect. The cause is not tested (`fa recon explain` was not run: the New York Fed files are not in the store).
+- The residual of a security is mostly a fixed level for that security. The part that is left, after the mean of the security is removed, lasts about 1 to 3 days (note step 2, section 3.3).
+- The bonds that stay rich are the original 30-year bonds of 2036 to 2040. They can be a group effect. The cause is not tested, because `fa recon explain` was not run (the New York Fed files are not in the store).
 - Bills of 6 months and more price 4 to 12 bp rich against the note curve. The sample is 3 dates (hypothesis, not proved).
 - `fa recon bonds` HQM test: a flat spread does not fit the term structure. The result is a convention gap (-29 bp at 1Y to +51 bp at 30Y).
 - The data are one year (2026) and 58 days of prices. No other regime.
-- Network: `fa recon bonds` gets FedInvest prices (the step 1 note records a download by mistake, defect D5). `forwards::load` (GSW file, used by `rich-cheap` for its comparison table) downloads when the cache is older than 12 hours (`rust/src/forwards.rs` lines 243-252). Check the cache before you run.
+- Network: `fa recon bonds` gets FedInvest prices. The step 1 note records a download by mistake (defect D5).
+- Network: `rich-cheap` uses `forwards::load` (`rust/src/forwards.rs`) for its comparison table. It downloads the GSW file when the cache is older than 12 hours. Check the cache before you run.
+- Backtest: none applies, because the model is a daily check of one price set. It moves no value with history and it does not forecast.
 
 ## Code and command
 | What | Path or command |

@@ -4,12 +4,12 @@ Updated: 2026-11-21. Commit: not yet made.
 
 ## Choice
 The ATM volatility of each priced option is a volatility index, with no multiplier (1.00 times the index):
-- 30-day: `^VIX` for SPY, `^VXN` for QQQ (`rust/src/trading/data.rs:258`).
-- 1-day: `^VIX1D`. For QQQ the value is VIX1D times VXN / VIX (`data.rs:399-406`). No VIX1D value: the
+- 30-day: `^VIX` for SPY, `^VXN` for QQQ (`rust/src/trading/data.rs`).
+- 1-day: `^VIX1D`. For QQQ the value is VIX1D times VXN / VIX (`data.rs`). No VIX1D value: the
   30-day value is used.
 - At one session or less to expiry: the 1-day value. At 30 sessions or more: the 30-day value. In
-  between: linear in time (`rust/src/trading/pricing.rs:127-138`). Floor of the result: 0.01 (`pricing.rs:141`).
-- An intraday index series with no value at a bar uses the previous daily close (`data.rs:320`).
+  between: linear in time (`rust/src/trading/pricing.rs`). Floor of the result: 0.01 (`pricing.rs`).
+- An intraday index series with no value at a bar uses the previous daily close (`data.rs`).
 
 ## Where used
 | Model | File | Parameter name |
@@ -27,7 +27,7 @@ The ATM volatility of each priced option is a volatility index, with no multipli
 
 ## Why this choice
 Convenience: VIX, VXN and VIX1D are the free daily series of implied volatility. No review record or study
-gave the choice. Source: author choice, no study. The earlier Python pricer did the same (`pricing.rs:1`).
+gave the choice. Source: author choice, no study. The earlier Python pricer did the same (`pricing.rs`).
 The VIX is a variance-swap number that includes the skew. The pricer then adds a skew (A-141), so the
 put side counts the skew two times (`s11_vrp_condor.md`, "What IS model-assumed", item 1).
 VIX1D is not usable before 2023: the ratio falls back to 1 and the term structure is flat

@@ -15,26 +15,26 @@ a rule that deserves a forward test (`docs/models/paper-trader.md`).
 | Input | Source | Note |
 |---|---|---|
 | Bars (5-minute, hourly, daily) of SPY and QQQ | data cache, `Store` in `rust/src/trading/data.rs` | Yahoo bars from `fa trade fetch` |
-| 30-day volatility | `^VIX` (SPY), `^VXN` (QQQ), `data.rs:258` | In percent in the file, divided by 100 |
-| 1-day volatility | `^VIX1D`; for QQQ scaled by VXN/VIX (`data.rs:394-406`) | No value: the 30-day value is used |
-| Short rate | `^IRX`, close of the day before (`data.rs:416-422`) | No file: 0.04 (`DEFAULT_RATE`) |
-| Account rules | `RiskConfig::default()` (`engine.rs:41`) and the command options | See the table of records |
+| 30-day volatility | `^VIX` (SPY), `^VXN` (QQQ), `data.rs` | In percent in the file, divided by 100 |
+| 1-day volatility | `^VIX1D`; for QQQ scaled by VXN/VIX (`data.rs`) | No value: the 30-day value is used |
+| Short rate | `^IRX`, close of the day before (`data.rs`) | No file: 0.04 (`DEFAULT_RATE`) |
+| Account rules | `RiskConfig::default()` (`engine.rs`) and the command options | See the table of records |
 
 ## Method (short)
-1. The price of a leg is Black-Scholes (`pricing.rs:41`, European, settled at intrinsic value at expiry).
+1. The price of a leg is Black-Scholes (`pricing.rs`, European, settled at intrinsic value at expiry).
 2. The ATM volatility is the 1-day value at one session or less and the 30-day value at 30 sessions or
-   more. In between it is linear in time (`pricing.rs:127`).
-3. The skew multiplies the ATM volatility by a quadratic in the standard log-moneyness (`pricing.rs:140`).
-4. Time to expiry is a variance clock, not calendar time (`pricing.rs:84`). One close-to-close day is 1/252 year.
-5. Half-spread is 0.5% of mid, at least $0.01 and at most $0.05 for each leg (`pricing.rs:150`).
+   more. In between it is linear in time (`pricing.rs`).
+3. The skew multiplies the ATM volatility by a quadratic in the standard log-moneyness (`pricing.rs`).
+4. Time to expiry is a variance clock, not calendar time (`pricing.rs`). One close-to-close day is 1/252 year.
+5. Half-spread is 0.5% of mid, at least $0.01 and at most $0.05 for each leg (`pricing.rs`).
    An entry pays the ask on long legs and receives the bid on short legs. An exit does the opposite.
-6. For each bar (`engine.rs:3`): fill the entries that the bot queued on the last bar, at this bar open.
+6. For each bar (`engine.rs`): fill the entries that the bot queued on the last bar, at this bar open.
    Then mark the positions at the close and test the exits. Then settle the positions that expire today at
    intrinsic value. Then call the bot. The bot sees data up to the bar close only.
 7. The engine sizes each entry from the maximum loss of the structure and the account rules
-   (`engine.rs:520`). The structure has defined risk only (`structures.rs:30`).
+   (`engine.rs`). The structure has defined risk only (`structures.rs`).
 8. Exits (`strategy.rs:ExitRules`) use the liquidation value on the bar close. No exit fills inside a bar.
-9. `summarize` (`metrics.rs:91`) cuts the bars in time: the first 70% are in-sample, the rest are
+9. `summarize` (`metrics.rs`) cuts the bars in time: the first 70% are in-sample, the rest are
    out-of-sample. Sharpe uses the daily equity returns times the square root of 252, with no risk-free rate.
 
 ## Outputs
@@ -91,7 +91,7 @@ bot are `trading/research/<name>.md`. Bars: D daily, H hourly, 5m 5-minute. Symb
 - All prices are model prices. A real chain has other volatility, other skew and wider spreads.
   `trading/research/s11_vrp_condor.md` and `s05_ic_0dte.md` say where the bias is in favor of the bot.
 - No early assignment, no dividend, no holiday calendar. The model assumes daily expiries on every
-  weekday, also before they existed. Equity is marked at mid (`engine.rs:419`), exits at bid and ask.
+  weekday, also in years when these expiries did not exist. The equity curve marks open positions at mid (`engine.rs`). Exits fill at bid and ask.
 - Exits fill at a bar close only. A stop inside a bar is not seen. Strike grid: $1.
 - The split is by bar count. The authors of the bots saw all bars; several notes say that they tried
   more variants than planned. The command logs no variant count (the run log is for `fa portfolio backtest`).

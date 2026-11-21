@@ -3,22 +3,23 @@
 Updated: 2026-11-21. Commit: not yet made.
 
 ## Choice
-Default account (`rust/src/trading/engine.rs:41-57`, `RiskConfig::default`; the doc comment at `engine.rs:10`
-says it is "the paper account of the owner"):
+Default account (`RiskConfig::default` in `rust/src/trading/engine.rs`).
+The doc comment in `engine.rs` says it is "the paper account of the owner":
+
 | Rule | Value |
 |---|---|
-| Starting equity | $2,000 (`cli.rs:115`) |
+| Starting equity | $2,000 (`cli.rs`) |
 | Maximum loss for one trade | 3% of equity (`risk_per_trade`) |
 | Maximum open positions | 3 |
 | Sum of open maximum losses | 12% of equity |
 | Daily loss limit (no new entry below) | 6% of the equity at the start of the day |
 | Maximum units of one entry | 20 |
 | Pattern day trader (PDT) rule | on: below $25,000, at most 3 same-day round trips in 5 sessions |
-| Structures | defined risk only (`structures.rs:30`) |
+| Structures | defined risk only (`structures.rs`) |
 `--max-risk N` replaces the 3%: a cap of N dollars at the starting equity, scaled down with equity. The open
-risk limit is 3 times that fraction, at most 50% (`engine.rs:62-72`). Example: N = 250 gives 12.5% and 37.5%.
-The maximum loss of a trade is the structure maximum loss plus both commissions (`engine.rs:547`).
-An entry that does not fit is rejected, and the reason is counted (`engine.rs:520-592`).
+risk limit is 3 times that fraction, at most 50% (`engine.rs`). Example: N = 250 gives 12.5% and 37.5%.
+The maximum loss of a trade is the structure maximum loss plus both commissions (`engine.rs`).
+An entry that does not fit is rejected, and the reason is counted (`engine.rs`).
 
 ## Where used
 | Model | File | Parameter name |
@@ -34,7 +35,7 @@ An entry that does not fit is rejected, and the reason is counted (`engine.rs:52
 | A larger account (no PDT limit) | Not the account of the owner |
 
 ## Why this choice
-The values model the paper account of the owner. The source of each number (3%, 3 positions, 12%, 6%, 20 units):
+The values are for the paper account of the owner. The source of each number (3%, 3 positions, 12%, 6%, 20 units):
 author choice, no study. The PDT rule is a US rule for margin accounts below $25,000 (a rule of the broker
 system, not a file of this repo). The account size $2,000: not known where it is recorded.
 
@@ -44,7 +45,7 @@ bots s11 and s21 reject entries (`s11_vrp_condor.md`, `s21_bollinger_fade.md`). 
 (2026-10-11) shows that $250 per trade turns losers into -80% to -95% results (Account B).
 
 ## Who decided and when
-Not known by name. "The paper account of the owner" (`engine.rs:10`). Commit b57fe03 and e692700 (2026-11-19).
+Not known by name. "The paper account of the owner" (`engine.rs`). Commit b57fe03 and e692700 (2026-11-19).
 
 ## When to examine it again
 When the real account size changes, or the owner picks a broker. Before a real trade.

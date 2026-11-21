@@ -16,8 +16,8 @@ Updated: 2026-11-21. Commit: not yet made.
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Curve | `rust/src/curve.rs` lines 6-32, 384-397 (`BillBasis::Bey365`), 399-460 | `bootstrap` |
-| Settlement | `rust/src/recon.rs` line 439 | `add_business_days(day, 1)` |
+| Curve (`docs/models/treasury-fit-rich-cheap.md`) | `rust/src/curve.rs` `BillBasis::Bey365` | `bootstrap` |
+| Settlement | `rust/src/recon.rs` | `add_business_days(day, 1)` |
 
 ## Alternatives considered
 | Alternative | Why not chosen |
@@ -27,8 +27,8 @@ Updated: 2026-11-21. Commit: not yet made.
 
 ## Why this choice
 The Treasury says it builds its par curve with monotone convex interpolation. The Treasury
-does not publish its program, so the curve is a re-creation, not a copy (`curve.rs` lines 19-24).
-Regular way settlement for Treasury securities is T+1 (`curve.rs` line 25).
+does not publish its program, so the curve is a re-creation, not a copy (`curve.rs` ).
+Regular way settlement for Treasury securities is T+1 (`curve.rs`).
 
 ## Effect on the result
 Mean of observed minus theoretical bill yield, 47 bills, 2026-11-18 (`rates_recon_step2_2026-11-20.md`,

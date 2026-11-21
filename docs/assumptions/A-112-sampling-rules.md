@@ -12,8 +12,8 @@ Updated: 2026-11-21. Commit: not yet made.
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Sample | `rust/src/ratemodels/data.rs` lines 9, 123-170 | `MIN_OBS`, `dt`, `max > 6 * median` |
-| Default | `rust/src/ratemodels/cli.rs` line 117 | `--freq` daily |
+| Sample (`docs/models/short-rate-models.md`) | `rust/src/ratemodels/data.rs` | `MIN_OBS`, `dt`, `max > 6 * median` |
+| Default | `rust/src/ratemodels/cli.rs` | `--freq` daily |
 
 ## Alternatives considered
 | Alternative | Why not chosen |

@@ -3,10 +3,10 @@
 Updated: 2026-11-21. Commit: not yet made.
 
 ## Choice
-The volatility of a strike is the ATM volatility times a multiplier (`rust/src/trading/pricing.rs:140-148`):
+The volatility of a strike is the ATM volatility times a multiplier (`rust/src/trading/pricing.rs`):
 - `z = ln(K / S) / (ATM * sqrt(T))`, limited to -6 to +6. T is the variance-clock time (A-146).
 - multiplier = 1 + (-0.12) * z + 0.03 * z^2, then limited to 0.6 to 2.5.
-- Constants: `SKEW_SLOPE` = -0.12, `SKEW_CURVE` = 0.03, `MULT_FLOOR` = 0.6, `MULT_CAP` = 2.5 (`pricing.rs:118-121`).
+- Constants: `SKEW_SLOPE` = -0.12, `SKEW_CURVE` = 0.03, `MULT_FLOOR` = 0.6, `MULT_CAP` = 2.5 (`pricing.rs`).
 The same shape applies on each day and for each expiry. Puts (z below 0) cost more than calls.
 
 ## Where used
@@ -34,7 +34,7 @@ Not known. No run with another skew is on file. The credit-spread and condor bot
 sell the wing, so their price depends on it.
 
 ## Who decided and when
-Not known. The values came from the Python pricer (`pricing.rs:1`, `pricing.rs:13`).
+Not known. The values came from the Python pricer (`pricing.rs`).
 Rust port: commit e692700 (2026-11-19).
 
 ## When to examine it again

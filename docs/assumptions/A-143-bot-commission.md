@@ -3,15 +3,15 @@
 Updated: 2026-11-21. Commit: not yet made.
 
 ## Choice
-$0.65 for each contract, on each side (`rust/src/trading/engine.rs:51`, `RiskConfig::default`).
-`fa trade backtest --commission N` changes it (`rust/src/trading/cli.rs:116`).
+$0.65 for each contract, on each side (`rust/src/trading/engine.rs`, `RiskConfig::default`).
+`fa trade backtest --commission N` changes it (`rust/src/trading/cli.rs`).
 - The commission of a structure is $0.65 times the legs of one unit (`contracts_per_unit`) times the units
-  (`engine.rs:452`). A $1 vertical costs $1.30 at entry. A round trip of it costs $2.60.
+  (`engine.rs`). A $1 vertical costs $1.30 at entry. A round trip of it costs $2.60.
 - The entry commission is paid at the fill. The exit commission is paid at an exit by rule. A position
-  that expires pays no exit commission (`engine.rs:478-486`, `:640`).
-- The sizing counts both commissions in the maximum loss of the trade (`engine.rs:547`, `2.0 * commission`),
+  that expires pays no exit commission (`engine.rs`).
+- The sizing counts both commissions in the maximum loss of the trade (`engine.rs.0 * commission`),
   also for a position that expires.
-- `fa trade paper` has no commission option: it uses the default of 0.65 (`rust/src/trading/paper.rs:126-127`).
+- `fa trade paper` has no commission option: it uses the default of 0.65 (`rust/src/trading/paper.rs`).
 
 ## Where used
 | Model | File | Parameter name |

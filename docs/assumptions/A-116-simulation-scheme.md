@@ -13,14 +13,14 @@ Updated: 2026-11-21. Commit: not yet made.
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| CIR | `rust/src/ratemodels/models.rs` line 154 | `QE_PSI_C` |
-| CKLS | `rust/src/ratemodels/models.rs` lines 312-335 | `rp = r.max(0.0)` |
-| Defaults | `rust/src/ratemodels/cli.rs` lines 208-214 | `years`, `steps_per_year`, `paths`, `seed` |
+| CIR (`docs/models/short-rate-models.md`) | `rust/src/ratemodels/models.rs` | `QE_PSI_C` |
+| CKLS | `rust/src/ratemodels/models.rs` | `rp = r.max(0.0)` |
+| Defaults | `rust/src/ratemodels/cli.rs` | `years`, `steps_per_year`, `paths`, `seed` |
 
 ## Alternatives considered
 | Alternative | Why not chosen |
 |---|---|
-| Euler with truncation for CIR | Not known. The QE scheme keeps the exact mean and variance (comment `models.rs` lines 138-140). |
+| Euler with truncation for CIR | Not known. The QE scheme keeps the exact mean and variance (comment `models.rs` ). |
 
 ## Why this choice
 Andersen (2008) gives the QE scheme and the value 1.5 as the usual switch. The source is cited in the

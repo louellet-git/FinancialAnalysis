@@ -13,8 +13,8 @@ Updated: 2026-11-21. Commit: not yet made.
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Treasury fit | `rust/src/fit.rs` line 59 | `clamp(-2.5, 3.7)`, `clamp(-1.0, 3.7)` |
-| Start grid | `rust/src/fit.rs` lines 202-226 (`fit_curve`) | `tau1`, `tau2`, `take(3)`, 80 |
+| Treasury fit (`docs/models/treasury-fit-rich-cheap.md`) | `rust/src/fit.rs` | `clamp(-2.5, 3.7)`, `clamp(-1.0, 3.7)` |
+| Start grid | `rust/src/fit.rs` (`fit_curve`) | `tau1`, `tau2`, `take(3)`, 80 |
 
 ## Alternatives considered
 | Alternative | Why not chosen |

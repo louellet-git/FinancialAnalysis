@@ -12,9 +12,9 @@ Updated: 2026-11-21. Commit: not yet made.
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Static arbitrage check | `rust/src/market/option_arb.rs:34` | `EPS` |
-| Static arbitrage check | `rust/src/market/option_arb.rs:354-384` | checks 1 to 3 |
-| Static arbitrage check | `rust/src/market/option_arb.rs:263-282` | buy-only rule |
+| Static arbitrage check (`docs/models/options-static-arbitrage-check.md`) | `rust/src/market/option_arb.rs` | `EPS` |
+| Static arbitrage check | `rust/src/market/option_arb.rs` | checks 1 to 3 |
+| Static arbitrage check | `rust/src/market/option_arb.rs` | buy-only rule |
 
 ## Alternatives considered
 | Alternative | Why not chosen |

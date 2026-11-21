@@ -3,18 +3,20 @@
 Updated: 2026-11-21. Commit: not yet made.
 
 ## Choice
-The forward of one series is the median of `K + (C - P) / df` over the 3 strikes nearest to the spot that have both a call and a put price (all positive).
-The prices are mids of bid and ask (live chain) or closes (history). The result must be above 0.5 S and below 2 S, else it is not used.
+The forward of one series is the median of `K + (C - P) / df` over 3 strikes.
+- The 3 strikes are the nearest to the spot that have both a call price and a put price (all positive).
+- The prices are mids of bid and ask (live chain) or closes (history).
+- The result must be above 0.5 S and below 2 S. Otherwise the code does not use it.
 - No spot (index chain): the guess for S is the strike with the least `|C - P|`; then the same rule (`forward_from_parity_blind`).
-- Without a forward: the option history uses `S / df` (no dividend, flagged `from_parity: false`); the check marker uses `S / df` too.
+- Without a forward, the option history uses `S / df` (no dividend, flag `from_parity: false`). The check marker uses `S / df` too.
 The Heston and Bates fit uses 5 strikes (A-134), so one chain can have two forwards.
 
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Implied volatility, forward | `rust/src/market/option_iv.rs:70-107` | `PARITY_STRIKES`, `forward_from_parity_n` |
-| Static arbitrage check | `rust/src/market/option_arb.rs:302`, `403`, `412` | forward for the filter, the dividend and the marker |
-| Option history | `rust/src/market/option_history.rs:180-181`, `347` | `forward_from_parity`, `fill_from_mids` |
+| Implied volatility, forward (`docs/models/options-static-arbitrage-check.md`) | `rust/src/market/option_iv.rs` | `PARITY_STRIKES`, `forward_from_parity_n` |
+| Static arbitrage check | `rust/src/market/option_arb.rs` | forward for the filter, the dividend and the marker |
+| Option history | `rust/src/market/option_history.rs` | `forward_from_parity`, `fill_from_mids` |
 
 ## Alternatives considered
 | Alternative | Why not chosen |
@@ -23,7 +25,7 @@ The Heston and Bates fit uses 5 strikes (A-134), so one chain can have two forwa
 | Forward from a dividend forecast | Not known. |
 
 ## Why this choice
-The code says the parity of American options is only an inequality, so the forward is an estimate (`option_iv.rs:11-14`).
+The code says the parity of American options is only an inequality, so the forward is an estimate (`option_iv.rs`).
 3 strikes and the factor 2: author choice, no study. Test: `put_call_parity_forward` shows the median ignores one bad pair among three.
 Hidden-assumptions entries #237 and #280 describe the limits.
 

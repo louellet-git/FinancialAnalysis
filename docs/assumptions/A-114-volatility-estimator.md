@@ -13,9 +13,9 @@ Updated: 2026-11-21. Commit: not yet made.
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Weights | `rust/src/ratemodels/calib.rs` lines 308-325 | `weights`, `n_eff` |
-| Warning | `rust/src/ratemodels/calib.rs` lines 414, 464, 513, 754 | `ne < 30.0` |
-| Default gamma | `rust/src/ratemodels/cli.rs` line 114 | `unwrap_or(0.5)` |
+| Weights (`docs/models/short-rate-models.md`) | `rust/src/ratemodels/calib.rs` | `weights`, `n_eff` |
+| Warning | `rust/src/ratemodels/calib.rs` | `ne < 30.0` |
+| Default gamma | `rust/src/ratemodels/cli.rs` | `unwrap_or(0.5)` |
 
 ## Alternatives considered
 | Alternative | Why not chosen |

@@ -5,10 +5,10 @@ Updated: 2026-11-21. Commit: not yet made.
 ## Choice
 The rate in Black-Scholes is the close of `^IRX` (the 13-week Treasury bill index of Yahoo, in percent)
 of the trading day before the bar, divided by 100. A date with no value takes the last value. No `^IRX`
-file, or no value yet: 0.04 (`DEFAULT_RATE`). Code: `rust/src/trading/data.rs:17` and `:416-422`.
+file, or no value yet: 0.04 (`DEFAULT_RATE`). Code: `rust/src/trading/data.rs`.
 One rate is used for all expiries (no term structure). It is a continuous rate in `bs_price`
-(`rust/src/trading/pricing.rs:41-55`).
-The day before is on purpose: no look-ahead (`data.rs:239`).
+(`rust/src/trading/pricing.rs`).
+The day before is on purpose: no look-ahead (`data.rs`).
 
 ## Where used
 | Model | File | Parameter name |

@@ -20,7 +20,7 @@ For a person who needs a rate path or a study of mean reversion. Its types (`Cir
 
 ## Method (short)
 1. Resample the history to daily, weekly or monthly; `dt` is the mean spacing in years (A-112).
-2. Fit the AR(1) form by least squares and map it exactly to `kappa` and `theta` (`calib.rs` lines 4-7).
+2. Fit the AR(1) form by least squares and map it exactly to `kappa` and `theta` (`calib.rs` ).
 3. Methods: `ml` (exact density for Vasicek and CIR, quasi-likelihood for CKLS), `ols`, `gmm` (CKLS only), `realvol` (A-114).
 4. Search bounds and refusal rules for CIR and CKLS: A-113.
 5. Report t of mean reversion and flag it against 2.86 (A-110). Report the Feller ratio for CIR (below 1: r can reach 0).
@@ -53,8 +53,9 @@ t of mean reversion, warnings. `rolling`: parameters for each window. `frequenci
 - The sample is one series. A model with one factor does not give the curve shape of a day.
 - Hull-White mixes a real-world `a` and `sigma` with a market curve (A-115). A price from this is not a market price.
 - CKLS `gamma` below 0 cannot be simulated. `gmm` can give no root or many roots.
-- No sensitivity number is stored in the records. Results of runs are in `docs/HIDDEN-ASSUMPTIONS.md` (about lines 587 to 625 and 1214 to 1217). I did not copy them.
-- Network: the commands read the GSW file with `forwards::load`, which downloads when the cache is older than 12 hours. Check before you run.
+- No sensitivity number is stored in the records. Results of runs are in `docs/HIDDEN-ASSUMPTIONS.md` (items #82, #86 and #160). The records do not copy them.
+- Network: the commands read the GSW file with `forwards::load`. It downloads when the cache is older than 12 hours. Check before you run.
+- Backtest: none applies, because the module fits and simulates rates. No decision or value uses its output, and it gives no forecast to test.
 
 ## Code and command
 | What | Path or command |

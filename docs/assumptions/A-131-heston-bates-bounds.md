@@ -18,9 +18,9 @@ The fit clamps each step into the bounds. A parameter within 0.1% of its range f
 ## Where used
 | Model | File | Parameter name |
 |---|---|---|
-| Heston | `rust/src/volmodels/models.rs:49-51` | `Heston::bounds` |
-| Bates | `rust/src/volmodels/models.rs:89-93` | `Bates::bounds` |
-| Mark "at bound" | `rust/src/volmodels/calib.rs:66-68` | `at_bound` |
+| Heston (`docs/models/heston-bates.md`) | `rust/src/volmodels/models.rs` | `Heston::bounds` |
+| Bates | `rust/src/volmodels/models.rs` | `Bates::bounds` |
+| Mark "at bound" | `rust/src/volmodels/calib.rs` | `at_bound` |
 
 ## Alternatives considered
 | Alternative | Why not chosen |
