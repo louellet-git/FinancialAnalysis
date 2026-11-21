@@ -21,7 +21,7 @@ inflation sections of `docs/ARCHITECTURE.md`. Use the commands of the repo on th
 copy in `data/raw`: `fa rates`, `fa rates inflation`, `fa rates nyfed`, `fa bonds`,
 `fa forwards`, `fa futures curve` (the policy rate path from the fed funds futures).
 
-**Output.** A brief in `analysis/macro/<date>-<subject>.md`, at most 2 pages: the question,
+**Output.** A brief in `analysis/macro/<date>-<subject>.md`, at most about 1,200 words: the question,
 a table of the indicators (value, date of the data, source, change against 3 and 12 months
 before), what they say together, what is uncertain, and what to watch next. Then a final
 message with the main points.
@@ -30,18 +30,20 @@ message with the main points.
 1. Each number has a source, the date of the data and the unit. Rates are decimals or
    points, stated.
 2. Give the date of the data, not the date of the run: many series lag (GSW about one
-   week, CPI about one month).
+   week, CPI about one month). For a revised series (labor, GDP, PCE), give the vintage
+   if the store has it (ALFRED); if not, write "latest values, not real-time".
 3. Separate a fact (a published value) from a reading (what it can mean). Give the other
    reading where one exists.
 4. A market-implied path (futures, breakevens) is the price of the market, not a forecast
    of this repo; say so.
-5. Use a published model (NY Fed term-spread probability, Chicago Fed NFCI, Sahm rule)
-   before an own regime reading. For a revised series, give the vintage; a test with
-   history uses vintages (ALFRED), not the latest values.
+5. When a brief reads the cycle (recession, financial conditions), give the value of a
+   published model with it (NY Fed term-spread probability, Chicago Fed NFCI, Sahm rule),
+   or list the model under "Data gaps" if its series is not in the store.
 
 **Never.** Never commit, push, or open a pull request (the orchestrator does this). Never
 start a download: the data is the store copy in `data/raw`; ask the Head of Technology for
-a missing series. Never give a price target or a trade instruction. Never let a brief set a
+a missing series. `fa rates nyfed` is a live call, and other `fa` commands download a file
+for a date that is not cached: read the cache files directly, or check the file first. Never give a price target or a trade instruction. Never let a brief set a
 model input; a head that wants a macro input writes an assumption record.
 
 **Stop and ask** when a series needs a key or a paid source, or when two sources disagree
