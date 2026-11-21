@@ -830,15 +830,22 @@ fn the_median_and_the_value_weighted_c_of_a_hand_made_list() {
 #[test]
 fn the_file_source_gives_the_row_of_d2_and_an_empty_field_is_no_information() {
     let text = "date,erp_change,growth_change,source\n2026-11-13,0.001,0.002,old\n2026-11-20,-0.0025,,economics v1\n";
-    let c = econ_from_text(text, "2026-11-20").unwrap();
+    let c = econ_from_text(text, "2026-11-13", "2026-11-20").unwrap();
     assert_eq!((c.erp, c.growth, c.source.as_str()), (Some(-0.0025), None, "economics v1"));
     assert!(c.label(true).starts_with("economics view, economics v1") && c.label(true).contains("erp_change only"), "{}", c.label(true));
-    assert!(econ_from_text(text, "2026-11-19").is_err());
-    assert!(econ_from_text("date,erp\n", "2026-11-20").is_err());
-    assert!(econ_from_text("date,erp_change,growth_change,source\n2026-11-20,abc,,x\n", "2026-11-20").is_err());
-    let empty = econ_from_text("date,erp_change,growth_change,source\n2026-11-20,,,test only\n", "2026-11-20").unwrap();
+    assert!(econ_from_text(text, "2026-11-13", "2026-11-19").is_err());
+    assert!(econ_from_text("date,erp\n", "2026-11-13", "2026-11-20").is_err());
+    assert!(econ_from_text("date,erp_change,growth_change,source\n2026-11-20,abc,,x\n", "2026-11-13", "2026-11-20").is_err());
+    let empty = econ_from_text("date,erp_change,growth_change,source\n2026-11-20,,,test only\n", "2026-11-13", "2026-11-20").unwrap();
     assert_eq!((empty.erp, empty.growth), (None, None));
     assert!(empty.label(true).contains("not covered"), "{}", empty.label(true));
+    // the file of `fa macro view`: more columns, in a different order; with a column d1 the row must also match D1
+    let view = "date,d1,erp_change,growth_change,source,growth_parts\n2026-11-20,2026-11-06,0.009,0.001,spf,other window\n2026-11-20,2026-11-13,0.004,-0.001,spf,RGDP10 2.0 + CPI10 2.3\n2026-03-20,2026-03-13,,,no release,\n";
+    let v = econ_from_text(view, "2026-11-13", "2026-11-20").unwrap();
+    assert_eq!((v.erp, v.growth, v.source.as_str()), (Some(0.004), Some(-0.001), "spf"));
+    let none = econ_from_text(view, "2026-03-13", "2026-03-20").unwrap();
+    assert_eq!((none.erp, none.growth, none.source.as_str()), (None, None, "no release"));
+    assert!(econ_from_text(view, "2026-11-12", "2026-11-20").is_err(), "a row of another D1 is not the row of the window");
 }
 
 fn econ(erp: Option<f64>, growth: Option<f64>) -> EconView {

@@ -122,8 +122,9 @@ fa dcf attribute [--tickers-file FILE | TICKER ...] --from D1 --to D2 [OPTIONS]
                   If the engine has no value at x1 + c, the whole plug is the company part (flag common-step:none)
   --common-list FILE  one ticker for each line; c is the median (or the mean with vw) over this list in place of the tickers
                   of the run. A run of one ticker needs it for a c that is not 0
-  --common-file FILE  with --common file: a CSV with the header date,erp_change,growth_change,source (decimals). The row of
-                  the date D2 gives the two changes. An empty field is no information (not a change of zero)
+  --common-file FILE  with --common file: a CSV with the columns date, erp_change, growth_change and source (decimals; found
+                  by name, so the file of `fa macro view` is read as it is). The row of the date D2 gives the two changes;
+                  with a column d1 the row must also have the date D1. An empty field is no information (not a change of zero)
   --top N        keep the N companies of the list with the largest market value at D1 (price x the guarded share count; one
                   weight for each company). Both classes of one company (GOOG and GOOGL) stay in the run and count as one
                   company. The common change c of --common is computed on the FULL list, before the cut, so the 10 largest
@@ -753,18 +754,26 @@ impl EconView {
     }
 }
 
-/// The economics view from the text of a file: a CSV with the header `date,erp_change,growth_change,source` (decimals).
-/// The row of the window is the row whose date is `d2` (the first 10 characters). An empty field is no information.
-pub fn econ_from_text(text: &str, d2: &str) -> R<EconView> {
+/// The economics view from the text of a file: a CSV whose header has the columns `date`, `erp_change`, `growth_change`
+/// and `source` (decimals; the columns are found by name, so the file of `fa macro view`, which also has `d1` and
+/// `growth_parts`, is read as it is). The row of the window is the row whose `date` is `d2` (the first 10 characters) and,
+/// when the file has a column `d1`, whose `d1` is `d1`. An empty field is no information.
+pub fn econ_from_text(text: &str, d1: &str, d2: &str) -> R<EconView> {
     let mut lines = text.lines().filter(|l| !l.trim().is_empty());
     let header: Vec<&str> = lines.next().unwrap_or("").split(',').map(str::trim).collect();
-    if header != ["date", "erp_change", "growth_change", "source"] {
-        return e("--common-file: the header must be date,erp_change,growth_change,source");
-    }
-    let d2 = d2.get(..10).unwrap_or(d2);
+    let col = |name: &str| header.iter().position(|h| *h == name);
+    let (Some(i_date), Some(i_erp), Some(i_growth), Some(i_source)) = (col("date"), col("erp_change"), col("growth_change"), col("source")) else {
+        return e("--common-file: the header must have the columns date, erp_change, growth_change and source");
+    };
+    let i_d1 = col("d1");
+    let last = i_date.max(i_erp).max(i_growth).max(i_source).max(i_d1.unwrap_or(0));
+    let (d1, d2) = (d1.get(..10).unwrap_or(d1), d2.get(..10).unwrap_or(d2));
     for l in lines {
         let f: Vec<&str> = l.split(',').map(str::trim).collect();
-        if f.len() < 4 || f[0].get(..10) != Some(d2) {
+        if f.len() <= last || f[i_date].get(..10) != Some(d2) {
+            continue;
+        }
+        if i_d1.is_some_and(|i| f[i].get(..10) != Some(d1)) {
             continue;
         }
         let one = |s: &str, name: &str| -> R<Option<f64>> {
@@ -776,9 +785,9 @@ pub fn econ_from_text(text: &str, d2: &str) -> R<EconView> {
                 _ => e(format!("--common-file: '{s}' is not a number ({name})")),
             }
         };
-        return Ok(EconView { erp: one(f[1], "erp_change")?, growth: one(f[2], "growth_change")?, source: f[3].to_string() });
+        return Ok(EconView { erp: one(f[i_erp], "erp_change")?, growth: one(f[i_growth], "growth_change")?, source: f[i_source].to_string() });
     }
-    e(format!("--common-file: no row with the date {d2}"))
+    e(format!("--common-file: no row with the date {d2}{}", if i_d1.is_some() { format!(" and d1 {d1}") } else { String::new() }))
 }
 
 /// The text of c of a view with its source, for the headline.
@@ -2034,7 +2043,7 @@ fn run_window(s: &Setup, a: &Side, b: &Side) -> R<(Vec<AttrRow>, String)> {
     let line = match s.mode {
         None => {
             let f = s.common_file.ok_or_else(|| DcfError("--common file needs --common-file FILE".into()))?;
-            let econ = econ_from_text(&std::fs::read_to_string(f).map_err(|x| DcfError(format!("{f}: {x}")))?, b.date)?;
+            let econ = econ_from_text(&std::fs::read_to_string(f).map_err(|x| DcfError(format!("{f}: {x}")))?, a.date, b.date)?;
             add_common_economics(&mut rows, b.inputs, &market1_of, &market2_of, s.cfg, &econ, s.jobs)?;
             econ_line(&econ, s.cfg.rules.long_run.is_some(), economics_cover(rows.iter()))
         }
