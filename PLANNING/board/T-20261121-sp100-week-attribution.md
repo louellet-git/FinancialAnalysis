@@ -197,3 +197,11 @@ Head of Quality and Risk for the check of the difference. NOT done: the audit of
 `data/week_2026-11-20_main-b01b66a/`, code at the gate); the run of record; the S&P 100 part (waits for the person).
 Open point: the implied growth of the Economics note (NVDA 29.8% on 11-20, store 1e2739c, `fa dcf implied`) and of this
 head (29.3%, store 0340bc1, `fa dcf attribute`) differ by 0.5 points; page 1 gives the Economics numbers as "about".
+
+**Three pieces for the person (20:07 UTC, 2026-11-21).** A third piece is added (his words are in the RECORD):
+`analysis/priors/sp500_chips_week_page_2026-11-21.md` (the chip companies of the S&P 500 against their expected fall).
+Each of the three pieces has an intro of 1 to 3 lines and is one page in the PDF (`analysis/priors/pdf/`). Order: page 1
+`sp10_week_page_v2`, page 2 `sp10_week_valuation_page`, page 3 `sp500_chips_week_page`. Runs of page 3:
+`analysis/priors/data/week_2026-11-20_chips/` (README there). State: sent to the Head of Staff and to the Head of
+Quality and Risk. NOT done: the audit of pages 2 and 3; SWKS has no close of 2026-11-20 in the store (told to the Head
+of Technology); the expected fall by beta and the deviations are a one-time script, not engine code (design R6).

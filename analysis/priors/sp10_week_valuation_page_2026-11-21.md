@@ -2,12 +2,15 @@
 
 *Week of 2026-11-13 to 2026-11-20: what changed in fact, and what the market price implies.*
 
+Background: the model gives each stock a value from its reported numbers, the bond yields and a required return.
+"Actual" is the change of that value from new facts, time and yields. "Implied" is the remaining change of the price:
+the model reads it as a change of the required return, or of the expected growth. This is page 2 of 3.
+
 The 10 largest companies lost 9.96% of their market value. The reported numbers of the companies did not change, and
-lower bond yields added 5.8 points. The full fall is in the part that the price implies: the market asks a higher
-return, or it expects less growth. The price gives one implied number for each stock; it has these two readings.
+lower bond yields added 5.8 points. The full fall is in the implied part, and most of it is common to all stocks.
 
 **Table 1: The change of the market value of the S&P 10 in blocks** (points; each column adds to the total).
-See: the actual blocks are positive; the implied blocks make the fall, and most of the implied part is common.
+See: the actual blocks are positive, and the implied blocks make the fall. The implied number of a stock has two readings.
 
 | Block | Read as required return | Read as growth |
 |---|---:|---:|

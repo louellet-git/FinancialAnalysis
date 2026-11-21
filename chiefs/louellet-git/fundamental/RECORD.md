@@ -201,3 +201,8 @@ Done: a second page, `analysis/priors/sp10_week_valuation_page_2026-11-21.md`: T
 
 ## 2026-11-21 19:56 UTC (from the heads)
 The Head of Quality and Risk: audit of the page of 7e19e33: REVISE, 0 critical; the facts pass; 5 major points on the tests (the NVDA deviation is 2.7 and 1.1, not 3.0 and 1.5; T1, T2 and T4 sums do not reproduce; "proven" and "refuted" are too strong). Done: a corrections block in the tests file; the two new pages use only corrected numbers. Lesson: a shell sum goes into a file only after a second calculation.
+
+## 2026-11-21 about 20:01 UTC (words of the person, relayed by the Head of Staff)
+Words: "Can you add a piece about the chip sector as a whole within the S&P500? One page or a half to see if they felt what was expected of them to feel"
+Words: "Also, I expect a small intro at the top of page 1,2, and 3 2-3 lines as an intro/necessary background"; then: "My bad, 1-3 lines".
+Done: a third piece, `analysis/priors/sp500_chips_week_page_2026-11-21.md`: the 16 companies of the S&P 500 with the industry code 3674; "expected" by the beta (times the equal-weight market) and by the model value with the change of the median S&P 500 company. Result: the chips fell 16.4% on average against 9.4% (beta) and 4.4% (value); 9 of 14 are more than 1 deviation below the beta line; the fall goes with the needed growth (r -0.63, 13 companies). Each of the three pieces now has a background intro of 1 to 3 lines after the subtitle. Runs and the one-time script: `analysis/priors/data/week_2026-11-20_chips/`. A standing rule for the dashboard: each piece for the person starts with the title, the subtitle, an intro of 1 to 3 lines, then the answer.
