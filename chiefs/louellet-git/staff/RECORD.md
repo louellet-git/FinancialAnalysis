@@ -30,3 +30,10 @@ agreed to it yet.
 Words: "Have your frame be a bit more lean"
 Done: the frame has three lines now (dashboard, "Frame"). The line about a date and the line about
 double work are part of lines 1 to 3.
+
+## 2026-11-21 19:10 UTC (chat)
+Words: "I think where you'd be helpful is fleshing out the board into epics, stories, tickets, and fleshing
+out the stories and the epics and the tickets so that it all kind of makes sense from a holistic point of
+view, and just making sure that heads are following the rules."
+Done: `PLANNING/board/EPICS.md` (6 epics, each with the decision that it serves), ticket
+`T-20261121-board-epics`, the `story` field in `PLANNING/board/README.md`. One message to each head.
