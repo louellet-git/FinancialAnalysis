@@ -209,7 +209,7 @@ pub fn day_snapshot(source: &str, underlying: &str, date: &str, spot: f64, entri
         sel.money_hi
     );
     Ok(DayBuild {
-        snapshot: OptionChainSnapshot { ticker: underlying.to_uppercase(), snapshot_date: date.to_string(), spot_price: Some(spot), quotes, source: Some(format!("{source}-history")), feed: None, quote_kind: Some("close".into()), note: Some(note) },
+        snapshot: OptionChainSnapshot { ticker: underlying.to_uppercase(), snapshot_date: date.to_string(), spot_price: Some(spot), quotes, source: Some(format!("{source}-history")), feed: None, quote_kind: Some("close".into()), note: Some(note), snapshot_time: None },
         forwards,
     })
 }
@@ -825,7 +825,7 @@ mod tests {
                 quotes.push(OptionQuote { contract_symbol: format!("SPXW261127{}{:08}", if call { "C" } else { "P" }, k * 1000), option_type: if call { "call" } else { "put" }.into(), expiry: "2026-11-27".into(), strike: k as f64, last_price: None, bid: Some(p - 0.05), ask: Some(p + 0.05), volume: None, open_interest: None, implied_volatility: None, in_the_money: None });
             }
         }
-        let mut snap = OptionChainSnapshot { ticker: "SPX".into(), snapshot_date: "2026-11-20".into(), spot_price: None, quotes, source: None, feed: None, quote_kind: None, note: None };
+        let mut snap = OptionChainSnapshot { ticker: "SPX".into(), snapshot_date: "2026-11-20".into(), spot_price: None, quotes, source: None, feed: None, quote_kind: None, note: None, snapshot_time: None };
         let mut rate = flat_rate();
         let fill = fill_from_mids(&mut snap, &mut rate).unwrap();
         assert_eq!((fill.expiries, fill.expiries_with_parity), (1, 1));
@@ -874,7 +874,7 @@ mod tests {
                 }
             }
         }
-        let mut snap = OptionChainSnapshot { ticker: "SPX".into(), snapshot_date: "2026-11-20".into(), spot_price: None, quotes, source: None, feed: None, quote_kind: None, note: None };
+        let mut snap = OptionChainSnapshot { ticker: "SPX".into(), snapshot_date: "2026-11-20".into(), spot_price: None, quotes, source: None, feed: None, quote_kind: None, note: None, snapshot_time: None };
         let mut rate = flat_rate();
         let fill = fill_from_mids(&mut snap, &mut rate).unwrap();
         assert_eq!((fill.expiries, fill.expiries_with_parity), (2, 2), "two series, not one expiry");

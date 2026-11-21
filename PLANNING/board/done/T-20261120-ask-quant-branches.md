@@ -2,12 +2,13 @@
 id: T-20261120-ask-quant-branches
 title: Yes or no: let the Quant head use one branch for each task?
 area: ask
-status: backlog
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: owner
 order: 3
 branch:
+answered: 2026-11-21, Yes (question dialog in the session FA-L - Head of Quant Research)
 created: 2026-11-20
 acceptance: The person answers yes or no in the session that the ticket names.
 ---

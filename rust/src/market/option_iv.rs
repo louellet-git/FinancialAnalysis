@@ -73,12 +73,17 @@ pub const PARITY_STRIKES: usize = 3;
 /// nearest to `spot` that have both closes. `pairs` are `(strike, call close, put close)`. The result must
 /// be within a factor 2 of the spot, else it is not used (`None`).
 pub fn forward_from_parity(pairs: &[(f64, f64, f64)], spot: f64, df: f64) -> Option<f64> {
+    forward_from_parity_n(pairs, spot, df, PARITY_STRIKES)
+}
+
+/// `forward_from_parity` with the number of strikes of the median.
+pub fn forward_from_parity_n(pairs: &[(f64, f64, f64)], spot: f64, df: f64, strikes: usize) -> Option<f64> {
     if !(spot > 0.0 && df > 0.0) {
         return None;
     }
     let mut near: Vec<&(f64, f64, f64)> = pairs.iter().filter(|p| p.0 > 0.0 && p.1 > 0.0 && p.2 > 0.0).collect();
     near.sort_by(|a, b| (a.0 - spot).abs().total_cmp(&(b.0 - spot).abs()));
-    near.truncate(PARITY_STRIKES);
+    near.truncate(strikes);
     let mut f: Vec<f64> = near.iter().map(|(k, c, p)| k + (c - p) / df).collect();
     if f.is_empty() {
         return None;
@@ -92,8 +97,13 @@ pub fn forward_from_parity(pairs: &[(f64, f64, f64)], spot: f64, df: f64) -> Opt
 /// and the put have the same price is near the forward, and the median of `K + (C - P) / df` over the three strikes nearest to
 /// it is the forward. `pairs` are `(strike, call price, put price)`; the prices of a live chain are mids of bid and ask.
 pub fn forward_from_parity_blind(pairs: &[(f64, f64, f64)], df: f64) -> Option<f64> {
+    forward_from_parity_blind_n(pairs, df, PARITY_STRIKES)
+}
+
+/// `forward_from_parity_blind` with the number of strikes of the median.
+pub fn forward_from_parity_blind_n(pairs: &[(f64, f64, f64)], df: f64, strikes: usize) -> Option<f64> {
     let guess = pairs.iter().filter(|p| p.0 > 0.0 && p.1 > 0.0 && p.2 > 0.0).min_by(|a, b| (a.1 - a.2).abs().total_cmp(&(b.1 - b.2).abs()))?.0;
-    forward_from_parity(pairs, guess, df)
+    forward_from_parity_n(pairs, guess, df, strikes)
 }
 
 #[cfg(test)]

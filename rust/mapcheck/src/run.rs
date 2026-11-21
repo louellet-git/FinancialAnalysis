@@ -272,7 +272,7 @@ pub fn check_ticker(registry: &Registry, cache: &Path, ticker: &str, n_periods: 
 
 /// `check_ticker` with a filing date. `filed_cut = None`: all facts of the cache, and the 10-K of the cache fills a missing
 /// input (`check_cached`). `Some(date)`: only the facts that a filing of `date` or an earlier date reported
-/// (`CompanyFacts::retain_filed_on_or_before`), and no fill from the 10-K of the cache (it can be a later filing).
+/// (`CompanyFacts::filed_up_to`), and no fill from the 10-K of the cache (it can be a later filing).
 pub fn check_ticker_filed(registry: &Registry, cache: &Path, ticker: &str, n_periods: usize, as_of: i64, keep_values: bool, filed_cut: Option<&str>) -> TickerReport {
     let start = Instant::now();
     let Some(path) = facts_path(cache, ticker) else {
@@ -283,7 +283,7 @@ pub fn check_ticker_filed(registry: &Registry, cache: &Path, ticker: &str, n_per
             let mut report = match filed_cut {
                 None => check_cached(registry, cache, ticker, &facts, n_periods, as_of, keep_values),
                 Some(date) => {
-                    facts.retain_filed_on_or_before(date);
+                    facts = facts.filed_up_to(date);
                     check_facts(registry, ticker, &facts, n_periods, as_of, keep_values)
                 }
             };

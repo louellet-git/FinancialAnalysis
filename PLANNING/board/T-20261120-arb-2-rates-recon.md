@@ -2,7 +2,7 @@
 id: T-20261120-arb-2-rates-recon
 title: Reconcile the rate curves and the bond series of the data store
 area: engine
-status: in-progress
+status: review
 owner: louellet-git
 requested_by: louellet-git
 head: quant

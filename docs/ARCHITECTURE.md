@@ -675,6 +675,7 @@ traps #260 to #270).
 | `[discount]` (`process.rs`, `paths.rs`) | `stub_years`, `year1_share`, `mid_year`. Not set: the end-of-year rule of before (the hand models do not change). |
 | `fa dcf screen --implied` (`auto_cli.rs`) | `implied_discount_rate`: the cost of capital of year 1 that gives the price (a search on the premium). New CSV columns: `model_rate`, `implied_rate`, `sbc_ratio`, `net_debt`, `shares`, `beta`, `equity_weight`. |
 | `fa dcf returns` (`auto_returns.rs`) | The P50 / price of the point-in-time model (date: end of the fiscal year + 100 days) against the later 1-year and 3-year price returns: rank correlations by year and pooled, quintiles inside each year, size buckets, the years as clusters. About 10 s for 420 companies. Result: `analysis/priors/auto_returns_2026-11-20.txt`. |
+| `fa portfolio backtest` (`rust/src/portfolio/`) | One portfolio backtester. `mod.rs`: the engine (positions, daily close value, cost in basis points on each traded value, cash, SPY as benchmark; total and annual return, volatility, maximum drawdown, turnover, cost). `strategies.rs`: the reference strategies `value-rank` (the function `model_p50` of `auto_returns.rs`, with the fiscal years of a vintage: only the SEC facts filed before the date) and `momentum` (12-1 months); both take the top quintile with equal weight. `EqualWeight` is the reference line of the whole list. `cli.rs`: the command. A strategy reads prices through a `View` that holds the days before the rebalance date; the engine trades at the close of that date. The engine reads the cache only. The ticker lists are today's lists (survivorship; trap file `docs/traps/2026-11-20-portfolio-backtest.md`). |
 | `filer_template` (`rust/mapcheck/src/checks.rs`) | Also domestic and split deposit lines, deposit-taking lenders, lenders with no current-assets total, real estate at gross less depreciation, sales-type leases of real estate (#264). |
 
 Screen of `sp500.txt` before and after the four corrections (2026-11-19 data, 4,000 paths): median P50 / price 0.480 and 0.489; P50 at or
@@ -1021,3 +1022,11 @@ ticket `option-backtest-rust`).
 `cargo test --manifest-path rust/mapcheck/Cargo.toml`: the tests of `mapcheck`. The suites make no network calls and start no
 Python program; HTTP is replaced by a function that the test gives, and files are in a temp folder.
 No Python test remains (the last 211 Python tests were deleted on 2026-11-19 after each case had a Rust test).
+
+### `rust/src/volmodels/` — Heston and Bates by Fourier methods (2026-11-20)
+
+Rust only. Ticket `T-20261120-vol-1-heston-bates`. Model document: `docs/models/heston-bates.md`.
+Files: `cx.rs` (complex type), `base.rs` (trait `CharModel`, quote set, loss, error in vol points),
+`fourier.rs` (Lewis integral with adaptive Gauss-Legendre, Carr-Madan FFT), `models.rs`
+(`Heston`, `Bates`), `calib.rs` (Levenberg-Marquardt), `chain.rs` (snapshot to quote set, with
+counts of dropped quotes), `cli.rs` (`fa vol fit`). Prices are model prices, fitted to mids of bid and ask.

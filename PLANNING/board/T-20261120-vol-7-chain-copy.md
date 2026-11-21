@@ -2,11 +2,11 @@
 id: T-20261120-vol-7-chain-copy
 title: Copy the option chains each day to keep bid and ask
 area: engine
-status: backlog
+status: review
 owner: louellet-git
 head: quant
 order: 3
-branch:
+branch: claude/upbeat-cori-a4ykf5
 created: 2026-11-20
 acceptance: One command `fa options archive` copies the SPX, SPXW, SPY, VIX and VIXW chains with the snapshot time and the root of each quote, a day that was copied can be read back by `fa vol`, and the roots SPX and SPXW of one date have separate forwards (with a test).
 ---
@@ -62,3 +62,8 @@ Run the command on 5 market days in a row (one person, by hand). Report: quotes 
 ## Commands
 
 `fa options archive [SYMBOLS] [--keep-days N]`, `fa sync --only chains`.
+
+Steps 2 and 3 done (`fa options archive`; review PASS-WITH-NOTES, cycle 2, 2026-11-21). Open: `fa options snapshot
+--source alpaca --refresh` and the `fa sync` Alpaca fallback write a timed Alpaca file with no 80% check, and the
+next `fa options archive` takes any Alpaca file as its base. Step 4 (`T-20261120-sync-chains`) runs the same check.
+The Cboe path of `fa analyze` (`fetch_option_chain`) reads only its own plain `<date>.json`, not a timed Alpaca file.
