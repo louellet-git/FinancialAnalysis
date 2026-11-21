@@ -156,3 +156,7 @@ Done: a standing rule of this head: the preliminary results go to the owner firs
 ## 2026-11-21 about 19:35 UTC (chat)
 Words: "But why the sudden rise in the return investors are asking for? I've heard that people are expecting a rate rise too"
 Done: three more runs (11-06 to 11-13, 11-06 to 11-20, 10-30 to 11-20) and the yield data: the premium rise of the last week mostly reverses the fall of the week before, when the yields rose (10-year 4.86% to 5.15%) and the stocks did not follow; section 6 of the preliminary results. News (a high CPI on 11-10, a December rate increase priced) is cited as reported, not checked.
+
+## 2026-11-21 about 19:50 UTC (chat)
+Words: "You should generally be asking the head of economics these questions"
+Done: a standing rule: each macro "why" question (rates, the central bank, inflation, the required return of the market) goes to the Head of Economics; this head gives the owner that answer with its source. The question on the rate rise is sent with the data of section 6.
