@@ -171,8 +171,7 @@ Two meanings of overlap, kept apart in each result:
 | Terms of Damodaran and Bank of England before any store copy (the pages state no terms) | Head of Technology |
 | Store copy of JST under CC BY-NC-SA 4.0 | Head of Technology |
 | Terms of the BAA and AAA copy (context only) | Head of Technology |
-| The engine premium build | Head of Fundamental Research |
-| Before any engine result: record the engine premium definition and the engine commit (branch claude/dcf-market-level), with a date, in this file. | Head of Fundamental Research |
+| The engine premium build | Done: record R1 (section 9) |
 
 ## 8. Limits and what we did not do
 
@@ -183,3 +182,41 @@ Two meanings of overlap, kept apart in each result:
 - The bill series joins two different rates at 1934-01.
 - Survivorship stays in the US data (section 2).
 - We did not run `fa`, download data, or test any number. No value in this file is a measured result.
+
+## 9. Dated records after the freeze
+
+The design was fixed at commit 2ffd392 (PASS-WITH-NOTES, Head of Quality and Risk, 2026-11-21). Each
+record below was written before any later return was computed and before any scoring.
+
+### R1. Engine premium and engine commit (2026-11-21, 04:20 UTC)
+
+Given by the Head of Fundamental Research.
+
+- **Engine commit:** branch `claude/dcf-market-level`, commit a6c0175 (2026-11-21 04:19:48 UTC). Data:
+  store `louellet-git/fa-data` 8952a5a. Command: `fa dcf market --shiller macro/shiller/shiller_monthly.csv
+  --cpi macro/fred/CPIAUCNS.csv --out FILE`. Model document: `docs/models/market-level-dcf.md`.
+- **Engine premium (primary):** erp_implied(t) solves V(t) = the real price of month t. All values are real.
+  - V(t) = sum over k = 1..N of D_k / (1 + r)^k + D_N (1 + L) / (r - L) / (1 + r)^N, with r = rr(t) + erp.
+  - D_k = D_known_real(t) x product over j <= k of (1 + g_j); g_j = g0 + (L - g0)(j - 1)/(N - 1).
+  - g0 = the real growth of the known December dividend over the last 10 known years, clamped to
+    [-10%, +20%]. L = 2.0% real. N = 10.
+  - D known at t (year Y): before 1936, December of Y-2; from 1936, December of Y-1 from April, else Y-2.
+    Each December dividend is deflated with its own December CPI.
+  - CPIK(t), the CPI known at t: the Shiller December CPI of Y-1 before 1913-01 (Shiller December 1912
+    at 1913-01); CPIAUCNS of t-1 from 1913-02. This follows section 5 (C2).
+  - rr(t) = gs10(t)/100 - ((CPIK(t)/CPIK(t-120))^(1/10) - 1). The same definition as r10 of P1.
+  - Root by bisection on [-0.10, 0.30], with r > L.
+- **Secondary family of the engine (Holm, m = 5, family-wise 0.05, one-sided):** erp_implied with
+  L = 1%; with L = 3%; with N = 5; with N = 20; and erp_gordon = D_known_real(1 + L)/P + L - rr with L = 2%.
+  The same statistic, bootstrap and sample as the primary test.
+- **Disclosure (the words of the Head of Fundamental Research):** "Before the scoring, the engine ran three
+  times: before the pre-1936 lag fix, after it, and after the C2 CPI change (a6c0175). Only the decade
+  medians and the P10 / P90 of erp_implied were seen. No later return was computed, and nothing was scored."
+
+### R2. A missing CPI month (2026-11-21)
+
+CPIAUCNS has no value for 2025-10 in the store copy (8952a5a): the value was not published. Rule: a
+month with no CPI value gives no predictor value at the month that needs it (the engine marks 2025-11
+`no_cpi`), and a window whose outcome deflator needs that month (the end month 2025-10, start 2015-10
+for H = 120 and 2020-10 for H = 60) gives no outcome. These months drop out of the sample. No other
+value is filled. The count of dropped months is reported in the findings.
