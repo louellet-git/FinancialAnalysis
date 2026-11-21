@@ -57,3 +57,7 @@ Done: Standing rule for this head: research a question before it goes to the per
 ## 2026-11-21 04:09 UTC (relayed by the Head of Technology, its chat)
 Words: "I'd rather we run the quant algo somewhere that other research firms will typically do it, but for free."
 Done: The study of where the algo engine runs now compares always-free cloud tiers near Alpaca (us-east4).
+
+## 2026-11-21 04:16 UTC (relayed by the Head of Technology, question dialog in its session)
+Words: Yes to a free Google Cloud e2-micro in us-east1 for `fa algo run`, in the person's own Google account.
+Done: The Head of Technology writes the setup guide (ticket `T-20261121-algo-host-gcp`) when the engine is in main; this head sends it the command, paths and rate.
