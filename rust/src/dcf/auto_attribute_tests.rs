@@ -138,7 +138,7 @@ fn one_and_four_threads_give_the_same_rows() {
 
 fn chain(ln: f64, which: usize, x1: f64) -> Chain {
     let f = |x: f64| Found { x, bound: Bound::Exact, monotone: true };
-    let mut c = Chain { x1: f(x1), x2: f(0.05), facts_ln: 0.0, time_ln: 0.0, rates_ln: 0.0, free_ln: 0.0, resid_ln: 0.0, rev_free_ln: 0.0, rev_rates_ln: 0.0 };
+    let mut c = Chain { x1: f(x1), x2: f(0.05), facts_ln: 0.0, time_ln: 0.0, rates_ln: 0.0, free_ln: 0.0, resid_ln: 0.0, rev_free_ln: 0.0, rev_rates_ln: 0.0, split: None };
     if which == 3 {
         c.free_ln = ln;
         c.rev_free_ln = ln;
@@ -526,7 +526,8 @@ fn the_8k_field_has_the_filings_after_d1_and_on_or_before_d2() {
 
 #[test]
 fn the_csv_header_ends_with_the_four_new_columns_and_the_old_ones_keep_their_places() {
-    assert!(CSV_HEADER.ends_with(",refusal,beta1,beta2,dur_premium1,earnings_8k"));
+    assert!(CSV_HEADER.contains(",refusal,beta1,beta2,dur_premium1,earnings_8k,"));
+    assert!(CSV_HEADER.ends_with(",earnings_8k,c_premium,c_growth,p_premium_common_pct,p_premium_company_pct,g_growth_common_pct,g_growth_company_pct"));
     assert!(CSV_HEADER.starts_with("ticker,size,sector,industry,price1,price2,change_pct,"));
     assert_eq!(CSV_HEADER.split(',').position(|h| h == "flags"), Some(34));
     let mut r = row("A", 10.0, 8.0, 3, 10.0, 0.05);
@@ -538,10 +539,192 @@ fn the_csv_header_ends_with_the_four_new_columns_and_the_old_ones_keep_their_pla
     let line = csv_line(&r);
     let cells: Vec<&str> = line.split(',').collect();
     assert_eq!(cells.len(), CSV_HEADER.split(',').count());
-    assert_eq!(&cells[cells.len() - 4..], ["1.1000", "", "21.500", "2026-11-17;2026-11-19"]);
+    let k = CSV_HEADER.split(',').position(|h| h == "beta1").unwrap();
+    assert_eq!(&cells[k..k + 4], ["1.1000", "", "21.500", "2026-11-17;2026-11-19"]);
+    // no split yet: the six new cells are empty
+    assert!(cells[cells.len() - 6..].iter().all(|c| c.is_empty()));
 }
 
 #[test]
 fn the_premium_series_csv_header_is_unchanged() {
     assert_eq!(super::super::auto_premium::HEADER, "friday,anchor,curve_source,curve_date,zero10,s1,n_value,n_list,ret_w,n_ret,s2_facts,s2_time,s2_rates,s2_premium,s2_growth,s2_residual,s2_nomodel,s2_change");
+}
+
+// ---------------------------------------------------------------------------------------------
+// The common change and the company part
+// ---------------------------------------------------------------------------------------------
+
+fn engine_row(a: Attribution) -> AttrRow {
+    AttrRow { ticker: "A".into(), sector: "S".into(), industry: String::new(), prices: Some((a.p1, a.p2)), shares: Some(10.0), shares_note: None, cik: None, weight_of: None, outcome: Ok(a), earnings_8k: String::new(), stale: None }
+}
+
+fn change(c: Option<f64>) -> CommonChange {
+    CommonChange { c, label: "list median".into() }
+}
+
+/// A price that moves from the value at the model premium to the value at 3%, with the engine of the tests.
+fn moved_row(t: &super::super::calibrate::ProcessTable) -> (Vec<AttrRow>, f64) {
+    let model = rules_w1().erp.0;
+    let (p1, p2) = (value(&inputs(), &mk(1.0, None), model), value(&inputs(), &mk(1.0, None), 0.03));
+    let a = attribute_models(&inputs(), &mk(p1, None), &inputs(), &mk(p2, None), &cfg(t)).unwrap();
+    (vec![engine_row(a)], model)
+}
+
+#[test]
+fn the_common_step_and_the_company_part_add_to_the_plug_with_closed_answers() {
+    let t = table();
+    let (mut rows, model) = moved_row(&t);
+    let inp = vec![inputs()];
+    let (m1, m2) = (|_: &str| mk(1.0, None), |_: &str| mk(1.0, None));
+    let c = -0.01;
+    let changes = [change(Some(c)), change(Some(0.01))];
+    add_common(&mut rows[..], &inp, &m1, &m2, &cfg(&t), &changes, Some(1)).unwrap();
+    let a = rows[0].outcome.as_ref().unwrap();
+    let ch = prem(a);
+    let sp = ch.split.as_ref().unwrap();
+    // premium view: the common step is ln V(x1 + c) - ln V(x1) of the same engine (closed: the price is the value at x1)
+    let by_hand = (value(&inputs(), &mk(1.0, None), model + c) / value(&inputs(), &mk(1.0, None), model)).ln();
+    assert!((sp.common_ln - by_hand).abs() < 1e-6 && sp.common_ln > 0.0, "{sp:?} {by_hand}");
+    // the company step goes from x1 + c to x2 = 3%
+    let company = (value(&inputs(), &mk(1.0, None), 0.03) / value(&inputs(), &mk(1.0, None), model + c)).ln();
+    assert!((sp.company_ln - company).abs() < 1e-6, "{sp:?} {company}");
+    assert!((sp.common_ln + sp.company_ln - ch.free_ln).abs() < 1e-12);
+    assert!(!sp.none && ch.flags("premium").iter().all(|f| !f.contains("common-step")));
+    // the rates and the curve do not move, so the reverse order gives the same two parts
+    assert!((sp.rev_common_ln - sp.common_ln).abs() < 1e-9 && (sp.rev_common_ln + sp.rev_company_ln - ch.rev_free_ln).abs() < 1e-12);
+    // the percent parts: the two plug parts add to the plug of `pct`, in both orders
+    let (p, q) = (ch.pct_split(), ch.pct_rev_split());
+    assert!((p[3] + p[4] - ch.pct()[3]).abs() < 1e-12 && (q[3] + q[4] - ch.pct_rev()[3]).abs() < 1e-12);
+    assert!((p.iter().sum::<f64>() - (a.p2 / a.p1 - 1.0)).abs() < 1e-12);
+    // the growth view: the same with the growth shift
+    let g = grow(a);
+    let gs = g.split.as_ref().unwrap();
+    let ct = cfg(&t);
+    let v = |x: f64| value_with_growth(&inputs(), &ct, &mk(1.0, None), x).unwrap();
+    assert!((gs.common_ln - (v(g.x1.x + 0.01) / v(g.x1.x)).ln()).abs() < 1e-9, "{gs:?}");
+    assert!((gs.common_ln + gs.company_ln - g.free_ln).abs() < 1e-12);
+    // the CSV has the parts, and they add to the old columns
+    let line = csv_line(&rows[0]);
+    let cell = |name: &str| -> f64 { line.split(',').nth(CSV_HEADER.split(',').position(|h| h == name).unwrap()).unwrap().parse().unwrap() };
+    assert!((cell("p_premium_common_pct") + cell("p_premium_company_pct") - cell("p_premium_pct")).abs() < 2e-3);
+    assert!((cell("g_growth_common_pct") + cell("g_growth_company_pct") - cell("g_growth_pct")).abs() < 2e-3);
+    assert_eq!((cell("c_premium"), cell("c_growth")), (-0.01, 0.01));
+}
+
+#[test]
+fn with_c_zero_the_company_part_is_the_plug_and_no_c_is_zero() {
+    let t = table();
+    let (mut rows, _) = moved_row(&t);
+    let inp = vec![inputs()];
+    let (m1, m2) = (|_: &str| mk(1.0, None), |_: &str| mk(1.0, None));
+    add_common(&mut rows[..], &inp, &m1, &m2, &cfg(&t), &no_common("one ticker and no --common-list"), None).unwrap();
+    let a = rows[0].outcome.as_ref().unwrap();
+    for ch in [prem(a), grow(a)] {
+        let sp = ch.split.as_ref().unwrap();
+        assert_eq!((sp.c, sp.common_ln, sp.rev_common_ln), (0.0, 0.0, 0.0));
+        assert_eq!((sp.company_ln, sp.rev_company_ln), (ch.free_ln, ch.rev_free_ln));
+        assert!(sp.label.contains("c = 0") && !sp.none);
+    }
+    // an empty text of the source says so on the headline
+    assert!(common_label(&CommonChange::none("x")).starts_with("none, c = 0"));
+}
+
+#[test]
+fn a_value_that_the_engine_cannot_give_at_x1_plus_c_puts_the_whole_plug_in_the_company_part() {
+    let t = table();
+    let (mut rows, _) = moved_row(&t);
+    let inp = vec![inputs()];
+    let (m1, m2) = (|_: &str| mk(1.0, None), |_: &str| mk(1.0, None));
+    add_common(&mut rows[..], &inp, &m1, &m2, &cfg(&t), &[change(Some(-5.0)), change(Some(0.0))], Some(1)).unwrap();
+    let a = rows[0].outcome.as_ref().unwrap();
+    let ch = prem(a);
+    let sp = ch.split.as_ref().unwrap();
+    assert!(sp.none && sp.common_ln == 0.0 && sp.company_ln == ch.free_ln, "{sp:?}");
+    assert!(a.flags().contains("premium:common-step:none"), "{}", a.flags());
+}
+
+#[test]
+fn the_median_and_the_value_weighted_c_of_a_hand_made_list() {
+    // x2 is 5% in each row; x1 is 4%, 3% and 5%: x2 - x1 is 1, 2 and 0 points. Median: 1 point.
+    // Weights (price x shares): A 10 x 10 = 100, B 10 x 30 = 300, C 10 x 10 = 100. Value-weighted: (100 + 600 + 0) / 500 = 1.4 points.
+    let rows = vec![row("A", 10.0, 8.0, 3, 10.0, 0.04), row("B", 10.0, 8.0, 3, 30.0, 0.03), row("C", 10.0, 8.0, 3, 10.0, 0.05)];
+    let m = common_from_rows(&rows, CommonMode::Median);
+    assert!((m[0].c.unwrap() - 0.01).abs() < 1e-12 && m[0].label == "list median");
+    let v = common_from_rows(&rows, CommonMode::ValueWeighted);
+    assert!((v[1].c.unwrap() - 0.014).abs() < 1e-12 && v[1].label == "value-weighted");
+    // a stale row is left out: without B the median of 1 and 0 is 0.5 points
+    let mut stale = rows.clone();
+    stale[1].stale = Some("old".into());
+    assert!((common_from_rows(&stale, CommonMode::Median)[0].c.unwrap() - 0.005).abs() < 1e-12);
+    // no row, no c
+    assert!(common_from_rows(&[], CommonMode::Median)[0].c.is_none());
+}
+
+#[test]
+fn the_file_source_gives_c_of_the_row_of_d2_and_an_empty_field_is_no_change() {
+    let text = "date,erp_change,growth_change,source\n2026-11-13,0.001,0.002,old\n2026-11-20,-0.0025,,economics v1\n";
+    let c = common_from_text(text, "2026-11-20").unwrap();
+    assert_eq!(c[0].c, Some(-0.0025));
+    assert_eq!(c[0].label, "economics view, economics v1");
+    assert_eq!(common_label(&c[0]), "c = -0.250 points, common (economics view, economics v1)");
+    assert!(c[1].c.is_none() && c[1].label.contains("no growth change"), "{:?}", c[1]);
+    assert!(common_from_text(text, "2026-11-19").is_err());
+    assert!(common_from_text("date,erp\n", "2026-11-20").is_err());
+    assert!(common_from_text("date,erp_change,growth_change,source\n2026-11-20,abc,,x\n", "2026-11-20").is_err());
+}
+
+#[test]
+fn the_8k_group_line_is_the_sum_of_the_lines_of_its_tickers() {
+    let mut rows = vec![row("A", 10.0, 8.0, 3, 10.0, 0.05), row("B", 30.0, 27.0, 2, 10.0, 0.05), row("C", 20.0, 22.0, 3, 5.0, 0.05)];
+    rows[0].earnings_8k = "2026-11-17".into();
+    rows[2].earnings_8k = "2026-11-19".into();
+    for (i, r) in rows.iter_mut().enumerate() {
+        if let Ok(a) = r.outcome.as_mut() {
+            if let Ok(c) = a.prem.as_mut() {
+                let (common, company) = (c.free_ln * 0.25, c.free_ln * 0.75);
+                let (rc, rcc) = (c.rev_free_ln * 0.25, c.rev_free_ln * 0.75);
+                c.split = Some(Split { c: 0.001 * (i as f64 + 1.0), label: "list median".into(), common_ln: common, company_ln: company, rev_common_ln: rc, rev_company_ln: rcc, none: false });
+            }
+        }
+    }
+    let b = full_bridge(&rows, View::Premium).unwrap();
+    let g = b.earnings.as_ref().unwrap();
+    assert_eq!((g.name.as_str(), g.n, b.earnings_tickers.clone()), (EARNINGS_GROUP, 2, vec!["A".to_string(), "C".to_string()]));
+    for k in 0..N_BRIDGE {
+        let sum: f64 = ["A", "C"].iter().map(|n| b.tickers.iter().find(|l| l.name == *n).unwrap().parts[k]).sum();
+        assert!((g.parts[k] - sum).abs() < 1e-12, "{k}");
+    }
+    for k in 0..4 {
+        let sum: f64 = ["A", "C"].iter().map(|n| b.tickers.iter().find(|l| l.name == *n).unwrap().split[k]).sum();
+        assert!((g.split[k] - sum).abs() < 1e-12, "{k}");
+    }
+    // the split columns add to the old plug column, on each line and on the whole list; the group is not added to the whole
+    assert!((b.all.split[0] + b.all.split[1] - b.all.parts[3]).abs() < 1e-12);
+    assert!(b.all.split[0].abs() > 1e-6 && b.all.split[2] == 0.0 && b.all.split[3] == 0.0);
+    assert_eq!(b.all.n, 3);
+    assert_eq!(b.common[0].as_ref().map(|x| x.1.as_str()), Some("list median"));
+    let text = list_text(&rows);
+    assert!(text.contains("premium-common") && text.contains("earnings 8-K in window") && text.contains("common change c of the premium view"), "{text}");
+    // no 8-K, no group line
+    rows[0].earnings_8k.clear();
+    rows[2].earnings_8k.clear();
+    assert!(full_bridge(&rows, View::Premium).unwrap().earnings.is_none());
+}
+
+#[test]
+fn one_and_four_threads_give_the_same_rows_after_the_common_pass() {
+    let t = table();
+    let list = synthetic(12);
+    let m1 = |_: &str| mk(30.0, Some(curve(0.042, 4.0)));
+    let m2 = |_: &str| mk(27.0, Some(curve(0.045, 4.3)));
+    let run = |jobs: usize| {
+        let mut rows = attribute_list(&list, &list, &m1, &m2, &HashMap::new(), &cfg(&t), Some(jobs)).unwrap();
+        let c = common_from_rows(&rows, CommonMode::Median);
+        add_common(&mut rows, &list, &m1, &m2, &cfg(&t), &c, Some(jobs)).unwrap();
+        rows
+    };
+    let (one, four) = (run(1), run(4));
+    assert_eq!(format!("{one:?}"), format!("{four:?}"));
+    assert_eq!(csv_text(&one), csv_text(&four));
+    assert!(one.iter().filter_map(|r| r.outcome.as_ref().ok()).any(|a| a.prem.as_ref().is_ok_and(|c| c.split.is_some())));
 }
