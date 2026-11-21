@@ -35,6 +35,11 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
 - The total of a session: `get_session` of that session gives `usage` (tokens and `cost_usd`). One call for
   each head gives the cost by head with no script. Mine: 11.68 USD at 19:03 UTC, 35 minutes after the start.
 
+- What waits for the person in a head session: `list_sessions` (one call) gives `post_turn_summary.
+  needs_action` of each `FA-L` session. Read it when the person talks to me or a head sends a result. Take
+  each item: answer it from the rules or the record, or put it in one yes/no dialog for the person. A note
+  to the head only if the same head does it again and again.
+
 ## 4. Open now
 - E6.S5: `T-20261121-board-check` (in progress, Technology), then `T-20261121-usage-log` (the backfill
   table of all heads comes to me), then `T-20261121-token-calculator` (on hold).

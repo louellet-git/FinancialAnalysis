@@ -139,3 +139,10 @@ Words: "I've tested smaller contexts and shortening the context window and frank
 face, I feel like it's harmful. Not refuting the entire idea but that it's something to really be tested
 before turning the [knob]."
 Done: the proposal is withdrawn. No change to the context of a head. A test design comes first, if at all.
+
+## 2026-11-21 about 19:21 UTC (chat, from speech)
+Words: "I think that the heads are still like reporting to me in general as opposed to you. So again, I'm not
+sure how we want to like particularly deal with that. Something lean, non-invasive, to be monitored."
+Done: no new rule. I read what each head session asks of the person (`list_sessions`, the field
+`needs_action`; one call, no tokens of a head) and I take those items. Method in the Head of Staff file,
+part 3. First item found: the go-ahead for the week report (Fundamental Research).
