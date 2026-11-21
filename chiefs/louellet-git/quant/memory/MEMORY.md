@@ -27,13 +27,17 @@ Rules: `chiefs/ORIENTATION.md` (sections 3 to 8). Decisions of the person: `../R
 - One branch for each ticket (person, 2026-11-21): `claude/quant-<ticket>` from `origin/main`. Parallel agents
   get worktrees from the branch; I bring their work in with a patch or a cherry-pick and test it myself.
 - A value factor for a past date: `fa dcf implied --as-of D` or `fa dcf attribute`; `fa dcf auto --as-of` and
-  `fa dcf screen --as-of` read later filings (look-ahead; Fundamental, PR 107).
+  `fa dcf screen --as-of` read later filings (look-ahead; Fundamental, PR 107). Also: store prices are split-adjusted
+  to today and SEC shares are as filed: a past per-share value over a past price is inflated by later splits (CRIT,
+  2026-11-21); wait for a split table or unadjusted closes. Price-only rules (bots, `fa algo`) are not affected.
 - Alpaca: the proxy adds only the secret header. `APCA_API_KEY_ID` is in the environment "ALL ACCESS" from a
   restart; set `APCA_API_SECRET_KEY` to a dummy value. Without it, the Head of Technology runs a real-day test.
 - A backtest of momentum on today's index list has survivorship bias (`fa portfolio backtest` warns of it);
   no point-in-time member list exists in the store.
 
 ## Standing words of the person
+- 2026-11-21: "Before asking me anything, please look into it. Send that to the tech head." Research first; a
+  question for the person goes through the Head of Technology with my recommendation, not by a direct dialog.
 - 2026-11-20: "You don't need me to tell you to continue unless I tell you to stop": report, then take the next
   ticket with no wait.
 - 2026-11-20: permission requests and decisions go to the Head of Technology (`chiefs/ORIENTATION.md`, section 5).

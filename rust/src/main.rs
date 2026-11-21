@@ -69,6 +69,7 @@ USAGE:
   fa trade fetch [--symbol S]... [--interval I]...  download the bars of the option bots (Yahoo) into the CSV cache
   fa trade backtest [--bot ID]... [--max-risk N] [--out FILE] [-v]   backtest the option bots (fa trade backtest --help)
   fa trade paper [BOT]... [--no-refresh] [--no-live]   forward paper trading, live Cboe option chain (fa trade paper --help)
+  fa algo run|replay --strategy demo [--date D] [--poll-secs N] [--max-pos N] [--max-loss USD] ...   algo engine, own paper simulator, no order (fa algo --help)
   fa sync [TICKER...] [--tickers-file F] [--only A,B] [--skip A,B] [--force] [--dry-run] [--max-minutes N]
                                                   bring all cached data sets up to date, only the old ones, one queue for each host (fa sync --help)
   fa sync --status [TICKER...]                    age of each data set from the cache files, no request
@@ -306,6 +307,10 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
                 Err(e) => Ok(usage_error(&e)),
             },
             _ => Ok(usage_error("trade needs a command: backtest, fetch or paper")),
+        },
+        Some("algo") => match financial_analysis::trading::algo::cli::command(&fa.repo, &args[1..]) {
+            Ok(code) => Ok(ExitCode::from(code as u8)),
+            Err(e) => Ok(usage_error(&e)),
         },
         Some("sync") => match financial_analysis::sync::command(&fa.repo, &args[1..]) {
             Ok(code) => Ok(ExitCode::from(code as u8)),
