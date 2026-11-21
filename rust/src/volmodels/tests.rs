@@ -1,7 +1,7 @@
 //! Tests with fixed answers (ticket T-20261120-vol-1-heston-bates).
 
 use super::base::*;
-use super::calib::{at_bound, fit, levenberg_marquardt, FitOptions, LmStatus};
+use super::calib::{at_bound, fit, levenberg_marquardt, lm_core, FitOptions, LmStatus};
 use super::chain::{build, Filters};
 use super::cx::Cx;
 use super::fourier::*;
@@ -361,4 +361,160 @@ fn bates_surface_is_recovered_with_a_loose_tolerance() {
     for (name, got, want) in [("v0", r.model.heston.v0, 0.04), ("theta", r.model.heston.theta, 0.05), ("kappa", r.model.heston.kappa, 2.0), ("xi", r.model.heston.xi, 0.5), ("rho", r.model.heston.rho, -0.7), ("lambda", r.model.lambda, 0.3), ("mu_j", r.model.mu_j, -0.1), ("delta_j", r.model.delta_j, 0.1)] {
         assert!(((got - want) / want).abs() < 0.05, "{name}: {got} against {want}");
     }
+}
+
+// ---- SABR (ticket T-20261120-vol-2-sabr-localvol, part 1) ----
+
+use super::sabr::{bounds as sabr_bounds, fit_series as sabr_fit_series, residuals as sabr_residuals, Sabr};
+
+/// A series whose mid vols are the SABR vols of `m` (an exact surface, no noise). The spread is 0.2 vol points.
+fn sabr_series(m: &Sabr, f: f64, days: i64, n: usize) -> Series {
+    let t = days as f64 / 365.0;
+    let quotes = (0..n)
+        .map(|i| {
+            let k = f * (-0.25 + 0.45 * i as f64 / (n - 1) as f64).exp();
+            let v = m.implied_vol(f, k, t);
+            Quote { strike: k, call: k >= f, mid: 1.0, iv_mid: v, iv_bid: v - 0.001, iv_ask: v + 0.001 }
+        })
+        .collect();
+    Series { root: "TST".into(), expiry: "2027-01-01".into(), days, t, forward: f, df: 1.0, quotes }
+}
+
+#[test]
+fn sabr_1_nu_zero_beta_one_is_flat_at_alpha() {
+    for &(rho, t) in &[(-0.7, 0.1), (0.0, 1.0), (0.4, 5.0)] {
+        let m = Sabr { alpha: 0.23, beta: 1.0, rho, nu: 0.0 };
+        for &k in &[40.0, 80.0, 99.999, 100.0, 100.001, 120.0, 300.0] {
+            let v = m.implied_vol(100.0, k, t);
+            assert!((v - 0.23).abs() < 1e-12, "rho {rho} k {k}: {v}");
+        }
+    }
+}
+
+#[test]
+fn sabr_2_atm_vol_is_the_published_atm_expansion() {
+    // Hagan et al. (2002) eq. (2.18) by hand: beta = 1, F = 100, alpha = 0.2, rho = -0.5, nu = 0.6, T = 1:
+    // 0.2 * (1 + (0.25 * (-0.5) * 0.2 * 0.6 + (2 - 3 * 0.25) / 24 * 0.36)) = 0.2 * (1 - 0.015 + 0.01875) = 0.20075.
+    let m = Sabr { alpha: 0.2, beta: 1.0, rho: -0.5, nu: 0.6 };
+    assert!((m.atm_vol(100.0, 1.0) - 0.20075).abs() < 1e-14);
+    assert!((m.implied_vol(100.0, 100.0, 1.0) - 0.20075).abs() < 1e-12, "{}", m.implied_vol(100.0, 100.0, 1.0));
+    // The general formula tends to the ATM value from both sides, for several beta (the branch x -> 0 and the near branch agree).
+    for &beta in &[1.0, 0.7, 0.5, 0.0] {
+        let m = Sabr { alpha: 0.2 * 100f64.powf(1.0 - beta), beta, rho: -0.3, nu: 0.5 };
+        let atm = m.atm_vol(100.0, 0.5);
+        // A strike 1e-5 away moves the vol by (skew about 0.1) x 1e-5 = 1e-6 at most, so the tolerance there is 1e-5.
+        for &(k, tol) in &[(100.0, 1e-12), (100.0 * (1.0 + 1e-9), 1e-8), (100.0 * (1.0 - 1e-9), 1e-8), (100.0 * (1.0 + 1e-5), 1e-5)] {
+            assert!((m.implied_vol(100.0, k, 0.5) - atm).abs() < tol, "beta {beta} k {k}");
+        }
+        assert!((m.implied_vol(100.0, 100.0, 0.5) - atm).abs() < 1e-12, "beta {beta}");
+    }
+}
+
+#[test]
+fn sabr_2b_limits_of_the_obloj_zero_order_term() {
+    // nu = 0, beta < 1: I0 = alpha (1 - beta) x / (F^(1-beta) - K^(1-beta)) (Obloj 2008, Table 1), T -> 0 (beta = 0.5, no time term when T = 0).
+    let m = Sabr { alpha: 2.0, beta: 0.5, rho: -0.4, nu: 0.0 };
+    let (f, k) = (100.0f64, 80.0f64);
+    let want = 2.0 * 0.5 * (f / k).ln() / (f.sqrt() - k.sqrt());
+    assert!((m.implied_vol(f, k, 0.0) - want).abs() < 1e-14);
+    // beta -> 1 is continuous: beta = 1 - 1e-9 gives the beta = 1 value.
+    let a = Sabr { alpha: 0.2, beta: 1.0, rho: -0.5, nu: 0.6 }.implied_vol(100.0, 90.0, 1.0);
+    let b = Sabr { alpha: 0.2 * 100f64.powf(1e-9), beta: 1.0 - 1e-9, rho: -0.5, nu: 0.6 }.implied_vol(100.0, 90.0, 1.0);
+    assert!((a - b).abs() < 1e-8, "{a} {b}");
+}
+
+#[test]
+fn sabr_3_round_trip_gives_the_parameters_back() {
+    for &(beta, alpha) in &[(1.0, 0.18), (0.5, 0.18 * 10.0)] {
+        for &days in &[30, 180] {
+            let truth = Sabr { alpha, beta, rho: -0.65, nu: 0.8 };
+            let s = sabr_series(&truth, 100.0, days, 25);
+            let r = sabr_fit_series(&s, beta, 100).unwrap();
+            println!("beta {beta} days {days}: {:?} {:?} rms {:.2e}", r.model, r.status, r.rms_points);
+            assert_eq!(r.status, LmStatus::Converged);
+            assert!(r.rms_points < 1e-6 && r.max_points < 1e-6, "{} {}", r.rms_points, r.max_points);
+            assert!((r.model.alpha - alpha).abs() / alpha < 1e-5 && (r.model.rho - truth.rho).abs() < 1e-4 && (r.model.nu - truth.nu).abs() / truth.nu < 1e-4, "{:?}", r.model);
+            assert_eq!(r.at_bound, [false, false, false]);
+        }
+    }
+}
+
+#[test]
+fn sabr_4_a_fit_that_cannot_converge_is_reported() {
+    let truth = Sabr { alpha: 0.18, beta: 1.0, rho: -0.65, nu: 0.8 };
+    let s = sabr_series(&truth, 100.0, 90, 25);
+    let b = sabr_bounds(100.0, 1.0);
+    let far = [0.05, 0.5, 3.0];
+    let resid = |p: &[f64]| sabr_residuals(&s, 1.0, p);
+    let (_, _, iters, status) = lm_core(&resid, &b, &far, 1);
+    assert_eq!((iters, status), (1, LmStatus::IterationCap), "one iteration does not converge from a far start");
+    let (_, f, _, status) = lm_core(&resid, &b, &far, 100);
+    assert_eq!(status, LmStatus::Converged, "loss {f}");
+    // The fit of the series with one iteration is printed as not converged and not as a result.
+    let r = sabr_fit_series(&s, 1.0, 1).unwrap();
+    assert_ne!(r.status, LmStatus::Converged);
+}
+
+#[test]
+fn sabr_5_fixed_answers_off_the_money() {
+    // Independent implementation (Obloj I0 with the time term), Quality and Risk, 2026-11-21. Not a published value.
+    // (alpha, beta, rho, nu, F, K, T, vol)
+    let cases = [
+        (0.2, 1.0, -0.5, 0.6, 100.0, 90.0, 1.0, 0.218281601470249),
+        (0.2, 1.0, -0.5, 0.6, 100.0, 100.0, 1.0, 0.200750000000000),
+        (2.0, 0.5, -0.3, 0.4, 100.0, 80.0, 0.5, 0.230258294758247),
+        (2.0, 0.5, -0.3, 0.4, 100.0, 130.0, 2.0, 0.184383689251854),
+        (20.0, 0.0, 0.2, 0.5, 100.0, 95.0, 0.25, 0.204208331704431),
+        (0.2, 1.0, 0.3, 0.6, 4500.0, 5200.0, 3.0, 0.240274639653655),
+    ];
+    for (alpha, beta, rho, nu, f, k, t, want) in cases {
+        let got = Sabr { alpha, beta, rho, nu }.implied_vol(f, k, t);
+        println!("beta {beta} K {k}: {got:.15} against {want:.15}");
+        assert!((got - want).abs() < 1e-12, "beta {beta} K {k}: {got} against {want}");
+    }
+}
+
+#[test]
+fn sabr_6_alpha_bounds_scale_with_the_forward() {
+    // beta 0.5, F 7000: alpha = 0.2 * 7000^0.5 = 16.7, above an unscaled upper bound of 10.
+    let f: f64 = 7000.0;
+    let alpha = 0.2 * f.sqrt();
+    assert!(alpha > 10.0);
+    let b = sabr_bounds(f, 0.5);
+    assert!((b[0].1 - 10.0 * f.sqrt()).abs() < 1e-9 && (b[0].0 - 1e-4 * f.sqrt()).abs() < 1e-12);
+    let truth = Sabr { alpha, beta: 0.5, rho: -0.8, nu: 1.0 };
+    let r = sabr_fit_series(&sabr_series(&truth, f, 60, 25), 0.5, 100).unwrap();
+    assert_eq!((r.status, r.at_bound), (LmStatus::Converged, [false, false, false]), "{:?}", r.model);
+    assert!((r.model.alpha - alpha).abs() / alpha < 1e-5, "{:?}", r.model);
+}
+
+#[test]
+fn sabr_7_beta_zero_nu_zero_is_bachelier() {
+    // beta = 0, nu = 0: alpha is a normal (Bachelier) volatility. Bachelier price, inverted with the Black inversion, against the SABR vol.
+    // At T = 1e-4 the two agree to the order T^2 (the time term of the formula is the O(T) conversion).
+    // This test cannot see the O(T) time term (tolerance 1e-7 at T = 1e-4): the time term is tested by sabr_2 and sabr_5.
+    let (f, t, sn): (f64, f64, f64) = (100.0, 1e-4, 20.0);
+    for &k in &[99.6, 99.8, 100.0, 100.3] {
+        let sd: f64 = sn * t.sqrt();
+        let d = (f - k) / sd;
+        let ncdf = |x: f64| crate::trading::pricing::norm_cdf(x);
+        let price = (f - k) * ncdf(d) + sd * (-0.5 * d * d).exp() / (2.0 * PI).sqrt();
+        let black = implied_vol(true, price, f, k, t, 1.0).unwrap();
+        let sabr = Sabr { alpha: sn, beta: 0.0, rho: 0.3, nu: 0.0 }.implied_vol(f, k, t);
+        println!("K {k}: Bachelier->Black {black:.12}, SABR {sabr:.12}");
+        assert!((black - sabr).abs() < 1e-7, "K {k}: {black} against {sabr}");
+    }
+}
+
+#[test]
+fn sabr_8_poor_fit_mark_and_empty_series() {
+    // Quotes with a 10 vol point bump on one strike and a 0.2 point spread: the largest error is above 5 spreads.
+    let truth = Sabr { alpha: 0.18, beta: 1.0, rho: -0.65, nu: 0.8 };
+    let mut s = sabr_series(&truth, 100.0, 90, 25);
+    s.quotes[12].iv_mid += 0.10;
+    let r = sabr_fit_series(&s, 1.0, 100).unwrap();
+    assert!(r.poor, "max {} points", r.max_points);
+    assert!(!sabr_fit_series(&sabr_series(&truth, 100.0, 90, 25), 1.0, 100).unwrap().poor);
+    s.quotes.clear();
+    assert!(sabr_fit_series(&s, 1.0, 100).unwrap_err().contains("no quotes"));
 }
