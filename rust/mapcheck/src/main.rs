@@ -408,7 +408,7 @@ fn cmd_crosscheck(raw: &[String]) -> Result<bool, String> {
                 .iter()
                 .find(|p| p.end == end)
                 .ok_or_else(|| format!("no annual row for the fiscal year of the filing ({end})"))?;
-            Ok((end, compare(&registry, period, &mapcheck::filing::estimates(&filing))))
+            Ok((end, compare(&registry, period, &mapcheck::filing::estimates(&registry, &filing))))
         })();
         match outcome {
             Ok((end, rows)) => {

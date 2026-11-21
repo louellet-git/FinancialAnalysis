@@ -150,6 +150,10 @@ pub fn flatten(registry: &Registry, company: &Company, market: &Market) -> Vec<S
             ]
         };
         for (i, v) in registry.variables.iter().enumerate() {
+            // The company-facts copy of a replaced value is in the store file, not in the workbook.
+            if v.companyfacts_of.is_some() {
+                continue;
+            }
             if let Some(value) = p.values[i] {
                 let source = p.sources.get(&v.name).map_or("", String::as_str);
                 sheets[sheet_for(&v.statement)].rows.push(line(&v.statement, &v.name, value, unit_of(&v.name), source));

@@ -155,3 +155,12 @@ Done: no Tiingo plan, no private store. Research of free sources whose terms per
 ## 2026-11-21 05:04 UTC (chat)
 Words: "Remove the tests used for a decision I think that's overdoing it ?" and "The backtest harness and the hypothesis file are more for the heads that require it"
 Done: the row "Test or experiment that a person uses for a decision" removed from `louellet-git/the-heads` (commit 96eabd4). In this repo the harness is opt-in: `trading/hypotheses/README.md` says who uses it; an exploratory run that reaches a registered window is no longer refused (a WARNING names the hypothesis).
+## 2026-11-21 04:03 UTC (relayed by the Head of Quant Research; checked in its transcript)
+Words: "Before asking me anything, please look into it. Send that to the tech head."
+Done: `chiefs/ORIENTATION.md`, section 5, item 2 of "Requests for the person": research comes first; a question carries the result and a recommendation; a question that research can answer is not asked. The same rule in `louellet-git/the-heads`.
+
+## 2026-11-21 04:16 UTC (chat, then the question dialog)
+Words: "I'd rather we run the quant algo somewhere that other research firms will typically do it, but for free."
+Question: "May the quant algo engine run on a free Google Cloud e2-micro machine in us-east1 ... set up in your own Google account? ..."
+Words: "Yes (Recommended)"
+Done: ticket `T-20261121-algo-host-gcp` (order 2). The Head of Quant Research is told.

@@ -31,10 +31,11 @@ data limits.
    dropped, with the reason.
 3. An index (SPX, VIX) uses a forward from put-call parity; say how the level and rate
    were found.
-4. Say what the data gives: Cboe is the present only; Alpaca gives daily closes since
-   February 2024 and no past bid and ask. A result from closes is not a result from
-   quotes.
-5. Test on several dates and underlyings, not one day.
+4. Say what the data gives: the daily copy is Alpaca indicative (not OPRA; the Cboe host refuses the
+   cloud); Alpaca history is closes since February 2024, no past bid and ask. A result from closes or
+   indicative quotes is a measurement, not a tradable price.
+5. Test on several dates and underlyings, not one day. Report each status and number as the program prints
+   it (copy the line); a fit prints its status and the way to recover.
 
 **Never.** Never commit, push, or open a pull request (the orchestrator does this). Never call a model price a
 market price. Never drop quotes with no count.

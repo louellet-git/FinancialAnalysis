@@ -2,12 +2,12 @@
 id: T-20261120-dcf-acq-charge-limits
 title: Correct the two limits of the acquisition charge of the automatic model
 area: engine
-status: backlog
+status: in-progress
 owner: louellet-git
 requested_by: louellet-git
 head: fundamental
 order: 1.4
-branch:
+branch: claude/dcf-acq-charge-limits
 created: 2026-11-20
 acceptance: The charge of a heavy buyer follows the persistence of the spend that the panel shows, the charge has no step at a company growth mean equal to L, and the point-in-time error of the class with a spend above 5% of revenue is near zero out of sample.
 ---
@@ -28,3 +28,5 @@ in the terminal value.
 
 Rules: a correction has a reason that does not use the price; a parameter from the panel is estimated with
 a fixed rule and scored out of sample (`fa dcf pit --half`, `--cut 2015`).
+
+(c) **The second acquisition line** (`acquisitions_net_of_cash_second`, pull request 103 of the Head of Technology): the charge reads only the first line now (NVDA FY2026: $1.5B of $14.5B; ZBH, MATX, LUMN, WT have no charge). Add it only when its value differs from the first line or the first has none (a tag rename between 10-Ks gives the same value: EQT FY2021, QSR FY2023, MGY FY2022).
