@@ -21,7 +21,7 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
 - One detached worktree for each review (`git worktree add --detach ../wt-qa-<name> <commit>`); build
   the release binary before the agents start; each agent has its own `CARGO_TARGET_DIR` in scratch.
 - A refactor or a merge: build the base too and ask for a byte comparison (`cmp`). Cheap and strong.
-- Data: the store moves during the day. Clone it one time (`GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1
+- Data: the store is private from 2026-11-21: attach it first (add_repo louellet-git/fa-data, read). It moves during the day. Clone it one time (`GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1
   https://github.com/louellet-git/fa-data /home/user/qa-fa-data`); for a second fixed commit use
   `git -C /home/user/qa-fa-data worktree add --detach <path> <commit>`. Name the store commit in each
   brief and verdict. A fetch that only adds files does not disturb a running review.
