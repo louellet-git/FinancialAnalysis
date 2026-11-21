@@ -25,7 +25,7 @@ and the owner's confirmation, because it is order code.
    stream is a later step (a new dependency, the Head of Technology's area).
 3. A simulator broker: a fill at the bid or ask (a parameter for the share of the spread), a fixed latency, fees per
    contract or share, partial fills not modelled (stated). Positions, cash, P&L marked at the mid.
-4. Risk: a maximum position, a maximum loss for the day, a kill file (`touch` stops the engine), and a stop at 16:00
+4. Risk: a maximum position, a maximum loss for the day, a kill file (`touch` stops the engine), and a stop at 15:55
    New York time. Each check has a test.
 5. A journal: one line for each decision and fill, with the quote time, the decision time and the latency; a daily
    summary in the form of `trading/journal/`.
@@ -35,3 +35,7 @@ and the owner's confirmation, because it is order code.
 
 Agent: `strategy-researcher` (with `volatility-derivatives-quant` for an option strategy later).
 Gate: `model-validator`, `code-reviewer`; add `risk-compliance-officer` because it touches the "no orders" rule.
+
+Scope note (review 2026-11-21): `fa algo` is outside the trading sleeves. It is a pipe test, and no result is used
+for a decision until limits in percent of a stated paper capital exist (the limits are in shares now; 100 shares of
+SPY is about $51,000, and a short is allowed).
