@@ -12,3 +12,16 @@ staff set the pace 3. I'll speak w head of staff when convenient for me"
 Done: the Head of Staff row and rules in `chiefs/ORIENTATION.md` (#161). This session started at 18:29 UTC
 with the title `FA-L - Head of Staff`. The start check found no other session with this title. This
 folder was made.
+
+## 2026-11-21 18:40 UTC (chat)
+Words: "You don't need to wait for my word. You pretty much can work autonomously, but I do want you to have
+like a backseat view. What you're kind of working on is overall like project management ... ensuring that
+heads are abiding by the head rules within reason. You know, I found that it's better to have like a lean
+model, and also just making sure that the work that they're doing makes sense from like a holistic
+perspective. ... one of your jobs is to make sure that holistically the system generally is cohesive. And
+whatever frame of mind you and I can agree on for that. ... You're kind of a background way of going
+about that."
+Done: the role in the dashboard (autonomous, in the background; project management; the head rules within
+reason; lean; a cohesive system). A first look at the board, with one message to the Head of Fundamental
+Research. A frame for "cohesive" was proposed to the person (dashboard, "Frame"); the person has not
+agreed to it yet.
