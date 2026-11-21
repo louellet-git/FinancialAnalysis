@@ -55,3 +55,12 @@ before it comes to me."
 Done: the paragraph "The Head of Staff" of `chiefs/ORIENTATION.md`: a head sends a message only for a
 result that is done (the Head of Staff reads it first if it goes to the person), a decision of the person,
 or a conflict. No status report. One line to each head.
+
+## 2026-11-21 about 18:41 UTC (chat, from speech)
+Words: "this isn't meant to choke the heads. This is to help steer them better and to help steer everything
+a bit more holistically. I also have had issues in the past with maintaining [many] agents, like scope
+creep becomes a problem, losing sight of the goal. So that's where you kind of help out. I also really want
+like the doc standard to be followed. So making sure that ... when stuff is getting presented to me, it's
+in a concise, clear format, ASD-[STE]100. And we're not arguing over little pieces. ... a way that we can
+not be arguing over the minutia is to have smaller documentation, more clear, more concise, high signal."
+Done: the dashboard ("How I steer"). No new rule for the heads and no message to them.
