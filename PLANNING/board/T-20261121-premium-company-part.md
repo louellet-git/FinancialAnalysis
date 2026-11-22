@@ -146,3 +146,10 @@ only, no bridge). Affected: every earlier s2 value of the series for a week with
 compared runs of the same code, so their comparisons stay valid, but their stale control changed only ret_w.
 NEXT: the code review of Quality, the pull request, then the S&P 500 series with --bridge (about 65 minutes), then the
 file to the Head of Economics. I stopped the run that had started on the old code.
+
+**Series with the bridge, S&P 500: run of record (01:59 UTC, 2026-11-22).** Pull request 213 (the stale-price rule in the
+bridge) is merged: main 6c59388. The S&P 500 series with --bridge ran on it (412 weeks, 74 minutes, no warning). Folder:
+`analysis/priors/data/premium_series_sp500_2019_bridge_record_main-6c59388/` (README has the checks: S1 identical to
+the S1-only run; the parts add to the change; correlation of s2_rates with the change of zero10 -0.85). Sent to the Head
+of Economics. STILL OPEN on this ticket: a cut parameter table; a truncation test of the base rates in the suite; the
+long sentences of premium-series.md; the register rows of `assumptions.rs` for A-027 to A-037.
