@@ -121,6 +121,20 @@ and poison, the par path with a switch week, the share basis of D, six controls;
 Quality for its check. STILL OPEN before the series run of record: a parameter table cut before 2019 (none exists), or
 the label "parameters in-sample" in the header and the document.
 
+**Series run of record, S&P 100 (22:46 UTC, 2026-11-21).** Pull request 208 (the point-in-time tests on main) is merged.
+The series of the S&P 100 list from 2019-01-04 ran on main e2557b6 (412 weeks, 12 minutes): median 3.56%, lowest 1.20%
+(2026-11-13), 2026-11-20 1.67% (98.1% of the weeks before are higher), highest 6.67% (2020-03-20). Folder:
+`analysis/priors/data/premium_series_sp100_2019_record_main-e2557b6/`, label "parameters in-sample". Page 2 of the week
+study: the row is no more "preliminary"; its numbers did not change. STILL OPEN: the series of the S&P 500 list (it
+runs; then send the commit and the switch week 2026-11-20 to the Head of Economics); a cut parameter table; a
+truncation test of the base rates in the suite; the long sentences of premium-series.md; the register rows of
+`assumptions.rs`.
+
+**Series run of record, S&P 500 (23:31 UTC, 2026-11-21).** 412 weeks on main e2557b6 (46 minutes): median 4.19%, lowest
+2.50% (2026-11-13), 2026-11-20 3.14% (94.9% of the weeks before are higher), highest 7.77% (2020-03-20); switch week
+2026-11-20. Folder: `analysis/priors/data/premium_series_sp500_2019_record_main-e2557b6/` (S1 only, no bridge; label
+"parameters in-sample"). Sent to the Head of Economics with the commit and the switch week, for its frozen test.
+
 **Defect found and fixed: the stale-price rule in the bridge of the series (23:43 UTC, 2026-11-21).** The Head of Economics
 needs the bridge columns (s2) of the S&P 500 series (its rule 7.2 uses s2_rates). The first lines of that run printed
 the new warning of `mark_stale` ("no SPY close series"): in `fa dcf premium-series --bridge` the close function had
