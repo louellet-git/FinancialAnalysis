@@ -134,3 +134,15 @@ truncation test of the base rates in the suite; the long sentences of premium-se
 2.50% (2026-11-13), 2026-11-20 3.14% (94.9% of the weeks before are higher), highest 7.77% (2020-03-20); switch week
 2026-11-20. Folder: `analysis/priors/data/premium_series_sp500_2019_record_main-e2557b6/` (S1 only, no bridge; label
 "parameters in-sample"). Sent to the Head of Economics with the commit and the switch week, for its frozen test.
+
+**Defect found and fixed: the stale-price rule in the bridge of the series (23:43 UTC, 2026-11-21).** The Head of Economics
+needs the bridge columns (s2) of the S&P 500 series (its rule 7.2 uses s2_rates). The first lines of that run printed
+the new warning of `mark_stale` ("no SPY close series"): in `fa dcf premium-series --bridge` the close function had
+the tickers of the list only, so the rule found no SPY series and did not run. A ticker with a stale close stayed in
+the s2 sums (not in ret_w, which has its own check). `fa dcf attribute` is not affected. Fix on branch
+claude/premium-series-stale-bridge: SPY comes from the context; a new test fails before the fix and passes after it.
+Not affected: the three pieces of the week study (they use `fa dcf attribute`), and the two series runs of record (S1
+only, no bridge). Affected: every earlier s2 value of the series for a week with a stale close; the point-in-time tests
+compared runs of the same code, so their comparisons stay valid, but their stale control changed only ret_w.
+NEXT: the code review of Quality, the pull request, then the S&P 500 series with --bridge (about 65 minutes), then the
+file to the Head of Economics. I stopped the run that had started on the old code.
