@@ -45,13 +45,10 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
 ## 4. Open now
 - Waits for the person: his review of the three S&P pieces (sent 2026-11-21: the week by day and stock,
   the valuation blocks, the chip sector; on main in `analysis/priors/pdf/`). The S&P 100 part starts after it.
-- Sessions: one session for each head. The person agreed to a test of a new Quality session, then stopped
-  it the same day ("we'll stick to one"). Do not propose a new session, a compaction or a smaller context
-  as a saving. He tested smaller contexts before and it did harm.
-- E6.S5 is on main (2026-11-21): `fa board check` (47 faults then: fundamental 13, technology 13, quant 7,
-  economics 5, staff 2; I start no build, so I ask Technology for the output) and `fa usage record && fa
-  usage show` (local only; a head runs it when I ask and sends the table). Ask each head for the usage
-  table before the reset of 2026-11-25, and at the close of a large ticket. The calculator stays on hold.
+- Sessions: one for each head ("we'll stick to one"). Never propose a new session, a compaction or a
+  smaller context as a saving: the person tested it before and it did harm.
+- E6.S5 is on main: `fa board check` (I start no build: ask Technology for its output) and `fa usage
+  record && fa usage show` (local; ask each head before the reset and at the close of a large ticket).
 - Cost of the week to 2026-11-22 (`get_session`, USD at list): about 1,650 in all; Technology 650,
   Fundamental 382, Quality 270, Quant 170, Economics 124, Staff 50. 98% of the tokens are cache reads.
 - E2.S5: the AI build-out report went to the person on 2026-11-23. E2.S6: the URA page (draft read by
