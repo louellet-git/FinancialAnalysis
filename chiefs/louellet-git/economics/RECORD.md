@@ -29,3 +29,7 @@ Done: ticket `T-20261121-economics-jst-design`; local copy only.
 ## 2026-11-23: Luc's research request on the Anthropic IPO and AI limits (relayed by the Head of Staff)
 Luc's exact words: "Can you have some research done? I think it's fundamental research / economist. Why did Anthropic IPO? Like, I thought that they were making revenue. I feel like they already had enough donors. I don't understand why they had to IPO. Like, what do they need that debt for? And it sounds like they got a lot of debt. Like, I want to understand the full scope. So if you can make like a 1 to 2 page report on like why they needed the debt in the first place, or like why they wanted it. And is there anything ahead that might indicate like, hey, AI might slow down? Like, is there any reason like to believe that AI might slow down? Not just from like an investing perspective, but more from like a technological, physics, etc."
 Lead: Head of Economics; the Head of Fundamental Research gives the filing numbers. Ticket `T-20261123-economics-ai-buildout-report` (story E2.S5). Conflict of interest: the agents of this repo run on Anthropic models; the report carries the disclosure; no value and no trade view.
+
+## 2026-11-23: Luc's one-page question on URA (relayed by the Head of Staff)
+Luc's exact words: "one page - why is URA at its current level? One pager."
+Ticket `T-20261123-economics-ura-one-pager` (story E2.S6). No trade view.
