@@ -33,3 +33,4 @@ Lead: Head of Economics; the Head of Fundamental Research gives the filing numbe
 ## 2026-11-23: Luc's one-page question on URA (relayed by the Head of Staff)
 Luc's exact words: "one page - why is URA at its current level? One pager."
 Ticket `T-20261123-economics-ura-one-pager` (story E2.S6). No trade view.
+Added the same day (relayed by the Head of Staff), Luc's exact words: "I want an analysis including past 3 years". The page explains the level with the path of the last 3 years (about 2023-11 to 2026-11): the main turns, and for each turn the reason and its test.
