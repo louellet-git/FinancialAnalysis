@@ -201,12 +201,12 @@ pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
         rep.holdings.sort_by(|a, b| b.pct_val.total_cmp(&a.pct_val));
         println!("{ticker}  trust {trust} (CIK {})  series {}  report date {}  accession {}  filed {}", series.cik, rep.series_id, rep.report_date, f.accession, f.filed);
         println!("source: SEC N-PORT, fetched {} ({requests} requests)", today_iso());
-        println!("{:<44} {:>10} {:>16} {:>8}  {}", "name", "pctVal", "valUSD", "", "cusip / isin");
+        println!("{:<44} {:>10} {:>16}  cusip / isin", "name", "pctVal", "valUSD");
         let mut shown = 0.0;
         for h in rep.holdings.iter().take(top) {
             shown += h.pct_val;
             let id = if h.cusip.is_empty() || h.cusip == "N/A" { &h.isin } else { &h.cusip };
-            println!("{:<44} {:>10.4} {:>16.0} {:>8}  {id}", h.name.chars().take(44).collect::<String>(), h.pct_val, h.val_usd, "");
+            println!("{:<44} {:>10.4} {:>16.0}  {id}", h.name.chars().take(44).collect::<String>(), h.pct_val, h.val_usd);
         }
         println!("shown {} of {} holdings, sum of pctVal shown {shown:.4}", rep.holdings.len().min(top), rep.holdings.len());
         eprintln!("fa: fund holdings: {requests} requests");
