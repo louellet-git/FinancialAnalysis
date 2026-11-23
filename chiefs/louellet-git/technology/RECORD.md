@@ -212,3 +212,7 @@ Done: the-heads 19a65d4: the Head of Staff rules as they are now; the habits "Do
 ## 2026-11-23 (dialog of the Head of Staff)
 Words: "Yes, Cameco first (Recommended)" (shall the Head of Technology add the IFRS standard to the data mapping after the token reset, with Cameco as the first test?).
 Done: ticket `T-20261123-ifrs-mapping-cameco` (backlog, after the reset).
+
+## 2026-11-23 (relayed by the Head of Staff)
+Words: "So let's grab the other 27%" (the URA holdings that do not file with the SEC).
+Done: ticket `T-20261123-non-sec-accounts-scout` (backlog, after the reset and the Cameco test).
