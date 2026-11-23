@@ -11,7 +11,7 @@ story: E3.S5
 branch: claude/e3s5-data-tickets
 created: 2026-11-23
 acceptance: One short table of the URA holdings by class (us-gaap readable, IFRS SEC filer, not an SEC filer, fund or trust), with the weights.
-merged: pull request PRNUM (branch claude/e3s5-data-tickets)
+merged: pull request 222 (branch claude/e3s5-data-tickets)
 ---
 Read-only. URA holdings of the N-PORT of 2026-07-31 (`fa fund holdings URA`), the top 40 holdings
 (99.98% of the weight). Taxonomy from the SEC company facts (store, or 8 SEC requests).
