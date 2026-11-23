@@ -38,6 +38,7 @@ move (new facts, time, rates, premium, growth, no model) for a list of stocks, a
 | E2.S3 The common part comes from Economics, not from the prices | economics | `T-20261121-economics-view-engine` (needs the SPF loader, pull request 160) → `T-20261121-economics-premium-macro` → `T-20261121-economics-jst-design` | now |
 | E2.S4 The study is engine code, not a script | fundamental | `T-20261121-dcf-engine-integration` | now |
 | E2.S5 The AI build-out: its financing and its limits (a report of 1 to 2 pages for the person) | economics (fundamental gives the filing numbers) | the ticket of the Head of Economics (2026-11-23) | now |
+| E2.S6 Why a fund or a sector is at its level: one-page answers for the person (first: URA, 2026-11-23) | economics (fundamental gives the implied numbers) | the ticket of the Head of Economics | now |
 
 ## E3. Value each type of company
 
@@ -46,10 +47,11 @@ a recorded reason for no model, and each report that the person uses passed the 
 
 | Story | Lead | Tickets, in order | Mark |
 |---|---|---|---|
-| E3.S1 Models for the classes that the cash-flow model does not fit | fundamental | `T-20261119-evaluator-bank` → `T-20261120-evaluator-utility` → `T-20261119-evaluator-insurer` → `T-20261119-evaluator-reit` → `T-20261121-evaluator-captive-finance` → `T-20261119-evaluator-etf-fund` → `T-20261119-evaluator-other-classes` | next |
+| E3.S1 Models for the classes that the cash-flow model does not fit | fundamental | `T-20261119-evaluator-bank` → `T-20261120-evaluator-utility` → `T-20261119-evaluator-insurer` → `T-20261119-evaluator-reit` → `T-20261121-evaluator-captive-finance` → `T-20261119-evaluator-other-classes` (the fund look-through is in E3.S5) | next |
 | E3.S2 The judgments of the ticker models become rules | fundamental | `T-20261121-dcf-engine-from-tickers` | next |
 | E3.S3 Ticker reports | fundamental | `T-20261025-ibm-q2-grading`, `T-20261119-duol-depth` (a decision of the person), `T-20261025-orcl-frontier-run` | next |
 | E3.S4 Old tickets | fundamental | `T-20261119-engine-fixed-answer-tests` (names Pytest; the repo has no Python), `T-20261025-v3-reproducibility-drift` (names a Python module) | old |
+| E3.S5 Value what a fund holds: remove the limits of the URA page (owner word 2026-11-23) | technology (data), fundamental (models) | dated fund holdings from the SEC form N-PORT → a scout of which holdings our SEC data can read (foreign filers) → the uranium prices and the physical trust in the store → a design of a value model for a miner → `T-20261119-evaluator-etf-fund` (the look-through) | now (the small parts), next (after the token reset) |
 
 ## E4. Trade options and arbitrage from the quant models
 

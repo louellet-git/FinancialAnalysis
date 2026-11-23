@@ -245,3 +245,24 @@ Done: the exact words went to the Head of Economics (it leads; ticket with story
 to the Head of Fundamental Research (the filing numbers). Conditions: sources for each fact, the conflict
 disclosure (the agents run on Anthropic models), no valuation, a small run because of the weekly limit.
 The report comes to me first.
+
+## 2026-11-23 about 15:01 UTC (chat)
+The AI build-out report (2 pages, Head of Economics, Quality and Risk PASS) went to the person at about
+04:55 UTC. He then sent a video link ("All Code Is Slop (Except Mine)") with: "What can we take for our
+purposes? Keep it concise and lean". I read the talk page of the conference (the video itself did not
+load) and gave a short table; no rule was changed. A question about the repo `the-heads` was for a
+different project ("My bad, meant for another repo"); I read it and changed nothing.
+Words, then: "Ok now something for you, one page - why is URA at its current level? One pager."
+Done: the task went to the Head of Economics (it leads; story E2.S6), with a small request to the Head of
+Fundamental Research (what the prices of the largest holdings imply). The page comes to me first.
+Then, about 15:03 UTC: "I want an analysis including past 3 years". Done: one line to the Head of
+Economics: the URA page explains the level with the price path of the last 3 years and its main turns.
+
+## 2026-11-23 about 15:22 UTC (chat)
+Words: "Good first draft for the URA. On the limitations section can we fill that out/begin work on removing
+limitations."
+Done: the Head of Economics makes the limits a table on the page (limit, effect, what removes it, who,
+when). New story E3.S5 on the board map. Technology: dated fund holdings from an official source, a scout
+of which holdings our SEC data can read, the uranium and trust data. Fundamental Research: a design of a
+value model for a miner, the fund look-through, the beta in the engine. Small parts now, the large parts
+after the token reset. The draft reached the person before me; I said the rule once to that head.

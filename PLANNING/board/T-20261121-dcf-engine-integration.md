@@ -85,3 +85,10 @@ ticker: the expected change = beta of D1 times the change of the market index (S
 deviation of the rest over the 104 weekly windows before D1 (the same length as the window); the rest in deviations; the
 result "holds" below 1 deviation, else "hit more" or "hit less". Point in time: only closes on or before D1 for the
 deviation. Columns at the end of the CSV; a fixed-answer test; a record for the 104 weeks and the limit of 1 deviation.
+
+**Board note (15:22 UTC, 2026-11-23): R6 is also needed by the URA page (story E3.S5).** The correlations and the betas of
+the URA page of the Head of Economics and of the S&P 10 and chip pages of this head come from one-time scripts
+(`analysis/priors/data/week_2026-11-20_chips/chips.js`, `deviations_sp10.js`). R6 puts the beta, the expected change,
+the rest and its deviation into `fa dcf attribute` (a market series by option, for example the equal weight of a list or
+a fund such as URA). When R6 is built, both pages can cite a command and a run of record in place of a script. Not
+started; after the reset of 2026-11-25 and in the order of the week.
