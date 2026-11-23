@@ -57,6 +57,7 @@ USAGE:
                                                   option chain of today, or the surface of past dates from daily closes (fa options --help)
   fa prices show TICKER [--from D] [--to D] | last TICKER... | check TICKER... [--sources A,B]
                                                   rows of the cache, last close, or a cross-check of two sources
+  fa fund holdings TICKER [--cache DIR] [--top N]  ETF holdings from the newest SEC N-PORT report
   fa estimates get TICKER... [--tickers-file F] [--endpoints LIST] [--momentum] [--refresh]
                                                   analyst consensus EPS, price targets, surprises into data/raw (Nasdaq site, no key)
   fa estimates show TICKER [--price P]            consensus by period, revisions, forward P/E, target against the last close
@@ -331,6 +332,10 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
             Err(e) => Ok(usage_error(&e)),
         },
         Some("members") => match financial_analysis::market::members_cli::run(&fa.repo, &args[1..]) {
+            Ok(code) => Ok(ExitCode::from(code as u8)),
+            Err(e) => Ok(usage_error(&e)),
+        },
+        Some("fund") => match financial_analysis::market::fund_holdings::run(&fa.repo, &args[1..]) {
             Ok(code) => Ok(ExitCode::from(code as u8)),
             Err(e) => Ok(usage_error(&e)),
         },
