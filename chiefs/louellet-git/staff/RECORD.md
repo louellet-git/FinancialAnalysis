@@ -266,3 +266,17 @@ when). New story E3.S5 on the board map. Technology: dated fund holdings from an
 of which holdings our SEC data can read, the uranium and trust data. Fundamental Research: a design of a
 value model for a miner, the fund look-through, the beta in the engine. Small parts now, the large parts
 after the token reset. The draft reached the person before me; I said the rule once to that head.
+
+## 2026-11-23 about 15:24 UTC (chat)
+The person asked for a one-page answer for GLD (the gold fund) in the same form as the URA page, and wants
+the two pages together. (His reason is private and is not in this file.)
+Done: the task went to the Head of Economics (story E2.S6). The two pages come to me first.
+
+## 2026-11-23 about 15:38 UTC (question dialog)
+The URA and GLD pages (Head of Economics, both passed by Quality and Risk) went to the person at about
+15:36 UTC. The scout of the URA holdings (Head of Technology, PR 222): our SEC mapping reads 25.8% of the
+fund; 35.6% is IFRS filers (Cameco 22.2%); 27.0% does not file with the SEC; 11.6% is trusts and collateral.
+Question: shall the Head of Technology add the IFRS standard to our data mapping after the token reset,
+with Cameco as the first test? Answer of the person: "Yes, Cameco first (Recommended)".
+Done: the answer went to the Head of Technology. One company first, then the real size of the rest comes
+to me before more is built.
