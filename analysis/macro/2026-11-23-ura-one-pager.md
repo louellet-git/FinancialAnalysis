@@ -45,15 +45,15 @@ Status: URA, SMH, SPY, CCJ, UEC, NXE and LEU daily closes from the store (fa-dat
 
 ## Limits and the work to remove them
 
-**Table 3: The limits of the URA page.** See the column "What removes it". The owners are proposed; no limit has a board ticket yet, except (c), which is part of T-20261119-evaluator-other-classes.
+**Table 3: The limits of the URA page.** See the column "What removes it". The work is story E3.S5 on the board (PLANNING/board/EPICS.md).
 
 | Limit | What it does to the answer | What removes it | Who | When |
 |---|---|---|---|---|
-| (a) The engine gives a number for one holding only (Centrus) | No "what the price implies" for most of the fund | A model for commodity producers (b) and the foreign data (c) | Fundamental Research (proposed) | no date yet; after (b) and (c) |
-| (b) The miners have no model: their value comes from reserves and the uranium price | Only the market explains the miner part of the level; no value exists | A reserve-based model: pounds in the ground, cost per pound, the term price | Fundamental Research (proposed) | no date yet; not before 2026-11-25 |
-| (c) Foreign filers are not in our SEC data (Cameco 21.6%, NexGen, Kazatomprom) | The largest holding has prices but no facts | A source of IFRS facts (40-F filings or company reports) | Technology | ticket T-20261119-evaluator-other-classes |
-| (d) The physical-uranium trust (9.1%) is not in our data | No test of the fund against physical uranium | Daily price, NAV and pounds held of the trust | Technology (proposed) | no date yet; needs the consent of Sprott (a decision of Luc) |
-| (e) The holdings have no date and come from a secondary site | Weights can be old | The fund's own holdings file, with its date, after a check of its terms | Technology (proposed) | no date yet |
+| (a) The engine gives a number for one holding only (Centrus) | No "what the price implies" for most of the fund | A model for commodity producers (b) and the foreign data (c) | Fundamental Research (E3.S5: the fund look-through) | after 2026-11-25; after (b) and (c) |
+| (b) The miners have no model: their value comes from reserves and the uranium price | Only the market explains the miner part of the level; no value exists | A reserve-based model: pounds in the ground, cost per pound, the term price | Fundamental Research (E3.S5: the miner model design) | after 2026-11-25 |
+| (c) Foreign filers are not in our SEC data (Cameco 21.6%, NexGen, Kazatomprom) | The largest holding has prices but no facts | A source of IFRS facts (40-F filings or company reports) | Technology (E3.S5: the scout of the foreign filers) | next |
+| (d) The physical-uranium trust (9.1%) is not in our data | No test of the fund against physical uranium | Daily price, NAV and pounds held of the trust | Technology (E3.S5) | needs the consent of Sprott (a decision of Luc) |
+| (e) The holdings have no date and come from a secondary site | Weights can be old | The dated holdings from the SEC form N-PORT | Technology (ticket T-20261123-fund-holdings-nport) | in progress |
 | (f) Uranium prices come only as month-end points from Cameco's page; several facts are secondary | No weekly test of URA against uranium; some reasons come from press reports only | A spot and term price series from the original source, with its terms | Technology (agreed) | after 2026-11-25: IMF monthly and EIA annual series |
-| (g) The correlations come from a one-time script | Not repeatable for a different fund | A command that gives the period table and the correlations for any fund | Economics (proposed) | no date yet; not before 2026-11-25 |
-| (h) A correlation shows that two prices move together, not why | "Moves with the AI theme" stays a reading | A test on news days (for example the AI sell-off days against uranium news days) | Economics (proposed) | with (g) |
+| (g) The correlations come from a one-time script | Not repeatable for a different fund | A command that gives the period table and the correlations for any fund | Economics (E3.S5) | after 2026-11-25 |
+| (h) A correlation shows that two prices move together, not why | "Moves with the AI theme" stays a reading | A test on news days (for example the AI sell-off days against uranium news days) | Economics (E3.S5) | with (g) |

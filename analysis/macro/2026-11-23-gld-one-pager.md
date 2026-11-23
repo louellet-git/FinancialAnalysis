@@ -45,12 +45,12 @@ Status: GLD, UUP, GDX and SPY daily closes from the store (fa-data 2d4619d, Nasd
 
 ## Limits and the work to remove them
 
-**Table 3: The limits of the GLD page.** See the column "What removes it". The owners are proposed; no limit has a board ticket yet.
+**Table 3: The limits of the GLD page.** See the column "What removes it". The work is story E3.S5 on the board (PLANNING/board/EPICS.md).
 
 | Limit | What it does to the answer | What removes it | Who | When |
 |---|---|---|---|---|
-| (a) The gold price is not in our data; GLD stands in for it | The fee and any premium or discount of GLD are not separated | A gold price series (for example the LBMA price), with its terms | Technology (proposed) | no date yet |
-| (b) Central-bank and ETF tonnes come from World Gold Council summaries, several read only as search summaries | The demand side is not tested on our data | The WGC data files, after a check of their terms | Technology (proposed) | no date yet |
-| (c) GLD tonnes held now and earlier come from press reports | The fund's own flow is not measured | The daily holdings file of the fund, with its terms | Technology (proposed) | no date yet |
-| (d) The correlations come from a one-time script | Not repeatable for a different fund | A command to be built (URA page, limit g) | Economics (proposed) | no date yet; not before 2026-11-25 |
-| (e) A correlation shows that two prices move together, not why | "The link with real yields is back" stays a reading | A test on news days (Fed days, central-bank data days) | Economics (proposed) | with (d) |
+| (a) The gold price is not in our data; GLD stands in for it | The fee and any premium or discount of GLD are not separated | A gold price series (for example the LBMA price), with its terms | Technology (E3.S5) | after 2026-11-25 |
+| (b) Central-bank and ETF tonnes come from World Gold Council summaries, several read only as search summaries | The demand side is not tested on our data | The WGC data files, after a check of their terms | Technology (E3.S5) | after 2026-11-25 |
+| (c) GLD tonnes held now and earlier come from press reports | The fund's own flow is not measured | The daily holdings file of the fund, with its terms | Technology (E3.S5) | after 2026-11-25 |
+| (d) The correlations come from a one-time script | Not repeatable for a different fund | A command to be built (URA page, limit g) | Economics (E3.S5) | after 2026-11-25 |
+| (e) A correlation shows that two prices move together, not why | "The link with real yields is back" stays a reading | A test on news days (Fed days, central-bank data days) | Economics (E3.S5) | with (d) |
