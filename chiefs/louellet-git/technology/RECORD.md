@@ -208,3 +208,7 @@ Done: the usage log is local only and on request (`fa usage record && fa usage s
 ## 2026-11-21 (chat)
 Words: "the recent head of staff plus any other heads work to the heads repo."
 Done: the-heads 19a65d4: the Head of Staff rules as they are now; the habits "Does it make sense?" and "Test before you constrict"; monitoring by script; the store terms (public, private, original source); long head sessions; epics and stories; the backtest line; record number ranges.
+
+## 2026-11-23 (dialog of the Head of Staff)
+Words: "Yes, Cameco first (Recommended)" (shall the Head of Technology add the IFRS standard to the data mapping after the token reset, with Cameco as the first test?).
+Done: ticket `T-20261123-ifrs-mapping-cameco` (backlog, after the reset).
