@@ -38,6 +38,7 @@ move (new facts, time, rates, premium, growth, no model) for a list of stocks, a
 | E2.S3 The common part comes from Economics, not from the prices | economics | `T-20261121-economics-view-engine` (needs the SPF loader, pull request 160) → `T-20261121-economics-premium-macro` → `T-20261121-economics-jst-design` | now |
 | E2.S4 The study is engine code, not a script | fundamental | `T-20261121-dcf-engine-integration` | now |
 | E2.S5 The AI build-out: its financing and its limits (a report of 1 to 2 pages for the person) | economics (fundamental gives the filing numbers) | the ticket of the Head of Economics (2026-11-23) | now |
+| E2.S6 Why a fund or a sector is at its level: one-page answers for the person (first: URA, 2026-11-23) | economics (fundamental gives the implied numbers) | the ticket of the Head of Economics | now |
 
 ## E3. Value each type of company
 

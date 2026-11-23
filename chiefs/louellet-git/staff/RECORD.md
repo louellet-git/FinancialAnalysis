@@ -245,3 +245,13 @@ Done: the exact words went to the Head of Economics (it leads; ticket with story
 to the Head of Fundamental Research (the filing numbers). Conditions: sources for each fact, the conflict
 disclosure (the agents run on Anthropic models), no valuation, a small run because of the weekly limit.
 The report comes to me first.
+
+## 2026-11-23 about 15:01 UTC (chat)
+The AI build-out report (2 pages, Head of Economics, Quality and Risk PASS) went to the person at about
+04:55 UTC. He then sent a video link ("All Code Is Slop (Except Mine)") with: "What can we take for our
+purposes? Keep it concise and lean". I read the talk page of the conference (the video itself did not
+load) and gave a short table; no rule was changed. A question about the repo `the-heads` was for a
+different project ("My bad, meant for another repo"); I read it and changed nothing.
+Words, then: "Ok now something for you, one page - why is URA at its current level? One pager."
+Done: the task went to the Head of Economics (it leads; story E2.S6), with a small request to the Head of
+Fundamental Research (what the prices of the largest holdings imply). The page comes to me first.
