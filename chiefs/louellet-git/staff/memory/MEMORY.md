@@ -52,11 +52,11 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
   economics 5, staff 2; I start no build, so I ask Technology for the output) and `fa usage record && fa
   usage show` (local only; a head runs it when I ask and sends the table). Ask each head for the usage
   table before the reset of 2026-11-25, and at the close of a large ticket. The calculator stays on hold.
-- Cost by head from each start (2026-11-21, `get_session`, USD): Technology 629, Fundamental 314, Quality
-  220, Quant 152, Economics 97. The heads make 70% of the cache reads; 317 agent starts; 2 skill uses.
+- Cost of the week to 2026-11-22 (`get_session`, USD at list): about 1,650 in all; Technology 650,
+  Fundamental 382, Quality 270, Quant 170, Economics 124, Staff 50. 98% of the tokens are cache reads.
 - E2.S5: the AI build-out report went to the person on 2026-11-23. E2.S6: the URA page (draft read by
   the person the same day; "good first draft"). E3.S5: remove its limits (holdings with a date, foreign
   filers, uranium data, a miner model, the fund look-through). The scout of the foreign filers comes to
   me; the person says yes before the large mapping work starts.
-- Weekly limit readings: 2026-11-21 18:49 UTC 71%, 22:50 UTC 83%. The week cost about 1,650 USD at list.
+- Weekly limit readings: 2026-11-21 18:49 UTC 71%, 22:50 UTC 83%.
 - E1 (stock trades) is on hold: "No trades until T1 passes". PR 131 waits for the live run of 2026-11-23.
