@@ -255,3 +255,5 @@ different project ("My bad, meant for another repo"); I read it and changed noth
 Words, then: "Ok now something for you, one page - why is URA at its current level? One pager."
 Done: the task went to the Head of Economics (it leads; story E2.S6), with a small request to the Head of
 Fundamental Research (what the prices of the largest holdings imply). The page comes to me first.
+Then, about 15:03 UTC: "I want an analysis including past 3 years". Done: one line to the Head of
+Economics: the URA page explains the level with the price path of the last 3 years and its main turns.
