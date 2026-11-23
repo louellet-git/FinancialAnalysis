@@ -17,8 +17,8 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   accepted; "docs for me are in pdf format" (a document for Luc also goes as a PDF).
 - Until 2026-11-25 11:00 Toronto (token limit 71% used): gates in the order of EPICS.md last section; one agent a gate
   where enough, Haiku for narrow checks; at most 2 builds at a time (15 GB machine; OOM on 2026-11-21).
-- HANDOVER (2026-11-23 05:00 UTC): every gate has a verdict (ledger). AI build-out report bec7105 PASS; the PR is
-  for Economics to open. Luc: "we'll stick to one" session for this role.
+- HANDOVER (2026-11-23 15:40 UTC): every gate has a verdict (ledger). URA 389c294 PASS, GLD 9e32b54 PASS-WITH-NOTES;
+  both go to the Head of Staff. Luc: "we'll stick to one" session for this role.
 - Precedents: an author who moves the target mid-review: redirect the same agent by SendMessage (its context and cache
   stay; cheaper than a new agent); ask the author to freeze until the verdict. Resume a finished agent for cycle 2.
 
