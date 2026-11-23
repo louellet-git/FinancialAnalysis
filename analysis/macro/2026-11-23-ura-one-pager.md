@@ -1,0 +1,42 @@
+# URA: Why It Is Where It Is
+
+*Why the Global X Uranium ETF (URA) closed at $26.79 on 2026-11-20, explained with the path of the last 3 years.*
+
+URA holds uranium miners, a physical-uranium trust and nuclear-industry companies. It closed at $26.79 on 2026-11-20: 57% below its high of $61.81 (2026-01-28), 36% below one year before, and 8% below three years before.
+
+## The answer
+
+1. **The uranium price does not explain the fall.** The long-term contract price is at a record, and spot is higher than one year ago. URA fell while uranium rose.
+2. **The fund now moves with the AI and chip stocks.** Since 2025, the story of the market for URA has been power for AI data centers and new US reactors. The weekly correlation of URA with the chip fund SMH rose from 0.44 to 0.69 in three years. So when the AI trade fell in 2026, URA fell with it.
+3. **Company news added to the fall:** a mine suspension and weaker results at Cameco (21.6% of the fund), and fewer new term contracts.
+
+The data is consistent with this reading. It does not prove it.
+
+**Table 1: The 3 years in four periods** (URA closes from our data; uranium prices from Cameco, which quotes UxC and TradeTech). See that URA and uranium moved together until 2025 and apart in 2026.
+
+| Period | URA | Uranium | Reason given at the time (source) |
+|---|---|---|---|
+| Nov 2023 to May 2024 | $29.12 to $33.21 | spot near $106/lb in Jan 2024, highest since 2007 | supply risk: Kazatomprom warned of acid shortages and cut guidance (Kitco, 2024-01-22) |
+| May 2024 to Apr 2025 | down to $20.26 (2025-04-08) | spot down to about $64/lb in 2025 (secondary) | lower uranium price; DeepSeek doubt about AI power demand: URA -11% on 2025-01-27 (mining.com) |
+| Apr 2025 to Jan 2026 | up to $61.81 | spot $80/lb (2025-10-31) | US orders for 400 GW of nuclear by 2050 (World Nuclear News, 2025-05-23): URA +12% that day (etf.com); AI data-center power deals (Zacks, 2026-01-29) |
+| Jan 2026 to Nov 2026 | down to $26.79 | spot $91.55/lb, term $98.00/lb (2026-10-30), term a record | Cigar Lake suspension and a Cameco miss (XTB, 2026-07-07); term contracting -15% (Goldman via 24/7 Wall St, secondary); AI sell-off |
+
+**Table 2: The tests** (weekly log returns from our price data). See that URA follows SMH more each year, and fell like it in the last week.
+
+| Test | Result | Reading |
+|---|---|---|
+| URA against uranium, 1 year to Oct 2026 | URA -39%, spot +14%, term +15% (Cameco) | not a uranium-price fall |
+| Weekly correlation of URA with SMH (chips): 2024 / 2025 / 2026 | 0.44 / 0.58 / 0.69 | URA trades more with the AI theme each year |
+| Weekly correlation of URA with Cameco, 3 years | 0.91 | the largest holding drives the fund |
+| Week 2026-11-13 to 11-20 | URA -15.9%, SMH -17.8%, SPY -8.6%, Cameco -18.0%, Centrus -21.5% | URA fell like the chip stocks, twice as much as the market |
+
+A market report gives the same reason for the last week. Uranium stocks are in AI and momentum baskets, and forced selling hit them (Discovery Alert, 2026-11-22, secondary).
+
+## What the level implies
+
+The supply facts stay tight. Reactors need about 68,920 tU in 2025, against 60,213 t of mine output in 2024 (World Nuclear Association, 2025; secondary summary). Kazatomprom cut its 2026 plan by about 10% (World Nuclear News, Aug 2025). So the market now prices the nuclear-for-AI story lower, not uranium itself. Two numbers can show the next turn first: the term uranium price, and the correlation of URA with the chip stocks.
+
+**Limits.** Our valuation engine covers none of the largest holdings. It values the cash flows of companies that report under US rules, but a miner's value comes from its reserves and the uranium price. The physical-uranium trust (9.1% of the fund) is not in our data. The holdings come from StockAnalysis, with no date given, because the fund page refused the read.
+
+---
+Status: URA, SMH, SPY, CCJ, UEC, NXE and LEU daily closes from the store (fa-data a798b9b, Nasdaq site). Each other fact has its source in the table or the text.
