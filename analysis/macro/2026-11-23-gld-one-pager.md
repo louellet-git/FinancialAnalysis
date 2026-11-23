@@ -21,7 +21,7 @@ The data is consistent with this reading. It does not prove it.
 | Oct 2025 to Jan 2026 | to $495.90 (2026-01-29) | the all-time high of gold, $5,589/oz on 2026-01-28 (StoneX, secondary); then the gold price fell 9.5% in 2 days as the dollar rose on the Fed-chair nomination (Morningstar, secondary); GLD fell 13.9% in 2 days |
 | Jan 2026 to Nov 2026 | down to $322.87 | Fed increase bets after the oil rise of the Iran war (Kitco, 2026-03-20, secondary); a nominal 10-year yield near 5% (4.92% on 2026-11-20, Treasury); margin calls when tech stocks fell (investingLive, 2026-11-02, secondary) |
 
-**Table 2: The tests** (weekly log returns from our data; a week ends on the last day of each ISO week on which all series have a value; 2024 runs from 2023-11-17; real yield from the Treasury real curve). See the sign of the real-yield link in each year.
+**Table 2: The tests** (weekly log returns from our data; a week ends on the last day of each ISO week on which all series have a value; 2024 runs from 2023-11-17; a year has only the weekly returns that start and end in it (n = 58 / 51 / 46); real yield from the Treasury real curve). See the sign of the real-yield link in each year.
 
 | Test | Result | Reading |
 |---|---|---|

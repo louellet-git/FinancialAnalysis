@@ -2,7 +2,7 @@
 id: T-20261123-economics-ura-one-pager
 title: One page for Luc: why is URA (Global X Uranium ETF) at its current level?
 area: docs
-status: in-progress
+status: done
 owner: louellet-git
 requested_by: louellet-git
 story: E2.S6

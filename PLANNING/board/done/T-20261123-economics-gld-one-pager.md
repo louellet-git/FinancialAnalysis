@@ -2,7 +2,7 @@
 id: T-20261123-economics-gld-one-pager
 title: One page for Luc: why is GLD (SPDR Gold Shares) at its current level? (the same form as URA)
 area: docs
-status: in-progress
+status: done
 owner: louellet-git
 requested_by: louellet-git
 story: E2.S6
