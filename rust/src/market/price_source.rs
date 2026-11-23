@@ -439,14 +439,24 @@ impl PriceSource for Nasdaq {
         let first = if KNOWN_ETFS.contains(&t.as_str()) { "etf" } else { "stocks" };
         let second = if first == "etf" { "stocks" } else { "etf" };
         let mut rows = Vec::new();
-        for class in [first, second] {
-            let bytes = (self.get)(&Nasdaq::url(&symbol, class, from, to)).map_err(classify)?;
-            rows = parse_nasdaq(&bytes).map_err(FetchError::Failed)?;
-            if !rows.is_empty() {
-                break;
+        // An ETF asked as a stock (or a stock as an ETF) can come back empty OR as the error "Symbol not
+        // exists": both ask again with the other class. The error of the second try is the answer.
+        let mut last_err = None;
+        for (n, class) in [first, second].into_iter().enumerate() {
+            let got = (self.get)(&Nasdaq::url(&symbol, class, from, to))
+                .map_err(classify)
+                .and_then(|bytes| parse_nasdaq(&bytes).map_err(FetchError::Failed));
+            match got {
+                Ok(r) if !r.is_empty() => return Ok(r),
+                Ok(r) => rows = r,
+                Err(e) if n == 0 && format!("{e:?}").contains("Symbol not exists") => last_err = Some(e),
+                Err(e) => return Err(e),
             }
         }
-        Ok(rows)
+        match last_err {
+            Some(e) if rows.is_empty() => Err(e),
+            _ => Ok(rows),
+        }
     }
 }
 
@@ -549,6 +559,17 @@ mod tests {
         }));
         spy.fetch("SPY", None, "2024-06-30").unwrap();
         assert!(seen.borrow().contains("/SPY/historical?assetclass=etf"));
+    }
+
+    #[test]
+    fn nasdaq_symbol_not_exists_as_a_stock_is_asked_again_as_an_etf() {
+        // URA, URNM, SMH (2026-11-23): the stock class answers "Symbol not exists"; the ETF class has the rows.
+        let err = br#"{"data":null,"status":{"rCode":400,"bCodeMessage":[{"code":1001,"errorMessage":"Symbol not exists."}]}}"#;
+        let src = Nasdaq::new(Box::new(move |url| Ok(if url.contains("assetclass=etf") { NASDAQ.as_bytes().to_vec() } else { err.to_vec() })));
+        assert_eq!(src.fetch("URA", Some("2024-06-01"), "2024-06-30").unwrap().len(), 3);
+        // Not a symbol in either class: the error stays.
+        let none = Nasdaq::new(Box::new(move |_| Ok(err.to_vec())));
+        assert!(none.fetch("SRUUF", None, "2024-06-30").is_err());
     }
 
     /// Fields of the documentation: date, close, high, low, open, volume, adjClose, adjHigh, adjLow, adjOpen, adjVolume, divCash, splitFactor.

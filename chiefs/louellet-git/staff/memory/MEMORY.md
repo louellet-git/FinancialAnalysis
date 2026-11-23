@@ -51,9 +51,9 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
   record && fa usage show` (local; ask each head before the reset and at the close of a large ticket).
 - Cost of the week to 2026-11-22 (`get_session`, USD at list): about 1,650 in all; Technology 650,
   Fundamental 382, Quality 270, Quant 170, Economics 124, Staff 50. 98% of the tokens are cache reads.
-- E2.S5: the AI build-out report went to the person on 2026-11-23. E2.S6: the URA page (draft read by
-  the person the same day; "good first draft"). E3.S5: remove its limits (holdings with a date, foreign
-  filers, uranium data, a miner model, the fund look-through). The scout of the foreign filers comes to
-  me; the person says yes before the large mapping work starts.
+- Sent to the person 2026-11-23: the AI build-out report (E2.S5), the URA and GLD pages (E2.S6). E3.S5
+  removes their limits: dated holdings (in its gate), IFRS mapping with Cameco first after the reset (the
+  person said yes; the size of the rest comes to me before more is built), the uranium and gold data, a
+  miner model design (the person reads it before a build), the fund look-through.
 - Weekly limit readings: 2026-11-21 18:49 UTC 71%, 22:50 UTC 83%.
 - E1 (stock trades) is on hold: "No trades until T1 passes". PR 131 waits for the live run of 2026-11-23.
