@@ -232,3 +232,16 @@ path, no permission rule, no tie to the ledger. I read the cost by head myself (
 Words: "Ignore the new quality and risk session we'll stick to one"
 Done: the session test is stopped before a new session started. The old session is the Head of Quality and
 Risk again (its title goes back, it takes gates again). No context change of a head.
+
+## 2026-11-23 about 04:39 UTC (chat, from speech)
+Words: "Can you have some research done? I think it's fundamental research / economist. Why did Anthropic
+IPO? Like, I thought that they were making revenue. I feel like they already had enough donors. I don't
+understand why they had to IPO. Like, what do they need that debt for? And it sounds like they got a lot
+of debt. Like, I want to understand the full scope. So if you can make like a 1 to 2 page report on like
+why they needed the debt in the first place, or like why they wanted it. And is there anything ahead that
+might indicate like, hey, AI might slow down? ... Not just from like an investing perspective, but more
+from like a technological, physics, etc."
+Done: the exact words went to the Head of Economics (it leads; ticket with story E2.S5) and a short note
+to the Head of Fundamental Research (the filing numbers). Conditions: sources for each fact, the conflict
+disclosure (the agents run on Anthropic models), no valuation, a small run because of the weekly limit.
+The report comes to me first.
