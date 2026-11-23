@@ -36,7 +36,24 @@ A market report gives the same reason for the last week. Uranium stocks are in A
 
 The supply facts stay tight. Reactors need about 68,920 tU in 2025, against 60,213 t of mine output in 2024 (World Nuclear Association, 2025; secondary summary). Kazatomprom cut its 2026 plan by about 10% (World Nuclear News, Aug 2025). So the market now prices the nuclear-for-AI story lower, not uranium itself. Two numbers can show the next turn first: the term uranium price, and the correlation of URA with the chip stocks.
 
-**Limits.** Our valuation engine gives a number for one holding, Centrus (LEU, a fuel enricher): its price needs a required return of 6.6% above bonds, against 4.4% in the model (an automatic screen, not a reviewed valuation). The engine does not cover the miners: it values the cash flows of companies that report under US rules, but a miner's value comes from its reserves and the uranium price. The physical-uranium trust (9.1% of the fund) is not in our data. The holdings come from StockAnalysis, with no date given, because the fund page refused the read.
+**Limits.** The page rests on a few data and model gaps. Page 2 lists them, with the work that removes each one.
 
 ---
 Status: URA, SMH, SPY, CCJ, UEC, NXE and LEU daily closes from the store (fa-data a798b9b, Nasdaq site). Each other fact has its source in the table or the text.
+
+<div style="page-break-before: always"></div>
+
+## Limits and the work to remove them
+
+**Table 3: The limits of the URA page.** See the column "What removes it": each limit has a task, an owner and a date.
+
+| Limit | What it does to the answer | What removes it | Who | When |
+|---|---|---|---|---|
+| (a) The engine gives a number for one holding only (Centrus) | No "what the price implies" for most of the fund | A model for commodity producers (b) and the foreign data (c) | Fundamental Research | after (b) and (c) |
+| (b) The miners have no model: their value comes from reserves and the uranium price | The miner part of the level is explained by the market only, not by a value | A reserve-based model: pounds in the ground, cost per pound, the term price | Fundamental Research | new work, after the token reset (2026-11-25) |
+| (c) Foreign filers are not in our SEC data (Cameco 21.6%, NexGen, Kazatomprom) | The largest holding has prices but no facts | A source of IFRS facts (40-F filings or company reports) | Technology | to be planned |
+| (d) The physical-uranium trust (9.1%) is not in our data | No test of the fund against physical uranium | Daily price, NAV and pounds held of the trust | Technology | after the source check of its terms |
+| (e) The holdings have no date and come from a secondary site | Weights can be old | The fund's own holdings file, with its date, after a check of its terms | Technology | after the terms check |
+| (f) Uranium prices come only as month-end points from Cameco's page; several facts are secondary | No weekly test of URA against uranium; some reasons rest on press reports | A spot and term price series from the original source, with its terms | Technology | after the source check |
+| (g) The correlations come from a one-time script | Not repeatable for a different fund | A command that gives the period table and the correlations for any fund | Economics | after the token reset |
+| (h) A correlation shows that two prices move together, not why | "Moves with the AI theme" stays a reading | A test on news days (for example the AI sell-off days against uranium news days) | Economics | with (g) |
