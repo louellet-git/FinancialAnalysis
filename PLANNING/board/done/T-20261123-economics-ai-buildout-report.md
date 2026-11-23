@@ -2,7 +2,7 @@
 id: T-20261123-economics-ai-buildout-report
 title: Report for Luc: why Anthropic went public and took debt, and can AI slow down (non-investment limits)
 area: docs
-status: in-progress
+status: done
 owner: louellet-git
 requested_by: louellet-git
 story: E2.S5
