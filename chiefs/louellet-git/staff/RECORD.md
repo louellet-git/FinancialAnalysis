@@ -255,3 +255,14 @@ different project ("My bad, meant for another repo"); I read it and changed noth
 Words, then: "Ok now something for you, one page - why is URA at its current level? One pager."
 Done: the task went to the Head of Economics (it leads; story E2.S6), with a small request to the Head of
 Fundamental Research (what the prices of the largest holdings imply). The page comes to me first.
+Then, about 15:03 UTC: "I want an analysis including past 3 years". Done: one line to the Head of
+Economics: the URA page explains the level with the price path of the last 3 years and its main turns.
+
+## 2026-11-23 about 15:22 UTC (chat)
+Words: "Good first draft for the URA. On the limitations section can we fill that out/begin work on removing
+limitations."
+Done: the Head of Economics makes the limits a table on the page (limit, effect, what removes it, who,
+when). New story E3.S5 on the board map. Technology: dated fund holdings from an official source, a scout
+of which holdings our SEC data can read, the uranium and trust data. Fundamental Research: a design of a
+value model for a miner, the fund look-through, the beta in the engine. Small parts now, the large parts
+after the token reset. The draft reached the person before me; I said the rule once to that head.
