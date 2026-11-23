@@ -266,3 +266,8 @@ when). New story E3.S5 on the board map. Technology: dated fund holdings from an
 of which holdings our SEC data can read, the uranium and trust data. Fundamental Research: a design of a
 value model for a miner, the fund look-through, the beta in the engine. Small parts now, the large parts
 after the token reset. The draft reached the person before me; I said the rule once to that head.
+
+## 2026-11-23 about 15:24 UTC (chat)
+The person asked for a one-page answer for GLD (the gold fund) in the same form as the URA page, and wants
+the two pages together. (His reason is private and is not in this file.)
+Done: the task went to the Head of Economics (story E2.S6). The two pages come to me first.

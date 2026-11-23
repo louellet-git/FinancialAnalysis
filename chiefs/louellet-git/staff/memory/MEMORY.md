@@ -51,7 +51,7 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
   record && fa usage show` (local; ask each head before the reset and at the close of a large ticket).
 - Cost of the week to 2026-11-22 (`get_session`, USD at list): about 1,650 in all; Technology 650,
   Fundamental 382, Quality 270, Quant 170, Economics 124, Staff 50. 98% of the tokens are cache reads.
-- E2.S5: the AI build-out report went to the person on 2026-11-23. E2.S6: the URA page (draft read by
+- E2.S5: the AI build-out report went to the person on 2026-11-23. E2.S6: the URA page and a GLD page in the same form (URA draft read by
   the person the same day; "good first draft"). E3.S5: remove its limits (holdings with a date, foreign
   filers, uranium data, a miner model, the fund look-through). The scout of the foreign filers comes to
   me; the person says yes before the large mapping work starts.
