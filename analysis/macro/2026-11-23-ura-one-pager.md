@@ -36,7 +36,7 @@ A market report gives the same reason for the last week. Uranium stocks are in A
 
 The supply facts stay tight. Reactors need about 68,920 tU in 2025, against 60,213 t of mine output in 2024 (World Nuclear Association, 2025; secondary summary). Kazatomprom cut its 2026 plan by about 10% (World Nuclear News, Aug 2025). So the market now prices the nuclear-for-AI story lower, not uranium itself. Two numbers can show the next turn first: the term uranium price, and the correlation of URA with the chip stocks.
 
-**Limits.** Our valuation engine covers none of the largest holdings. It values the cash flows of companies that report under US rules, but a miner's value comes from its reserves and the uranium price. The physical-uranium trust (9.1% of the fund) is not in our data. The holdings come from StockAnalysis, with no date given, because the fund page refused the read.
+**Limits.** Our valuation engine gives a number for one holding, Centrus (LEU, a fuel enricher): its price needs a required return of 6.6% above bonds, against 4.4% in the model (an automatic screen, not a reviewed valuation). The engine does not cover the miners: it values the cash flows of companies that report under US rules, but a miner's value comes from its reserves and the uranium price. The physical-uranium trust (9.1% of the fund) is not in our data. The holdings come from StockAnalysis, with no date given, because the fund page refused the read.
 
 ---
 Status: URA, SMH, SPY, CCJ, UEC, NXE and LEU daily closes from the store (fa-data a798b9b, Nasdaq site). Each other fact has its source in the table or the text.
