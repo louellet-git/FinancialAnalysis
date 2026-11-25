@@ -6,6 +6,7 @@ status: review
 owner: louellet-git
 requested_by: louellet-git
 head: quant
+story: E4.S1
 order: 0.9
 branch: claude/quant-algo-paper
 created: 2026-11-21
