@@ -42,8 +42,7 @@ person decided. Keep this file below 60 lines. Started 2026-11-20. Dream pass: 2
 - Anthropic (ANT): numbers and words of the filing only, with the disclosure (the agents run on Anthropic models).
 
 ## Tested rules and contacts
-- Heads by session title (send_message; ids from `list_sessions`, never in a file): FA-L - Head of Technology, of
-  Quality and Risk, of Economics, of Quant Research, of Staff.
+- Heads by session title (send_message; ids from `list_sessions`, never in a file): FA-L - Head of Technology, of Quality and Risk, of Economics, of Quant Research, of Staff.
 - Head of Staff: one short message when a result is done (it reads a result before Luc), an owner decision, a
   conflict, a long block. No status reports. A permission refusal goes to Technology.
 - Tokens: one weekly limit (reset Wednesday 16:00 UTC); my share is in `PLANNING/board/EPICS.md` (last table; 13% =
