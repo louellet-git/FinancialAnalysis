@@ -333,6 +333,61 @@ mod tests {
         std::fs::write(dir.join(SEC_CONTACT_FILE), text).unwrap();
     }
 
+    /// A real HTTP test with a local server (no outside network): a 307 answer is not followed, and a header with a secret
+    /// is sent to this one server only.
+    #[test]
+    fn no_redirect_client_follows_no_redirect_over_real_http() {
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::{Arc, Mutex};
+        static PROXY_LOCK: Mutex<()> = Mutex::new(());
+        let _g = PROXY_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        // The client reads the proxy variable; a local address must not go through a proxy.
+        let saved: Vec<(String, Option<String>)> = ["HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"].iter().map(|k| (k.to_string(), std::env::var(k).ok())).collect();
+        for (k, _) in &saved {
+            std::env::remove_var(k);
+        }
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let hits = Arc::new(AtomicUsize::new(0));
+        let seen = Arc::new(Mutex::new(String::new()));
+        let (h2, s2) = (hits.clone(), seen.clone());
+        let server = std::thread::spawn(move || {
+            // Serve for a short time: the first request gets the 307; a second request would be a followed redirect.
+            listener.set_nonblocking(true).unwrap();
+            let end = std::time::Instant::now() + std::time::Duration::from_millis(1500);
+            while std::time::Instant::now() < end {
+                if let Ok((mut c, _)) = listener.accept() {
+                    c.set_nonblocking(false).unwrap();
+                    let mut buf = [0u8; 4096];
+                    let n = c.read(&mut buf).unwrap_or(0);
+                    h2.fetch_add(1, Ordering::SeqCst);
+                    s2.lock().unwrap().push_str(&String::from_utf8_lossy(&buf[..n]));
+                    let _ = write!(c, "HTTP/1.1 307 Temporary Redirect\r\nLocation: http://127.0.0.1:{port}/second\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                } else {
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                }
+            }
+        });
+        let mut client = Client::no_redirect("test-agent", 5);
+        let r = client.request("POST", &format!("http://127.0.0.1:{port}/first"), &[("X-Secret", "abc123")], Some("{}"));
+        server.join().unwrap();
+        for (k, v) in saved {
+            if let Some(v) = v {
+                std::env::set_var(k, v);
+            }
+        }
+        // The answer is the 307 itself (or an error), never the result of a second request.
+        match r {
+            Ok((code, _)) => assert_eq!(code, 307),
+            Err(e) => assert!(!e.to_string().is_empty()),
+        }
+        assert_eq!(hits.load(Ordering::SeqCst), 1, "exactly one request: the redirect was not followed");
+        let text = seen.lock().unwrap().to_lowercase();
+        assert!(text.starts_with("post /first") && text.contains("x-secret: abc123"), "{text}");
+    }
+
     #[test]
     fn the_variable_comes_before_the_file() {
         let dir = temp("order");

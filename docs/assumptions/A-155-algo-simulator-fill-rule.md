@@ -1,10 +1,11 @@
 # A-155: fill rule of the `fa algo` simulator
 
-Updated: 2026-11-25. Commit: not yet made.
+Updated: 2026-11-25. Commit: 9803c60.
 
 ## Choice
-A buy fills at the mid plus 1.0 times the half spread (the ask). A sell fills at the bid. Latency 250 ms (the order
-fills on the first input that is 250 ms or more after the decision). Fee 0.005 USD a share. No partial fill, no queue.
+A buy fills at the mid plus 1.0 times the half spread, which is the ask. A sell fills at the bid.
+The latency is 250 ms: the order fills on the first input at least 250 ms after the decision.
+The fee is 0.005 USD a share. There is no partial fill and no queue.
 
 ## Where used
 | Model | File | Parameter name |
@@ -20,7 +21,7 @@ fills on the first input that is 250 ms or more after the decision). Fee 0.005 U
 
 ## Why this choice
 The Alpaca paper account fills a marketable order at the ask or bid (`chiefs/louellet-git/quant/alpaca-paper-facts-2026-11-25.md`, section 1).
-The simulator copies that rule, so the journal can compare the two fills. The latency and the fee are conventions, not measured.
+The simulator copies that rule, so the journal can compare the two fills. The latency and the fee are conventions. We did not measure them.
 
 ## Effect on the result
 Not measured. With `--broker alpaca-paper --send` the journal shows the broker fill next to the simulator fill: this is the measurement.

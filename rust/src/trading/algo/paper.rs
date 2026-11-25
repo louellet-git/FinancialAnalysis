@@ -152,6 +152,10 @@ pub struct PaperKeys {
 }
 
 impl PaperKeys {
+    /// Keys from values that a caller already has (a test).
+    pub fn new(id: &str, secret: &str) -> PaperKeys {
+        PaperKeys { id: id.to_string(), secret: secret.to_string() }
+    }
     /// Reads `ALPACA_PAPER_KEY_ID` and `ALPACA_PAPER_SECRET_KEY` (environment, else `<repo>/.env`). No other name.
     pub fn read(repo: &Path) -> Option<PaperKeys> {
         Some(PaperKeys { id: read_key(repo, KEY_ID_VAR)?, secret: read_key(repo, SECRET_VAR)? })
@@ -555,6 +559,17 @@ impl PaperHook {
                 }
             }
         }
+        // A restart keeps the P&L of the day: the fills of the journal are the first cash flow.
+        let mut latest: std::collections::BTreeMap<String, f64> = std::collections::BTreeMap::new();
+        for l in prior.lines().filter(|l| !l.trim().is_empty()) {
+            let Ok(v) = serde_json::from_str::<Value>(l) else { continue };
+            if v["kind"] == "paper_order" || v["kind"] == "paper_status" {
+                let (Some(cid), Some(fq), Some(avg)) = (v["client_order_id"].as_str(), num(&v["broker"]["filled_qty"]), num(&v["broker"]["filled_avg_price"])) else { continue };
+                let sign = if v["broker"]["side"] == "buy" { 1.0 } else { -1.0 };
+                latest.insert(cid.to_string(), -sign * fq * avg);
+            }
+        }
+        let prior_cash_flow: f64 = latest.values().sum();
         PaperHook {
             tr,
             secrets,
@@ -574,7 +589,7 @@ impl PaperHook {
             stopped: false,
             failed: None,
             broker_pos: 0,
-            cash_flow: 0.0,
+            cash_flow: prior_cash_flow,
             last_mid: 0.0,
             day_loss_limit: f64::INFINITY,
             last_poll_ms: 0,
@@ -611,7 +626,21 @@ impl PaperHook {
 
     /// One call to the paper API. The budget and the error count are here.
     fn call(&mut self, method: Method, path: &str, body: Option<&str>) -> Result<Value, String> {
-        if !self.budget.take(self.now_ms) {
+        self.call_with(method, path, body, true, true)
+    }
+
+    /// A read of an order by its client id after a failed send: it uses the budget, but it does not count as a second API error.
+    fn call_lookup(&mut self, method: Method, path: &str, body: Option<&str>) -> Result<Value, String> {
+        self.call_with(method, path, body, true, false)
+    }
+
+    /// A call at a stop: a cancel must not wait for the request budget, and it does not count in the error count.
+    fn call_critical(&mut self, method: Method, path: &str, body: Option<&str>) -> Result<Value, String> {
+        self.call_with(method, path, body, false, false)
+    }
+
+    fn call_with(&mut self, method: Method, path: &str, body: Option<&str>, use_budget: bool, count_errors: bool) -> Result<Value, String> {
+        if use_budget && !self.budget.take(self.now_ms) {
             return Err("the request budget of the minute is used".into());
         }
         let url = paper_url(path)?;
@@ -630,7 +659,9 @@ impl PaperHook {
             }
             Ok(r) => Err(format!("HTTP {}: {}", r.status, self.clean(&r.body))),
         };
-        if out.is_err() {
+        if !count_errors {
+            // no change of the error count
+        } else if out.is_err() {
             self.api_errors += 1;
             if self.api_errors >= MAX_API_ERRORS {
                 self.failed.get_or_insert(format!("{MAX_API_ERRORS} API errors in a row"));
@@ -791,7 +822,7 @@ impl PaperHook {
             Err(e) => {
                 self.log_soft(json!({"kind": "paper_error", "client_order_id": id, "stage": "send", "error": e}));
                 // The order may exist (a timeout): read it by its client id, and never send it again with a new id.
-                match self.call(Method::Get, &format!("/v2/orders:by_client_order_id?client_order_id={id}"), None) {
+                match self.call_lookup(Method::Get, &format!("/v2/orders:by_client_order_id?client_order_id={id}"), None) {
                     Ok(v) if v["client_order_id"].as_str() == Some(id.as_str()) => {
                         self.log_soft(json!({"kind": "paper_note", "client_order_id": id, "note": "the order exists at the broker although the send call failed"}));
                         self.accept_reply(&mut t, &v);
@@ -812,29 +843,66 @@ impl PaperHook {
         self.tracked.push(t);
     }
 
+    /// Accept the reply to a send (or the read by client id) only when it matches the request. A reply with no id is read again by the
+    /// client id, so that an open order is never left untracked. Any mismatch marks the order failed and stops the run.
     fn accept_reply(&mut self, t: &mut Tracked, v: &Value) {
-        let view = order_view(v);
+        let mut v = v.clone();
+        if v["id"].as_str().is_none_or(str::is_empty) {
+            let path = format!("/v2/orders:by_client_order_id?client_order_id={}", t.client_order_id);
+            match self.call_lookup(Method::Get, &path, None) {
+                Ok(r) => v = r,
+                Err(e) => {
+                    self.mark_failed(t, format!("the reply has no order id and the read by client id failed: {e}"));
+                    return;
+                }
+            }
+        }
+        if let Err(m) = verify_order(&self.symbol, t, &v) {
+            self.mark_failed(t, m);
+            return;
+        }
+        let view = order_view(&v);
         t.broker_id = v["id"].as_str().map(String::from);
         t.status = v["status"].as_str().unwrap_or("unknown").to_string();
-        if t.broker_id.is_none() {
-            t.refused.push("the reply has no order id".into());
+        if let Err(m) = self.apply_fill(t, &v) {
+            self.mark_failed(t, m);
+            return;
         }
-        self.apply_fill(t, v);
         self.log_soft(json!({"kind": "paper_order", "client_order_id": t.client_order_id, "broker": view}));
         t.broker = Some(view);
     }
 
+    fn mark_failed(&mut self, t: &mut Tracked, why: String) {
+        t.refused.push(why.clone());
+        t.status = "failed".into();
+        self.failed.get_or_insert(why.clone());
+        self.log_soft(json!({"kind": "paper_error", "client_order_id": t.client_order_id, "stage": "reply check", "error": why}));
+    }
+
     /// Update the fills of an order from a reply: the cash flow and the broker position follow the filled quantity.
-    fn apply_fill(&mut self, t: &mut Tracked, v: &Value) {
-        let fq = num(&v["filled_qty"]).unwrap_or(0.0) as i64;
-        let avg = num(&v["filled_avg_price"]).unwrap_or(0.0);
-        if fq > t.filled_qty && avg > 0.0 {
+    /// The filled quantity must be a whole number from 0 to the order quantity, and it must not fall.
+    fn apply_fill(&mut self, t: &mut Tracked, v: &Value) -> Result<(), String> {
+        let raw = &v["filled_qty"];
+        let fq = if raw.is_null() { 0.0 } else { num(raw).ok_or("the filled quantity is not a number")? };
+        if fq < 0.0 || fq.fract() != 0.0 {
+            return Err(format!("the filled quantity {fq} is negative or not a whole number"));
+        }
+        if fq > t.qty as f64 {
+            return Err(format!("the filled quantity {fq} is above the order quantity {}", t.qty));
+        }
+        let fq = fq as i64;
+        if fq < t.filled_qty {
+            return Err(format!("the filled quantity fell from {} to {fq}", t.filled_qty));
+        }
+        if fq > t.filled_qty {
+            let avg = num(&v["filled_avg_price"]).filter(|a| *a > 0.0).ok_or("the order has fills and no valid filled average price")?;
             let sign = t.side.sign() as f64;
             self.cash_flow -= sign * (fq as f64 * avg - t.filled_qty as f64 * t.filled_avg);
             self.broker_pos += t.side.sign() * (fq - t.filled_qty);
             t.filled_qty = fq;
             t.filled_avg = avg;
         }
+        Ok(())
     }
 
     fn finish_refused(&mut self, mut t: Tracked) {
@@ -891,16 +959,46 @@ impl PaperHook {
     }
 
     fn update_from(&mut self, i: usize, v: &Value) {
+        let (want_id, want_cid) = (self.tracked[i].broker_id.clone(), self.tracked[i].client_order_id.clone());
+        if v["id"].as_str() != want_id.as_deref() || v["client_order_id"].as_str() != Some(want_cid.as_str()) {
+            let why = "the reply to a read of an order is for another order".to_string();
+            self.failed.get_or_insert(why.clone());
+            self.log_soft(json!({"kind": "paper_error", "client_order_id": want_cid, "stage": "status check", "error": why}));
+            return;
+        }
         let mut t = std::mem::replace(&mut self.tracked[i], Tracked::blank());
         let (old_status, old_fq) = (t.status.clone(), t.filled_qty);
+        if let Err(why) = self.apply_fill(&mut t, v) {
+            self.failed.get_or_insert(why.clone());
+            self.log_soft(json!({"kind": "paper_error", "client_order_id": t.client_order_id, "stage": "status check", "error": why}));
+            self.tracked[i] = t;
+            return;
+        }
         t.status = v["status"].as_str().unwrap_or(&t.status).to_string();
-        self.apply_fill(&mut t, v);
         if t.status != old_status || t.filled_qty != old_fq {
             let view = order_view(v);
             self.log_soft(json!({"kind": "paper_status", "client_order_id": t.client_order_id, "broker": view}));
             t.broker = Some(view);
         }
         self.tracked[i] = t;
+    }
+
+    /// Cancel every open order of the symbol at the broker. It skips the request budget and the error count.
+    fn cancel_all(&mut self, why: &str) -> usize {
+        let mut cancelled = 0;
+        match self.call_critical(Method::Get, &format!("/v2/orders?status=open&symbols={}&limit=50", self.symbol), None) {
+            Ok(Value::Array(list)) => {
+                for o in list {
+                    if let Some(id) = o["id"].as_str() {
+                        let r = self.call_critical(Method::Delete, &format!("/v2/orders/{id}"), None);
+                        cancelled += usize::from(r.is_ok());
+                        self.log_soft(json!({"kind": "paper_cancel", "reason": why, "broker_order_id": id, "ok": r.is_ok()}));
+                    }
+                }
+            }
+            other => self.log_soft(json!({"kind": "paper_error", "stage": "list open orders at the stop", "error": format!("{other:?}").chars().take(200).collect::<String>()})),
+        }
+        cancelled
     }
 
     /// The broker day P&L: cash flow of the fills plus the position at the mid.
@@ -931,7 +1029,7 @@ impl OrderHook for PaperHook {
     fn decision(&mut self, ctx: &DecisionCtx) {
         self.now_ms = ctx.input.read_ms;
         let (bid, ask) = (ctx.input.bid, ctx.input.ask);
-        // A limit order at the touch: a buy at the ask, a sell at the bid (IEX touch is inside the NBBO, so it is marketable).
+        // A limit order at the touch: a buy at the ask, a sell at the bid (the NBBO is at least as good as the IEX quote: its ask is not above the IEX ask, its bid is not below the IEX bid, so a limit at the IEX touch is marketable).
         let touch = if ctx.side == Side::Buy { ask } else { bid };
         let limit = match (ctx.limit, ctx.side) {
             (Some(l), Side::Buy) => touch.min(l),
@@ -974,30 +1072,18 @@ impl OrderHook for PaperHook {
             return;
         }
         println!("  STOP ({}): cancel all open orders, keep the position, send no new order", why.label());
-        let mut cancelled = 0;
-        match self.call(Method::Get, &format!("/v2/orders?status=open&symbols={}&limit=50", self.symbol), None) {
-            Ok(Value::Array(list)) => {
-                for o in list {
-                    if let Some(id) = o["id"].as_str() {
-                        let r = self.call(Method::Delete, &format!("/v2/orders/{id}"), None);
-                        cancelled += usize::from(r.is_ok());
-                        self.log_soft(json!({"kind": "paper_cancel", "reason": why.label(), "broker_order_id": id, "ok": r.is_ok()}));
-                    }
-                }
-            }
-            other => self.log_soft(json!({"kind": "paper_error", "stage": "list open orders at the stop", "error": format!("{other:?}").chars().take(200).collect::<String>()})),
-        }
+        let cancelled = self.cancel_all(why.label());
         for i in 0..self.tracked.len() {
             if self.tracked[i].open() {
                 if let Some(bid) = self.tracked[i].broker_id.clone() {
-                    if let Ok(v) = self.call(Method::Get, &format!("/v2/orders/{bid}"), None) {
+                    if let Ok(v) = self.call_critical(Method::Get, &format!("/v2/orders/{bid}"), None) {
                         self.update_from(i, &v);
                     }
                 }
             }
         }
         // The position that is kept: quantity and average entry price (no account number).
-        let kept = self.call(Method::Get, "/v2/positions", None).and_then(|v| parse_positions(&v, &self.symbol).map(|(q, _)| (q, avg_entry(&v, &self.symbol))));
+        let kept = self.call_critical(Method::Get, "/v2/positions", None).and_then(|v| parse_positions(&v, &self.symbol).map(|(q, _)| (q, avg_entry(&v, &self.symbol))));
         match kept {
             Ok((q, avg)) => {
                 self.broker_pos = q;
@@ -1030,6 +1116,18 @@ impl OrderHook for PaperHook {
     }
 }
 
+impl Drop for PaperHook {
+    /// An exit with no stop (an error path, a panic that unwinds) still cancels the open orders. The position is kept.
+    fn drop(&mut self) {
+        if self.tr.is_some() && !self.stopped {
+            self.stopped = true;
+            let n = self.cancel_all("abnormal exit");
+            self.log_soft(json!({"kind": "paper_stop", "reason": "abnormal exit", "dry_run": false, "cancelled": n}));
+            println!("  abnormal exit: {n} open order(s) cancelled; the position is kept; a person checks the paper account");
+        }
+    }
+}
+
 /// The path of the order journal. It is under `data/processed/algo/`, which git ignores.
 pub fn journal_path(algo_dir: &Path, date: &str, strategy: &str) -> PathBuf {
     algo_dir.join(date).join(format!("{strategy}-orders.jsonl"))
@@ -1037,6 +1135,97 @@ pub fn journal_path(algo_dir: &Path, date: &str, strategy: &str) -> PathBuf {
 
 pub fn peak_path(algo_dir: &Path) -> PathBuf {
     algo_dir.join("paper-sleeve-peak.json")
+}
+
+/// The reply to an order call must be the order that we asked for: id, client id, symbol, side, quantity, type, day and limit price.
+fn verify_order(symbol: &str, t: &Tracked, v: &Value) -> Result<(), String> {
+    let bad = |name: &str| Err(format!("the broker reply does not match the request: {name}"));
+    if v["id"].as_str().is_none_or(str::is_empty) {
+        return bad("id");
+    }
+    if v["client_order_id"].as_str() != Some(t.client_order_id.as_str()) {
+        return bad("client_order_id");
+    }
+    if v["symbol"].as_str() != Some(symbol) {
+        return bad("symbol");
+    }
+    if v["side"].as_str() != Some(t.side_text().as_str()) {
+        return bad("side");
+    }
+    if num(&v["qty"]) != Some(t.qty as f64) {
+        return bad("qty");
+    }
+    if v["type"].as_str() != Some("limit") || v["time_in_force"].as_str() != Some("day") {
+        return bad("type or time_in_force");
+    }
+    if !num(&v["limit_price"]).is_some_and(|p| (p - t.limit).abs() < 1e-9) {
+        return bad("limit_price");
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------- where an order run may start
+
+/// The facts about the machine and the session, as data. Tests give their own; `from_process` reads the real ones.
+pub struct OrderEnv {
+    /// The names of the environment variables (the values are not needed).
+    pub vars: Vec<String>,
+    /// The order host file, outside the repo: `$HOME/.config/fa/order-host` (Windows: `%APPDATA%\fa\order-host`).
+    pub host_file: Option<PathBuf>,
+    pub hostname: String,
+    pub windows: bool,
+}
+
+impl OrderEnv {
+    pub fn from_process() -> OrderEnv {
+        let windows = cfg!(windows);
+        let host_file = if windows {
+            std::env::var_os("APPDATA").map(|a| PathBuf::from(a).join("fa").join("order-host"))
+        } else {
+            std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config").join("fa").join("order-host"))
+        };
+        OrderEnv { vars: std::env::vars_os().map(|(k, _)| k.to_string_lossy().to_string()).collect(), host_file, hostname: host_name(), windows }
+    }
+}
+
+/// The one command that makes the order host file on this machine.
+pub fn order_host_command(env: &OrderEnv) -> String {
+    if env.windows {
+        format!("mkdir %APPDATA%\\fa & echo {}> %APPDATA%\\fa\\order-host", env.hostname)
+    } else {
+        format!("mkdir -p ~/.config/fa && echo {} > ~/.config/fa/order-host", env.hostname)
+    }
+}
+
+/// `--send` is allowed only on the laptop or the order host, never in a Claude Code or cloud session: a session can hold real paper keys.
+/// (a) no variable `CLAUDECODE` or `CCR_*`; (b) the order host file, outside the repo, whose first line is the host name of this machine.
+pub fn check_order_host(env: &OrderEnv, repo: &Path) -> Result<(), String> {
+    if env.vars.iter().any(|v| v == "CLAUDECODE" || v.starts_with("CCR_")) {
+        return Err("orders are sent only from the laptop or the order host, not from a Claude Code or cloud session".into());
+    }
+    let help = format!("--send needs the order host file; make it on this machine with: {}", order_host_command(env));
+    let Some(file) = &env.host_file else {
+        return Err(format!("no home folder is known. {help}"));
+    };
+    if file.starts_with(repo) {
+        return Err(format!("the order host file {} is inside the repo: it must be outside. {help}", file.display()));
+    }
+    let text = std::fs::read_to_string(file).map_err(|_| format!("the order host file {} is missing. {help}", file.display()))?;
+    if text.lines().next().map(str::trim) != Some(env.hostname.as_str()) {
+        return Err(format!("the first line of {} is not the host name of this machine. {help}", file.display()));
+    }
+    Ok(())
+}
+
+/// The start gate without the paper keys (no request is possible): the New York hours rule, weekdays 09:30 to 16:00.
+/// A holiday is not known without the clock. `Some(text)` means closed.
+pub fn ny_hours_gate(utc_secs: i64) -> Option<String> {
+    let (date, tod) = crate::market::alpaca::ny_day(utc_secs);
+    let weekend = crate::trading::calendar::parse_iso(&date).is_some_and(|d| crate::trading::calendar::weekday(d) >= 5);
+    if weekend || !(9 * 3600 + 30 * 60..16 * 3600).contains(&tod) {
+        return Some(format!("market closed (New York hours rule, weekdays 09:30 to 16:00; holidays are not known without the clock): it is {date} {:02}:{:02} New York", tod / 3600, tod % 3600 / 60));
+    }
+    None
 }
 
 // ---------------------------------------------------------------- the market clock (read only)
@@ -1070,12 +1259,6 @@ pub fn market_gate(t: &mut dyn Transport) -> Result<Option<String>, String> {
         Clock::Open => None,
         Clock::Closed { next_open } => Some(format!("market closed (Alpaca clock): next open {next_open}")),
     })
-}
-
-/// A transport for the clock read with the data keys (the simulator and the dry run). It is the same transport and the same host
-/// constant; the caller sends only the clock read with it.
-pub fn clock_transport(id: &str, secret: &str) -> RealTransport {
-    RealTransport::new(PaperKeys { id: id.to_string(), secret: secret.to_string() })
 }
 
 #[cfg(test)]
@@ -1120,12 +1303,14 @@ mod tests {
         /// An open order fills at its next read.
         fill_on_get: bool,
         post_override: Option<Result<(u16, String), String>>,
+        /// The body of every read of one order (a wrong reply).
+        get_override: Option<String>,
         fail_all: bool,
         clock_open: bool,
     }
 
     fn world() -> Rc<RefCell<World>> {
-        Rc::new(RefCell::new(World { pos: 0, cash: 100_000.0, equity: 100_000.0, status: "ACTIVE", orders: vec![], fill: true, fill_on_get: false, post_override: None, fail_all: false, clock_open: true }))
+        Rc::new(RefCell::new(World { pos: 0, cash: 100_000.0, equity: 100_000.0, status: "ACTIVE", orders: vec![], fill: true, fill_on_get: false, post_override: None, get_override: None, fail_all: false, clock_open: true }))
     }
 
     struct Mock {
@@ -1172,8 +1357,17 @@ mod tests {
                     w.orders.push(o);
                     ok(out)
                 }
-                (Method::Get, p) if p.starts_with("/v2/orders:by_client_order_id") => Ok(Reply { status: 404, body: "{\"message\":\"order not found\"}".into() }),
+                (Method::Get, p) if p.starts_with("/v2/orders:by_client_order_id") => {
+                    let cid = p.split("client_order_id=").nth(1).unwrap_or("").to_string();
+                    match w.orders.iter().find(|o| o.cid == cid) {
+                        Some(o) => ok(order_json(o)),
+                        None => Ok(Reply { status: 404, body: "{\"message\":\"order not found\"}".into() }),
+                    }
+                }
                 (Method::Get, p) if p.starts_with("/v2/orders/") => {
+                    if let Some(b) = w.get_override.clone() {
+                        return ok(b);
+                    }
                     let id = p.trim_start_matches("/v2/orders/").to_string();
                     let fill_on_get = w.fill_on_get;
                     let mut pos_change = 0;
@@ -1751,6 +1945,210 @@ mod tests {
         assert!(market_gate(&mut Fixed(401, "{}")).unwrap_err().contains("HTTP 401"));
         assert!(market_gate(&mut Fixed(200, "{\"next_open\": \"x\"}")).unwrap_err().contains("no is_open"));
         assert!(market_gate(&mut Fixed(200, "not json")).is_err());
+    }
+
+    // ---- round 2: the replies of the server are checked
+
+    fn good_reply() -> Value {
+        json!({"id": "x1", "client_order_id": "fa-2026-09-21-demo-SPY-0001", "symbol": "SPY", "side": "buy", "qty": "1", "type": "limit", "time_in_force": "day", "limit_price": "100.10", "status": "accepted", "filled_qty": "0", "filled_avg_price": null})
+    }
+
+    fn send_with_reply(name: &str, reply: Value) -> Rig {
+        let mut r = rig(name);
+        r.w.borrow_mut().post_override = Some(Ok((200, reply.to_string())));
+        decide(&mut r.h, 0, Side::Buy, 1, &inp(T0, 100.0, 100.1));
+        r
+    }
+
+    #[test]
+    fn a_reply_that_does_not_match_the_request_marks_the_order_failed_and_stops_the_run() {
+        let r = send_with_reply("reply-good", good_reply());
+        assert!(r.h.stop_request().is_none(), "the good reply is accepted");
+        assert_eq!(r.h.tracked[0].broker_id.as_deref(), Some("x1"));
+        for (field, bad) in [("client_order_id", json!("other")), ("symbol", json!("QQQ")), ("side", json!("sell")), ("qty", json!("2")), ("limit_price", json!("100.20")), ("type", json!("market")), ("time_in_force", json!("gtc")), ("id", json!(""))] {
+            let mut v = good_reply();
+            v[field] = bad;
+            // A reply with no id is read again by the client id: the broker has no such order, so it fails too.
+            let r = send_with_reply(&format!("reply-{field}"), v);
+            let why = r.h.stop_request().unwrap_or_else(|| panic!("{field}: the run was not stopped"));
+            assert!(why.contains("does not match") || why.contains("no order id"), "{field}: {why}");
+            assert_eq!(r.h.tracked[0].status, "refused", "{field}");
+            assert!(r.buf.lines().iter().any(|v| v["kind"] == "paper_error" && v["stage"] == "reply check"), "{field}");
+        }
+    }
+
+    #[test]
+    fn a_filled_quantity_above_the_order_or_negative_or_not_whole_is_refused() {
+        let filled = |fq: Value, avg: Value| {
+            let mut v = good_reply();
+            v["filled_qty"] = fq;
+            v["filled_avg_price"] = avg;
+            v["status"] = json!("filled");
+            v
+        };
+        let ok = send_with_reply("fq-ok", filled(json!("1"), json!("100.10")));
+        assert!(ok.h.stop_request().is_none());
+        assert_eq!(ok.h.broker_pos, 1);
+        for (name, v) in [("above", filled(json!("2"), json!("100.10"))), ("fraction", filled(json!("0.5"), json!("100.10"))), ("negative", filled(json!("-1"), json!("100.10"))), ("text", filled(json!("many"), json!("100.10"))), ("no price", filled(json!("1"), Value::Null)), ("zero price", filled(json!("1"), json!("0")))] {
+            let r = send_with_reply(&format!("fq-{name}"), v);
+            assert!(r.h.stop_request().is_some(), "{name}: not refused");
+            assert_eq!(r.h.broker_pos, 0, "{name}: the position must not move");
+        }
+    }
+
+    #[test]
+    fn a_reply_with_no_id_is_read_by_the_client_id_so_no_open_order_is_untracked() {
+        let mut r = rig("noid");
+        r.w.borrow_mut().orders.push(Ord1 { id: "pre-1".into(), cid: "fa-2026-09-21-demo-SPY-0001".into(), side: "buy".into(), qty: 1, limit: "100.10".into(), status: "accepted".into() });
+        let mut v = good_reply();
+        v.as_object_mut().unwrap().remove("id");
+        r.w.borrow_mut().post_override = Some(Ok((200, v.to_string())));
+        decide(&mut r.h, 0, Side::Buy, 1, &inp(T0, 100.0, 100.1));
+        assert!(r.h.stop_request().is_none());
+        assert_eq!(r.h.tracked[0].broker_id.as_deref(), Some("pre-1"), "the open order is tracked");
+        assert!(r.log.borrow().iter().any(|q| q.url.contains("orders:by_client_order_id")));
+    }
+
+    #[test]
+    fn a_status_read_for_another_order_or_with_a_bad_fill_stops_the_run() {
+        for (name, body) in [("other id", {
+            let mut v = good_reply();
+            v["id"] = json!("ord-9");
+            v
+        }), ("other client id", {
+            let mut v = good_reply();
+            v["id"] = json!("ord-1");
+            v["client_order_id"] = json!("zzz");
+            v
+        }), ("fill above", {
+            let mut v = good_reply();
+            v["id"] = json!("ord-1");
+            v["filled_qty"] = json!("5");
+            v["filled_avg_price"] = json!("100.1");
+            v
+        })] {
+            let mut r = rig(&format!("status-{name}"));
+            r.w.borrow_mut().fill = false;
+            decide(&mut r.h, 0, Side::Buy, 1, &inp(T0, 100.0, 100.1));
+            assert!(r.h.stop_request().is_none());
+            r.w.borrow_mut().get_override = Some(body.to_string());
+            r.h.poll(&inp(T0 + 3000, 100.0, 100.1));
+            assert!(r.h.stop_request().is_some(), "{name}");
+            assert_eq!(r.h.broker_pos, 0, "{name}");
+        }
+    }
+
+    #[test]
+    fn the_cancels_at_a_stop_skip_the_budget_and_the_error_count() {
+        // The start used the whole budget of 3 requests: a normal call would be refused.
+        let mut r = rig_with("critical", "", 3, true);
+        r.w.borrow_mut().orders.push(Ord1 { id: "o9".into(), cid: "x".into(), side: "buy".into(), qty: 1, limit: "1.00".into(), status: "accepted".into() });
+        r.h.stop(Stop::Until, &inp(T0 + 1000, 100.0, 100.1), None);
+        assert!(r.log.borrow().iter().any(|q| q.method == Method::Delete && q.url.ends_with("/v2/orders/o9")), "the cancel was sent");
+        assert_eq!(r.w.borrow().orders[0].status, "canceled");
+        // Failing calls at the stop do not count as API errors.
+        let mut r = rig("critical-errors");
+        r.w.borrow_mut().fail_all = true;
+        r.h.stop(Stop::Until, &inp(T0 + 1000, 100.0, 100.1), None);
+        assert_eq!(r.h.api_errors, 0);
+        assert!(r.h.stop_request().is_none());
+    }
+
+    #[test]
+    fn an_exit_with_no_stop_cancels_the_open_orders() {
+        let mut r = rig("abnormal");
+        r.w.borrow_mut().fill = false;
+        decide(&mut r.h, 0, Side::Buy, 1, &inp(T0, 100.0, 100.1));
+        let (h, log, w, buf) = (r.h, r.log.clone(), r.w.clone(), r.buf.clone());
+        drop(h); // an Err path or an unwind: no stop() was called
+        assert!(log.borrow().iter().any(|q| q.method == Method::Delete && q.url.ends_with("/v2/orders/ord-1")));
+        assert_eq!(w.borrow().orders[0].status, "canceled");
+        assert!(buf.lines().iter().any(|v| v["kind"] == "paper_stop" && v["reason"] == "abnormal exit"));
+        // After a normal stop, the drop sends nothing more.
+        let mut r = rig("normal-drop");
+        r.h.stop(Stop::Until, &inp(T0 + 1000, 100.0, 100.1), None);
+        let n = r.log.borrow().len();
+        let log = r.log.clone();
+        drop(r.h);
+        assert_eq!(log.borrow().len(), n);
+    }
+
+    #[test]
+    fn a_restart_keeps_the_day_pnl_from_the_journal() {
+        let line = |kind: &str, cid: &str, side: &str, avg: &str| json!({"kind": kind, "client_order_id": cid, "broker": {"side": side, "filled_qty": "1", "filled_avg_price": avg}}).to_string();
+        // A buy at 100 (seen twice: the later line replaces the first) and a sell at 98.5: -1.5 USD.
+        let prior = [line("paper_order", "a", "buy", "100"), line("paper_status", "a", "buy", "100"), line("paper_status", "b", "sell", "98.5")].join("\n");
+        let mut r = rig_with("restart-pnl", &prior, 60, true);
+        assert!((r.h.day_pnl() - -1.5).abs() < 1e-9, "{}", r.h.day_pnl());
+        r.h.day_loss_limit = 1.0;
+        r.h.poll(&inp(T0, 100.0, 100.1));
+        assert!(r.h.stop_request().unwrap().contains("daily loss stop"));
+    }
+
+    #[test]
+    fn one_failed_send_counts_once_in_the_error_count() {
+        let mut r = rig("count-once");
+        r.w.borrow_mut().post_override = Some(Err("timeout".into()));
+        decide(&mut r.h, 0, Side::Buy, 1, &inp(T0, 100.0, 100.1));
+        assert_eq!(r.h.api_errors, 1, "the POST counts once; the read by client id (404) does not count");
+    }
+
+    // ---- round 2: where an order run may start
+
+    fn host_env(name: &str, file_text: Option<&str>, vars: &[&str]) -> (OrderEnv, PathBuf) {
+        let dir = tmp(name);
+        let file = dir.join("home").join(".config").join("fa").join("order-host");
+        if let Some(t) = file_text {
+            std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+            std::fs::write(&file, t).unwrap();
+        }
+        (OrderEnv { vars: vars.iter().map(|s| s.to_string()).collect(), host_file: Some(file), hostname: "laptop-7".into(), windows: false }, dir.join("repo"))
+    }
+
+    #[test]
+    fn send_is_refused_in_a_claude_code_or_cloud_session() {
+        for var in ["CLAUDECODE", "CCR_SESSION_PROFILE", "CCR_X"] {
+            // The host file is right: the session check refuses anyway.
+            let (env, repo) = host_env(&format!("cloud-{var}"), Some("laptop-7\n"), &["PATH", var]);
+            let e = check_order_host(&env, &repo).unwrap_err();
+            assert_eq!(e, "orders are sent only from the laptop or the order host, not from a Claude Code or cloud session");
+        }
+        let (env, repo) = host_env("not-cloud", Some("laptop-7\n"), &["PATH", "CLAUDE_CODE_X", "CCRX"]);
+        assert!(check_order_host(&env, &repo).is_ok(), "only CLAUDECODE and CCR_* count");
+    }
+
+    #[test]
+    fn send_needs_the_order_host_file_with_this_host_name() {
+        let (env, repo) = host_env("hostfile-missing", None, &["PATH"]);
+        let e = check_order_host(&env, &repo).unwrap_err();
+        assert!(e.contains("is missing") && e.contains("mkdir -p ~/.config/fa && echo laptop-7 > ~/.config/fa/order-host"), "{e}");
+        let (env, repo) = host_env("hostfile-other", Some("another-box\n"), &["PATH"]);
+        assert!(check_order_host(&env, &repo).unwrap_err().contains("not the host name of this machine"));
+        let (env, repo) = host_env("hostfile-empty", Some(""), &["PATH"]);
+        assert!(check_order_host(&env, &repo).is_err());
+        let (env, repo) = host_env("hostfile-ok", Some("laptop-7\nsecond line is ignored\n"), &["PATH"]);
+        assert!(check_order_host(&env, &repo).is_ok());
+        // The file must be outside the repo.
+        let (mut env, _) = host_env("hostfile-inside", Some("laptop-7\n"), &["PATH"]);
+        let repo = env.host_file.clone().unwrap().parent().unwrap().to_path_buf();
+        assert!(check_order_host(&env, &repo).unwrap_err().contains("inside the repo"));
+        env.host_file = None;
+        assert!(check_order_host(&env, Path::new("/x")).is_err());
+        // The Windows command.
+        let (mut env, _) = host_env("hostfile-win", None, &[]);
+        env.windows = true;
+        assert!(order_host_command(&env).contains("%APPDATA%"));
+    }
+
+    #[test]
+    fn without_the_paper_keys_the_start_gate_uses_the_new_york_hours_and_no_request() {
+        assert_eq!(ny_hours_gate(T0 / 1000), None, "Monday 10:13 New York");
+        let sat = ny_hours_gate(T0 / 1000 + 5 * 86_400).unwrap();
+        assert!(sat.contains("holidays are not known without the clock") && sat.contains("2026-09-26"), "{sat}");
+        assert!(ny_hours_gate(T0 / 1000 - 44 * 60 - 20).is_some(), "09:29:00 is before the open");
+        assert!(ny_hours_gate(T0 / 1000 - 43 * 60 - 20).is_none(), "09:30:00 is open");
+        assert!(ny_hours_gate(T0 / 1000 + 5 * 3600 + 46 * 60 + 39).is_none(), "15:59:59 is open");
+        assert!(ny_hours_gate(T0 / 1000 + 5 * 3600 + 46 * 60 + 40).is_some(), "16:00:00 is closed");
     }
 
     // ---- small parts
