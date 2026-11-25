@@ -7,3 +7,4 @@
 | 3 | 2026-11-20 | arb-1 chain check (`volatility-derivatives-quant`, 3 rounds) and arb-2 step 1 (`rates-credit-quant`, 3 rounds) | 290,000 | Both gates PASS-WITH-NOTES; one pull request for the two tickets |
 | 4 | 2026-11-21 | arb-1b, arb-2 step 2, vol-1 (2 review cycles), vol-7 (2 cycles), arb-4 step 1 (four agents) | 900,000 | All gates passed; one pull request (work before the branch answer) |
 | 5 | 2026-11-21 | Test audit (`test-engineer`) and ticket quant-test-audit-1 (two agents) | 160,000 | Gate PASS-WITH-NOTES; three parser defects fixed |
+| 6 | 2026-11-21 | Algo paper engine (`strategy-researcher`, 4 rounds), host research (`general-purpose`, 3 rounds), industry note (`general-purpose`) | 700,000 | Gate PASS-WITH-NOTES (cycle 2); the person chose a free Google e2-micro |
