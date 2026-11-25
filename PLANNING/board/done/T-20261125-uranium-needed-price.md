@@ -2,7 +2,7 @@
 id: T-20261125-uranium-needed-price
 title: Read the uranium price that the price of a miner needs, from the value tables of the technical reports (no new code)
 area: engine
-status: in-progress
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: fundamental
@@ -35,3 +35,8 @@ debt number; US$70 with the costs of the 2021 study); spot US$91.55 and long-ter
 research agent (30 tool calls) and one check of the NexGen filing. NEXT: the audit of the numbers (Quality), then the
 Head of Staff, then the person. The design ticket `T-20261123-miner-value-model-design` is merged (pull request 231):
 move it to `done/` with the pull request of this ticket.
+
+Board note (16:56 UTC, 2026-11-25): DONE. Version 2 of the page passed the audit of the numbers (Quality: REVISE on version 1,
+three major points; PASS on version 2, f0796a4). It goes to the Head of Staff, then to the person. Cost: one research
+agent (30 tool calls, about 162,000 tokens), one agent for the second read of the NexGen filing (about 43,000 tokens and
+one more question), no code. Open for the person: the decision on the build of the miner model.
