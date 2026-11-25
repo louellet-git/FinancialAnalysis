@@ -6,9 +6,9 @@ person decided. Keep this file below 60 lines. Started 2026-11-20. Dream pass: 2
 1. Week study (E2.S1): three one-page pieces are on main and WAIT for the review of Luc; then the S&P 100 part. Do
    not start it before his review. State: page `attribution-state.md`.
 2. T1 correction of the projection test (E1.S1; `T-20261121-blind-projection-test`; branch `claude/t1-revenue-band`).
-   Luc lifted his pause on 2026-11-25. The rule is chosen (`band_q`, in the ticket). Next: the statistics gate of the
-   Head of Economics on the rule text, then ONE score run (`--cut 2011 --base-to 2014`, never run), then the model gate.
-3. E3.S5: the miner design and the page "Uranium Price Needed: NexGen" are on main (NexGen needs about US$84 a pound).
+   The one-time score FAILED on 2026-11-25 (4e7ec03; the centre: 77% of real revenue below the P50; table of 3 years).
+   Nothing merged. No T1 work before the choice of Luc (recommended: centre work with a new written test, and a forward test).
+3. E3.S5: the miner design and the page "Uranium Price Needed: NexGen" (version 3, plain words) are on main (about US$84).
    Luc decides on the build (first company NexGen or Denison, not UEC). Then the fund look-through, R6.
 4. No weekly trade: no rule passed its backtest (A-009 INVALID, PR 136); Luc: "No trades until T1 passes".
 
@@ -26,10 +26,10 @@ person decided. Keep this file below 60 lines. Started 2026-11-20. Dream pass: 2
 - A backtest uses a table cut before its first year; compare a strategy with the equal weight of the SAME list.
 - Commit only after the build and the tests pass in one chain; stage explicit paths; agents use the Edit tool only; `date -u`.
 - A script sum needs a second calculation; a failed run must fail its test; a rule that can skip must warn (PR 213).
-- T1: a change of the weight w of the growth history changes the free cash flow through A-002; the growth data have
-  fat tails, so a normal draw with the correct variance is too wide at P10 and P90 (the ticket has the runs).
-- A PDF: check its text with `pdftotext` (two dollar signs on a line became a formula). Read the reports of a company
-  before you recommend it (UEC). A claim that Luc decided: read his words in the record (a head is not his approval).
+- T1: a change of the weight w changes the free cash flow through A-002; the growth data have fat tails (a normal draw
+  is too wide at P10 and P90); a hold-out needs a table of enough years (3 years tested the centre only).
+- A page for Luc: the first lines say the question, the answer and its meaning in plain words. Check the PDF text with
+  `pdftotext`. Read the reports of a company before you recommend it. Read his words before you act on a claim that he decided.
 
 ## Standing words of the person
 - Preliminary results first; a report only after his go-ahead; ask "does it make sense?" before a result goes to him. Macro "why" questions go to the Head of Economics; give Luc that answer with its author.

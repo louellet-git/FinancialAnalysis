@@ -105,3 +105,26 @@ Denison has no price file in the data store, so its market value was not calcula
   company says it needs.
 - Table 1: the rows of Denison, Uranium Energy and Cameco were read one time, by one agent, and are not audited.
   Energy Fuels was not opened: the page says "four miners that we opened".
+
+## 6. Version 3 of the page (2026-11-25): new words, the same numbers
+
+The person read version 2 and said that he did not get the message. Version 3 says the question, the answer and its
+meaning in the first lines. No number changed. Two tables changed place:
+
+- Table 1 of version 3 is Table 2 of version 2 (the parts at US$80 and US$90), with plain row names.
+- Table 2 of version 3 is Table 1 of version 2, with the share of each miner in URA. Source of the shares: form N-PORT
+  of the fund (Global X Funds, series S000029442), report date 2026-07-31, filed 2026-09-29: Cameco 22.18%, Sprott
+  Physical Uranium Trust 6.74%, Oklo 6.09%, NexGen 6.07%, Uranium Energy 4.81%, Denison 2.73%. NexGen is the fourth
+  largest holding. Energy Fuels was not opened and is not in the table.
+- Table 3 of version 2 is not on the page. It is here:
+
+| Input | Needed price |
+|---|---:|
+| As in Table 1 of the page | US$84 |
+| The exchange rate of the company's table (1.3333) for the market value, the uranium held and the debt | US$80 |
+| Debt of US$320 million: the debt on 2026-09-30, the date of the cash. US$70 million of it became shares on 2026-10-22, and those shares are in the count | US$85 |
+| Add back the 176 million paid for the building of Rook I in the nine months of 2026 (the table subtracts the full build cost) | US$82 |
+| The costs of the 2021 study (replaced by the 2024 update) | US$70 |
+
+The range on the page (US$80 to US$85) is the range of rows 1 to 4. Row 5 is not in the range: the company replaced
+those costs. The full list of the limits with their direction is in section 5.
