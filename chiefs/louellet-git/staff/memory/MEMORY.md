@@ -56,5 +56,4 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
 - E3.S5: the Cameco IFRS mapping passed its gate; the rest is small. `fa usage` now gives tokens by ticket
   (PR 241); a head must run it before it removes a worktree (tell each head in its next message).
 - E1 is on hold: "No trades until T1 passes". No trade on Friday 2026-11-27.
-- Data for the calculator: 78% of the cost of a head session is its own context, not its agents.
-- Friday 2026-11-27 16:05 UTC: the pace check (a scheduled message to me).
+- Calculator data: 78% of a head's cost is its own context. Pace check: Friday 16:05 UTC (scheduled).
