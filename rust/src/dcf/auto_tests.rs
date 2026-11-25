@@ -530,6 +530,43 @@ fn no_later_value_enters_the_model_of_a_base_year() {
 }
 
 #[test]
+fn the_frozen_forecast_is_the_band_of_the_last_year_and_needs_its_history() {
+    let year = |k: i32| {
+        let rev = 1e9 * 1.08f64.powi(k);
+        YearData { end: format!("{}-12-31", 2019 + k), filed: format!("{}-02-15", 2020 + k), revenue: Some(rev), operating_cash_flow: Some(0.2 * rev), capex: Some(0.05 * rev), sbc: Some(0.02 * rev), interest: Some(0.01 * rev), ..Default::default() }
+    };
+    let y: Vec<YearData> = (0..7).map(year).collect();
+    let rules = Rules::default();
+    let pp = PitParams { rules: &rules, paths: 200, seed: 7, min_year: None };
+    let f = freeze_company("ACME", &y, &table(), &[], &pp, "2025-01-01").expect("a forecast");
+    // the base year is the last year (2025), with its filing date and revenue
+    assert_eq!((f.base_end.as_str(), f.base_filed.as_str()), ("2025-12-31", "2026-02-15"));
+    assert_eq!(f.base_revenue, y[6].revenue.unwrap());
+    // the same band as the point-in-time test gives for that base year (the same model, paths and seed)
+    let longer: Vec<YearData> = (0..10).map(year).collect();
+    let obs = company_observations("ACME", &longer, &table(), &[], &PitParams { rules: &rules, paths: 200, seed: 7, min_year: None });
+    let o = obs.iter().find(|o| o.year == 2025).expect("the base year 2025 in the test");
+    assert_eq!((o.rev_q, o.fcff_q), (f.rev_q, f.fcff_q));
+    for h in 0..HORIZON {
+        assert!(f.rev_q[h][0] < f.rev_q[h][1] && f.rev_q[h][1] < f.rev_q[h][2]);
+    }
+    // a last year before the limit, or fewer than five years in sequence: no forecast
+    assert!(freeze_company("ACME", &y, &table(), &[], &pp, "2026-01-01").is_none());
+    assert!(freeze_company("ACME", &y[3..], &table(), &[], &pp, "2025-01-01").is_none());
+    let mut gap = y.clone();
+    gap.remove(5);
+    assert!(freeze_company("ACME", &gap, &table(), &[], &pp, "2025-01-01").is_none());
+    // the file: the header as comments, one column line, one row with 4 + 2 x 3 x 3 fields
+    let text = freeze_text(&[f], "line one\nline two");
+    let lines: Vec<&str> = text.lines().collect();
+    assert_eq!((lines[0], lines[1]), ("# line one", "# line two"));
+    assert!(lines[2].starts_with("ticker,base_end,base_filed,base_revenue,rev_p10_t1,rev_p50_t1,rev_p90_t1,"));
+    assert!(lines[2].ends_with(",fcff_p10_t3,fcff_p50_t3,fcff_p90_t3"));
+    assert_eq!(lines[3].split(',').count(), 22);
+    assert!(lines[3].starts_with("ACME,2025-12-31,2026-02-15,"));
+}
+
+#[test]
 fn the_base_years_need_five_years_up_to_t_and_three_after_in_sequence() {
     let y: Vec<YearData> = (0..9).map(|k| YearData { end: format!("{}-12-31", 2015 + k), revenue: Some(1e8 * (1.0 + k as f64)), ..Default::default() }).collect();
     // nine years: T can be the fifth year to the sixth year (indices 4 and 5): 5 up to T, 3 after

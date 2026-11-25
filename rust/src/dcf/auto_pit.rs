@@ -55,7 +55,10 @@ fa dcf pit [OPTIONS]
   --limit N        use the first N companies only (a quick check)
   --half H         use the companies of one half only: H = 0 or 1, the parity of the FNV-1a hash of the ticker (a fixed rule)
   --diag NAME      add a diagnosis after the table: `decline` (what follows a year of falling revenue), `nu` (the weight of the
-                   table shock in the shock size of the margin, tested on the panel with the margin of the next year)";
+                   table shock in the shock size of the margin, tested on the panel with the margin of the next year)
+  --freeze FILE    score nothing: write the forecast of the LAST fiscal year of each company (P10, P50, P90 of the revenue
+                   and the free cash flow of the 3 years after it) to FILE, for a score when the real values are filed
+  --min-end DATE   with --freeze: only companies whose last fiscal year ends on or after DATE (default 2025-01-01)";
 
 /// One base year of one company, with the model band and the real values.
 #[derive(Debug, Clone, PartialEq)]
@@ -795,6 +798,69 @@ pub fn pit_setup(cache: &Path, table_file: &Path, cut: Option<i32>, limit: Optio
     Ok(PitSetup { companies, table, fade, label, cut })
 }
 
+/// One frozen forecast: the model at the end of the LAST fiscal year of a company (its base year), with the P10, P50
+/// and P90 of the revenue and of the free cash flow of the `HORIZON` years after it. The real values do not exist yet.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Frozen {
+    pub ticker: String,
+    pub base_end: String,
+    pub base_filed: String,
+    pub base_revenue: f64,
+    pub rev_q: [[f64; 3]; HORIZON],
+    pub fcff_q: [[f64; 3]; HORIZON],
+}
+
+/// The frozen forecast of one company, or `None`: the last fiscal year ends before `min_end` (a company with no new
+/// report), the `NEED_BEFORE` years up to it are not in sequence, or the model refuses the company. Only the years up
+/// to the base year enter the model (as in `model_at`).
+pub fn freeze_company(ticker: &str, years: &[YearData], table: &ProcessTable, fade: &[FadeCell], p: &PitParams, min_end: &str) -> Option<Frozen> {
+    let mut counts = RuleCounts::default();
+    let rows = clean_series(raw_years(years), &mut counts);
+    let k = rows.len().checked_sub(1)?;
+    if k + 1 < NEED_BEFORE || !rows[k + 1 - NEED_BEFORE + 1..=k].iter().all(|r| r.prev_ok) || rows[k].end.as_str() < min_end {
+        return None;
+    }
+    let b = years.iter().position(|y| y.end == rows[k].end)?;
+    let model = model_at(ticker, years, b, table, fade, p.rules).ok()?;
+    let mut spec = PathsSpec::from_toml(&model.toml).ok()?;
+    spec.projection_years = HORIZON;
+    let sim = PathEngine::new(&spec).ok()?.simulate_one_thread(p.paths, p.seed, &Mods::default(), true).ok()?;
+    let q = |t: usize, f: usize| -> [f64; 3] {
+        let s = sorted_copy(&sim.column(t, f));
+        [percentile(&s, 10.0), percentile(&s, 50.0), percentile(&s, 90.0)]
+    };
+    let mut fr = Frozen { ticker: ticker.to_string(), base_end: years[b].end.clone(), base_filed: years[b].filed.clone(), base_revenue: model.summary.base_revenue, rev_q: [[0.0; 3]; HORIZON], fcff_q: [[0.0; 3]; HORIZON] };
+    for h in 0..HORIZON {
+        fr.rev_q[h] = q(h, F_REV);
+        fr.fcff_q[h] = q(h, F_FCFF);
+    }
+    Some(fr)
+}
+
+/// The file of the frozen forecasts: comment lines with `#`, then one CSV row for each company (US dollars, no rounding
+/// of the percentiles below one dollar).
+pub fn freeze_text(rows: &[Frozen], header: &str) -> String {
+    let mut s = String::new();
+    for l in header.lines() {
+        s.push_str(&format!("# {l}\n"));
+    }
+    s.push_str("ticker,base_end,base_filed,base_revenue");
+    for (name, _) in [("rev", 0), ("fcff", 1)] {
+        for h in 1..=HORIZON {
+            s.push_str(&format!(",{name}_p10_t{h},{name}_p50_t{h},{name}_p90_t{h}"));
+        }
+    }
+    s.push('\n');
+    for r in rows {
+        s.push_str(&format!("{},{},{},{:.0}", r.ticker, r.base_end, r.base_filed, r.base_revenue));
+        for q in r.rev_q.iter().chain(r.fcff_q.iter()) {
+            s.push_str(&format!(",{:.0},{:.0},{:.0}", q[0], q[1], q[2]));
+        }
+        s.push('\n');
+    }
+    s
+}
+
 /// The observations of the test for one set of rules.
 pub fn pit_observations(setup: &PitSetup, paths: usize, seed: u64, rules: &Rules) -> Vec<PitObs> {
     setup.companies.par_iter().flat_map(|(t, years)| company_observations(t, years, &setup.table, &setup.fade, &PitParams { rules, paths, seed, min_year: setup.cut })).collect()
@@ -816,7 +882,7 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         println!("{USAGE}");
         return Ok(());
     }
-    let known = ["--cache", "--table", "--cut", "--paths", "--seed", "--rules", "--out", "--limit", "--half", "--diag"];
+    let known = ["--cache", "--table", "--cut", "--paths", "--seed", "--rules", "--out", "--limit", "--half", "--diag", "--freeze", "--min-end"];
     let mut i = 0;
     while i < args.len() {
         if known.contains(&args[i].as_str()) {
@@ -842,6 +908,24 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     let t0 = Instant::now();
     let setup = pit_setup(&cache, &table_file, cut, limit, None, half)?;
     let load_s = t0.elapsed().as_secs_f64();
+    if let Some(path) = opt(args, "--freeze") {
+        // the forecasts of the last fiscal year of each company; nothing is scored
+        let min_end = opt(args, "--min-end").unwrap_or("2025-01-01");
+        let mut rows: Vec<Frozen> = setup.companies.par_iter().filter_map(|(t, years)| freeze_company(t, years, &setup.table, &setup.fade, &PitParams { rules: &rules, paths, seed, min_year: None }, min_end)).collect();
+        rows.sort_by(|a, b| a.ticker.cmp(&b.ticker));
+        let header = format!(
+            "FROZEN FORECASTS of the automatic model (nothing is scored). {}\nCommand: fa dcf pit {}\nRules: {:?}\n{} of {} companies of the standard template have a forecast (last fiscal year ending on or after {min_end}, {NEED_BEFORE} years in sequence up to it, a model); {paths} paths each, seed {seed}.\nColumns: the base year (its end and its filing date), its revenue, then the P10, P50 and P90 of the revenue and of the free cash flow (model definition) of the {HORIZON} years after it, in US dollars.",
+            setup.label,
+            args.join(" "),
+            rules,
+            rows.len(),
+            setup.companies.len()
+        );
+        let text = freeze_text(&rows, &header);
+        std::fs::write(path, &text).map_err(|x| DcfError(format!("{path}: {x}")))?;
+        println!("{} forecasts written to {path} ({} companies loaded in {load_s:.1} s)", rows.len(), setup.companies.len());
+        return Ok(());
+    }
     let t1 = Instant::now();
     let obs = pit_observations(&setup, paths, seed, &rules);
     let run_s = t1.elapsed().as_secs_f64();
