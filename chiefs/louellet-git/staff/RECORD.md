@@ -325,3 +325,12 @@ exists: read the uranium price that a stock price needs from the value tables th
 Answer: "Small step first (Recommended)"
 Done: told Fundamental Research. First the check of which technical reports have a value table, then the
 hand measurement, from the reserve of the week. No build before he sees the number and says yes.
+
+## 2026-11-25 about 17:01 UTC (dialog)
+Question: the small step is done (the page "Uranium Price Needed: NexGen"); do you want the build of the
+miner model? (Choices: build next week; build this week; stop here.)
+Answer (his own text, no choice): "I’m not sure I understand, the pdf doesn’t really read well/im not sure
+what it’s trying to tell me"
+Done: I gave him the message of the page in plain words. The page goes back to Fundamental Research for a
+plain form. No decision on the build yet. My fault: I checked the numbers and the form and not if a reader
+with no context gets the message.
