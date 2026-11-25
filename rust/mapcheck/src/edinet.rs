@@ -36,7 +36,8 @@ pub const USER_AGENT: &str = "FinancialAnalysis fa (personal research)";
 /// Seconds between two requests. The EDINET FAQ asks for moderate use (about one request a minute to poll
 /// the same list); a scan of a few weeks needs one request for each day.
 pub const DEFAULT_DELAY_SECONDS: f64 = 3.0;
-pub const MIN_DELAY_SECONDS: f64 = 2.0;
+/// The floor of `--delay`: the same as the default, as the row in docs/DATA-SOURCES.md says.
+pub const MIN_DELAY_SECONDS: f64 = 3.0;
 const API_BASE: &str = "https://api.edinet-fsa.go.jp/api/v2";
 /// The namespaces that the facts keep. The registry reads these.
 const KEEP: [&str; 3] = ["jpigp_cor", "jpcrp_cor", "ifrs-full"];
@@ -74,7 +75,8 @@ pub fn key_from(variable: Option<&str>, dirs: &[PathBuf]) -> Result<String, Stri
 
 /// The text with the key value and each `Subscription-Key=` parameter value taken out.
 pub fn scrub(text: &str, key: &str) -> String {
-    let replaced = if key.len() >= 4 { text.replace(key, "***") } else { text.to_string() };
+    // An empty key would match everywhere; any other key is taken out, short or long.
+    let replaced = if key.is_empty() { text.to_string() } else { text.replace(key, "***") };
     let mut result = String::with_capacity(replaced.len());
     let mut rest = replaced.as_str();
     const PARAM: &str = "Subscription-Key=";
@@ -469,7 +471,8 @@ pub struct Http {
 
 impl Http {
     pub fn new(key: &str, delay_seconds: f64) -> Http {
-        Http { client: Client::new(USER_AGENT, delay_seconds.max(MIN_DELAY_SECONDS)), key: key.to_string() }
+        // No redirect: the key is in the URL, and a redirect to another host would send it there.
+        Http { client: Client::no_redirect_paced(USER_AGENT, delay_seconds.max(MIN_DELAY_SECONDS)), key: key.to_string() }
     }
 }
 
@@ -565,11 +568,12 @@ impl<T: Transport> Session<T> {
             429 | 403 => format!("HTTP {code}: EDINET refuses more requests now. The run stops; try again later, with a longer delay"),
             401 => "HTTP 401: EDINET refuses the key (wrong, or not active)".to_string(),
             404 => "HTTP 404: EDINET has no such data (check the date or the document ID)".to_string(),
+            c @ 300..=399 => format!("HTTP {c} from EDINET: a redirect, not followed (the key is in the URL); the run stops"),
             c => format!("HTTP {c} from EDINET"),
         }
     }
 
-    /// One request. A code of 400 or more, or an error JSON, is an `Err`. Two connection failures in a row are an `Err`.
+    /// One request. A code of 300 or more, or an error JSON, is an `Err`. Two connection failures in a row are an `Err`.
     fn call(&mut self, path: &str, query: &str) -> Result<Vec<u8>, String> {
         let url = self.url(path, query);
         let mut failures = 0;
@@ -577,7 +581,8 @@ impl<T: Transport> Session<T> {
             self.requests += 1;
             match self.transport.get(&url) {
                 Ok((code, body)) => {
-                    if code >= 400 {
+                    // A 3xx is an error too: the client follows no redirect (the key is in the URL).
+                    if code >= 300 {
                         return Err(Self::describe(code));
                     }
                     return Ok(body);
@@ -621,8 +626,8 @@ impl<T: Transport> Session<T> {
         if b < a {
             return Err("--to is before --from".to_string());
         }
-        if b - a > 400 {
-            return Err("the range is longer than 400 days: use a shorter one (one request for each day)".to_string());
+        if b - a > 90 {
+            return Err("the range is longer than 90 days: use a shorter one (one request for each weekday)".to_string());
         }
         for day in a..=b {
             if matches!((day + 4).rem_euclid(7), 0 | 6) {
@@ -1005,6 +1010,10 @@ mod tests {
         let mut s = session(vec![Err(format!("{API_BASE}/documents.json?date=d&Subscription-Key={SECRET}: boom")), Err(format!("again {SECRET}"))]);
         let e = s.list_day("2025-06-20").unwrap_err();
         assert!(!e.contains(SECRET) && !e.contains("Subscription-Key=k3y"), "{e}");
+        let e = session(vec![Ok((307, Vec::new()))]).csv_zip("S1").unwrap_err();
+        assert!(e.contains("redirect, not followed"), "{e}");
+        assert_eq!(scrub(&format!("x {SECRET} y"), ""), format!("x {SECRET} y"));
+        assert_eq!(scrub("a k3 b", "k3"), "a *** b");
         for code in [400u16, 401, 404, 429, 500] {
             let e = session(vec![Ok((code, format!("body {SECRET}").into_bytes()))]).csv_zip("S1").unwrap_err();
             assert!(!e.contains(SECRET), "{e}");
