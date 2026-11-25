@@ -2,6 +2,8 @@
 
 Updated: 2026-11-20.
 
+Backtest: `fa dcf pit` (the point-in-time test of the projections, T1 of `T-20261121-blind-projection-test`) and `fa portfolio backtest --strategy value-rank` (pull request 136: no evidence of an edge on split-corrected prices).
+
 ## Purpose
 `fa dcf auto TICKER` makes a Monte Carlo DCF model for one ticker with no hand input, and
 runs it. `fa dcf screen` does this for many tickers. It is a screen. It is not a reviewed
@@ -48,17 +50,26 @@ value, 3 no value, 2 an error. `fa dcf screen` gives one CSV row for each ticker
 | A-001 | One long-run growth L | min(10-year zero yield, 4.0%); terminal std 0.75% | Fade level and terminal mean. 4.0% = FOMC SEP 2026-09-16 (2.0% + 2.0%). Decided 2026-11-20 |
 | A-002 | Acquisition charge | `w` x mean spend / revenue, 5 years | `w` = weight of the history in the growth mean; fades with the growth above L; second line of the purchases added when it differs (`acq_second`, proposed 2026-11-21). Decided 2026-11-20 |
 | A-003 | Floor on the growth of the base year | 0% | A base year with growth below 0% enters the company mean and the first step of the growth as 0% (`last_floor`) |
-| not written | Equity risk premium | 4.41% (std 0.75%, lower bound 2%) | Damodaran implied value, 2026-11-19 |
-| not written | Risk-free rate | 10-year zero yield of the GSW curve | Hull-White `a` 0.14, `sigma` 0.0075 |
-| not written | Horizon | 10 years | Repo convention |
-| not written | Beta | 2/3 regression beta + 1/3 | Weekly returns, 5 years |
-| not written | SBC | A cost of the model | IBM review F5 |
+| A-022 | Equity risk premium | 4.41% (std 0.75%, lower bound 2%) | Source of 4.41% not confirmed (the study could not match it to Damodaran). Decider: not known |
+| A-023 | Risk-free rate | 10-year zero yield of the GSW curve | Hull-White `a` 0.14, `sigma` 0.0075, `long_flat` (`HIDDEN-ASSUMPTIONS.md` #160) |
+| A-024 | Horizon | 10 years | The code says "owner rule"; no dated source |
+| A-025 | Beta | 2/3 regression beta + 1/3 | 260 weeks, at least 104, SPY with 520 rows or more: no source |
+| A-026 | SBC | A cost of the model | IBM review F5 |
+| A-011 | Cost of debt spread | 1.50% | Judgment; no source. Equity weight limited to 0.2 to 1.0 |
+| A-012 | Age of a price | 10 days (curve flag: 3 days) | Conventions |
+| A-013 | Design of the process table | 60% jump, buckets, 150 obs | `docs/models/process-calibration.md` |
+| A-020 | Smaller builder conventions | `min_years` 3, `own_sigma_nu` 4, others | One record for many rows |
 
 The register of the code is `fa dcf assumptions` (`rust/src/dcf/assumptions.rs`): it lists each row with its default, its code place, its record and its state. The procedure of a study: skill `assumption-study`.
-The records "not written" belong to the board ticket
-`T-20261120-model-docs-backlog`.
+Other models: `docs/models/process-calibration.md`, `implied-and-attribute.md`, `pit-and-returns-tests.md`,
+`share-basis.md` (A-016, A-017), `driver-and-classic-engines.md`.
 
 ## Limits
+- Share basis (A-017, `docs/models/share-basis.md`). The price files are split-adjusted; the SEC share counts are not.
+  The model multiplies each count by the split factors with `filing date < ex_date <= last date of the price file`
+  (`share_basis.rs`, `splits.rs`; one place: `YearData::from_period`). A missing split table is a warning in `auto`,
+  `screen`, `implied`, `attribute` and an error in `returns` and `fa portfolio backtest`. `fa dcf pit` and the classic
+  engine (curated shares, post-split basis) have no factor.
 - The model is a screen. Its P10 to P90 band covers 84% to 87% of real revenue in the
   point-in-time test, with known errors (`docs/HIDDEN-ASSUMPTIONS.md`, #199).
 - After a year of decline the revenue P50 stays too low (T+2 and T+3), in a few base years with a common shock (2018 to 2021; A-003)

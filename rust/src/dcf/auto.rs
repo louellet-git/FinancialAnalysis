@@ -288,7 +288,19 @@ impl YearData {
         }
     }
 
-    pub fn from_period(registry: &Registry, p: &PeriodData) -> YearData {
+    /// The three share counts are multiplied by `F(ticker, s)` (`share_basis::Basis`), so that they are on the share basis of
+    /// today, the basis of the split-adjusted closes of the store. `s` is the FILING date of the fact that the model
+    /// takes for the count (the `filed` of the tag fact of the variable that gives the value: `PeriodData::filed_of`), not the period end: a filing issued
+    /// after a split shows the counts already adjusted for it (ASC 260), so only the splits after the filing count. When
+    /// the value has no tag fact (a formula value), `s` is the filing date of the period (`PeriodData::filed`), and
+    /// when that is missing, the period end. The cover-page share count (dei) is not used by the model. This is the one
+    /// place of the correction.
+    pub fn from_period(registry: &Registry, p: &PeriodData, basis: &super::share_basis::Basis) -> YearData {
+        // the filing date of the variable that gives the value, else the filing of the period, else the period end
+        let factor = |name: &str| -> f64 { basis.factor(p.filed_of(registry, name).or(p.filed.as_deref()).unwrap_or(&p.end)) };
+        // `shares` is the diluted count, and the count at the end of the period when there is no diluted count
+        let diluted_name = if p.get(registry, "shares_diluted").is_some() { "shares_diluted" } else { "shares_outstanding" };
+        let (f_diluted, f_out, f_basic) = (factor(diluted_name), factor("shares_outstanding"), factor("shares_basic"));
         let capex = p.get(registry, "capex_total").or_else(|| p.get(registry, "capex")).map(f64::abs);
         let interest = p.get(registry, "interest_paid").or_else(|| p.get(registry, "interest_expense")).map(f64::abs);
         let cash = p
@@ -308,12 +320,12 @@ impl YearData {
             acquisitions_second: p.get(registry, "acquisitions_net_of_cash_second").map(f64::abs),
             total_debt: p.get(registry, "total_debt"),
             cash,
-            shares: p.get(registry, "shares_diluted").or_else(|| p.get(registry, "shares_outstanding")),
+            shares: p.get(registry, "shares_diluted").or_else(|| p.get(registry, "shares_outstanding")).map(|v| v * f_diluted),
             interest_income: p.get(registry, "interest_income").map(f64::abs),
             long_term_investments: p.get(registry, "long_term_investments"),
             operating_leases: p.get(registry, "operating_lease_liabilities"),
-            shares_outstanding: p.get(registry, "shares_outstanding"),
-            shares_basic: p.get(registry, "shares_basic"),
+            shares_outstanding: p.get(registry, "shares_outstanding").map(|v| v * f_out),
+            shares_basic: p.get(registry, "shares_basic").map(|v| v * f_basic),
             dividends: p.get(registry, "dividends_paid").map(f64::abs),
         }
     }
@@ -343,8 +355,8 @@ pub struct BalanceData {
 }
 
 impl BalanceData {
-    pub fn from_period(registry: &Registry, p: &PeriodData, form: &str) -> BalanceData {
-        let y = YearData::from_period(registry, p);
+    pub fn from_period(registry: &Registry, p: &PeriodData, form: &str, basis: &super::share_basis::Basis) -> BalanceData {
+        let y = YearData::from_period(registry, p, basis);
         BalanceData {
             end: p.end.clone(),
             form: form.to_string(),
@@ -402,7 +414,12 @@ pub struct AutoInputs {
 }
 
 /// The inputs of a mapping report of `mapcheck`.
-pub fn inputs_from_report(registry: &Registry, r: &mapcheck::run::TickerReport) -> AutoInputs {
+///
+/// The share counts are on the share basis of the price file (`splits`, see `market/splits.rs` and `share_basis.rs`): each count gets the factor of
+/// the splits after the filing date of its fact up to `to`, the last date of the price file of the ticker
+/// (`share_basis::basis_to`; the closes are adjusted only up to that date) (`YearData::from_period`).
+pub fn inputs_from_report(registry: &Registry, r: &mapcheck::run::TickerReport, splits: &[crate::market::splits::Split], to: &str) -> AutoInputs {
+    let basis = super::share_basis::Basis { splits, ticker: &r.ticker, to };
     let mut out = AutoInputs {
         ticker: r.ticker.clone(),
         name: r.name.clone(),
@@ -413,20 +430,20 @@ pub fn inputs_from_report(registry: &Registry, r: &mapcheck::run::TickerReport) 
         ..Default::default()
     };
     if let Some(c) = &r.company {
-        out.years = c.annual.iter().map(|p| YearData::from_period(registry, p)).collect();
+        out.years = c.annual.iter().map(|p| YearData::from_period(registry, p, &basis)).collect();
         // The latest period with a balance sheet: a later 10-Q first, then the fiscal year.
         let last_year = c.annual.last();
         let newer_quarter = c.quarterly.last().filter(|q| last_year.is_none_or(|y| q.end > y.end));
         let usable = |b: &BalanceData| b.cash.is_some() && b.shares.is_some();
         let mut balance = None;
         if let Some(q) = newer_quarter {
-            let b = BalanceData::from_period(registry, q, "10-Q");
+            let b = BalanceData::from_period(registry, q, "10-Q", &basis);
             if usable(&b) {
                 balance = Some(b);
             }
         }
         if balance.is_none() {
-            balance = last_year.map(|y| BalanceData::from_period(registry, y, "10-K"));
+            balance = last_year.map(|y| BalanceData::from_period(registry, y, "10-K", &basis));
         }
         out.balance = balance;
     }
@@ -478,6 +495,110 @@ pub fn load_curve(cache: &std::path::Path, as_of: &str) -> Result<CurveNumbers, 
     let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
     let ds = crate::forwards::parse_gsw(&text)?;
     curve_on(&ds, as_of)
+}
+
+/// The curve of the last FedInvest price file on or before `as_of` (`<cache>/prices/fedinvest_<date>.csv`): the NSS curve
+/// that `fa recon rich-cheap` fits to the end-of-day prices of the Treasury notes and bonds (`richcheap::analyse`, settlement
+/// one business day later). The same family as GSW, but a different fit: use one source at both ends of a comparison. The
+/// parameters are put in the GSW units (BETA in percent, TAU in years); the zero yields are continuous, as GSW.
+pub fn load_curve_fedinvest(cache: &std::path::Path, as_of: &str) -> Result<CurveNumbers, String> {
+    let limit = crate::curve::parse_iso(as_of.get(..10).unwrap_or(as_of)).ok_or_else(|| format!("'{as_of}' is not a date"))?;
+    let dir = cache.join("prices");
+    let mut days: Vec<String> = std::fs::read_dir(&dir)
+        .map_err(|e| format!("{}: {e}", dir.display()))?
+        .filter_map(|e| e.ok()?.file_name().into_string().ok())
+        .filter_map(|n| n.strip_prefix("fedinvest_")?.strip_suffix(".csv").map(str::to_string))
+        .filter(|d| crate::curve::parse_iso(d).is_some_and(|x| x <= limit))
+        .collect();
+    days.sort();
+    let date = days.pop().ok_or_else(|| format!("no FedInvest price file on or before {as_of} in {}", dir.display()))?;
+    let quotes = crate::richcheap::cached_quotes(cache, &date)?;
+    let day = crate::curve::parse_iso(&date).ok_or("bad date")?;
+    let a = crate::richcheap::analyse(&date, crate::curve::add_business_days(day, 1), &quotes)?;
+    Ok(curve_of_nss(&date, &a.nss))
+}
+
+/// The tenors of the Treasury par yield curve that enter the par fit (years). The bill tenors (1 to 6 months) are left out:
+/// the fit is of coupon securities only, as `fa recon rich-cheap` (life of 3 months or more).
+pub const PAR_TENORS: [(&str, i64); 8] = [("1 Yr", 1), ("2 Yr", 2), ("3 Yr", 3), ("5 Yr", 5), ("7 Yr", 7), ("10 Yr", 10), ("20 Yr", 20), ("30 Yr", 30)];
+
+/// The curve of the last row on or before `as_of` of the Treasury daily par yield curve
+/// (`<cache>/rates/treasury_nominal_<year>.csv`, the year of `as_of` and the year before). Each tenor is a par bond (a coupon
+/// equal to the par yield, semiannual, clean price 100, maturity `n` years after the date); the NSS curve is fitted to these
+/// bonds with the fit of `fa recon rich-cheap` (`fit::fit_curve`). Use one source at both ends of a comparison.
+pub fn load_curve_par(cache: &std::path::Path, as_of: &str) -> Result<CurveNumbers, String> {
+    load_curve_par_rmse(cache, as_of).map(|x| x.0)
+}
+
+/// The largest root mean square error of the par fit that the program accepts (basis points of yield over the 8 par bonds).
+/// A curve with a larger error is refused, not used. Do not read the fitted curve beyond 30 years (the last par bond).
+pub const PAR_FIT_MAX_RMSE_BP: f64 = 5.0;
+
+/// `load_curve_par` with the root mean square error of the fit (basis points). In January the row can come from the file of
+/// the year before; the date of the row is `CurveNumbers::date`.
+pub fn load_curve_par_rmse(cache: &std::path::Path, as_of: &str) -> Result<(CurveNumbers, f64), String> {
+    let limit = crate::curve::parse_iso(as_of.get(..10).unwrap_or(as_of)).ok_or_else(|| format!("'{as_of}' is not a date"))?;
+    let year: i64 = as_of.get(..4).and_then(|y| y.parse().ok()).ok_or("bad year")?;
+    for y in [year, year - 1] {
+        let path = cache.join("rates").join(format!("treasury_nominal_{y}.csv"));
+        let Ok(text) = std::fs::read_to_string(&path) else { continue };
+        if let Some((date, yields)) = par_row_on(&text, limit)? {
+            return par_fit_rmse(&date, &yields);
+        }
+    }
+    Err(format!("no Treasury par yield row on or before {as_of} in {}", cache.join("rates").display()))
+}
+
+/// The last row on or before `limit` of a Treasury par yield file: the ISO date and the yields (percent) of `PAR_TENORS`.
+pub fn par_row_on(text: &str, limit: crate::curve::Day) -> Result<Option<(String, Vec<f64>)>, String> {
+    let mut lines = text.lines();
+    let head: Vec<String> = lines.next().ok_or("empty par yield file")?.split(',').map(|h| h.trim().trim_matches('"').to_string()).collect();
+    let cols: Vec<usize> = PAR_TENORS.iter().map(|(n, _)| head.iter().position(|h| h == n).ok_or_else(|| format!("par yield file has no column '{n}'"))).collect::<Result<_, _>>()?;
+    let mut best: Option<(crate::curve::Day, String, Vec<f64>)> = None;
+    for line in lines {
+        let f: Vec<&str> = line.split(',').map(|x| x.trim().trim_matches('"')).collect();
+        let mdy: Vec<i64> = f[0].split('/').filter_map(|x| x.parse().ok()).collect();
+        let [m, d, y] = mdy[..] else { continue };
+        let day = crate::curve::days_from_civil(y, m, d);
+        if day > limit || best.as_ref().is_some_and(|b| b.0 >= day) {
+            continue;
+        }
+        let ys: Option<Vec<f64>> = cols.iter().map(|&c| f.get(c).and_then(|x| x.parse::<f64>().ok())).collect();
+        if let Some(ys) = ys {
+            best = Some((day, format!("{y:04}-{m:02}-{d:02}"), ys));
+        }
+    }
+    Ok(best.map(|(_, d, y)| (d, y)))
+}
+
+/// The NSS fit to the par bonds of one row (yields in percent).
+pub fn par_fit(date: &str, yields_pct: &[f64]) -> Result<CurveNumbers, String> {
+    par_fit_rmse(date, yields_pct).map(|x| x.0)
+}
+
+/// `par_fit` with the root mean square error in basis points (the residuals of the fit are yield errors in bp). An error when
+/// no start of the fit is finite, or when the error is above `PAR_FIT_MAX_RMSE_BP`.
+pub fn par_fit_rmse(date: &str, yields_pct: &[f64]) -> Result<(CurveNumbers, f64), String> {
+    let settle = crate::curve::parse_iso(date).ok_or("bad date")?;
+    let mut items = Vec::new();
+    let mut points = Vec::new();
+    for ((_, n), y) in PAR_TENORS.iter().zip(yields_pct) {
+        let bond = crate::curve::Bond { coupon: y / 100.0, maturity: crate::curve::add_months(settle, 12 * n, false) };
+        let (inst, yld, _) = crate::fit::make_inst(&bond, settle, 100.0).ok_or_else(|| format!("par bond of {n} years on {date}: no yield"))?;
+        items.push(inst);
+        points.push((*n as f64, yld));
+    }
+    let (nss, sse) = crate::fit::try_fit_curve(&items, &points).ok_or_else(|| format!("par fit on {date}: no finite start"))?;
+    let rmse = (sse / items.len() as f64).sqrt();
+    if !rmse.is_finite() || rmse > PAR_FIT_MAX_RMSE_BP {
+        return Err(format!("par fit on {date}: root mean square error {rmse:.2} bp is above the limit of {PAR_FIT_MAX_RMSE_BP} bp; the curve is refused"));
+    }
+    Ok((curve_of_nss(date, &nss), rmse))
+}
+
+/// The curve numbers of a fitted NSS curve (decimal parameters) in the GSW units.
+pub fn curve_of_nss(date: &str, n: &crate::fit::Nss) -> CurveNumbers {
+    CurveNumbers { date: date.to_string(), beta0: n.b0 * 100.0, beta1: n.b1 * 100.0, beta2: n.b2 * 100.0, beta3: n.b3 * 100.0, tau1: n.tau1, tau2: n.tau2, zero10: n.zero(10.0) }
 }
 
 /// The curve numbers of the last row on or before `as_of` of a parsed GSW file.
@@ -547,7 +668,7 @@ pub fn regression_beta(stock: &[(String, f64)], market: &[(String, f64)], as_of:
     Some(BetaFit { raw, adjusted: weight * raw + (1.0 - weight), weeks: pairs.len(), first: day(pairs[0].2), last: day(pairs[pairs.len() - 1].2), market: name.to_string() })
 }
 
-fn price_series(cache: &std::path::Path, ticker: &str) -> Option<Vec<(String, f64)>> {
+pub(crate) fn price_series(cache: &std::path::Path, ticker: &str) -> Option<Vec<(String, f64)>> {
     let p = crate::market::prices::read_cache(&crate::market::prices::cache_path(cache, ticker)).ok()?;
     Some(p.into_iter().map(|x| (x.date, x.close)).collect())
 }

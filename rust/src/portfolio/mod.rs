@@ -10,7 +10,9 @@
 //! the ticker lists are today's lists (survivorship, the result is too good); a ticker that stops trading keeps its last
 //! price in the portfolio (no failure loss); no tax, no short sale, no leverage, no market impact.
 
+pub mod calibrate;
 pub mod cli;
+pub mod harness;
 pub mod strategies;
 
 use std::collections::BTreeMap;
@@ -85,12 +87,19 @@ pub trait Strategy: Sync {
     fn scored_counts(&self) -> Vec<usize> {
         Vec::new()
     }
+    /// The signal of a ticker on the rebalance date (the number that ranked it) and the accession number of the filing of the
+    /// facts that it used (empty if none). Used for the trade list only: it never changes a weight.
+    fn signal(&self, _view: &View, _ticker: &str) -> Option<(f64, String)> {
+        None
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Rebalance {
     Monthly,
     Quarterly,
+    /// The Friday of each week, or the last trading day of the week if Friday is not one.
+    Weekly,
 }
 
 #[derive(Debug, Clone)]
@@ -101,9 +110,26 @@ pub struct Config {
     pub cost_bp: f64,
 }
 
-/// The first day of each new month (or quarter) of the calendar, from `start` to `end` (the first day counts).
+/// The week of a day number (weeks start on Monday; day 0 is Thursday 1970-01-01).
+fn week_of(day: i64) -> i64 {
+    (day + 3).div_euclid(7)
+}
+
+/// The first day of each new month (or quarter) of the calendar, from `start` to `end` (the first day counts). For
+/// `Weekly`: the last trading day of each week, which is the Friday if it is a trading day; a day counts if it is a Friday
+/// or the next trading day of the calendar is in a later week (the last day of the data, if it is not a Friday, does not count).
 pub fn rebalance_days(cal: &[i64], start: i64, end: i64, r: Rebalance) -> Vec<i64> {
     let mut out = Vec::new();
+    if r == Rebalance::Weekly {
+        let days: Vec<i64> = cal.iter().copied().filter(|d| *d >= start && *d <= end).collect();
+        for (i, &d) in days.iter().enumerate() {
+            let friday = (d + 3).rem_euclid(7) == 4;
+            if friday || days.get(i + 1).is_some_and(|n| week_of(*n) != week_of(d)) {
+                out.push(d);
+            }
+        }
+        return out;
+    }
     let mut last = String::new();
     for &d in cal.iter().filter(|d| **d >= start && **d <= end) {
         let t = mapcheck::dates::format(d);
@@ -111,6 +137,7 @@ pub fn rebalance_days(cal: &[i64], start: i64, end: i64, r: Rebalance) -> Vec<i6
         let key = match r {
             Rebalance::Monthly => format!("{y}-{m:02}"),
             Rebalance::Quarterly => format!("{y}-Q{}", (m - 1) / 3),
+            Rebalance::Weekly => unreachable!("handled above"),
         };
         if key != last {
             out.push(d);
@@ -158,6 +185,20 @@ pub fn perf_line(name: &str, p: &Perf) -> String {
     format!("{name:<12} total {:+.1}%, annual {:+.2}%, volatility {:.1}%, max drawdown {:.1}%", 100.0 * p.total, 100.0 * p.annual, 100.0 * p.vol, 100.0 * p.max_drawdown)
 }
 
+/// One change of a position on a rebalance date.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Trade {
+    pub date: i64,
+    pub ticker: String,
+    pub buy: bool,
+    /// The share of the portfolio value before the trade and after it (after the cost).
+    pub before: f64,
+    pub after: f64,
+    /// The close of the day (NaN if the ticker has none).
+    pub price: f64,
+    pub signal: Option<(f64, String)>,
+}
+
 #[derive(Debug, Clone)]
 pub struct Report {
     pub strategy: String,
@@ -179,6 +220,10 @@ pub struct Report {
     pub cash_days: usize,
     /// The number of scored tickers at each rebalance (empty if the strategy gives none).
     pub scored: Vec<usize>,
+    /// The target weights that the strategy gave on each rebalance day, in date order.
+    pub targets: Vec<(i64, Vec<(String, f64)>)>,
+    /// The changes of the positions, in date order and then ticker order.
+    pub trades: Vec<Trade>,
     pub fund: Perf,
     pub bench_perf: Perf,
 }
@@ -215,6 +260,14 @@ fn check_weights(w: &[(String, f64)], prices: &Prices) -> Result<(), String> {
 
 /// Run a strategy. The calendar is the SPY trading days; `prices` must hold a "SPY" series.
 pub fn run(prices: &Prices, universe: &[String], strat: &dyn Strategy, cfg: &Config) -> Result<Report, String> {
+    run_mode(prices, universe, strat, cfg, false)
+}
+
+/// As [`run`]. With `hold` (no rebalance): at each rebalance day a ticker that is held and is still in the targets keeps its
+/// shares (no trade); a ticker that leaves the targets is sold at that close; a new ticker is bought with its target weight
+/// times the value of the portfolio of that day after the sales, scaled down together if the cash is not enough. The cost is
+/// on the traded value only and comes out of the cash.
+pub fn run_mode(prices: &Prices, universe: &[String], strat: &dyn Strategy, cfg: &Config, hold: bool) -> Result<Report, String> {
     let spy = prices.0.get("SPY").ok_or("no SPY price series (the calendar and the benchmark)")?;
     let cal: Vec<i64> = spy.iter().map(|x| x.0).filter(|d| *d >= cfg.start && *d <= cfg.end).collect();
     let rdays = rebalance_days(&cal, cfg.start, cfg.end, cfg.rebalance);
@@ -225,6 +278,7 @@ pub fn run(prices: &Prices, universe: &[String], strat: &dyn Strategy, cfg: &Con
     let (mut ri, mut turnover_total, mut cost_total, mut skipped, mut stale_sales) = (0usize, 0.0f64, 0.0f64, 0usize, 0usize);
     let (mut dates, mut nav, mut bench) = (Vec::new(), Vec::new(), Vec::new());
     let mut cash_days = 0usize;
+    let (mut targets, mut trades) = (Vec::new(), Vec::new());
     // The series starts on the first rebalance date with a position: a strategy with no data yet holds cash, and that
     // time is not in the result (it would be flat, and SPY would run alone).
     let mut spy_first = f64::NAN;
@@ -234,6 +288,7 @@ pub fn run(prices: &Prices, universe: &[String], strat: &dyn Strategy, cfg: &Con
             ri += 1;
             let w = strat.weights(&View::new(d, prices), universe)?;
             check_weights(&w, prices)?;
+            targets.push((d, w.clone()));
             let v = marked(&shares, cash, d);
             let mut target: BTreeMap<String, (f64, f64)> = BTreeMap::new();
             for (t, x) in w.iter().filter(|(_, x)| *x > 0.0) {
@@ -246,22 +301,63 @@ pub fn run(prices: &Prices, universe: &[String], strat: &dyn Strategy, cfg: &Con
             }
             let cur: BTreeMap<String, f64> = shares.iter().map(|(t, s)| (t.clone(), s * prices.asof(t, d).map_or(0.0, |x| x.1))).collect();
             stale_sales += cur.iter().filter(|(t, v)| **v > 0.0 && !target.contains_key(*t) && prices.asof(t, d).is_some_and(|(pd, _)| d - pd > STALE_DAYS)).count();
-            let names: Vec<&String> = cur.keys().chain(target.keys().filter(|t| !cur.contains_key(*t))).collect();
-            // The cost comes out of the portfolio: the targets use the value less the cost of the first estimate.
-            let cost0 = rate * names.iter().map(|t| (target.get(*t).map_or(0.0, |x| x.0 * v) - cur.get(*t).copied().unwrap_or(0.0)).abs()).sum::<f64>();
-            let scale = (v - cost0).max(0.0);
             let mut traded = 0.0;
             let mut new_shares = BTreeMap::new();
             let mut target_sum = 0.0;
-            for t in names {
-                let tv = target.get(t).map_or(0.0, |x| x.0 * scale);
-                traded += (tv - cur.get(t).copied().unwrap_or(0.0)).abs();
-                if tv > 0.0 {
-                    new_shares.insert(t.clone(), tv / target[t].1);
-                    target_sum += tv;
+            let mut moves = Vec::new();
+            if hold {
+                // sales first: each held ticker that is not in the targets (or has no fresh close) is sold at this close
+                let mut sold = 0.0;
+                for (t, s) in &shares {
+                    if target.contains_key(t) {
+                        new_shares.insert(t.clone(), *s);
+                        target_sum += cur[t];
+                    } else {
+                        sold += cur[t];
+                        moves.push((t.clone(), cur[t], 0.0));
+                    }
+                }
+                let after_sales = v - rate * sold; // the value of the portfolio after the sales
+                let cash_now = cash + sold * (1.0 - rate);
+                let wanted: Vec<(&String, f64)> = target.iter().filter(|(t, _)| !shares.contains_key(*t)).map(|(t, x)| (t, x.0 * after_sales)).collect();
+                let need: f64 = wanted.iter().map(|x| x.1).sum::<f64>() * (1.0 + rate);
+                let k = if need > cash_now && need > 0.0 { (cash_now / need).max(0.0) } else { 1.0 };
+                for (t, w) in wanted {
+                    let bv = w * k;
+                    if bv > 0.0 {
+                        moves.push((t.clone(), 0.0, bv));
+                        new_shares.insert(t.clone(), bv / target[t].1);
+                        target_sum += bv;
+                        traded += bv;
+                    }
+                }
+                traded += sold;
+            } else {
+                let names: Vec<&String> = cur.keys().chain(target.keys().filter(|t| !cur.contains_key(*t))).collect();
+                // The cost comes out of the portfolio: the targets use the value less the cost of the first estimate.
+                let cost0 = rate * names.iter().map(|t| (target.get(*t).map_or(0.0, |x| x.0 * v) - cur.get(*t).copied().unwrap_or(0.0)).abs()).sum::<f64>();
+                let scale = (v - cost0).max(0.0);
+                for t in names {
+                    let tv = target.get(t).map_or(0.0, |x| x.0 * scale);
+                    moves.push((t.clone(), cur.get(t).copied().unwrap_or(0.0), tv));
+                    traded += (tv - cur.get(t).copied().unwrap_or(0.0)).abs();
+                    if tv > 0.0 {
+                        new_shares.insert(t.clone(), tv / target[t].1);
+                        target_sum += tv;
+                    }
                 }
             }
             let cost = rate * traded;
+            moves.sort_by(|a, b| a.0.cmp(&b.0));
+            let (view, after_value) = (View::new(d, prices), v - cost);
+            for (t, cv, tv) in moves {
+                let (before, after) = (if v > 0.0 { cv / v } else { 0.0 }, if after_value > 0.0 { tv / after_value } else { 0.0 });
+                if (after - before).abs() > 1e-9 {
+                    let price = prices.asof(&t, d).map_or(f64::NAN, |x| x.1);
+                    let signal = strat.signal(&view, &t);
+                    trades.push(Trade { date: d, ticker: t, buy: after > before, before, after, price, signal });
+                }
+            }
             cash = v - target_sum - cost;
             shares = new_shares;
             cost_total += cost;
@@ -287,7 +383,7 @@ pub fn run(prices: &Prices, universe: &[String], strat: &dyn Strategy, cfg: &Con
         return Err("the strategy held no position on any rebalance date".into());
     }
     let (fund, bench_perf) = (perf(&nav, &dates), perf(&bench, &dates));
-    Ok(Report { strategy: strat.name().to_string(), dates, nav, bench, rebalances: rdays.len(), turnover_total, cost_total, skipped, stale_sales, cash_days, scored: strat.scored_counts(), fund, bench_perf })
+    Ok(Report { strategy: strat.name().to_string(), dates, nav, bench, rebalances: rdays.len(), turnover_total, cost_total, skipped, stale_sales, cash_days, scored: strat.scored_counts(), targets, trades, fund, bench_perf })
 }
 
 #[cfg(test)]
@@ -332,6 +428,95 @@ mod tests {
         assert!((a - b).abs() < 1e-9, "{a} != {b}");
     }
 
+    /// The hold fixture: SPY flat, A rises 1 a day from 100, B flat at 200; 40 days, rebalances at day 0, 5 (Feb 1) and 34 (Mar 1).
+    fn hold_run(cost_bp: f64, w: Vec<Vec<(&'static str, f64)>>, hold: bool) -> Report {
+        let p = prices(vec![("SPY", series(40, |_| 50.0)), ("A", series(40, |i| 100.0 + i as f64)), ("B", series(40, |_| 200.0))]);
+        run_mode(&p, &["A".into(), "B".into()], &Fixed::new(w), &cfg(cost_bp, 39), hold).unwrap()
+    }
+
+    #[test]
+    fn hold_keeps_the_shares_of_a_name_that_stays_in_the_targets() {
+        let r = hold_run(0.0, vec![vec![("A", 1.0)]; 3], true);
+        near(r.nav[39], 1.39); // 1 / 100 shares at 139, no trade after the first day
+        assert_eq!(r.trades.len(), 1);
+        near(r.turnover_total, 0.5); // only the first buy: 1 / 1 / 2
+    }
+
+    #[test]
+    fn hold_sells_an_exit_at_its_close_and_buys_the_new_name_with_the_value() {
+        let r = hold_run(0.0, vec![vec![("A", 1.0)], vec![("B", 1.0)], vec![("B", 1.0)]], true);
+        near(r.nav[5], 1.05); // A sold at 105, B bought with 1.05
+        near(r.nav[39], 1.05); // B flat
+        let sale = r.trades.iter().find(|t| t.ticker == "A" && !t.buy).unwrap();
+        near(sale.price, 105.0);
+        near(sale.before, 1.0);
+        near(sale.after, 0.0);
+        let buy = r.trades.iter().find(|t| t.ticker == "B" && t.buy).unwrap();
+        near(buy.after, 1.0);
+    }
+
+    #[test]
+    fn hold_gives_a_new_entry_its_target_weight_of_the_current_value() {
+        // day 0: A 0.5 (0.005 shares). Day 5: A is 0.525, the value is 1.025, B gets 0.4 * 1.025 = 0.41 of the cash 0.5.
+        let r = hold_run(0.0, vec![vec![("A", 0.5)], vec![("A", 0.5), ("B", 0.4)], vec![("A", 0.5), ("B", 0.4)]], true);
+        near(r.nav[5], 1.025);
+        near(r.nav[39], 0.005 * 139.0 + 0.41 + 0.09); // A keeps 0.005 shares, B 0.00205 shares, cash 0.09
+        let b = r.trades.iter().find(|t| t.ticker == "B").unwrap();
+        near(b.after, 0.4);
+        assert!(!r.trades.iter().any(|t| t.ticker == "A" && t.date != r.trades[0].date)); // A is not traded again
+    }
+
+    #[test]
+    fn hold_charges_the_cost_on_the_traded_value_only() {
+        // 100 bp: the first buy of 1 / 1.01 costs 0.01 / 1.01; the held name is not traded again
+        let r = hold_run(100.0, vec![vec![("A", 1.0)]; 3], true);
+        near(r.cost_total, 0.01 / 1.01);
+        near(r.nav[0], 1.0 / 1.01);
+        // an exit and an entry: the sale of 1.05 * (1 / 1.01) / 1 and the purchase are both charged
+        let e = hold_run(100.0, vec![vec![("A", 1.0)], vec![("B", 1.0)], vec![("B", 1.0)]], true);
+        let v0: f64 = 1.0 / 1.01; // value after the first buy: shares 1/1.01/100
+        let sold = v0 * 1.05;
+        let after_sales: f64 = sold - 0.01 * sold; // value of the day less the cost of the sale (the cash is the proceeds)
+        let cash = sold * 0.99;
+        let buy = after_sales.min(cash / 1.01);
+        near(e.cost_total, 0.01 / 1.01 + 0.01 * (sold + buy));
+    }
+
+    #[test]
+    fn hold_buys_on_the_value_after_the_cost_of_the_sales_when_the_cash_is_enough() {
+        // 100 bp. Day 0: A 0.5 costs 0.005 (cash 0.495). Day 5: A is 0.525, the value 1.02. A leaves: the sale of 0.525 costs
+        // 0.00525, so the base of the new buy is 1.02 - 0.00525 = 1.01475 and B gets 0.4 of it = 0.4059 (the cash 1.01475 is
+        // enough: no scaling). The cost of the day is 0.01 * (0.525 + 0.4059).
+        let r = hold_run(100.0, vec![vec![("A", 0.5)], vec![("B", 0.4)], vec![("B", 0.4)]], true);
+        let bought: f64 = 0.4 * (1.02 - 0.01 * 0.525);
+        let cost_day5 = 0.01 * (0.525 + bought);
+        let b = r.trades.iter().find(|t| t.ticker == "B").unwrap();
+        near(b.after, bought / (1.02 - cost_day5));
+        near(r.cost_total, 0.005 + cost_day5);
+        // B is flat and not traded again: the value on the last day = B + the cash
+        near(r.nav[39], 1.02 - cost_day5);
+    }
+
+    #[test]
+    fn hold_scales_the_new_buys_down_to_the_cash() {
+        // day 5: the value is 1.025, B wants 0.5 * 1.025 = 0.5125, the cash is 0.5: B gets 0.5, the cash is 0
+        let r = hold_run(0.0, vec![vec![("A", 0.5)], vec![("A", 0.5), ("B", 0.5)], vec![("A", 0.5), ("B", 0.5)]], true);
+        near(r.nav[5], 1.025);
+        near(r.nav[39], 0.005 * 139.0 + 0.5);
+        let b = r.trades.iter().find(|t| t.ticker == "B").unwrap();
+        near(b.after, 0.5 / 1.025);
+    }
+
+    #[test]
+    fn without_hold_the_run_is_the_old_run() {
+        let w = vec![vec![("A", 1.0)], vec![("B", 0.5)], vec![("B", 0.5)]];
+        let (a, b) = (hold_run(10.0, w.clone(), false), {
+            let p = prices(vec![("SPY", series(40, |_| 50.0)), ("A", series(40, |i| 100.0 + i as f64)), ("B", series(40, |_| 200.0))]);
+            run(&p, &["A".into(), "B".into()], &Fixed::new(w), &cfg(10.0, 39)).unwrap()
+        });
+        assert_eq!((a.nav, a.cost_total, a.turnover_total, a.trades.len()), (b.nav, b.cost_total, b.turnover_total, b.trades.len()));
+    }
+
     #[test]
     fn rebalance_days_are_the_first_day_of_each_month_and_quarter() {
         let cal: Vec<i64> = series(100, |_| 1.0).iter().map(|x| x.0).collect(); // 2020-01-27 to 2020-05-05
@@ -339,6 +524,18 @@ mod tests {
         assert_eq!(m, ["2020-01-27", "2020-02-01", "2020-03-01", "2020-04-01", "2020-05-01"]);
         let q: Vec<String> = rebalance_days(&cal, cal[0], cal[99], Rebalance::Quarterly).iter().map(|d| mapcheck::dates::format(*d)).collect();
         assert_eq!(q, ["2020-01-27", "2020-04-01"]);
+    }
+
+    #[test]
+    fn weekly_days_are_the_friday_or_the_last_trading_day_of_the_week() {
+        let d = |s: &str| mapcheck::dates::parse(s).unwrap();
+        // Weekdays from Monday 2020-01-27 to Friday 2020-02-14, less the holiday Friday 2020-02-07, plus Wednesday 2020-02-19
+        // (a week that the data ends before its Friday).
+        let mut cal: Vec<i64> = (d("2020-01-27")..=d("2020-02-14")).filter(|x| (x + 3).rem_euclid(7) < 5).filter(|x| *x != d("2020-02-07")).collect();
+        cal.extend([d("2020-02-17"), d("2020-02-18"), d("2020-02-19")]);
+        let days: Vec<String> = rebalance_days(&cal, d("2020-01-29"), d("2020-02-19"), Rebalance::Weekly).iter().map(|x| mapcheck::dates::format(*x)).collect();
+        // the start is a Wednesday: the first day is the Friday 01-31, not the start day
+        assert_eq!(days, ["2020-01-31", "2020-02-06", "2020-02-14"]);
     }
 
     #[test]
@@ -388,6 +585,12 @@ mod tests {
         near(r.fund.max_drawdown, 0.0);
         // turnover: start 1/2; second 1.05 sold and 0.525 bought: 1.575 / 1.05 / 2 = 0.75; third: B 0.5 -> 0.5 and A none: 0
         near(r.turnover_total, 0.5 + 0.75);
+        // the targets of each rebalance date
+        let d = |s: &str| mapcheck::dates::parse(s).unwrap();
+        assert_eq!(
+            r.targets,
+            vec![(d("2020-01-27"), vec![("A".to_string(), 1.0)]), (d("2020-02-01"), vec![("B".to_string(), 0.5)]), (d("2020-03-01"), vec![("B".to_string(), 0.5)])]
+        );
     }
 
     #[test]

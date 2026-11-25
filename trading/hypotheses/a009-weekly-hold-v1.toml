@@ -1,0 +1,30 @@
+# Registered before the first run (see README.md in this folder). Do not change this file after its first run.
+id = "a009-weekly-hold-v1"
+date = "2026-11-21"
+hypothesis = """
+Rule A-009 (docs/assumptions/A-009-weekly-trade-rule.md), held with no rebalance (each entry keeps its shares for 13
+weeks): each Friday, the 3 tickers with the highest rank of the automatic model P50 / price inside their FF12 sector,
+not held, at most one for each sector, each in the top fifth of its sector; 1/39 of the value each; exit after 13
+weeks. It has a higher annual return than the equal-weight line of the same list after 10 bp on each traded value.
+The share counts are on the price basis (split table store 58e54a2). Decision rule (PLANNING/board/
+T-20261121-split-basis-fix.md, rerun test, item 4): a mean yearly excess above 0, a raw t of 2.0 or more, above 0 in at
+least 7 of 9 years, and T2 to T4 of the blind projection test pass on corrected prices. The design sample 2018-2026 was
+used before (with the split defect), so this run describes; it does not confirm.
+"""
+strategy = "value-rank-weekly"
+universe = "trading/hypotheses/data/a009_list.txt"
+oos_start = "2018-01-01"
+# Variants of the value signal before this file: the 14 runs of the variant log of
+# analysis/priors/dcf_engine_backtest_2026-11-21.md (runs 1 to 14, all with the split defect), and the 5 runs of
+# value-rank-sp500-v2 (prior_variants of that file). Read as "at least 19".
+prior_variants = 19
+# The window 2018-2026 was seen by the runs above.
+oos_prior_exposure = true
+
+[params]
+paths = 300
+seed = 7
+table = "trading/hypotheses/data/process_priors_cut2016.toml"
+rebalance = "weekly"
+cost_bp = 10
+hold = true

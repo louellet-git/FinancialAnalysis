@@ -20,7 +20,9 @@ investment decisions and to trade options. The repo has two parts:
 2. **Options trading research** (`trading/`). A backtester and a paper trader for
    SPY/QQQ option strategies. All backtest option prices are model prices.
 
-The repo gives analysis. It does not send orders to a broker.
+The repo gives analysis. A program may send orders to the Alpaca **paper** account only, under the
+controls of `docs/QUALITY-STANDARDS.md` section 8 (owner word, 2026-11-21). No program sends a live
+order. A live order needs a new owner approval and a review of the same weight.
 
 ## Where the status is
 
@@ -73,8 +75,8 @@ The repo gives analysis. It does not send orders to a broker.
   different language. A different language is permitted where it fits the work better than Rust:
   SQL for a database, a shell command, the CI workflow file, the HTML of a report page, a small
   one-time script. If you are not sure, use Rust.
-- **Data.** The data cache (`data/raw`) comes from the data store, the repo `louellet-git/fa-data`:
-  `git clone --depth 1 https://github.com/louellet-git/fa-data data/raw`. Do not start a bulk download
+- **Data.** The data cache (`data/raw`) comes from the data store, the private repo `louellet-git/fa-data`
+  (in a cloud session, attach it first, read access): `git clone --depth 1 https://github.com/louellet-git/fa-data data/raw`. Do not start a bulk download
   from the sources. Only the Head of Technology of `louellet-git` writes the store
   (`docs/DATA-SOURCES.md`, "The data store").
 - **SEC contact.** The SEC contact is in `sec_contact.toml` (a project address, public on purpose).
@@ -143,7 +145,7 @@ rust/target/release/fa sync --status IBM      # what is old, for each data set (
 rust/target/release/fa sync IBM MSFT          # bring the old data sets up to date (one queue for each host; --only, --skip, --force, --max-minutes)
 rust/target/release/fa trade fetch            # option bots: download the bars (Yahoo) into the cache
 rust/target/release/fa trade backtest         # option bots, leaderboard
-rust/target/release/fa trade paper            # option bots: one paper-trade step (live Cboe chain)
+rust/target/release/fa trade paper            # option bots: one paper-trade step (model prices with --no-live; the live chain is refused until an Alpaca adapter exists, T-20261121-cboe-off)
 ```
 
 All commands: `README.md`.

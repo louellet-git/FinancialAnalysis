@@ -1,8 +1,8 @@
 //! `fa options`: option chain snapshots from a second source, and the option surface of past dates.
 //!
-//! - `fa options snapshot SYMBOL [--source cboe|alpaca]`: today's chain, written to `data/raw/<T>/options/<date>.json` (cboe) or
-//!   `<date>T<hhmm>.json` (alpaca, with the time in UTC; `fa options archive` copies the chains of the day).
-//!   `cboe` (no key) is the delayed quotes file that `fa analyze` uses; `alpaca` is the indicative feed of the free plan.
+//! - `fa options snapshot SYMBOL [--source alpaca]`: today's chain, written to `data/raw/<T>/options/<date>T<hhmm>.json`
+//!   (the time in UTC; `fa options archive` copies the chains of the day). `alpaca` is the indicative feed of the free plan
+//!   and the default. `--source cboe` is refused (the Cboe page prohibits automatic downloads; T-20261121-cboe-off).
 //! - `fa options history SYMBOL --date D | --from D --to D`: the surface of past dates from the daily closes of the contracts
 //!   (`option_history`). The files have the form of the live snapshots and `quote_kind: "close"`. A live snapshot
 //!   (real bid and ask) of the same date is never replaced by closes.
@@ -10,7 +10,7 @@
 use super::alpaca::{self, Client, Keys};
 use super::option_history::{self, AlpacaHistory, OptionHistorySource, Selection};
 use super::options::{self, OptionChainSnapshot, OptionQuote};
-use super::{download, today_iso, ticker_dir};
+use super::{today_iso, ticker_dir};
 use crate::trading::calendar::{iso, parse_iso, weekday};
 use crate::trading::chain::parse_option;
 use std::collections::BTreeMap;
@@ -20,9 +20,9 @@ pub const USAGE: &str = "\
 fa options - option chain snapshots and the option surface of past dates (data/raw/<TICKER>/options/<date>.json)
 
 USAGE:
-  fa options snapshot SYMBOL [--source cboe|alpaca] [--roots A,B] [--rate R] [--refresh]
-                              today's chain. cboe: delayed quotes, no key. alpaca: the free 'indicative' feed
-                              (needs APCA_API_KEY_ID and APCA_API_SECRET_KEY); bid and ask are modified quotes.
+  fa options snapshot SYMBOL [--source alpaca] [--roots A,B] [--rate R] [--refresh]
+                              today's chain. alpaca (the default): the free 'indicative' feed. --source cboe is refused
+                              (the Cboe page prohibits automatic downloads; T-20261121-cboe-off). Needs APCA_API_KEY_ID and APCA_API_SECRET_KEY; bid and ask are modified quotes.
                               Alpaca has index options (SPX, VIX) but no index level and no implied volatility for them:
                               the program takes the level and the volatility from put-call parity of the chain (Black-76,
                               European options). The roots of the chain: for SPX and VIX the monthly and the weekly root
@@ -274,19 +274,21 @@ fn snapshot(repo: &Path, rest: &[String]) -> Result<i32, String> {
     let ticker = a.symbol.clone().ok_or("give a symbol: fa options snapshot SPY")?;
     let cache = super::price_cli::cache_dir(repo);
     let today = today_iso();
-    match a.flag("--source").unwrap_or("cboe") {
-        "cboe" => {
-            let (snap, source) = options::fetch_option_chain(&cache, &ticker, a.has("--refresh"), &today, &|u| download(u))?;
-            println!("options {ticker} {today}: {} quotes, spot {}, source {:?} (Cboe delayed quotes)", snap.quotes.len(), show_opt(snap.spot_price), source);
-        }
-        "alpaca" => {
-            let roots = a.flag("--roots").map(|r| r.split(',').map(|x| x.trim().to_uppercase()).filter(|x| !x.is_empty()).collect::<Vec<_>>());
-            let flat = a.flag("--rate").map(parse_rate).transpose()?;
-            println!("{}", snapshot_alpaca_with(repo, &cache, &ticker, &today, a.has("--refresh"), roots, flat)?);
-        }
-        other => return Err(format!("unknown source '{other}' (use cboe or alpaca)")),
-    }
+    check_source(a.flag("--source"))?;
+    let roots = a.flag("--roots").map(|r| r.split(',').map(|x| x.trim().to_uppercase()).filter(|x| !x.is_empty()).collect::<Vec<_>>());
+    let flat = a.flag("--rate").map(parse_rate).transpose()?;
+    println!("{}", snapshot_alpaca_with(repo, &cache, &ticker, &today, a.has("--refresh"), roots, flat)?);
     Ok(0)
+}
+
+/// The source of `fa options snapshot`: `alpaca` (the default). `cboe` is refused: the Cboe page prohibits automatic
+/// downloads of the delayed quotes (ticket T-20261121-cboe-off). No code builds a Cboe address.
+pub fn check_source(source: Option<&str>) -> Result<(), String> {
+    match source.unwrap_or("alpaca") {
+        "alpaca" => Ok(()),
+        "cboe" => Err("the source cboe is refused: the Cboe page prohibits automatic downloads of the delayed quotes (T-20261121-cboe-off). Use --source alpaca (the default).".into()),
+        other => Err(format!("unknown source '{other}' (use alpaca)")),
+    }
 }
 
 /// The years of a tenor of the Treasury curve.
@@ -480,6 +482,40 @@ mod tests {
         let parsed: OptionChainSnapshot = serde_json::from_str(old).unwrap();
         assert!(parsed.source.is_none() && parsed.quote_kind.is_none());
         assert!(!serde_json::to_string(&parsed).unwrap().contains("quote_kind"), "no new field in an old file");
+    }
+
+    #[test]
+    fn the_source_cboe_is_refused_and_alpaca_is_the_default() {
+        assert!(check_source(None).is_ok() && check_source(Some("alpaca")).is_ok());
+        let e = check_source(Some("cboe")).unwrap_err();
+        assert!(e.contains("refused") && e.contains("T-20261121-cboe-off"), "{e}");
+        assert!(check_source(Some("yahoo")).unwrap_err().contains("unknown source"));
+        // The command refuses before any key or network step: no cache file, no request.
+        let dir = std::env::temp_dir().join(format!("fa_oc_cboe_{}", std::process::id()));
+        let args: Vec<String> = ["SPY", "--source", "cboe"].iter().map(|x| x.to_string()).collect();
+        assert!(snapshot(&dir, &args).unwrap_err().contains("refused"));
+        assert!(!dir.exists());
+    }
+
+    #[test]
+    fn the_option_chain_code_has_no_cboe_address() {
+        // The needles are built from parts, so that this test does not find itself.
+        let host = ["cboe", ".com"].concat();
+        let path = ["delayed", "_quotes"].concat();
+        let files = [
+            ("market/options.rs", include_str!("options.rs")),
+            ("market/options_cli.rs", include_str!("options_cli.rs")),
+            ("market/option_history.rs", include_str!("option_history.rs")),
+            ("trading/chain.rs", include_str!("../trading/chain.rs")),
+            ("trading/paper.rs", include_str!("../trading/paper.rs")),
+            ("analyze.rs", include_str!("../analyze.rs")),
+            ("sync/dataset.rs", include_str!("../sync/dataset.rs")),
+            ("sync/plan.rs", include_str!("../sync/plan.rs")),
+        ];
+        for (name, text) in files {
+            assert!(!text.contains(&host), "{name} has a {host} address");
+            assert!(!text.contains(&path), "{name} has the {path} path");
+        }
     }
 
     #[test]

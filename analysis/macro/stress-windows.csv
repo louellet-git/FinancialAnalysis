@@ -1,0 +1,17 @@
+# Stress windows of analysis/macro/2026-11-21-stress-windows.md (the table "Windows from the rule"), one line each.
+# `fa portfolio calibrate --stress-file` prints the statistics inside each window.
+# `fa trade premium` reads this file: its block starts at the first window start, so a new or changed window changes the gate row of the variance premium test. Tell the Head of Quant Research before a change (owner of the file: Head of Economics).
+name,start,end
+2016-02,2016-01-05,2016-02-22
+2018-02,2018-02-02,2018-02-14
+2018-Q4,2018-12-03,2019-01-09
+2020-03,2020-02-21,2021-03-16
+2021-12,2021-11-24,2021-12-08
+2022-Q1,2022-01-14,2022-03-28
+2022-Q2/Q3,2022-04-04,2022-08-10
+2022-H2,2022-08-18,2023-01-12
+2023-03,2023-03-08,2023-03-28
+2024-08,2024-08-01,2024-08-13
+2025-04,2025-03-27,2025-05-12
+2026-03,2026-02-27,2026-04-09
+2026-11 (open),2026-11-04,2026-11-19

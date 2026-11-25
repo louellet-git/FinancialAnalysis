@@ -22,3 +22,6 @@
 | The-heads repo; daily option save; NVDA data; timing run | 2026-11-21 | the-heads 6264abb, chiefs PR 35; FA PR 96, 97; scheduled task; store a1dffb5, ba4cdab, c486b86; Quant timing run (no agent) | ~60k | Heston 5.3 to 5.8 s |
 | Mapping test reviews and fixes; filed-date test; NVDA releases | 2026-11-21 | mapping cycles 1 and 2 (2 Sonnet data-engineer runs, ~200k); PR 101; store 1696af8, 1804f48 (34 SEC requests) | ~260k | mapping PASS-WITH-NOTES with 2 conditions, both met |
 | Portfolio backtest merged | 2026-11-21 | review cycle 2 condition (1 Sonnet rust-engineer run, ~80k); merge of main; real run | ~100k | value-rank +19.02%, equal weight +14.56%, 0 cash days |
+| Backtest harness part 1 merged | 2026-11-21 | 1 Sonnet rust-engineer agent over 4 rounds (~1.1M); two gate cycles plus conditions | ~1.2M | poison check, run log, variant count, oos lock |
+| Split table merged | 2026-11-21 | 1 Sonnet data-engineer agent over 3 rounds (~420k); three gate rounds | ~450k | 327 rows; store 58e54a2 |
+| sp500 members command | 2026-11-21 | fa members get (1 data-engineer agent, ~45k); fetch verified (SHA match, 2720 dates); gate pending | ~60k | kept out of the store, data/local |

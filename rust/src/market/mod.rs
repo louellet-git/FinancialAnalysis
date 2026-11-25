@@ -7,11 +7,13 @@
 //! | Data | Source | Module |
 //! |---|---|---|
 //! | Daily prices | Tiingo (key), Alpaca (key), Yahoo chart endpoint, Nasdaq site API | `price_source`, `price_cache` (`fa prices`); `prices` is the older Yahoo loader |
-//! | Option chain | Cboe delayed quotes; Alpaca indicative feed (key) | `options`, `options_cli`, `alpaca` |
+//! | Option chain | Alpaca indicative feed (key) | `options`, `options_cli`, `alpaca` |
 //! | Past option surface | Alpaca option bars (key) | `option_history`, `option_iv` |
 //! | Intraday bars | Alpaca (key) | `intraday`, `alpaca` |
 //! | FRED series | FRED API (key), keyless CSV | `fred_api` (used by `rates`) |
 //! | Estimates, earnings surprises | Financial Modeling Prep (key in `FMP_API_KEY`) | `fmp` |
+//! | Stock splits (corporate actions) | Alpaca (key) | `splits`, `splits_cli` (`fa splits get`) |
+//! | S&P 500 members on a past date | A pinned commit of a public GitHub repo (no key) | `members_cli` (`fa members get`) |
 //! | Forward consensus snapshot, price targets, surprises, earnings dates | Nasdaq site API (no key) | `nasdaq_est`, `estimates_cache`, `earnings_dates` (`fa estimates`, `fa earnings`) |
 //!
 //! The cache files keep the formats of the Python code, so each reader of them still works:
@@ -19,11 +21,13 @@
 //! `estimates.json`, `surprises.json`.
 
 pub mod alpaca;
+pub mod arb_run;
 pub mod consensus;
 pub mod earnings_dates;
 pub mod estimates_cache;
 pub mod estimates_cli;
 pub mod fmp;
+pub mod fund_holdings;
 pub mod fred_api;
 pub mod intraday;
 pub mod keys;
@@ -39,6 +43,11 @@ pub mod price_check;
 pub mod price_cli;
 pub mod price_source;
 pub mod prices;
+pub mod splits;
+pub mod splits_rules;
+pub mod splits_cli;
+pub mod members_cli;
+pub mod spf;
 
 use serde::de::{MapAccess, Visitor};
 use serde::ser::SerializeMap;

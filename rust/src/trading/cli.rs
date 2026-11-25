@@ -1,10 +1,12 @@
 //! The command `fa trade backtest`.
 
 use super::bots;
-use super::calendar::parse_iso;
+use super::calendar::{iso, parse_iso};
+use super::grids;
 use super::data::{load_market, MarketData, Store};
 use super::engine::{run, BacktestResult, RiskConfig};
-use super::metrics::{format_summary, summarize, Summary};
+use super::metrics::{cut_index, format_summary, summarize, Summary};
+use super::stats;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -17,7 +19,10 @@ fa trade backtest - backtest the SPY/QQQ option bots on the cached market data
 USAGE:
   fa trade backtest [--bot ID]... [--max-risk DOLLARS] [--risk FRACTION] [--equity DOLLARS]
                     [--commission DOLLARS] [--start D] [--end D] [--is-fraction F]
+                    [--spread-mult X] [--skew-mult X] [--mid-fill] [--trials N] [--sr-var V]
                     [--include-templates] [--out FILE] [--trades-dir DIR] [-v]
+  fa trade backtest --bot ID --cut-scan [--step DAYS] [--span DAYS]
+  fa trade backtest --bot ID --price-grid
 
   --bot ID          run this bot only (repeat the option for more bots; default: all bots)
   --max-risk N      the maximum loss of one trade is N dollars (for example 250); it replaces --risk
@@ -26,9 +31,22 @@ USAGE:
   --commission N    dollars for each contract (default 0.65)
   --start, --end    first and last date of the data, YYYY-MM-DD
   --is-fraction F   the first part of the bars that is in-sample (default 0.7)
+  --spread-mult X  multiply the model half-spread by X (default 1)
+  --skew-mult X    multiply the model skew slope and curve by X (default 1)
+  --mid-fill       fill at the mid price (no spread): a better price, a reference only
+  --trials N       print the out-of-sample t of the trade P&L and the deflated Sharpe ratio for N trials
+  --sr-var V       variance of the daily Sharpe ratios of the trials (default 1/T, a proxy: the
+                   sampling variance of one Sharpe ratio under no edge; the true V of the
+                   trials is not known, and a low V makes the DSR too high)
   --out FILE        write the leaderboard as a CSV file (only if all bots run)
   --trades-dir DIR  write the trades and the equity curve of each bot as CSV files
   -v                print the last trades of each bot
+  --cut-scan        one bot: the OOS Sharpe and the t of the trade P&L at each cut (the in-sample fraction
+                    moves the cut by --step days, up to --span days each way; defaults 7 and 42). Prints the
+                    first bar date of the data and the default cut. Only this table is printed.
+  --price-grid      one bot: the baseline and the price knobs of A-154 (spread x2, skew x1.5 and x0.5, mid
+                    fill), one row each, with the change against the baseline and the mean P&L of a trade
+                    that gives t = 2. The price options above are ignored for the grid. Only this table is printed.
 
 The data are the CSV files in $TRADING_DATA_DIR, else in data/raw/trading/ of the repository.
 `fa trade fetch` downloads them. All option prices are model prices.";
@@ -43,10 +61,19 @@ struct Args {
     start: Option<String>,
     end: Option<String>,
     is_fraction: Option<f64>,
+    spread_mult: Option<f64>,
+    skew_mult: Option<f64>,
+    mid_fill: bool,
+    trials: Option<usize>,
+    sr_var: Option<f64>,
     include_templates: bool,
     out: Option<PathBuf>,
     trades_dir: Option<PathBuf>,
     verbose: bool,
+    cut_scan: bool,
+    price_grid: bool,
+    step: Option<f64>,
+    span: Option<f64>,
 }
 
 fn parse_args(args: &[String]) -> Result<Args, String> {
@@ -64,10 +91,19 @@ fn parse_args(args: &[String]) -> Result<Args, String> {
             "--equity" => a.equity = Some(num(arg, it.next())?),
             "--commission" => a.commission = Some(num(arg, it.next())?),
             "--is-fraction" => a.is_fraction = Some(num(arg, it.next())?),
+            "--spread-mult" => a.spread_mult = Some(num(arg, it.next())?),
+            "--skew-mult" => a.skew_mult = Some(num(arg, it.next())?),
+            "--mid-fill" => a.mid_fill = true,
+            "--trials" => a.trials = Some(num(arg, it.next())? as usize),
+            "--sr-var" => a.sr_var = Some(num(arg, it.next())?),
             "--start" => a.start = Some(it.next().ok_or("--start needs a date")?.clone()),
             "--end" => a.end = Some(it.next().ok_or("--end needs a date")?.clone()),
             "--out" => a.out = Some(PathBuf::from(it.next().ok_or("--out needs a file")?)),
             "--trades-dir" => a.trades_dir = Some(PathBuf::from(it.next().ok_or("--trades-dir needs a directory")?)),
+            "--cut-scan" => a.cut_scan = true,
+            "--price-grid" => a.price_grid = true,
+            "--step" => a.step = Some(num(arg, it.next())?),
+            "--span" => a.span = Some(num(arg, it.next())?),
             "--include-templates" => a.include_templates = true,
             "-v" | "--verbose" => a.verbose = true,
             other => return Err(format!("unknown option '{other}'")),
@@ -105,6 +141,11 @@ pub fn run_command(store: &Store, args: &[String]) -> Result<i32, String> {
         return Ok(0);
     }
     let a = parse_args(args)?;
+    if let Some(f) = a.is_fraction {
+        if !(f > 0.0 && f < 1.0) {
+            return Err(format!("--is-fraction must be above 0 and below 1 (got {f}): it needs bars on both sides of the cut"));
+        }
+    }
     let known = bots::names(a.include_templates);
     let names: Vec<String> = if a.bots.is_empty() { known.iter().map(|s| s.to_string()).collect() } else { a.bots.clone() };
     let missing: Vec<&String> = names.iter().filter(|n| !known.contains(&n.as_str())).collect();
@@ -121,6 +162,7 @@ pub fn run_command(store: &Store, args: &[String]) -> Result<i32, String> {
     parse_date("--start", &a.start)?;
     let cli_end = parse_date("--end", &a.end)?;
     let is_fraction = a.is_fraction.unwrap_or(0.7);
+    super::pricing::set_price_knobs(a.spread_mult.unwrap_or(1.0), a.skew_mult.unwrap_or(1.0), a.mid_fill);
     let t_all = Instant::now();
 
     // One market for each (symbols, interval, start): load it once and share it between bots.
@@ -139,6 +181,19 @@ pub fn run_command(store: &Store, args: &[String]) -> Result<i32, String> {
         .map(|(k, (syms, iv, start))| (k, load_market(store, &syms, iv, start, cli_end).map(Arc::new)))
         .collect();
     let markets: BTreeMap<String, Result<Arc<MarketData>, String>> = markets.into_iter().collect();
+
+    if a.cut_scan || a.price_grid {
+        if names.len() != 1 {
+            return Err("--cut-scan and --price-grid need exactly one bot (--bot ID)".to_string());
+        }
+        let (step, span) = (a.step.unwrap_or(7.0), a.span.unwrap_or(42.0));
+        let max = grids::MAX_SPAN as f64;
+        if !(step >= 1.0 && span >= 0.0 && step.fract() == 0.0 && span.fract() == 0.0 && span <= max && step <= span.max(1.0)) {
+            return Err(format!("--step needs a whole number of days from 1 to --span, and --span a whole number from 0 to {} (got step {step}, span {span})", grids::MAX_SPAN));
+        }
+        let knobs = (a.spread_mult.unwrap_or(1.0), a.skew_mult.unwrap_or(1.0), a.mid_fill);
+        return grids_command(&names[0], &markets, &risk, a.start.as_deref(), is_fraction, (step as i32, span as i32), (a.cut_scan, a.price_grid), knobs);
+    }
 
     let outcomes: Vec<Result<Done, String>> = names
         .par_iter()
@@ -169,7 +224,7 @@ pub fn run_command(store: &Store, args: &[String]) -> Result<i32, String> {
                 failed += 1;
             }
             Ok(d) => {
-                println!("{}  ({:.1}s)", format_summary(&d.summary), d.secs);
+                println!("{}\n  time {:.1}s", format_summary(&d.summary), d.secs);
                 if !d.result.rejections.is_empty() {
                     let items: Vec<String> = d.result.rejections.iter().map(|(k, v)| format!("'{k}': {v}")).collect();
                     println!("  rejections: {{{}}}", items.join(", "));
@@ -179,6 +234,9 @@ pub fn run_command(store: &Store, args: &[String]) -> Result<i32, String> {
                 }
                 if a.verbose {
                     print_trades(&d.result);
+                }
+                if let Some(nt) = a.trials {
+                    print_robust(&d.result, is_fraction, nt, a.sr_var);
                 }
                 println!();
                 rows.push(d.summary);
@@ -195,6 +253,67 @@ pub fn run_command(store: &Store, args: &[String]) -> Result<i32, String> {
     }
     println!("total time {:.1}s", t_all.elapsed().as_secs_f64());
     Ok(if failed > 0 { 1 } else { 0 })
+}
+
+/// The tables of `--cut-scan` and `--price-grid` for one bot. The market is loaded already.
+fn grids_command(
+    name: &str,
+    markets: &BTreeMap<String, Result<Arc<MarketData>, String>>,
+    risk: &RiskConfig,
+    start: Option<&str>,
+    is_fraction: f64,
+    (step, span): (i32, i32),
+    (cut_scan, price_grid): (bool, bool),
+    knobs: (f64, f64, bool),
+) -> Result<i32, String> {
+    let probe = bots::make(name).expect("bot exists");
+    let interval = probe.interval().label();
+    let md = markets.get(&market_key(probe.symbols(), interval, start.or(probe.start()))).expect("market was loaded").clone()?;
+    let mut run_one = || {
+        let mut bot = bots::make(name).expect("bot exists");
+        run(bot.as_mut(), &md, risk.clone())
+    };
+    if cut_scan {
+        let r = run_one()?;
+        if r.equity.len() < 2 {
+            return Err(format!("{name}: fewer than 2 bars, no cut scan"));
+        }
+        println!("CUT SCAN of {name} ({interval} bars, {} to {}, default in-sample fraction {is_fraction}); OOS result at each cut; model prices", iso(r.date[0]), iso(r.date[r.date.len() - 1]));
+        let default_cut = r.date[cut_index(r.equity.len(), is_fraction)];
+        print!("{}", grids::format_cut_scan(r.date[0], default_cut, &grids::cut_scan(&r, interval, is_fraction, step, span), step, span));
+    }
+    if price_grid {
+        if cut_scan {
+            println!();
+        }
+        println!("PRICE GRID of {name} ({interval} bars, in-sample fraction {is_fraction}); OOS columns; model prices; the knobs of A-154, reset after each run");
+        let rows = grids::price_grid(&super::pricing::set_price_knobs, knobs, &mut run_one, interval, is_fraction)?;
+        print!("{}", grids::format_price_grid(&rows));
+    }
+    Ok(0)
+}
+
+/// Out-of-sample t of the mean trade P&L (dollars, and as a share of the max loss) and the deflated Sharpe ratio.
+fn print_robust(r: &BacktestResult, is_fraction: f64, n_trials: usize, sr_var: Option<f64>) {
+    let n = r.equity.len();
+    let cut = if n == 0 { 0 } else { r.date[cut_index(n, is_fraction)] as i64 * 1440 + r.minute[cut_index(n, is_fraction)] as i64 };
+    let oos: Vec<&super::engine::Trade> = r.trades.iter().filter(|t| t.entry_time.key() >= cut).collect();
+    let pnl: Vec<f64> = oos.iter().map(|t| t.pnl).collect();
+    let all_pnl: Vec<f64> = r.trades.iter().map(|t| t.pnl).collect();
+    let rel: Vec<f64> = oos.iter().filter(|t| t.max_loss > 0.0).map(|t| t.pnl / t.max_loss).collect();
+    let rets = super::metrics::daily_returns(r, is_fraction, true);
+    if rets.len() < 3 {
+        println!("  ROBUST: too few days");
+        return;
+    }
+    let sr = stats::mean(&rets) / stats::std(&rets, 1);
+    let (sk, ku) = stats::skew_kurt(&rets);
+    let var = sr_var.unwrap_or(1.0 / rets.len() as f64);
+    let (sr0, p) = stats::deflated_sharpe(sr, rets.len(), sk, ku, n_trials, var);
+    println!(
+        "  ROBUST (OOS, model prices): trades {}  mean P&L ${:.2}  t(P&L) {:.2}  t(P&L/maxloss) {:.2}  daily SR {:.4} (annual {:.2})  days {}  skew {:.1} kurt {:.1}  trials {}  SR0 {:.4}  DSR {:.3}  | all-trades t(P&L) {:.2} (n {})",
+        pnl.len(), if pnl.is_empty() { 0.0 } else { stats::mean(&pnl) }, stats::t_mean(&pnl), stats::t_mean(&rel), sr, sr * 252f64.sqrt(), rets.len(), sk, ku, n_trials, sr0, p, stats::t_mean(&all_pnl), all_pnl.len()
+    );
 }
 
 fn print_trades(r: &BacktestResult) {
@@ -358,15 +477,49 @@ pub(crate) mod tests {
     fn arguments_and_errors() {
         let a = parse_args(&["--bot".into(), "s05_ic_0dte".into(), "--max-risk".into(), "250".into(), "-v".into()]).unwrap();
         assert_eq!((a.bots.as_slice(), a.max_risk, a.verbose), (&["s05_ic_0dte".to_string()][..], Some(250.0), true));
+        let g = parse_args(&["--cut-scan".into(), "--price-grid".into(), "--step".into(), "3".into(), "--span".into(), "30".into()]).unwrap();
+        assert!(g.cut_scan && g.price_grid && g.step == Some(3.0) && g.span == Some(30.0));
+        assert!(parse_args(&["--step".into()]).is_err());
         assert!(parse_args(&["--bogus".into()]).is_err());
         assert!(parse_args(&["--max-risk".into()]).is_err());
         assert!(parse_args(&["--max-risk".into(), "abc".into()]).is_err());
         assert!(parse_date("--start", &Some("2024-13-1".into())).is_err());
+        // A fraction outside (0, 1) is an error with a message, not a panic.
+        let store0 = Store::new(std::env::temp_dir().join("fa-no-such-cache"));
+        for bad in ["1", "0", "1.5", "-0.2"] {
+            let e = run_command(&store0, &["--is-fraction".into(), bad.into()]).unwrap_err();
+            assert!(e.contains("--is-fraction"), "{e}");
+        }
         // An unknown bot gives exit code 2 before any data is read.
         let store = Store::new(std::env::temp_dir().join("fa-no-such-cache"));
         assert_eq!(run_command(&store, &["--bot".into(), "nope".into()]).unwrap(), 2);
         // A missing cache fails the bot with a message, and the exit code is 1.
         assert_eq!(run_command(&store, &["--bot".into(), "s08_trend_regime".into()]).unwrap(), 1);
+    }
+
+    #[test]
+    fn the_grid_options_need_one_bot_and_good_numbers() {
+        let store = Store::new(std::env::temp_dir().join("fa-no-such-cache"));
+        let e = run_command(&store, &["--cut-scan".into()]).unwrap_err();
+        assert!(e.contains("exactly one bot"), "{e}");
+        let e = run_command(&store, &["--bot".into(), "s05_ic_0dte".into(), "--price-grid".into(), "--bot".into(), "s08_trend_regime".into()]).unwrap_err();
+        assert!(e.contains("exactly one bot"), "{e}");
+        for bad in ["0", "2.5", "-1", "50"] {
+            let e = run_command(&store, &["--bot".into(), "s05_ic_0dte".into(), "--cut-scan".into(), "--step".into(), bad.into(), "--span".into(), "30".into()]).unwrap_err();
+            assert!(e.contains("--step"), "{e}");
+        }
+        let e = run_command(&store, &["--bot".into(), "s05_ic_0dte".into(), "--cut-scan".into(), "--span".into(), "400".into()]).unwrap_err();
+        assert!(e.contains("--span"), "{e}");
+    }
+
+    #[test]
+    fn cut_scan_runs_on_the_fixture_cache() {
+        let dir = std::env::temp_dir().join(format!("fa-trading-cutscan-{}", std::process::id()));
+        write_fixture(&dir);
+        let store = Store::new(dir.clone());
+        let args: Vec<String> = ["--bot", "baseline_weekly_call_spread", "--include-templates", "--cut-scan", "--step", "14", "--span", "28"].iter().map(|s| s.to_string()).collect();
+        assert_eq!(run_command(&store, &args).unwrap(), 0);
+        std::fs::remove_dir_all(dir).ok();
     }
 
     #[test]

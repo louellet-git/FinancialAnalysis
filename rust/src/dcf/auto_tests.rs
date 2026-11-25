@@ -1280,3 +1280,275 @@ fn market_at_takes_the_close_of_the_price_date_and_market_from_cache_the_last_cl
     assert_eq!(market_from_cache(&dir, "ZZ", "2026-11-04", None, &rules, None, None).price, Some(12.0));
     std::fs::remove_dir_all(&dir).ok();
 }
+
+/// The SEC facts of a company with six fiscal years 2020 to 2025 (10-K filed on 15 Feb of the next year) and 100M shares.
+fn live_facts() -> mapcheck::facts::CompanyFacts {
+    serde_json::from_str(&live_facts_text()).unwrap_or_else(|e| panic!("{e}"))
+}
+
+/// The text of the facts of [`live_facts`] (a cache file of a test).
+fn live_facts_text() -> String {
+    let dur = |tag: &str, f: &dyn Fn(i32) -> f64| -> String {
+        let rows: Vec<String> = (0..6).map(|k| format!(r#"{{"start":"{y}-01-01","end":"{y}-12-31","val":{v},"form":"10-K","filed":"{f}-02-15","fy":{y},"fp":"FY"}}"#, y = 2020 + k, v = f(k), f = 2021 + k)).collect();
+        format!(r#""{tag}":{{"units":{{"USD":[{}]}}}}"#, rows.join(","))
+    };
+    let inst = |tag: &str, unit: &str, v: f64| -> String {
+        let rows: Vec<String> = (0..6).map(|k| format!(r#"{{"end":"{y}-12-31","val":{v},"form":"10-K","filed":"{f}-02-15","fy":{y},"fp":"FY"}}"#, y = 2020 + k, f = 2021 + k)).collect();
+        format!(r#""{tag}":{{"units":{{"{unit}":[{}]}}}}"#, rows.join(","))
+    };
+    let rev = |k: i32| 1e9 * 1.1f64.powi(k);
+    let shares_w: Vec<String> = (0..6).map(|k| format!(r#"{{"start":"{y}-01-01","end":"{y}-12-31","val":1e8,"form":"10-K","filed":"{f}-02-15","fy":{y},"fp":"FY"}}"#, y = 2020 + k, f = 2021 + k)).collect();
+    let text = format!(
+        r#"{{"facts":{{"us-gaap":{{{},{},{},{},{},{},{},{}, "WeightedAverageNumberOfDilutedSharesOutstanding":{{"units":{{"shares":[{}]}}}}}}}}}}"#,
+        dur("Revenues", &rev),
+        dur("NetCashProvidedByUsedInOperatingActivities", &|k| 0.2 * rev(k)),
+        dur("PaymentsToAcquirePropertyPlantAndEquipment", &|k| 0.05 * rev(k)),
+        inst("CashAndCashEquivalentsAtCarryingValue", "USD", 5e7),
+        inst("LongTermDebt", "USD", 2e8),
+        inst("CommonStockSharesOutstanding", "shares", 1e8),
+        dur("ShareBasedCompensation", &|k| 0.03 * rev(k)),
+        inst("Assets", "USD", 2e9),
+        shares_w.join(",")
+    );
+    text
+}
+
+/// The live case: a 25:1 split on 2026-04-06, after the last 10-K (period end 2025-12-31). The share counts of the 10-K
+/// are before the split; the close of the store is split-adjusted. With the split table the model gives the same
+/// P50 / price as a company with no split (the price divided by 25 and no split row would give a value 25 times too high).
+#[test]
+fn a_split_after_the_last_10k_does_not_change_the_value_over_the_price() {
+    use super::super::auto_implied::deterministic_value;
+    use crate::market::splits::Split;
+    let reg = Registry::embedded().unwrap();
+    let day = mapcheck::dates::parse("2026-11-21").unwrap();
+    let report = mapcheck::run::check_facts(&reg, "LIVE", &live_facts(), 8, day, true);
+    let split = [Split { ticker: "LIVE".into(), ex_date: "2026-04-06".into(), old_rate: 1.0, new_rate: 25.0, factor: 25.0, kind: "forward".into(), sec_check: "match".into() }];
+    let none = inputs_from_report(&reg, &report, &[], "2026-11-21");
+    let with = inputs_from_report(&reg, &report, &split, "2026-11-21");
+    assert_eq!(none.years.len(), 6, "{:?}", none.findings);
+    let (b0, b1) = (none.balance.as_ref().unwrap(), with.balance.as_ref().unwrap());
+    assert_eq!((b0.shares, b0.shares_outstanding), (Some(1e8), Some(1e8)));
+    assert_eq!((b1.shares, b1.shares_outstanding), (Some(2.5e9), Some(2.5e9)));
+    assert!(with.years.iter().all(|y| y.shares == Some(2.5e9)));
+    let value = |i: &AutoInputs, price: f64| -> f64 {
+        let m = Market { as_of: "2026-11-21".into(), price: Some(price), ..Default::default() };
+        let model = build(i, &table(), &[], &m, &plain_rules(), BuildOptions::default()).unwrap_or_else(|e| panic!("{e:?}"));
+        deterministic_value(&spec_of(&model)).unwrap().0
+    };
+    let p = 20.0;
+    let ratio_no_split = value(&none, p) / p;
+    // the store shows the adjusted close p / 25; the shares of the model are on the same basis
+    let ratio_split = value(&with, p / 25.0) / (p / 25.0);
+    assert!((ratio_split / ratio_no_split - 1.0).abs() < 1e-9, "{ratio_split} {ratio_no_split}");
+    // the defect: the adjusted close with the share count of the 10-K
+    let ratio_defect = value(&none, p / 25.0) / (p / 25.0);
+    assert!(ratio_defect / ratio_no_split > 20.0, "{ratio_defect} {ratio_no_split}");
+}
+
+/// The SNDK case: a 1:8 split with the ex-date 2026-11-20, the price file ends on 2026-11-19 and is not adjusted for it.
+/// The `to` date is the last date of the price file, so the split is not counted and the P50 / price is the same as with
+/// no split. With `to` = today (the defect) the shares are 8 times too high and the P50 / price 8 times too low.
+#[test]
+fn a_split_after_the_last_price_date_does_not_change_the_value_over_the_price() {
+    use super::super::auto_implied::deterministic_value;
+    use super::super::share_basis::basis_to;
+    use crate::market::splits::Split;
+    let dir = std::env::temp_dir().join(format!("fa_sndk_like_{}", std::process::id()));
+    std::fs::remove_dir_all(&dir).ok();
+    std::fs::create_dir_all(dir.join("LIVE")).unwrap();
+    let row = |d: &str| format!(r#"{{"date":"{d}","open":20,"high":20,"low":20,"close":20,"volume":1}}"#);
+    std::fs::write(dir.join("LIVE").join("prices.json"), format!("[{},{}]", row("2026-11-18"), row("2026-11-19"))).unwrap();
+    std::fs::write(dir.join("LIVE").join("prices.meta.json"), r#"{"adjusted":"splits","last_date":"2026-11-19"}"#).unwrap();
+    let to = basis_to(&dir, "LIVE", false);
+    assert_eq!(to, "2026-11-19");
+
+    let reg = Registry::embedded().unwrap();
+    let day = mapcheck::dates::parse("2026-11-21").unwrap();
+    let report = mapcheck::run::check_facts(&reg, "LIVE", &live_facts(), 8, day, true);
+    let split = [Split { ticker: "LIVE".into(), ex_date: "2026-11-20".into(), old_rate: 1.0, new_rate: 8.0, factor: 8.0, kind: "forward".into(), sec_check: "match".into() }];
+    let none = inputs_from_report(&reg, &report, &[], &to);
+    let with = inputs_from_report(&reg, &report, &split, &to);
+    assert_eq!(none.years, with.years);
+    assert_eq!(none.balance, with.balance);
+    let value = |i: &AutoInputs, price: f64| -> f64 {
+        let m = Market { as_of: "2026-11-21".into(), price: Some(price), ..Default::default() };
+        let model = build(i, &table(), &[], &m, &plain_rules(), BuildOptions::default()).unwrap_or_else(|e| panic!("{e:?}"));
+        deterministic_value(&spec_of(&model)).unwrap().0
+    };
+    let p = 20.0;
+    assert_eq!(value(&none, p) / p, value(&with, p) / p);
+    // the defect: `to` = today counts the split that is not in the closes
+    let wrong = inputs_from_report(&reg, &report, &split, "2026-11-21");
+    assert_eq!(wrong.balance.as_ref().unwrap().shares, Some(8e8));
+    let ratio_wrong = value(&wrong, p) / p;
+    let ratio_right = value(&with, p) / p;
+    assert!(ratio_wrong / ratio_right < 1.0 / 7.0, "{ratio_wrong} {ratio_right}");
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+/// A truncated SPY file with fewer than 520 rows gives NO index: the beta is dropped (beta 1) and every score moves. A test
+/// that cuts SPY at a date must keep 520 rows or more, or it measures this switch and not a look-ahead (the 2018-11-23 cut
+/// of the store has 507 rows from 2016-11-18).
+#[test]
+fn a_short_spy_file_gives_no_index() {
+    let dir = std::env::temp_dir().join(format!("fa_short_spy_{}", std::process::id()));
+    std::fs::remove_dir_all(&dir).ok();
+    std::fs::create_dir_all(dir.join("SPY")).unwrap();
+    let write = |n: usize| {
+        let rows: Vec<String> = (0..n).map(|i| format!(r#"{{"date":"{}","open":1,"high":1,"low":1,"close":{},"volume":1}}"#, mapcheck::dates::format(mapcheck::dates::parse("2016-11-18").unwrap() + i as i64), 100.0 + i as f64)).collect();
+        std::fs::write(dir.join("SPY").join("prices.json"), format!("[{}]", rows.join(","))).unwrap();
+    };
+    write(507);
+    assert!(index_from_cache(&dir).is_none());
+    write(520);
+    assert_eq!(index_from_cache(&dir).map(|s| s.len()), Some(520));
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+/// A cache of the ticker LIVE: the facts of `live_facts` (100M shares in each 10-K, filed 2021 to 2026), a price file that
+/// ends on 2026-11-19 and is adjusted for the splits up to that day, and (with `ex_date`) a split table with a 1:8 split.
+fn share_basis_cache(name: &str, ex_date: Option<&str>) -> std::path::PathBuf {
+    use crate::market::splits::{to_csv, Split, SplitRow};
+    let dir = std::env::temp_dir().join(format!("fa_basis_{name}_{}", std::process::id()));
+    std::fs::remove_dir_all(&dir).ok();
+    std::fs::create_dir_all(dir.join("LIVE")).unwrap();
+    let row = |d: &str| format!(r#"{{"date":"{d}","open":20,"high":20,"low":20,"close":20,"volume":1}}"#);
+    std::fs::write(dir.join("LIVE").join("prices.json"), format!("[{},{}]", row("2026-11-18"), row("2026-11-19"))).unwrap();
+    std::fs::write(dir.join("LIVE").join("prices.meta.json"), r#"{"adjusted":"splits","last_date":"2026-11-19"}"#).unwrap();
+    std::fs::write(dir.join("LIVE").join("company_facts.json"), live_facts_text()).unwrap();
+    if let Some(d) = ex_date {
+        std::fs::create_dir_all(dir.join("_corporate")).unwrap();
+        let split = Split { ticker: "LIVE".into(), ex_date: d.into(), old_rate: 1.0, new_rate: 8.0, factor: 8.0, kind: "forward".into(), sec_check: "match".into() };
+        std::fs::write(dir.join("_corporate").join("splits.csv"), to_csv(&[SplitRow::new(split, "test", "applied", false)])).unwrap();
+    }
+    dir
+}
+
+/// The latest share count that each of the three readers of the facts gives for LIVE on the cache `dir`, each with the split
+/// table of that cache: `load_company_years` (point-in-time test), `load_vintages` (portfolio backtest) and `map_inputs`
+/// (live commands: reads the table itself). The three get `to` from `share_basis::to_for`.
+fn reader_shares(dir: &std::path::Path) -> [Option<f64>; 3] {
+    let reg = Registry::embedded().unwrap();
+    let splits = crate::market::splits::load_splits(dir).unwrap_or_default();
+    let a = load_company_years(&reg, dir, "LIVE", &splits).unwrap().1;
+    let b = crate::portfolio::strategies::load_vintages(&reg, dir, "LIVE", 0, &splits).unwrap().1;
+    let day = mapcheck::dates::parse("2026-11-21").unwrap();
+    let c = map_inputs(dir, &["LIVE".to_string()], day, Some(1)).unwrap().0;
+    [a.last().unwrap().shares, b.0.last().unwrap().1.last().unwrap().shares, c[0].years.last().unwrap().shares]
+}
+
+/// The wiring of `to` where the readers use it: a split with the ex-date AFTER the last date of the price file is not in the
+/// closes, so the share counts stay as they are (the same as with no split table). The defect `to` = today would give 8x.
+#[test]
+fn the_readers_do_not_count_a_split_after_the_last_price_date() {
+    let base = share_basis_cache("none", None);
+    let after = share_basis_cache("after", Some("2026-11-20"));
+    let want = reader_shares(&base);
+    assert_eq!(want, [Some(1e8); 3]);
+    assert_eq!(reader_shares(&after), want);
+    for d in [base, after] {
+        std::fs::remove_dir_all(d).ok();
+    }
+}
+
+/// The same cache with the ex-date ON the last price date: the closes are adjusted for it, so the share counts are 8 times.
+#[test]
+fn the_readers_count_a_split_on_or_before_the_last_price_date() {
+    let on = share_basis_cache("on", Some("2026-11-19"));
+    let before = share_basis_cache("before", Some("2026-06-01"));
+    assert_eq!(reader_shares(&on), [Some(8e8); 3]);
+    assert_eq!(reader_shares(&before), [Some(8e8); 3]);
+    for d in [on, before] {
+        std::fs::remove_dir_all(d).ok();
+    }
+}
+
+#[test]
+fn a_fitted_nss_curve_in_gsw_units_gives_the_same_zero_yields_in_the_engine() {
+    // `curve_of_nss` puts a decimal NSS fit (`fa recon rich-cheap`) in the GSW units (BETA in percent). The engine divides
+    // by 100 again (`paths.rs`), so the zero yield of the engine must equal the zero yield of the fit at each maturity.
+    let n = crate::fit::Nss { b0: 0.052, b1: -0.011, b2: 0.018, b3: -0.007, tau1: 1.7, tau2: 9.5 };
+    let c = curve_of_nss("2026-11-20", &n);
+    assert_eq!((c.beta0, c.tau1, c.tau2), (5.2, 1.7, 9.5));
+    assert!((c.zero10 - n.zero(10.0)).abs() < 1e-15);
+    let z = crate::ratemodels::curve::ZeroCurve { beta0: c.beta0 / 100.0, beta1: c.beta1 / 100.0, beta2: c.beta2 / 100.0, beta3: c.beta3 / 100.0, tau1: c.tau1, tau2: c.tau2 };
+    for t in [0.5, 2.0, 10.0, 30.0] {
+        assert!((z.zero_yield(t) - n.zero(t)).abs() < 1e-12, "t {t}: {} against {}", z.zero_yield(t), n.zero(t));
+    }
+}
+
+#[test]
+fn a_flat_par_curve_gives_a_flat_continuous_zero_curve_and_the_last_row_on_or_before_the_date() {
+    // Par yields of 5% at each tenor (semiannual): the discount factor of 10 years is 1.025^-20 at t = 3653 / 365 years
+    // (actual/365 of the fit), so the continuous zero yield is 20 ln(1.025) / t = 4.9345%. The fit (6 parameters, 8 bonds,
+    // Levenberg-Marquardt) is inside 1 bp of it.
+    let head = "Date,\"1 Mo\",\"1 Yr\",\"2 Yr\",\"3 Yr\",\"5 Yr\",\"7 Yr\",\"10 Yr\",\"20 Yr\",\"30 Yr\"";
+    let text = format!("{head}\n11/20/2026,4.0,5,5,5,5,5,5,5,5\n11/20/2026,4.0,5,5,5,5,5,5,5,5\n11/13/2026,4.0,6,6,6,6,6,6,6,6\n11/23/2026,4.0,7,7,7,7,7,7,7,7\n");
+    let limit = crate::curve::parse_iso("2026-11-21").unwrap();
+    let (date, ys) = par_row_on(&text, limit).unwrap().unwrap();
+    assert_eq!((date.as_str(), ys[0]), ("2026-11-20", 5.0));
+    let c = par_fit(&date, &ys).unwrap();
+    let flat = 20.0 * (1.025f64).ln() / (3653.0 / 365.0);
+    assert!((c.zero10 - flat).abs() < 1e-4, "zero10 {} against {flat}", c.zero10);
+    let (d13, _) = par_row_on(&text, crate::curve::parse_iso("2026-11-19").unwrap()).unwrap().unwrap();
+    assert_eq!(d13, "2026-11-13");
+    assert!(par_row_on(&text, crate::curve::parse_iso("2026-11-01").unwrap()).unwrap().is_none());
+    // the root mean square error of a flat par curve is small, and it comes with the curve
+    let (c2, rmse) = par_fit_rmse(&date, &ys).unwrap();
+    assert_eq!(c2, c);
+    assert!((0.0..1.0).contains(&rmse), "rmse {rmse}");
+}
+
+#[test]
+fn a_par_curve_that_the_fit_cannot_follow_is_refused_with_its_error() {
+    // a zigzag of 1% and 9% yields: six parameters cannot follow it, the error is far above 5 bp
+    let ys = [1.0, 9.0, 1.0, 9.0, 1.0, 9.0, 1.0, 9.0];
+    let x = par_fit_rmse("2026-11-20", &ys).unwrap_err();
+    assert!(x.contains("root mean square error") && x.contains("above the limit of 5 bp") && x.contains("refused"), "{x}");
+    assert_eq!(PAR_FIT_MAX_RMSE_BP, 5.0);
+}
+
+fn scratch(name: &str) -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join(format!("fa_curve_{name}_{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("rates")).unwrap();
+    std::fs::create_dir_all(dir.join("prices")).unwrap();
+    dir
+}
+
+#[test]
+fn a_date_in_early_january_takes_the_december_par_row_of_the_year_before() {
+    let dir = scratch("par_jan");
+    let head = "Date,\"1 Yr\",\"2 Yr\",\"3 Yr\",\"5 Yr\",\"7 Yr\",\"10 Yr\",\"20 Yr\",\"30 Yr\"";
+    std::fs::write(dir.join("rates").join("treasury_nominal_2025.csv"), format!("{head}\n12/30/2025,5,5,5,5,5,5,5,5\n12/31/2025,5,5,5,5,5,5,5,5\n")).unwrap();
+    // the file of the new year has no row yet on or before 2026-01-03
+    std::fs::write(dir.join("rates").join("treasury_nominal_2026.csv"), format!("{head}\n01/05/2026,6,6,6,6,6,6,6,6\n")).unwrap();
+    let (c, rmse) = load_curve_par_rmse(&dir, "2026-01-03").unwrap();
+    assert_eq!(c.date, "2025-12-31");
+    assert!(rmse < 1.0 && (c.zero10 - 20.0 * (1.025f64).ln() / (3653.0 / 365.0)).abs() < 1e-3);
+    // from the 5th the row of the new year is the last one on or before the date
+    assert_eq!(load_curve_par_rmse(&dir, "2026-01-05").unwrap().0.date, "2026-01-05");
+    // no file at all for the date
+    assert!(load_curve_par_rmse(&dir, "2024-06-01").unwrap_err().contains("no Treasury par yield row on or before 2024-06-01"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_fedinvest_file_is_the_last_one_on_or_before_the_date_and_never_a_later_one() {
+    let dir = scratch("fedinvest");
+    // empty files: the load stops at the file that it chose, and the error names it
+    for d in ["2026-11-12", "2026-11-13", "2026-11-20"] {
+        std::fs::write(dir.join("prices").join(format!("fedinvest_{d}.csv")), "").unwrap();
+    }
+    std::fs::write(dir.join("prices").join("notes.txt"), "").unwrap();
+    let chosen = |as_of: &str| load_curve_fedinvest(&dir, as_of).unwrap_err();
+    assert!(chosen("2026-11-19").contains("fedinvest_2026-11-13.csv"), "{}", chosen("2026-11-19"));
+    assert!(chosen("2026-11-13").contains("fedinvest_2026-11-13.csv"));
+    assert!(chosen("2026-11-20").contains("fedinvest_2026-11-20.csv"));
+    assert!(chosen("2026-11-12").contains("fedinvest_2026-11-12.csv"));
+    // no file on or before the date: a later file is not used
+    let x = chosen("2026-11-11");
+    assert!(x.contains("no FedInvest price file on or before 2026-11-11"), "{x}");
+    let _ = std::fs::remove_dir_all(&dir);
+}

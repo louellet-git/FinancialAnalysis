@@ -110,7 +110,7 @@ impl DataSet {
             DataSet::Intraday => &["alpaca", "yahoo"],
             DataSet::Estimates => &["nasdaq"],
             DataSet::Earnings => &["nasdaq", "sec"],
-            DataSet::Options => &["cboe", "alpaca"],
+            DataSet::Options => &["alpaca"],
             DataSet::Rates => &["treasury", "bls"],
             DataSet::Gsw => &["federalreserve"],
             DataSet::Fred => &["fred"],
@@ -138,7 +138,7 @@ pub struct HostSpec {
 
 /// The hosts of `fa sync` with the pauses of the existing clients. The SEC allows 10 requests each second; the existing
 /// client waits 0.15 seconds. `futures::DELAY_SECONDS` is 0.5 (Cboe, CFTC, Atlanta Fed, Yahoo for futures); the market
-/// module uses 2 seconds for Nasdaq, Yahoo, Tiingo and Cboe option files; Alpaca 0.4; FedInvest 1.
+/// module uses 2 seconds for Nasdaq, Yahoo, and Tiingo; Alpaca 0.4; FedInvest 1.
 pub const HOSTS: [HostSpec; 15] = [
     HostSpec { name: "sec", pause: 0.15, request_time: 0.4 },
     HostSpec { name: "nasdaq", pause: 2.0, request_time: 0.6 },

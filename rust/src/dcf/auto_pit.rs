@@ -648,7 +648,10 @@ LIMITS
   - The value (the P50) is not tested here: `fa dcf returns` tests it against the later stock returns.
   - The model of the test has no failure hazard, no price and a fixed default rate; the revenue and the free cash flow do not depend on them.";
 
-pub fn load_company_years(registry: &Registry, cache: &Path, ticker: &str) -> Option<(String, Vec<YearData>)> {
+/// The fiscal years of a ticker. The share counts are on the basis of the price file of the ticker (`splits`, up to the
+/// last date of the price file: `share_basis::basis_to`).
+pub fn load_company_years(registry: &Registry, cache: &Path, ticker: &str, splits: &[crate::market::splits::Split]) -> Option<(String, Vec<YearData>)> {
+    let to = super::share_basis::to_for(cache, ticker, splits);
     let path = mapcheck::run::facts_path(cache, ticker)?;
     let facts = mapcheck::run::read_facts(&path).ok()?;
     if !facts.has_us_gaap() {
@@ -657,7 +660,7 @@ pub fn load_company_years(registry: &Registry, cache: &Path, ticker: &str) -> Op
     let ends = period_ends(&facts, &registry.anchors, Forms::Annual, None);
     let periods: Vec<_> = ends.iter().map(|e| resolve_period_with(registry, &facts, e, Forms::Annual, None)).collect();
     let template = periods.last().map(|p| filer_template(registry, p)).unwrap_or("standard").to_string();
-    Some((template, periods.iter().map(|p| YearData::from_period(registry, p)).collect()))
+    Some((template, periods.iter().map(|p| YearData::from_period(registry, p, &super::share_basis::Basis { splits, ticker, to: &to })).collect()))
 }
 
 /// The rules of a `--rules` text.
@@ -769,9 +772,11 @@ pub fn pit_setup(cache: &Path, table_file: &Path, cut: Option<i32>, limit: Optio
     if let Some(l) = limit {
         tickers.truncate(l);
     }
+    // No split factor here (empty splits) on purpose: this test scores revenue and free cash flow, which are not per-share
+    // values and have no price. The share counts of these years are never read by the scored series.
     let companies: Vec<(String, Vec<YearData>)> = tickers
         .par_iter()
-        .filter_map(|t| load_company_years(&registry, cache, t).filter(|(tpl, _)| tpl == "standard").map(|(_, y)| (t.clone(), y)))
+        .filter_map(|t| load_company_years(&registry, cache, t, &[]).filter(|(tpl, _)| tpl == "standard").map(|(_, y)| (t.clone(), y)))
         .filter(|(t, _)| half.is_none_or(|h| ticker_half(t) == h))
         .collect();
     let (table, fade, label) = match cut {
@@ -780,13 +785,7 @@ pub fn pit_setup(cache: &Path, table_file: &Path, cut: Option<i32>, limit: Optio
             (t, f, format!("IN SAMPLE: parameter table {} (estimated on all years)", table_file.display()))
         }
         Some(y) => {
-            let panel = build_panel(cache, None).map_err(DcfError)?;
-            let trunc: Vec<CompanyPanel> = panel
-                .companies
-                .iter()
-                .map(|c| CompanyPanel { rows: c.rows.iter().filter(|r| r.year <= y).cloned().collect(), ..c.clone() })
-                .filter(|c| !c.rows.is_empty())
-                .collect();
+            let trunc = build_panel(cache, None).map_err(DcfError)?.up_to_year(y).companies;
             let cells = estimate_table(&trunc, 2);
             let fade = fade_cells(&trunc, &cells);
             let meta = TableMeta { date: String::new(), command: format!("estimated from the years up to {y}"), companies: trunc.len(), company_years: 0, growth_observations: 0, note: String::new() };

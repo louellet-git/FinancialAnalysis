@@ -14,6 +14,9 @@ pub struct PeriodData {
     pub forms: Forms,
     /// The filing date of the revenue fact, or the latest filing date of the facts in use.
     pub filed: Option<String>,
+    /// The filing date of the fact that gave the value of each registry variable (a tag value only: `None` for a value
+    /// that a formula or a 10-K line gave), in the registry sequence. Empty in a period that was not made by the mapper.
+    pub filed_of: Vec<Option<String>>,
     /// One entry for each registry variable, in the registry sequence.
     pub values: Vec<Option<f64>>,
     pub sources: Vec<Option<String>>,
@@ -24,6 +27,11 @@ pub struct PeriodData {
 impl PeriodData {
     pub fn get(&self, registry: &Registry, name: &str) -> Option<f64> {
         registry.try_var(name).and_then(|i| self.values[i])
+    }
+
+    /// The filing date of the tag fact that gave the value of a variable (`None`: no value, or a formula value).
+    pub fn filed_of(&self, registry: &Registry, name: &str) -> Option<&str> {
+        registry.try_var(name).and_then(|i| self.filed_of.get(i)).and_then(|d| d.as_deref())
     }
 
     pub fn source(&self, registry: &Registry, name: &str) -> &str {
@@ -208,10 +216,17 @@ pub const NOT_USED: &str = ": not used,";
 /// registry) counts an amount two times: the filer gave two tags to one amount, or one
 /// term is a part of a different term. Such a value is not used: the variable has no
 /// value, and the formulas run again without it.
-fn finish(registry: &Registry, tag_values: Vec<Option<f64>>, tag_sources: Vec<Option<String>>) -> (Vec<Option<f64>>, Vec<Option<String>>) {
+fn finish(registry: &Registry, tag_values: Vec<Option<f64>>, tag_sources: Vec<Option<String>>, mixed_vintage: bool) -> (Vec<Option<f64>>, Vec<Option<String>>) {
     let n = registry.variables.len();
     let mut blocked = vec![false; n];
     let mut notes: Vec<Option<String>> = vec![None; n];
+    // Gross profit from revenue and cost of revenue of two different filings (a restatement in
+    // between) mixes two bases: no value.
+    let gross_profit = registry.try_var("gross_profit");
+    if let (true, Some(g)) = (mixed_vintage, gross_profit) {
+        blocked[g] = true;
+        notes[g] = Some(format!("{}{NOT_USED} revenue and cogs_total are from different filings", registry.variables[g].formulas.first().map_or("=".to_string(), |f| format!("= {}", f.text))));
+    }
     loop {
         let (mut values, mut sources) = (tag_values.clone(), tag_sources.clone());
         let mut run = FormulaRun { registry, values: &mut values, sources: &mut sources, in_work: vec![false; n], blocked: &blocked };
@@ -265,6 +280,8 @@ pub fn resolve_period_with(registry: &Registry, facts: &CompanyFacts, end: &str,
     let mut values: Vec<Option<f64>> = vec![None; n];
     let mut sources: Vec<Option<String>> = vec![None; n];
     let mut filed_dates: Vec<Option<String>> = vec![None; n];
+    let mut accn_of: Vec<String> = vec![String::new(); n];
+    let mut tag_of: Vec<Option<&crate::registry::Tag>> = vec![None; n];
 
     // A tag with the scope of a fund or a mortgage REIT (`unclassified_only`) gives no value to a
     // filer that has a current-assets total (in any period), or whose value is a very small share of total assets.
@@ -308,6 +325,8 @@ pub fn resolve_period_with(registry: &Registry, facts: &CompanyFacts, end: &str,
             if !sel.filed.is_empty() {
                 filed_dates[i] = Some(sel.filed);
             }
+            accn_of[i] = sel.accn;
+            tag_of[i] = Some(tag);
             break;
         }
     }
@@ -343,10 +362,34 @@ pub fn resolve_period_with(registry: &Registry, facts: &CompanyFacts, end: &str,
             }
         }
     }
-    let (values, sources) = finish(registry, tag_values.clone(), tag_sources.clone());
+    // Revenue and cost of revenue of one period from two filings, where the filing of the one has a
+    // different value for the other (a restatement): two bases.
+    let mixed_vintage = {
+        let pick = |names: &[&str]| {
+            names.iter().find_map(|name| {
+                let i = registry.try_var(name)?;
+                let tag = tag_of[i]?;
+                let value = tag_values[i]?;
+                (!accn_of[i].is_empty()).then(|| (i, tag, value, accn_of[i].clone()))
+            })
+        };
+        // The value of a tag in one filing (the same period).
+        let in_filing = |i: usize, tag: &crate::registry::Tag, accn: &str| {
+            let variable = &registry.variables[i];
+            let own: Vec<_> = facts.entries(tag, &variable.unit).iter().filter(|e| e.accn.as_deref() == Some(accn)).cloned().collect();
+            select(&own, end, forms, variable.period).map(|sel| if variable.sign_flip { -sel.value.abs() } else if variable.negate { -sel.value } else { sel.value })
+        };
+        match (pick(&["revenue", "revenue_from_contracts", "revenue_total_pre2018"]), pick(&["cogs_total"])) {
+            (Some((ri, rt, rv, ra)), Some((ci, ct, cv, ca))) if ra != ca => {
+                in_filing(ri, rt, &ca).is_some_and(|v| v != rv) || in_filing(ci, ct, &ra).is_some_and(|v| v != cv)
+            }
+            _ => false,
+        }
+    };
+    let (values, sources) = finish(registry, tag_values.clone(), tag_sources.clone(), mixed_vintage);
 
     // The revenue fact (most companies have it as contract revenue).
-    let revenue_filed = ["revenue", "revenue_from_contracts"].iter().find_map(|name| registry.try_var(name).and_then(|i| filed_dates[i].clone()));
+    let revenue_filed = ["revenue", "revenue_from_contracts", "revenue_total_pre2018"].iter().find_map(|name| registry.try_var(name).and_then(|i| filed_dates[i].clone()));
     let filed = revenue_filed.or_else(|| filed_dates.iter().flatten().max().cloned());
 
     let mut raw_extras = BTreeMap::new();
@@ -367,7 +410,7 @@ pub fn resolve_period_with(registry: &Registry, facts: &CompanyFacts, end: &str,
         }
     }
 
-    let mut period = PeriodData { end: end.to_string(), forms, filed, values, sources, raw_extras };
+    let mut period = PeriodData { end: end.to_string(), forms, filed, filed_of: filed_dates, values, sources, raw_extras };
     if let (Forms::Annual, Some(fill)) = (forms, fill) {
         let critical = crate::checks::critical_for(crate::checks::filer_template(registry, &period));
         if TRIGGERS.iter().any(|name| critical.contains(name) && period.get(registry, name).is_none()) {
@@ -384,7 +427,7 @@ pub fn resolve_period_with(registry: &Registry, facts: &CompanyFacts, end: &str,
             }
             if changed {
                 // The formulas run again: a filled value is a term of other variables.
-                (period.values, period.sources) = finish(registry, values, sources);
+                (period.values, period.sources) = finish(registry, values, sources, mixed_vintage);
             }
         }
     }
@@ -615,6 +658,100 @@ mod tests {
         // A company with no revenue and only a small interest income on debt securities (BHVN): no revenue.
         let (r, p) = resolve(vec![("InterestIncomeDebtSecuritiesOperating", flow(5.0))]);
         assert_eq!(p.get(&r, "revenue"), None);
+    }
+
+    #[test]
+    fn revenue_before_2018_uses_the_goods_and_services_sales_tags() {
+        // A filer with only SalesRevenueGoodsNet in 2015 (KO, MRK, SYY): the value is the revenue.
+        let (r, p) = resolve(vec![("SalesRevenueGoodsNet", flow(44294.0)), ("SalesAllowancesGoods", flow(6800.0))]);
+        assert_eq!(p.get(&r, "revenue"), Some(44294.0));
+        assert_eq!(p.source(&r, "revenue"), "= revenue_total_pre2018");
+        assert_eq!(p.get(&r, "revenue_from_contracts"), None);
+        assert_eq!(p.source(&r, "revenue_total_pre2018"), "us-gaap/SalesRevenueGoodsNet");
+        // A seller of services (FIS, VRSK).
+        let (r, p) = resolve(vec![("SalesRevenueServicesNet", flow(6596.0))]);
+        assert_eq!(p.get(&r, "revenue"), Some(6596.0));
+        // The total tags come first: a later tag never replaces them.
+        let (r, p) = resolve(vec![("SalesRevenueNet", flow(100.0)), ("SalesRevenueGoodsNet", flow(60.0)), ("SalesRevenueServicesNet", flow(40.0))]);
+        assert_eq!(p.get(&r, "revenue"), Some(100.0));
+        let (r, p) = resolve(vec![("RevenueFromContractWithCustomerExcludingAssessedTax", flow(90.0)), ("SalesRevenueGoodsNet", flow(95.0))]);
+        assert_eq!(p.get(&r, "revenue"), Some(90.0));
+        // A refiner (VLO).
+        let (r, p) = resolve(vec![("RefiningAndMarketingRevenue", flow(87804.0))]);
+        assert_eq!(p.get(&r, "revenue"), Some(87804.0));
+        // A part tag never stands in the contract-revenue variable: it holds a total only.
+        let (r, p) = resolve(vec![("SalesRevenueGoodsNet", flow(29970.0))]);
+        assert_eq!(p.get(&r, "revenue_from_contracts"), None);
+        assert_eq!(p.get(&r, "revenue_total_pre2018"), Some(29970.0));
+    }
+
+    #[test]
+    fn revenue_total_tags_of_a_utility_a_hospital_operator_and_a_lessor() {
+        // Each tag alone gives the revenue; a mutant that drops one tag fails here.
+        for (tag, value) in [("UtilityRevenue", 17_000.0), ("HealthCareOrganizationRevenue", 51_336.0), ("RealEstateRevenueNet", 2_817.0)] {
+            let (r, p) = resolve(vec![(tag, flow(value))]);
+            assert_eq!(p.get(&r, "revenue"), Some(value), "{tag}");
+            assert_eq!(p.source(&r, "revenue"), "= revenue_total_pre2018", "{tag}");
+            assert_eq!(p.source(&r, "revenue_total_pre2018"), format!("us-gaap/{tag}"), "{tag}");
+        }
+        // A total tag of the period wins over the pre-2018 total.
+        let (r, p) = resolve(vec![("Revenues", flow(100.0)), ("UtilityRevenue", flow(60.0))]);
+        assert_eq!(p.get(&r, "revenue"), Some(100.0));
+    }
+
+    #[test]
+    fn gross_profit_needs_one_basis() {
+        // One fact of the year in one filing.
+        let one = |val: f64, filed: &str, accn: &str| {
+            let mut f = fact(FY.0, FY.1, val, "10-K", filed);
+            f.accn = Some(accn.to_string());
+            f
+        };
+        let (old, new) = ("2015-02-19", "2017-02-28");
+        // HWM 2014: revenue restated in the filing of 2017, cost of revenue only in the filing of 2015
+        // (the filing of 2015 gives the old revenue 13000, a different value): no value.
+        let (r, p) = resolve(vec![
+            ("Revenues", vec![one(13000.0, old, "A-15"), one(12542.0, new, "A-17")]),
+            ("CostOfRevenue", vec![one(19137.0, old, "A-15")]),
+        ]);
+        assert_eq!(p.get(&r, "revenue"), Some(12542.0));
+        assert_eq!(p.get(&r, "gross_profit"), None);
+        assert!(p.source(&r, "gross_profit").contains("different filings"), "{}", p.source(&r, "gross_profit"));
+        // Restated cost of revenue and old revenue: no value either.
+        let (r, p) = resolve(vec![
+            ("Revenues", vec![one(100.0, old, "A-15")]),
+            ("CostOfRevenue", vec![one(60.0, old, "A-15"), one(58.0, new, "A-17")]),
+        ]);
+        assert_eq!(p.get(&r, "gross_profit"), None);
+        // Two filings, but the other filing gives the same value: a value. (Revenue tag with the contract tag.)
+        let (r, p) = resolve(vec![
+            ("RevenueFromContractWithCustomerExcludingAssessedTax", vec![one(100.0, old, "A-15"), one(100.0, new, "A-17")]),
+            ("CostOfRevenue", vec![one(60.0, old, "A-15")]),
+        ]);
+        assert_eq!(p.get(&r, "gross_profit"), Some(40.0));
+        // Two filings and a tag that the other filing does not have (a tag change): a value.
+        let (r, p) = resolve(vec![("Revenues", vec![one(100.0, new, "A-17")]), ("CostOfRevenue", vec![one(60.0, old, "A-15")])]);
+        assert_eq!(p.get(&r, "gross_profit"), Some(40.0));
+        // No accession number: no guard.
+        let (r, p) = resolve(vec![("Revenues", flow(100.0)), ("CostOfRevenue", vec![one(60.0, old, "A-15")])]);
+        assert_eq!(p.get(&r, "gross_profit"), Some(40.0));
+        // One basis and a negative result (a cruise line in 2020): the value stays.
+        let (r, p) = resolve(vec![("Revenues", vec![one(12542.0, new, "A-17")]), ("CostOfRevenue", vec![one(19137.0, new, "A-17")])]);
+        assert_eq!(p.get(&r, "gross_profit"), Some(-6595.0));
+        // The operating income formula does not use a value that was removed for a mixed basis.
+        let (r, p) = resolve(vec![
+            ("Revenues", vec![one(13000.0, old, "A-15"), one(12542.0, new, "A-17")]),
+            ("CostOfRevenue", vec![one(19137.0, old, "A-15")]),
+            ("OperatingExpenses", vec![one(100.0, new, "A-17")]),
+        ]);
+        assert_eq!(p.get(&r, "operating_income"), None);
+        // A reported gross-profit tag is never changed.
+        let (r, p) = resolve(vec![
+            ("Revenues", vec![one(13000.0, old, "A-15"), one(12542.0, new, "A-17")]),
+            ("CostOfRevenue", vec![one(19137.0, old, "A-15")]),
+            ("GrossProfit", flow(41.0)),
+        ]);
+        assert_eq!(p.get(&r, "gross_profit"), Some(41.0));
     }
 
     #[test]

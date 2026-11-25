@@ -12,6 +12,9 @@ not affected: they build each model from the fiscal years up to the base year (`
 (`CompanyFacts::filed_up_to`, `map_inputs_pit`) and do not fill an input from the
 10-K file of the cache. Do not read `fa dcf auto --as-of D` for a past D as a point-in-time value.
 
+These two commands are also not a point-in-time test of the share basis (the split factor): for that, use
+`fa dcf implied --as-of`, `fa dcf returns` or the backtest.
+
 *Evidence:* `rust/src/dcf/auto_cli.rs` (`map_inputs`, `map_inputs_pit`), `rust/mapcheck/src/facts.rs`
 (`filed_up_to`); a poison test on 2026-11-21 (NVDA facts filed after 2026-05-01 times
 1000): `fa dcf implied NVDA --price-date 2026-05-01` gives the same row on the clean and on the

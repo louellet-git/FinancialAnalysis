@@ -21,6 +21,8 @@ fa dcf calibrate [OPTIONS]
   --draws N (2000)   paths for each band of the band calibration
   --panel-out FILE   write the panel (tab separated)
   --date D (2026-11-19)  date written in the table
+  --cut YEAR         use only the fiscal years up to YEAR (an out-of-sample table for a test of the later years;
+                     the facts are today's facts, so a later restatement of an old year stays)
   --table FILE --lookup REVENUE,TEMPLATE
                      print the parameters of a company from a table (no cache needed)";
 
@@ -50,7 +52,7 @@ pub fn command(repo: &Path, args: &[String]) -> Result<u8, DcfError> {
     }
     for (i, a) in args.iter().enumerate() {
         let known_flags = ["--no-bands"];
-        let known_values = ["--cache", "--out", "--reps", "--draws", "--panel-out", "--date", "--table", "--lookup"];
+        let known_values = ["--cache", "--out", "--reps", "--draws", "--panel-out", "--date", "--table", "--lookup", "--cut"];
         let is_value = i > 0 && known_values.contains(&args[i - 1].as_str());
         if a.starts_with("--") && !known_flags.contains(&a.as_str()) && !known_values.contains(&a.as_str()) {
             return Err(DcfError(format!("unknown option '{a}'")));
@@ -76,8 +78,16 @@ pub fn command(repo: &Path, args: &[String]) -> Result<u8, DcfError> {
     let date = opt(args, "--date").unwrap_or("2026-11-19").to_string();
 
     let cache_text = if cache.ends_with("data/raw") { "data/raw".to_string() } else { cache.display().to_string() };
+    let cut: Option<i32> = opt(args, "--cut").map(|v| v.parse().map_err(|_| DcfError(format!("bad --cut '{v}'")))).transpose()?;
     let panel = build_panel(&cache, None).map_err(DcfError)?;
+    let panel = match cut {
+        Some(y) => panel.up_to_year(y),
+        None => panel,
+    };
     let mut out = String::new();
+    if let Some(y) = cut {
+        let _ = writeln!(out, "OUT OF SAMPLE for the years after {y}: only the fiscal years up to {y} (today's facts).");
+    }
     render_panel(&mut out, &panel);
     if let Some(path) = opt(args, "--panel-out") {
         std::fs::write(path, panel_tsv(&panel)).map_err(|x| DcfError(format!("{path}: {x}")))?;
@@ -100,7 +110,10 @@ pub fn command(repo: &Path, args: &[String]) -> Result<u8, DcfError> {
         let table = ProcessTable {
             meta: TableMeta {
                 date,
-                command: format!("fa dcf calibrate --cache {cache_text} --out {path} --reps {reps} --draws {draws}"),
+                command: format!(
+                    "fa dcf calibrate --cache {cache_text} --out {path} --reps {reps} --draws {draws}{}",
+                    cut.map_or(String::new(), |y| format!(" --cut {y}"))
+                ),
                 companies: panel.counts.companies,
                 company_years: panel.company_years(),
                 growth_observations: panel.counts.growth_obs,

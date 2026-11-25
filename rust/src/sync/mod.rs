@@ -61,7 +61,7 @@ DATA SETS (name: what; maximum age; hosts):
   intraday   5-minute bars of SPY, QQQ and --intraday-symbols; 1 day; alpaca (with keys), yahoo
   estimates  consensus, price targets, surprises; 7 days; nasdaq
   earnings   calendar scan and past report dates; 1 day; nasdaq, sec
-  options    option chain of today for the option symbols; 1 day; cboe, alpaca (with keys)
+  options    option chain of today for the option symbols; 1 day; alpaca (needs keys; no Cboe)
   rates      Treasury curves, CPI; 1 day; treasury, bls
   gsw        Federal Reserve curve; 1 day; federalreserve
   fred       the FRED series of the bond functions; 1 day; fred

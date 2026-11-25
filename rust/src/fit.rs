@@ -200,6 +200,11 @@ fn start_betas(points: &[(f64, f64)], tau1: f64, tau2: f64) -> Option<Nss> {
 /// (tau1, tau2) with betas from least squares; the three best starts are improved with
 /// Levenberg-Marquardt. The curve with the smallest sum of squares is the result.
 pub fn fit_curve(items: &[Inst], points: &[(f64, f64)]) -> (Nss, f64) {
+    try_fit_curve(items, points).expect("a start")
+}
+
+/// `fit_curve` with no panic: `None` when no start has a finite sum of squares.
+pub fn try_fit_curve(items: &[Inst], points: &[(f64, f64)]) -> Option<(Nss, f64)> {
     let mut starts: Vec<(f64, Nss)> = Vec::new();
     for tau1 in [0.4, 0.8, 1.5, 2.5, 4.0] {
         for tau2 in [3.0, 6.0, 10.0, 16.0, 25.0] {
@@ -222,7 +227,7 @@ pub fn fit_curve(items: &[Inst], points: &[(f64, f64)]) -> (Nss, f64) {
             best = Some(r);
         }
     }
-    best.expect("a start")
+    best
 }
 
 /// Why a security was not in the fit.

@@ -1,22 +1,16 @@
-//! Live option chains for the paper trader: the Cboe delayed quotes (JSON of one underlying).
+//! Live option chains for the paper trader: the container of the quotes of one underlying.
 //!
-//! Source: `https://cdn-api.cboe.com/api/global/delayed_quotes/options/{SYMBOL}.json`. It is the
-//! file that the delayed-quotes pages of cboe.com read; it is free, it needs no cookie and no key,
-//! and it answers the honest client of `fa futures`. It is not a published API: Cboe can change
-//! it. The quotes are delayed (about 15 minutes during the session) and one file holds all
-//! expiries of one underlying (SPY: about 12,000 options, 5.7 MB). The caller fetches one file for
-//! each underlying in each run.
-//!
-//! Yahoo is no source here: its option endpoint needs a cookie and a crumb, and it answers the
-//! honest client with HTTP 429 when it asks for the crumb (tested 2026-11-19).
+//! The Cboe delayed-quote client is removed: the Cboe page prohibits automatic downloads (ticket
+//! T-20261121-cboe-off). `fa trade paper` needs bid, ask, implied volatility and delta of each option. The
+//! Alpaca indicative chain (`market::alpaca`) is a different feed (modified quotes), and the paper trader
+//! has no reviewed adapter for it. So `Chains::get` refuses, and `fa trade paper` refuses to run with a live
+//! chain (use `--no-live`). The `Chain` type and the option name parser stay: the paper trader prices with a
+//! chain that a caller inserts, and `market::options` and `market::option_history` use `parse_option`.
 
 use super::calendar::{days_from_civil, Date};
 use super::pricing::Quote;
-use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::Arc;
-
-pub const URL: &str = "https://cdn-api.cboe.com/api/global/delayed_quotes/options/{symbol}.json";
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LiveQuote {
@@ -28,39 +22,13 @@ pub struct LiveQuote {
     pub open_interest: f64,
 }
 
-#[derive(Debug, Deserialize)]
-struct Reply {
-    timestamp: Option<String>,
-    data: Data,
-}
-
-#[derive(Debug, Deserialize)]
-struct Data {
-    symbol: String,
-    current_price: Option<f64>,
-    last_trade_time: Option<String>,
-    options: Vec<Opt>,
-}
-
-#[derive(Debug, Deserialize)]
-struct Opt {
-    option: String,
-    bid: Option<f64>,
-    ask: Option<f64>,
-    iv: Option<f64>,
-    delta: Option<f64>,
-    volume: Option<f64>,
-    open_interest: Option<f64>,
-}
-
 /// All quotes of one underlying.
 #[derive(Debug)]
 pub struct Chain {
     pub symbol: String,
-    /// The time stamp of the file, as Cboe gives it. It is UTC (checked 2026-11-19: the file of 15:43:13 came at 15:43:58 UTC).
-    /// The last trade times in the file are New York time, and they are about 15 minutes older.
+    /// The time stamp of the quotes (UTC), as the source gives it.
     pub timestamp: String,
-    /// The last price of the underlying, as Cboe gives it (delayed).
+    /// The last price of the underlying, as the source gives it.
     pub spot: Option<f64>,
     pub last_trade_time: Option<String>,
     /// Key: expiry, call, strike in thousandths of a dollar.
@@ -81,27 +49,9 @@ pub(crate) fn parse_option(text: &str, root: &str) -> Option<(Date, bool, i64)> 
 }
 
 impl Chain {
-    pub fn parse(bytes: &[u8], symbol: &str) -> Result<Chain, String> {
-        let reply: Reply = serde_json::from_slice(bytes).map_err(|e| format!("Cboe reply for {symbol} is not the expected JSON: {e}"))?;
-        if !reply.data.symbol.eq_ignore_ascii_case(symbol) {
-            return Err(format!("Cboe reply is for {}, not {symbol}", reply.data.symbol));
-        }
-        let mut quotes = HashMap::new();
-        for o in &reply.data.options {
-            let Some(key) = parse_option(&o.option, symbol) else { continue };
-            let v = |x: Option<f64>| x.filter(|y| y.is_finite()).unwrap_or(f64::NAN);
-            quotes.insert(key, LiveQuote { bid: v(o.bid), ask: v(o.ask), iv: v(o.iv), delta: v(o.delta), volume: v(o.volume), open_interest: v(o.open_interest) });
-        }
-        if quotes.is_empty() {
-            return Err(format!("Cboe reply for {symbol} has no option of that root"));
-        }
-        Ok(Chain {
-            symbol: symbol.to_string(),
-            timestamp: reply.timestamp.unwrap_or_default(),
-            spot: reply.data.current_price,
-            last_trade_time: reply.data.last_trade_time,
-            quotes,
-        })
+    /// A chain from its parts (the caller owns the source). `timestamp` is a text for the report.
+    pub fn new(symbol: &str, timestamp: &str, spot: Option<f64>, last_trade_time: Option<String>, quotes: HashMap<(Date, bool, i64), LiveQuote>) -> Chain {
+        Chain { symbol: symbol.to_string(), timestamp: timestamp.to_string(), spot, last_trade_time, quotes }
     }
 
     /// Text for the report: the time of the file and the last trade of the underlying (the quotes are
@@ -134,34 +84,24 @@ impl Chain {
     }
 }
 
-/// The chains of one run: each underlying is downloaded one time.
+/// The chains of one run. No chain is downloaded: `get` refuses (T-20261121-cboe-off). A test or a later source inserts chains.
 #[derive(Default)]
 pub struct Chains {
-    cache: HashMap<String, Result<Arc<Chain>, String>>,
-    downloads: usize,
+    cache: HashMap<String, Arc<Chain>>,
 }
 
-/// Seconds between two chain downloads (each file is 4 to 6 MB; Cboe answered HTTP 429 to a second
-/// download 0.5 s after the first one, tested 2026-11-19).
-const PAUSE_SECONDS: f64 = 3.0;
+/// The message of the refusal of a live chain.
+pub const REFUSED: &str = "no live option chain: the Cboe delayed quotes are not read (the Cboe page prohibits automatic downloads) and the Alpaca chain has no adapter for the paper trader yet (T-20261121-cboe-off); use --no-live";
 
 impl Chains {
-    /// Put a chain in (the tests use this; the command downloads).
+    /// Put a chain in (the tests use this).
     pub fn insert(&mut self, chain: Chain) {
-        self.cache.insert(chain.symbol.clone(), Ok(Arc::new(chain)));
+        self.cache.insert(chain.symbol.clone(), Arc::new(chain));
     }
 
+    /// The chain of the symbol if it was inserted. No request is made.
     pub fn get(&mut self, symbol: &str) -> Result<Arc<Chain>, String> {
-        if let Some(hit) = self.cache.get(symbol) {
-            return hit.clone();
-        }
-        if self.downloads > 0 {
-            std::thread::sleep(std::time::Duration::from_secs_f64(PAUSE_SECONDS));
-        }
-        self.downloads += 1;
-        let loaded = crate::futures::download(&URL.replace("{symbol}", symbol)).and_then(|bytes| Chain::parse(&bytes, symbol)).map(Arc::new);
-        self.cache.insert(symbol.to_string(), loaded.clone());
-        loaded
+        self.cache.get(symbol).cloned().ok_or_else(|| REFUSED.to_string())
     }
 }
 
@@ -169,17 +109,19 @@ impl Chains {
 pub mod tests {
     use super::*;
 
-    /// Two expiries of SPY, one adjusted option (`B1SPY`), one option with no ask, one with a missing field.
-    pub fn fixture() -> String {
-        r#"{"timestamp":"2026-11-19 15:10:00","data":{"symbol":"SPY","current_price":735.5,"last_trade_time":"2026-11-19T10:09:58","options":[
-          {"option":"SPY261120C00736000","bid":3.1,"bid_size":10,"ask":3.2,"iv":0.15,"open_interest":100,"volume":5000,"delta":0.48},
-          {"option":"SPY261120C00737000","bid":2.5,"ask":2.6,"iv":0.15,"delta":0.4},
-          {"option":"SPY261120P00735000","bid":2.0,"ask":2.1,"iv":0.16,"delta":-0.45},
-          {"option":"SPY261120P00730000","bid":0.0,"ask":0.0,"iv":0.0,"delta":0.0},
-          {"option":"SPY261120P00725000","bid":0.0,"ask":0.03,"iv":0.2,"delta":-0.05},
-          {"option":"SPY261127C00736500","bid":4.0,"ask":4.2},
-          {"option":"B1SPY261120C00736000","bid":9.0,"ask":9.5}]}}"#
-            .to_string()
+    /// Two expiries of SPY, one option with no ask, one with a missing field (a hand-made fixture, no Cboe reply).
+    pub fn fixture() -> Chain {
+        let (d1, d2) = (days_from_civil(2026, 11, 20), days_from_civil(2026, 11, 27));
+        let lq = |bid: f64, ask: f64, iv: f64, delta: f64, volume: f64, oi: f64| LiveQuote { bid, ask, iv, delta, volume, open_interest: oi };
+        let nan = f64::NAN;
+        let mut q = HashMap::new();
+        q.insert((d1, true, 736_000), lq(3.1, 3.2, 0.15, 0.48, 5000.0, 100.0));
+        q.insert((d1, true, 737_000), lq(2.5, 2.6, 0.15, 0.4, nan, nan));
+        q.insert((d1, false, 735_000), lq(2.0, 2.1, 0.16, -0.45, nan, nan));
+        q.insert((d1, false, 730_000), lq(0.0, 0.0, 0.0, 0.0, nan, nan));
+        q.insert((d1, false, 725_000), lq(0.0, 0.03, 0.2, -0.05, nan, nan));
+        q.insert((d2, true, 736_500), lq(4.0, 4.2, nan, nan, nan, nan));
+        Chain::new("SPY", "2026-11-19 15:10:00", Some(735.5), Some("2026-11-19T10:09:58".into()), q)
     }
 
     #[test]
@@ -194,8 +136,7 @@ pub mod tests {
 
     #[test]
     fn quotes_come_from_the_chain_and_bad_ones_do_not() {
-        let c = Chain::parse(fixture().as_bytes(), "SPY").unwrap();
-        // The adjusted option is not in the chain.
+        let c = fixture();
         assert_eq!(c.len(), 6);
         assert_eq!((c.spot, c.timestamp.as_str()), (Some(735.5), "2026-11-19 15:10:00"));
         let exp = days_from_civil(2026, 11, 20);
@@ -215,10 +156,11 @@ pub mod tests {
     }
 
     #[test]
-    fn rejects_other_replies() {
-        assert!(Chain::parse(b"<html>", "SPY").unwrap_err().contains("not the expected JSON"));
-        assert!(Chain::parse(fixture().as_bytes(), "QQQ").unwrap_err().contains("not QQQ"));
-        let empty = r#"{"data":{"symbol":"SPY","options":[]}}"#;
-        assert!(Chain::parse(empty.as_bytes(), "SPY").unwrap_err().contains("no option"));
+    fn a_live_chain_is_refused_and_no_address_is_built() {
+        let mut chains = Chains::default();
+        let e = chains.get("SPY").unwrap_err();
+        assert!(e.contains("T-20261121-cboe-off") && e.contains("--no-live"), "{e}");
+        chains.insert(fixture());
+        assert_eq!(chains.get("SPY").unwrap().len(), 6);
     }
 }

@@ -21,9 +21,12 @@ and the auditor.
 `analysis/IBM/research-ledger.md` as the example of a reviewed work. Your files:
 `analysis/<TICKER>/`.
 
-**Output.** The model, the ledger and the report draft, plus a final message: the
-headline numbers with their command and seed, the weak points that you found yourself,
-and the review steps that remain.
+**Output.** The model, the ledger, the report draft and `analysis/<TICKER>/COMMANDS.md`
+(each command of the report, with the seed and the data store commit, so that a person
+gets the same numbers), plus a final message: the headline numbers with their command and
+seed, the weak points that you found yourself, the judgments that could be a general rule
+of the automatic model (owner, 2026-11-21: the work contributes to the DCF engine), and the
+review steps that remain.
 
 **Checks:**
 1. Inputs come from `mapcheck values TICKER` (standard names). Check `nested` first.
@@ -34,9 +37,12 @@ and the review steps that remain.
 4. Forward disclosures (RPO, guidance) are used or excluded with a reason (rule R1).
 5. The report says what the price implies, and no input comes from the price. A valuation
    of ANT carries the conflict disclosure. The text is STE.
+6. Backtest (owner, 2026-11-21: "Backtesting is integral to our work here"). The report gives
+   the point-in-time record of the automatic model for the ticker (its rows of `fa dcf pit`),
+   and a trade from the report follows a backtested rule (for example A-009) or says that it does not.
 
-**Never.** Never commit, push, or open a pull request. The orchestrator does this. Pass your own work. Hide a weak point. Show a first pass as a
-reviewed valuation.
+**Never.** Never commit, push, or open a pull request (the orchestrator does this). Never pass your own
+work. Never hide a weak point. Never show a first pass as a reviewed valuation.
 
 **Stop and ask** when the ticker is not approved, the data has a FAIL status, or a
 driver has no source.

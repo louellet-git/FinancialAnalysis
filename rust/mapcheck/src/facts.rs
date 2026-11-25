@@ -48,6 +48,9 @@ pub struct Fact {
     pub val: Option<f64>,
     pub form: Option<String>,
     pub filed: Option<String>,
+    /// The accession number of the filing that holds the fact (SEC `accn`).
+    #[serde(default)]
+    pub accn: Option<String>,
 }
 
 impl Fact {
@@ -108,6 +111,37 @@ impl CompanyFacts {
         set.into_iter().collect()
     }
 
+    /// The accession number of the annual filing of each filing day (YYYY-MM-DD). If a day has more than one annual
+    /// filing, the smallest accession number is given.
+    pub fn annual_accessions(&self) -> BTreeMap<String, String> {
+        let mut out: BTreeMap<String, String> = BTreeMap::new();
+        for f in self.facts.values().flat_map(|ns| ns.values()).flat_map(|c| c.units.values().flatten()) {
+            if !Forms::Annual.has(f.form.as_deref()) {
+                continue;
+            }
+            if let (Some(d), Some(a)) = (f.filed.as_deref().and_then(|d| d.get(..10)), f.accn.as_deref()) {
+                let e = out.entry(d.to_string()).or_insert_with(|| a.to_string());
+                if a < e.as_str() {
+                    *e = a.to_string();
+                }
+            }
+        }
+        out
+    }
+
+    /// The filing date (YYYY-MM-DD) of the filing with this accession number: the earliest `filed` of the facts that carry
+    /// it (None: no fact has it, or it has no date).
+    pub fn filing_date(&self, accn: &str) -> Option<String> {
+        self.facts
+            .values()
+            .flat_map(|ns| ns.values())
+            .flat_map(|c| c.units.values().flatten())
+            .filter(|f| f.accn.as_deref() == Some(accn))
+            .filter_map(|f| f.filed.as_deref().and_then(|d| d.get(..10)))
+            .min()
+            .map(|d| d.to_string())
+    }
+
     /// The facts as they were on `cutoff` (YYYY-MM-DD): only the facts filed on that day or before. A fact with no filing
     /// date is dropped (it cannot be shown to be known). A later filing that restates a value is not in the copy.
     pub fn filed_up_to(&self, cutoff: &str) -> CompanyFacts {
@@ -131,6 +165,8 @@ impl CompanyFacts {
 pub struct Selected {
     pub value: f64,
     pub filed: String,
+    /// The accession number of the filing of the fact (empty: not known, or a value made of two facts).
+    pub accn: String,
     pub note: &'static str,
 }
 
@@ -212,21 +248,21 @@ fn merge_near_ends(counts: &BTreeMap<String, usize>) -> Vec<String> {
 
 pub fn select_instant(entries: &[Fact], end: &str, forms: Forms) -> Option<Selected> {
     let best = latest(entries.iter().filter(|e| e.end == end && forms.has(e.form.as_deref())))?;
-    Some(Selected { value: best.val?, filed: best.filed().to_string(), note: "" })
+    Some(Selected { value: best.val?, filed: best.filed().to_string(), accn: best.accn.clone().unwrap_or_default(), note: "" })
 }
 
 pub fn select_annual(entries: &[Fact], end: &str) -> Option<Selected> {
     let best = latest(entries.iter().filter(|e| {
         e.end == end && Forms::Annual.has(e.form.as_deref()) && within(e.days(), ANNUAL_DAYS)
     }))?;
-    Some(Selected { value: best.val?, filed: best.filed().to_string(), note: "" })
+    Some(Selected { value: best.val?, filed: best.filed().to_string(), accn: best.accn.clone().unwrap_or_default(), note: "" })
 }
 
 pub fn select_quarter(entries: &[Fact], end: &str) -> Option<Selected> {
     let q = Forms::Quarterly;
     let here: Vec<&Fact> = entries.iter().filter(|e| e.end == end && q.has(e.form.as_deref())).collect();
     if let Some(best) = latest(here.iter().copied().filter(|e| within(e.days(), QUARTER_DAYS))) {
-        return Some(Selected { value: best.val?, filed: best.filed().to_string(), note: "" });
+        return Some(Selected { value: best.val?, filed: best.filed().to_string(), accn: best.accn.clone().unwrap_or_default(), note: "" });
     }
     let longest = here
         .iter()
@@ -244,7 +280,7 @@ pub fn select_quarter(entries: &[Fact], end: &str) -> Option<Selected> {
                 .unwrap_or(false)
     }))?;
     let filed = if ytd.filed() >= prior.filed() { ytd.filed() } else { prior.filed() };
-    Some(Selected { value: ytd.val? - prior.val?, filed: filed.to_string(), note: YTD_NOTE })
+    Some(Selected { value: ytd.val? - prior.val?, filed: filed.to_string(), accn: String::new(), note: YTD_NOTE })
 }
 
 pub fn select(entries: &[Fact], end: &str, forms: Forms, period: Period) -> Option<Selected> {
@@ -266,6 +302,7 @@ pub mod testing {
             val: Some(val),
             form: Some(form.to_string()),
             filed: Some(filed.to_string()),
+            accn: None,
         }
     }
 

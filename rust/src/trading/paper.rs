@@ -8,7 +8,8 @@
 //! - the paper account: equity, open positions, trades since the start. The fills are model fills
 //!   on data that the bot did not see when it was designed, so this is a forward test;
 //! - the new signals that the bot queued on the last bar, priced on the LIVE option chain (real bid
-//!   and ask, delayed: Cboe delayed quotes; model price for a leg that the chain does not list).
+//!   and ask). The live chain is refused for now (ticket T-20261121-cboe-off: the Cboe page prohibits automatic
+//!   downloads and the paper trader has no Alpaca adapter); `--no-live` prices with the model.
 //!
 //! State file of each bot: `data/processed/trading/paper/<bot>.json` (not in git). The format is
 //! the one of the earlier Python code: `paper_start`, and `snapshots` (the last 500).
@@ -35,7 +36,8 @@ USAGE:
   BOT           the bots to step (default: all bots)
   --start D     paper start date for a bot with no saved state (default: today, New York)
   --no-refresh  use the cached data only (no download of bars)
-  --no-live     price the signals with the model, not with the live option chain
+  --no-live     price the signals with the model (needed now: the live option chain is refused);
+                with --no-refresh too, only cached bars are read (no Yahoo download)
   --equity N    the starting equity (default 2000)
   --max-risk N  the maximum loss of one trade is N dollars; it replaces --risk
   --risk F      the maximum loss of one trade as a fraction of equity (default 0.03)
@@ -43,7 +45,7 @@ USAGE:
 Run it on a schedule during the market hours (every 5 minutes for the 5-minute bots, every hour for
 the hourly bots, after the close for the daily bots). The state of each bot is in
 data/processed/trading/paper/<bot>.json. Bars: Yahoo chart endpoint (`fa trade fetch`). Live
-option chain: Cboe delayed quotes (about 15 minutes late; before the open the quotes can be stale).";
+option chain: refused until a source is chosen (T-20261121-cboe-off); run with --no-live.";
 
 /// The clock of one run: the New York date and minute of the day, and the UTC second.
 #[derive(Debug, Clone, Copy)]
@@ -115,6 +117,9 @@ pub fn command(repo: &Path, args: &[String]) -> Result<i32, String> {
         return Ok(0);
     }
     let a = parse_args(args)?;
+    if !a.no_live {
+        return Err(format!("{} (nothing was run)", super::chain::REFUSED));
+    }
     let known = bots::names(true);
     let names: Vec<&str> = if a.bots.is_empty() { bots::names(false) } else { a.bots.iter().map(String::as_str).collect() };
     if let Some(bad) = names.iter().find(|n| !known.contains(n)) {
@@ -278,9 +283,9 @@ fn price_signals(result: &BacktestResult, md: &MarketData, chain_of: &mut dyn Fn
             entry += leg.qty as f64 * if leg.qty > 0 { q.ask } else { q.bid };
         }
         let source = match (&chain, live_legs) {
-            (Some(c), n) if n == s.legs.len() => format!("live chain, Cboe delayed: {}", c.age()),
+            (Some(c), n) if n == s.legs.len() => format!("live chain: {}", c.age()),
             (Some(_), 0) => "synthetic (no leg in the chain)".to_string(),
-            (Some(c), n) => format!("mixed: {n} of {} legs from the Cboe chain, {}", s.legs.len(), c.age()),
+            (Some(c), n) => format!("mixed: {n} of {} legs from the live chain, {}", s.legs.len(), c.age()),
             (None, _) if live => "synthetic (no chain)".to_string(),
             (None, _) => "synthetic".to_string(),
         };
@@ -421,16 +426,22 @@ mod tests {
 
     /// A chain with the two strikes of the test bot at the expiry that the bot asks for.
     fn chain_for(expiry: Date, long_ask: f64, short_bid: f64) -> Chain {
-        let name = |k: u32| format!("SPY{:02}{:02}{:02}C{:08}", civil_from_days(expiry).0 % 100, civil_from_days(expiry).1, civil_from_days(expiry).2, k);
-        let text = format!(
-            r#"{{"timestamp":"2026-11-19 15:10:00","data":{{"symbol":"SPY","current_price":735.5,"options":[
-            {{"option":"{}","bid":{},"ask":{long_ask}}},{{"option":"{}","bid":{short_bid},"ask":{}}}]}}}}"#,
-            name(K as u32 * 1000),
-            long_ask - 0.1,
-            name((K as u32 + 1) * 1000),
-            short_bid + 0.1
-        );
-        Chain::parse(text.as_bytes(), "SPY").unwrap()
+        use crate::trading::chain::LiveQuote;
+        let lq = |bid: f64, ask: f64| LiveQuote { bid, ask, iv: f64::NAN, delta: f64::NAN, volume: f64::NAN, open_interest: f64::NAN };
+        let mut q = std::collections::HashMap::new();
+        q.insert((expiry, true, K as i64 * 1000), lq(long_ask - 0.1, long_ask));
+        q.insert((expiry, true, (K as i64 + 1) * 1000), lq(short_bid, short_bid + 0.1));
+        Chain::new("SPY", "2026-11-19 15:10:00", Some(735.5), None, q)
+    }
+
+    #[test]
+    fn a_live_run_is_refused_and_names_the_ticket() {
+        let dir = std::env::temp_dir().join(format!("fa-paper-refuse-{}", std::process::id()));
+        let e = command(&dir, &[]).unwrap_err();
+        assert!(e.contains("T-20261121-cboe-off") && e.contains("--no-live") && e.contains("nothing was run"), "{e}");
+        assert!(!dir.exists(), "nothing is written");
+        // With --no-live the argument check passes and the run goes on (an unknown bot stops it at once, no network).
+        assert_eq!(command(&dir, &["--no-live".into(), "no_such_bot".into()]).unwrap(), 2);
     }
 
     #[test]
@@ -485,7 +496,7 @@ mod tests {
         let s = &r.signals[0];
         assert!((s.entry - (3.40 - 2.60)).abs() < 1e-12, "{}", s.entry);
         assert!((s.max_loss_per_unit - 0.80 * 100.0).abs() < 1e-9);
-        assert!(s.source.starts_with("live chain, Cboe delayed: file 2026-11-19 15:10:00 UTC, underlying last trade"), "{}", s.source);
+        assert!(s.source.starts_with("live chain: file 2026-11-19 15:10:00 UTC, underlying last trade"), "{}", s.source);
         assert!(r.text.contains("SIGNAL (next bar) SPY") && r.text.contains("live entry +0.80/unit (max loss $80/unit;"), "{}", r.text);
         assert!(r.text.contains("equity $2,000.00  (+0.00%)  closed trades 0  realized $+0.00"), "{}", r.text);
 
@@ -506,7 +517,7 @@ mod tests {
 
         // A chain that does not list the legs: the signal falls back to the model price and says so.
         let mut other = Chains::default();
-        other.insert(Chain::parse(_chain_fixture().as_bytes(), "SPY").unwrap());
+        other.insert(_chain_fixture());
         let afternoon = Now::from_utc(last_date as i64 * 86_400 + 18 * 3600); // 13:00 New York
         let r3 = step(&mut QueueAt(n - 1), &store, &state, &risk, None, Some(&mut other), afternoon).unwrap();
         assert_eq!(r3.signals[0].source, "synthetic (no leg in the chain)");
@@ -524,6 +535,6 @@ mod tests {
         assert_eq!((a.bots.as_slice(), a.no_live, a.max_risk, a.start.as_deref()), (&["s05_ic_0dte".to_string()][..], true, Some(250.0), Some("2026-11-19")));
         assert!(parse_args(&["--bogus".into()]).is_err());
         assert!(parse_args(&["--equity".into()]).is_err());
-        assert_eq!(command(Path::new("/nonexistent"), &["nope".into()]).unwrap(), 2);
+        assert_eq!(command(Path::new("/nonexistent"), &["nope".into(), "--no-live".into()]).unwrap(), 2);
     }
 }

@@ -1,0 +1,18 @@
+BASE RATES of 10 fiscal years at 2026-11-20: 503 tickers, 500 companies (one for each SEC number); windows filed on or before 2026-11-20.
+  last window: 394 companies; no base-year value: 103: ABNB AMCR AOS APA APH APO APP APTV ARE AVGO BE BF-B BG BLK CARR CEG CHD CI CMG COIN CPT CRH CRWD DASH DDOG DECK DG DIS DLTR DOW DVA EFX EQT ETN ETR EVRG EXR FANG FDXF FERG FIS FOX GDDY GEHC GEV GIS GLW GPC GPN HCA HOOD HWM IFF IRM JNJ KHC KKR KO KR LDOS LHX LIN MAA MNST MOS MRK MRNA MRSH MRVL NXPI O ODFL OKTA OTIS PFE PLD PLTR PWR Q RDDT REG ROL SJM SNDK SOLV STE STZ SW SYY TKO TPL TRGP TSCO UBER VICI VLO VLTO VRSK VRT VST VTRS WDC ZBH; no fiscal year with revenue: 2: HONA VYLR; last year older than 548 days: 1: SKYD
+  LAST WINDOW of each company (compound annual growth of the revenue)
+    bucket           n   median     75th     90th     95th      max  maximum
+    below 1B        22    22.2%    26.7%    39.6%    46.3%    65.7%  CVNA
+    1B to 10B      199     7.8%    11.6%    16.9%    21.2%    45.7%  NVDA
+    10B to 50B     127     4.3%     6.3%     9.8%    12.0%    27.3%  META
+    50B or more     46     3.9%     7.7%    10.0%    13.1%    21.0%  AMZN
+    all            394     6.1%    10.4%    16.9%    23.6%    65.7%  CVNA
+  POOLED WINDOWS (every window of every company)
+    bucket           n   median     75th     90th     95th      max  maximum
+    below 1B       274    17.7%    24.0%    36.0%    44.1%    75.0%  TSLA
+    1B to 10B     1587     6.9%    10.9%    15.3%    19.6%    47.3%  TSLA
+    10B to 50B     969     2.9%     5.8%     8.2%    10.6%    30.4%  CNC
+    50B or more    349     2.6%     6.9%     9.7%    10.9%    23.7%  AMZN
+    all           3179     5.6%     9.9%    16.0%    21.8%    75.0%  TSLA
+  Limits: the list is a list of today's names (survivorship: companies that left it are not in the set, which moves the rates up); the windows of one company overlap (they are not independent); acquired revenue is in the growth and a spin-off lowers it; a company with no mapped revenue in the base year has no window (the engine does not patch it); the size is the revenue of the base year in nominal dollars; a base rate is a measurement of the past, never an input of the model.
+TIME: mapping 9.17 s | total 9.21 s

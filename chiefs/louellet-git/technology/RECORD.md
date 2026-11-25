@@ -136,6 +136,9 @@ Done: the scheduled task "Daily option price save (20-day test)" (15:27 New York
 Words: "Is the lean method up to date? Can you move to a new repo called the-heads. I created it so it'll be separate from the chiefs."
 Done: it was not up to date (no model permission, no ask flow, no board area `ask`, no write-up row). `louellet-git/the-heads` has the general system with these rules (commit 6264abb). `lean/` is removed from `louellet-git/chiefs`, and its README points to the new repo (chiefs pull request 35).
 
+## 2026-11-21 02:57 UTC (chat)
+Words: "Please get to work on the backtesting environment, ask the heads what they require."
+Done: ticket `T-20261121-backtest-environment` (order 1); a question to the Quant, Fundamental and Quality and Risk heads.
 ## 2026-11-21 03:00 UTC (chat)
 Words: "I think we should also get a head of economics which looks at current economic conditions/factors and is generally our economy guy. Supporting role."
 Done: a new row `Head of Economics` in `chiefs/ORIENTATION.md` (sections 1 and 2; folder `economics`, files `analysis/macro/`), the agent `macro-economist`, its row in `docs/TEAMS.md`. The person starts the session.
@@ -149,6 +152,9 @@ Question: "May I subscribe to the Tiingo Power plan ($30 a month, with your Tiin
 Words: "No, please find a better source then if needed"
 Done: no Tiingo plan, no private store. Research of free sources whose terms permit a public copy (Quandl WIKI archive, Stooq, Alpaca, open datasets). Tiingo terms (read 2026-11-21, https://www.tiingo.com/tos section 1.6): the free plan forbids any persistent storage; paid plans are internal and personal use only.
 
+## 2026-11-21 05:04 UTC (chat)
+Words: "Remove the tests used for a decision I think that's overdoing it ?" and "The backtest harness and the hypothesis file are more for the heads that require it"
+Done: the row "Test or experiment that a person uses for a decision" removed from `louellet-git/the-heads` (commit 96eabd4). In this repo the harness is opt-in: `trading/hypotheses/README.md` says who uses it; an exploratory run that reaches a registered window is no longer refused (a WARNING names the hypothesis).
 ## 2026-11-21 04:03 UTC (relayed by the Head of Quant Research; checked in its transcript)
 Words: "Before asking me anything, please look into it. Send that to the tech head."
 Done: `chiefs/ORIENTATION.md`, section 5, item 2 of "Requests for the person": research comes first; a question carries the result and a recommendation; a question that research can answer is not asked. The same rule in `louellet-git/the-heads`.
@@ -158,3 +164,55 @@ Words: "I'd rather we run the quant algo somewhere that other research firms wil
 Question: "May the quant algo engine run on a free Google Cloud e2-micro machine in us-east1 ... set up in your own Google account? ..."
 Words: "Yes (Recommended)"
 Done: ticket `T-20261121-algo-host-gcp` (order 2). The Head of Quant Research is told.
+
+## 2026-11-21 14:58 UTC (chat)
+Words: "Can you add to the-heads and to our heads that they can parallelize work when it is reasonable to"
+Done: `chiefs/ORIENTATION.md`, section 3, "Parallel work" (a permission: independent agents in their own worktrees, or two tickets that touch different files; not for work on the same files, dependent work, or more agents than the head can examine). The same rule in `louellet-git/the-heads`.
+
+## 2026-11-21 15:02 UTC (chat)
+Words: "Remove out the not a duty part, and make the rule lean so that it's as lean as other models"
+Done: "Parallel work" is two lines, with no "not a duty" sentence, here and in `louellet-git/the-heads`.
+
+## 2026-11-21 (dialog)
+Words: "Yes (Recommended)" to: may I move the FRED files out of the public store into local copies that each head gets with one command?
+Then: "Would it help if I just made the repo private instead?" Answer: only part of the way (the terms also prohibit storage and giving the data to a second person; private repos use paid Actions minutes; each session needs access). The plan stays.
+Done: ticket `T-20261121-fred-local`.
+
+## 2026-11-21 (dialog)
+Words: "Yes (Recommended)" to: will you make fa-data private? (The terms of Nasdaq, Yahoo, Cboe, FRED and ICE do not permit a public copy; GitHub ToS D.3.)
+Done: the store README says private (store e3b735e); the heads are told to attach fa-data before a clone. The owner changes the visibility on GitHub. The FRED move continues.
+
+## 2026-11-21 (refusals reported by the heads)
+- Fundamental Research: the permission system refused `git push origin claude/sp100-week-attribution` (its own branch). Not needed: the same commits are on GitHub through claude/premium-series. Cause not known. Do not try again in another form.
+
+## 2026-11-21 ~18:00 UTC (dialog in the Quality and Risk session, read in its transcript)
+Words: "Shared store, I accept" (the daily save of the Alpaca chains goes into the shared private store; the owner accepts the terms risk).
+Done: the note in `docs/DATA-SOURCES.md`, section "Alpaca paper trading".
+
+## 2026-11-21 (chat)
+Words: "I think we should have a head of staff, which is above you and the other heads. ... Fable is more for me to speak w and to address the other heads. I want it for overall coordination but it doesn't need to get into the weeds too much." Then: "1. I think it should go to the head of staff 2. I and the head of staff set the pace 3. I'll speak w head of staff when convenient for me"
+Done: the Head of Staff row and rules in `chiefs/ORIENTATION.md` (questions for the person go through it; the person and it set the order; no fixed report time); the session.
+## 2026-11-21 (dialog)
+Words: "Yes (Recommended)" to: may we keep the Philadelphia Fed SPF file as a private copy (not in the public repo), with only the results in the repo?
+Done: ticket `T-20261121-spf-loader`.
+Words: "Can you send a blast ensuring that models should be properly documented as per the rules?"
+Done: a message to the four heads with the rule (CLAUDE.md "Model documents"; QUALITY-STANDARDS section 4): each head lists the models of its area without a document or a record and writes them; the Quality and Risk head refuses a model change without a current document.
+
+## 2026-11-21 (refusal)
+- My own session: the permission system refused a second `git push` of a usage file to `refs/usage/<id>` of louellet-git/fa-data (reason given: undermining oversight). The first try had failed with a disconnect. Not tried again in any form; the owner decides the way out (ticket T-20261121-usage-log).
+
+## 2026-11-21 (relayed by the Head of Staff)
+Words: "Let's not get overly complicated" (on the usage log: the push path, the permission rule and the settings).
+Done: the usage log is local only and on request (`fa usage record && fa usage show`); no hook, no push, no setting.
+
+## 2026-11-21 (chat)
+Words: "the recent head of staff plus any other heads work to the heads repo."
+Done: the-heads 19a65d4: the Head of Staff rules as they are now; the habits "Does it make sense?" and "Test before you constrict"; monitoring by script; the store terms (public, private, original source); long head sessions; epics and stories; the backtest line; record number ranges.
+
+## 2026-11-23 (dialog of the Head of Staff)
+Words: "Yes, Cameco first (Recommended)" (shall the Head of Technology add the IFRS standard to the data mapping after the token reset, with Cameco as the first test?).
+Done: ticket `T-20261123-ifrs-mapping-cameco` (backlog, after the reset).
+
+## 2026-11-23 (relayed by the Head of Staff)
+Words: "So let's grab the other 27%" (the URA holdings that do not file with the SEC).
+Done: ticket `T-20261123-non-sec-accounts-scout` (backlog, after the reset and the Cameco test).
