@@ -49,3 +49,11 @@ Table 1 has no double count of cash and of closure cost; the beta comes from dat
 2% on one path; T2 has the vintage rule (filing date, release date); T3 has the benchmark "beta plus the raw commodity
 return", is pooled over 5 named tickers, and has its fit and hold-out dates; a block "Size of the work" with a stop
 point. Still a design only. Next: the check of the difference by Quality, the Head of Staff, then the person.
+
+Board note (16:39 UTC, 2026-11-25): version 3 of the design page. Quality on version 2: PASS-WITH-NOTES with one condition,
+now applied: for T3, each judgment uses only documents dated on or before 2023-12-31 (the hold-out is in the past). Also:
+the fit window of T3 is 2017-01 to 2023-12; the 5 names come from the URA holdings of the form N-PORT nearest to
+2023-12-31; Cameco is 22.2% of URA (the URA page on main). A correction of this head: the page recommended UEC as the
+first company with no read of its technical reports. The page now says so: UEC if its reports have a mine plan with
+costs, else NexGen. OPEN, first step of any build: read which UEC properties have a technical report with an after-tax
+value and a price sensitivity table (UEC may report resources with no reserves for most projects).

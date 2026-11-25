@@ -32,7 +32,7 @@ See: the reserve data are text in filed reports, not data fields; reading them i
 | Commodity price, spot | Technology: IMF monthly series, used by its release date | Month-end points only |
 | Debt, cash, closure liability, shares | The SEC data. For Cameco, NexGen and Denison: IFRS data (Technology) | US filers only |
 | Discount rate | The rate model of the engine; the beta from data before the test window, the same beta in T3 | Yes |
-| Conversion share; chance and date of a permit; long-run price level | A judgment of this head: a dated record for each, with its reason, written before the hold-out | New records |
+| Conversion share; chance and date of a permit; long-run price level | A judgment of this head: a dated record for each, with its reason. For T3, each judgment uses only documents dated on or before 2023-12-31 (for example the long-run price of the technical report of that time) | New records |
 
 **Table 3: The tests, with the pass rule written before the first run.**
 See: T1, T2 and T4 judge the engine. T3 judges the price sensitivity of the mine plans, not the level of the value.
@@ -41,18 +41,15 @@ See: T1, T2 and T4 judge the engine. T3 judges the price sensitivity of the mine
 |---|---|
 | T1 Replication | On one path with the price, the rate and the tax of the technical report, the model gives the after-tax value of that report for each mine, within 2%. The gap with our own price path is a measurement |
 | T2 Point in time | The value at a date does not change when all data filed or released after the date are removed or made false |
-| T3 Price sensitivity, on a hold-out | Each month. Benchmark: beta times the market, plus the raw commodity return with a fitted loading. The change of the model value from the commodity price must lower the out-of-sample error of the stock return against the benchmark (Clark-West test, 10% level), pooled over 5 names: the 5 largest URA holdings that are miners with a technical report on 2023-12-31 (expected: CCJ, NXE, UEC, DNN, UUUU; this rule has survivorship). Fit to 2023-12; hold-out 2024-01 to 2026-10, scored one time. One commodity: about one trial; a pass is "consistent with", not proof |
+| T3 Price sensitivity, on a hold-out | Each month. Benchmark: beta times the market, plus the raw commodity return with a fitted loading. The change of the model value from the commodity price must lower the out-of-sample error of the stock return against the benchmark (Clark-West test, 10% level), pooled over 5 names: the 5 largest miners with a technical report in the URA holdings of the form N-PORT nearest to 2023-12-31 (expected: CCJ, NXE, UEC, DNN, UUUU). Fit 2017-01 to 2023-12; hold-out 2024-01 to 2026-10, scored one time. One commodity: about one trial; a pass is "consistent with", not proof |
 | T4 Sum | The blocks add to the total. A check shows that no input reads a stock price |
 
-**Size of the work** (estimates of this head, not measurements)
+**Size of the work** (estimates): the first value of one company with T1, T2 and T4 (the code, one analyst agent, one gate) is
+about 6% to 8% of the weekly token limit. T3 needs 4 more names and a monthly price series: about 3 to 4 more weeks.
+Stop point: a T1 failure after one correction of the typed inputs.
 
-- First value of UEC with T1, T2 and T4: the evaluator code, one analyst agent to read the technical reports, one
-  gate: about 6% to 8% of the weekly token limit. It is the only build that fits this week.
-- Until T3 can be scored: 4 more names (three need IFRS data, two are developers) and a monthly price series with
-  release dates: about 3 to 4 more weeks. Stop point: if T1 fails on UEC after one correction of the typed inputs.
-
-**Decisions for you**: (1) build UEC, or stop here; (2) UEC first (a US filer; its SEC data and prices are in the
-store), or Cameco first (21.6% of URA on the URA page; it needs the IFRS data and the Westinghouse stake); (3) accept or
-change the pass rules before the first run.
+**Decisions for you**: (1) build, or stop here; (2) the first company: UEC (a US filer; its SEC data and prices are in the
+store) if its technical reports have a mine plan with costs (not read yet), else NexGen (one project with a full study).
+Cameco (22.2% of URA) needs the IFRS data and the Westinghouse stake: later; (3) accept or change the pass rules.
 
 Status: a design only; no code, no run and no value exist. Not covered: reactor developers, the uranium trust, Kazatomprom.
