@@ -5,10 +5,9 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
 ## Standing words of the person
 - 2026-11-20 21:44 UTC: realistic risk, not potential risk; internal work not slowed; trades strict
   (QUALITY-STANDARDS section 3, "Proportion").
-- 2026-11-20: lean agents of good quality, "not obsessive and tight fisted". Few pull requests; PowerShell for Windows.
 - 2026-11-20 23:22 UTC: choose the model of each agent run for the job (permission, not a duty); the
   files stay Sonnet. The validator, auditor and code reviewer found each MAJ: keep Sonnet for that work.
-  Haiku fits a small mechanical check (a byte comparison, a narrow diff).
+  Haiku fits a small mechanical check (a byte comparison, a narrow diff). Lean agents; few PRs; PowerShell for Windows.
 
 ## Goal now
 - Do the gate reviews that the other heads ask for; one verdict with all findings in one message. Head of Staff
