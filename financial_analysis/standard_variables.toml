@@ -796,6 +796,7 @@ tags = [
     "us-gaap/LongTermDebtAndCapitalLeaseObligationsCurrent",
     "us-gaap/ConvertibleDebtCurrent",
     "us-gaap/ConvertibleNotesPayableCurrent",
+    "ifrs-full/CurrentPortionOfLongtermBorrowings",
 ]
 formulas = ["long_term_debt_total - long_term_debt"]
 
@@ -818,6 +819,7 @@ tags = [
     "us-gaap/LongTermNotesPayable",
     "us-gaap/ConvertibleDebtNoncurrent",
     "us-gaap/ConvertibleLongTermNotesPayable",
+    "ifrs-full/LongtermBorrowings",
 ]
 formulas = ["long_term_debt_total - long_term_debt_current"]
 

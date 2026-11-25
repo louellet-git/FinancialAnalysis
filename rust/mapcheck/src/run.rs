@@ -57,6 +57,8 @@ pub struct TickerReport {
     pub core_filled: usize,
     pub seconds: f64,
     pub company: Option<Company>,
+    /// The currency of the values: "USD", or the reporting currency of an ifrs-full filer (no conversion), or "unknown".
+    pub currency: String,
 }
 
 /// The companyfacts file for a ticker: `<cache>/<TICKER>/company_facts.json[.gz]`.
@@ -102,6 +104,7 @@ fn error_report(ticker: &str, message: String, seconds: f64) -> TickerReport {
         core_filled: 0,
         seconds,
         company: None,
+        currency: "USD".to_string(),
     }
 }
 
@@ -204,6 +207,24 @@ fn check_facts_with(registry: &Registry, ticker: &str, facts: &CompanyFacts, n_p
         template = "no-revenue";
         judged = false;
     }
+    let currency = facts.currency().unwrap_or_else(|| "unknown".to_string());
+    if currency == "unknown" {
+        findings.push(Finding {
+            severity: Severity::Warn,
+            code: "currency".to_string(),
+            detail: "an ifrs-full filer with no total assets in a currency unit: the currency is not known, and the facts give no values".to_string(),
+        });
+    } else if currency != "USD" {
+        findings.push(Finding { severity: Severity::Info, code: "currency".to_string(), detail: format!("all amounts are in {currency} (no conversion to USD)") });
+    }
+    let other = facts.other_currency_facts();
+    if other > 0 {
+        findings.push(Finding {
+            severity: Severity::Info,
+            code: "other_currency_facts".to_string(),
+            detail: format!("{other} total-assets facts in another currency than {currency} are not used"),
+        });
+    }
     let worst = findings.iter().map(|f| f.severity).max().unwrap_or(Severity::Info);
     let status = if !judged {
         Status::Template
@@ -229,6 +250,7 @@ fn check_facts_with(registry: &Registry, ticker: &str, facts: &CompanyFacts, n_p
         latest,
         seconds: start.elapsed().as_secs_f64(),
         company: if keep_values { Some(company) } else { None },
+        currency,
     }
 }
 
@@ -384,7 +406,7 @@ pub fn values_json(registry: &Registry, report: &TickerReport) -> Vec<Value> {
         }
         lines.push(json!({
             "ticker": report.ticker,
-            "form": period.forms.primary(),
+            "form": period.form_label(),
             "period_end": period.end,
             "filed_date": period.filed.clone().unwrap_or_else(|| period.end.clone()),
             "values": values,

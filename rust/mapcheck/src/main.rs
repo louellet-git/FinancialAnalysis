@@ -339,8 +339,14 @@ fn cmd_values(raw: &[String]) -> Result<bool, String> {
                     Some((sic, text)) => println!("\n{ticker}: SIC {sic} {text}, sector {} (Fama-French 12)", sec::ff12_sector(sic)),
                     None => println!("\n{ticker}: no SIC code in the cache (the file is missing or old, or the filer has no code; run: mapcheck fetch --submissions {ticker})"),
                 }
-                if !facts.has_us_gaap() {
-                    println!("{ticker}: ifrs-full facts; all amounts are in {} (no conversion to USD)", facts.reporting_currency().unwrap_or("USD"));
+                if report.currency != "USD" {
+                    println!("{ticker}: ifrs-full facts; all amounts are in {} (no conversion to USD)", report.currency);
+                    if report.currency == "unknown" {
+                        println!("{ticker}: the currency is not known (no total assets in a 3-letter currency unit): no values");
+                    }
+                    if facts.other_currency_facts() > 0 {
+                        println!("{ticker}: {} total-assets facts in another currency are not used", facts.other_currency_facts());
+                    }
                 }
                 print!("{}", values_listing(&registry, &report));
             }

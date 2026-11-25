@@ -22,9 +22,16 @@ pub struct PeriodData {
     pub sources: Vec<Option<String>>,
     /// us-gaap USD tags that have no standard variable: tag -> value.
     pub raw_extras: BTreeMap<String, f64>,
+    /// The foreign annual form of the period (`40-F`, `20-F`), for the output; `None`: the primary form of `forms` (10-K, 10-Q).
+    pub form: Option<String>,
 }
 
 impl PeriodData {
+    /// The form name for the output: the real form of a 40-F or 20-F period, else 10-K or 10-Q.
+    pub fn form_label(&self) -> &str {
+        self.form.as_deref().unwrap_or_else(|| self.forms.primary())
+    }
+
     pub fn get(&self, registry: &Registry, name: &str) -> Option<f64> {
         registry.try_var(name).and_then(|i| self.values[i])
     }
@@ -268,6 +275,19 @@ fn finish(registry: &Registry, tag_values: Vec<Option<f64>>, tag_sources: Vec<Op
     }
 }
 
+/// `40-F` or `20-F` if the latest annual filing of the anchor facts with this period end is a foreign form (an amendment
+/// counts as its form); `None` for a 10-K (also when a 10-K/A is the latest).
+fn foreign_form(registry: &Registry, facts: &CompanyFacts, end: &str) -> Option<String> {
+    let latest = registry
+        .anchors
+        .iter()
+        .flat_map(|a| facts.entries(a, "USD").iter())
+        .filter(|f| f.end == end && Forms::Annual.has(f.form.as_deref()))
+        .max_by(|a, b| a.filed.as_deref().unwrap_or("").cmp(b.filed.as_deref().unwrap_or("")))?;
+    let form = latest.form.as_deref()?;
+    ["40-F", "20-F"].into_iter().find(|f| form.starts_with(f)).map(|f| f.to_string())
+}
+
 /// The standard variables for one period.
 pub fn resolve_period(registry: &Registry, facts: &CompanyFacts, end: &str, forms: Forms) -> PeriodData {
     resolve_period_with(registry, facts, end, forms, None)
@@ -410,7 +430,10 @@ pub fn resolve_period_with(registry: &Registry, facts: &CompanyFacts, end: &str,
         }
     }
 
-    let mut period = PeriodData { end: end.to_string(), forms, filed, filed_of: filed_dates, values, sources, raw_extras };
+    let mut period = PeriodData { end: end.to_string(), forms, filed, filed_of: filed_dates, values, sources, raw_extras, form: None };
+    if forms == Forms::Annual {
+        period.form = foreign_form(registry, facts, end);
+    }
     if let (Forms::Annual, Some(fill)) = (forms, fill) {
         let critical = crate::checks::critical_for(crate::checks::filer_template(registry, &period));
         if TRIGGERS.iter().any(|name| critical.contains(name) && period.get(registry, name).is_none()) {
@@ -439,6 +462,8 @@ pub struct Company {
     pub name: String,
     pub annual: Vec<PeriodData>,
     pub quarterly: Vec<PeriodData>,
+    /// The currency of the values ("USD"; for an ifrs-full filer its reporting currency; "unknown" if that is not known). No conversion.
+    pub currency: String,
 }
 
 /// The latest `n_periods` fiscal years and `n_periods` quarters.
@@ -451,6 +476,7 @@ pub fn map_company_with(registry: &Registry, facts: &CompanyFacts, n_periods: us
         name: facts.entity_name.clone().unwrap_or_default(),
         annual: Vec::new(),
         quarterly: Vec::new(),
+        currency: facts.currency().unwrap_or_else(|| "unknown".to_string()),
     };
     for forms in [Forms::Annual, Forms::Quarterly] {
         for end in period_ends(facts, &registry.anchors, forms, Some(n_periods)) {
@@ -989,5 +1015,84 @@ mod tests {
             assert!(Forms::Annual.has(Some(form)), "{form}");
         }
         assert!(!Forms::Annual.has(Some("10-Q")) && !Forms::Quarterly.has(Some("40-F")));
+    }
+
+    fn parse(json: &str) -> CompanyFacts {
+        serde_json::from_str(json).unwrap()
+    }
+
+    const REV: &str = r#""Revenue":{"units":{"USD":[{"start":"2025-01-01","end":"2025-12-31","val":7,"form":"20-F","filed":"2026-02-20"}]}}"#;
+
+    #[test]
+    fn the_reporting_currency_is_the_unit_of_the_latest_total_assets() {
+        // Two units (Denison): USD to 2017, CAD later. CAD wins; the 2 USD facts are counted, not used.
+        let facts = parse(
+            r#"{"facts":{"ifrs-full":{"Assets":{"units":{
+              "USD":[{"end":"2016-12-31","val":1,"form":"40-F"},{"end":"2017-12-31","val":2,"form":"40-F"}],
+              "CAD":[{"end":"2024-12-31","val":3,"form":"40-F"},{"end":"2025-12-31","val":4,"form":"40-F"}]}}}}}"#,
+        );
+        assert_eq!(facts.reporting_currency(), Some("CAD"));
+        assert_eq!(facts.currency().as_deref(), Some("CAD"));
+        assert_eq!(facts.other_currency_facts(), 2);
+        // Equal latest dates: the first unit in alphabetical order wins.
+        let tie = parse(r#"{"facts":{"ifrs-full":{"Assets":{"units":{"ZAR":[{"end":"2025-12-31","val":1}],"CAD":[{"end":"2025-12-31","val":1}]}}}}}"#);
+        assert_eq!(tie.reporting_currency(), Some("CAD"));
+    }
+
+    #[test]
+    fn an_ifrs_full_filer_with_no_total_assets_has_no_currency_and_no_values() {
+        let registry = Registry::embedded().unwrap();
+        let facts = parse(&format!(r#"{{"facts":{{"ifrs-full":{{{REV}}}}}}}"#));
+        assert_eq!(facts.currency(), None);
+        let p = resolve_period(&registry, &facts, "2025-12-31", Forms::Annual);
+        assert_eq!(p.get(&registry, "revenue"), None, "no silent fallback to USD");
+        // The company says "unknown", not "USD".
+        assert_eq!(map_company(&registry, &facts, 3).currency, "unknown");
+    }
+
+    #[test]
+    fn a_filer_with_us_gaap_and_ifrs_full_facts_keeps_its_us_gaap_values() {
+        let registry = Registry::embedded().unwrap();
+        let facts = parse(&format!(
+            r#"{{"facts":{{"us-gaap":{{"Revenues":{{"units":{{"USD":[{{"start":"2025-01-01","end":"2025-12-31","val":9,"form":"10-K","filed":"2026-02-20"}}]}}}}}},
+              "ifrs-full":{{{REV},"Assets":{{"units":{{"USD":[{{"end":"2025-12-31","val":1,"form":"20-F"}}]}}}}}}}}}}"#
+        ));
+        let p = resolve_period(&registry, &facts, "2025-12-31", Forms::Annual);
+        assert_eq!(p.get(&registry, "revenue"), Some(9.0));
+        assert_eq!(map_company(&registry, &facts, 3).currency, "USD");
+        // An ifrs-full year that has no us-gaap fact does not enter either.
+        let p = resolve_period(&registry, &facts, "2024-12-31", Forms::Annual);
+        assert_eq!(p.get(&registry, "revenue"), None);
+    }
+
+    #[test]
+    fn the_form_of_a_foreign_period_is_its_own_form() {
+        let registry = Registry::embedded().unwrap();
+        let p = resolve_period(&registry, &ifrs_fixture(), "2025-12-31", Forms::Annual);
+        assert_eq!(p.form_label(), "40-F");
+        let tenk = company(vec![("Revenues", flow(1.0))]);
+        assert_eq!(resolve_period(&registry, &tenk, FY.1, Forms::Annual).form_label(), "10-K");
+    }
+
+    #[test]
+    fn total_debt_is_the_sum_of_current_and_non_current_borrowings_where_borrowings_is_absent() {
+        let registry = Registry::embedded().unwrap();
+        let inst = |name: &str, v: f64| format!(r#""{name}":{{"units":{{"CAD":[{{"end":"2025-12-31","val":{v},"form":"40-F","filed":"2026-02-20"}}]}}}}"#);
+        let facts = parse(&format!(r#"{{"facts":{{"ifrs-full":{{{},{},{}}}}}}}"#, inst("Assets", 100.0), inst("LongtermBorrowings", 70.0), inst("CurrentPortionOfLongtermBorrowings", 30.0)));
+        let p = resolve_period(&registry, &facts, "2025-12-31", Forms::Annual);
+        assert_eq!(p.get(&registry, "total_debt"), Some(100.0));
+    }
+
+    #[test]
+    fn an_ifrs_filer_with_a_few_us_gaap_note_facts_is_still_an_ifrs_filer() {
+        // BHP: 56 us-gaap facts of the oil and gas notes, no us-gaap statement total.
+        let registry = Registry::embedded().unwrap();
+        let facts = parse(&format!(
+            r#"{{"facts":{{"us-gaap":{{"CapitalizedCostsProvedProperties":{{"units":{{"USD":[{{"end":"2025-12-31","val":5,"form":"20-F"}}]}}}}}},
+              "ifrs-full":{{{REV},"Assets":{{"units":{{"USD":[{{"end":"2025-12-31","val":1,"form":"20-F"}}]}}}}}}}}}}"#
+        ));
+        assert!(!facts.has_us_gaap_statements());
+        let p = resolve_period(&registry, &facts, "2025-12-31", Forms::Annual);
+        assert_eq!(p.get(&registry, "revenue"), Some(7.0));
     }
 }
