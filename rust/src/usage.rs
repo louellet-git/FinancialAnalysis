@@ -106,19 +106,61 @@ struct Block {
 }
 #[derive(Deserialize)]
 struct ToolInput {
+    command: Option<String>,
     subagent_type: Option<String>,
     skill: Option<String>,
 }
 
+/// (branch, cwd branch), is agent, agent type, tokens, (cwd, timestamp)
+type MsgRec = ((String, String), bool, String, Tokens, (String, String));
+
 struct Acc {
     /// message id -> (branch, tier, agent type, tokens)
-    msgs: HashMap<String, ((String, String), bool, String, Tokens)>,
+    msgs: HashMap<String, MsgRec>,
     seen_tools: std::collections::HashSet<String>,
     agent_calls: BTreeMap<String, u64>,
     skill_calls: BTreeMap<String, u64>,
     last_ts: String,
     /// folder -> branch of its git checkout (None: no checkout, or a detached HEAD)
     cwd_branch: HashMap<String, Option<String>>,
+    /// (timestamp, worktree folder, branch) of each `git worktree add` in a Bash call
+    worktrees: Vec<(String, PathBuf, String)>,
+}
+
+/// Remove `.` and `..` from a path without the file system.
+fn normalize(p: &Path) -> PathBuf {
+    let mut o = PathBuf::new();
+    for c in p.components() {
+        match c {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                o.pop();
+            }
+            c => o.push(c),
+        }
+    }
+    o
+}
+
+/// The (folder, branch) pairs of the `git worktree add ... -b BRANCH` parts of a shell command.
+fn worktree_adds(cmd: &str, cwd: &Path) -> Vec<(PathBuf, String)> {
+    let mut out = Vec::new();
+    for part in cmd.split("git worktree add").skip(1) {
+        let part = part.split(['\n', ';', '&', '|']).next().unwrap_or("");
+        let (mut path, mut branch) = (None, None);
+        let mut it = part.split_whitespace().map(|t| t.trim_matches(['"', '\'']));
+        while let Some(t) = it.next() {
+            if t == "-b" || t == "-B" {
+                branch = it.next();
+            } else if !t.starts_with('-') && path.is_none() {
+                path = Some(t);
+            }
+        }
+        if let (Some(p), Some(b)) = (path, branch) {
+            out.push((normalize(&cwd.join(p)), b.to_string()));
+        }
+    }
+    out
 }
 
 /// The branch that a folder has checked out. A folder that is missing or not a git checkout gives None.
@@ -165,6 +207,13 @@ fn stream_file(path: &Path, is_agent: bool, agent_type: &str, acc: &mut Acc) {
                     continue;
                 }
                 let inp = b.input.as_ref();
+                if let (Some("Bash"), Some(cmd)) = (b.name.as_deref(), inp.and_then(|i| i.command.as_deref())) {
+                    if let (Some(c), true) = (&l.cwd, cmd.contains("git worktree add")) {
+                        for (p, br) in worktree_adds(cmd, Path::new(c)) {
+                            acc.worktrees.push((l.timestamp.clone().unwrap_or_default(), p, br));
+                        }
+                    }
+                }
                 match b.name.as_deref() {
                     Some("Agent") => {
                         let t = inp.and_then(|i| i.subagent_type.clone()).unwrap_or_else(|| "(none)".into());
@@ -190,7 +239,7 @@ fn stream_file(path: &Path, is_agent: bool, agent_type: &str, acc: &mut Acc) {
         let cwd_b = l.cwd.as_ref().and_then(|c| acc.cwd_branch.entry(c.clone()).or_insert_with(|| git_branch(c)).clone());
         let branch = (l.branch.clone().unwrap_or_default(), cwd_b.unwrap_or_default());
         let e = acc.msgs.entry(id).or_insert_with(|| {
-            (branch, is_agent, agent_type.to_string(), Tokens::default())
+            (branch, is_agent, agent_type.to_string(), Tokens::default(), (l.cwd.clone().unwrap_or_default(), l.timestamp.clone().unwrap_or_default()))
         });
         e.3.max_with(&t);
     }
@@ -264,6 +313,7 @@ pub fn count(
         skill_calls: BTreeMap::new(),
         last_ts: String::new(),
         cwd_branch: HashMap::new(),
+        worktrees: Vec::new(),
     };
     stream_file(transcript, false, "", &mut acc);
     if let Some(dir) = subagents {
@@ -282,10 +332,13 @@ pub fn count(
         }
     }
     let mut rows: BTreeMap<(String, bool, String), Row> = BTreeMap::new();
-    for (branch, is_agent, ty, t) in acc.msgs.into_values() {
+    for (branch, is_agent, ty, t, (cwd, ts)) in acc.msgs.into_values() {
+        // Third source: the latest worktree that the session made for this folder, at or before the line.
+        let made = acc.worktrees.iter().filter(|(w, f, _)| *w <= ts && !cwd.is_empty() && normalize(Path::new(&cwd)).starts_with(f)).max_by(|a, b| a.0.cmp(&b.0)).map(|w| w.2.clone());
         let ticket = branch_to_ticket
             .get(&branch.0)
             .or_else(|| branch_to_ticket.get(&branch.1))
+            .or_else(|| made.as_ref().and_then(|b| branch_to_ticket.get(b)))
             .cloned()
             .unwrap_or_else(|| "no ticket".to_string());
         let ty = names.agent(&ty);
@@ -587,6 +640,26 @@ mod tests {
         let s = count(&p, None, &bm, &Names::default(), None);
         let tk: Vec<_> = s.rows.iter().map(|r| (r.ticket.as_str(), r.tokens.output)).collect();
         assert_eq!(tk, [("T-0-main", 10), ("T-1-cwd", 5)]);
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn a_removed_worktree_gets_the_branch_that_the_session_made_for_it() {
+        let d = tmpdir("wt");
+        let add = |ts: &str, br: &str| {
+            let cmd = format!("git worktree add -q ../wt-x -b {br} origin/main");
+            format!(r#"{{"type":"assistant","cwd":"/tmp/a/main","timestamp":"{ts}","message":{{"content":[{{"type":"tool_use","name":"Bash","input":{{"command":"{cmd}"}}}}]}}}}"#)
+        };
+        let mk = |id: &str, ts: &str| {
+            format!(r#"{{"type":"assistant","cwd":"/tmp/a/wt-x","gitBranch":"other","timestamp":"{ts}","message":{{"id":"{id}","usage":{{"output_tokens":5}}}}}}"#)
+        };
+        let text = [add("t1", "claude/x"), mk("m", "t2"), add("t3", "claude/y"), mk("n", "t4")].join("\n");
+        let p = d.join("s.jsonl");
+        std::fs::write(&p, text).unwrap();
+        let bm = BTreeMap::from([("claude/x".to_string(), "T-x".to_string()), ("claude/y".to_string(), "T-y".to_string())]);
+        let s = count(&p, None, &bm, &Names::default(), None);
+        let tk: Vec<_> = s.rows.iter().map(|r| (r.ticket.as_str(), r.tokens.output)).collect();
+        assert_eq!(tk, [("T-x", 5), ("T-y", 5)]);
         let _ = std::fs::remove_dir_all(&d);
     }
 

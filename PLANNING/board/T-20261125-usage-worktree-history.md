@@ -15,3 +15,7 @@ acceptance: `fa usage record` gives a line whose worktree is already removed the
 Owner word (2026-11-25, through the Head of Staff): "make sure you're thinking about what can and should be
 automated from a holistic point of view." No head has to remember a step: the transcript already records each
 worktree that the session made, with its branch (87 such commands in this session). Nothing new is written.
+
+Result (2026-11-25, this session): "no ticket" fell from about 79% to about 59.5% of the tokens. The rest is
+work in folders with no ticket branch (the home folder, the store clone, the-heads): coordination and store
+writes. The match also takes a parent folder of a removed worktree.
