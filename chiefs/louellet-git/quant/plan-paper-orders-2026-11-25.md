@@ -1,7 +1,7 @@
 # Plan: algo trading on the Alpaca paper account (2026-11-25)
 
 Owner goal (2026-11-25): "begin algo trading on a paper account (continuous data w fees and spreads and all, not
-simulated by us ideally)". Story E4.S1. Facts: `analysis/priors/alpaca_paper_facts_2026-11-25.md` (20 Alpaca pages).
+simulated by us ideally)". Story E4.S1. Facts: `chiefs/louellet-git/quant/alpaca-paper-facts-2026-11-25.md` (20 Alpaca pages).
 Limits that stay: paper account only; QUALITY-STANDARDS section 8 (controls 0 to 8); gate "Order code (paper only)".
 
 ## (a) The shortest safe path

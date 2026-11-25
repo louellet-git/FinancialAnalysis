@@ -56,7 +56,7 @@ Done: An inventory of the steps of the quant studies that a person, an agent or 
 
 ## 2026-11-25 16:13 UTC (through the Head of Staff)
 Words: "for the quant side please find a way for the quant team to be able to begin algo trading on a paper account (continuous data w fees and spreads and all, not simulated by us ideally). Proceed"
-Done: First a one-page plan to the Head of Staff (story E4.S1): the path from PR 131 to orders on the Alpaca paper account (`T-20261121-algo-paper-orders`), the facts of Alpaca paper from its documents (`analysis/priors/alpaca_paper_facts_2026-11-25.md`), the host for continuous runs, and the first strategy (a test of the process at the smallest size, not of profit). Paper account only; QUALITY-STANDARDS section 8; the gate "Order code (paper only)".
+Done: First a one-page plan to the Head of Staff (story E4.S1): the path from PR 131 to orders on the Alpaca paper account (`T-20261121-algo-paper-orders`), the facts of Alpaca paper from its documents (`chiefs/louellet-git/quant/alpaca-paper-facts-2026-11-25.md`), the host for continuous runs, and the first strategy (a test of the process at the smallest size, not of profit). Paper account only; QUALITY-STANDARDS section 8; the gate "Order code (paper only)".
 
 ## 2026-11-25 16:24 UTC (dialog of the Head of Staff)
 Words: "Do you permit option orders on the Alpaca paper account (1 contract, defined risk only), after step A passes its gate?" = "Yes, permit (Recommended)".
