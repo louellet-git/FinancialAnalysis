@@ -242,3 +242,44 @@ No other change, no free number. Switch: `--rules level_last=1`, off by default.
   companies (less noise in the history mean): read the centre of the growth classes and the free cash flow rows.
 - Second run for a bound, not a candidate: `level_kappa=0` (no level term). It shows the largest possible effect.
 - The same read as before: a pass of the "all" rows with a worse centre in a class is not a pass.
+
+**Results of `level_last` and of the bound `level_kappa=0` (17:09 UTC, 2026-11-25; half-0 development runs 8 and 9):
+`level_last` is NOT the rule.** Rows "all", below P10 / inside / above P90 at T+1, T+2, T+3:
+| Rule | Revenue | Free cash flow |
+|---|---|---|
+| `level_last=1` | 7.0/83.0/10.0; 6.0/83.3/10.7; 3.9/87.6/8.6 | 15.4/76.0/8.6; 10.9/79.8/9.2; 10.7/79.0/10.3 |
+| `level_kappa=0` (bound) | 7.4/82.2/10.4; 6.3/82.9/10.7; 4.2/87.3/8.5 | 15.4/75.9/8.7; 11.0/79.7/9.3; 10.7/79.0/10.3 |
+- The level term is a small part of the width. With no level term at all, T+3 of the revenue still fails (4.2 below
+  P10, 87.3 inside). The mismatch between the measurement of kappa and its use is real, but it does not decide T1; it
+  stays as a note for the model document.
+- Fact from the diagnosis of all nine runs: the real errors have fat tails on the scale of the band. Base run, T+1:
+  the 10th and 25th percentile of z are -1.08 and -0.46 (ratio 2.3), the 75th and 90th are +0.43 and +1.07 (ratio
+  2.5). A normal distribution has the ratio 1.9; a Student distribution with 2 to 3 degrees of freedom has 2.1 to 2.3.
+  A band from a normal draw with the correct variance is too wide at P10 and P90 for such data. The robust spread of
+  the company means near 0 (run 7) says the same about the company means: most companies are near the class mean, and
+  a few are far.
+- Found in the path engine, a note and not a candidate: the draw of the company mean (the target) keeps its full
+  deviation for all 10 years, while the mean itself fades to the long-run level. The ramp is about the 10 years of
+  the projection, so the effect at T+3 is small (about 10% of the mean term); it matters for the value band. It goes to
+  the model-change gate as a separate question.
+
+**Candidate `band_q`, written before its half-0 run (17:09 UTC).** Principle: the outputs of the model are P10 and P90,
+and the growth data have fat tails. So the width of each normal draw of the growth comes from the 10th and 90th
+percentile of the calibration data of the size class, not from their standard deviation. The variances stay where a
+variance is the correct input: the weight w, the company mean and the acquisition charge of A-002 do not change.
+- Shock: the draw uses sigma times r_s. r_s = (P90 less P10 of the within residuals of the growth model of the class)
+  / (2.563 times the standard deviation of the same residuals); companies with one observation are not in it.
+- Company mean: the draw of the target uses the root of (1 - w) tau^2, times r_t. r_t = (P90 less P10 of the company
+  means of the class) / (2.563 times the standard deviation of the same company means).
+- Year 1: the start draw uses the two scaled terms. The level term (kappa times the level) does not change: kappa is
+  measured from P10 and P90 already.
+- A ratio is 1 for a normal sample and below 1 for a sample with fat tails. No free number: 2.563 is the distance
+  between the 10th and the 90th percentile of a normal distribution in standard deviations. The ratios come from the
+  table of the cut (the years before the base years), not from the band test.
+- Switch: `--rules band_q=1`, off by default.
+- Known weak point, before the run: the residuals of all companies of a class are one sample. Companies with different
+  shock sizes make this sample fat-tailed even when each company is normal, so r_s can be too small and the band too
+  narrow. The run shows it: a band that is too narrow fails on the two tails.
+- Known risk, before the run: the free cash flow band uses the revenue paths. A narrower revenue band with the same
+  centre moves the low tail of the free cash flow up, and its T+1 value is 15.4 on half 0 (limit 15).
+- The same read as before: the "all" rows, the class rows (centre and tails) and the diagnosis.
