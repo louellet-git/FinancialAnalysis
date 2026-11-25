@@ -71,3 +71,12 @@ Question: a new session for the Head of Quality and Risk, as a test. Answer: "Ye
 
 ## 2026-11-21 about 22:12 UTC (owner word, relayed by the Head of Staff)
 Words: "Ignore the new quality and risk session we'll stick to one". Effect: the test ends; no new session starts; this session is the Head of Quality and Risk again (title restored) and takes the gates.
+
+## 2026-11-25: options on the paper account (relayed owner word)
+
+The Head of Staff asked Luc in a dialog: "Do you permit option orders on the Alpaca paper account (1 contract, defined
+risk only), after step A passes its gate?" Answer: "Yes, permit (Recommended)" (Staff RECORD.md, claude/staff-week-2,
+2817968). QUALITY-STANDARDS section 8, control 6, says "no margin; no option" until it changes. Decision of this head:
+step A (1 SPY share) runs under section 8 as it is. Before step B, Quant sends a new text of control 6. The review has
+the weight of PR 149 (risk-compliance-officer and code-reviewer). The text stays narrow: paper account only, 1
+contract, defined risk, no margin, no naked short option. A live order still needs a new owner approval.
