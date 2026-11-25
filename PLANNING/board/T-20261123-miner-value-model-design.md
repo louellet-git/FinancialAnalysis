@@ -2,13 +2,13 @@
 id: T-20261123-miner-value-model-design
 title: Design a value model for a mining company (net asset value), one page, before any build
 area: engine
-status: backlog
+status: in-progress
 owner: louellet-git
 requested_by: louellet-git
 head: fundamental
 order: 6.1
 story: E3.S5
-branch:
+branch: claude/miner-value-model-design
 created: 2026-11-23
 acceptance: A design of one page is committed before any run. It gives the inputs (reserves and resources, the price curve of the commodity, the costs, the mine life), the value formula (a net asset value), the data source of each input, and the test that will judge the model, with its pass rule written before the first run. The person reads the design before a build starts.
 ---
@@ -38,3 +38,6 @@ Not before: the reset of the weekly token limit (Wednesday 2026-11-25), and afte
 after the review of the person, then the T1 correction).
 
 Board note (15:22 UTC, 2026-11-23): created from the word of the person. Not started.
+
+Board note (16:17 UTC, 2026-11-25): in progress (louellet-git, branch claude/miner-value-model-design), after the reset of the
+token limit. Scope of this step: the design page only. It goes to the Head of Staff, then to the person. No code, no run.
