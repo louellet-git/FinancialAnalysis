@@ -35,7 +35,8 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
 - Cumulative cost at the reset (USD at list, `get_session`): Technology 674, Fundamental 408, Quality 285,
   Quant 170, Economics 154, Staff 108; total about 1,800. Cost of this week = the new number less these.
 - Week 2: reset 2026-11-25 16:00 UTC, next reset 2026-12-02 16:00 UTC. The week scope that I proposed on
-  2026-11-25 is in `EPICS.md` (last section); see there if he agreed.
+  2026-11-25 is in `EPICS.md` (last section); he agreed, and each head has its part. Tell the heads once
+  if the week is above 35% on Fri, 60% on Sun, 85% on Tue (16:00 UTC).
 
 ## 4. Open now (2026-11-25)
 - Waits for him: his review of the three S&P pieces (sent 2026-11-21; on main in `analysis/priors/pdf/`),
@@ -46,5 +47,9 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
   mapping with Cameco first (he said yes; the size of the rest comes to me before more is built), the
   scout of the 27% outside the SEC (his word), the uranium and gold series, a miner model design (he reads
   it before a build), then the fund look-through.
+- E4.S1, his word 2026-11-25: the quant team begins algo trading on the Alpaca paper account (broker
+  fills, spreads and fees; not our simulator). A one-page plan of Quant comes to me first. My session got
+  401 from both Alpaca hosts; Technology checks the access. No strategy passed a gate: the first paper
+  trades are a process test at the smallest size.
 - E1 (stock trades) is on hold: "No trades until T1 passes". No trade on Friday 2026-11-27.
 - Contexts above the dream-pass point on 2026-11-25: Technology 766k, Fundamental 697k, Economics 670k.

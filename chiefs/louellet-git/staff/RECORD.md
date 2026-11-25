@@ -293,3 +293,12 @@ Done: a dream pass of my file (my context was at 738,688 of 784,000). Facts read
 16:00 UTC (0% used; next reset 2026-12-02 16:00 UTC); last week reached 99% on Monday 2026-11-23 and the
 heads stopped for two days. A proposed scope and split for the week went to the person in the chat and is
 in `PLANNING/board/EPICS.md` as a proposal.
+
+## 2026-11-25 about 16:13 UTC (chat)
+Words: "Agreed to the week, for the quant side please find a way for the quant team to be able to begin algo
+trading on a paper account (continuous data w fees and spreads and all, not simulated by us ideally).
+Proceed"
+Done: the week is agreed in `PLANNING/board/EPICS.md`; one message to each head with its part and the
+pace. The quant goal went to the Head of Quant Research as the first work of story E4.S1 (a one-page plan
+to me first; paper account only; the controls of section 8 and the gate before the first order). Its share
+of the week went from 8% to 14%, from the reserve.
