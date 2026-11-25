@@ -293,3 +293,35 @@ Done: a dream pass of my file (my context was at 738,688 of 784,000). Facts read
 16:00 UTC (0% used; next reset 2026-12-02 16:00 UTC); last week reached 99% on Monday 2026-11-23 and the
 heads stopped for two days. A proposed scope and split for the week went to the person in the chat and is
 in `PLANNING/board/EPICS.md` as a proposal.
+
+## 2026-11-25 about 16:13 UTC (chat)
+Words: "Agreed to the week, for the quant side please find a way for the quant team to be able to begin algo
+trading on a paper account (continuous data w fees and spreads and all, not simulated by us ideally).
+Proceed"
+Done: the week is agreed in `PLANNING/board/EPICS.md`; one message to each head with its part and the
+pace. The quant goal went to the Head of Quant Research as the first work of story E4.S1 (a one-page plan
+to me first; paper account only; the controls of section 8 and the gate before the first order). Its share
+of the week went from 8% to 14%, from the reserve.
+
+## 2026-11-25 about 16:15 UTC (chat)
+Words (the split of the weekly token limit): "45% Financial analysis's, 15% scan support and 30% shred-tree."
+Done: the shares of the week in `PLANNING/board/EPICS.md` are scaled from 80% to 45%; the uranium and gold
+series, the last FRED step and the first run of the economics view go below the line. One short message to
+each head with its new share.
+
+## 2026-11-25 about 16:24 UTC (dialog)
+Question: the quant plan for paper trading has three steps (A: 1 SPY share; B: 1 SPY option; C: 1 SPY
+condor). Control 6 of section 8 says "no option". Do you permit option orders on the Alpaca paper account
+(1 contract, defined risk only), after step A passes its gate?
+Answer: "Yes, permit (Recommended)"
+Done: told Quant and Quality. Quality reviews the new text of control 6 before step B. Paper account only;
+no margin; 1 contract.
+
+## 2026-11-25 about 16:40 UTC (dialog)
+Question: the miner value model design is ready (one page). The first build is about 6% to 8% of the weekly
+limit for one company, and the full test needs about 3 to 4 more weeks. A small step with no new code
+exists: read the uranium price that a stock price needs from the value tables that the miners publish
+(about 1% to 2%). Which path do you want? (Choices: small step first; build the model; stop here.)
+Answer: "Small step first (Recommended)"
+Done: told Fundamental Research. First the check of which technical reports have a value table, then the
+hand measurement, from the reserve of the week. No build before he sees the number and says yes.
