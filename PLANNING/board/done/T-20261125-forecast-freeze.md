@@ -2,12 +2,13 @@
 id: T-20261125-forecast-freeze
 title: Freeze the forecasts of today for each company, to score them on the fiscal 2026 reports
 area: engine
-status: in-progress
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: fundamental
 order: 0.021
 branch: claude/t1-forecast-freeze
+merged: 252
 created: 2026-11-25
 acceptance: A dated file on main has, for each company of the standard template, the P10, P50 and P90 of revenue and free cash flow for the 3 years after its last fiscal year, with the engine commit, the store commit, the table, the rules and the seed; the scoring rule is written beside it before any result exists.
 ---
