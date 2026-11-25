@@ -2,13 +2,13 @@
 id: T-20261123-commodity-series
 title: Load the uranium and gold series of the fund pages, each after a terms check
 area: importer
-status: backlog
+status: in-progress
 owner: louellet-git
 requested_by: louellet-git
 head: technology
 order: 2
 story: E3.S5
-branch:
+branch: claude/commodity-series
 created: 2026-11-23
 acceptance: Each series below is in the store with a source note and its terms, or the ticket says that its terms forbid a stored copy (then the limit stays on the page); one real run for each loaded series.
 ---
@@ -24,3 +24,7 @@ out/begin work on removing limitations." Sources named by the Head of Economics;
 5. World Gold Council data files (central-bank and fund tonnes).
 6. The daily holdings file of the GLD fund (its tonnes).
 Not permitted: the Cameco page, UxC, TradeTech (their terms forbid a copy).
+
+Start (2026-11-25): owner word "All three layers this week" (URA and GLD decomposition, through the Head of Staff).
+First part: items 1 (IMF uranium, monthly) and 4 (a gold price, monthly: the World Bank Pink Sheet, CC BY 4.0 to
+verify; LBMA is licensed). Items 2, 3, 5 and 6 stay open.
