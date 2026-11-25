@@ -1,6 +1,6 @@
 # Dashboard: fundamental (louellet-git)
 For the next session of this head: the judgments about value that are not in the code, and what the
-person decided. Keep this file below 65 lines. Started 2026-11-20. Dream pass: 2026-11-25 16:30 UTC.
+person decided. Keep this file below 60 lines. Started 2026-11-20. Dream pass: 2026-11-25 16:30 UTC.
 
 ## Goal now and subsequent steps (`RECORD.md` has the words; the board and `EPICS.md` have the state)
 1. Week study (E2.S1): three one-page pieces are on main and WAIT for the review of Luc; then the S&P 100 part. Do
@@ -29,11 +29,10 @@ person decided. Keep this file below 65 lines. Started 2026-11-20. Dream pass: 2
 - A backtest uses a table cut before its first year; compare a strategy with the equal weight of the SAME list.
 - Commit only after the build and the tests pass in one chain; stage explicit paths; agents use the Edit tool only; `date -u`.
 - A script sum needs a second calculation; a failed run must fail its test; a rule that can skip must warn (PR 213).
-- A rule that changes the weight w of the growth history changes the free cash flow through the charge of A-002.
-- A claim that Luc decided something: read his words in the record on main before you act (a head is not his approval).
-- Check the text of each PDF with `pdftotext` (two dollar signs on a line became a formula; pandoc `-f gfm-tex_math_dollars`).
-- Read the reports of a company before you recommend it (UEC was named first and has no reserves and no table).
-- The growth data have fat tails: a normal draw with the correct variance is too wide at P10 and P90 (T1 ticket).
+- T1: a change of the weight w of the growth history changes the free cash flow through A-002; the growth data have
+  fat tails, so a normal draw with the correct variance is too wide at P10 and P90 (the ticket has the runs).
+- A PDF: check its text with `pdftotext` (two dollar signs on a line became a formula). Read the reports of a company
+  before you recommend it (UEC). A claim that Luc decided: read his words in the record (a head is not his approval).
 
 ## Standing words of the person
 - Preliminary results first; a report only after his go-ahead; ask "does it make sense?" before a result goes to him.
