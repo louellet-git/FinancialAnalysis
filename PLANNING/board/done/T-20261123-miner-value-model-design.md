@@ -2,7 +2,7 @@
 id: T-20261123-miner-value-model-design
 title: Design a value model for a mining company (net asset value), one page, before any build
 area: engine
-status: in-progress
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: fundamental
@@ -57,3 +57,8 @@ the fit window of T3 is 2017-01 to 2023-12; the 5 names come from the URA holdin
 first company with no read of its technical reports. The page now says so: UEC if its reports have a mine plan with
 costs, else NexGen. OPEN, first step of any build: read which UEC properties have a technical report with an after-tax
 value and a price sensitivity table (UEC may report resources with no reserves for most projects).
+
+Board note (16:56 UTC, 2026-11-25): DONE. The design page (version 3) passed the read of the model validator (Quality: PASS) and is
+on main (pull request 231). The person read it and chose "Small step first" (record of the Head of Staff); the small step
+is `T-20261125-uranium-needed-price`. No build was started. A build needs a new ticket and his word; first company:
+NexGen or Denison, not UEC (see the small step).
