@@ -60,7 +60,7 @@ Forum posts are not a source here.
 ## 5. Accounts and keys
 - Paper keys are different from live keys; live keys do not work on paper [PT, AU]. Paper host: paper-api.alpaca.markets [AU].
 - Paper accounts are now created and deleted in the dashboard, not reset; a new account needs new keys; default balance $100k [PT].
-- A live account has conditions of residence; check them before any live plan.
+- Anyone can open a Paper Only Account with an e-mail address [PT]. A live account has conditions of residence; check them before any live plan [NU].
 - Terms: use "solely for your own personal and non-commercial purposes" [TC]. An explicit rule "one account for each person, no sharing": not documented in TC. The indemnity covers "any user of your account" [TC].
 - Rate limit of the trading API: 200 requests a minute per account; HTTP 429 above it [RL].
 
@@ -76,5 +76,5 @@ Forum posts are not a source here.
 4. Paper does not charge regulatory fees. We must add ORF, OCC, CAT and SEC from FS (about $0.04 per contract plus SEC on sells).
 5. Assignment, early exercise and dividends are not modelled or not documented on paper. Short SPY legs near ex-dividend dates need our own model.
 6. mleg (up to 4 legs, market or limit) works on paper at Level 3. The fill rule for mleg is not documented: we must measure it from our own paper orders.
-A live account has conditions of residence; check them before any live plan.
+7. Each person needs a paper account and keys (200 requests a minute each); paper is open to all. A live account has conditions of residence: check them before any live plan [NU].
 8. Use client_order_id (at most 128 characters) for each order. Respect day/gtc only and the 3:30 p.m. ET SPY cutoff on expiration day.
