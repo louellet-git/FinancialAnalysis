@@ -346,3 +346,15 @@ automated from a holistic point of view."
 Done: agreement 10 of the Head of Staff file. Two first items, both with no constriction: my checks of a
 page for him go into the file of the document reviewer agent (Quality); the usage count runs by script at
 the close of a ticket, not from the memory of a head (Technology).
+
+## 2026-11-25 about 20:33 UTC (dialog, three questions)
+Question 1: T1 failed (the middle of the model's range is too high); what must Fundamental Research do next?
+Answer: "Fix the middle and freeze (Recommended)" (correct the middle and test it on several past periods,
+5% to 8% of one week, next week, not blind; and save the forecasts of today, to score them on the fiscal
+2026 reports in early 2027). "No trades until T1 passes" stays.
+Question 2: do you want the miner model (6% to 8% of a week for the first company; 3 to 4 more weeks)?
+Answer: "Build, after the T1 work (Recommended)" (NexGen first).
+Question 3: do you want a reader for Japan now (about 12.5% of URA is Japan and Korea; a free key that only
+he can make)? My recommendation was "not now".
+Answer: "Yes, build it"
+Done: told Fundamental Research and Technology.
