@@ -136,7 +136,25 @@ below has a test. The gate "Order code (paper only)" of section 5 passes before 
    an order, and it does not send an order whose id exists. It does not retry an order with a new id.
    Three API errors in a row end the run.
 6. Caps: at most 10 orders a day for each sleeve, and one order at most 5% of the sleeve capital. These are
-   constants in the code, checked with control 3. Day orders only; no margin; no option.
+   constants in the code, checked with control 3. Day orders only; no margin. A cancel or a replacement counts
+   as an order. Options: the owner permits options on the Alpaca paper account, 1 contract, defined risk only,
+   after the gate of step A (2026-11-25). Until a review adds spreads, only these:
+   a. A long SPY call or put, 1 contract, bought to open with a limit order. At most one open option position
+      for each sleeve. No short option leg, no multi-leg order, no index option, no exercise by the program.
+   b. The maximum loss is the debit times 100. It is the order value for the 5% cap, and it counts in the 10%
+      position limit and the gross exposure of the paper table. It is at most the cash of the account, not the
+      buying power. The code refuses the order if the debit, the cash or the quote is not known.
+   c. The limit price is at most the ask. The code refuses the order if the quote is missing, crossed or older
+      than 15 seconds, if the spread is more than 10% of the mid, or if the open interest is below 500
+      (constants, not fitted). The quote comes from the Alpaca options feed in `docs/DATA-SOURCES.md`, never
+      from a model price.
+   d. The expiry is 7 to 45 calendar days after the order date (a convention, not fitted).
+   e. A person closes each option position before 15:00 New York on the last trading day before the expiry.
+      From 12:00 that day the code writes an ALERT line in each loop while a position is open. An exercise or
+      assignment notice, or a position that no order of the program made, is a stop of control 4. For the
+      daily stop, a long option is marked at its bid, and at zero when it has no bid.
+   Each of a to e has a test with a fixture. Control 0 adds the Alpaca terms for options (the options feed and
+   the exercise cut-off time).
 7. Log: the code writes the intent before each call and the answer or the error after it, append only, with
    the time. The log is in a folder that git ignores. It holds no key and no account number. The client name
    is honest.
