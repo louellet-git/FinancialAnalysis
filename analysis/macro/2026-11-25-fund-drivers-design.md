@@ -1,6 +1,6 @@
 # Fund drivers (layer 3) for URA and GLD: pre-registration
 
-Head of Economics, 2026-11-25. Status: draft for the freeze. No data was read for this design.
+Head of Economics, 2026-11-25. Status: frozen (see section 6). No data was read for this design.
 
 ## 1. Question
 
@@ -9,7 +9,7 @@ How much of the monthly return of each group of URA, and of GLD, is consistent w
 ## 2. Data and sample
 
 1. Sample: 36 month-end returns, from the end of 2023-11 to the end of 2026-10. The month is the calendar month; a return is the log change of the last close of the month.
-2. Outcomes (from layer 2, `fa fund attribution`). For each quarter, the weights are those of the N-PORT report of the previous quarter end, known at the start of the quarter, and they are held constant inside the quarter. This is a description of the past, not a forecast:
+2. Outcomes (from layer 2, `fa fund attribution`). For each quarter, the weights are those of the N-PORT report of the previous quarter end, dated at the start of the quarter (the report becomes public about 60 days after its quarter end), and they are held constant inside the quarter. This is a description of the past, not a forecast:
    - URA-M: the US-listed miners group of URA.
    - URA-R: the US-listed reactor, fuel and equipment group of URA.
    - URA-F: the foreign-listed part of URA (about 40%). It closes only for each quarter, so it has 12 quarterly returns.
@@ -58,4 +58,4 @@ How much of the monthly return of each group of URA, and of GLD, is consistent w
 
 ## 6. Dated records
 
-None yet. The freeze line comes after the review of Quality and Risk.
+**Freeze.** The design is frozen at commit a8d550e plus this line (Head of Quality and Risk, PASS, 2026-11-25, about 22:50 UTC). No data was read before the freeze.
