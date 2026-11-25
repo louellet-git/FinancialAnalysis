@@ -230,6 +230,27 @@ mod tests {
     use mapcheck::facts::CompanyFacts;
     use mapcheck::store::store_json;
 
+    /// An EDINET annual report (ITOCHU, JPY) reaches the store with its currency and `fa` refuses it.
+    #[test]
+    fn an_edinet_period_in_jpy_is_refused_on_the_import_path() {
+        let registry = registry();
+        let unit = |name: &str, value: f64, start: &str| {
+            format!(r#""{name}": {{"units": {{"JPY": [{{"start": {start}, "end": "2025-03-31", "val": {value}, "form": "EDINET-120", "filed": "2025-06-20"}}]}}}}"#)
+        };
+        let json = format!(
+            r#"{{"cik": "E02513", "entityName": "ITOCHU Corporation", "facts": {{"jpigp_cor": {{{}, {}}}}}}}"#,
+            unit("RevenueIFRS", 14.7e12, "\"2024-04-01\""),
+            unit("AssetsIFRS", 15.1e12, "null")
+        );
+        let facts: CompanyFacts = serde_json::from_str(&json).unwrap();
+        let mapped = mapcheck::mapper::map_company(&registry, &facts, 12);
+        let c = Company::from_store(&registry, &store_json(&registry, "8001.T", "E02513", &mapped)).unwrap();
+        assert_eq!(c.periods[0].currency, "JPY");
+        assert_eq!(c.periods[0].get(&registry, "revenue"), Some(14.7e12));
+        assert_eq!(c.annual().count(), 0);
+        assert!(c.usd_only().unwrap_err().starts_with("NO VALUE: reporting currency JPY"));
+    }
+
     fn registry() -> Registry {
         Registry::embedded().unwrap()
     }
