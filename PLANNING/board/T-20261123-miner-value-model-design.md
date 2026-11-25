@@ -41,3 +41,11 @@ Board note (15:22 UTC, 2026-11-23): created from the word of the person. Not sta
 
 Board note (16:17 UTC, 2026-11-25): in progress (louellet-git, branch claude/miner-value-model-design), after the reset of the
 token limit. Scope of this step: the design page only. It goes to the Head of Staff, then to the person. No code, no run.
+
+Board note (16:31 UTC, 2026-11-25): version 2 of the design page, after the read of the Head of Staff and the read of the
+model validator (Head of Quality and Risk: REVISE, 4 major and 3 minor points; all applied). Changes: the main output is
+the commodity price that the stock price needs (a measurement, never an input); the input rule names what is permitted;
+Table 1 has no double count of cash and of closure cost; the beta comes from data before the test window; T1 is within
+2% on one path; T2 has the vintage rule (filing date, release date); T3 has the benchmark "beta plus the raw commodity
+return", is pooled over 5 named tickers, and has its fit and hold-out dates; a block "Size of the work" with a stop
+point. Still a design only. Next: the check of the difference by Quality, the Head of Staff, then the person.
