@@ -601,7 +601,7 @@ mod tests {
         let n = values.len();
         // every value comes from a tag fact filed on `y.filed`
         let filed_of = values.iter().map(|v| v.map(|_| y.filed.clone())).collect();
-        mapcheck::mapper::PeriodData { end: y.end.clone(), forms: Forms::Annual, filed: Some(y.filed.clone()), filed_of, values, sources: vec![None; n], raw_extras: Default::default() }
+        mapcheck::mapper::PeriodData { end: y.end.clone(), forms: Forms::Annual, filed: Some(y.filed.clone()), filed_of, values, sources: vec![None; n], raw_extras: Default::default(), form: None }
     }
 
     /// The same period as shown in another filing (a later 10-K that repeats it as a comparative).

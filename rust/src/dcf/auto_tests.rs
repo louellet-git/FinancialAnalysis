@@ -1552,3 +1552,31 @@ fn the_fedinvest_file_is_the_last_one_on_or_before_the_date_and_never_a_later_on
     assert!(x.contains("no FedInvest price file on or before 2026-11-11"), "{x}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// A filer that reports in CAD (ifrs-full facts, 40-F): the automatic model gives NO VALUE, with the reason "reporting currency CAD,
+/// no conversion". The CAD values never reach the USD price. A fixed answer. Also: the years of the report are empty.
+#[test]
+fn a_cad_filer_gives_no_value() {
+    let reg = Registry::embedded().unwrap();
+    let day = mapcheck::dates::parse("2026-11-21").unwrap();
+    let dur = |name: &str| {
+        let rows: Vec<String> = (0..6).map(|k| format!(r#"{{"start":"{y}-01-01","end":"{y}-12-31","val":{v},"form":"40-F","filed":"{f}-02-15"}}"#, y = 2020 + k, v = 1e9 + 1e8 * k as f64, f = 2021 + k)).collect();
+        format!(r#""{name}":{{"units":{{"CAD":[{}]}}}}"#, rows.join(","))
+    };
+    let text = format!(
+        r#"{{"entityName":"CAD CO","facts":{{"ifrs-full":{{{},{},"Assets":{{"units":{{"CAD":[{{"end":"2025-12-31","val":5e9,"form":"40-F","filed":"2026-02-15"}}]}}}}}}}}}}"#,
+        dur("Revenue"),
+        dur("CashFlowsFromUsedInOperatingActivities")
+    );
+    let facts: mapcheck::facts::CompanyFacts = serde_json::from_str(&text).unwrap();
+    let report = mapcheck::run::check_facts(&reg, "CADCO", &facts, 8, day, true);
+    assert_eq!(report.currency, "CAD");
+    assert!(report.company.as_ref().is_some_and(|c| !c.annual.is_empty() && c.currency == "CAD"));
+    let i = inputs_from_report(&reg, &report, &[], "2026-11-21");
+    assert!(i.years.is_empty() && i.balance.is_none());
+    let e = build(&i, &table(), &[], &market(), &plain_rules(), BuildOptions::default()).unwrap_err();
+    assert_eq!(e, Refusal::Currency("CAD".into()));
+    assert_eq!(e.to_string(), "reporting currency CAD, no conversion");
+    // pit and the other users of the years see no year
+    assert!(inputs_from_report(&reg, &report, &[], "2026-11-21").years.is_empty());
+}

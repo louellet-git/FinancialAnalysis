@@ -236,7 +236,7 @@ fn auto_inner(repo: &Path, args: &[String]) -> R<u8> {
             if matches!(r, Refusal::NoData(_)) {
                 println!("  The automatic model reads the SEC company facts of the cache ({}). {ticker} has none there (a company with no XBRL facts, for example a private company): use a hand model.", cache.join(&ticker).display());
             }
-            if inputs.years.is_empty() && !matches!(r, Refusal::NoData(_)) {
+            if inputs.years.is_empty() && !matches!(r, Refusal::NoData(_) | Refusal::Currency(_)) {
                 println!("  {ticker} has no fiscal year with values in the company facts of the cache ({} fiscal years): the automatic model needs the facts of at least 3 years. Use a hand model.", inputs.years.len());
             }
             return Ok(3);

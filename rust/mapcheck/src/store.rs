@@ -11,14 +11,14 @@ use std::path::{Path, PathBuf};
 
 /// The store content for one company: all annual and quarterly periods, oldest first.
 pub fn store_json(registry: &Registry, ticker: &str, cik: &str, company: &Company) -> Value {
-    let mut periods: Vec<(String, &'static str, Value)> = Vec::new();
+    let mut periods: Vec<(String, String, Value)> = Vec::new();
     for period in company.annual.iter().chain(company.quarterly.iter()) {
         let mut entry = Map::new();
         entry.insert("ticker".into(), json!(ticker));
         entry.insert("period_end".into(), json!(period.end));
-        entry.insert("form".into(), json!(period.forms.primary()));
+        entry.insert("form".into(), json!(period.form_label()));
         entry.insert("filed_date".into(), json!(period.filed.clone().unwrap_or_else(|| period.end.clone())));
-        entry.insert("currency".into(), json!("USD"));
+        entry.insert("currency".into(), json!(company.currency));
         let mut sources = Map::new();
         for (i, variable) in registry.variables.iter().enumerate() {
             entry.insert(variable.name.clone(), json!(period.values[i]));
@@ -29,9 +29,9 @@ pub fn store_json(registry: &Registry, ticker: &str, cik: &str, company: &Compan
         entry.insert("segment_revenue".into(), Value::Null);
         entry.insert("sources".into(), Value::Object(sources));
         entry.insert("raw_extras".into(), json!(period.raw_extras));
-        periods.push((period.end.clone(), period.forms.primary(), Value::Object(entry)));
+        periods.push((period.end.clone(), period.form_label().to_string(), Value::Object(entry)));
     }
-    periods.sort_by(|a, b| (a.0.as_str(), a.1).cmp(&(b.0.as_str(), b.1)));
+    periods.sort_by(|a, b| (a.0.as_str(), a.1.as_str()).cmp(&(b.0.as_str(), b.1.as_str())));
     json!({
         "ticker": ticker,
         "cik": cik,
