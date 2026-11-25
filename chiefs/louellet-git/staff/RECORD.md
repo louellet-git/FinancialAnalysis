@@ -316,3 +316,12 @@ condor). Control 6 of section 8 says "no option". Do you permit option orders on
 Answer: "Yes, permit (Recommended)"
 Done: told Quant and Quality. Quality reviews the new text of control 6 before step B. Paper account only;
 no margin; 1 contract.
+
+## 2026-11-25 about 16:40 UTC (dialog)
+Question: the miner value model design is ready (one page). The first build is about 6% to 8% of the weekly
+limit for one company, and the full test needs about 3 to 4 more weeks. A small step with no new code
+exists: read the uranium price that a stock price needs from the value tables that the miners publish
+(about 1% to 2%). Which path do you want? (Choices: small step first; build the model; stop here.)
+Answer: "Small step first (Recommended)"
+Done: told Fundamental Research. First the check of which technical reports have a value table, then the
+hand measurement, from the reserve of the week. No build before he sees the number and says yes.
