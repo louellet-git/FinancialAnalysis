@@ -352,3 +352,54 @@ before the score run.**
   pass rule.
 - The result of T1 keeps its written pass rule. If the free cash flow fails, T1 is "fail (free cash flow ...)", and
   the revenue result is a separate fact below it, not a T1 pass.
+
+**THE SCORE (17:22 UTC, 2026-11-25; one time; "partly blind"): T1 FAILS.** Commands: `fa dcf pit --cut 2011 --base-to 2014
+--rules acq_cv=1,band_q=1 --diag rev --cache <store 2d4619d>`, then the same with `--half 0` and with `--half 1`. Code
+9b44be1 (the program was built from it before the run). 2406 company-years of 859 companies. Rows "all", below P10 /
+inside / above P90 (pass: inside 75 to 85, each tail 5 to 15):
+| Rows "all" | T+1 | T+2 | T+3 |
+|---|---|---|---|
+| Revenue, all companies (this run decides) | 8.6/87.5/3.9 FAIL | 12.3/82.3/5.4 pass | 14.0/80.9/5.1 pass |
+| Revenue, half 0 (1147 company-years) | 8.4/88.0/3.7 | 12.6/82.6/4.9 | 15.1/80.2/4.7 |
+| Revenue, half 1 (1259; the cleaner part) | 8.8/87.1/4.1 | 12.0/82.1/5.9 | 13.0/81.5/5.5 |
+| Free cash flow, all companies | 17.5/79.1/3.4 FAIL | 14.6/81.6/3.8 FAIL | 14.6/82.0/3.3 FAIL |
+| Free cash flow, half 0 | 18.2/78.5/3.3 | 15.1/81.2/3.7 | 13.5/83.8/2.7 |
+| Free cash flow, half 1 | 17.0/79.6/3.4 | 14.1/82.0/3.9 | 15.6/80.5/3.9 |
+- Result by the written rule: **T1 fail (revenue T+1: inside and high tail; free cash flow T+1, T+2, T+3: low tail at
+  T+1 and high tail at each horizon)**. The two halves agree. The rule does not change, and no second score exists.
+- The separate fact about the revenue rule: with `band_q` the revenue passes at T+2 and T+3 and fails at T+1.
+- The main cause is the centre, not the width. The real revenue is below the P50 in 77%, 77% and 76% of the
+  company-years (target 50%). The median real revenue is 5.3%, 10.9% and 15.1% below the P50. The free cash flow has
+  the same side: 67% below the P50.
+- Why the centre is too high (the reading of this head, from the output): the table of the cut 2011 comes from the
+  years 2009 to 2011 only (our SEC data start in 2009). The spread of the company means is 0 in each cell of the
+  table but one, so the weight of the own history is 0 and each company gets the mean growth of its size class. That
+  mean comes from the recovery years 2010 and 2011, and the years 2012 to 2017 grew more slowly.
+- Shape ratios of the cut-2011 table, standard template (shock / company means): <1B 0.57/0.69; 1-10B 0.90/0.92;
+  10-30B 0.90/0.76; all sizes 0.78/0.78. The numbers of values of each cell were not printed (a note of the gate
+  that is open).
+- Class rows of the score: <1B 15.3/77.9/6.8; 23.2/65.0/11.8; 26.7/60.2/13.2 (too narrow, and the centre 7% to 14% too
+  high). 1-10B 6.4/90.3/3.3 at T+1 (too wide for its centre). Falling base year: 13.3/83.1/3.6; 16.3/77.8/6.0;
+  20.2/73.8/6.0.
+
+**Diagnosis after the score (17:27 UTC; NOT a score, not blind):** the same command with no `band_q` (the model of main
+with `acq_cv=1`). Revenue "all": 5.2/91.4/3.4; 7.0/88.5/4.5; 7.9/87.7/4.4 (fails at each horizon). Free cash flow
+"all": 17.3/79.3/3.4; 14.5/81.7/3.8; 14.4/82.3/3.2 (the same as with the rule). The centre is the same (77% below
+the P50). So on these years the model fails with and without the rule; the rule moves the revenue rows nearer to the
+limits and does not correct the centre.
+
+**State after the score.**
+- T1 is not passed. The words of the person "No trades until T1 passes" stay in force: no trade proposal.
+- `band_q`, `tau_robust` and `level_last` are switches, off by default, on this branch only. Nothing is merged. No
+  default of the model changed.
+- What this test showed about the test: a hold-out with a table from 3 years of data mostly tests the centre of the
+  class means in one period (after 2009). It cannot judge a rule for the width. This head wrote that hold-out; the
+  weakness was there before the run and this head did not see it.
+- What this test showed about the model: the centre of the revenue (the class mean of the growth) depends on the
+  period of the table. Development on the cut 2015: the P50 was 3% too low at T+3. Score on the cut 2011: 15% too
+  high. The band of T1 cannot pass while the centre moves that much between periods.
+- No historical sample is blind now (the base years 2015 and later were used for development; 2011 to 2014 for this
+  score). The next blind data are the annual reports of the fiscal year 2026 (early 2027).
+- For the person (through the Head of Staff): the fail, and a choice of the next step. A second fix needs a new
+  written test before its first run.
+Count of runs after the restart: 10 half-0 development runs, 1 score (three commands), 1 diagnosis after the score.
