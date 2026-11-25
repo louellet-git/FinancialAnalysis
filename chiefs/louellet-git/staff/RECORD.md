@@ -293,3 +293,56 @@ Done: a dream pass of my file (my context was at 738,688 of 784,000). Facts read
 16:00 UTC (0% used; next reset 2026-12-02 16:00 UTC); last week reached 99% on Monday 2026-11-23 and the
 heads stopped for two days. A proposed scope and split for the week went to the person in the chat and is
 in `PLANNING/board/EPICS.md` as a proposal.
+
+## 2026-11-25 about 16:13 UTC (chat)
+Words: "Agreed to the week, for the quant side please find a way for the quant team to be able to begin algo
+trading on a paper account (continuous data w fees and spreads and all, not simulated by us ideally).
+Proceed"
+Done: the week is agreed in `PLANNING/board/EPICS.md`; one message to each head with its part and the
+pace. The quant goal went to the Head of Quant Research as the first work of story E4.S1 (a one-page plan
+to me first; paper account only; the controls of section 8 and the gate before the first order). Its share
+of the week went from 8% to 14%, from the reserve.
+
+## 2026-11-25 about 16:15 UTC (chat)
+Words (the split of the weekly token limit): "45% Financial analysis's, 15% scan support and 30% shred-tree."
+Done: the shares of the week in `PLANNING/board/EPICS.md` are scaled from 80% to 45%; the uranium and gold
+series, the last FRED step and the first run of the economics view go below the line. One short message to
+each head with its new share.
+
+## 2026-11-25 about 16:24 UTC (dialog)
+Question: the quant plan for paper trading has three steps (A: 1 SPY share; B: 1 SPY option; C: 1 SPY
+condor). Control 6 of section 8 says "no option". Do you permit option orders on the Alpaca paper account
+(1 contract, defined risk only), after step A passes its gate?
+Answer: "Yes, permit (Recommended)"
+Done: told Quant and Quality. Quality reviews the new text of control 6 before step B. Paper account only;
+no margin; 1 contract.
+
+## 2026-11-25 about 16:40 UTC (dialog)
+Question: the miner value model design is ready (one page). The first build is about 6% to 8% of the weekly
+limit for one company, and the full test needs about 3 to 4 more weeks. A small step with no new code
+exists: read the uranium price that a stock price needs from the value tables that the miners publish
+(about 1% to 2%). Which path do you want? (Choices: small step first; build the model; stop here.)
+Answer: "Small step first (Recommended)"
+Done: told Fundamental Research. First the check of which technical reports have a value table, then the
+hand measurement, from the reserve of the week. No build before he sees the number and says yes.
+
+## 2026-11-25 about 17:01 UTC (dialog)
+Question: the small step is done (the page "Uranium Price Needed: NexGen"); do you want the build of the
+miner model? (Choices: build next week; build this week; stop here.)
+Answer (his own text, no choice): "I’m not sure I understand, the pdf doesn’t really read well/im not sure
+what it’s trying to tell me"
+Done: I gave him the message of the page in plain words. The page goes back to Fundamental Research for a
+plain form. No decision on the build yet. My fault: I checked the numbers and the form and not if a reader
+with no context gets the message.
+
+## 2026-11-25 about 18:03 UTC (chat)
+Words: "Please switch head of fundamental research back to opus"
+Done: not done by me. I have no tool that changes the model of a different session. That session shows
+that the model was set by the user in the session itself. I told him how he does it there.
+
+## 2026-11-25 about 18:30 UTC (chat)
+Words: "As you're working on these kinds of things, make sure you're thinking about what can and should be
+automated from a holistic point of view."
+Done: agreement 10 of the Head of Staff file. Two first items, both with no constriction: my checks of a
+page for him go into the file of the document reviewer agent (Quality); the usage count runs by script at
+the close of a ticket, not from the memory of a head (Technology).

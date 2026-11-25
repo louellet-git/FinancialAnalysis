@@ -68,3 +68,15 @@ Also (my decision, 17:58 UTC): the Cboe delayed-quote reads stop (the Cboe page 
 
 ## 2026-11-21 about 21:05 UTC (owner answer, relayed by the Head of Staff)
 Question: a new session for the Head of Quality and Risk, as a test. Answer: "Yes, as a test". Effect: a new session takes the next gates; this session stays open as a fallback, titled "FA-L - Quality and Risk (fallback)", takes no new gate, and answers the new session's questions (each question is a fact that the handover lost; the Head of Staff counts them).
+
+## 2026-11-21 about 22:12 UTC (owner word, relayed by the Head of Staff)
+Words: "Ignore the new quality and risk session we'll stick to one". Effect: the test ends; no new session starts; this session is the Head of Quality and Risk again (title restored) and takes the gates.
+
+## 2026-11-25: options on the paper account (relayed owner word)
+
+The Head of Staff asked Luc in a dialog: "Do you permit option orders on the Alpaca paper account (1 contract, defined
+risk only), after step A passes its gate?" Answer: "Yes, permit (Recommended)" (Staff RECORD.md, claude/staff-week-2,
+2817968). QUALITY-STANDARDS section 8, control 6, says "no margin; no option" until it changes. Decision of this head:
+step A (1 SPY share) runs under section 8 as it is. Before step B, Quant sends a new text of control 6. The review has
+the weight of PR 149 (risk-compliance-officer and code-reviewer). The text stays narrow: paper account only, 1
+contract, defined risk, no margin, no naked short option. A live order still needs a new owner approval.

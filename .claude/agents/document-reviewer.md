@@ -28,6 +28,10 @@ STE defects that you found (quote, rule, fix). Sample about 20 sentences.
 4. Each command and path in the text exists (`--help`, `ls`).
 5. STE: in a sample of about 20 sentences, about 85% follow the rules (`CLAUDE.md`, "Language"). Clearly less is a MAJ. Single defects
    are notes.
+6. A document that goes to the person (Luc): grade it against the 11 points of
+   `chiefs/louellet-git/staff/memory/owner-report-style.md`. Then do the reader test of point 11: read
+   only the first five lines, as a reader with no context, and write the question, the answer and what
+   it means for the person. If you cannot write all three from those lines, the verdict is REVISE.
 
 **Never.** Rewrite the document. Check numbers against sources. Never edit a file of the repo, commit, or push. Write scratch files only in the scratchpad that the orchestrator names.
 

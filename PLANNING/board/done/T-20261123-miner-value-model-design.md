@@ -2,13 +2,13 @@
 id: T-20261123-miner-value-model-design
 title: Design a value model for a mining company (net asset value), one page, before any build
 area: engine
-status: backlog
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: fundamental
 order: 6.1
 story: E3.S5
-branch:
+branch: claude/miner-value-model-design
 created: 2026-11-23
 acceptance: A design of one page is committed before any run. It gives the inputs (reserves and resources, the price curve of the commodity, the costs, the mine life), the value formula (a net asset value), the data source of each input, and the test that will judge the model, with its pass rule written before the first run. The person reads the design before a build starts.
 ---
@@ -38,3 +38,27 @@ Not before: the reset of the weekly token limit (Wednesday 2026-11-25), and afte
 after the review of the person, then the T1 correction).
 
 Board note (15:22 UTC, 2026-11-23): created from the word of the person. Not started.
+
+Board note (16:17 UTC, 2026-11-25): in progress (louellet-git, branch claude/miner-value-model-design), after the reset of the
+token limit. Scope of this step: the design page only. It goes to the Head of Staff, then to the person. No code, no run.
+
+Board note (16:31 UTC, 2026-11-25): version 2 of the design page, after the read of the Head of Staff and the read of the
+model validator (Head of Quality and Risk: REVISE, 4 major and 3 minor points; all applied). Changes: the main output is
+the commodity price that the stock price needs (a measurement, never an input); the input rule names what is permitted;
+Table 1 has no double count of cash and of closure cost; the beta comes from data before the test window; T1 is within
+2% on one path; T2 has the vintage rule (filing date, release date); T3 has the benchmark "beta plus the raw commodity
+return", is pooled over 5 named tickers, and has its fit and hold-out dates; a block "Size of the work" with a stop
+point. Still a design only. Next: the check of the difference by Quality, the Head of Staff, then the person.
+
+Board note (16:39 UTC, 2026-11-25): version 3 of the design page. Quality on version 2: PASS-WITH-NOTES with one condition,
+now applied: for T3, each judgment uses only documents dated on or before 2023-12-31 (the hold-out is in the past). Also:
+the fit window of T3 is 2017-01 to 2023-12; the 5 names come from the URA holdings of the form N-PORT nearest to
+2023-12-31; Cameco is 22.2% of URA (the URA page on main). A correction of this head: the page recommended UEC as the
+first company with no read of its technical reports. The page now says so: UEC if its reports have a mine plan with
+costs, else NexGen. OPEN, first step of any build: read which UEC properties have a technical report with an after-tax
+value and a price sensitivity table (UEC may report resources with no reserves for most projects).
+
+Board note (16:56 UTC, 2026-11-25): DONE. The design page (version 3) passed the read of the model validator (Quality: PASS) and is
+on main (pull request 231). The person read it and chose "Small step first" (record of the Head of Staff); the small step
+is `T-20261125-uranium-needed-price`. No build was started. A build needs a new ticket and his word; first company:
+NexGen or Denison, not UEC (see the small step).

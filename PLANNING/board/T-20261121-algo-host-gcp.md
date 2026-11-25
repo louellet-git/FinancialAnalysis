@@ -2,12 +2,12 @@
 id: T-20261121-algo-host-gcp
 title: Set up the always-on host of the quant algo engine on a free Google Cloud e2-micro
 area: trading
-status: backlog
+status: in-progress
 owner: louellet-git
 requested_by: louellet-git
 head: technology
 order: 2
-branch:
+branch: claude/algo-host-guide
 created: 2026-11-21
 acceptance: A setup guide (at most 2 pages) that the person follows to make the machine; `fa algo run` runs there as a service in market hours; the journal reaches git with a key that can push only the journal; the cost after the first day is known (0 or the IPv4 charge) and written here.
 ---
@@ -41,3 +41,5 @@ quant algo engine (`T-20261121-algo-1-paper-engine`, Head of Quant Research). Re
   key is limited to one repo, not to a path.
 - Rate: 60 calls a minute by default; with the daily option save (about 50 calls in one minute) the account stays under 200.
 - Build here (Linux x86_64, `--release --locked`) and copy the binary; do not build on the 1 GB machine.
+
+Guide written (2026-11-25): `docs/guides/algo-host-gcp.md`. The binary goes into the private store, folder `bin/`, with `bin/SHA256SUMS`. Open: the journal push (after the person makes the journal repo and its deploy key), the holiday check (Head of Quant Research), the cost after day 1.

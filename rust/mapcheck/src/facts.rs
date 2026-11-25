@@ -34,7 +34,9 @@ impl Forms {
 
     pub fn has(self, form: Option<&str>) -> bool {
         match (self, form) {
-            (Forms::Annual, Some("10-K")) | (Forms::Annual, Some("10-K/A")) => true,
+            // 40-F and 20-F: the annual reports of foreign filers (Canada: 40-F; others: 20-F). Their facts
+            // are mostly ifrs-full facts.
+            (Forms::Annual, Some("10-K" | "10-K/A" | "40-F" | "40-F/A" | "20-F" | "20-F/A")) => true,
             (Forms::Quarterly, Some("10-Q")) | (Forms::Quarterly, Some("10-Q/A")) => true,
             _ => false,
         }
@@ -83,7 +85,25 @@ pub struct CompanyFacts {
 
 impl CompanyFacts {
     /// All facts for one tag in one unit (an empty list if the filer has none).
+    /// A variable has the unit "USD" or "USD/shares". For an `ifrs-full` tag of a filer with no us-gaap facts,
+    /// the unit is the reporting currency of the filer (for example CAD). No conversion: the value stays in
+    /// that currency (`reporting_currency`).
     pub fn entries(&self, tag: &Tag, unit: &str) -> &[Fact] {
+        let unit = if tag.namespace == "ifrs-full" {
+            // An ifrs-full tag is read only for a filer with no us-gaap facts: a filer with both (CRH, NXPI) keeps its
+            // us-gaap values (its older IFRS years do not replace the restated US GAAP years). With no known currency
+            // there is no value (no silent fallback to USD).
+            if self.has_us_gaap_statements() {
+                return &[];
+            }
+            match self.currency_unit(unit) {
+                Some(u) => u,
+                None => return &[],
+            }
+        } else {
+            unit.to_string()
+        };
+        let unit = unit.as_str();
         self.facts
             .get(&tag.namespace)
             .and_then(|ns| ns.get(&tag.name))
@@ -94,6 +114,67 @@ impl CompanyFacts {
 
     pub fn has_us_gaap(&self) -> bool {
         self.facts.contains_key("us-gaap")
+    }
+
+    /// True if the filer has us-gaap statement facts: one of the main statement totals in the us-gaap namespace. An IFRS filer
+    /// can have a few us-gaap facts of a note (BHP: oil and gas reserves); it has no us-gaap statements.
+    pub fn has_us_gaap_statements(&self) -> bool {
+        const TOTALS: [&str; 6] = [
+            "Assets",
+            "Revenues",
+            "RevenueFromContractWithCustomerExcludingAssessedTax",
+            "NetIncomeLoss",
+            "StockholdersEquity",
+            "NetCashProvidedByUsedInOperatingActivities",
+        ];
+        self.facts.get("us-gaap").is_some_and(|ns| TOTALS.iter().any(|t| ns.contains_key(*t)))
+    }
+
+    /// True if the filer has statement facts in a taxonomy that the registry reads (us-gaap or ifrs-full).
+    pub fn has_statements(&self) -> bool {
+        self.has_us_gaap() || self.facts.contains_key("ifrs-full")
+    }
+
+    /// The reporting currency of an `ifrs-full` filer: the currency unit of its latest total assets (None: no such unit).
+    pub fn reporting_currency(&self) -> Option<&str> {
+        let units = &self.facts.get("ifrs-full")?.get("Assets")?.units;
+        // More than one currency (Denison: USD to 2017, CAD later): the currency of the latest total assets.
+        // On equal latest dates the unit that is first in alphabetical order wins (the `ub.cmp(ua)` reverses the
+        // order, and `max_by` takes the greatest).
+        units
+            .iter()
+            .filter(|(u, _)| u.len() == 3 && u.chars().all(|c| c.is_ascii_uppercase()))
+            .max_by(|(ua, a), (ub, b)| {
+                let latest = |v: &&Vec<Fact>| v.iter().map(|f| f.end.as_str()).max().unwrap_or("").to_string();
+                latest(a).cmp(&latest(b)).then_with(|| ub.cmp(ua))
+            })
+            .map(|(u, _)| u.as_str())
+    }
+
+    /// The count of total-assets facts in a currency other than the reporting currency (they are not used).
+    pub fn other_currency_facts(&self) -> usize {
+        let Some(currency) = self.reporting_currency() else { return 0 };
+        self.facts.get("ifrs-full").and_then(|ns| ns.get("Assets")).map_or(0, |c| c.units.iter().filter(|(u, _)| u.as_str() != currency).map(|(_, v)| v.len()).sum())
+    }
+
+    /// The currency of the standard variables: "USD" for a filer with us-gaap facts (or with no statements);
+    /// for an ifrs-full filer with no us-gaap facts the currency of its total assets; None if that is not known.
+    pub fn currency(&self) -> Option<String> {
+        if self.has_us_gaap_statements() || !self.facts.contains_key("ifrs-full") {
+            Some("USD".to_string())
+        } else {
+            self.reporting_currency().map(|c| c.to_string())
+        }
+    }
+
+    /// "USD" -> the reporting currency, "USD/shares" -> "<currency>/shares"; other units stay. None: no known currency.
+    fn currency_unit(&self, unit: &str) -> Option<String> {
+        let currency = self.reporting_currency()?;
+        Some(match unit {
+            "USD" => currency.to_string(),
+            "USD/shares" => format!("{currency}/shares"),
+            other => other.to_string(),
+        })
     }
 
     /// The filing dates (text, YYYY-MM-DD) of all facts that come from an annual form (10-K, 10-K/A), oldest first.

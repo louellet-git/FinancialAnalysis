@@ -1,4 +1,4 @@
-# Week study: state on 2026-11-25 16:35 UTC
+# Week study: state on 2026-11-25 (evening UTC)
 
 Tickets: `T-20261121-sp100-week-attribution`, `T-20261121-premium-company-part`, `T-20261121-dcf-engine-integration`
 (in progress); `T-20261121-rates-balance-sheet`, `T-20261121-evaluator-captive-finance` (backlog).
@@ -10,7 +10,8 @@ Tickets: `T-20261121-sp100-week-attribution`, `T-20261121-premium-company-part`,
   `fa dcf premium-series`, documents A-027 to A-037. Both gates of Quality passed (PASS-WITH-NOTES).
 - Release check from now on: `fa selftest golden` (the tool of Quant Research; data store of the case as data/raw,
   FA_REPO = the repo root). Pull request 190 made its case `dcf_attribute_panel32` fail on main (corrected: 195).
-- Paused: `claude/t1-revenue-band`, `claude/trade-level-backtest` (the state is on each ticket).
+- In progress: `claude/t1-revenue-band` (the rule `band_q` is chosen; it waits for the statistics gate, then one score run).
+  Paused: `claude/trade-level-backtest`. The state is on each ticket.
 
 ## The three pieces for the person (on main; PDFs in `analysis/priors/pdf/`)
 1. `sp10_week_page_v2_2026-11-21`: the days, the stocks, the press reason and the test for each day (Economics).
