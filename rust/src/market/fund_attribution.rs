@@ -39,6 +39,9 @@ const JUMP_HIGH: f64 = 3.0;
 const MAX_STALE_DAYS: i64 = 5;
 /// The remainder above this (in percentage points) gets a warning.
 const REMAINDER_WARN_PP: f64 = 1.0;
+/// The largest difference of the N-PORT price and the Nasdaq close of a mapped holding that is normal (different close
+/// times and currency rates; 4.8% seen). Above it the map row is suspect: a wrong ticker gives a much larger difference.
+pub const MAP_PRICE_TOLERANCE: f64 = 0.08;
 /// The share splits and consolidations that the program knows (a factor k means k shares for one, or one for k).
 const SPLIT_FACTORS: [f64; 8] = [2.0, 3.0, 4.0, 5.0, 10.0, 20.0, 50.0, 100.0];
 /// The balance may differ from a split factor by this much (the natural log: 0.45 is x1.57): the fund also trades.
@@ -396,9 +399,18 @@ pub const LIMITS: [&str; 6] = [
     "1. The foreign part of the fund (about a quarter of the net assets for URA) has a quarterly value only: no permitted monthly price.",
     "2. A trade inside a quarter goes to the remainder, with cash, fee and securities lending (the start weights are held for the quarter).",
     "3. The premium is price return minus NAV return. N-PORT has no share count, so a premium level (price / NAV - 1) is not known.",
-    "4. GLD months are approximate (World Bank monthly average). (This run is not GLD.)",
+    "4. GLD months are approximate (World Bank monthly average). This limit applies to a GLD run only.",
     "5. The look-through of the Sprott trust (uranium in the trust) needs the consent of Sprott: the trust is one line here.",
     "6. The last quarter can be missing: N-PORT is public 60 days after the quarter end, for the third month only.",
+];
+
+/// Further cautions, printed after the six limits.
+pub const CAUTIONS: [&str; 5] = [
+    "- Each quarter uses the report filed about 60 days after the quarter end: this is a look back, not a point-in-time view.",
+    "- The ticker map is of 2026; it is used for all quarters. Each row has a price check (MAP SUSPECT above the tolerance).",
+    "- The return of a foreign holding is in USD: it includes the change of the currency rate.",
+    "- The split rule infers a factor from the balance. It can misfire when a large trade comes with a value factor of 0.4 to 2.5.",
+    "- An amendment (NPORT-P/A) is used only when the original is missing; it is not compared with the original.",
 ];
 
 struct SummaryRow {
@@ -560,7 +572,7 @@ pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
                     pp(d),
                     pp(ratio)
                 );
-                println!("          the difference = change of the premium/discount + the distributions of the quarter (not in the Nasdaq close; not in N-PORT)");
+                println!("          price vs NAV, distributions not removed: the difference = change of the premium/discount + the distributions of the quarter (not in the Nasdaq close)");
             }
             _ => println!("LAYER 1b: n/a (price return {}, NAV return {})", pp_opt(pr), pp_opt(q.nav_ret)),
         }
@@ -579,7 +591,7 @@ pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
         println!("  foreign part (same rule, quarterly prices)        {} pp", pp(q.foreign));
         println!("  sum of the parts                                  {} pp", pp(q.us + q.foreign));
         println!("  fund NAV return                                   {} pp", pp_opt(q.nav_ret));
-        println!("  trading in the quarter, cash, fee, securities lending, other   {} pp   <-- remainder", pp_opt(q.remainder));
+        println!("  trading in the quarter, cash, fee, dividends, securities lending, other   {} pp   <-- remainder", pp_opt(q.remainder));
         if q.remainder.is_some_and(|r| r.abs() * 100.0 > REMAINDER_WARN_PP) {
             println!("  WARNING: the remainder is above {REMAINDER_WARN_PP} pp");
         }
@@ -604,7 +616,7 @@ pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
             names(&q.leaving)
         );
         if !est_names.is_empty() {
-            println!("  estimate for entering US-listed holdings, if held from the start of the quarter (Nasdaq closes): {} pp ({})", pp(est), est_names.join(", "));
+            println!("  bound for entering US-listed holdings, if held for the whole quarter (the fund bought them during the quarter; Nasdaq closes): {} pp ({})", pp(est), est_names.join(", "));
         }
         println!(
             "  estimate for the trades in the linked holdings (relative balance change less the pro-rata change {:+.1}%, x half the return; mid-quarter price): {} pp",
@@ -612,7 +624,10 @@ pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
             pp(q.trade_est)
         );
         if let Some(r) = q.remainder {
-            println!("  remainder less the two estimates (cash, fee, securities lending, rest of the trading, error of the estimates): {} pp", pp(r - q.trade_est - est));
+            println!("  unexplained after the two estimates (cash, fee, dividends, securities lending, rest of the trading, error of the estimates): {} pp", pp(r - q.trade_est - est));
+            if r.abs() * 100.0 > REMAINDER_WARN_PP {
+                println!("  probable cause (not proved): the holdings that entered or left and the trades in the quarter; the estimates are bounds, not measures; unexplained {} pp", pp(r - q.trade_est - est));
+            }
         }
         println!("  lines with no price (repo, money market, collateral, other) hold {:.2}% of the net assets at the start; they are in the remainder", q.other_w0 * 100.0);
         let mut rows: Vec<&Row> = q.rows.iter().collect();
@@ -642,9 +657,16 @@ pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
             }
         }
         chk.sort_by(|x, y| y.0.total_cmp(&x.0));
+        for (d, t) in chk.iter().filter(|(d, _)| *d > MAP_PRICE_TOLERANCE) {
+            println!("  MAP SUSPECT {t}: N-PORT price against Nasdaq close differs by {:.2}% (tolerance {:.0}%): check the row of the ticker map", d * 100.0, MAP_PRICE_TOLERANCE * 100.0);
+        }
+        let unchecked: Vec<&str> = q.rows.iter().filter(|r| r.group == Group::Us).filter_map(|r| r.ticker.as_deref()).filter(|t| price_of(t, &q.d1).is_none()).collect();
+        if !unchecked.is_empty() {
+            println!("  price check NOT RUN for {} (no Nasdaq close at {}): these map rows are not checked", unchecked.join(", "), q.d1);
+        }
         match chk.first() {
-            Some((d, t)) => println!("  price check at {}: N-PORT price against Nasdaq close for {} US-listed holdings, largest difference {:.2}% ({t})", q.d1, chk.len(), d * 100.0),
-            None => println!("  price check at {}: no Nasdaq close for any US-listed holding", q.d1),
+            Some((d, t)) => println!("  price check at {}: N-PORT price against Nasdaq close for {} US-listed holdings, largest difference {:.2}% ({t}); tolerance {:.0}%", q.d1, chk.len(), d * 100.0, MAP_PRICE_TOLERANCE * 100.0),
+            None => println!("  price check NOT RUN at {}: no Nasdaq close for any US-listed holding", q.d1),
         }
         // Monthly view.
         let mv = monthly(&q, &price_of);
@@ -678,6 +700,10 @@ pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
     println!("\nTHE SIX LIMITS");
     for l in LIMITS {
         println!("{l}");
+    }
+    println!("CAUTIONS");
+    for c in CAUTIONS {
+        println!("{c}");
     }
     Ok(0)
 }

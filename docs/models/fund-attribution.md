@@ -40,7 +40,8 @@ check of the map against Nasdaq) and the monthly view, then a summary table and 
 
 ## Assumptions
 No assumption record: the model has no tuned value. The constants are in the code (`fund_attribution.rs`): the flag limits
-(1/3 and 3), the split list, the balance tolerance (ln 0.45), the quarter gap (80 to 100 days), the remainder warning (1 point).
+(1/3 and 3), the split list, the balance tolerance (ln 0.45), the quarter gap (80 to 100 days), the remainder warning (1 point), the map price tolerance (8%: above it the
+output prints MAP SUSPECT; with no Nasdaq close it prints price check NOT RUN).
 
 ## Limits
 1. The foreign part (about a quarter of the net assets) is quarterly only: no permitted monthly price.
@@ -51,7 +52,9 @@ No assumption record: the model has no tuned value. The constants are in the cod
 6. The last quarter can be missing: N-PORT is public 60 days after the quarter end, for the third month only.
 Also: the repo and money market lines (cash collateral of securities lending) are in the holdings but can be outside total assets;
 the NAV is struck with foreign prices at their own close, so the premium difference includes this timing; the NAV return of N-PORT
-is net of the fee.
+is net of the fee. The output also prints these cautions: each quarter uses a report filed about 60 days later (a look back);
+the 2026 ticker map is used for all quarters; a foreign return includes the currency change; the split rule can misfire; an
+amendment is not compared with its original.
 
 ## Code and command
 | What | Path or command |
@@ -62,6 +65,9 @@ is net of the fee.
 | Tests | `cargo test --manifest-path rust/Cargo.toml --locked fund_` (fixed-answer fixtures: two quarters, premium, enter, leave, missing price, split) |
 
 ## Review status
-Not reviewed. Run of 2026-11-25 on URA: 13 reports, 12 quarters; the remainder is between -0.25 and +0.35 points in 10 quarters
-and +1.89 and +1.59 points in two (2024-10-31: Oklo entered the fund, estimate +1.71; 2025-10-31: trades and one entering holding).
+Gate of Quality and Risk (model validator), 2026-11-25: PASS-WITH-NOTES; the validator reproduced the 12 remainders with its own
+parse. Its two conditions are done: the map price check has a tolerance and prints MAP SUSPECT or NOT RUN; a remainder above 1 point
+prints "probable cause (not proved)" and the unexplained part. The entering estimate is a bound (the fund bought during the quarter). Run of 2026-11-25 on URA: 13 reports, 12 quarters; the remainder is between -0.25 and +0.35 points in 10 quarters
+and +1.89 and +1.59 points in two (2024-10-31: Oklo entered the fund, bound +1.71, unexplained +0.06; 2025-10-31: trades and an entering holding, unexplained +0.32 by
+this estimate and +0.64 by the validator's estimate).
 Record: `docs/HIDDEN-ASSUMPTIONS.md`, #288.
