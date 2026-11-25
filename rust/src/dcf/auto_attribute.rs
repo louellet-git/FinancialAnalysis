@@ -38,8 +38,11 @@
 //! before) is a scale error and is replaced by the reference count; a count outside 0.5 to 2 times stays and has a note.
 
 use super::auto::*;
-use super::auto_cli::{cache_dir, curve_and_index, jobs_of, load_table, map_inputs_pit, num, table_path, tickers_of, Opts, BANNER};
-use super::auto_implied::{groups_of, NO_VALUE, point, point_at_premium, point_with, read_groups, solve, Bound, Failure, Found, ImpliedConfig, ERP_RANGE, GROWTH_RANGE};
+use super::auto_baserate::{base_rates, BASERATE_PERIODS, BASERATE_YEARS};
+use super::auto_cli::{cache_dir, curve_and_index, jobs_of, load_table, map_inputs_pit, map_inputs_pit_periods, num, table_path, tickers_of, Opts, BANNER};
+use super::auto_premium::{anchor_of, curve_source, CurveSource};
+use super::auto_reality;
+use super::auto_implied::{groups_of, list_premium, NO_VALUE, point, point_at_premium, point_with, read_groups, solve, Bound, Failure, Found, ImpliedConfig, ERP_RANGE, GROWTH_RANGE};
 use super::stats::percentile;
 use super::DcfError;
 use rayon::prelude::*;
@@ -67,7 +70,7 @@ fa dcf attribute [--tickers-file FILE | TICKER ...] --from D1 --to D2 [OPTIONS]
     residual  the part that the exact searches do not leave (zero when both searches are exact)
   and the same with rates and plug in the reverse order (the range of the two orders is the order effect). A third line
   gives the growth shift that P2 needs at the premium of D1. The facts of each date are the facts that were public on it;
-  the 10-K of the cache does not fill a missing input. The price is the last close on or before the date (not more than
+  the 10-K of the cache fills a missing input only if its filing date is on or before the date. The price is the last close on or before the date (not more than
   10 days older); the curve is the last GSW row on or before the date (a curve more than 3 days older is flagged).
   One ticker: one table. A list: one CSV row for each ticker, the medians by size and sector, then the change of the WHOLE
   list (value-weighted by price x shares at D1, with a guard on the share count), the sum on the set that has both views,
@@ -77,8 +80,71 @@ fa dcf attribute [--tickers-file FILE | TICKER ...] --from D1 --to D2 [OPTIONS]
   --table FILE    parameter table
   --rules K=V,..  change a rule of the builder (the list: fa dcf auto --help)
   --groups FILE   CSV lines `ticker,sector,industry` (wins over the SIC code of the cache)
-  --out FILE      write one CSV row for each ticker
-  --jobs N        threads (default: all); the result does not depend on N";
+  --curve SRC     auto (default): gsw when the last GSW row on or before each date is at most 3 days older than that date
+                  (A-027, the rule of `fa dcf premium-series`); else par at all dates. The text names the source that was
+                  chosen and why. With gsw at all dates the result is the same as --curve gsw.
+                  gsw: the GSW row of the Federal Reserve Board (it lags about one week); fedinvest: the NSS
+                  curve that `fa recon rich-cheap` fits to the FedInvest Treasury prices of the last file on or before each
+                  date; par: the same NSS fit to the Treasury daily par yield curve (1 to 30 years, each tenor a par
+                  bond) of the last row on or before each date. The fit error (root mean square, basis points) is printed;
+                  a par curve with an error above 5 bp is refused. Do not read the fitted curve beyond 30 years.
+                  One source is used at all dates.
+  --prior-window  add the block \"(6) PRIOR WINDOW\" (the late-reaction check). Let n be the number of days from D1 to D2.
+                  D0 is D1 less n days, moved to the last SPY trading day on or before it. The same procedure runs for D0
+                  to D1 and for D0 to D2 (the same code as the main run). The block prints the line \"all\" of the full
+                  bridge (premium view first) for D0 to D1, D1 to D2 and D0 to D2, each with its common change c, and the
+                  change of D0 to D1 followed by D1 to D2 for comparison. With --curve auto, D0 is one of the dates for the
+                  choice of the source. It does not work with --top. It adds no CSV column.
+  --out FILE      write one CSV row for each ticker. The columns after `refusal` are:
+                  beta1, beta2     the beta that the model uses at D1 and at D2 (the shrunk regression beta; with no beta
+                                   the model uses 1.0: the cell has 1.0000 and the flags have `beta1-default`, `beta2-default`)
+                  dur_premium1     D = -(ln V(x1 + h) - ln V(x1 - h)) / (2 h), h = 0.001, where x1 is the premium that the price
+                                   of D1 implies, and V is the value at the means with the facts, curve, beta and price weight
+                                   of D1. Unit: d ln V for a change of 1.00 of the premium as a decimal. A change of 0.01 of
+                                   the premium gives about -D x 0.01 in ln V. Empty with no premium view, or when a value at
+                                   x1 +- h does not exist
+                  earnings_8k      the filing dates of an SEC 8-K with item 2.02 after D1 and on or before D2, joined with
+                                   \";\" (from <cache>/<TICKER>/sec_8k_earnings.json; empty when there is none)
+                  c_premium, c_growth, p_premium_common_pct, p_premium_company_pct, g_growth_common_pct, g_growth_company_pct
+                                   the common change c of each view (decimals) and the two parts of the plug of each view
+                                   (percent of P1; they add to p_premium_pct and g_growth_pct). Empty with no view
+  --common SRC   where the common change c of a view comes from. Here, common is the part of a plug that all tickers share
+                  (the market-wide change). It is NOT the COMMON SET of block (2), which is the set of tickers that
+                  have both views. It splits the plug of each view in two engine steps, from the
+                  facts, date and curve of D2, the beta and price weight of D1, and the free variable x1: the common step (x1
+                  to x1 + c) and the company step (to the beta, weight and x2 of D2). The two add to the plug exactly.
+                  median (default): the median of x2 - x1 over the tickers of the run with the view
+                  vw: the mean of x2 - x1 weighted by price x shares at D1
+                  file: the economics view, the row of the date D2 of --common-file. It differs from the two above: in BOTH views
+                  the common step applies both changes together, the premium of the start node + erp_change and G (the long
+                  run growth of A-001, Rules.long_run) + growth_change (L = min(10-year zero, G), so G moves the value only
+                  where G binds). An empty field is no information: the other field is applied and the label says which;
+                  with both empty the plug is not covered by the economics view (company part = the whole plug, flag
+                  not-covered-by-economics-view) and the bridge gives the count of tickers covered and not covered
+                  A run of one ticker with no --common-list and no file has c = 0 (the company part is the plug); the text says so.
+                  If the engine has no value at x1 + c, the whole plug is the company part (flag common-step:none)
+  --common-list FILE  one ticker for each line; c is the median (or the mean with vw) over this list in place of the tickers
+                  of the run. A run of one ticker needs it for a c that is not 0
+  --common-file FILE  with --common file: a CSV with the columns date, erp_change, growth_change and source (decimals; found
+                  by name, so the file of `fa macro view` is read as it is). The row of the date D2 gives the two changes;
+                  with a column d1 the row must also have the date D1. An empty field is no information (not a change of zero)
+  --top N        keep the N companies of the list with the largest market value at D1 (price x the guarded share count; one
+                  weight for each company). Both classes of one company (GOOG and GOOGL) stay in the run and count as one
+                  company. The common change c of --common is computed on the FULL list, before the cut, so the 10 largest
+                  of the S&P 100 have the median of the S&P 100 (with no --common-list). The text names the kept tickers
+  --reality      add the block \"(5) REALITY CHECK\" and the CSV columns at the END of the header (the other columns keep
+                  their places): the revenue of the last fiscal year public at D2 (the base revenue) and its size bucket
+                  (below 1B, 1B to 10B, 10B to 50B, 50B or more), the own 5-year growth, the implied 10-year growth at D2 (the
+                  growth of the growth view, at the model premium) with its percentile among the last windows of its bucket
+                  (the share of them below it; \"above every case\" when it is above the maximum), and the path of the 8-K
+                  earnings release of the window when the cache has it (<cache>/<TICKER>/filings/8k/<accession>/; the newest
+                  accession, then the newest file; empty when none). The base rates are those of `fa dcf baserates` at D2 (the
+                  same function, point in time). A measurement, never an input of the model
+  --baserate-list FILE  with --reality: the tickers of the base rates (default: the tickers of the run before --top)
+  --premium-history FILE  with --reality: a CSV of `fa dcf premium-series`; the premium that the list of the run (before --top)
+                  implies at D1 and at D2 is put against the s1 of the rows with an anchor before D1 (percentile; rows of D1 and
+                  later are not used). Use a history of the same list
+  --jobs N       threads (default: all); the result does not depend on N";
 
 // ---------------------------------------------------------------------------------------------
 // One ticker
@@ -103,6 +169,30 @@ pub struct Chain {
     /// The order facts, time, free variable, rates.
     pub rev_free_ln: f64,
     pub rev_rates_ln: f64,
+    /// The split of the plug into the common change and the company part (`add_common`); `None` before it runs.
+    pub split: Option<Split>,
+}
+
+/// The plug of a view in two engine steps (the common change c of the list, then the company part). The two parts add to
+/// the plug exactly: the company part is the plug less the common step. All numbers are changes of `ln`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Split {
+    /// The common change of the free variable (a decimal: premium, or growth shift).
+    pub c: f64,
+    /// The name of the source of c, for the text: "list median", "value-weighted", "economics view, <source>", "none (c = 0)".
+    pub label: String,
+    /// Order facts, time, plug, rates: `ln V(x1 + c) - ln V(x1)` at the facts, date, curve of D2 and the beta and weight of D1.
+    pub common_ln: f64,
+    pub company_ln: f64,
+    /// Order facts, time, plug, rates: the same two steps with the curve of D1 (the node before the rates).
+    pub rev_common_ln: f64,
+    pub rev_company_ln: f64,
+    /// The engine has no value at `x1 + c`: the whole plug is in the company part.
+    pub none: bool,
+    /// Only for the economics view (`--common file`): `Some(true)` the view gave a change that was applied, `Some(false)` the
+    /// view gave no information (both fields empty): the plug is "not covered by the economics view" and the company part is
+    /// the whole plug. `None`: the split is not from the economics view.
+    pub covered: Option<bool>,
 }
 
 impl Chain {
@@ -115,6 +205,18 @@ impl Chain {
     pub fn pct_rev(&self) -> [f64; N_PARTS] {
         let q = sequential(&[self.facts_ln, self.time_ln, self.rev_free_ln, self.rev_rates_ln, self.resid_ln]);
         [q[0], q[1], q[3], q[2], q[4]]
+    }
+    /// The parts as `pct`, with the plug in two parts: facts, time, rates, common change, company part, residual. The two
+    /// plug parts add to the plug of `pct`. With no split (`add_common` did not run) the common part is zero.
+    pub fn pct_split(&self) -> [f64; 6] {
+        let (common, company) = self.split.as_ref().map_or((0.0, self.free_ln), |s| (s.common_ln, s.company_ln));
+        sequential(&[self.facts_ln, self.time_ln, self.rates_ln, common, company, self.resid_ln])
+    }
+    /// The same for the order facts, time, plug, rates (the parts are returned in the order of `pct_split`).
+    pub fn pct_rev_split(&self) -> [f64; 6] {
+        let (common, company) = self.split.as_ref().map_or((0.0, self.rev_free_ln), |s| (s.rev_common_ln, s.rev_company_ln));
+        let q = sequential(&[self.facts_ln, self.time_ln, common, company, self.rev_rates_ln, self.resid_ln]);
+        [q[0], q[1], q[4], q[2], q[3], q[5]]
     }
     /// The search bounds and the residual of the searches.
     fn flags(&self, name: &str) -> Vec<String> {
@@ -132,6 +234,12 @@ impl Chain {
         if self.resid_ln.abs() > 1e-5 {
             v.push(format!("{name}:search-residual"));
         }
+        if self.split.as_ref().is_some_and(|s| s.none) {
+            v.push(format!("{name}:common-step:none"));
+        }
+        if self.split.as_ref().is_some_and(|s| s.covered == Some(false)) {
+            v.push(format!("{name}:not-covered-by-economics-view"));
+        }
         v
     }
 
@@ -146,10 +254,7 @@ impl Chain {
                 return fail("search at a bound", format!("the search at {d} has no solution in the range (bound {}{:.4})", if f.bound == Bound::Below { "<" } else { ">" }, f.x));
             }
         }
-        let mut m_time = m1.clone();
-        m_time.as_of = m2.as_of.clone();
-        let mut m_rates = m_time.clone();
-        m_rates.curve = m2.curve.clone();
+        let (m_time, m_rates) = step_markets(m1, m2);
         let n0 = eval(inp1, m1, x1.x)?;
         let n1 = eval(inp2, m1, x1.x)?;
         let nt = eval(inp2, &m_time, x1.x)?;
@@ -174,8 +279,19 @@ impl Chain {
             resid_ln: total_ln - facts_ln - time_ln - rates_ln - free_ln,
             rev_free_ln: (n2r / nt).ln(),
             rev_rates_ln: (n4 / n2r).ln(),
+            split: None,
         })
     }
+}
+
+/// The markets of the nodes Nt and N2 (the module comment): the valuation date of D2 with the curve of D1, then the curve of D2.
+/// Both keep the beta and the price of D1.
+fn step_markets(m1: &Market, m2: &Market) -> (Market, Market) {
+    let mut m_time = m1.clone();
+    m_time.as_of = m2.as_of.clone();
+    let mut m_rates = m_time.clone();
+    m_rates.curve = m2.curve.clone();
+    (m_time, m_rates)
 }
 
 /// The result for one ticker.
@@ -193,6 +309,9 @@ pub struct Attribution {
     /// (`NaN`: no solution).
     pub cagr1: f64,
     pub cagr2: f64,
+    /// Where the growth search of D2 ended (`Bound::Exact`: a solution; else `cagr2` is the growth at the end of the range, a
+    /// floor or a ceiling, not a measurement).
+    pub growth2_bound: Bound,
     /// The third view: the growth shift that gives P2 with the premium of D1, and the 10-year growth at that shift.
     pub growth_at_x1: Option<Found>,
     pub cagr_at_x1: f64,
@@ -203,6 +322,11 @@ pub struct Attribution {
     pub new_facts: bool,
     pub curve1: String,
     pub curve2: String,
+    /// The beta that the model uses at D1 and at D2 (the shrunk regression beta of `Market.beta`; `None`: no beta).
+    pub beta1: Option<f64>,
+    pub beta2: Option<f64>,
+    /// `-d ln V / d premium` at the premium of D1 (`premium_duration`; `None`: no premium view, or no value at x1 +- h).
+    pub dur_premium1: Option<f64>,
     /// The dates of the two markets (the curve is the last row on or before them).
     pub date1: String,
     pub date2: String,
@@ -249,8 +373,8 @@ impl View {
 }
 
 /// The change of `exp(cumulative sum)` at each step (a share of the start level).
-fn sequential(parts: &[f64; N_PARTS]) -> [f64; N_PARTS] {
-    let mut out = [0.0; N_PARTS];
+fn sequential<const N: usize>(parts: &[f64; N]) -> [f64; N] {
+    let mut out = [0.0; N];
     let mut cum = 0.0f64;
     for (i, p) in parts.iter().enumerate() {
         let before = cum.exp();
@@ -270,6 +394,9 @@ fn fail<T>(key: &str, text: impl Into<String>) -> Result<T, (String, String)> {
 fn engine_err(x: DcfError) -> (String, String) {
     ("engine error".to_string(), x.to_string())
 }
+
+/// The value at the means of one ticker at a market and a value of the free variable (the facts of D2 are fixed).
+type MarketEval<'a> = &'a dyn Fn(&Market, f64) -> Result<f64, (String, String)>;
 
 /// The value at the means for a premium. A premium for which the engine gives no value is an error here.
 fn value_at(inp: &AutoInputs, cfg: &ImpliedConfig, market: &Market, x: f64) -> Result<f64, (String, String)> {
@@ -300,6 +427,21 @@ fn growth_search(inp: &AutoInputs, cfg: &ImpliedConfig, x: f64, market: &Market,
     Ok((f, cagr))
 }
 
+/// The step of the premium (a decimal: 0.001 is 0.1 point) of the central difference of `premium_duration`.
+pub const DURATION_STEP: f64 = 0.001;
+
+/// `D = -(ln V(x + h) - ln V(x - h)) / (2 h)`, the sensitivity of the value at the means to the premium at `x`, with the
+/// facts, the curve, the beta and the price weight of `inp` and `market` (the function of the premium search: `value_at`).
+/// Unit: d ln V for a change of 1.00 of the premium (a decimal). `None` when a value at `x +- h` does not exist.
+pub fn premium_duration(inp: &AutoInputs, cfg: &ImpliedConfig, market: &Market, x: f64, h: f64) -> Option<f64> {
+    let up = value_at(inp, cfg, market, x + h).ok()?;
+    let down = value_at(inp, cfg, market, x - h).ok()?;
+    if !(up.is_finite() && down.is_finite() && up > 0.0 && down > 0.0) {
+        return None;
+    }
+    Some(-(up.ln() - down.ln()) / (2.0 * h))
+}
+
 fn same_facts(a: &AutoInputs, b: &AutoInputs) -> bool {
     a.years == b.years && a.balance == b.balance
 }
@@ -307,6 +449,17 @@ fn same_facts(a: &AutoInputs, b: &AutoInputs) -> bool {
 /// The value at the means for a growth shift at the premium of the rules (a failure of the engine is an error).
 fn value_with_growth(inp: &AutoInputs, cfg: &ImpliedConfig, market: &Market, shift: f64) -> Result<f64, (String, String)> {
     Ok(point_with(inp, cfg, market, shift, cfg.rules.margin_shift).map_err(engine_err)?.value)
+}
+
+/// The value at the means for a premium, a growth shift and a long-run growth G (`Rules::long_run`; the builder makes
+/// L = min(10-year zero, G) from it, as for every other run). The other rules are those of `cfg`.
+fn value_at_rules(inp: &AutoInputs, cfg: &ImpliedConfig, market: &Market, erp: f64, growth_shift: f64, long_run: Option<f64>) -> Result<f64, (String, String)> {
+    let rules = Rules { erp: (erp, cfg.rules.erp.1), growth_shift, long_run, ..cfg.rules.clone() };
+    match point(inp, cfg.table, cfg.fade, market, &rules) {
+        Ok((p, _)) => Ok(p.value),
+        Err(Failure::Engine(m)) => fail("engine error", m),
+        Err(Failure::Refusal(r)) => fail("engine error", r.to_string()),
+    }
 }
 
 /// The attribution of one ticker from the inputs and the market of the two dates. The error is the key and the text.
@@ -346,14 +499,19 @@ pub fn attribute_models(inp1: &AutoInputs, m1: &Market, inp2: &AutoInputs, m2: &
         },
         Err(_) => (None, f64::NAN),
     };
+    let dur_premium1 = prem.as_ref().ok().and_then(|c| premium_duration(inp1, cfg, m1, c.x1.x, DURATION_STEP));
     Ok(Attribution {
         p1,
         p2,
+        beta1: m1.beta.as_ref().map(|b| b.adjusted),
+        beta2: m2.beta.as_ref().map(|b| b.adjusted),
+        dur_premium1,
         model_premium: model,
         prem,
         grow,
         cagr1,
         cagr2,
+        growth2_bound: g2.bound,
         growth_at_x1,
         cagr_at_x1,
         shares1: sm1.shares,
@@ -448,6 +606,11 @@ pub struct AttrRow {
     /// The ticker of the same company that carries the weight (one company, one weight): this ticker has none.
     pub weight_of: Option<String>,
     pub outcome: Result<Attribution, (String, String)>,
+    /// The filing dates of the SEC 8-K with item 2.02 after D1 and on or before D2, joined with ";" (`earnings_8k_between`).
+    pub earnings_8k: String,
+    /// A close of this ticker is older than the close of the market index on the same date (`stale_note`): the row has
+    /// no weight, so no sum mixes the dates. The text names the dates.
+    pub stale: Option<String>,
 }
 
 impl AttrRow {
@@ -458,8 +621,11 @@ impl AttrRow {
         }
         self.weight_raw()
     }
-    /// The market value at D1 with no rule of one weight for one company.
+    /// The market value at D1 with no rule of one weight for one company (none for a stale price).
     pub fn weight_raw(&self) -> Option<f64> {
+        if self.stale.is_some() {
+            return None;
+        }
         let (p1, _) = self.prices?;
         self.shares.map(|s| p1 * s).filter(|w| w.is_finite() && *w > 0.0)
     }
@@ -492,7 +658,8 @@ pub fn attribute_list(
                 let primary = outcome.as_ref().ok().map(|x| x.shares1);
                 let (shares, shares_note) = guarded_shares(a, primary);
                 let cik = cfg.cache.and_then(|c| cik_of(c, &a.ticker));
-                AttrRow { ticker: a.ticker.clone(), sector, industry, prices, shares, shares_note, cik, weight_of: None, outcome }
+                let earnings_8k = cfg.cache.map_or(String::new(), |c| earnings_8k_between(c, &a.ticker, &m1.as_of, &m2.as_of));
+                AttrRow { ticker: a.ticker.clone(), sector, industry, prices, shares, shares_note, cik, weight_of: None, outcome, earnings_8k, stale: None }
             })
             .collect()
     };
@@ -504,11 +671,399 @@ pub fn attribute_list(
     Ok(rows)
 }
 
+// ---------------------------------------------------------------------------------------------
+// The common change of a view
+// ---------------------------------------------------------------------------------------------
+
+/// How the common change c of a view comes from the rows of a list.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum CommonMode {
+    /// The median of `x2 - x1` over the tickers with the view (not stale).
+    Median,
+    /// The mean of `x2 - x1` weighted by the market value at D1.
+    ValueWeighted,
+}
+
+/// The common change of one view: `c` is a decimal (premium, or growth shift); `None` means no common change (c = 0), and the
+/// label says why. The label names the source in the text.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CommonChange {
+    pub c: Option<f64>,
+    pub label: String,
+}
+
+impl CommonChange {
+    pub fn none(why: &str) -> CommonChange {
+        CommonChange { c: None, label: format!("none, c = 0: {why}") }
+    }
+}
+
+/// The common change of the premium view and of the growth view.
+pub type CommonChanges = [CommonChange; 2];
+
+/// No common change for both views (a single ticker with no list and no file).
+pub fn no_common(why: &str) -> CommonChanges {
+    [CommonChange::none(why), CommonChange::none(why)]
+}
+
+/// c from the rows of a list: the median or the value-weighted mean of `x2 - x1` over the rows with the view. A stale row is
+/// left out. Run it after `finish_weights`.
+pub fn common_from_rows(rows: &[AttrRow], mode: CommonMode) -> CommonChanges {
+    let one = |view: View| -> CommonChange {
+        let items: Vec<(f64, Option<f64>)> = rows
+            .iter()
+            .filter(|r| r.stale.is_none())
+            .filter_map(|r| r.outcome.as_ref().ok()?.chain(view).map(|c| (c.x2.x - c.x1.x, r.weight())))
+            .filter(|(d, _)| d.is_finite())
+            .collect();
+        match mode {
+            CommonMode::Median if !items.is_empty() => CommonChange { c: Some(median(items.iter().map(|x| x.0).collect())), label: "list median".into() },
+            CommonMode::ValueWeighted => {
+                let w: f64 = items.iter().filter_map(|x| x.1).sum();
+                if w > 0.0 {
+                    CommonChange { c: Some(items.iter().filter_map(|x| x.1.map(|w| w * x.0)).sum::<f64>() / w), label: "value-weighted".into() }
+                } else {
+                    CommonChange::none("no ticker with the view and a weight")
+                }
+            }
+            CommonMode::Median => CommonChange::none("no ticker with the view"),
+        }
+    };
+    [one(View::Premium), one(View::Growth)]
+}
+
+/// The row of the economics view for the window (decimals, the change over the window). It moves both free quantities in both
+/// views: the premium of the start node by `erp`, and G of A-001 (`Rules::long_run`) by `growth`. An empty field is `None`: no
+/// information (no release in the window), not a change of zero.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EconView {
+    pub erp: Option<f64>,
+    pub growth: Option<f64>,
+    pub source: String,
+}
+
+impl EconView {
+    /// The label of the split: "economics view, <source>" and which field was used.
+    pub fn label(&self, long_run_on: bool) -> String {
+        let g = self.growth.filter(|_| long_run_on);
+        let note = match (self.erp, g) {
+            (Some(_), Some(_)) => "erp_change and growth_change applied".to_string(),
+            (Some(_), None) if self.growth.is_some() => "erp_change only; growth_change not applied because long_run is off".to_string(),
+            (Some(_), None) => "erp_change only; growth_change empty = no information".to_string(),
+            (None, Some(_)) => "growth_change only; erp_change empty = no information".to_string(),
+            (None, None) => "not covered by the economics view (no information)".to_string(),
+        };
+        format!("economics view, {}: {note}", self.source)
+    }
+}
+
+/// The economics view from the text of a file: a CSV whose header has the columns `date`, `erp_change`, `growth_change`
+/// and `source` (decimals; the columns are found by name, so the file of `fa macro view`, which also has `d1` and
+/// `growth_parts`, is read as it is). The row of the window is the row whose `date` is `d2` (the first 10 characters) and,
+/// when the file has a column `d1`, whose `d1` is `d1`. An empty field is no information.
+pub fn econ_from_text(text: &str, d1: &str, d2: &str) -> R<EconView> {
+    let mut lines = text.lines().filter(|l| !l.trim().is_empty());
+    let header: Vec<&str> = lines.next().unwrap_or("").split(',').map(str::trim).collect();
+    let col = |name: &str| header.iter().position(|h| *h == name);
+    let (Some(i_date), Some(i_erp), Some(i_growth), Some(i_source)) = (col("date"), col("erp_change"), col("growth_change"), col("source")) else {
+        return e("--common-file: the header must have the columns date, erp_change, growth_change and source");
+    };
+    let i_d1 = col("d1");
+    let last = i_date.max(i_erp).max(i_growth).max(i_source).max(i_d1.unwrap_or(0));
+    let (d1, d2) = (d1.get(..10).unwrap_or(d1), d2.get(..10).unwrap_or(d2));
+    for l in lines {
+        let f: Vec<&str> = l.split(',').map(str::trim).collect();
+        if f.len() <= last || f[i_date].get(..10) != Some(d2) {
+            continue;
+        }
+        if i_d1.is_some_and(|i| f[i].get(..10) != Some(d1)) {
+            continue;
+        }
+        let one = |s: &str, name: &str| -> R<Option<f64>> {
+            if s.is_empty() {
+                return Ok(None);
+            }
+            match s.parse::<f64>() {
+                Ok(x) if x.is_finite() => Ok(Some(x)),
+                _ => e(format!("--common-file: '{s}' is not a number ({name})")),
+            }
+        };
+        return Ok(EconView { erp: one(f[i_erp], "erp_change")?, growth: one(f[i_growth], "growth_change")?, source: f[i_source].to_string() });
+    }
+    e(format!("--common-file: no row with the date {d2}{}", if i_d1.is_some() { format!(" and d1 {d1}") } else { String::new() }))
+}
+
+/// The text of c of a view with its source, for the headline.
+pub fn common_label(c: &CommonChange) -> String {
+    match c.c {
+        Some(x) => format!("c = {} points, common ({})", sgn(x * 100.0, 3), c.label),
+        None => c.label.clone(),
+    }
+}
+
+/// The second pass of a list run: for each ticker and view, the plug (`ln N4 / N2`) splits into two engine steps at the
+/// facts, date and curve of D2 and the beta and weight of D1: the common step `ln V(x1 + c) - ln V(x1)` and the company part
+/// (the rest of the plug: the step to N4, with the beta and weight of D2 and x2). The two add to the plug exactly. The same two steps
+/// are done at the node before the rates for the order plug before rates. A value that the engine cannot give at `x1 + c` puts
+/// the whole plug in the company part (`Split::none`). `rows`, `inputs2` and the markets are in the same order as for
+/// `attribute_list`. The result does not depend on the number of threads.
+pub fn add_common(
+    rows: &mut [AttrRow],
+    inputs2: &[AutoInputs],
+    market1_of: &(dyn Fn(&str) -> Market + Sync),
+    market2_of: &(dyn Fn(&str) -> Market + Sync),
+    cfg: &ImpliedConfig,
+    changes: &CommonChanges,
+    jobs: Option<usize>,
+) -> R<()> {
+    for_each_chain(rows, inputs2, market1_of, market2_of, jobs, &|c, view, inp2, m_time, m_rates| match view {
+        View::Premium => split_chain(c, &changes[0], m_time, m_rates, &|m, x| value_at(inp2, cfg, m, x)),
+        View::Growth => split_chain(c, &changes[1], m_time, m_rates, &|m, x| value_with_growth(inp2, cfg, m, x)),
+    })
+}
+
+/// The second pass for the economics view (`--common file`). The common step of each view applies both changes together, from
+/// the start node of the plug: the premium of that node + `erp`, and G of A-001 (`Rules::long_run`) + `growth` (the builder
+/// makes L = min(10-year zero, G), so G moves the value only where G binds). In the premium view the premium of the node is x1
+/// and the growth shift is the shift of the rules; in the growth view the premium is the model premium and the growth shift is
+/// x1. The common part is `ln V(changed) - ln V(start)`; the company part is the rest of the plug (so the two add exactly).
+/// A field that is empty is no information: the other one is applied (the label says which). With both empty the plug is not
+/// covered (`Split::covered = Some(false)`): the company part is the whole plug.
+pub fn add_common_economics(
+    rows: &mut [AttrRow],
+    inputs2: &[AutoInputs],
+    market1_of: &(dyn Fn(&str) -> Market + Sync),
+    market2_of: &(dyn Fn(&str) -> Market + Sync),
+    cfg: &ImpliedConfig,
+    econ: &EconView,
+    jobs: Option<usize>,
+) -> R<()> {
+    let g0 = cfg.rules.long_run;
+    // G + growth_change exists only when the rules have a G (long_run on)
+    let g1 = match (g0, econ.growth) {
+        (Some(g), Some(d)) => Some(g + d),
+        _ => g0,
+    };
+    let label = econ.label(g0.is_some());
+    let covered = econ.erp.is_some() || (econ.growth.is_some() && g0.is_some());
+    let d_erp = econ.erp.unwrap_or(0.0);
+    for_each_chain(rows, inputs2, market1_of, market2_of, jobs, &|c, view, inp2, m_time, m_rates| {
+        let (erp0, shift0) = match view {
+            View::Premium => (c.x1.x, cfg.rules.growth_shift),
+            View::Growth => (cfg.rules.erp.0, c.x1.x),
+        };
+        let own = if view == View::Premium { econ.erp } else { econ.growth };
+        if !covered {
+            finish_split(c, 0.0, label.clone(), Some(false), Some(0.0), Some(0.0));
+            return;
+        }
+        // ln V(changed) - ln V(start) at a market; `None` when the engine has no positive value at one of the two points
+        let step = |m: &Market| -> Option<f64> {
+            let v0 = value_at_rules(inp2, cfg, m, erp0, shift0, g0).ok()?;
+            let v1 = value_at_rules(inp2, cfg, m, erp0 + d_erp, shift0, g1).ok()?;
+            (v0.is_finite() && v1.is_finite() && v0 > 0.0 && v1 > 0.0).then(|| (v1 / v0).ln())
+        };
+        finish_split(c, own.unwrap_or(0.0), label.clone(), Some(true), step(m_rates), step(m_time));
+    })
+}
+
+/// Runs `f(chain, view, inputs of D2, market of the node Nt, market of the node N2)` for each view of each row that has a chain.
+/// The result does not depend on the number of threads.
+fn for_each_chain(
+    rows: &mut [AttrRow],
+    inputs2: &[AutoInputs],
+    market1_of: &(dyn Fn(&str) -> Market + Sync),
+    market2_of: &(dyn Fn(&str) -> Market + Sync),
+    jobs: Option<usize>,
+    f: &(dyn Fn(&mut Chain, View, &AutoInputs, &Market, &Market) + Sync),
+) -> R<()> {
+    let run = |rows: &mut [AttrRow]| {
+        rows.par_iter_mut().zip(inputs2.par_iter()).for_each(|(r, inp2)| {
+            let Ok(a) = r.outcome.as_mut() else { return };
+            let (m1, m2) = (market1_of(&r.ticker), market2_of(&r.ticker));
+            let (m_time, m_rates) = step_markets(&m1, &m2);
+            if let Ok(c) = a.prem.as_mut() {
+                f(c, View::Premium, inp2, &m_time, &m_rates);
+            }
+            if let Ok(c) = a.grow.as_mut() {
+                f(c, View::Growth, inp2, &m_time, &m_rates);
+            }
+        });
+    };
+    match jobs {
+        Some(n) => rayon::ThreadPoolBuilder::new().num_threads(n.max(1)).build().map_err(|x| DcfError(x.to_string()))?.install(|| run(rows)),
+        None => run(rows),
+    }
+    Ok(())
+}
+
+/// The split of one chain (`add_common`). `eval(market, x)` is the value at the means with the facts of D2.
+fn split_chain(ch: &mut Chain, change: &CommonChange, m_time: &Market, m_rates: &Market, eval: MarketEval) {
+    let c = change.c.unwrap_or(0.0);
+    let x = ch.x1.x;
+    // ln V(x + c) - ln V(x) at a market; `None` when the engine has no positive value at one of the two points
+    let step = |m: &Market| -> Option<f64> {
+        if c == 0.0 {
+            return Some(0.0);
+        }
+        let (v0, v1) = (eval(m, x).ok()?, eval(m, x + c).ok()?);
+        (v0.is_finite() && v1.is_finite() && v0 > 0.0 && v1 > 0.0).then(|| (v1 / v0).ln())
+    };
+    finish_split(ch, c, change.label.clone(), None, step(m_rates), step(m_time));
+}
+
+/// Puts the split in the chain. `fwd` and `rev` are the common steps at N2 and at Nt (`None`: no value; the whole plug is then
+/// the company part, flag `common-step:none`).
+fn finish_split(ch: &mut Chain, c: f64, label: String, covered: Option<bool>, fwd: Option<f64>, rev: Option<f64>) {
+    let (common, rev_common) = (fwd.unwrap_or(0.0), rev.unwrap_or(0.0));
+    ch.split = Some(Split {
+        c,
+        label,
+        common_ln: common,
+        company_ln: ch.free_ln - common,
+        rev_common_ln: rev_common,
+        rev_company_ln: ch.rev_free_ln - rev_common,
+        none: fwd.is_none() || rev.is_none(),
+        covered,
+    });
+}
+
+/// For the rows with an economics-view split: how many tickers the view covers and how many it does not (each ticker once, with
+/// its premium chain, else its growth chain). `None` when no split is from the economics view.
+pub fn economics_cover<'a>(rows: impl Iterator<Item = &'a AttrRow>) -> Option<(usize, usize)> {
+    let (mut yes, mut no) = (0, 0);
+    for r in rows {
+        let Some(a) = r.outcome.as_ref().ok() else { continue };
+        let split = a.prem.as_ref().ok().and_then(|c| c.split.as_ref()).or_else(|| a.grow.as_ref().ok().and_then(|c| c.split.as_ref()));
+        match split.and_then(|s| s.covered) {
+            Some(true) => yes += 1,
+            Some(false) => no += 1,
+            None => {}
+        }
+    }
+    (yes + no > 0).then_some((yes, no))
+}
+
+/// The headline text of the economics view, with the counts of the tickers that it covers and does not cover.
+pub fn econ_line(econ: &EconView, long_run_on: bool, cover: Option<(usize, usize)>) -> String {
+    let f = |x: Option<f64>| x.map_or("empty (no information)".to_string(), |x| format!("{} points", sgn(x * 100.0, 3)));
+    let counts = cover.map_or(String::new(), |(y, n)| format!(" Covered by the view: {y} tickers; not covered (company part = the whole plug): {n} tickers."));
+    format!(
+        "COMMON CHANGE of the economics view ({}), in both views, both changes together: erp_change {}; growth_change {}. {}.{counts}",
+        econ.label(long_run_on),
+        f(econ.erp),
+        f(econ.growth),
+        "The plug of each view is split in two engine steps: common (premium of the start node + erp_change, and G + growth_change) and company (the rest)"
+    )
+}
+
+/// The filing dates of the SEC 8-K with item 2.02 of a ticker that are after `d1` and on or before `d2` (`YYYY-MM-DD`, the
+/// first 10 characters), oldest first, joined with ";". Empty when there is none or the cache has no list. No price is used.
+pub fn earnings_8k_between(cache: &Path, ticker: &str, d1: &str, d2: &str) -> String {
+    let mut dates: Vec<String> = earnings_8k_entries(cache, ticker, d1, d2).into_iter().map(|(filed, _)| filed).collect();
+    dates.dedup();
+    dates.join(";")
+}
+
+/// The SEC 8-K with item 2.02 of a ticker that are after `d1` and on or before `d2`: (filing date, accession number), oldest
+/// first (the accession number is empty when the list has none). The one reader of the list; `earnings_8k_between` and
+/// `release_path` use it.
+pub fn earnings_8k_entries(cache: &Path, ticker: &str, d1: &str, d2: &str) -> Vec<(String, String)> {
+    let (Some(d1), Some(d2)) = (d1.get(..10), d2.get(..10)) else { return Vec::new() };
+    let Ok(text) = std::fs::read(mapcheck::sec::earnings_filings_path(cache, ticker)) else { return Vec::new() };
+    let Ok(v) = serde_json::from_slice::<serde_json::Value>(&text) else { return Vec::new() };
+    let mut out: Vec<(String, String)> = v["filings"]
+        .as_array()
+        .map(|a| {
+            a.iter()
+                .filter(|f| f["items"].as_str().is_some_and(|s| s.split(',').any(|i| i.trim() == "2.02")))
+                .filter_map(|f| Some((f["filed"].as_str()?, f["accession"].as_str().unwrap_or(""))))
+                .filter(|(d, _)| d.len() == 10 && *d > d1 && *d <= d2)
+                .map(|(d, a)| (d.to_string(), a.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+    out.sort_unstable();
+    out.dedup();
+    out
+}
+
+/// The path of the earnings release of the window (R2 of the ticket `T-20261121-dcf-engine-integration`): the newest 8-K with
+/// item 2.02 after `d1` and on or before `d2` (the latest filing date, then the accession number) that has a folder
+/// `<cache>/<TICKER>/filings/8k/<accession>/`, and in it the newest file (the latest change time, then the name). Empty when
+/// the list or the folder has none. No network and no price.
+pub fn release_path(cache: &Path, ticker: &str, d1: &str, d2: &str) -> String {
+    for (_, accession) in earnings_8k_entries(cache, ticker, d1, d2).into_iter().rev() {
+        if accession.is_empty() {
+            continue;
+        }
+        let folder = cache.join(ticker).join("filings").join("8k").join(&accession);
+        let Ok(dir) = std::fs::read_dir(&folder) else { continue };
+        let newest = dir
+            .filter_map(Result::ok)
+            .filter(|f| f.file_type().is_ok_and(|t| t.is_file()))
+            .map(|f| (f.metadata().and_then(|m| m.modified()).ok(), f.file_name().to_string_lossy().to_string()))
+            .max();
+        if let Some((_, name)) = newest {
+            return folder.join(name).to_string_lossy().to_string();
+        }
+    }
+    String::new()
+}
+
 /// The CIK of a ticker from the filing list of the cache (no network).
 pub fn cik_of(cache: &Path, ticker: &str) -> Option<String> {
     let text = std::fs::read(mapcheck::sec::earnings_filings_path(cache, ticker)).ok()?;
     let v: serde_json::Value = serde_json::from_slice(&text).ok()?;
     v.get("cik").and_then(|c| c.as_str().map(String::from).or_else(|| c.as_u64().map(|n| n.to_string())))
+}
+
+/// The date of the close that `close_on_or_before` takes for `date` (`None`: no close in `PRICE_GAP_DAYS`).
+pub fn close_date(series: &[(String, f64)], date: &str) -> Option<String> {
+    close_on_or_before(series, date).map(|(d, _)| d[..10].to_string())
+}
+
+/// A row is stale when the date of its close at D1 or at D2 is older than the date of the close of the market index (SPY)
+/// for the same date: the ticker has a price of an earlier day, so a sum would mix two dates. `closes(ticker)` gives the
+/// close series. A ticker with no close at all is not stale (it has no prices and no weight already). Run it before
+/// `one_weight_for_one_company`, so that a stale class does not keep the weight of its company. Returns the number of
+/// stale rows.
+pub fn mark_stale(rows: &mut [AttrRow], closes: &dyn Fn(&str) -> Option<CloseSeries>, d1: &str, d2: &str) -> usize {
+    let Some(index) = closes("SPY") else {
+        eprintln!("warning: no SPY close series in the cache: the stale-price rule did not run for {d1} and {d2}");
+        return 0;
+    };
+    let (r1, r2) = (close_date(&index, d1), close_date(&index, d2));
+    let mut n = 0;
+    for r in rows.iter_mut() {
+        let Some(s) = closes(&r.ticker) else { continue };
+        let notes: Vec<String> = [(d1, &r1), (d2, &r2)].into_iter().filter_map(|(d, want)| stale_note(&s, d, want.as_deref())).collect();
+        if !notes.is_empty() {
+            r.stale = Some(notes.join("; "));
+            n += 1;
+        }
+    }
+    n
+}
+
+/// A close series: `(date, close)`.
+pub type CloseSeries = Vec<(String, f64)>;
+
+/// The text of the stale close of one series at one date, or `None`: the close that `close_on_or_before` takes is older
+/// than the close of SPY (`want`, its date) for the same date. The one rule of `mark_stale` and of `fa dcf premium-series`.
+pub fn stale_note(series: &[(String, f64)], date: &str, want: Option<&str>) -> Option<String> {
+    let (own, want) = (close_date(series, date)?, want?);
+    (own.as_str() < want).then(|| format!("close of {own} for {date} (SPY {want})"))
+}
+
+/// After `attribute_list`: a stale close takes the row out of the sums, then the one-weight rule runs again.
+pub fn finish_weights(rows: &mut [AttrRow], closes: &dyn Fn(&str) -> Option<CloseSeries>, d1: &str, d2: &str) -> usize {
+    for r in rows.iter_mut() {
+        r.weight_of = None;
+    }
+    let n = mark_stale(rows, closes, d1, d2);
+    one_weight_for_one_company(rows);
+    n
 }
 
 /// One company, one weight. Two classes of one company (GOOG and GOOGL) have the same share count of the company, so a sum
@@ -526,6 +1081,19 @@ pub fn one_weight_for_one_company(rows: &mut [AttrRow]) {
             }
         }
     }
+}
+
+/// `--top N`: the positions (in the order of the list) of the rows of the `n` companies with the largest market value at D1
+/// (`weight`: price x guarded shares; one weight for each company). A row that carries no weight (`weight_of`) stays when
+/// the ticker that carries it stays, so both classes of a company (GOOG and GOOGL) are in the run and count as one company.
+/// A row with no weight (stale, no price, no share count) is not ranked and is out. Ties go to the first ticker of the list.
+/// The command runs it AFTER `add_common`: the common change c is a measure of the whole list, so the rows that stay have the
+/// c of the list that they were cut from (the S&P 100 median for the 10 largest of the S&P 100).
+pub fn keep_top(rows: &[AttrRow], n: usize) -> Vec<usize> {
+    let mut ranked: Vec<(usize, f64)> = rows.iter().enumerate().filter_map(|(i, r)| r.weight().map(|w| (i, w))).collect();
+    ranked.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
+    let kept: std::collections::HashSet<&str> = ranked.iter().take(n).map(|(i, _)| rows[*i].ticker.as_str()).collect();
+    (0..rows.len()).filter(|i| kept.contains(rows[*i].ticker.as_str()) || rows[*i].weight_of.as_deref().is_some_and(|t| kept.contains(t))).collect()
 }
 
 /// The names of the parts, in the order of `Chain::pct`.
@@ -738,6 +1306,199 @@ pub fn set_sum(rows: &[AttrRow], view: View, kind: SetKind, whole: &WholeList) -
     })
 }
 
+/// The number of lines of a full bridge: facts, time, rates, implied premium, implied growth, residual, no model value.
+pub const N_BRIDGE: usize = 7;
+pub const BRIDGE_NAMES: [&str; N_BRIDGE] =
+    ["facts", "time (roll of the valuation date)", "rates", "implied premium (plug)", "implied growth (plug)", "search residual", "no model value (price change only)"];
+
+/// A list with this many weighted tickers or fewer gets one bridge line for each ticker in the text.
+pub const BRIDGE_TICKER_LINES: usize = 20;
+
+/// One line of a full bridge: a group of the whole list (all, one sector, or one ticker).
+#[derive(Debug, Clone, PartialEq)]
+pub struct BridgeLine {
+    pub name: String,
+    pub n: usize,
+    /// The share of the market value of the whole list at D1, and the change of the group (value-weighted).
+    pub share: f64,
+    pub change: f64,
+    /// The contributions in percentage points (as a share) of the market value of the WHOLE list at D1; they add to
+    /// `share x change`. `rev`: the same with the reverse order of rates and the plug.
+    pub parts: [f64; N_BRIDGE],
+    pub rev: [f64; N_BRIDGE],
+    /// The plug in two parts: premium-common, premium-company, growth-common, growth-company. The two of a view add to its
+    /// plug in `parts` (index 3 or 4). `split_rev`: the same with the reverse order of rates and the plug.
+    pub split: [f64; 4],
+    pub split_rev: [f64; 4],
+}
+
+/// The full bridge of the whole list: each ticker with a weight is in it once, with the view `first` where it exists, else the
+/// other view, else on the line "no model value" (its price change). So the lines add to the change of the whole list. It is
+/// one reading of the price: the two views give two readings of the same change (a higher return asked, or a lower growth
+/// expected), and the model cannot tell them apart.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Bridge {
+    pub first: View,
+    /// Tickers (and share of the market value of the list) with the first view, with the other view only, with no view.
+    pub n_view: [usize; 3],
+    pub share_view: [f64; 3],
+    pub all: BridgeLine,
+    pub sectors: Vec<BridgeLine>,
+    /// One line for each ticker with a weight (the largest negative contribution first); they add to `all`.
+    pub tickers: Vec<BridgeLine>,
+    /// The largest contributions to the change of the list: ticker, share of the list, change, contribution (all shares), the view.
+    pub top: Vec<(String, f64, f64, f64, &'static str)>,
+    /// The group of the tickers with an earnings 8-K (item 2.02) in the window (`None`: no ticker), and their names.
+    pub earnings: Option<BridgeLine>,
+    pub earnings_tickers: Vec<String>,
+    /// The common change c of the premium view and of the growth view, with the name of the source (`None`: no split was made).
+    pub common: [Option<(f64, String)>; 2],
+    /// Economics view only: the tickers of the bridge that the view covers and that it does not cover (`None`: not that source).
+    pub economics: Option<(usize, usize)>,
+}
+
+/// The contributions of one row to a bridge, as shares of the row's own price.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct BridgeParts {
+    /// The parts of `BridgeLine::parts` and of `BridgeLine::rev`.
+    p: [f64; N_BRIDGE],
+    q: [f64; N_BRIDGE],
+    /// The plug in two parts: premium-common, premium-company, growth-common, growth-company; and the same in the reverse order.
+    s: [f64; 4],
+    sq: [f64; 4],
+}
+
+/// The contributions of one row to a bridge, and which view it uses (0 first, 1 other, 2 none).
+fn bridge_row(r: &AttrRow, first: View) -> Option<(BridgeParts, usize)> {
+    let change = r.change()?;
+    let other = match first { View::Premium => View::Growth, View::Growth => View::Premium };
+    let a = r.outcome.as_ref().ok();
+    let (c, k, which) = match (a.and_then(|a| a.chain(first)), a.and_then(|a| a.chain(other))) {
+        (Some(c), _) => (c, first, 0),
+        (None, Some(c)) => (c, other, 1),
+        (None, None) => {
+            let mut p = [0.0; N_BRIDGE];
+            p[6] = change;
+            return Some((BridgeParts { p, q: p, s: [0.0; 4], sq: [0.0; 4] }, 2));
+        }
+    };
+    let plug = if k == View::Premium { 3 } else { 4 };
+    let put = |q: [f64; N_PARTS]| {
+        let mut p = [0.0; N_BRIDGE];
+        p[0] = q[0];
+        p[1] = q[1];
+        p[2] = q[2];
+        p[plug] = q[3];
+        p[5] = q[4];
+        p
+    };
+    let split = |q: [f64; 6]| {
+        let mut s = [0.0; 4];
+        let at = if k == View::Premium { 0 } else { 2 };
+        s[at] = q[3];
+        s[at + 1] = q[4];
+        s
+    };
+    Some((BridgeParts { p: put(c.pct()), q: put(c.pct_rev()), s: split(c.pct_split()), sq: split(c.pct_rev_split()) }, which))
+}
+
+fn bridge_line(name: String, rows: &[(&AttrRow, BridgeParts)], total: f64) -> BridgeLine {
+    let mut parts = [0.0; N_BRIDGE];
+    let mut rev = [0.0; N_BRIDGE];
+    let (mut split, mut split_rev) = ([0.0; 4], [0.0; 4]);
+    let (mut v, mut dv) = (0.0, 0.0);
+    for (r, x) in rows {
+        let w = r.weight().unwrap_or(0.0);
+        v += w;
+        dv += w * r.change().unwrap_or(0.0);
+        for k in 0..N_BRIDGE {
+            parts[k] += w * x.p[k] / total;
+            rev[k] += w * x.q[k] / total;
+        }
+        for k in 0..4 {
+            split[k] += w * x.s[k] / total;
+            split_rev[k] += w * x.sq[k] / total;
+        }
+    }
+    BridgeLine { name, n: rows.len(), share: v / total, change: if v > 0.0 { dv / v } else { f64::NAN }, parts, rev, split, split_rev }
+}
+
+/// The name of the group line of the tickers with an earnings 8-K (item 2.02) in the window.
+pub const EARNINGS_GROUP: &str = "earnings 8-K in window";
+
+pub fn full_bridge(rows: &[AttrRow], first: View) -> Option<Bridge> {
+    let whole = whole_list(rows)?;
+    let mut list = Vec::new();
+    let (mut n_view, mut share_view) = ([0usize; 3], [0.0; 3]);
+    let mut top = Vec::new();
+    for r in rows.iter().filter(|r| r.weight().is_some()) {
+        let Some((x, which)) = bridge_row(r, first) else { continue };
+        let w = r.weight().unwrap_or(0.0) / whole.value1;
+        n_view[which] += 1;
+        share_view[which] += w;
+        let view = match which { 0 => first.name(), 1 => match first { View::Premium => "growth", View::Growth => "premium" }, _ => "none" };
+        top.push((r.ticker.clone(), w, r.change().unwrap_or(0.0), w * r.change().unwrap_or(0.0), view));
+        list.push((r, x));
+    }
+    top.sort_by(|a, b| a.3.total_cmp(&b.3).then(a.0.cmp(&b.0)));
+    top.truncate(10);
+    let all = bridge_line("all".into(), &list, whole.value1);
+    let mut by: BTreeMap<&str, Vec<(&AttrRow, BridgeParts)>> = BTreeMap::new();
+    for x in &list {
+        by.entry(if x.0.sector.is_empty() { "(none)" } else { x.0.sector.as_str() }).or_default().push(*x);
+    }
+    let mut sectors: Vec<BridgeLine> = by.into_iter().map(|(k, v)| bridge_line(k.to_string(), &v, whole.value1)).collect();
+    sectors.sort_by(|a, b| (a.share * a.change).total_cmp(&(b.share * b.change)).then(a.name.cmp(&b.name)));
+    let mut tickers: Vec<BridgeLine> = list.iter().map(|x| bridge_line(x.0.ticker.clone(), std::slice::from_ref(x), whole.value1)).collect();
+    tickers.sort_by(|a, b| (a.share * a.change).total_cmp(&(b.share * b.change)).then(a.name.cmp(&b.name)));
+    // the group of the tickers with an earnings 8-K in the window (a group of the same rows, not a part of them)
+    let with_8k: Vec<(&AttrRow, BridgeParts)> = list.iter().filter(|x| !x.0.earnings_8k.is_empty()).copied().collect();
+    let earnings_tickers: Vec<String> = with_8k.iter().map(|x| x.0.ticker.clone()).collect();
+    let earnings = (!with_8k.is_empty()).then(|| bridge_line(EARNINGS_GROUP.into(), &with_8k, whole.value1));
+    // c of each view and the name of its source (the same for each row of a run)
+    let common_of = |view: View| rows.iter().filter_map(|r| r.outcome.as_ref().ok()?.chain(view)?.split.as_ref().map(|s| (s.c, s.label.clone()))).next();
+    let common = [common_of(View::Premium), common_of(View::Growth)];
+    let economics = economics_cover(list.iter().map(|x| x.0));
+    Some(Bridge { first, n_view, share_view, all, sectors, tickers, top, earnings, earnings_tickers, common, economics })
+}
+
+fn bridge_text(b: &Bridge) -> String {
+    let other = match b.first { View::Premium => "growth", View::Growth => "premium" };
+    let mut s = format!(
+        "FULL BRIDGE, {} view first: each ticker of the whole list once ({} view: {} tickers, {:.1}% of the value; {} view where the {} view has no value: {}, {:.1}%; no model value: {}, {:.1}%). The lines add to the change of the whole list. Points of the market value of the WHOLE list at D1; the other order of rates and the plugs is on the line below the table.\n",
+        b.first.name().to_uppercase(), b.first.name(), b.n_view[0], b.share_view[0] * 100.0, other, b.first.name(), b.n_view[1], b.share_view[1] * 100.0, b.n_view[2], b.share_view[2] * 100.0
+    );
+    let c_text = |c: &Option<(f64, String)>| c.as_ref().map_or("not computed".to_string(), |(c, l)| format!("{} points, common ({l})", sgn(c * 100.0, 3)));
+    s.push_str(&format!("  common change c of the premium view: {}; of the growth view: {}. Each plug is split in two engine steps: common (x1 to x1 + c) and company (the rest); the two add to the plug.\n", c_text(&b.common[0]), c_text(&b.common[1])));
+    if let Some((yes, no)) = b.economics {
+        s.push_str(&format!("  economics view: {yes} tickers covered, {no} tickers not covered (a plug that the view does not cover is all company part).\n"));
+    }
+    let cells = |l: &BridgeLine| -> String {
+        let f = |x: f64, w: usize| format!("{:>w$}", sgn(x * 100.0, 2));
+        format!("{}{}{}{}{}{}{}{}{}", f(l.parts[0], 8), f(l.parts[1], 8), f(l.parts[2], 8), f(l.split[0], 16), f(l.split[1], 16), f(l.split[2], 16), f(l.split[3], 16), f(l.parts[5], 8), f(l.parts[6], 8))
+    };
+    s.push_str(&format!("  {:<22} {:>4} {:>7} {:>8} | {:>8}{:>8}{:>8}{:>16}{:>16}{:>16}{:>16}{:>8}{:>8} | {:>8}\n", "group", "n", "weight", "change", "facts", "time", "rates", "premium-common", "premium-company", "growth-common", "growth-company", "resid", "nomodel", "sum"));
+    // a short list (up to `BRIDGE_TICKER_LINES` tickers) also gets one line for each ticker, after the sectors and the 8-K group
+    let per_ticker: &[BridgeLine] = if b.tickers.len() <= BRIDGE_TICKER_LINES { &b.tickers } else { &[] };
+    for l in std::iter::once(&b.all).chain(b.sectors.iter()).chain(b.earnings.iter()).chain(per_ticker.iter()) {
+        s.push_str(&format!("  {:<22} {:>4} {:>6.1}% {:>7}% | {} | {:>8}\n", l.name, l.n, l.share * 100.0, sgn(l.change * 100.0, 2), cells(l), sgn(l.parts.iter().sum::<f64>() * 100.0, 2)));
+    }
+    if b.earnings.is_some() {
+        s.push_str(&format!("  {EARNINGS_GROUP}: {}. This group is a set of the same rows; its line is not added to the lines above.\n", b.earnings_tickers.join(" ")));
+    }
+    s.push_str(&format!(
+        "  the other order (plug before rates), all: rates {}, premium-common {}, premium-company {}, growth-common {}, growth-company {}\n",
+        sgn(b.all.rev[2] * 100.0, 2),
+        sgn(b.all.split_rev[0] * 100.0, 2),
+        sgn(b.all.split_rev[1] * 100.0, 2),
+        sgn(b.all.split_rev[2] * 100.0, 2),
+        sgn(b.all.split_rev[3] * 100.0, 2)
+    ));
+    let v: Vec<String> = b.top.iter().map(|(t, w, c, p, view)| format!("{t} {} ({:.1}% x {}%, {view})", sgn(p * 100.0, 2), w * 100.0, sgn(c * 100.0, 1))).collect();
+    s.push_str(&format!("  largest contributions to the change (points): {}\n", v.join(", ")));
+    s
+}
+
 /// The flagged tickers of a view: ticker, the premium at D1 (premium view), the largest part in percent of P1 and its name.
 pub fn flagged_list(rows: &[AttrRow], view: View) -> Vec<(String, f64, f64, &'static str)> {
     let names = part_names(view);
@@ -758,7 +1519,7 @@ pub fn flagged_list(rows: &[AttrRow], view: View) -> Vec<(String, f64, f64, &'st
 // The output
 // ---------------------------------------------------------------------------------------------
 
-pub const CSV_HEADER: &str = "ticker,size,sector,industry,price1,price2,change_pct,p_facts_pct,p_time_pct,p_rates_pct,p_premium_pct,p_residual_pct,p_rev_rates_pct,p_rev_premium_pct,premium1,premium2,g_facts_pct,g_time_pct,g_rates_pct,g_growth_pct,g_residual_pct,g_rev_rates_pct,g_rev_growth_pct,growth_shift1,growth_shift2,growth10_1,growth10_2,growth_shift_at_premium1,growth10_at_premium1,shares,value1,curve1,curve2,new_facts,flags,refusal";
+pub const CSV_HEADER: &str = "ticker,size,sector,industry,price1,price2,change_pct,p_facts_pct,p_time_pct,p_rates_pct,p_premium_pct,p_residual_pct,p_rev_rates_pct,p_rev_premium_pct,premium1,premium2,g_facts_pct,g_time_pct,g_rates_pct,g_growth_pct,g_residual_pct,g_rev_rates_pct,g_rev_growth_pct,growth_shift1,growth_shift2,growth10_1,growth10_2,growth_shift_at_premium1,growth10_at_premium1,shares,value1,curve1,curve2,new_facts,flags,refusal,beta1,beta2,dur_premium1,earnings_8k,c_premium,c_growth,p_premium_common_pct,p_premium_company_pct,g_growth_common_pct,g_growth_company_pct";
 
 fn cell(s: &str) -> String {
     s.replace(',', ";")
@@ -794,7 +1555,7 @@ fn chain_cells(c: Option<&Chain>) -> Vec<String> {
 pub fn csv_line(r: &AttrRow) -> String {
     let n = CSV_HEADER.split(',').count();
     let mut f = vec![String::new(); n];
-    let idx = |name: &str| CSV_HEADER.split(',').position(|h| h == name).unwrap_or(0);
+    let idx = |name: &str| CSV_HEADER.split(',').position(|h| h == name).expect("a column name of CSV_HEADER");
     f[0] = r.ticker.clone();
     f[idx("sector")] = cell(&r.sector);
     f[idx("industry")] = cell(&r.industry);
@@ -806,6 +1567,9 @@ pub fn csv_line(r: &AttrRow) -> String {
     f[idx("shares")] = r.shares.map_or(String::new(), |s| num(s, 0));
     f[idx("value1")] = r.weight().map_or(String::new(), |w| num(w, 0));
     let mut flags: Vec<String> = Vec::new();
+    if let Some(note) = &r.stale {
+        flags.push(format!("price-stale({})", note.replace(", ", ";").replace(',', ";")));
+    }
     if let Some(note) = &r.shares_note {
         flags.push(format!("shares-guard({})", note.replace(", ", ";").replace(',', ";")));
     }
@@ -827,19 +1591,53 @@ pub fn csv_line(r: &AttrRow) -> String {
             f[idx("curve1")] = a.curve1.clone();
             f[idx("curve2")] = a.curve2.clone();
             f[idx("new_facts")] = a.new_facts.to_string();
+            // with no regression beta the model uses 1.0 (`auto.rs`, the discount block): the cell has 1.0 and the row a flag
+            for (name, b) in [("beta1", a.beta1), ("beta2", a.beta2)] {
+                f[idx(name)] = nm(b.unwrap_or(1.0), 4);
+                if b.is_none() {
+                    flags.push(format!("{name}-default"));
+                }
+            }
+            f[idx("dur_premium1")] = a.dur_premium1.map_or(String::new(), |d| nm(d, 3));
+            // the plug in two parts (empty before `add_common`, or with no view)
+            if let Some(sp) = a.chain(View::Premium).and_then(|c| c.split.as_ref().map(|s| (s, c.pct_split()))) {
+                f[idx("c_premium")] = nm(sp.0.c, 4);
+                f[idx("p_premium_common_pct")] = pc(sp.1[3]);
+                f[idx("p_premium_company_pct")] = pc(sp.1[4]);
+            }
+            if let Some(sp) = a.chain(View::Growth).and_then(|c| c.split.as_ref().map(|s| (s, c.pct_split()))) {
+                f[idx("c_growth")] = nm(sp.0.c, 4);
+                f[idx("g_growth_common_pct")] = pc(sp.1[3]);
+                f[idx("g_growth_company_pct")] = pc(sp.1[4]);
+            }
             flags.push(a.flags());
         }
-        Err((key, _)) => f[n - 1] = cell(key),
+        Err((key, _)) => f[idx("refusal")] = cell(key),
     }
+    f[idx("earnings_8k")] = r.earnings_8k.clone();
     f[idx("flags")] = cell(&flags.iter().filter(|x| !x.is_empty()).cloned().collect::<Vec<_>>().join(" "));
     f.join(",")
 }
 
 pub fn csv_text(rows: &[AttrRow]) -> String {
+    csv_text_with(rows, None)
+}
+
+/// The CSV with more columns at the END (`--reality`): `extra` is the tail of the header and one text of cells for each row.
+/// The columns of `CSV_HEADER` keep their places.
+pub fn csv_text_with(rows: &[AttrRow], extra: Option<(&str, &[String])>) -> String {
     let mut text = String::from(CSV_HEADER);
+    if let Some((header, _)) = extra {
+        text.push(',');
+        text.push_str(header);
+    }
     text.push('\n');
-    for r in rows {
+    for (i, r) in rows.iter().enumerate() {
         text.push_str(&csv_line(r));
+        if let Some((_, cells)) = extra {
+            text.push(',');
+            text.push_str(cells.get(i).map_or("", String::as_str));
+        }
         text.push('\n');
     }
     text
@@ -872,6 +1670,17 @@ pub fn table_text(ticker: &str, d1: &str, d2: &str, a: &Attribution) -> String {
                 let (p, q) = (c.pct(), c.pct_rev());
                 for (i, name) in names.iter().enumerate() {
                     s.push_str(&format!("{:<36} {:>10} {:>10} | {:>45} {:>10}\n", name, sgn(p[i] * 100.0, 2), sgn(p[i] * a.p1, 2), sgn(q[i] * 100.0, 2), sgn(q[i] * a.p1, 2)));
+                    if i == 3 {
+                        if let Some(sp) = &c.split {
+                            let (u, v) = (c.pct_split(), c.pct_rev_split());
+                            let unit = match view { View::Premium => "points of premium", View::Growth => "points of growth shift" };
+                            let note = if sp.none { "; the engine has no value at x1 + c: the whole plug is company" } else { "" };
+                            let lines = [(format!("  of which common ({}; c {} {unit}{note})", sp.label, sgn(sp.c * 100.0, 3)), 3), ("  of which company part".to_string(), 4)];
+                            for (text, k) in lines {
+                                s.push_str(&format!("{:<36} {:>10} {:>10} | {:>45} {:>10}\n", text, sgn(u[k] * 100.0, 2), sgn(u[k] * a.p1, 2), sgn(v[k] * 100.0, 2), sgn(v[k] * a.p1, 2)));
+                            }
+                        }
+                    }
                 }
                 s.push_str(&format!("{:<36} {:>10} {:>10} | {:>45} {:>10}\n", "total", sgn(total * 100.0, 2), sgn(a.p2 - a.p1, 2), sgn(total * 100.0, 2), sgn(a.p2 - a.p1, 2)));
                 s.push_str("  facts and time have a fixed position (first and second); only rates and the plug change places.\n");
@@ -948,6 +1757,34 @@ fn whole_text(w: &WholeList) -> String {
     s
 }
 
+/// Why a row is not in the whole list (`None`: it is in, or it only has no weight because a class of the same company carries it).
+fn left_out_reason(r: &AttrRow) -> Option<&'static str> {
+    if r.weight_of.is_some() && r.stale.is_none() {
+        return None;
+    }
+    if r.weight().is_some() && r.change().is_some() {
+        return None;
+    }
+    Some(if r.stale.is_some() {
+        "stale price"
+    } else if r.prices.is_none() {
+        "no close at a date"
+    } else if r.shares.is_none() {
+        "no share count"
+    } else {
+        "no weight"
+    })
+}
+
+/// One line in the WHOLE LIST block: the tickers of the list that are out of the sums, each with its reason. Empty when none.
+fn left_out_text(rows: &[AttrRow]) -> String {
+    let v: Vec<String> = rows.iter().filter_map(|r| left_out_reason(r).map(|k| format!("{} ({k})", r.ticker))).collect();
+    if v.is_empty() {
+        return String::new();
+    }
+    format!("  left out of the sums ({} tickers): {}\n", v.len(), v.join(", "))
+}
+
 /// The text of one sum. `headline` names the set; "covered part only" is in each headline of a set that is not the list.
 fn set_text(headline: &str, w: &SetSum) -> String {
     let long = long_names(w.view);
@@ -1005,6 +1842,11 @@ pub fn list_text(rows: &[AttrRow]) -> String {
     let Some(whole) = whole_list(rows) else { return "WHOLE LIST: no ticker has two prices and a share count\n".to_string() };
     let mut s = String::from("\nThis is an accounting split of the price change with the model; it is not a cause. facts and time have a fixed position (first and second); rates and the plug are shown as the range of the two orders.\n\n");
     s.push_str(&whole_text(&whole));
+    s.push_str(&left_out_text(rows));
+    let stale: Vec<String> = rows.iter().filter_map(|r| r.stale.as_ref().map(|n| format!("{} ({n})", r.ticker))).collect();
+    if !stale.is_empty() {
+        s.push_str(&format!("  STALE PRICE ({} tickers: a close older than the SPY close of the same date). The own parts of these rows use the older price; each is out of every sum: {}\n", stale.len(), stale.join(", ")));
+    }
     s.push_str(&variants_text(rows));
     let old = |side: usize| rows.iter().filter(|r| r.outcome.as_ref().ok().is_some_and(|a| if side == 1 { a.curve_lag().0 } else { a.curve_lag().1 }.is_some())).count();
     s.push_str(&format!("  rows whose curve is more than {CURVE_LAG_DAYS} days older than the date: {} at D1, {} at D2 (the curve source lags)\n", old(1), old(2)));
@@ -1023,6 +1865,12 @@ pub fn list_text(rows: &[AttrRow]) -> String {
                 s.push_str(&flags_text(rows, view));
             }
             None => s.push_str(&format!("{} VIEW: no ticker has the view\n", view.name().to_uppercase())),
+        }
+    }
+    s.push_str("\n(4) FULL BRIDGE OF THE WHOLE LIST: two readings of the same change.\n");
+    for view in [View::Premium, View::Growth] {
+        if let Some(b) = full_bridge(rows, view) {
+            s.push_str(&bridge_text(&b));
         }
     }
     let count = |f: &dyn Fn(&Attribution) -> bool| rows.iter().filter(|r| r.weight().is_some() && r.outcome.as_ref().ok().is_some_and(f)).count();
@@ -1047,6 +1895,192 @@ pub fn command(repo: &Path, args: &[String]) -> u8 {
     }
 }
 
+/// The text after "Curve: last GSW row on or before the date." for the source: empty for GSW (the text as before).
+fn curve_sentence(source: &str) -> &'static str {
+    match source {
+        "fedinvest" => " With --curve fedinvest: the NSS fit to the last FedInvest file on or before the date.",
+        "par" => " With --curve par: the NSS fit to the Treasury par row on or before the date (1 to 30 years; do not read the fitted curve beyond 30 years).",
+        _ => "",
+    }
+}
+
+/// The line of a fitted curve: the source, the date of the file or row used, the 10-year zero and (par) the fit error.
+fn curve_line(source: &str, c: &CurveNumbers, rmse_bp: Option<f64>) -> String {
+    let fit = rmse_bp.map_or(String::new(), |r| format!(", fit error {r:.2} bp (root mean square over the 8 par bonds; limit {} bp)", super::auto::PAR_FIT_MAX_RMSE_BP));
+    format!("curve ({source} fit) {}: 10-year zero {:.4}%{fit}", c.date, c.zero10 * 100.0)
+}
+
+// ---------------------------------------------------------------------------------------------
+// The curve source (`--curve auto`) and the prior window (`--prior-window`)
+// ---------------------------------------------------------------------------------------------
+
+/// The source that `--curve auto` chooses: `"gsw"` when the last GSW row on or before each date is at most `CURVE_LAG_DAYS`
+/// days older than that date (the rule of `fa dcf premium-series`, `auto_premium::curve_source`, A-027); else `"par"` at all
+/// dates (one source at all dates). `gsw_dates[i]` is the date of the last GSW row on or before `dates[i]`. The text names the
+/// source and the reason.
+pub fn auto_curve_source(gsw_dates: &[Option<String>], dates: &[String]) -> (&'static str, String) {
+    let mut all_gsw = true;
+    let mut items: Vec<String> = Vec::new();
+    for (g, d) in gsw_dates.iter().zip(dates) {
+        let fresh = curve_source(g.as_deref(), d) == CurveSource::Gsw;
+        all_gsw &= fresh;
+        items.push(match (g, lag_days(g.as_deref().unwrap_or(""), d)) {
+            (Some(g), Some(l)) => format!("{d}: GSW row {g}, {l} days older{}", if fresh { "" } else { ", more than 3 days or not on or before the date" }),
+            _ => format!("{d}: no GSW row on or before the date"),
+        });
+    }
+    let source = if all_gsw { "gsw" } else { "par" };
+    let why = if all_gsw {
+        format!("gsw, because the GSW row of each date is at most {CURVE_LAG_DAYS} days older than the date ({})", items.join("; "))
+    } else {
+        format!("par, because a GSW row is more than {CURVE_LAG_DAYS} days older than its date or is missing ({}); one source is used at all dates", items.join("; "))
+    };
+    (source, why)
+}
+
+/// The source of a run: `requested` (`gsw`, `fedinvest`, `par`) as it is, or for `auto` the choice of `auto_curve_source` with
+/// the text of the choice. With `auto` and fresh GSW rows the source is `gsw`, so the run is the run of `--curve gsw`.
+pub fn effective_source(requested: &str, gsw_dates: &[Option<String>], dates: &[String]) -> (String, Option<String>) {
+    if requested != "auto" {
+        return (requested.to_string(), None);
+    }
+    let (s, why) = auto_curve_source(gsw_dates, dates);
+    (s.to_string(), Some(format!("CURVE SOURCE (--curve auto): {why}.")))
+}
+
+/// D0 of the prior window: D1 less the number of days from D1 to D2, moved to the last day on or before it with a SPY close
+/// (`auto_premium::anchor_of`, the trading calendar of the premium series).
+pub fn prior_date(spy: &[(String, f64)], d1: &str, d2: &str) -> R<String> {
+    let (a, b) = (mapcheck::dates::parse(d1), mapcheck::dates::parse(d2));
+    let (Some(a), Some(b)) = (a, b) else { return e("the dates of the prior window are not dates") };
+    anchor_of(spy, &mapcheck::dates::format(a - (b - a)))
+}
+
+/// One "all" line of a window for the block "(6) PRIOR WINDOW": the premium-first full bridge of the whole list.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PriorLine {
+    pub from: String,
+    pub to: String,
+    /// The change of the whole list (value-weighted, a share).
+    pub change: f64,
+    /// Facts, time, rates, premium, growth, residual, no model value (shares of the list value at the start).
+    pub parts: [f64; N_BRIDGE],
+    /// The premium plug in two parts: common and company.
+    pub premium_split: [f64; 2],
+    /// The common change c of the premium view (a decimal) and the name of its source.
+    pub common: Option<(f64, String)>,
+}
+
+/// The line "all" of the premium-first full bridge of the rows of a window (`None`: no ticker has a weight).
+pub fn prior_line(from: &str, to: &str, rows: &[AttrRow]) -> Option<PriorLine> {
+    let b = full_bridge(rows, View::Premium)?;
+    Some(PriorLine { from: from.to_string(), to: to.to_string(), change: b.all.change, parts: b.all.parts, premium_split: [b.all.split[0], b.all.split[1]], common: b.common[0].clone() })
+}
+
+/// The block "(6) PRIOR WINDOW": the lines D0 to D1, D1 to D2 and D0 to D2 (in this order), and the change of the first two
+/// chained. The first two windows chain exactly when each ticker has a weight in both: the chained change is printed to show it.
+pub fn prior_window_text(d0: &str, d1: &str, d2: &str, lines: &[Option<PriorLine>; 3]) -> String {
+    let mut s = format!(
+        "\n(6) PRIOR WINDOW: the same list from D0 = {d0} (D1 less the days of the window, moved to the last SPY trading day on or before it). The line \"all\" of the FULL BRIDGE, premium view first, for each window; points of the market value of the list at the start of the window; c is the common change of the premium view of the window. The same procedure and the same curve source as the main run.\n"
+    );
+    s.push_str(&format!("  {:<25} {:>8} | {:>7}{:>7}{:>7}{:>9}{:>16}{:>16}{:>8}{:>8}{:>8} | {:>9}\n", "window", "change", "facts", "time", "rates", "premium", "premium-common", "premium-company", "growth", "resid", "nomodel", "c (pts)"));
+    for (l, (a, b)) in lines.iter().zip([(d0, d1), (d1, d2), (d0, d2)]) {
+        match l {
+            Some(l) => {
+                let f = |x: f64, w: usize| format!("{:>w$}", sgn(x * 100.0, 2));
+                let c = l.common.as_ref().map_or("none".to_string(), |(c, _)| sgn(c * 100.0, 3));
+                s.push_str(&format!(
+                    "  {:<25} {:>7}% | {}{}{}{}{}{}{}{}{} | {:>9}\n",
+                    format!("{} to {}", l.from, l.to),
+                    sgn(l.change * 100.0, 2),
+                    f(l.parts[0], 7),
+                    f(l.parts[1], 7),
+                    f(l.parts[2], 7),
+                    f(l.parts[3], 9),
+                    f(l.premium_split[0], 16),
+                    f(l.premium_split[1], 16),
+                    f(l.parts[4], 8),
+                    f(l.parts[5], 8),
+                    f(l.parts[6], 8),
+                    c
+                ));
+            }
+            None => s.push_str(&format!("  {a} to {b}: no ticker has a weight\n")),
+        }
+    }
+    if let (Some(x), Some(y)) = (&lines[0], &lines[1]) {
+        s.push_str(&format!("  {d0} to {d1}, then {d1} to {d2}, chained: {}%.\n", sgn(((1.0 + x.change) * (1.0 + y.change) - 1.0) * 100.0, 2)));
+    }
+    if let Some((_, label)) = lines.iter().flatten().find_map(|l| l.common.clone()) {
+        s.push_str(&format!("  source of c: {label}.\n"));
+    }
+    s
+}
+
+/// What a window needs besides its two sides: the cache, the config, the groups, the index, the threads and the common change.
+struct Setup<'a> {
+    cache: &'a Path,
+    cfg: &'a ImpliedConfig<'a>,
+    groups: &'a HashMap<String, (String, String)>,
+    index: Option<&'a [(String, f64)]>,
+    jobs: Option<usize>,
+    /// `--common`: `None` is `file`.
+    mode: Option<CommonMode>,
+    common_list: Option<&'a str>,
+    common_file: Option<&'a str>,
+}
+
+/// One date of a window: the date, the facts of the date and the curve of the date.
+struct Side<'a> {
+    date: &'a str,
+    day: i64,
+    inputs: &'a [AutoInputs],
+    curve: Option<&'a CurveNumbers>,
+}
+
+fn market_fn<'a>(s: &'a Setup<'a>, side: &'a Side<'a>) -> impl Fn(&str) -> Market + Sync + 'a {
+    move |t: &str| -> Market { market_at(s.cache, t, side.date, None, Some(side.date), &s.cfg.rules, side.curve, s.index) }
+}
+
+/// The rows of one window with the common change of each view, and the text line of the common change. The main run and the
+/// windows of `--prior-window` all run here (one implementation).
+fn run_window(s: &Setup, a: &Side, b: &Side) -> R<(Vec<AttrRow>, String)> {
+    let (market1_of, market2_of) = (market_fn(s, a), market_fn(s, b));
+    let mut rows = attribute_list(a.inputs, b.inputs, &market1_of, &market2_of, s.groups, s.cfg, s.jobs)?;
+    // a close older than the SPY close of the same date takes the row out of the sums; the one-weight rule runs again after it
+    let closes = |t: &str| super::auto::price_series(s.cache, t);
+    finish_weights(&mut rows, &closes, a.date, b.date);
+    // the common change of each view, then the second pass that splits each plug in two
+    let line = match s.mode {
+        None => {
+            let f = s.common_file.ok_or_else(|| DcfError("--common file needs --common-file FILE".into()))?;
+            let econ = econ_from_text(&std::fs::read_to_string(f).map_err(|x| DcfError(format!("{f}: {x}")))?, a.date, b.date)?;
+            add_common_economics(&mut rows, b.inputs, &market1_of, &market2_of, s.cfg, &econ, s.jobs)?;
+            econ_line(&econ, s.cfg.rules.long_run.is_some(), economics_cover(rows.iter()))
+        }
+        Some(mode) => {
+            let common: CommonChanges = match s.common_list {
+                Some(f) => {
+                    let list = mapcheck::cli::read_ticker_file(f).map_err(DcfError)?;
+                    let ((l1, _), (l2, _)) = (map_inputs_pit(s.cache, &list, a.date, a.day, s.jobs)?, map_inputs_pit(s.cache, &list, b.date, b.day, s.jobs)?);
+                    let mut lrows = attribute_list(&l1, &l2, &market1_of, &market2_of, s.groups, s.cfg, s.jobs)?;
+                    finish_weights(&mut lrows, &closes, a.date, b.date);
+                    common_from_rows(&lrows, mode)
+                }
+                None if rows.len() > 1 => common_from_rows(&rows, mode),
+                None => no_common("one ticker and no --common-list"),
+            };
+            add_common(&mut rows, b.inputs, &market1_of, &market2_of, s.cfg, &common, s.jobs)?;
+            format!(
+                "COMMON CHANGE c (the plug of each view is split in two engine steps, common and company): premium view {}; growth view {}.",
+                common_label(&common[0]),
+                common_label(&common[1])
+            )
+        }
+    };
+    Ok((rows, line))
+}
+
 fn date_of(o: &Opts, key: &str) -> R<(String, i64)> {
     match o.get(key) {
         Some(t) => match mapcheck::dates::parse(t) {
@@ -1062,7 +2096,40 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
         println!("{ATTRIBUTE_USAGE}");
         return Ok(());
     }
-    let o = Opts::parse(args, &["--cache", "--out", "--jobs", "--table", "--from", "--to", "--tickers-file", "--rules", "--groups"], &[])?;
+    let o = Opts::parse(
+        args,
+        &["--cache", "--out", "--jobs", "--table", "--from", "--to", "--tickers-file", "--rules", "--groups", "--curve", "--common", "--common-list", "--common-file", "--top", "--baserate-list", "--premium-history"],
+        &["--reality", "--prior-window"],
+    )?;
+    let reality = o.flag("--reality");
+    let prior_window = o.flag("--prior-window");
+    if prior_window && o.get("--top").is_some() {
+        return e("--prior-window does not work with --top");
+    }
+    if !reality && (o.get("--baserate-list").is_some() || o.get("--premium-history").is_some()) {
+        return e("--baserate-list and --premium-history need --reality");
+    }
+    let top: Option<usize> = match o.get("--top") {
+        Some(t) => Some(t.parse::<usize>().ok().filter(|n| *n > 0).ok_or_else(|| DcfError(format!("--top '{t}': use a whole number of 1 or more")))?),
+        None => None,
+    };
+    let requested = o.get("--curve").unwrap_or("auto").to_string();
+    if !["auto", "gsw", "fedinvest", "par"].contains(&requested.as_str()) {
+        return e(format!("--curve '{requested}': use auto, gsw, fedinvest or par"));
+    }
+    let mode = match o.get("--common").unwrap_or("median") {
+        "median" => Some(CommonMode::Median),
+        "vw" => Some(CommonMode::ValueWeighted),
+        "file" => None,
+        other => return e(format!("--common '{other}': use median, vw or file")),
+    };
+    // an option that the chosen source does not read is an error, not a silent no-op
+    if mode.is_some() && o.get("--common-file").is_some() {
+        return e("--common-file needs --common file");
+    }
+    if mode.is_none() && o.get("--common-list").is_some() {
+        return e("--common-list does not work with --common file (the economics view has no list)");
+    }
     let cache = cache_dir(repo, &o);
     let (table, fade) = load_table(&table_path(repo, &o))?;
     let ((d1, day1), (d2, day2)) = (date_of(&o, "--from")?, date_of(&o, "--to")?);
@@ -1079,19 +2146,134 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     let t0 = Instant::now();
     let (inputs1, map1) = map_inputs_pit(&cache, &tickers, &d1, day1, jobs)?;
     let (inputs2, map2) = map_inputs_pit(&cache, &tickers, &d2, day2, jobs)?;
-    let (curve1, index) = curve_and_index(&cache, &d1);
-    let (curve2, _) = curve_and_index(&cache, &d2);
-    let market1_of = |t: &str| -> Market { market_at(&cache, t, &d1, None, Some(&d1), &rules, curve1.as_ref(), index.as_deref()) };
-    let market2_of = |t: &str| -> Market { market_at(&cache, t, &d2, None, Some(&d2), &rules, curve2.as_ref(), index.as_deref()) };
+    let (curve1_gsw, index) = curve_and_index(&cache, &d1);
+    let (curve2_gsw, _) = curve_and_index(&cache, &d2);
+    // D0 of the prior window: the last SPY trading day on or before D1 less the days of the window
+    let d0: Option<(String, i64)> = if prior_window {
+        let spy = index.as_deref().ok_or_else(|| DcfError("--prior-window needs the SPY price series in the cache".into()))?;
+        let d = prior_date(spy, &d1, &d2)?;
+        let day = mapcheck::dates::parse(&d).ok_or_else(|| DcfError(format!("'{d}' is not a date")))?;
+        Some((d, day))
+    } else {
+        None
+    };
+    let curve0_gsw = match &d0 {
+        Some((d, _)) => curve_and_index(&cache, d).0,
+        None => None,
+    };
+    // the source of the curve: one source at all dates of the run
+    let mut dates: Vec<String> = vec![d1.clone(), d2.clone()];
+    let mut gsw_dates: Vec<Option<String>> = vec![curve1_gsw.as_ref().map(|c| c.date.clone()), curve2_gsw.as_ref().map(|c| c.date.clone())];
+    if let Some((d, _)) = &d0 {
+        dates.push(d.clone());
+        gsw_dates.push(curve0_gsw.as_ref().map(|c| c.date.clone()));
+    }
+    let (source, source_note) = effective_source(&requested, &gsw_dates, &dates);
+    let (mut curve1, mut curve2, mut curve0) = (curve1_gsw, curve2_gsw, curve0_gsw);
+    if source != "gsw" {
+        let load = |d: &str| -> Result<(CurveNumbers, Option<f64>), String> {
+            if source == "par" {
+                super::auto::load_curve_par_rmse(&cache, d).map(|(c, r)| (c, Some(r)))
+            } else {
+                super::auto::load_curve_fedinvest(&cache, d).map(|c| (c, None))
+            }
+        };
+        let (c1, r1) = load(&d1).map_err(DcfError)?;
+        let (c2, r2) = load(&d2).map_err(DcfError)?;
+        println!("{}", curve_line(&source, &c1, r1));
+        println!("{}", curve_line(&source, &c2, r2));
+        curve1 = Some(c1);
+        curve2 = Some(c2);
+        if let Some((d, _)) = &d0 {
+            let (c0, r0) = load(d).map_err(DcfError)?;
+            println!("{}", curve_line(&source, &c0, r0));
+            curve0 = Some(c0);
+        }
+    }
+    if let Some(n) = &source_note {
+        println!("{n}");
+    }
     let cfg = ImpliedConfig { table: &table, fade: &fade, rules: rules.clone(), cache: Some(&cache) };
+    let setup = Setup { cache: &cache, cfg: &cfg, groups: &groups, index: index.as_deref(), jobs, mode, common_list: o.get("--common-list"), common_file: o.get("--common-file") };
+    let side1 = Side { date: &d1, day: day1, inputs: &inputs1, curve: curve1.as_ref() };
+    let side2 = Side { date: &d2, day: day2, inputs: &inputs2, curve: curve2.as_ref() };
+    let (market1_of, market2_of) = (market_fn(&setup, &side1), market_fn(&setup, &side2));
     let t1 = Instant::now();
-    let rows = attribute_list(&inputs1, &inputs2, &market1_of, &market2_of, &groups, &cfg, jobs)?;
+    let (mut rows, common_line) = run_window(&setup, &side1, &side2)?;
+    // the prior window: D0 to D1 and D0 to D2 with the same code, and the line "all" of each window
+    let prior_text = match &d0 {
+        Some((d0, day0)) => {
+            let (inputs0, _) = map_inputs_pit(&cache, &tickers, d0, *day0, jobs)?;
+            let side0 = Side { date: d0, day: *day0, inputs: &inputs0, curve: curve0.as_ref() };
+            let (rows01, _) = run_window(&setup, &side0, &side1)?;
+            let (rows02, _) = run_window(&setup, &side0, &side2)?;
+            let lines = [prior_line(d0, &d1, &rows01), prior_line(&d1, &d2, &rows), prior_line(d0, &d2, &rows02)];
+            Some(prior_window_text(d0, &d1, &d2, &lines))
+        }
+        None => None,
+    };
+    // the premium that the whole list implies at D1 and at D2, against the history (before the cut: the list of the run)
+    let list_prem = match o.get("--premium-history") {
+        Some(f) => {
+            let history = auto_reality::parse_history(&std::fs::read_to_string(f).map_err(|x| DcfError(format!("{f}: {x}")))?)?;
+            let premium_of = |inputs: &[AutoInputs], market_of: &(dyn Fn(&str) -> Market + Sync)| -> R<Option<f64>> {
+                Ok(list_premium(inputs, market_of, &cfg)?.filter(|m| m.found.bound == Bound::Exact && m.found.x.is_finite()).map(|m| m.found.x))
+            };
+            Some(auto_reality::premium_position(&history, &d1, premium_of(&inputs1, &market1_of)?, premium_of(&inputs2, &market2_of)?))
+        }
+        None => None,
+    };
+    // --top N: the cut comes after the common change (c is the c of the FULL list)
+    let top_line = top.map(|n| {
+        let keep = keep_top(&rows, n);
+        let kept: Vec<AttrRow> = keep.iter().map(|i| rows[*i].clone()).collect();
+        let companies = kept.iter().filter(|r| r.weight().is_some()).count();
+        let line = format!(
+            "TOP {n}: the {companies} companies with the largest market value at D1 of the {} tickers of the list ({} tickers kept; the common change c is the c of the full list): {}",
+            rows.len(),
+            kept.len(),
+            kept.iter().map(|r| r.ticker.as_str()).collect::<Vec<_>>().join(" ")
+        );
+        rows = kept;
+        line
+    });
+    let reality_out = if reality {
+        let (list, list_name): (Vec<String>, String) = match o.get("--baserate-list") {
+            Some(f) => (mapcheck::cli::read_ticker_file(f).map_err(DcfError)?, format!("the list {f}")),
+            None => (tickers.clone(), "the list of the run".to_string()),
+        };
+        let (br_inputs, br_s) = map_inputs_pit_periods(&cache, &list, &d2, day2, BASERATE_PERIODS, jobs)?;
+        let rates = base_rates(&br_inputs, &|t| cik_of(&cache, t), BASERATE_YEARS, &d2);
+        let by_ticker: HashMap<&str, &AutoInputs> = inputs2.iter().map(|i| (i.ticker.as_str(), i)).collect();
+        let reality_rows: Vec<auto_reality::RealityRow> = rows
+            .iter()
+            .map(|r| {
+                let years: &[YearData] = by_ticker.get(r.ticker.as_str()).map_or(&[], |i| i.years.as_slice());
+                let implied = r.outcome.as_ref().ok().map(|a| (a.cagr2, a.growth2_bound));
+                auto_reality::reality_row(&r.ticker, years, &d2, implied, &rates, release_path(&cache, &r.ticker, &d1, &d2))
+            })
+            .collect();
+        Some((reality_rows, rates, list_name, br_s))
+    } else {
+        None
+    };
     let attr_s = t1.elapsed().as_secs_f64();
     if let Some(path) = o.get("--out") {
-        std::fs::write(path, csv_text(&rows)).map_err(|x| DcfError(format!("{path}: {x}")))?;
+        let text = match &reality_out {
+            Some((rr, ..)) => {
+                let cells: Vec<String> = rr.iter().map(|r| auto_reality::cells(r, list_prem.as_ref())).collect();
+                csv_text_with(&rows, Some((auto_reality::HEADER_TAIL, &cells)))
+            }
+            None => csv_text(&rows),
+        };
+        std::fs::write(path, text).map_err(|x| DcfError(format!("{path}: {x}")))?;
     }
     println!("ATTRIBUTION of the change of the price from {d1} to {d2}, {} tickers, no random part. {BANNER} A market-implied value is a measurement, not an input.", rows.len());
-    println!("  The value is the value of the one path at the means (not the expected value). Order of the steps: facts, time, rates, plug (implied premium or implied growth), residual; the reverse order of rates and the plug is shown. This is an accounting split of the price change with the model; it is not a cause. Facts of each date: filed on or before it; the 10-K of the cache does not fill an input. Price: last close on or before the date. Curve: last GSW row on or before the date.");
+    println!("  {common_line}");
+    if let Some(line) = &top_line {
+        println!("  {line}");
+    }
+    println!("  The value is the value of the one path at the means (not the expected value). Order of the steps: facts, time, rates, plug (implied premium or implied growth), residual; the reverse order of rates and the plug is shown. This is an accounting split of the price change with the model; it is not a cause. Facts of each date: filed on or before it; the 10-K of the cache does not fill an input. Price: last close on or before the date. Curve: last GSW row on or before the date.{}", curve_sentence(&source));
     if rows.len() == 1 {
         match &rows[0].outcome {
             Ok(a) => print!("{}", table_text(&rows[0].ticker, &d1, &d2, a)),
@@ -1121,7 +2303,14 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
             print!("{}", group_text(&group_medians(&rows, view), view));
         }
     }
-    println!("\nTIME: mapping {:.2} s | attribution {attr_s:.2} s ({} threads) | total {:.2} s", map1 + map2, jobs.unwrap_or_else(rayon::current_num_threads), t0.elapsed().as_secs_f64());
+    if let Some((rr, rates, list_name, _)) = &reality_out {
+        print!("{}", auto_reality::block_text(rr, rates, list_name, list_prem.as_ref()));
+    }
+    if let Some(t) = &prior_text {
+        print!("{t}");
+    }
+    let br_s = reality_out.as_ref().map_or(0.0, |x| x.3);
+    println!("\nTIME: mapping {:.2} s (base rates {br_s:.2} s) | attribution {attr_s:.2} s ({} threads) | total {:.2} s", map1 + map2, jobs.unwrap_or_else(rayon::current_num_threads), t0.elapsed().as_secs_f64());
     Ok(())
 }
 

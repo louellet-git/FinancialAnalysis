@@ -5,10 +5,12 @@ area: engine
 status: backlog
 owner: louellet-git
 head: quant
+story: E4.S3
 order: 4
-branch:
+branch: 
 created: 2026-11-20
 acceptance: `fa vol fit sabr --symbol SPX` gives the alpha, rho and nu of each expiry of the live chain with the error in vol points, and `fa vol localvol` reprices the quoted options with a PDE to within 0.1 vol point.
+scope_now: "Part 1 merged in pull request 158 (2026-11-21); part 1 was (louellet-git, quant head, 2026-11-21): `fa vol fit sabr` (Hagan 2002 with the Obloj 2008 correction, beta fixed, alpha rho nu for each expiry, error in vol points). SVI, local volatility and the PDE are later parts, one at a time."
 ---
 Step 2. Depends on: ticket `vol-1-heston-bates` (the model trait, the quote set, the loss). The data check is in section A of the study.
 
@@ -58,3 +60,5 @@ and no arbitrage test on closes of different times.
 ## Commands
 
 `fa vol fit sabr --symbol SPX [--beta 1]`, `fa vol surface --symbol SPX --method svi|ah`, `fa vol localvol --symbol SPX`, `fa vol reprice --method pde|mc`.
+
+Needed by (2026-11-21): the SVI part gives an arbitrage-free surface from the real chain for the price of the bot legs (`T-20261121-quant-doc-findings` B1, B2) and the butterfly relation of the register. The local volatility and PDE parts: no check or strategy needs them now.

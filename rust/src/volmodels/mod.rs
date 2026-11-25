@@ -6,6 +6,7 @@
 //! - `models`: `Heston`, `Bates` (characteristic function in the stable form of Albrecher et al. 2007).
 //! - `calib`: Levenberg-Marquardt with a numerical Jacobian and random starts.
 //! - `chain`: a stored option snapshot as a quote set, with the live filters and their counts.
+//! - `sabr`: the SABR formula (Hagan et al. 2002, Obloj 2008) and its fit to one expiry, in implied volatility.
 //! - `cli`: `fa vol fit`.
 //!
 //! A model price is not a market price. The fit is to mids of bid and ask of a snapshot.
@@ -17,6 +18,7 @@ pub mod cli;
 pub mod cx;
 pub mod fourier;
 pub mod models;
+pub mod sabr;
 
 #[cfg(test)]
 mod tests;

@@ -1,0 +1,18 @@
+BASE RATES of 10 fiscal years at 2026-11-20: 503 tickers, 500 companies (one for each SEC number); windows filed on or before 2026-11-20.
+  last window: 439 companies; no base-year value: 58: ABNB AMCR APA APO APP AVGO BE BG BLK CARR CEG CI CMG COIN CRH CRWD DASH DDOG DIS DOW EQT ETN EVRG FANG FDXF FERG FOX GEHC GEV GPN HCA HOOD KKR LDOS LHX LIN MAA MRNA MRVL NXPI OTIS PLTR Q RDDT REG SNDK SOLV STE SW TKO TPL TRGP UBER VICI VLTO VRT VST VTRS; no fiscal year with revenue: 2: HONA VYLR; last year older than 548 days: 1: SKYD
+  LAST WINDOW of each company (compound annual growth of the revenue)
+    bucket           n   median     75th     90th     95th      max  maximum
+    below 1B        26    21.4%    26.7%    41.5%    45.5%    65.7%  CVNA
+    1B to 10B      223     7.8%    11.7%    16.4%    20.8%    45.7%  NVDA
+    10B to 50B     140     4.0%     6.3%     8.7%    11.8%    27.3%  META
+    50B or more     50     3.7%     7.5%     9.9%    12.6%    21.0%  AMZN
+    all            439     5.9%    10.4%    16.4%    23.5%    65.7%  CVNA
+  POOLED WINDOWS (every window of every company)
+    bucket           n   median     75th     90th     95th      max  maximum
+    below 1B       310    16.9%    23.4%    34.4%    43.1%    75.0%  TSLA
+    1B to 10B     1777     6.9%    10.9%    14.9%    19.1%    47.3%  TSLA
+    10B to 50B    1057     2.8%     5.7%     8.2%    10.5%    30.4%  CNC
+    50B or more    377     2.7%     6.7%     9.6%    10.9%    23.7%  AMZN
+    all           3521     5.6%     9.9%    15.7%    21.3%    75.0%  TSLA
+  Limits: the list is a list of today's names (survivorship: companies that left it are not in the set, which moves the rates up); the windows of one company overlap (they are not independent); acquired revenue is in the growth and a spin-off lowers it; a company with no mapped revenue in the base year has no window (the engine does not patch it); the size is the revenue of the base year in nominal dollars; a base rate is a measurement of the past, never an input of the model.
+TIME: mapping 9.07 s | total 9.10 s
