@@ -1,4 +1,4 @@
-# Week study: state on 2026-11-21 21:06 UTC
+# Week study: state on 2026-11-25 16:35 UTC
 
 Tickets: `T-20261121-sp100-week-attribution`, `T-20261121-premium-company-part`, `T-20261121-dcf-engine-integration`
 (in progress); `T-20261121-rates-balance-sheet`, `T-20261121-evaluator-captive-finance` (backlog).
@@ -34,8 +34,14 @@ a headless Chromium print (Letter); check the page count after each change.
   through the week, a doubt about the AI build-out and its debt; a rate rise is not supported.
 
 ## Open
-- The review of the person on the three pieces; then the S&P 100 part (the same tests on 100 companies).
-- Gate notes not done: a truncation test of the base rates in the suite; the long sentences of premium-series.md.
-- The series run of record: a review of the pit results of 61fe8de first, and a cut parameter table.
-- Technology: SWKS has no close of 2026-11-20 at the source (next try 2026-11-26); `claude/revenue-old-tags`.
-- Lesson of the audit: a shell sum goes into a file only after a second calculation (three sums were wrong).
+- The review of the person on the three pieces; then the S&P 100 part (the same tests on 100 companies). Not before.
+- Done after the pieces (all on main): the point-in-time tests of the series (`data/premium_series_pit_main/`), the
+  series runs of record of the S&P 100 and S&P 500 lists with the label "parameters in-sample", the fix of the stale
+  rule in the series bridge (pull request 213), and the S&P 500 series with the bridge for the Head of Economics
+  (`data/premium_series_sp500_2019_bridge_record_main-6c59388/`).
+- Still open on `T-20261121-premium-company-part`: a parameter table cut before 2019; a truncation test of the base
+  rates in the suite; the long sentences of premium-series.md; the register rows of the records A-027 to A-037.
+- For two pages of the Head of Economics (2026-11-23): `analysis/priors/ant_filing_numbers_2026-11-23.md` (numbers of
+  the Anthropic prospectus, with the disclosure; in its report) and the engine result for URA (only LEU has implied
+  numbers; store a798b9b). Story E3.S5 on the board: the miner design ticket, the fund ticket, the R6 note.
+- Technology: SWKS has no close of 2026-11-20 at the source; the BWXT mapping fails; UUUU, SMR, DNN, OKLO have no prices.

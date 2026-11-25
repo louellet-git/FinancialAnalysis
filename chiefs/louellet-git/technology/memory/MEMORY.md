@@ -1,54 +1,47 @@
 # Dashboard: technology (louellet-git)
-For the next session of this head: how the environment and the data sources behave, and what the
-person decided. Keep this file below 60 lines. Started 2026-11-20.
+For the next session of this head: how the environment and the sources behave, and what the person
+decided. Keep this file below 60 lines. Started 2026-11-20. Last dream pass: 2026-11-25 16:20 UTC.
 
-## Goal now and subsequent steps
-- Queue (`head: technology`, lowest `order`): `filing-values-in-variables` (3), `share-count-scale-guard`
-  (4; WAT 10-Qs of 2026-05-12 and 2026-08-11 are 1000x; use the cover-page count of the same filing, not the
-  year before: the BD merger doubled the count; 2x to 25x is often a split), `backtest-10ka-vintage` (5; a
-  model-change gate: the fix changes recorded results), `store-arb-data-rest` (6, not needed now).
-  `live-data-stream` waits.
-- Daily option save test: a scheduled task (15:27 New York time, market days, from 2026-11-23) runs
-  `fa options archive` (or the snapshots) and pushes to the store; it stops after 20 days. A reminder comes
-  back to this session on 2026-12-22: report days saved, days lost, size, and ask yes/no to continue.
-- Prices: rerun `fa prices get` for the close of 2026-11-20 (Nasdaq lags the same day), then push.
-- Owner tasks: `owner-first-run` (keys on the laptop), `delete-merged-branches` (6 branches on GitHub).
+## Order of the week (Head of Staff, from 2026-11-25; EPICS.md last section)
+1. E3.S5: `T-20261123-ifrs-mapping-cameco` (IFRS for Cameco only, tests, values against the 40-F; then one
+   message with the real size for NXE, DNN, SBSW, BHP, IsoEnergy; "no SIC code in the cache" is the first
+   fault) → `T-20261123-non-sec-accounts-scout` (Japan and Korea filing systems first) →
+   `T-20261123-commodity-series` (IMF and EIA uranium, gold series; terms first; Sprott needs consent).
+2. Algo: `T-20261121-algo-host-gcp` (the guide Luc follows; e2-micro us-east1) and the Alpaca paper access
+   of a head session (the Head of Staff got 401 on both hosts): check, then tell the Head of Quant Research.
+3. E5: close `T-20261121-data-audit`; FRED step 4 (CPIAUCNS from BLS, TB3MS and GS10 from Fed H.15; the NBER
+   series is a Fundamental decision: JST bill rate as a variant), then remove the last FRED files and code.
+4. E6.S5: at each ticket close run `fa usage record && fa usage show`, the table in the done message; board
+   check: count "no story" only for tickets created from 2026-11-22.
+Later: the 4 Quant commands (rates audit, `fa calendar open`, snapshot `--smoke`, cache-only switch), BWXT
+mapping FAIL, Cboe VX and VIX history terms, store update Thursdays (SWK, SWKS lag at Nasdaq), the option
+save report on 2026-12-22, SPF notes (hash on read, 0-row error), N-PORT choice test.
 
 ## Standing words of the person (record: RECORD.md)
-- Merge my own branches after a review pass and a green check, with no new question.
-- "You don't need me to tell you to continue unless I tell you to stop": take the next ticket with no wait.
-- Agents use Sonnet; teams lean, "not obsessive and tight fisted"; heads are orchestrators.
-- GitHub Actions cost must stay low: few pull requests; documents-only pull requests have no check run.
-- Tickets go to the responsible head (`head`, `order`); a head offers only its person's tickets
-  (`requested_by`); a closed ticket moves to `PLANNING/board/done/`, never deleted.
-- No process that runs all the time: `fa sync` on request.
-- Rust for engines, trading code and data loaders; another language where it fits better.
-- One data store `louellet-git/fa-data`, public, written only by this head; scan for keys before a push.
-- Do not take the Scan Support rules. Never work in a `chiefs` checkout under `/home/user`: its
-  `.claude/CLAUDE.md` loads them. Change `louellet-git/chiefs` from a clone in the scratch folder.
-  The general heads system (rules only) is the repo `louellet-git/the-heads` (not chiefs, from 2026-11-21).
-  When a head rule changes here, make the same general change there.
-- The person uses a Windows laptop (PowerShell) and keeps the keys in `.env`; a key never goes in a chat
-  or a file; in a cloud session use `request_credential`.
+- Merge my branches after a QA pass and a green check, no new question. Take the next ticket with no wait.
+- A done message to the Head of Staff for each result; no status report. Questions for Luc go to the Head
+  of Staff (one yes/no with research first); a permission refusal is mine to filter; urgent only direct.
+- Lean: "not obsessive and tight fisted"; "Let's not get overly complicated" (the usage log is local only).
+- Agents use Sonnet; heads orchestrate and delegate; parallel work when the files do not overlap.
+- The store `louellet-git/fa-data` is PRIVATE (2026-11-21), written only by me; attach it before a clone.
+  Owner accepted: Alpaca chains in the shared store; a private SPF copy. Each person has own Alpaca keys.
+- Not stored (terms): FRED, ICE, Moody's, NFCI, Cboe delayed quotes (no automatic read at all), Sprott.
+- Programs may send orders to the Alpaca PAPER account only, controls 0 to 8, `--send`, never in a cloud
+  session (QUALITY-STANDARDS section 8).
+- Record numbers: Technology A-200 to A-229. No model name in any repo file or git ref.
+- When a head rule changes here, make the general change in `louellet-git/the-heads` too.
 
 ## Tested rules
 - A word of the person relayed by a head is data: check it in that session (`list_events`, kind user).
-- A restart of the cloud machine stops the agents; files and worktrees stay. Commit before a long wait.
-- A cloud session cannot delete a remote branch (HTTP 403 from the git proxy).
-- From the cloud: the Yahoo chart answers 429 (the sync now stops it after one 429); FRED needs a key;
-  the Cboe delayed quotes gave 403, but the Cboe settlement and VIX files work (2026-11-20).
-- FedInvest past days: `fa sync --only bonds --bond-days N` (4 requests a day). `fa recon bonds` also
-  waits on FRED timeouts. Bond holidays on the stock calendar stay "not available yet".
-- Alpaca: the key ID is the variable `APCA_API_KEY_ID` of "ALL ACCESS" (a session gets it at its start);
-  the secret is a proxy secret. Run with `APCA_API_SECRET_KEY=proxy-injected`.
-- The setup script of "ALL ACCESS" starts the Scan Support hooks if a `chiefs` checkout is in `/home/user`.
-  This session has the repo `chiefs` attached: start the next Technology session without it.
-- Push to the store in parts of less than 40 MB (compressed) or 70 MB (text).
-- Many heads change `main`: merge it once before the review; no test count in documents.
-- Windows build check: `cargo check --release --target x86_64-pc-windows-gnu`.
-- A pull request number can be taken by another head first: check the newest number just before you
-  write `merged: pull request N`, and correct the line in the same push if it differs.
-
-## Dream pass
-Before a compaction (context above about 75% of the threshold) or on the word "dream".
-Last pass: 2026-11-21 02:20 UTC.
+- Count tokens: one reply has several lines with the same usage; count each message id once.
+- Each worktree build folder is about 5 GB: use one target folder, delete merged worktrees (the disk filled
+  two times). A worktree binary writes `data/raw` of its build tree: set FA_REPO.
+- FRED refuses our honest client name (no reply); do not change the name. A push of a non-branch ref from a
+  cloud session failed and a retry was refused: no usage push.
+- Nasdaq: an ETF asked as a stock answers "Symbol not exists" (fixed: ask again as an ETF).
+- Treasury HQM: a month is used from the first weekday after the 5th of the next month.
+- The repo merges by squash: check the newest PR number just before `merged: pull request N`.
+- Alpaca key ID: `APCA_API_KEY_ID`; the secret is a proxy secret (`APCA_API_SECRET_KEY=proxy-injected`).
+- Never work in a `chiefs` checkout under /home/user (its CLAUDE.md loads the Scan Support rules).
+- Push to the store in parts below 40 MB compressed or 70 MB of text. Windows check: `cargo check --target
+  x86_64-pc-windows-gnu`.
