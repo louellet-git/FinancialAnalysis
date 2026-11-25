@@ -80,3 +80,13 @@ risk only), after step A passes its gate?" Answer: "Yes, permit (Recommended)" (
 step A (1 SPY share) runs under section 8 as it is. Before step B, Quant sends a new text of control 6. The review has
 the weight of PR 149 (risk-compliance-officer and code-reviewer). The text stays narrow: paper account only, 1
 contract, defined risk, no margin, no naked short option. A live order still needs a new owner approval.
+
+## 2026-11-25: control 6 for options (decision of this head)
+
+Proposal of the Head of Quant Research (long options, verticals and condors). A risk-compliance-officer (Sonnet)
+attacked it: it dropped the caps of 10 a day and 5%, said "no short stock" (against control 8), named a "per-trade
+loss limit" that the paper table does not have, let d and e conflict, and left pin risk, early assignment and the
+multi-leg fill open. Decision: a narrow text. Only a long SPY call or put, 1 contract, debit times 100 inside the
+5% cap and the cash, quote checks, expiry 7 to 45 days, a person closes before 15:00 New York on the day before
+expiry. Spreads and condors need their own review (the attack notes are the basis). A program close before
+expiry is safer than "a person closes"; it is a later decision, not in this text.

@@ -16,9 +16,9 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   accepted; "docs for me are in pdf format" (a document for Luc also goes as a PDF).
 - Week 2026-11-25 to 12-02 (Staff): gate order (1) quant paper-order code (gate "Order code (paper only)", section 8)
   (2) T1 projection fix (3) Cameco IFRS (4) other. Share about 6% (FA 45% of the week). Large gate close: `fa usage record && fa usage show`
-  table to the author (copy to Staff once). One agent a gate where enough; at most 2 builds at a time (15 GB machine).
-- HANDOVER (2026-11-23 15:40 UTC): every gate has a verdict (ledger). URA 389c294 PASS, GLD 9e32b54 PASS-WITH-NOTES;
-  both go to the Head of Staff. Luc: "we'll stick to one" session for this role.
+  table to the author (copy to Staff once); also before a ticket worktree goes. One agent a gate where enough; 2 builds max.
+- HANDOVER (2026-11-25 19:20 UTC): every gate has a verdict (ledger). Paper orders step A 4dac1c0 PASS; next: step B
+  (control 6 text for options, PR 149 weight). Luc: "we'll stick to one" session for this role.
 - Precedents: an author who moves the target mid-review: redirect the same agent by SendMessage (its context and cache
   stay; cheaper than a new agent); ask the author to freeze until the verdict. Resume a finished agent for cycle 2.
 
