@@ -3,8 +3,9 @@
 Updated: 2026-11-21. Commit: not yet made.
 
 ## Purpose
-WARNING: `fa trade paper` never sends an order to a broker. The repo has no broker code. The account is a
-simulation. The fills are model fills (`paper.rs`). Only the entry price of a new signal can come from
+WARNING: `fa trade paper` never sends an order to a broker. The account is a simulation. The only order code in
+the repo is the paper broker of `fa algo` (`rust/src/trading/algo/paper.rs`, `docs/models/algo-engine.md`): limit orders
+to the Alpaca PAPER account only, under the controls of `docs/QUALITY-STANDARDS.md` section 8. This command does not use it. The fills are model fills (`rust/src/trading/paper.rs`). Only the entry price of a new signal can come from
 a real quote, and that quote is about 15 minutes old.
 
 The command runs each bot again from a warm-up window, on the data up to now. It shows the paper account,

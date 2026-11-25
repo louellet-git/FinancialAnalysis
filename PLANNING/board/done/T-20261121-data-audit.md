@@ -2,14 +2,15 @@
 id: T-20261121-data-audit
 title: Full data audit of the store (defects of the kind found on 2026-11-21), with an owner for each defect
 area: importer
-status: in-progress
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: technology
 order: 1
-branch: claude/data-audit
+branch: claude/data-audit-close
 created: 2026-11-21
 acceptance: Each check below has a count on the store, each defect found has an owner and a ticket or a fix, and the S&P 100 defects are listed first.
+merged: pull request 247 (branch claude/data-audit-close)
 ---
 Word of the person (2026-11-21, relayed by the Head of Fundamental Research): "Can the head of tech check if there are
 other problems like those" (the split basis, the point-in-time mapping FAIL of V, BRK-B, COP and NEE, the IBM and JNJ
@@ -37,3 +38,19 @@ S&P 100 first. Owner of each defect: Technology unless named.
 | 3f | Rates, macro, FedInvest, futures, VIX files | no defect (GSW lags a week; FedInvest and VIX need 11-20) | - |
 | 3g | Template counts | sp500: template new HONA, VYLR; short history 9 (incl. **NEE**); next500: FAIL 7 (FWONA, NLY, BWXT, AGNC, PRAX, CYTK, FPS) | Fundamental Research (template choice of new listings) |
 Also found: IBM and JNJ were the only files with split+dividend adjustment; a cross-section mixed price returns with total returns for them before 652dc28.
+
+## Closed (2026-11-25)
+Each check has its count and each defect has an owner and a ticket or a fix:
+- Check 1: done. After PR 152 the 23 sp500 tickers (V, BRK-B, COP, NEE and 19 more) have a value at the cut
+  2026-11-13 (QA measure in `T-20261121-pit-supplement-fill`).
+- Shares by class: done with no code change (PR 156); all within 3% of the class totals, PLTR +7% is dilution.
+- IBM and JNJ prices: done (store 652dc28).
+- Found during the audit and fixed: the pre-2018 revenue tags (PR 200; 2015 gaps 49 -> 7), the gross profit of
+  two filings (95 values, HWM 2014), the Nasdaq ETF retry (PR 220), the IFRS filers (PR 237, Cameco first).
+- Open, each in its own ticket: `T-20261121-share-count-scale-guard` (MCD, ERIE, FOX, FOXA, WMG, SEI, NTNX,
+  CYTK, LOAR, WAT); `T-20261121-missing-price-files` (BF-B, MOG-A, ET, SUN, CFR, DDS; the jumps of QXO, CORT,
+  CRDO; SUPN 2026-01-23; also SWK and SWKS, whose Nasdaq history stops at 2026-11-19);
+  `T-20261125-bwxt-lease-scale` (BWXT operating lease 44.221B > total liabilities 3.038B).
+- Owned by the Head of Fundamental Research: the template counts (3g); the predecessor price histories (ORKA, SYRE,
+  PRAX, SMMT, KNTK, DKNG).
+- Not a defect: the VX weekly copies (trap #73); the data lags are normal, except `trading/SPY_1d.csv` (Yahoo).

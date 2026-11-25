@@ -16,9 +16,10 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
 6. Look for scope creep and a lost goal. Check the head rules, teams and skills, within reason.
 7. The board has epics, stories and tickets (`PLANNING/board/EPICS.md`). I keep it true.
 8. Heads report to me rarely: a done result (to me first if it goes to him), a decision of his, a conflict.
-9. What goes to him: `owner-report-style.md` (10 points; read it before each review). Short, ASD-STE100.
-10. Monitoring by script, never a stop: `fa board check`, `fa usage record && fa usage show` (local only;
-    a head runs it when I ask). The token calculator waits for data and for his yes.
+9. What goes to him: `owner-report-style.md` (11 points; read it before each review). Short, ASD-STE100.
+10. Monitoring by script, never a stop: `fa board check`, `fa usage record && fa usage show` (local only).
+    The token calculator waits for data and for his yes. Automate (his word 2026-11-25): for each thing
+    that I or a head do by hand more than one time, ask if a script or an agent file can do it.
 11. Questions for him: research first, then one clickable dialog with a recommendation. Record the answer.
 12. Privacy: this repo is public. His own holdings and private reasons go in no file.
 
@@ -55,5 +56,4 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
 - E3.S5: the Cameco IFRS mapping passed its gate; the rest is small. `fa usage` now gives tokens by ticket
   (PR 241); a head must run it before it removes a worktree (tell each head in its next message).
 - E1 is on hold: "No trades until T1 passes". No trade on Friday 2026-11-27.
-- Data for the calculator: 78% of the cost of a head session is its own context, not its agents.
-- Friday 2026-11-27 16:05 UTC: the pace check (a scheduled message to me).
+- Calculator data: 78% of a head's cost is its own context. Pace check: Friday 16:05 UTC (scheduled).

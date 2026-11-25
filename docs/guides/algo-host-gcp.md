@@ -79,8 +79,20 @@ systemctl list-timers fa-algo.timer
 - A short day (for example Friday 2026-11-27, close at 13:00): nothing to do for the simulator line. After
   the close no new quote comes; the program skips quotes older than 10 seconds and ends at 15:55. For the
   paper-order line, the Head of Quant Research says before the first short day if a change is needed.
-- A market holiday (for example Thursday 2026-11-26): the timer still starts the program. Until the Head of Quant Research confirms a holiday
-  check in the engine, make the kill file (section 6) the evening before a holiday, and remove it after.
+- A market holiday (for example Thursday 2026-11-26): the timer still starts the program. With the paper keys in
+  `/etc/fa-algo.env`, the program reads the Alpaca clock at the start and stops with "market closed" on a holiday
+  (step A, PR of 2026-11-25). Without the paper keys it knows only the weekday hours: then make the kill file
+  (section 6) the evening before a holiday, and remove it after.
+- Paper orders (step A passed the gate "Order code (paper only)", 2026-11-25; 1 SPY share, limit, day, long only):
+  1. Once, as the user `algo`, make the order-host file outside the repo (it names this machine; `--send`
+     refuses without it): `mkdir -p ~/.config/fa && hostname > ~/.config/fa/order-host`
+  2. Dry run first (sends no order): `ExecStart=... fa algo run --strategy demo --symbol SPY --broker alpaca-paper
+     --poll-secs 5 --until 15:55`. Read `data/processed/algo/<date>/demo-orders.jsonl` after the day.
+  3. Then the person adds `--send` to that line. Set `Restart=no` for the order line: a refused start (for
+     example a position still open) must not start again every 60 seconds.
+  4. At a stop or a kill, the program cancels its own open orders and keeps the position. A person closes it.
+  - `--send` is an act of the person. The program refuses `--send` in a Claude Code or cloud session. No live
+    order. A paper result is not evidence for a live result.
 - Logs: `journalctl -u fa-algo -n 50`. A test now: `sudo systemctl start fa-algo`.
 
 ## 6. Stop from the phone (the kill file)
