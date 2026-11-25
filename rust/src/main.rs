@@ -39,7 +39,7 @@ USAGE:
                                                   stochastic rate models (Rust); see below
   fa vol fit heston|bates --symbol T --date D [--rate R] [--expiry-max DAYS]
                                                   fit Heston or Bates to a stored option snapshot (fa vol --help)
-  fa usage record|show ...                        tokens by ticket, head and agent type from session transcripts (fa usage --help)
+  fa usage record|show [--week] ...                tokens by ticket, head and agent type from session transcripts; --week: USD of this week (fa usage --help)
   fa dcf drivers|classic|scenarios|models ...     Monte Carlo DCF in Rust (fa dcf --help)
   fa selftest golden [--case NAME] [--cases PATH] [--update REASON [--case NAME | --all]]
                                                   stored commands with the SHA-256 of their expected output; an input file that changed makes a case SKIPPED (fa selftest golden --help)

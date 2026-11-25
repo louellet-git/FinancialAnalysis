@@ -123,6 +123,11 @@ All projects of the person share the limit. The shares below are estimates from 
 Below the line if the 45% is used: the uranium and gold series, the last step of the FRED replacement,
 the first real run of the economics view. They move to the next week; no result is lost.
 
+Owner word 2026-11-25 (E2.S6, E3.S5): URA and GLD are decomposed in five layers, so that a fund is not a
+black box: 1 identity (the price against what the fund holds), 2 attribution (which holdings made the move),
+3 drivers, 4 value, 5 flows. Layers 1 and 2 are first, for both funds, over 3 years; then layer 3. The gold
+and uranium series are above the line again for this. The sizes come to the Head of Staff before a build.
+
 Not in this week: the models for banks, utilities, insurers and REITs; the volatility models; the token
 calculator; the live data view; the trade-level backtest.
 

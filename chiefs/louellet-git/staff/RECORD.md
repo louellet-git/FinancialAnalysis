@@ -358,3 +358,23 @@ Question 3: do you want a reader for Japan now (about 12.5% of URA is Japan and 
 he can make)? My recommendation was "not now".
 Answer: "Yes, build it"
 Done: told Fundamental Research and Technology.
+
+## 2026-11-25 about 22:40 UTC (chat)
+Words (on the EDINET sign-up with the project address): "I don't have access to the email"
+Words: "Please proceed w work or figure out a way to gain access to the email to retrieve the confirmation,
+also the heads struggle w knowing how many tokens were their tokens for the week"
+Done: (1) Technology starts the Japan reader on a fixture and does not wait for the key. I cannot open a
+mailbox. I found no record that a person made the mailbox of the project address (it came into
+`sec_contact.toml` with a commit of a session on 2026-11-20); I asked Technology for the facts. (2) The
+share of each head in USD, its cost at the reset and the way to read its own use are in
+`PLANNING/board/EPICS.md` (PR 254); one message to each head with its number; a proposal from Technology
+for a script that gives the use since the reset.
+
+## 2026-11-25 about 22:44 UTC (chat)
+Words: "What else can we elaborate on so that the ETF URA and GLD are not black boxes but fully
+reconcilable/decomposed"
+My answer: five layers (1 identity, 2 attribution by holding, 3 drivers, 4 value, 5 flows). My
+recommendation: layers 1 and 2 first for both funds over 3 years, then layer 3; on his yes I ask Technology
+and Economics for the size and bring the gold and uranium series back above the line.
+Words: "Yes"
+Done: told Technology and Economics; the series are above the line; the sizes come to me before a build.
