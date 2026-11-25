@@ -34,8 +34,10 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
   limit stopped the heads for two days. Lesson: a pace is necessary, not only a split.
 - Cumulative cost at the reset (USD at list, `get_session`): Technology 674, Fundamental 408, Quality 285,
   Quant 170, Economics 154, Staff 108; total about 1,800. Cost of this week = the new number less these.
-- Week 2: reset 2026-11-25 16:00 UTC, next reset 2026-12-02 16:00 UTC. The week scope that I proposed on
-  2026-11-25 is in `EPICS.md` (last section); see there if he agreed.
+- Week 2: reset 2026-11-25 16:00 UTC, next 2026-12-02 16:00 UTC. His split: Financial Analysis 45%, Scan
+  Support 15%, ShredTree 30%. The agreed week is in `EPICS.md` (last section). 45% is about 850 USD of new
+  session cost (an estimate). Tell the heads once if FA is above 40% of that on Fri, 65% on Sun, 90% on Tue.
+  My own share is 2%: few turns, short answers, no relay of a head message that is not for him.
 
 ## 4. Open now (2026-11-25)
 - Waits for him: his review of the three S&P pieces (sent 2026-11-21; on main in `analysis/priors/pdf/`),
@@ -44,7 +46,12 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
 - Sent to him 2026-11-23: the AI build-out report, the URA and GLD pages ("good first draft").
 - E3.S5 (remove the limits of the fund pages): dated holdings done (`fa fund holdings`); next the IFRS
   mapping with Cameco first (he said yes; the size of the rest comes to me before more is built), the
-  scout of the 27% outside the SEC (his word), the uranium and gold series, a miner model design (he reads
-  it before a build), then the fund look-through.
+  scout of the 27% outside the SEC (his word), the uranium and gold series, then the fund look-through.
+  The miner model design (PR 231) is back with Fundamental for three points; then it goes to him.
+- Tell Technology in the next message (not alone): `fa usage` puts a worktree session under one ticket.
+- E4.S1, his word 2026-11-25: the quant team begins algo trading on the Alpaca paper account (broker
+  fills, spreads and fees; not our simulator). A one-page plan of Quant comes to me first. The Alpaca
+  hosts work from a head session (cloud key: data only; orders go from his laptop or the always-on host).
+  No strategy passed a gate: the first paper trades are a process test at the smallest size.
 - E1 (stock trades) is on hold: "No trades until T1 passes". No trade on Friday 2026-11-27.
 - Contexts above the dream-pass point on 2026-11-25: Technology 766k, Fundamental 697k, Economics 670k.
