@@ -146,6 +146,7 @@ fa estimates show IBM [--price P]                 # consensus by period, revisio
 fa earnings calendar [IBM...] [--tickers-file F] [--from D] [--days 60]   # Nasdaq earnings calendar scan, next report date of each ticker (network)
 fa earnings dates IBM JNJ [--tolerance 1]         # past report dates against the SEC 8-K list (mapcheck fetch --submissions TICKER)
 fa sync [IBM MSFT...] [--tickers-file F] [--only A,B] [--skip A,B] [--force] [--dry-run] [--max-minutes N] [--bond-days N]   # bring all old data sets up to date, one queue for each host; --bond-days N asks for the FedInvest prices of the last N market days (network)
+fa usage show --week [--since RFC3339] [--head NAME]   # tokens and USD at list price for each ticket since the last weekly reset (Wednesday 16:00 UTC); with --head: the share, the use and the rest from PLANNING/board/EPICS.md
 fa sync --status [IBM...]                         # one line for each data set: current, old, no data; no request
 fa board check [--json]                         # the rule faults of the ticket board, for each head; reads git only (run `git fetch` first), changes no file, exit 0
 fa verdict IBM [--price 228.53] [--simulations 10000] [--seed 7] [--rf-date today] [--rf-base-date 2026-07-16] [--rating A-]
