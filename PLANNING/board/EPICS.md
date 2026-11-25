@@ -149,7 +149,9 @@ weekly limit is about 19 USD, an estimate). See: a head reads its own use with o
 | Staff | 2% | about 38 | 108.23 | about 33 (87%) |
 | Reserve | 5% | about 95 | - | - |
 
-How a head reads its own use: call `get_session` with no session id and read `usage.cost_usd`; the use of
-this week is that number less the cost at the reset in the table. The reset is each Wednesday at 16:00 UTC.
+How a head reads its own use: run `fa usage show --week` in its own session (after `git pull` and a build
+of `fa`). It gives the tokens and the USD at list price for each ticket since the reset, the share from this
+table and the rest. A second way with no build: call `get_session` with no session id and read
+`usage.cost_usd`; the use of this week is that number less the cost at the reset in the table. The reset is each Wednesday at 16:00 UTC.
 The Head of Staff writes the new reset costs in this table after each reset. A share is a guide for the
 order and the pace of the work. It is not a stop.
