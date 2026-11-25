@@ -378,3 +378,11 @@ recommendation: layers 1 and 2 first for both funds over 3 years, then layer 3; 
 and Economics for the size and bring the gold and uranium series back above the line.
 Words: "Yes"
 Done: told Technology and Economics; the series are above the line; the sizes come to me before a build.
+
+## 2026-11-25 about 22:47 UTC (dialog)
+Question: the decomposition of URA and GLD costs about 5.7% of the weekly limit in all (layers 1 and 2
+about 4.6%; layer 3 about 1.1%); Financial Analysis used about 22% of its week share on the first day; when
+do you want it? My recommendation was layers 1 and 2 now and layer 3 next week.
+Answer: "All three layers this week"
+Done: the go to Technology (the series, 12 quarters of N-PORT, the price link, `fa fund attribution`) and
+to Economics (two pages for layers 1 and 2, then layer 3 with a frozen design and a short driver list).

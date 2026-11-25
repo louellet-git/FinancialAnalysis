@@ -148,6 +148,7 @@ fa earnings dates IBM JNJ [--tolerance 1]         # past report dates against th
 fa fund holdings URA --from 2023-07-31       # SEC N-PORT history of an ETF into data/raw/URA/nport (network; the fields: currency, exchange rate, net assets, monthly returns, flows)
 fa fund attribution URA [--from D]               # layers 1 and 2 of an ETF: net assets, price against NAV return, the parts of the return and a named remainder; reads the cache, no request
 fa sync [IBM MSFT...] [--tickers-file F] [--only A,B] [--skip A,B] [--force] [--dry-run] [--max-minutes N] [--bond-days N]   # bring all old data sets up to date, one queue for each host; --bond-days N asks for the FedInvest prices of the last N market days (network)
+fa usage show --week [--since RFC3339] [--head NAME]   # tokens and USD at list price for each ticket since the last weekly reset (Wednesday 16:00 UTC); with --head: the share, the use and the rest from PLANNING/board/EPICS.md
 fa sync --status [IBM...]                         # one line for each data set: current, old, no data; no request
 fa board check [--json]                         # the rule faults of the ticket board, for each head; reads git only (run `git fetch` first), changes no file, exit 0
 fa verdict IBM [--price 228.53] [--simulations 10000] [--seed 7] [--rf-date today] [--rf-base-date 2026-07-16] [--rating A-]

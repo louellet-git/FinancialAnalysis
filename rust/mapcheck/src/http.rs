@@ -150,6 +150,12 @@ impl Client {
         Client::build(user_agent, 0.0, Some(0), timeout_seconds.max(1))
     }
 
+    /// A client that follows no redirect and waits `delay_seconds` between requests. It is for requests that carry a
+    /// secret in the URL (EDINET): a redirect could send the URL with the secret to another host.
+    pub fn no_redirect_paced(user_agent: &str, delay_seconds: f64) -> Client {
+        Client::build(user_agent, delay_seconds, Some(0), DEFAULT_TIMEOUT_SECONDS)
+    }
+
     /// One request with the method `GET`, `DELETE` (no body) or `POST` (a JSON body). It returns the HTTP code and the
     /// body for each code, also 3xx and 4xx: the caller decides. The error text never has a header value.
     pub fn request(&mut self, method: &str, url: &str, headers: &[(&str, &str)], body: Option<&str>) -> Result<(u16, Vec<u8>), HttpError> {
@@ -372,6 +378,9 @@ mod tests {
         });
         let mut client = Client::no_redirect("test-agent", 5);
         let r = client.request("POST", &format!("http://127.0.0.1:{port}/first"), &[("X-Secret", "abc123")], Some("{}"));
+        // The paced client of EDINET (the secret is in the URL) follows no redirect either.
+        let mut paced = Client::no_redirect_paced("test-agent", 0.0);
+        let r2 = paced.request("GET", &format!("http://127.0.0.1:{port}/first?Subscription-Key=k3y"), &[], None);
         server.join().unwrap();
         for (k, v) in saved {
             if let Some(v) = v {
@@ -383,9 +392,14 @@ mod tests {
             Ok((code, _)) => assert_eq!(code, 307),
             Err(e) => assert!(!e.to_string().is_empty()),
         }
-        assert_eq!(hits.load(Ordering::SeqCst), 1, "exactly one request: the redirect was not followed");
+        match r2 {
+            Ok((code, _)) => assert_eq!(code, 307),
+            Err(e) => assert!(!e.to_string().is_empty()),
+        }
+        assert_eq!(hits.load(Ordering::SeqCst), 2, "one request for each client: no redirect was followed");
         let text = seen.lock().unwrap().to_lowercase();
         assert!(text.starts_with("post /first") && text.contains("x-secret: abc123"), "{text}");
+        assert!(text.contains("get /first?subscription-key=k3y") && !text.contains("/second"), "{text}");
     }
 
     #[test]
