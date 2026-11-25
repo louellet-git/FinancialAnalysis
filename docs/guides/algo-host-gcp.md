@@ -76,7 +76,10 @@ systemctl list-timers fa-algo.timer
 - This first line uses the program's own simulator: it sends nothing to Alpaca. When step A of the paper orders
   passes its gate, the Head of Quant Research gives the new line (with `--broker alpaca-paper`, and later
   `--send`) and a new binary; then edit `ExecStart` and run `sudo systemctl daemon-reload`.
-- A market holiday: the timer still starts the program. Until the Head of Quant Research confirms a holiday
+- A short day (for example Friday 2026-11-27, close at 13:00): nothing to do for the simulator line. After
+  the close no new quote comes; the program skips quotes older than 10 seconds and ends at 15:55. For the
+  paper-order line, the Head of Quant Research says before the first short day if a change is needed.
+- A market holiday (for example Thursday 2026-11-26): the timer still starts the program. Until the Head of Quant Research confirms a holiday
   check in the engine, make the kill file (section 6) the evening before a holiday, and remove it after.
 - Logs: `journalctl -u fa-algo -n 50`. A test now: `sudo systemctl start fa-algo`.
 
@@ -85,7 +88,11 @@ Open the Google Cloud app (or the console in the phone browser) → the machine 
 ```bash
 sudo -u algo touch /home/algo/fa/data/processed/algo/STOP
 ```
-The program closes the positions and stops. To start again: `sudo -u algo rm /home/algo/fa/data/processed/algo/STOP`.
+What the stop does:
+- Now (the simulator line): the program closes its own simulated positions and stops. Nothing goes to Alpaca.
+- Later (the paper-order line): the program cancels the open orders and stops; it keeps the positions
+  (control 4 of `docs/QUALITY-STANDARDS.md` section 8). You close a position yourself on the Alpaca web site.
+To start again: `sudo -u algo rm /home/algo/fa/data/processed/algo/STOP`.
 
 ## 7. The daily summary to the private journal repo
 1. On GitHub, make a private repo `louellet-git/fa-algo-journal`.
