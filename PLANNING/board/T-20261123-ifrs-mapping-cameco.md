@@ -2,13 +2,13 @@
 id: T-20261123-ifrs-mapping-cameco
 title: Add the IFRS taxonomy to the SEC mapping, with Cameco as the first test
 area: importer
-status: backlog
+status: in-progress
 owner: louellet-git
 requested_by: louellet-git
 head: technology
 order: 1
 story: E3.S5
-branch:
+branch: claude/ifrs-mapping-cameco
 created: 2026-11-23
 acceptance: `mapcheck values CCJ` gives the standard variables of Cameco from its ifrs-full facts (40-F), with fixed-answer tests and a check of the main values against the filing; then one message to the Head of Staff with the real size of the work for the other IFRS filers, before more is built.
 ---
