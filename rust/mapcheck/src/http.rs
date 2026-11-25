@@ -144,6 +144,52 @@ impl Client {
         client
     }
 
+    /// A client that follows no redirect (the caller reads each answer, a 3xx included). It is for requests that
+    /// carry a secret in a header: a redirect could send the header to another host.
+    pub fn no_redirect(user_agent: &str, timeout_seconds: u64) -> Client {
+        Client::build(user_agent, 0.0, Some(0), timeout_seconds.max(1))
+    }
+
+    /// One request with the method `GET`, `DELETE` (no body) or `POST` (a JSON body). It returns the HTTP code and the
+    /// body for each code, also 3xx and 4xx: the caller decides. The error text never has a header value.
+    pub fn request(&mut self, method: &str, url: &str, headers: &[(&str, &str)], body: Option<&str>) -> Result<(u16, Vec<u8>), HttpError> {
+        self.wait();
+        let result = match (method, body) {
+            ("GET", None) => {
+                let mut r = self.prepare(self.agent.get(url));
+                for (name, value) in headers {
+                    r = r.header(*name, *value);
+                }
+                r.call()
+            }
+            ("DELETE", None) => {
+                let mut r = self.prepare(self.agent.delete(url));
+                for (name, value) in headers {
+                    r = r.header(*name, *value);
+                }
+                r.call()
+            }
+            ("POST", Some(text)) => {
+                let mut r = self.prepare(self.agent.post(url)).header("Content-Type", "application/json");
+                for (name, value) in headers {
+                    r = r.header(*name, *value);
+                }
+                r.send(text)
+            }
+            _ => return Err(HttpError::Transport(format!("method {method} with this body is not supported"))),
+        };
+        self.last = Some(Instant::now());
+        match result {
+            Ok(mut response) => {
+                let code = response.status().as_u16();
+                let mut out = Vec::new();
+                response.body_mut().as_reader().read_to_end(&mut out).map_err(|e| HttpError::Transport(format!("{url}: {e}")))?;
+                Ok((code, out))
+            }
+            Err(e) => Err(HttpError::Transport(format!("{url}: {e}"))),
+        }
+    }
+
     fn build(user_agent: &str, delay_seconds: f64, redirects: Option<u32>, timeout_seconds: u64) -> Client {
         // `http_status_as_error(false)`: the code reads the status itself (a 3xx answer
         // is a normal step in a form session).

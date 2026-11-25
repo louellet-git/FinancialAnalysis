@@ -7,6 +7,7 @@
 
 use super::demo::Demo;
 use super::engine::{Config, Engine, Summary};
+use super::paper;
 use super::source::{read_recorded, read_stored_bars, AlpacaQuotes, DataClient, Live, Next, Replay, Source};
 use super::Strategy;
 use crate::market::alpaca::{feed_from_env, ny_day, now_utc, Client, Keys};
@@ -15,9 +16,9 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 const USAGE: &str = "usage:
-  fa algo run --strategy demo [--symbol SPY] [--poll-secs N] [--stale-secs N] [--max-pos N] [--max-loss USD] [--spread-share X] [--latency-ms N] [--fee F] [--until HH:MM]
+  fa algo run --strategy demo [--symbol SPY] [--poll-secs N] [--stale-secs N] [--max-pos N] [--max-loss USD] [--spread-share X] [--latency-ms N] [--fee F] [--until HH:MM] [--broker alpaca-paper [--send]]
   fa algo replay --strategy demo --date YYYY-MM-DD [--symbol SPY] [--max-pos N] [--max-loss USD] [--spread-share X] [--latency-ms N] [--fee F] [--until HH:MM]
-The simulator fills in memory. The command sends no order to a broker. Stop a run: create the file data/processed/algo/STOP
+The simulator fills in memory. Without --broker the command sends no order. With --broker alpaca-paper it also makes LIMIT orders of 1 share (long only, day orders, no option) for the Alpaca PAPER account (the paper host, fixed in the code). Without --send that is a dry run: it prints and journals the order that it would send and makes no order request. --send needs ALPACA_PAPER_KEY_ID and ALPACA_PAPER_SECRET_KEY (only these). Run --send on the laptop or the VM, never in a cloud session. Each run first reads the Alpaca market clock and ends at once when the market is closed. Stop a run: create the file data/processed/algo/STOP
 (in the repo folder; the run prints the full path). The loss stop is approximate: it checks each input, and the position closes at the next price.
 Run one Alpaca command at a time: the rate guard (at most 120 requests a minute) is for this process only, and the plan allows 200 a minute for the whole key.
 A restart on the same day resets the max loss to 0. `fa algo` is outside the trading sleeves: a pipe test, no result is used for a decision.";
@@ -39,6 +40,8 @@ pub struct Opts {
     pub latency_ms: i64,
     pub fee: f64,
     pub until: String,
+    pub broker: Option<String>,
+    pub send: bool,
 }
 
 /// Requests each minute of the live source (one request for each symbol and poll).
@@ -47,7 +50,7 @@ pub fn requests_per_min(poll_secs: f64, symbols: usize) -> f64 {
 }
 
 pub fn parse_opts(args: &[String]) -> Result<Opts, String> {
-    let mut o = Opts { strategy: String::new(), symbol: "SPY".into(), date: None, poll_secs: DEFAULT_POLL_SECS, stale_secs: super::source::STALE_SECS, max_pos: 100, max_loss: 500.0, spread_share: 1.0, latency_ms: 250, fee: 0.005, until: "15:55".into() };
+    let mut o = Opts { strategy: String::new(), symbol: "SPY".into(), date: None, poll_secs: DEFAULT_POLL_SECS, stale_secs: super::source::STALE_SECS, max_pos: 100, max_loss: 500.0, spread_share: 1.0, latency_ms: 250, fee: 0.005, until: "15:55".into(), broker: None, send: false };
     let mut it = args.iter();
     while let Some(flag) = it.next() {
         let mut val = || it.next().cloned().ok_or_else(|| format!("{flag} needs a value"));
@@ -64,6 +67,8 @@ pub fn parse_opts(args: &[String]) -> Result<Opts, String> {
             "--latency-ms" => o.latency_ms = num(val()?)? as i64,
             "--fee" => o.fee = num(val()?)?,
             "--until" => o.until = val()?,
+            "--broker" => o.broker = Some(val()?),
+            "--send" => o.send = true,
             other => return Err(format!("unknown option {other}\n{USAGE}")),
         }
     }
@@ -75,6 +80,16 @@ pub fn parse_opts(args: &[String]) -> Result<Opts, String> {
     }
     if o.max_pos <= 0 || o.max_loss <= 0.0 || !(0.0..=1.0).contains(&o.spread_share) || o.latency_ms < 0 || o.stale_secs <= 0 || o.fee < 0.0 {
         return Err("need --max-pos > 0, --max-loss > 0, --spread-share from 0 to 1, --latency-ms >= 0, --stale-secs > 0, --fee >= 0".into());
+    }
+    if let Some(b) = &o.broker {
+        if b != "alpaca-paper" {
+            return Err(format!("--broker {b}: alpaca-paper is the only broker (a live broker is not allowed)\n{USAGE}"));
+        }
+        if !paper::is_stock_symbol(&o.symbol) || !paper::SYMBOLS.contains(&o.symbol.as_str()) {
+            return Err(format!("--symbol {}: step A of the paper orders allows {} only (no option, no other symbol)", o.symbol, paper::SYMBOLS.join(", ")));
+        }
+    } else if o.send {
+        return Err(format!("--send needs --broker alpaca-paper\n{USAGE}"));
     }
     until_secs(&o.until)?;
     Ok(o)
@@ -93,7 +108,7 @@ pub fn algo_dir(repo: &Path) -> PathBuf {
 }
 
 fn config(o: &Opts, repo: &Path, feed: &str) -> Result<Config, String> {
-    Ok(Config { max_pos: o.max_pos, max_loss: o.max_loss, spread_share: o.spread_share, latency_ms: o.latency_ms, fee: o.fee, until_secs: until_secs(&o.until)?, stop_file: algo_dir(repo).join("STOP"), feed: feed.to_string() })
+    Ok(Config { max_pos: o.max_pos, long_only: false, max_loss: o.max_loss, spread_share: o.spread_share, latency_ms: o.latency_ms, fee: o.fee, until_secs: until_secs(&o.until)?, stop_file: algo_dir(repo).join("STOP"), feed: feed.to_string() })
 }
 
 fn describe(mode: &str, o: &Opts, s: &dyn Strategy, feed: &str) -> String {
@@ -160,19 +175,70 @@ pub fn command(repo: &Path, args: &[String]) -> Result<i32, String> {
     }
 }
 
+/// The market clock gate (all brokers). `Ok(Some(text))`: the market is closed. `Err`: the clock is not readable (fail closed).
+/// It is a read of the paper host constant. With `--send` it uses the paper keys; else the data keys that the run already has.
+fn start_gate(repo: &Path, o: &Opts, data_keys: &Keys) -> Result<Option<String>, String> {
+    let mut t: Box<dyn paper::Transport> = if o.send {
+        let k = paper::PaperKeys::read(repo).ok_or_else(|| format!("--send needs {} and {}. No request was made", paper::KEY_ID_VAR, paper::SECRET_VAR))?;
+        Box::new(paper::RealTransport::new(k))
+    } else {
+        Box::new(paper::clock_transport(&data_keys.id, &data_keys.secret))
+    };
+    paper::market_gate(t.as_mut()).map_err(|e| format!("{e}; refusing to start (fail closed)"))
+}
+
+/// The 20-day average daily dollar volume of the symbol from the Alpaca daily bars (a data read; IEX volume).
+fn read_adv(keys: &Keys, symbol: &str, date: &str) -> Result<f64, String> {
+    let day = crate::trading::calendar::parse_iso(date).ok_or("bad date")?;
+    let start = crate::trading::calendar::iso(day - 45);
+    let syms = [symbol.to_string()];
+    let feed = feed_from_env();
+    let q = crate::market::alpaca::StockQuery { symbols: &syms, timeframe: "1Day", start: &start, to: date, today: date, adjustment: "raw", feed: &feed };
+    let all = Client::live(keys.clone()).stock_bars(&q).map_err(|e| format!("{e:?}"))?;
+    let bars: Vec<(f64, f64)> = all.get(symbol).map(|v| v.iter().filter(|b| ny_day(b.utc).0.as_str() < date).map(|b| (b.c, b.v)).collect()).unwrap_or_default();
+    paper::adv_dollars(&bars)
+}
+
 fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
     let o = parse_opts(args)?;
     let keys = Keys::read(repo).ok_or("no Alpaca keys: set APCA_API_KEY_ID and APCA_API_SECRET_KEY (environment or .env)")?;
-    let cfg = config(&o, repo, "")?;
+    if let Some(closed) = start_gate(repo, &o, &keys)? {
+        println!("{closed}");
+        return Ok(0);
+    }
+    let mut cfg = config(&o, repo, "")?;
     let date = ny_day(now_utc()).0;
     let dir = algo_dir(repo).join(&date);
     let journal = open_new(&dir.join(format!("{}-journal.jsonl", o.strategy)))?;
     let mut inputs = open_new(&dir.join(format!("{}-inputs.jsonl", o.strategy)))?;
     let demo = Demo::new();
     let feed_name = format!("alpaca {} quotes, polled every {} s (not the NBBO)", feed_from_env(), o.poll_secs);
-    let cfg = Config { feed: feed_name.clone(), ..cfg };
+    cfg.feed = feed_name.clone();
+    // The paper broker: the simulator stays, and the hook gets each decision.
+    let mut hook = None;
+    if o.broker.is_some() {
+        cfg.long_only = true;
+        cfg.max_pos = cfg.max_pos.min(paper::LIMITS.max_qty);
+        let order_file = paper::journal_path(&algo_dir(repo), &date, &o.strategy);
+        std::fs::create_dir_all(order_file.parent().unwrap_or(&dir)).map_err(|e| format!("{}: {e}", order_file.display()))?;
+        let prior = std::fs::read_to_string(&order_file).unwrap_or_default();
+        let sink = std::fs::OpenOptions::new().create(true).append(true).open(&order_file).map_err(|e| format!("{}: {e}", order_file.display()))?;
+        let mode = paper::choose_mode(o.send, if o.send { paper::PaperKeys::read(repo) } else { None }, |k| Box::new(paper::RealTransport::new(k)))?;
+        let budget = (MAX_REQUESTS_PER_MIN as usize).saturating_sub(requests_per_min(o.poll_secs, 1).ceil() as usize);
+        let mut h = paper::PaperHook::new(mode, &o.symbol, &o.strategy, cfg.stop_file.clone(), Box::new(sink), &prior, budget);
+        println!("host machine: {}", paper::host_name());
+        let lines = if h.is_send() { h.start(now_ms(), read_adv(&keys, &o.symbol, &date), &paper::peak_path(&algo_dir(repo)))? } else { h.start_dry() };
+        println!("paper broker: {} (host constant {}), order journal {}", if h.is_send() { "SEND" } else { "dry run" }, paper::PAPER_HOST, order_file.display());
+        for l in lines {
+            println!("  {l}");
+        }
+        println!("  account check result (paper: yes or no): {}", h.paper_check);
+        println!("  limits (paper table): 1 share, limit orders, day orders, long only, no margin, no option, at most {} orders a minute and {} a day, loss stop {}% of the capital", paper::LIMITS.orders_per_min, paper::LIMITS.orders_per_day, paper::LIMITS.day_loss_pct);
+        cfg.max_loss = cfg.max_loss.min(h.day_loss_limit());
+        hook = Some(h);
+    }
     println!("{}", describe("run (live quotes, simulated fills)", &o, &demo, &feed_name));
-    println!("  kill file (create it to stop and flatten): {}", absolute(&cfg.stop_file).display());
+    println!("  kill file (create it to stop; the simulator flattens, the broker position is kept): {}", absolute(&cfg.stop_file).display());
     println!("  a restart on the same day resets the max loss to 0 (the engine does not read the earlier journal)");
     println!("  quotes older than {} s, or older than the open, are skipped", o.stale_secs);
     println!("  request rate: {:.0} a minute for {} symbol(s) (limit {MAX_REQUESTS_PER_MIN:.0}; the plan allows 200 for the whole account)", requests_per_min(o.poll_secs, 1), 1);
@@ -183,13 +249,17 @@ fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
     let feed = AlpacaQuotes::new(DataClient::new(Client::live(keys)), &o.symbol, &feed_from_env());
     let mut live = Live::new(feed, &o.symbol, (o.poll_secs * 1000.0) as u64, cfg.until_secs, o.stale_secs, cfg.stop_file.clone(), Box::new(now_ms), Box::new(|ms| std::thread::sleep(std::time::Duration::from_millis(ms))));
     let started = std::time::Instant::now();
+    let broker_note = serde_json::json!({"name": o.broker, "send": o.send, "host_machine": paper::host_name()});
     let mut engine = Engine::new(cfg, demo, Some(Box::new(journal)));
+    if let Some(h) = hook {
+        engine = engine.with_hook(Box::new(h));
+    }
     let s = drive(&mut live, &mut engine, Some(&mut inputs));
     let minutes = started.elapsed().as_secs_f64() / 60.0;
     let reqs = live.requests();
     println!("{}", s.text());
     println!("requests: {reqs} in {minutes:.1} minutes = {:.1} a minute", if minutes > 0.0 { reqs as f64 / minutes } else { 0.0 });
-    save_summary(&dir.join(format!("{}-summary.json", o.strategy)), &s, serde_json::json!({"mode": "live", "date": date, "requests": reqs, "requests_per_min": if minutes > 0.0 { reqs as f64 / minutes } else { 0.0 }}))?;
+    save_summary(&dir.join(format!("{}-summary.json", o.strategy)), &s, serde_json::json!({"mode": "live", "date": date, "requests": reqs, "requests_per_min": if minutes > 0.0 { reqs as f64 / minutes } else { 0.0 }, "broker": broker_note}))?;
     report_to_harness("run", &date, &o, &s);
     Ok(0)
 }
@@ -278,7 +348,7 @@ mod tests {
     }
 
     fn run_day(inputs: Vec<Input>) -> (Vec<super::super::engine::Decision>, Summary) {
-        let c = Config { max_pos: 100, max_loss: 500.0, spread_share: 1.0, latency_ms: 250, fee: 0.005, until_secs: 15 * 3600 + 55 * 60, stop_file: std::env::temp_dir().join("fa-algo-no-such-stop"), feed: "test".into() };
+        let c = Config { max_pos: 100, long_only: false, max_loss: 500.0, spread_share: 1.0, latency_ms: 250, fee: 0.005, until_secs: 15 * 3600 + 55 * 60, stop_file: std::env::temp_dir().join("fa-algo-no-such-stop"), feed: "test".into() };
         let mut e = Engine::new(c, Demo::new(), None);
         let s = drive(&mut Replay::new(inputs), &mut e, None);
         (e.decisions().to_vec(), s)

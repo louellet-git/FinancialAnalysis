@@ -5,7 +5,8 @@
 //!   functions of the Alpaca data API). Only the source changes between the two modes.
 //! - `engine::Engine` holds the simulator (fills at the bid or ask in memory), the risk stops and the journal.
 //!
-//! The code sends no order. The live source type has one read function (`QuoteFeed::read`) and no
+//! The simulator sends no order. The only order code is `paper.rs`: limit orders to the Alpaca PAPER account, with `--broker alpaca-paper --send`.
+//! The live source type has one read function (`QuoteFeed::read`) and no
 //! function that writes to a broker; a test checks the source text for order endpoints.
 //! All fills are simulated: a result is a pipe test, not a claim of profit.
 //!
@@ -19,6 +20,7 @@
 pub mod cli;
 pub mod demo;
 pub mod engine;
+pub mod paper;
 pub mod source;
 
 use serde::{Deserialize, Serialize};

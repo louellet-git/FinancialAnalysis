@@ -454,8 +454,55 @@ mod tests {
         table.iter().find(|(f, n, _)| *f == rel && *n == needle).map(|t| t.2).unwrap_or(0)
     }
 
+    /// The one file that may hold order code: the paper broker.
+    const ORDER_FILE: &str = "trading/algo/paper.rs";
+
+    /// The rules for the order file. It may have the orders path and the paper host constant, and nothing else:
+    /// - the live host never appears (each match of the live host name must be the end of the paper host name);
+    /// - the code before `#[cfg(test)]` reads no `APCA_` variable (the data keys, the base URL setting), has no trading base helper
+    ///   and no JSON post helper;
+    /// - each host in a string of that code (`https://` and a letter) is the paper host.
+    fn order_file_violations(w: &Words, raw: &str) -> Vec<String> {
+        let rel = ORDER_FILE;
+        let mut out = vec![];
+        let low = squeeze(raw).to_lowercase();
+        let mut from = 0;
+        while let Some(i) = low[from..].find(&w.api_host) {
+            let at = from + i;
+            if !low[..at].ends_with("paper-") {
+                out.push(format!("{rel}: the live host appears (not as the paper host)"));
+            }
+            from = at + w.api_host.len();
+        }
+        let code = raw.split("#[cfg(test)]").next().unwrap_or("");
+        if code.contains("APCA_") {
+            out.push(format!("{rel}: order code reads an APCA_ variable"));
+        }
+        let code_low = squeeze(code).to_lowercase();
+        for needle in [&w.tbase, &w.post, &"apca_".to_string()] {
+            if code_low.contains(&needle.to_lowercase()) {
+                out.push(format!("{rel}: order code uses '{needle}'"));
+            }
+        }
+        let own = format!("https://{}", w.paper_host);
+        for line in code.lines().filter(|l| !l.trim_start().starts_with("//")) {
+            let mut rest = line;
+            while let Some(i) = rest.find("https://") {
+                let after = &rest[i + 8..];
+                if after.chars().next().is_some_and(|c| c.is_ascii_alphanumeric()) && !rest[i..].starts_with(&own) {
+                    out.push(format!("{rel}: a host other than the paper host in order code: {line}"));
+                }
+                rest = after;
+            }
+        }
+        out
+    }
+
     /// The problems of one file (the path under `src`, the text).
     fn violations(w: &Words, rel: &str, raw: &str) -> Vec<String> {
+        if rel == ORDER_FILE {
+            return order_file_violations(w, raw);
+        }
         let sq = squeeze(raw);
         let mut out = vec![];
         if sq.contains(&w.order_path) {
@@ -516,6 +563,28 @@ mod tests {
         for text in &planted {
             assert!(!violations(&w, "trading/algo/planted.rs", text).is_empty(), "not caught: {text}");
         }
+        // The order file: the real one is clean; a planted live host, a planted setting and a planted other host are caught.
+        let real = std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("src").join(ORDER_FILE)).unwrap();
+        assert!(violations(&w, ORDER_FILE, &real).is_empty(), "{:?}", violations(&w, ORDER_FILE, &real));
+        let live = ["api", "alpaca", "markets"].join(".");
+        let var = ["APCA", "API", "BASE", "URL"].join("_");
+        let planted_order = [
+            format!("{real}\nconst L: &str = \"https://{live}\";\n"),
+            format!("{real}\nconst L: &str = \"https://{}\" ;\nconst M: &str = \"{live}\";\n", w.paper_host),
+            real.replacen("#[cfg(test)]", &format!("fn f() {{ std::env::var(\"{var}\"); }}\n#[cfg(test)]"), 1),
+            real.replacen("#[cfg(test)]", "const O: &str = \"https://evil.example.com/x\";\n#[cfg(test)]", 1),
+            real.replacen("#[cfg(test)]", &format!("fn g() {{ {}(u, b, 1.0); }}\n#[cfg(test)]", w.post), 1),
+        ];
+        for text in &planted_order {
+            assert!(!violations(&w, ORDER_FILE, text).is_empty(), "not caught: {}", &text[text.len().saturating_sub(120)..]);
+        }
+        // Order code in any other file is caught, also in a file next to the order file.
+        let order_line = format!("fn f(b: &str) -> String {{ format!(\"{{}}{}\", b) }}", w.order_path);
+        for other in ["trading/algo/engine.rs", "trading/algo/cli.rs", "market/alpaca.rs"] {
+            assert!(!violations(&w, other, &order_line).is_empty(), "{other}");
+        }
+        // The paper host in another file is caught too (only the old read-only uses are in the table).
+        assert!(!violations(&w, "trading/algo/cli.rs", &format!("const H: &str = \"https://{}.alpaca.markets\";", w.paper_host)).is_empty());
         // A clean file has no problem.
         assert!(violations(&w, "trading/algo/clean.rs", "fn f() { let u = format!(\"{}/v2/stocks/bars\", base); }").is_empty());
     }
