@@ -197,3 +197,20 @@ Command of each: the base command with one more rule (`growth_w=1`, `growth_w=0`
   companies of the class. A spread from the quartiles of the company means (a robust spread) can be the one rule, with
   the half-0 fact as its reason. It needs an option in the table estimate, one half-0 run, and the class rows.
 - The rule is still not chosen. The hold-out is not scored.
+
+**Candidate `tau_robust`, written before its half-0 run (16:59 UTC, 2026-11-25; development).** Definition: for the growth
+only, the spread tau of the company means of a size class is calculated from the quartiles. tau^2 = (the 75th
+percentile of the company means less the 25th percentile, divided by 1.349)^2, less the MEDIAN of the noise of the
+company means (today: the variance of the company means, less the MEAN of the noise). Floor 0. The weight w and the
+term (1 - w) tau^2 use this tau. No other change; no free number (1.349 is the distance between the quartiles of a
+normal distribution in standard deviations). Switch: `--rules tau_robust=1`, off by default.
+- Reason from half 0 (the runs above): the band is too wide through the term (1 - w) tau^2, and the centre of the
+  growth classes is better with less weight on the own history (weight 0: falling revenue +6.2% at T+3 against +10.9%;
+  growth 20% to 50%: +1.1% against -4.0%). A smaller tau moves the two in the correct direction. The band is a P10 to
+  P90 band: the spread of the middle of the companies is the correct measure for it, and a variance is sensitive to a
+  few extreme company means.
+- What this head reads after the run: the "all" rows, the rows by growth class and by size (centre and tails), and the
+  diagnosis by band width. A pass of the "all" rows with a worse centre in a class is not a pass (as for `growth_w=1`).
+- Risk seen before the run: in a cell where the noise is larger than the robust spread, tau is 0, the weight is 0 and
+  the band has no term for the company mean. The 30-100B class has tau 0 today (its rows are equal with weight 0),
+  and its centre at T+3 is the worst (+7.4%).
