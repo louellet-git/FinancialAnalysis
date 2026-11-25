@@ -1,0 +1,7 @@
+# The EDINET fixture is made from the documentation, not from a real answer
+
+*Trap:* No real EDINET answer was available when the reader was written (no key in the cloud session). The fixture `rust/mapcheck/tests/fixtures/edinet_8001_type5_documentation_fixture.csv` follows the layout in the EDINET viewing guide (tab separated, UTF-16LE, 9 columns, values in double quotes). Its amounts are the ITOCHU yen figures of its Financial Information Report 2026. Its element IDs (`jpigp_cor:...IFRS`, `jpcrp_cor:...SummaryOfBusinessResults`), its context IDs (`CurrentYearDuration`, `Prior1YearInstant`), the EDINET code and the filing date are from the taxonomy lists and the instance guideline, not from a real file. A real file can differ: ITOCHU can use other elements (for example the combined capex line of ITOCHU is mapped to `PurchaseOfPropertyPlantAndEquipmentAndIntangibleAssetsInvCFIFRS`), and has no operating profit line. The share count has no clear element, so `shares_outstanding` and `shares_diluted` have no value.
+
+*What to do:* At the first real read, run `mapcheck values 8001.T`, compare each line with the ITOCHU report, and replace the fixture with the real file (keep it small). Add the elements that the real file has and the registry lacks. Until then, treat the mapping of the Japanese facts as untested against a real answer.
+
+*Evidence:* the fixture file (its first lines say so); `rust/mapcheck/src/edinet.rs` (module tests); the row in `docs/DATA-SOURCES.md` ("fixtures only").

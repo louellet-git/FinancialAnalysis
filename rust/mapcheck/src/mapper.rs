@@ -285,7 +285,7 @@ fn foreign_form(registry: &Registry, facts: &CompanyFacts, end: &str) -> Option<
         .filter(|f| f.end == end && Forms::Annual.has(f.form.as_deref()))
         .max_by(|a, b| a.filed.as_deref().unwrap_or("").cmp(b.filed.as_deref().unwrap_or("")))?;
     let form = latest.form.as_deref()?;
-    ["40-F", "20-F"].into_iter().find(|f| form.starts_with(f)).map(|f| f.to_string())
+    ["40-F", "20-F", crate::edinet::FORM_ANNUAL].into_iter().find(|f| form.starts_with(f)).map(|f| f.to_string())
 }
 
 /// The standard variables for one period.

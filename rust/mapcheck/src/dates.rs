@@ -12,7 +12,7 @@ pub fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
 }
 
 /// Days in a month of a proleptic Gregorian year (the month is 1 to 12).
-fn days_in_month(year: i64, month: i64) -> i64 {
+pub fn days_in_month(year: i64, month: i64) -> i64 {
     match month {
         2 if (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 => 29,
         2 => 28,
