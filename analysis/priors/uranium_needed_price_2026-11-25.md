@@ -1,63 +1,60 @@
 # Uranium Price Needed: NexGen
 
-*The flat uranium price at which the published value of a miner's mine, with its cash and debt, equals its market value. A reading of the company's own table for 2026-11-20; no model of ours.*
+*The uranium price that the stock price of one uranium miner needs, read from the numbers of the company. Prices of 2026-11-20.*
 
-Background: this is the small step that you chose after the design of the miner model. Some miners print the value
-of a mine at several uranium prices. From such a table we can read, with no new code, the uranium price that a stock
-price needs. We opened the reports and filings of four URA miners.
+**The question.** You asked why URA is at its level. The stock price of a uranium miner depends on the uranium price
+that investors expect. So we ask of a miner: at which uranium price is its stock price correct? Today we can answer
+for one miner of URA: NexGen. It was 6.1% of URA on 2026-07-31, the fourth largest holding.
 
-Of the four, only NexGen prints a full table. **The price of NexGen (US$6.40 on 2026-11-20) needs a flat uranium price
-of about US$84 a pound.** On 2026-10-30 the spot price was US$91.55 and the long-term contract price US$98.00. So the
-price of NexGen needs a uranium price about 8% below spot. For the three other miners no such number can be read.
+**The answer.** The stock price of NexGen (US$6.40) is correct if uranium stays at about **US$84 a pound**. On
+2026-10-30 uranium was at US$91.55 a pound (spot price) and at US$98.00 in long-term contracts.
 
-**Table 1: Which miner prints its mine value at several uranium prices.**
-See: one of four. Rows 2 to 4 were read one time, by one agent, and are not audited.
+**What it means.** The price of NexGen does not need a higher uranium price. It needs a price about 8% below the spot price
+of 2026-10-30. This is consistent with a small discount for a mine that is not built yet. It is one number for one
+company: it does not say that NexGen or URA is cheap or expensive, and it is not a trade view.
 
-| Miner | A table at several prices? | What the documents have |
-|---|---|---|
-| NexGen (Rook I, 100% owned) | Yes | 8 flat prices, US$30 to US$100, in the report of the third quarter of 2026 |
-| Denison (Phoenix, Gryphon, Midwest) | No | 2 or 3 price points for each project, on different exchange rates and cost years |
-| Uranium Energy (UEC) | No | Roughrider: one price (US$85) and a chart. Its annual report says that none of its properties has reserves |
-| Cameco (Cigar Lake, McArthur River, Inkai) | No | One base value for each mine (before tax for two of them) and a chart |
-| Energy Fuels | Not opened | |
+**How we know**
 
-**Table 2: NexGen, the sum at two uranium prices** (millions of Canadian dollars).
-See: the market value is between the two sums; the needed price is read between US$80 and US$90.
+- NexGen has one mine project (Rook I, 100% owned). It got its licence in March 2026 and construction started in June.
+- In its report for the third quarter of 2026, the company prints what the mine is worth at 8 uranium prices.
+- We add the cash and the uranium that the company holds, and we subtract its debt. Then we compare the total with
+  what the stock market pays for the full company.
+- At US$80 the company is worth less than the market pays. At US$90 it is worth more. The two are equal at about US$84.
 
-| Block | At US$80 | At US$90 |
+**Table 1: What NexGen is worth at US$80 and at US$90 a pound, from the company's own table** (millions of Canadian dollars).
+See: the market pays an amount between the two totals.
+
+| Part | Uranium at US$80 | Uranium at US$90 |
 |---|---:|---:|
-| Rook I mine: value after tax at 8%, with the costs of the 2024 update | 4,890 | 5,840 |
-| Uranium held: 2.7 million pounds, at the price | 307 | 346 |
-| Cash and short-term investments (2026-09-30) | 822 | 822 |
-| Stake in IsoEnergy (27.8%), at book value | 181 | 181 |
-| Debt: convertible debentures of US$250 million (2026-11-09) | -356 | -356 |
-| **Sum** | **5,844** | **6,833** |
-| **Market value**: 688.0 million shares at US$6.40, at 1.4231 Canadian dollars for one US dollar | **6,267** | **6,267** |
+| The Rook I mine: its value after tax, from the company's table | 4,890 | 5,840 |
+| The uranium that the company holds (2.7 million pounds) | 307 | 346 |
+| Cash and short-term investments | 822 | 822 |
+| Its 27.8% of the company IsoEnergy | 181 | 181 |
+| Less its debt | -356 | -356 |
+| **Total: what the company is worth** | **5,844** | **6,833** |
+| **What the market pays**: 688.0 million shares at US$6.40 | **6,267** | **6,267** |
 
-**Table 3: How the needed price moves with the inputs that are not sure.**
-See: the cost update of 2024 is the large one; the others move the result by a few dollars.
+**How sure the number is**
 
-| Input | Needed price |
-|---|---:|
-| As in Table 2 | US$84 |
-| The exchange rate of the company's table (1.3333) for the market value, the uranium held and the debt | US$80 |
-| Debt of US$320 million: the debt on 2026-09-30, the date of the cash. US$70 million of it became shares on 2026-10-22, and those shares are in the count. A date mix | US$85 |
-| Add back the 176 million paid for the building of Rook I in the nine months of 2026 (the table subtracts the full build cost) | US$82 |
-| The costs of the 2021 study (replaced by the 2024 update) | US$70 |
+- The range is US$80 to US$85. It comes from the exchange rate, the date of the debt and the building cost that is paid.
+- The correct number can be lower: the ground outside the mine plan has no value here.
+- The correct number can be higher: the company's table has no delay and no building risk, and the company says that
+  it needs more money to complete the mine.
 
-**What moves the number, and in which direction**
+**Why only NexGen.** We opened the reports of four URA miners. Only NexGen prints its mine value at many uranium prices.
 
-- Too high (the true needed price is lower): the ground outside the mine plan gets no value; the mine value has the
-  costs of the end of 2023 and its own date, and it is not moved forward to 2026-11; the table subtracts the full build
-  cost (about 2.2 billion), but the part that is paid has left the cash (only the 2026 part is known: Table 3).
-- Too low (the true needed price is higher): the table has no delay and no building risk (construction started on
-  2026-06-08; no date of first production); the company says that it needs more financing to complete the build, and
-  no new share is counted (also not the 46.0 million options and the 23.3 million shares of the debentures).
-- The table sells all pounds at one flat price, at the 8% rate of the company ("for illustrative purposes only").
-  The input dates are mixed, and the exchange rate is of 2026-09-30 (our data have no exchange rate series).
-- It is a measurement, not a value of the company and not a trade view.
+**Table 2: What each miner prints.**
+See: one of four. We read the rows of Denison, Uranium Energy and Cameco one time; they are not audited.
 
-**For your decision on the build**: the model is the only way to get this number for the other miners. UEC is not a
-good first company (no reserves, no table). NexGen or Denison is; both need the Canadian reports and the IFRS data.
+| Miner | Share of URA (2026-07-31) | The mine value at many uranium prices? |
+|---|---:|---|
+| NexGen | 6.1% | Yes: 8 prices, US$30 to US$100 |
+| Cameco | 22.2% | No: one value for each mine |
+| Uranium Energy | 4.8% | No: one price for one project; its annual report says that it has no reserves |
+| Denison | 2.7% | No: 2 or 3 prices for each project, and they do not compare |
 
-Status: NexGen numbers audited 2026-11-25. Sources: `uranium_needed_price_sources_2026-11-25.md`.
+**What a model adds.** A model calculates the mine value from the mine plan. It gives this number for the miners that
+do not print a table (Cameco is the largest), and a range in place of one fixed price. This is the miner model of the
+design page. **Your decision:** build it, or stop here. If we build it, the first company is NexGen or Denison.
+
+Status: the NexGen numbers were audited on 2026-11-25. Each source, the calculation and all limits: `uranium_needed_price_sources_2026-11-25.md`.
