@@ -9,7 +9,7 @@ How much of the monthly return of each group of URA, and of GLD, is consistent w
 ## 2. Data and sample
 
 1. Sample: 36 month-end returns, from the end of 2023-11 to the end of 2026-10. The month is the calendar month; a return is the log change of the last close of the month.
-2. Outcomes (from layer 2, `fa fund attribution`, weights from the N-PORT report of each quarter, held constant inside the quarter):
+2. Outcomes (from layer 2, `fa fund attribution`). For each quarter, the weights are those of the N-PORT report of the previous quarter end, known at the start of the quarter, and they are held constant inside the quarter. This is a description of the past, not a forecast:
    - URA-M: the US-listed miners group of URA.
    - URA-R: the US-listed reactor, fuel and equipment group of URA.
    - URA-F: the foreign-listed part of URA (about 40%). It closes only for each quarter, so it has 12 quarterly returns.
@@ -19,7 +19,7 @@ How much of the monthly return of each group of URA, and of GLD, is consistent w
    - S: the SPY log return. C: the SMH (chip fund) log return.
    - R: the change of the 10-year Treasury real yield (Treasury real curve), in percentage points.
    - D: the UUP (dollar fund) log return.
-   - G: the log change of the World Bank monthly gold price (layer 1 check only, not a driver; see rule 3.6).
+   - G: the log change of the World Bank monthly gold price (layer 1 check only, not a driver; see rule 3.10).
 
 ## 3. Fixed rules
 
@@ -30,15 +30,17 @@ How much of the monthly return of each group of URA, and of GLD, is consistent w
    - GLD on R, D (33 degrees of freedom).
 2. Standard errors: Newey-West with lag 3 (monthly models) and lag 1 (the quarterly model).
 3. Out-of-sample check: an expanding window. Fit on months 1 to 24, predict month 25; refit and continue to month 36. Out-of-sample R² against the mean of the fit window. URA-F has too few quarters for this check; the page says so.
-4. Placebo: shift all drivers of a model together, circularly in time, by 6 to 30 months in both directions (50 shifts; quarterly model: 2 to 10 quarters, 18 shifts). The placebo p value is the share of shifts with an in-sample R² at or above the true R².
+4. Placebo: shift all drivers of a model together, circularly in time. On a circle, a shift of -k is the shift of +(n - k), so only distinct shifts count: 6 to 30 months (25 shifts) for the monthly models, 2 to 10 quarters (9 shifts) for URA-F. p = (1 + the count of shifts with an in-sample R² at or above the true R²) / (1 + the number of shifts).
 5. Words on the page:
    - "Consistent with the drivers" only if the out-of-sample R² is above 0 AND the placebo p value is below 0.10.
    - Else "not shown with these drivers".
-   - URA-F: "consistent" needs the placebo p value below 0.10 only, and the page states that no out-of-sample check exists.
-6. The unexplained part, as a number for each group: the 36-month (or 12-quarter) log return less the sum of the fitted driver contributions (coefficient times the cumulative driver change), in percentage points, with the intercept shown as a separate line. Also 1 - R².
-7. Description only (no test): the coefficients of each model in each calendar year (2024, 2025, 2026). The 2025 break of the gold and real-yield link is shown, not fitted away.
-8. GLD and central-bank buying: the World Gold Council data is quarterly. The page shows the quarterly tonnes next to the quarterly GLD return as a table, with no regression.
-9. The identity check of GLD (layer 1): the monthly GLD return against the World Bank gold price change. It is not a driver.
+   - URA-F: with 9 shifts the smallest p is 0.10, so the rule for URA-F is p at or below 0.10 (no shift reaches the true R²). The page states this resolution and that no out-of-sample check exists.
+   - The page gives the count of models (four) next to the words: with four models at 10%, one false "consistent" is possible; the out-of-sample condition lowers that chance.
+6. The unexplained part, as a number for each group: (a) 1 - R² in sample; (b) the out-of-sample part: the sum of the prediction errors of months 25 to 36, in percentage points, next to the return of those 12 months. URA-F: (a) only. The intercept (36 times the monthly intercept) is shown as a separate line; it is not an explanation.
+7. For URA-M and URA-R, S and C move together, so each coefficient alone is unstable: the page reads S and C as one group (their R² and their contributions together), not one by one.
+8. Description only (no test): the coefficients of each model in each calendar year (2024, 2025, 2026). The 2025 break of the gold and real-yield link is shown, not fitted away.
+9. GLD and central-bank buying: the World Gold Council data is quarterly. The page shows the quarterly tonnes next to the quarterly GLD return as a table, with no regression.
+10. The identity check of GLD (layer 1): the monthly GLD return against the World Bank gold price change. It is not a driver.
 
 ## 4. What the design does not allow
 
@@ -51,7 +53,7 @@ How much of the monthly return of each group of URA, and of GLD, is consistent w
 - 36 months is a small sample; the degrees of freedom are on the page.
 - The weights change only at the quarter ends (N-PORT).
 - The foreign part of URA closes only for each quarter (no permitted free source of daily foreign prices).
-- The IMF uranium price is a monthly average with its own method; the contract price is not in our data.
+- The IMF uranium price is a monthly average with its own method; the fund return is month-end to month-end, so the average lags by about half a month and lowers the measured link with uranium. The contract price is not in our data.
 - A fit is not a cause: the page says "consistent with".
 
 ## 6. Dated records
