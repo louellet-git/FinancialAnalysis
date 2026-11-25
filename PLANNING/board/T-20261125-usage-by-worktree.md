@@ -16,3 +16,8 @@ A head works in many worktrees of one session, and the `gitBranch` of a line is 
 folder, so all lines were "no ticket". Each line also has its `cwd`. The Head of Staff accepted this proposal
 (2026-11-25): about 40 lines and one test, one reviewer. Limit: a worktree that is already removed gives its
 lines the branch of the line (count before a worktree is removed).
+
+Result (2026-11-25, this session): "no ticket" fell from 100% to about 79% of the tokens. Most of this session's
+worktrees were removed before the count, so their lines keep the old rule (the limit above). Note: the lines
+in the main checkout get the ticket of its branch claude/admiring-allen-f5aaeq, which the board gives to an old
+ticket (T-20261119-jnj-pipeline-defects); that is the board field, not a code fault.

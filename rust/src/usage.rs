@@ -79,6 +79,7 @@ pub struct Summary {
 struct Line {
     #[serde(rename = "gitBranch")]
     branch: Option<String>,
+    cwd: Option<String>,
     timestamp: Option<String>,
     message: Option<Msg>,
 }
@@ -116,6 +117,15 @@ struct Acc {
     agent_calls: BTreeMap<String, u64>,
     skill_calls: BTreeMap<String, u64>,
     last_ts: String,
+    /// folder -> branch of its git checkout (None: no checkout, or a detached HEAD)
+    cwd_branch: HashMap<String, Option<String>>,
+}
+
+/// The branch that a folder has checked out. A folder that is missing or not a git checkout gives None.
+fn git_branch(dir: &str) -> Option<String> {
+    let o = std::process::Command::new("git").args(["-C", dir, "rev-parse", "--abbrev-ref", "HEAD"]).output().ok()?;
+    let b = String::from_utf8(o.stdout).ok()?.trim().to_string();
+    (o.status.success() && !b.is_empty() && b != "HEAD").then_some(b)
 }
 
 fn stream_file(path: &Path, is_agent: bool, agent_type: &str, acc: &mut Acc) {
@@ -175,8 +185,14 @@ fn stream_file(path: &Path, is_agent: bool, agent_type: &str, acc: &mut Acc) {
             cache_read: u.cache_read_input_tokens.unwrap_or(0),
             cache_write: u.cache_creation_input_tokens.unwrap_or(0),
         };
+        let branch = l
+            .cwd
+            .as_ref()
+            .and_then(|c| acc.cwd_branch.entry(c.clone()).or_insert_with(|| git_branch(c)).clone())
+            .or_else(|| l.branch.clone())
+            .unwrap_or_default();
         let e = acc.msgs.entry(id).or_insert_with(|| {
-            (l.branch.clone().unwrap_or_default(), is_agent, agent_type.to_string(), Tokens::default())
+            (branch, is_agent, agent_type.to_string(), Tokens::default())
         });
         e.3.max_with(&t);
     }
@@ -249,6 +265,7 @@ pub fn count(
         agent_calls: BTreeMap::new(),
         skill_calls: BTreeMap::new(),
         last_ts: String::new(),
+        cwd_branch: HashMap::new(),
     };
     stream_file(transcript, false, "", &mut acc);
     if let Some(dir) = subagents {
@@ -541,6 +558,29 @@ mod tests {
         assert_eq!(names.agent("Explore"), "Explore");
         assert_eq!(names.skill("release-checks"), "release-checks");
         assert_eq!(names.skill("other-skill"), "(other)");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn cwd_branch_comes_before_the_line_branch() {
+        let d = tmpdir("cwd");
+        let git = |args: &[&str]| assert!(std::process::Command::new("git").arg("-C").arg(&d).args(args).output().unwrap().status.success());
+        git(&["init", "-q"]);
+        git(&["checkout", "-q", "-b", "claude/cwd-ticket"]);
+        git(&["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "x"]);
+        let mk = |id: &str, cwd: &str| {
+            let cwd = cwd.replace('\\', "/");
+            format!(r#"{{"type":"assistant","cwd":"{cwd}","gitBranch":"main","message":{{"id":"{id}","usage":{{"output_tokens":5}}}}}}"#)
+        };
+        let p = d.join("s.jsonl");
+        let text = [mk("a", d.to_str().unwrap()), mk("b", d.join("missing").to_str().unwrap())].join("\n");
+        std::fs::write(&p, text).unwrap();
+        let mut bm = BTreeMap::new();
+        bm.insert("claude/cwd-ticket".to_string(), "T-1-cwd".to_string());
+        bm.insert("main".to_string(), "T-0-main".to_string());
+        let s = count(&p, None, &bm, &Names::default(), None);
+        let tk: Vec<_> = s.rows.iter().map(|r| r.ticket.as_str()).collect();
+        assert_eq!(tk, ["T-0-main", "T-1-cwd"]);
         let _ = std::fs::remove_dir_all(&d);
     }
 
