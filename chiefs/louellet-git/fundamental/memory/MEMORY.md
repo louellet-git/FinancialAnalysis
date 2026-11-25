@@ -7,9 +7,9 @@ person decided. Keep this file below 60 lines. Started 2026-11-20. Dream pass: 2
    not start it before his review. State: page `attribution-state.md`.
 2. T1 correction of the projection test (E1.S1; `T-20261121-blind-projection-test`; branch `claude/t1-revenue-band`).
    The one-time score FAILED on 2026-11-25 (4e7ec03; the centre: 77% of real revenue below the P50; table of 3 years).
-   Nothing merged. No T1 work before the choice of Luc (recommended: centre work with a new written test, and a forward test).
+   Luc chose "Fix the middle and freeze": the freeze is on main (PR 252; score about 2027-04). The middle work: after 2026-12-02.
 3. E3.S5: the miner design and the page "Uranium Price Needed: NexGen" (version 3, plain words) are on main (about US$84).
-   Luc decides on the build (first company NexGen or Denison, not UEC). Then the fund look-through, R6.
+   Luc: "Build, after the T1 work" (NexGen first). Then the fund look-through, R6.
 4. No weekly trade: no rule passed its backtest (A-009 INVALID, PR 136); Luc: "No trades until T1 passes".
 
 ## Decisions of this head (records in `docs/assumptions/`; no reason uses the price)
