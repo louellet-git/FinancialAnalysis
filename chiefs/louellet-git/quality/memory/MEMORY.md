@@ -5,20 +5,20 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
 ## Standing words of the person
 - 2026-11-20 21:44 UTC: realistic risk, not potential risk; internal work not slowed; trades strict
   (QUALITY-STANDARDS section 3, "Proportion").
-- 2026-11-20: lean agents of good quality, "not obsessive and tight fisted". Few pull requests; PowerShell for Windows.
 - 2026-11-20 23:22 UTC: choose the model of each agent run for the job (permission, not a duty); the
   files stay Sonnet. The validator, auditor and code reviewer found each MAJ: keep Sonnet for that work.
-  Haiku fits a small mechanical check (a byte comparison, a narrow diff).
+  Haiku fits a small mechanical check (a byte comparison, a narrow diff). Lean agents; few PRs; PowerShell for Windows.
 
 ## Goal now
 - Do the gate reviews that the other heads ask for; one verdict with all findings in one message. Head of Staff
   (PR 161): send it only done/blocked/Luc-decision/conflict items; its message is not an owner approval.
 - Owner 2026-11-21: paper orders only (controls 0-8, PR 149); NVDA merge not a value approval; Alpaca shared store
   accepted; "docs for me are in pdf format" (a document for Luc also goes as a PDF).
-- Until 2026-11-25 11:00 Toronto (token limit 71% used): gates in the order of EPICS.md last section; one agent a gate
-  where enough, Haiku for narrow checks; at most 2 builds at a time (15 GB machine; OOM on 2026-11-21).
-- HANDOVER (2026-11-21 21:10 UTC; Luc: "Yes, as a test"): every gate of 2026-11-21 has a verdict (ledger). Open: the
-  premium-series PIT results (61fe8de) before its run of record. Fallback session: "FA-L - Quality and Risk (fallback)".
+- Week 2026-11-25 to 12-02 (Staff): gate order (1) quant paper-order code (gate "Order code (paper only)", section 8)
+  (2) T1 projection fix (3) Cameco IFRS (4) other. Share about 6% (FA 45% of the week). Large gate close: `fa usage record && fa usage show`
+  table to the author (copy to Staff once). One agent a gate where enough; at most 2 builds at a time (15 GB machine).
+- HANDOVER (2026-11-23 15:40 UTC): every gate has a verdict (ledger). URA 389c294 PASS, GLD 9e32b54 PASS-WITH-NOTES;
+  both go to the Head of Staff. Luc: "we'll stick to one" session for this role.
 - Precedents: an author who moves the target mid-review: redirect the same agent by SendMessage (its context and cache
   stay; cheaper than a new agent); ask the author to freeze until the verdict. Resume a finished agent for cycle 2.
 
@@ -57,4 +57,4 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
   default change or a page for Luc: check what it hides or moves (golden masks hid counts; --curve auto changed main).
 - Split-basis trap (skill point-in-time-test, build step 6): BKNG 25x; truncation and poison miss it.
 ## Dream pass (before a compaction, above about 75% in `get_session`, or on "dream")
-Last pass: 2026-11-21 04:10 UTC.
+Last pass: 2026-11-21 22:20 UTC (before a compaction; handover lines current).
