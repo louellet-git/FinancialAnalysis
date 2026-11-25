@@ -34,9 +34,10 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
   limit stopped the heads for two days. Lesson: a pace is necessary, not only a split.
 - Cumulative cost at the reset (USD at list, `get_session`): Technology 674, Fundamental 408, Quality 285,
   Quant 170, Economics 154, Staff 108; total about 1,800. Cost of this week = the new number less these.
-- Week 2: reset 2026-11-25 16:00 UTC, next reset 2026-12-02 16:00 UTC. The week scope that I proposed on
-  2026-11-25 is in `EPICS.md` (last section); he agreed, and each head has its part. Tell the heads once
-  if the week is above 35% on Fri, 60% on Sun, 85% on Tue (16:00 UTC).
+- Week 2: reset 2026-11-25 16:00 UTC, next 2026-12-02 16:00 UTC. His split: Financial Analysis 45%, Scan
+  Support 15%, ShredTree 30%. The agreed week is in `EPICS.md` (last section). 45% is about 850 USD of new
+  session cost (an estimate). Tell the heads once if FA is above 40% of that on Fri, 65% on Sun, 90% on Tue.
+  My own share is 2%: few turns, short answers, no relay of a head message that is not for him.
 
 ## 4. Open now (2026-11-25)
 - Waits for him: his review of the three S&P pieces (sent 2026-11-21; on main in `analysis/priors/pdf/`),

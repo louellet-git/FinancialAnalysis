@@ -302,3 +302,9 @@ Done: the week is agreed in `PLANNING/board/EPICS.md`; one message to each head 
 pace. The quant goal went to the Head of Quant Research as the first work of story E4.S1 (a one-page plan
 to me first; paper account only; the controls of section 8 and the gate before the first order). Its share
 of the week went from 8% to 14%, from the reserve.
+
+## 2026-11-25 about 16:15 UTC (chat)
+Words (the split of the weekly token limit): "45% Financial analysis's, 15% scan support and 30% shred-tree."
+Done: the shares of the week in `PLANNING/board/EPICS.md` are scaled from 80% to 45%; the uranium and gold
+series, the last FRED step and the first run of the economics view go below the line. One short message to
+each head with its new share.

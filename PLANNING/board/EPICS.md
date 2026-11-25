@@ -110,19 +110,23 @@ All projects of the person share the limit. The shares below are estimates from 
 
 | Order | Story | Result of the week | Head | Share of the week (estimate) |
 |---|---|---|---|---|
-| 1 | E2.S1 | The S&P 100 part, after the review of the three S&P pieces by the person | fundamental | 10% |
-| 2 | E3.S5 | The IFRS mapping for Cameco and the size of the rest; the scout of the sources outside the SEC; the uranium and gold series; the design of a miner model (one page, for the person) | technology, fundamental | 18% |
-| 3 | E1.S1 | The T1 correction of the projection test, with its gate | fundamental | 10% |
-| 1 | E4.S1 | Owner word 2026-11-25: the quant team begins algo trading on the Alpaca paper account (live data; the broker makes the fills, the spreads and the fees). First a one-page plan, then the gate "Order code (paper only)", then the first paper orders; the always-on host | quant, technology | 14% |
-| 5 | E5.S1, E5.S2 | The data audit closed; the last step of the FRED replacement | technology | 6% |
-| 6 | E6.S5 | The usage table of each head at the close of each ticket above (the first tokens by ticket) | each head | 1% |
-| - | Gates | The reviews of the work above | quality | 10% |
-| - | Staff | The board map, the reads before the person | staff | 3% |
-| - | Reserve | The questions of the person, new requests such as the fund pages of the week before | - | 8% |
-| | | **Financial Analysis in all** | | **80%** |
+| 1 | E4.S1 | Owner word 2026-11-25: the quant team begins algo trading on the Alpaca paper account (live data; the broker makes the fills, the spreads and the fees). First a one-page plan, then the gate "Order code (paper only)", then the first paper orders; the always-on host | quant, technology | 8% |
+| 2 | E3.S5 | The IFRS mapping for Cameco and the size of the rest; the scout of the sources outside the SEC; the design of a miner model (one page, for the person) | technology, fundamental | 10% |
+| 3 | E1.S1 | The T1 correction of the projection test, with its gate | fundamental | 6% |
+| 4 | E2.S1 | The S&P 100 part, after the review of the three S&P pieces by the person | fundamental | 5% |
+| 5 | E5.S1, E6.S5 | The data audit closed; the usage table of each head at the close of each ticket | technology, each head | 3% |
+| - | Gates | The reviews of the work above | quality | 6% |
+| - | Staff | The board map, the reads before the person | staff | 2% |
+| - | Reserve | The questions of the person and new requests | - | 5% |
+| | | **Financial Analysis in all (owner word 2026-11-25: 45%; Scan Support 15%, ShredTree 30%)** | | **45%** |
+
+Below the line if the 45% is used: the uranium and gold series, the last step of the FRED replacement,
+the first real run of the economics view. They move to the next week; no result is lost.
 
 Not in this week: the models for banks, utilities, insurers and REITs; the volatility models; the token
 calculator; the live data view; the trade-level backtest.
 
-Pace: about 12% of the week for each day in all. The Head of Staff reads the limit when it is awake and
-tells the heads once if the week is above 35% on Friday, 60% on Sunday or 85% on Tuesday (each at 16:00 UTC).
+Pace: Financial Analysis uses about 6% to 7% of the week for each day. The Head of Staff measures it as the
+cost of the six sessions since the reset (`get_session`; about 850 USD at list price is 45%, an estimate
+from the week before) and tells the heads once if it is above 40% of that on Friday, 65% on Sunday or 90%
+on Tuesday (each at 16:00 UTC).
