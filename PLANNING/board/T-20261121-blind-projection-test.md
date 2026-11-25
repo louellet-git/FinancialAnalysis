@@ -143,4 +143,29 @@ The branch is merged with main 0e817ff (three text conflicts; tests 1061 + 17 + 
   needs a new written test.
 - After a pass: T1 on the full sample one time, and T2 to T4 one time, both labelled "not blind", on the new store.
   The earlier full-sample numbers were made on the old store; the report gives both.
-Count of runs after the restart: 0.
+Count of runs after the restart: 1 (one half-0 development run; no score run).
+
+**Half-0 base run after the restart (16:33 UTC, 2026-11-25; development, not a score).** Command: `fa dcf pit --cut 2015
+--half 0 --rules acq_cv=1 --diag rev --cache <store 2d4619d>`, code c2a2ab7. 4050 company-years of 602 companies.
+Cells: below P10 / inside / above P90, in percent (pass: inside 75 to 85, each tail 5 to 15).
+- Revenue, "all": T+1 6.3 / 84.2 / 9.5 (pass); T+2 5.6 / 84.1 / 10.3 (pass); T+3 3.5 / 88.1 / 8.3 (FAIL: the low tail
+  is too thin and the inside share is too large). T+1 and T+2 pass by less than 1 point of the inside share.
+- Free cash flow, "all": T+1 15.4 / 76.1 / 8.4 (FAIL by 0.4 point on the low tail); T+2 10.8 / 80.0 / 9.1; T+3 10.6 /
+  79.1 / 10.3. On half 1 (old store, the blind score of A-010) T+1 was 13.9. The difference between the two halves
+  (1.5 points) is the size of the sampling noise of a tail share. RISK for the score: the free cash flow rule is fixed
+  (A-010), and its T+1 low tail is at the limit; the score can fail on it with a correct revenue rule.
+- The diagnosis (z = the real value on the scale of the band; a calibrated band has -1.28 and +1.28 at the 10th and
+  90th percentile). All: T+1 -1.08 / +1.07; T+2 -1.03 / +1.16; T+3 -0.81 / +1.06. Real below P50: 52%, 47%, 45%; the
+  median real revenue is above P50 by -0.5%, +1.1%, +3.1%.
+- Reading of this head (two facts of half 0): (1) the centre of the band is too low at T+3 (the P50 falls behind by
+  about 3%); (2) after the centre is corrected, the band is too wide by about 15% at T+1 and T+2 and by about 27% at
+  T+3. After a year of falling revenue the low side is far too wide (T+3: -0.66 / +1.26). By width of the band, the
+  bands of 15% to 25% at T+1 are the worst (-0.93 / +0.86).
+- NOT decided: the rule. Two candidates need one more fact before a choice: (a) one scale on the uncertainty of the
+  company mean growth (the part of the band that grows with the horizon); (b) the floor of the growth after a decline.
+  The fact that decides: the share of the band variance at T+1, T+2 and T+3 that comes from the mean uncertainty, from
+  the shock and from the fade (a new diagnosis on half 0). One rule only, written here before the score.
+- Why no hurry: the hold-out is scored one time. A weak rule fails it, and no second partly blind sample exists before
+  the next 10-K filings.
+Next step: the variance diagnosis on half 0 (code and one run), then the rule in this ticket, then the gate of the
+statistics (Head of Economics) on the rule text, then the one score run.
