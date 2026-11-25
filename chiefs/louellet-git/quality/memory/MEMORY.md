@@ -15,7 +15,7 @@ Form and purpose: `chiefs/MEMORY-HOWTO.md`. Memory of this head: the patterns of
 - Owner 2026-11-21: paper orders only (controls 0-8, PR 149); NVDA merge not a value approval; Alpaca shared store
   accepted; "docs for me are in pdf format" (a document for Luc also goes as a PDF).
 - Week 2026-11-25 to 12-02 (Staff): gate order (1) quant paper-order code (gate "Order code (paper only)", section 8)
-  (2) T1 projection fix (3) Cameco IFRS (4) other. Share about 6% (FA 45% of the week). Large gate close: `fa usage record && fa usage show`
+  (2) T1 projection fix (3) Cameco IFRS (4) other. Share 6%, about 113 USD: get_session cost_usd less 284.85. Large gate close: `fa usage record && fa usage show`
   table to the author (copy to Staff once); also before a ticket worktree goes. One agent a gate where enough; 2 builds max.
 - HANDOVER (2026-11-25 19:20 UTC): every gate has a verdict (ledger). Paper orders step A 4dac1c0 PASS; next: step B
   (control 6 text for options, PR 149 weight). Luc: "we'll stick to one" session for this role.
