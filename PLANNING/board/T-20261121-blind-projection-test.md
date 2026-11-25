@@ -2,7 +2,7 @@
 id: T-20261121-blind-projection-test
 title: Test the blind projections of the DCF engine on prior data before the first weekly trade
 area: engine
-status: backlog
+status: in-progress
 owner: louellet-git
 requested_by: louellet-git
 head: fundamental
@@ -120,3 +120,27 @@ Not done: the fixed-answer test of `--base-to`, the build and test check of this
 this ticket before the score). Next step: `cargo test`, then step 2 from the `--diag rev` output.
 
 **Board note (2026-11-21 about 20:50 UTC):** paused by the owner word "hold off on other work for now" (the week attribution is first); back to the backlog, with the work kept on its branch (see the status at the pause above).
+
+**Restart (16:29 UTC, 2026-11-25).** In progress again (louellet-git, branch claude/t1-revenue-band). The person agreed to the
+week of 2026-11-25 with this row in it ("Agreed to the week ... Proceed", record of the Head of Staff, 16:13 UTC); this
+lifts his pause of 2026-11-21. Share of the week for this ticket: about 6% of the token limit; no agent is planned.
+The branch is merged with main 0e817ff (three text conflicts; tests 1061 + 17 + 1 pass). No pit run was made after the pause.
+
+**Revision 3, written before any run after the restart.** It changes no pass rule. It names what moved since the design.
+- Data store: the design named store 1804f48. The runs after the restart use store 2d4619d. Code: this branch with main
+  0e817ff in it. Reason: main now has the fix of the old revenue tags (pull request 200), which fills empty revenue periods
+  before 2018 and adds company-years, most of them in the early base years. The fix must hold on the data and the code
+  that the engine uses now.
+- Effect on the hold-out. The score of the revenue fix is still `fa dcf pit --cut 2011 --base-to 2014` with `acq_cv=1`
+  and the revenue rule, both halves, one time. No run has scored these base years alone, before or after the restart.
+  The label stays "partly blind". The new company-years of pull request 200 are in the hold-out; this head did not look
+  at them.
+- Development stays on `--cut 2015 --half 0` only. The first run after the restart is the half-0 base run on the new
+  store and code (with `acq_cv=1`), because the numbers of the old store are not the base of the new one. It is a
+  development run, not a score. Each half-0 run is counted below.
+- The rule for the revenue band is written in this ticket, with its reason from half 0 and its numbers, and pushed,
+  before the score run. One rule only. If the score fails, the fix fails and the person gets the numbers; a second fix
+  needs a new written test.
+- After a pass: T1 on the full sample one time, and T2 to T4 one time, both labelled "not blind", on the new store.
+  The earlier full-sample numbers were made on the old store; the report gives both.
+Count of runs after the restart: 0.
