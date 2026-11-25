@@ -114,7 +114,19 @@ impl Company {
         }
         let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
         let value: Value = serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?;
-        Company::from_store(registry, &value).map_err(|e| format!("{}: {e}", path.display()))
+        let company = Company::from_store(registry, &value).map_err(|e| format!("{}: {e}", path.display()))?;
+        company.usd_only()?;
+        Ok(company)
+    }
+
+    /// The import path (verdict, analyze, classic, report, backtest) values in USD only. A period in a
+    /// different reporting currency (an IFRS filer: CAD, ZAR) is refused here, explicitly, so that a later
+    /// change of the form filter of `annual()` cannot let it in.
+    pub fn usd_only(&self) -> Result<(), String> {
+        match self.periods.iter().find(|p| p.currency != "USD") {
+            Some(p) => Err(format!("NO VALUE: reporting currency {}, no conversion ({} {})", p.currency, p.form, p.period_end)),
+            None => Ok(()),
+        }
     }
 
     pub fn annual(&self) -> impl Iterator<Item = &Period> {
@@ -193,6 +205,27 @@ pub fn import_command(repo: &Path, args: &[String]) -> Result<i32, String> {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn a_period_in_cad_is_refused_on_the_import_path() {
+        let registry = registry();
+        let p = Period {
+            ticker: "CCJ".into(),
+            period_end: "2025-12-31".into(),
+            form: "40-F".into(),
+            filed_date: "2026-03-20".into(),
+            currency: "USD".into(),
+            values: vec![None; registry.variables.len()],
+            sources: BTreeMap::new(),
+            raw_extras: BTreeMap::new(),
+        };
+        let mut c = Company { ticker: "CCJ".into(), cik: "1009001".into(), company_name: "Cameco".into(), periods: vec![p] };
+        assert!(c.usd_only().is_ok());
+        c.periods[0].currency = "CAD".into();
+        let e = c.usd_only().unwrap_err();
+        assert!(e.starts_with("NO VALUE: reporting currency CAD"), "{e}");
+    }
+
     use super::*;
     use mapcheck::facts::CompanyFacts;
     use mapcheck::store::store_json;
