@@ -527,6 +527,8 @@ pub struct PaperHook {
     now_ms: i64,
     api_errors: usize,
     stopped: bool,
+    /// True after `start` completed. Before that the hook cancels nothing: the open orders may be the person's own.
+    started: bool,
     failed: Option<String>,
     broker_pos: i64,
     cash_flow: f64,
@@ -587,6 +589,7 @@ impl PaperHook {
             now_ms: 0,
             api_errors: 0,
             stopped: false,
+            started: false,
             failed: None,
             broker_pos: 0,
             cash_flow: prior_cash_flow,
@@ -705,6 +708,7 @@ impl PaperHook {
         self.facts = Facts { capital: Some(acct.equity), cash: Some(acct.cash), gross: Some(gross), position_qty: Some(0), adv: Some(adv), ..Facts::default() };
         self.day_loss_limit = acct.equity * LIMITS.day_loss_pct / 100.0;
         self.log(json!({"kind": "paper_start", "host_machine": host_name(), "paper": "yes", "capital": acct.equity, "cash": acct.cash, "peak_equity": peak, "day_loss_limit": self.day_loss_limit, "adv_20d_dollars": adv}))?;
+        self.started = true;
         Ok(vec![
             "account check: paper: yes (host constant, status ACTIVE or PAPER_ONLY, no block; the account number is never printed or saved)".into(),
             format!("  capital (equity) {:.2} USD, cash {:.2} USD, sleeve peak {peak:.2} USD, daily loss limit {:.2} USD ({}% of the capital)", acct.equity, acct.cash, self.day_loss_limit, LIMITS.day_loss_pct),
@@ -985,10 +989,18 @@ impl PaperHook {
 
     /// Cancel every open order of the symbol at the broker. It skips the request budget and the error count.
     fn cancel_all(&mut self, why: &str) -> usize {
+        if !self.started {
+            return 0; // `start` did not complete: an open order may be the person's own
+        }
         let mut cancelled = 0;
         match self.call_critical(Method::Get, &format!("/v2/orders?status=open&symbols={}&limit=50", self.symbol), None) {
             Ok(Value::Array(list)) => {
                 for o in list {
+                    let cid = o["client_order_id"].as_str().unwrap_or("");
+                    if !self.is_ours(cid) {
+                        self.log_soft(json!({"kind": "paper_note", "note": "an open order that this program did not send is left open", "broker_order_id": o["id"]}));
+                        continue;
+                    }
                     if let Some(id) = o["id"].as_str() {
                         let r = self.call_critical(Method::Delete, &format!("/v2/orders/{id}"), None);
                         cancelled += usize::from(r.is_ok());
@@ -999,6 +1011,12 @@ impl PaperHook {
             other => self.log_soft(json!({"kind": "paper_error", "stage": "list open orders at the stop", "error": format!("{other:?}").chars().take(200).collect::<String>()})),
         }
         cancelled
+    }
+
+    /// An order is ours when its client id has our prefix of the day AND is in the journal (this run or an earlier run of the day).
+    fn is_ours(&self, client_order_id: &str) -> bool {
+        let date = crate::market::alpaca::ny_day(self.now_ms.div_euclid(1000)).0;
+        client_order_id.starts_with(&format!("fa-{}-{}-{}-", date, self.strategy, self.symbol)) && self.seen_ids.contains(client_order_id)
     }
 
     /// The broker day P&L: cash flow of the fills plus the position at the mid.
@@ -1119,11 +1137,11 @@ impl OrderHook for PaperHook {
 impl Drop for PaperHook {
     /// An exit with no stop (an error path, a panic that unwinds) still cancels the open orders. The position is kept.
     fn drop(&mut self) {
-        if self.tr.is_some() && !self.stopped {
+        if self.tr.is_some() && !self.stopped && self.started {
             self.stopped = true;
             let n = self.cancel_all("abnormal exit");
             self.log_soft(json!({"kind": "paper_stop", "reason": "abnormal exit", "dry_run": false, "cancelled": n}));
-            println!("  abnormal exit: {n} open order(s) cancelled; the position is kept; a person checks the paper account");
+            let _ = writeln!(std::io::stderr(), "  abnormal exit: {n} open order(s) cancelled; the position is kept; a person checks the paper account");
         }
     }
 }
@@ -1197,6 +1215,29 @@ pub fn order_host_command(env: &OrderEnv) -> String {
     }
 }
 
+/// The path with symlinks, `..` and relative parts resolved. A path that does not exist yet: the longest existing parent is resolved
+/// and the rest is added.
+pub fn canonical(p: &Path) -> PathBuf {
+    let abs = if p.is_absolute() { p.to_path_buf() } else { std::env::current_dir().map(|d| d.join(p)).unwrap_or_else(|_| p.to_path_buf()) };
+    let mut rest: Vec<std::ffi::OsString> = vec![];
+    let mut cur = abs.clone();
+    loop {
+        if let Ok(c) = std::fs::canonicalize(&cur) {
+            return rest.iter().rev().fold(c, |acc, part| acc.join(part));
+        }
+        match (cur.file_name().map(|n| n.to_os_string()), cur.parent().map(Path::to_path_buf)) {
+            (Some(name), Some(parent)) => {
+                if name == ".." {
+                    return abs; // cannot resolve a missing path with ..
+                }
+                rest.push(name);
+                cur = parent;
+            }
+            _ => return abs,
+        }
+    }
+}
+
 /// `--send` is allowed only on the laptop or the order host, never in a Claude Code or cloud session: a session can hold real paper keys.
 /// (a) no variable `CLAUDECODE` or `CCR_*`; (b) the order host file, outside the repo, whose first line is the host name of this machine.
 pub fn check_order_host(env: &OrderEnv, repo: &Path) -> Result<(), String> {
@@ -1207,7 +1248,7 @@ pub fn check_order_host(env: &OrderEnv, repo: &Path) -> Result<(), String> {
     let Some(file) = &env.host_file else {
         return Err(format!("no home folder is known. {help}"));
     };
-    if file.starts_with(repo) {
+    if canonical(file).starts_with(canonical(repo)) {
         return Err(format!("the order host file {} is inside the repo: it must be outside. {help}", file.display()));
     }
     let text = std::fs::read_to_string(file).map_err(|_| format!("the order host file {} is missing. {help}", file.display()))?;
@@ -2041,8 +2082,9 @@ mod tests {
     #[test]
     fn the_cancels_at_a_stop_skip_the_budget_and_the_error_count() {
         // The start used the whole budget of 3 requests: a normal call would be refused.
-        let mut r = rig_with("critical", "", 3, true);
-        r.w.borrow_mut().orders.push(Ord1 { id: "o9".into(), cid: "x".into(), side: "buy".into(), qty: 1, limit: "1.00".into(), status: "accepted".into() });
+        let prior = json!({"kind": "paper_intent", "dry_run": false, "client_order_id": "fa-2026-09-21-demo-SPY-0009", "t_ms": T0 - 3_600_000}).to_string();
+        let mut r = rig_with("critical", &prior, 3, true);
+        r.w.borrow_mut().orders.push(Ord1 { id: "o9".into(), cid: "fa-2026-09-21-demo-SPY-0009".into(), side: "buy".into(), qty: 1, limit: "1.00".into(), status: "accepted".into() });
         r.h.stop(Stop::Until, &inp(T0 + 1000, 100.0, 100.1), None);
         assert!(r.log.borrow().iter().any(|q| q.method == Method::Delete && q.url.ends_with("/v2/orders/o9")), "the cancel was sent");
         assert_eq!(r.w.borrow().orders[0].status, "canceled");
@@ -2091,6 +2133,97 @@ mod tests {
         r.w.borrow_mut().post_override = Some(Err("timeout".into()));
         decide(&mut r.h, 0, Side::Buy, 1, &inp(T0, 100.0, 100.1));
         assert_eq!(r.h.api_errors, 1, "the POST counts once; the read by client id (404) does not count");
+    }
+
+    // ---- round 3: cancel only our own orders; the falling fill; the paths
+
+    #[test]
+    fn a_refused_start_with_an_open_order_that_is_not_ours_sends_no_cancel() {
+        let mut r = rig_with("foreign-start", "", 60, false);
+        r.w.borrow_mut().orders.push(Ord1 { id: "p1".into(), cid: "person-own-order".into(), side: "buy".into(), qty: 1, limit: "1.00".into(), status: "accepted".into() });
+        assert!(r.h.start(T0, Ok(1e9), &r.dir.join("peak.json")).unwrap_err().contains("open orders"));
+        // The hook is dropped (and a stop is asked): nothing is cancelled, because start() did not complete.
+        r.h.stop(Stop::Until, &inp(T0 + 1000, 100.0, 100.1), None);
+        let (log, w) = (r.log.clone(), r.w.clone());
+        drop(r.h);
+        assert!(log.borrow().iter().all(|q| q.method != Method::Delete), "no DELETE: {:?}", log.borrow());
+        assert_eq!(w.borrow().orders[0].status, "accepted");
+    }
+
+    #[test]
+    fn a_stop_cancels_only_the_orders_that_this_program_sent() {
+        let mut r = rig("ours-only");
+        r.w.borrow_mut().fill = false;
+        decide(&mut r.h, 0, Side::Buy, 1, &inp(T0, 100.0, 100.1)); // ord-1, ours
+        // The person's own order, and an order with our prefix that is not in the journal.
+        for (id, cid) in [("p1", "person-own-order"), ("p2", "fa-2026-09-21-demo-SPY-0099")] {
+            r.w.borrow_mut().orders.push(Ord1 { id: id.into(), cid: cid.into(), side: "buy".into(), qty: 1, limit: "1.00".into(), status: "accepted".into() });
+        }
+        r.h.stop(Stop::Until, &inp(T0 + 1000, 100.0, 100.1), None);
+        let w = r.w.borrow();
+        let status = |id: &str| w.orders.iter().find(|o| o.id == id).unwrap().status.clone();
+        assert_eq!((status("ord-1").as_str(), status("p1").as_str(), status("p2").as_str()), ("canceled", "accepted", "accepted"));
+        assert_eq!(r.log.borrow().iter().filter(|q| q.method == Method::Delete).count(), 1);
+    }
+
+    #[test]
+    fn a_status_read_that_falls_from_filled_1_to_filled_0_is_refused_and_stops_the_run() {
+        let mut reply = good_reply();
+        reply["status"] = json!("partially_filled"); // still open for the program
+        reply["filled_qty"] = json!("1");
+        reply["filled_avg_price"] = json!("100.10");
+        let mut r = send_with_reply("fall", reply);
+        assert!(r.h.stop_request().is_none());
+        assert_eq!(r.h.broker_pos, 1);
+        let mut back = good_reply();
+        back["id"] = json!("x1");
+        back["status"] = json!("partially_filled");
+        back["filled_qty"] = json!("0");
+        r.w.borrow_mut().get_override = Some(back.to_string());
+        r.h.poll(&inp(T0 + 3000, 100.0, 100.1));
+        assert!(r.h.stop_request().unwrap().contains("fell from 1 to 0"));
+        assert!(r.buf.lines().iter().any(|v| v["kind"] == "paper_error" && v["stage"] == "status check"));
+    }
+
+    #[test]
+    fn the_inside_the_repo_check_resolves_dots_symlinks_and_relative_paths() {
+        let dir = tmp("canon");
+        let repo = dir.join("repo");
+        std::fs::create_dir_all(repo.join("sub")).unwrap();
+        std::fs::create_dir_all(dir.join("other")).unwrap();
+        let mk = |file: PathBuf| OrderEnv { vars: vec![], host_file: Some(file), hostname: "laptop-7".into(), windows: false };
+        // The file exists inside the repo; the repo is named with "..".
+        let inside = repo.join("sub").join("order-host");
+        std::fs::write(&inside, "laptop-7\n").unwrap();
+        let dotted = dir.join("other").join("..").join("repo");
+        assert!(check_order_host(&mk(inside.clone()), &dotted).unwrap_err().contains("inside the repo"));
+        // The file path has ".." too, and the file does not exist yet (its parent does).
+        let new_file = dir.join("other").join("..").join("repo").join("sub").join("new-order-host");
+        assert!(check_order_host(&mk(new_file), &repo).unwrap_err().contains("inside the repo"));
+        // A relative repo path.
+        let cwd = std::env::current_dir().unwrap();
+        // Relative to the current folder: go up to the root, then down to the repo.
+        let mut rel = PathBuf::new();
+        for _ in cwd.components().filter(|c| matches!(c, std::path::Component::Normal(_))) {
+            rel.push("..");
+        }
+        for c in canonical(&repo).components().filter(|c| matches!(c, std::path::Component::Normal(_))) {
+            rel.push(c);
+        }
+        assert!(rel.is_relative() && check_order_host(&mk(inside.clone()), &rel).unwrap_err().contains("inside the repo"), "{}", rel.display());
+        // A symlink to the repo.
+        #[cfg(unix)]
+        {
+            let link = dir.join("link");
+            std::os::unix::fs::symlink(&repo, &link).unwrap();
+            let via = link.join("sub").join("order-host");
+            assert!(check_order_host(&mk(via), &repo).unwrap_err().contains("inside the repo"));
+        }
+        // A file outside the repo is fine, and `canonical` keeps the missing tail.
+        let outside = dir.join("other").join("order-host");
+        std::fs::write(&outside, "laptop-7\n").unwrap();
+        assert!(check_order_host(&mk(outside), &repo).is_ok());
+        assert!(canonical(&dir.join("nope").join("deeper")).ends_with("nope/deeper") || cfg!(windows));
     }
 
     // ---- round 2: where an order run may start
