@@ -82,6 +82,14 @@ pub struct Rules {
     /// larger spread). Negative: the ratio of the fade table (spread of the growth one year after a start year, over the
     /// start growth). 0: off.
     pub level_kappa: f64,
+    /// The growth level of `level_kappa` is the absolute organic growth of the base year (if it has none, the last
+    /// value of the history), as kappa is measured. Off: the largest absolute growth of the history window. Off by
+    /// default; a measurement of the T1 work (`--rules level_last=1`).
+    pub level_last: bool,
+    /// The widths of the normal draws of the growth (the shock, the company mean, year 1) come from the 10th and 90th
+    /// percentile of the calibration data: each standard deviation times the shape ratio of the table
+    /// (`Ar1Params::shape`). Off by default; a measurement of the T1 work (`--rules band_q=1`).
+    pub band_q: bool,
     /// Smallest number of fiscal years in the chain (three: two growth values).
     pub min_years: usize,
     /// The growth history keeps a jump that has no cash for businesses behind it (organic: NVDA 2024); a jump with
@@ -109,6 +117,9 @@ pub struct Rules {
     pub fade_years: Option<usize>,
     /// The weight of the history in the company mean of the growth (`None`: the shrink rule).
     pub growth_w: Option<f64>,
+    /// The spread of the company means of the growth comes from the quartiles (`Ar1Params::mean_sd_robust`), not from
+    /// the variance. Off by default; a measurement of the T1 work (`--rules tau_robust=1`).
+    pub tau_robust: bool,
     /// The persistence of the growth shocks (`None`: the table).
     pub growth_phi: Option<f64>,
     /// The weight of the history in the company mean of the margin (`None`: the shrink rule).
@@ -215,6 +226,8 @@ impl Default for Rules {
             default_slow_half_life: 4.0,
             own_sigma_nu: 4.0,
             level_kappa: -1.0,
+            level_last: false,
+            band_q: false,
             min_years: 3,
             history_organic: true,
             margin_pool_se: 0.08,
@@ -225,6 +238,7 @@ impl Default for Rules {
             long_run: Some(LONG_RUN_GROWTH),
             fade_years: None,
             growth_w: None,
+            tau_robust: false,
             growth_phi: None,
             margin_w: None,
             margin_last: false,
@@ -1150,7 +1164,11 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
         rules.level_kappa
     };
     let sg_own = own_sigma(&growth_hist, &gp, rules.own_sigma_nu);
-    let g_level = growth_hist.iter().map(|g| g.abs()).fold(last_growth.map_or(0.0, f64::abs), f64::max);
+    let g_level = if rules.level_last {
+        last_growth.or(growth_hist.last().copied()).map_or(0.0, f64::abs)
+    } else {
+        growth_hist.iter().map(|g| g.abs()).fold(last_growth.map_or(0.0, f64::abs), f64::max)
+    };
     let sg_eff = sg_own.max(kappa * g_level);
     let floor = |g: f64| rules.last_floor.map_or(g, |f| g.max(f));
     let mut fit_hist = growth_hist.clone();
@@ -1159,7 +1177,18 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
             *l = floor(*l);
         }
     }
-    let gfit = ar1_fit_w(&fit_hist, last_growth.map(floor), &Ar1Params { sigma: sg_eff, phi: rules.growth_phi.unwrap_or(gp.phi), ..gp.clone() }, rules.growth_w);
+    let g_tau = if rules.tau_robust { gp.mean_sd_robust.unwrap_or(gp.mean_sd_units) } else { gp.mean_sd_units };
+    let mut gfit = ar1_fit_w(&fit_hist, last_growth.map(floor), &Ar1Params { sigma: sg_eff, phi: rules.growth_phi.unwrap_or(gp.phi), mean_sd_units: g_tau, ..gp.clone() }, rules.growth_w);
+    // band_q: the widths of the draws come from the 10th and 90th percentile of the calibration data (the shape ratios of
+    // the table). The weight, the company mean and the level term do not change.
+    let (r_s, r_t) = if rules.band_q { gp.shape.unwrap_or((1.0, 1.0)) } else { (1.0, 1.0) };
+    let sg_draw = sg_own * r_s;
+    if rules.band_q {
+        let sg1 = sg_draw.max(kappa * g_level);
+        gfit.var_post *= r_t * r_t;
+        gfit.start_sd = ((1.0 - gfit.phi).powi(2) * gfit.var_post + sg1 * sg1).sqrt();
+        gfit.corr = if gfit.start_sd > 0.0 && gfit.var_post > 0.0 { (1.0 - gfit.phi) * gfit.var_post.sqrt() / gfit.start_sd } else { 0.0 };
+    }
     // the long-run cap and the company mean
     let rf_long = market.curve.as_ref().map_or(DEFAULT_RF, |c| c.zero10);
     if market.curve.is_none() {
@@ -1467,7 +1496,7 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
     let _ = writeln!(tw, "start = {}", draw(g_start, gfit.start_sd, g_lo, g_hi));
     let _ = writeln!(tw, "target = {}", draw(mu_company.clamp(g_lo + 0.01, g_hi - 0.01), gfit.var_post.sqrt(), g_lo, g_hi));
     let _ = writeln!(tw, "half_life = {}", f(g_half));
-    let _ = writeln!(tw, "sigma = {}", f(sg_own));
+    let _ = writeln!(tw, "sigma = {}", f(sg_draw));
     if kappa > 0.0 {
         let _ = writeln!(tw, "sigma_level = {}", f(kappa));
     }

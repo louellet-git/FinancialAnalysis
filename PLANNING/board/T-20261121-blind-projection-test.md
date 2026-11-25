@@ -143,7 +143,7 @@ The branch is merged with main 0e817ff (three text conflicts; tests 1061 + 17 + 
   needs a new written test.
 - After a pass: T1 on the full sample one time, and T2 to T4 one time, both labelled "not blind", on the new store.
   The earlier full-sample numbers were made on the old store; the report gives both.
-Count of runs after the restart: 6 (six half-0 development runs; no score run).
+Count of runs after the restart: see the last count line of this ticket.
 
 **Half-0 base run after the restart (16:33 UTC, 2026-11-25; development, not a score).** Command: `fa dcf pit --cut 2015
 --half 0 --rules acq_cv=1 --diag rev --cache <store 2d4619d>`, code c2a2ab7. 4050 company-years of 602 companies.
@@ -283,3 +283,50 @@ variance is the correct input: the weight w, the company mean and the acquisitio
 - Known risk, before the run: the free cash flow band uses the revenue paths. A narrower revenue band with the same
   centre moves the low tail of the free cash flow up, and its T+1 value is 15.4 on half 0 (limit 15).
 - The same read as before: the "all" rows, the class rows (centre and tails) and the diagnosis.
+
+**Result of `band_q` (17:17 UTC, 2026-11-25; half-0 development run 10).** Command: `fa dcf pit --cut 2015 --half 0 --rules
+acq_cv=1,band_q=1 --diag rev --cache <store 2d4619d>`. 4050 company-years of 602 companies. The unit tests of the new
+code pass (1063 + 17 + 1, 0 failed).
+| Rows "all" | T+1 | T+2 | T+3 |
+|---|---|---|---|
+| Revenue, base | 6.3/84.2/9.5 | 5.6/84.1/10.3 | 3.5/88.1/8.3 (fail) |
+| Revenue, `band_q` | 8.2/80.2/11.6 (pass) | 8.2/78.8/13.0 (pass) | 6.0/82.7/11.3 (pass) |
+| Free cash flow, base | 15.4/76.1/8.4 (fail by 0.4) | 10.8/80.0/9.1 | 10.6/79.1/10.3 |
+| Free cash flow, `band_q` | 15.5/76.0/8.5 (fail by 0.5) | 10.9/79.5/9.5 | 10.7/78.3/11.0 |
+- The shape ratios of the table of the cut (shock / company means), standard template: <1B 0.61/0.80; 1-10B 0.83/0.85;
+  10-30B 0.87/0.66; 30-100B 0.76/0.67; all sizes 0.68/0.64.
+- The diagnosis (10th and 90th percentile of z; calibrated: -1.28/+1.28). All: T+1 -1.28/+1.28; T+2 -1.23/+1.41; T+3
+  -1.03/+1.28. By band width at T+1: -1.37/+1.28; -1.28/+1.30; -1.25/+1.25; -1.12/+1.20. The width is correct in each
+  class of band width; the base run had -0.93/+0.86 in its worst class.
+- The centre does not change (by design): the median error of the "all" row is -0.5%, +0.7%, +2.0%.
+- Class rows, the read of this head. Better: growth 0% to 10% (8.4/81.9/9.7 at T+1; base 6.6/85.6/7.8), 10% to 20%
+  (6.4/84.1/9.5; base 4.4/87.9/7.7). Worse: a falling base year (9.6/72.8/17.6 at T+1 and 5.7/72.5/21.8 at T+2; base
+  7.3/78.4/14.3 and 4.2/78.2/17.6). For these companies the band was about correct in width and the centre is too low
+  at T+2 and T+3 (+6.3%, +9.5%); the wide band hid a part of the centre error. This is a known error of the centre
+  (A-003), not of the width, and this rule does not correct it. Growth above 50% (234 company-years): the median error
+  at T+3 goes from -4.8% to -9.9% (the P50 moves with the width of the draws); the tails stay in the limits.
+- The free cash flow does not change with the rule. Its T+1 low tail is at the limit on half 0 with and without the
+  rule (15.4 and 15.5; half 1 on the old store: 13.9). It is a matter of A-010 (the size of one year of acquisitions),
+  not of the revenue band.
+
+**THE RULE for the revenue band (chosen 17:17 UTC, 2026-11-25, before any score run): `band_q=1`.** Text of the rule:
+the width of each normal draw of the revenue growth (the shock, the company mean, year 1) is its standard deviation
+times the shape ratio of the size class, where the shape ratio is (P90 less P10) / (2.563 times the standard
+deviation) of the same calibration sample (the within residuals for the shock; the company means for the company
+mean). The table of the cut gives the ratios. The weight of the history, the company mean, the level term and the
+acquisition charge do not change. A cell with fewer than 20 values has the ratio 1.
+- Reason: the outputs are P10 and P90, the growth data have fat tails (z ratios of 2.3 to 2.5 against 1.9 for a
+  normal distribution), and a normal draw with the correct variance is then too wide at P10 and P90. The ratio is
+  measured on the years before the base years. It is not a fit to the band test.
+- Why not the other nine: see the runs above (two errors that cancel; a change of the weight breaks the free cash
+  flow through A-002; the level term is too small to matter).
+- Limits that this head states before the score: (1) ten development runs on half 0 came before this choice, so half 0
+  is not a test of it; (2) the residuals of one class are one sample, and a mix of companies with different shock
+  sizes also gives a ratio below 1; (3) the band of the companies with a falling base year becomes too narrow for its
+  centre error; (4) the free cash flow T+1 low tail can fail the score with a correct revenue rule.
+- The score (one time, both halves): `fa dcf pit --cut 2011 --base-to 2014 --rules acq_cv=1,band_q=1`, store 2d4619d,
+  the code of this commit. Pass: the rule of T1 as written at the top of this ticket (rows "all", revenue and free
+  cash flow, T+1 to T+3: inside 75% to 85%, each tail 5% to 15%). No pass rule changes. The report gives the revenue
+  rows and the free cash flow rows as two separate facts, with the class rows.
+- Before the score: the statistics gate (Head of Economics) reads this rule text. No score run before its answer.
+Count of runs after the restart: 10 (ten half-0 development runs; no score run).

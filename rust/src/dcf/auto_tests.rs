@@ -15,6 +15,8 @@ fn ar1(phi: f64, mean: f64, tau: f64, sigma: f64) -> Ar1Params {
         mean,
         mean_se: 0.01,
         mean_sd_units: tau,
+        mean_sd_robust: None,
+        shape: None,
         sigma,
         n_obs: 1000,
         n_units: 100,
@@ -935,6 +937,45 @@ fn the_margin_has_its_own_weight_for_the_table_shock() {
     assert!((sigma_of(Rules { margin_sigma_nu: Some(1.0), ..base.clone() }) - 0.09 * 0.2f64.sqrt()).abs() < 1e-5);
     assert_eq!(parse_rules("margin_sigma_nu=1").unwrap().margin_sigma_nu, Some(1.0));
     assert_eq!(Rules::default().margin_sigma_nu, None);
+}
+
+#[test]
+fn band_q_scales_the_draws_of_the_growth_and_keeps_the_weight_and_the_means() {
+    // the table gets the shape ratios 0.8 (shock) and 0.5 (company means) in each cell
+    let mut t = table();
+    for c in &mut t.cell {
+        if let Some(g) = c.growth.as_mut() {
+            g.shape = Some((0.8, 0.5));
+        }
+    }
+    let run = |on: bool| build(&inputs(), &t, &[], &market(), &Rules { band_q: on, level_kappa: 0.0, ..Rules::default() }, BuildOptions::default()).unwrap();
+    let (off, on) = (run(false), run(true));
+    let num = |m: &AutoModel, key: &str, field: &str| -> f64 {
+        let sec = m.toml.split("[process.growth]").nth(1).unwrap();
+        let line = sec.lines().find(|l| l.starts_with(key)).unwrap();
+        let text = if field.is_empty() { line.trim_start_matches(key) } else { line.split(field).nth(1).unwrap().split(',').next().unwrap() };
+        text.trim().parse().unwrap()
+    };
+    // the shock: 0.8 times; the draw of the company mean (the target): 0.5 times; its mean does not move
+    let (s0, s1) = (num(&off, "sigma = ", ""), num(&on, "sigma = ", ""));
+    assert!((s1 / s0 - 0.8).abs() < 1e-4, "{s0} {s1}");
+    let (t0, t1) = (num(&off, "target = ", "std = "), num(&on, "target = ", "std = "));
+    assert!((t1 / t0 - 0.5).abs() < 1e-4, "{t0} {t1}");
+    assert_eq!(num(&off, "target = ", "mean = "), num(&on, "target = ", "mean = "));
+    // year 1: sqrt((1 - phi)^2 x the scaled mean variance + the scaled shock^2), with the same mean
+    let phi = t.cell[0].growth.as_ref().unwrap().phi;
+    let (a0, a1) = (num(&off, "start = ", "std = "), num(&on, "start = ", "std = "));
+    assert!((a0 - ((1.0 - phi).powi(2) * t0 * t0 + s0 * s0).sqrt()).abs() < 2e-6, "{a0}");
+    assert!((a1 - ((1.0 - phi).powi(2) * t1 * t1 + s1 * s1).sqrt()).abs() < 2e-6, "{a1}");
+    assert_eq!((off.summary.growth_start, off.summary.growth_company_mean), (on.summary.growth_start, on.summary.growth_company_mean));
+    // a table from a file has no ratios: the switch changes nothing
+    let plain = |on: bool| build(&inputs(), &table(), &[], &market(), &Rules { band_q: on, ..Rules::default() }, BuildOptions::default()).unwrap().toml;
+    assert_eq!(plain(false), plain(true));
+    // the switches of the T1 work are off by default
+    let d = Rules::default();
+    assert!(!d.band_q && !d.tau_robust && !d.level_last);
+    let p = parse_rules("band_q=1,tau_robust=1,level_last=1").unwrap();
+    assert!(p.band_q && p.tau_robust && p.level_last);
 }
 
 #[test]

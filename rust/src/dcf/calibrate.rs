@@ -122,6 +122,12 @@ pub struct Ar1Fit {
     pub mean_se: f64,
     /// Standard deviation of the long-run means of the companies (the noise of the company means removed).
     pub mean_sd_units: f64,
+    /// The same spread from the quartiles of the company means (interquartile range / 1.349, the median noise removed).
+    pub mean_sd_robust: f64,
+    /// (P90 - P10) / (2.563 x the standard deviation) of the within residuals: 1 for a normal sample, below 1 for fat tails.
+    pub shape_sigma: f64,
+    /// The same ratio of the company means.
+    pub shape_means: f64,
 }
 
 /// Half-life in years: `ln 2 / -ln phi` for `0 < phi < 1`; 0 for `phi <= 0`; 99 for `phi >= 1`.
@@ -337,7 +343,44 @@ pub fn fit_ar1(p: &[Pair]) -> Option<Ar1Fit> {
             (var - noise).max(0.0).sqrt()
         }
     };
-    Some(Ar1Fit { n_obs: n, n_units: units.len(), pooled, fe, fe_corrected, ah, ah_obs, mean_se, mean_sd_units })
+    // the same spread from the quartiles of the company means (a few extreme company means do not move it): the
+    // interquartile range over 1.349 (the range of a normal distribution in standard deviations), less the median noise
+    let mean_sd_robust = {
+        let multi: Vec<&(f64, usize)> = ybar_units.iter().filter(|(_, k)| *k >= 2).collect();
+        if multi.len() < 3 {
+            0.0
+        } else {
+            let mut a: Vec<f64> = multi.iter().map(|(a, _)| *a).collect();
+            a.sort_by(f64::total_cmp);
+            let sd = (quantile_sorted(&a, 0.75) - quantile_sorted(&a, 0.25)) / 1.349;
+            let mut noise: Vec<f64> = multi.iter().map(|(_, k)| fe_corrected.sigma.powi(2) * mean_variance_factor(phi_c.clamp(-0.9, 0.99), *k as f64)).collect();
+            noise.sort_by(f64::total_cmp);
+            (sd * sd - quantile_sorted(&noise, 0.5)).max(0.0).sqrt()
+        }
+    };
+    // the shape ratios: (P90 - P10) / (2.563 x the standard deviation) of the same sample. 1 for a normal sample,
+    // below 1 for fat tails. The within residuals of the companies with 2 or more observations; the company means.
+    let shape = |v: &mut Vec<f64>| -> f64 {
+        if v.len() < 20 {
+            return 1.0;
+        }
+        v.sort_by(f64::total_cmp);
+        let m = mean_of(v);
+        let sd = (v.iter().map(|x| (x - m) * (x - m)).sum::<f64>() / (v.len() as f64 - 1.0)).sqrt();
+        if sd > 0.0 { (quantile_sorted(v, 0.9) - quantile_sorted(v, 0.1)) / (2.0 * 1.2815515655446004 * sd) } else { 1.0 }
+    };
+    let mut res: Vec<f64> = units.iter().filter(|r| r.len() >= 2).flat_map(|r| r.clone().map(|i| yw[i] - phi_c * xw[i])).collect();
+    let shape_sigma = shape(&mut res);
+    let mut means: Vec<f64> = ybar_units.iter().filter(|(_, k)| *k >= 2).map(|(a, _)| *a).collect();
+    let shape_means = shape(&mut means);
+    Some(Ar1Fit { n_obs: n, n_units: units.len(), pooled, fe, fe_corrected, ah, ah_obs, mean_se, mean_sd_units, mean_sd_robust, shape_sigma, shape_means })
+}
+
+/// The quantile `q` of a sorted slice with at least one value (linear between the two nearest values).
+fn quantile_sorted(v: &[f64], q: f64) -> f64 {
+    let pos = q.clamp(0.0, 1.0) * (v.len() - 1) as f64;
+    let (lo, hi) = (pos.floor() as usize, pos.ceil() as usize);
+    v[lo] + (v[hi] - v[lo]) * (pos - lo as f64)
 }
 
 /// The residuals of the within model for a given `phi`: `(unit, year, residual)`.
@@ -422,6 +465,14 @@ pub struct Ar1Params {
     pub mean_se: f64,
     /// Standard deviation of the long-run means of the companies of the group.
     pub mean_sd_units: f64,
+    /// The same spread from the quartiles of the company means (`Ar1Fit::mean_sd_robust`). A measurement for the rule
+    /// `tau_robust`: it is not in the table file, and a table that was read from a file has `None`.
+    #[serde(skip)]
+    pub mean_sd_robust: Option<f64>,
+    /// The shape ratios of the shock and of the company means (`Ar1Fit::shape_sigma`, `shape_means`) for the rule
+    /// `band_q`. Not in the table file; a table that was read from a file has `None`.
+    #[serde(skip)]
+    pub shape: Option<(f64, f64)>,
     /// Standard deviation of the shock.
     pub sigma: f64,
     pub n_obs: usize,
@@ -465,6 +516,8 @@ impl Ar1Params {
             mean: f.fe_corrected.mean,
             mean_se: f.mean_se,
             mean_sd_units: f.mean_sd_units,
+            mean_sd_robust: Some(f.mean_sd_robust),
+            shape: Some((f.shape_sigma, f.shape_means)),
             sigma: f.fe_corrected.sigma,
             n_obs: f.n_obs,
             n_units: f.n_units,

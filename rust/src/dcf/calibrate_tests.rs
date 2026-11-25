@@ -73,6 +73,25 @@ fn a_short_panel_with_company_means_gives_the_known_values_with_the_bias_correct
 }
 
 #[test]
+fn the_shape_ratios_are_one_for_a_normal_panel_and_below_one_for_fat_tails() {
+    // normal shocks and normal company means: the two ratios are near 1, and the robust spread is near the spread (0.05)
+    let s = synth(500, 9, 0.5, 0.08, 0.05, 0.10, 0.0, 11);
+    let f = fit_ar1(&s.a).unwrap();
+    assert!((f.shape_sigma - 1.0).abs() < 0.05, "shock {}", f.shape_sigma);
+    assert!((f.shape_means - 1.0).abs() < 0.10, "means {}", f.shape_means);
+    assert!((f.mean_sd_robust - 0.05).abs() < 0.02, "robust {}", f.mean_sd_robust);
+    // 450 companies with a shock of 5% and 50 with a shock of 50%: the residuals of all companies have fat tails. The
+    // ratio of the true mix is 0.36 (P90 - P10 = 0.154; 2.563 x the standard deviation 0.165 = 0.423)
+    let mut mix = synth(450, 9, 0.5, 0.08, 0.05, 0.05, 0.0, 11).a;
+    mix.extend(synth(50, 9, 0.5, 0.08, 0.05, 0.50, 0.0, 12).a.into_iter().map(|p| Pair { unit: p.unit + 450, ..p }));
+    let g = fit_ar1(&mix).unwrap();
+    assert!(g.shape_sigma > 0.25 && g.shape_sigma < 0.50, "mix {}", g.shape_sigma);
+    // fewer than 20 values: the ratio is 1
+    let small = fit_ar1(&synth(5, 3, 0.5, 0.08, 0.05, 0.10, 0.0, 3).a).unwrap();
+    assert_eq!((small.shape_sigma, small.shape_means), (1.0, 1.0));
+}
+
+#[test]
 fn the_pooled_estimate_is_right_when_the_companies_have_one_mean() {
     let (phi, mu, sigma) = (0.3, 0.06, 0.12);
     let s = synth(500, 9, phi, mu, 0.0, sigma, 0.0, 5);

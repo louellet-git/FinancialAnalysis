@@ -863,6 +863,8 @@ pub fn parse_rules(text: &str) -> R<Rules> {
             "fade_to_cap" => r.fade_to_cap = x != 0.0,
             "own_sigma_nu" => r.own_sigma_nu = x,
             "level_kappa" => r.level_kappa = x,
+            "level_last" => r.level_last = x != 0.0,
+            "band_q" => r.band_q = x != 0.0,
             "erp" => r.erp.0 = x,
             "beta_weight" => r.beta_weight = x,
             // an explicit mean terminal growth is the old model for that number: it turns the one long-run growth off
@@ -879,6 +881,7 @@ pub fn parse_rules(text: &str) -> R<Rules> {
             "long_run" => r.long_run = if x > 0.0 { Some(x) } else { None },
             "fade_years" => r.fade_years = Some(x as usize),
             "growth_w" => r.growth_w = Some(x),
+            "tau_robust" => r.tau_robust = x != 0.0,
             "growth_phi" => r.growth_phi = Some(x),
             "margin_w" => r.margin_w = Some(x),
             "margin_last" => r.margin_last = x != 0.0,
@@ -967,7 +970,11 @@ pub fn pit_setup(cache: &Path, table_file: &Path, cut: Option<i32>, limit: Optio
             let cells = estimate_table(&trunc, 2);
             let fade = fade_cells(&trunc, &cells);
             let meta = TableMeta { date: String::new(), command: format!("estimated from the years up to {y}"), companies: trunc.len(), company_years: 0, growth_observations: 0, note: String::new() };
-            (ProcessTable { meta, cell: cells }, fade, format!("OUT OF SAMPLE: parameter table estimated from the years up to {y}; base years {y} and later"))
+            let shapes: Vec<String> = cells
+                .iter()
+                .filter_map(|c| c.growth.as_ref().and_then(|g| g.shape.map(|(s, m)| format!("{} {} {:.2}/{:.2} tau {:.3} robust {:.3}", c.template, c.size, s, m, g.mean_sd_units, g.mean_sd_robust.unwrap_or(f64::NAN)))))
+                .collect();
+            (ProcessTable { meta, cell: cells }, fade, format!("OUT OF SAMPLE: parameter table estimated from the years up to {y}; base years {y} and later\nShape ratios of the growth (shock / company means), tau and robust tau by cell: {}", shapes.join("; ")))
         }
     };
     Ok(PitSetup { companies, table, fade, label, cut, base_to: None })
