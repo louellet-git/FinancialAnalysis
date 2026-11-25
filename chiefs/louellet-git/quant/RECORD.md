@@ -80,3 +80,11 @@ Done: The arbitrage register ticket now aims at a continuous capture in market h
 ## 2026-11-21 18:10 UTC (through the Head of Fundamental Research)
 Words (to the Head of Fundamental Research, about 18:50 UTC): "Great, make sure that whatever is repeatable/should be expected of future work like this is built into the correct engine." Then: "Send the same request of work to quant research for its engine/processes."
 Done: An inventory of the steps of the quant studies that a person, an agent or a shell did by hand; for each one, the engine and the owner; the table on the board before the code (ticket `T-20261121-quant-engine-integration`).
+
+## 2026-11-25 16:13 UTC (through the Head of Staff)
+Words: "for the quant side please find a way for the quant team to be able to begin algo trading on a paper account (continuous data w fees and spreads and all, not simulated by us ideally). Proceed"
+Done: First a one-page plan to the Head of Staff (story E4.S1): the path from PR 131 to orders on the Alpaca paper account (`T-20261121-algo-paper-orders`), the facts of Alpaca paper from its documents (`chiefs/louellet-git/quant/alpaca-paper-facts-2026-11-25.md`), the host for continuous runs, and the first strategy (a test of the process at the smallest size, not of profit). Paper account only; QUALITY-STANDARDS section 8; the gate "Order code (paper only)".
+
+## 2026-11-25 16:24 UTC (dialog of the Head of Staff)
+Words: "Do you permit option orders on the Alpaca paper account (1 contract, defined risk only), after step A passes its gate?" = "Yes, permit (Recommended)".
+Done: Step A (1 SPY share) first, with its gate. Then the new text of control 6 (option orders on the paper account: 1 contract, defined risk only, no margin, no naked short option) goes to Quality and Risk for a review before step B.
