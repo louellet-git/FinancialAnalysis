@@ -40,6 +40,21 @@ say which test lifts the rule "No trades until T1 passes": the person decides th
 8. A model that is changed after 2026-11-25 (for example the work on the middle) does not replace this file. It can
    be frozen in a new folder with its own date, before the reports that it is scored on are filed.
 
+## Amendment, 2026-11-25, at the gate, before any real value exists
+
+The Head of Quality and Risk read the rule at the gate (PASS-WITH-NOTES) and set two conditions. They are added here;
+the text above does not change.
+
+- A1 (to rule 2). A row enters the score of horizon T+h only if the fiscal year T+h ENDS after 2026-11-25 AND its
+  annual report is filed after 2026-11-25. Reason: a fiscal year that ended before the freeze can have a public
+  earnings release (form 8-K, item 2.02) before its annual report. For calendar-year companies nothing changes. The
+  rows that go out are off-calendar rows of T+1; the score gives their count.
+- A2 (to rule 1). The real values are read with the program of commit c43b7ec (built from that commit) on the later
+  data store. A run with the program of main of that day is a second row of the result, and it never replaces the
+  first. Thus a choice of program after the result cannot change the score.
+- Note. The comment lines of `forecasts.csv` have local paths of the machine of the run. The identifiers to use are
+  the commits in section "Record": the program c43b7ec and the data store 2d4619d. The frozen file is not edited.
+
 ## Limits stated before the score
 
 - The real values of the fiscal year 2026 are partly known today in the quarterly reports. The model does not use
