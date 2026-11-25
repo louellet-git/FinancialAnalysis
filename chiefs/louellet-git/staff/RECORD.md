@@ -339,3 +339,10 @@ with no context gets the message.
 Words: "Please switch head of fundamental research back to opus"
 Done: not done by me. I have no tool that changes the model of a different session. That session shows
 that the model was set by the user in the session itself. I told him how he does it there.
+
+## 2026-11-25 about 18:30 UTC (chat)
+Words: "As you're working on these kinds of things, make sure you're thinking about what can and should be
+automated from a holistic point of view."
+Done: agreement 10 of the Head of Staff file. Two first items, both with no constriction: my checks of a
+page for him go into the file of the document reviewer agent (Quality); the usage count runs by script at
+the close of a ticket, not from the memory of a head (Technology).
