@@ -143,6 +143,9 @@ fn normalize(p: &Path) -> PathBuf {
 }
 
 /// The (folder, branch) pairs of the `git worktree add ... -b BRANCH` parts of a shell command.
+// Limits (QA note): `git -C <dir> worktree add ...` and a path in a shell variable ("$WT") are not found; such
+// a line only stays "no ticket". The timestamps of the transcript are compared as text, which is correct
+// because each line has the same ISO form with "Z".
 fn worktree_adds(cmd: &str, cwd: &Path) -> Vec<(PathBuf, String)> {
     let mut out = Vec::new();
     for part in cmd.split("git worktree add").skip(1) {
