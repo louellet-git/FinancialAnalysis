@@ -197,3 +197,22 @@ Words: "Yes (Recommended)" to: may we keep the Philadelphia Fed SPF file as a pr
 Done: ticket `T-20261121-spf-loader`.
 Words: "Can you send a blast ensuring that models should be properly documented as per the rules?"
 Done: a message to the four heads with the rule (CLAUDE.md "Model documents"; QUALITY-STANDARDS section 4): each head lists the models of its area without a document or a record and writes them; the Quality and Risk head refuses a model change without a current document.
+
+## 2026-11-21 (refusal)
+- My own session: the permission system refused a second `git push` of a usage file to `refs/usage/<id>` of louellet-git/fa-data (reason given: undermining oversight). The first try had failed with a disconnect. Not tried again in any form; the owner decides the way out (ticket T-20261121-usage-log).
+
+## 2026-11-21 (relayed by the Head of Staff)
+Words: "Let's not get overly complicated" (on the usage log: the push path, the permission rule and the settings).
+Done: the usage log is local only and on request (`fa usage record && fa usage show`); no hook, no push, no setting.
+
+## 2026-11-21 (chat)
+Words: "the recent head of staff plus any other heads work to the heads repo."
+Done: the-heads 19a65d4: the Head of Staff rules as they are now; the habits "Does it make sense?" and "Test before you constrict"; monitoring by script; the store terms (public, private, original source); long head sessions; epics and stories; the backtest line; record number ranges.
+
+## 2026-11-23 (dialog of the Head of Staff)
+Words: "Yes, Cameco first (Recommended)" (shall the Head of Technology add the IFRS standard to the data mapping after the token reset, with Cameco as the first test?).
+Done: ticket `T-20261123-ifrs-mapping-cameco` (backlog, after the reset).
+
+## 2026-11-23 (relayed by the Head of Staff)
+Words: "So let's grab the other 27%" (the URA holdings that do not file with the SEC).
+Done: ticket `T-20261123-non-sec-accounts-scout` (backlog, after the reset and the Cameco test).

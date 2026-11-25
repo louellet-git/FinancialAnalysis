@@ -402,6 +402,8 @@ pub struct FindingText {
 pub struct AutoInputs {
     pub ticker: String,
     pub name: String,
+    /// The reporting currency of the values (empty or `USD`: dollars). Any other value: the model refuses (no conversion exists).
+    pub currency: String,
     /// `standard`, `bank`, `insurer`, `reit`, `fund`, `foreign`, `new`, `non-usd`, `no-revenue`.
     pub template: String,
     /// `PASS`, `WARN`, `FAIL`, `N/A` or `ERROR` (`mapcheck`).
@@ -411,6 +413,11 @@ pub struct AutoInputs {
     /// Fiscal years, oldest first.
     pub years: Vec<YearData>,
     pub balance: Option<BalanceData>,
+}
+
+/// True for dollars: an empty currency (an input made by hand or by a test) or `USD`.
+pub fn is_usd(currency: &str) -> bool {
+    currency.is_empty() || currency == "USD"
 }
 
 /// The inputs of a mapping report of `mapcheck`.
@@ -423,13 +430,16 @@ pub fn inputs_from_report(registry: &Registry, r: &mapcheck::run::TickerReport, 
     let mut out = AutoInputs {
         ticker: r.ticker.clone(),
         name: r.name.clone(),
+        currency: r.currency.clone(),
         template: r.template.clone(),
         status: r.status.label().to_string(),
         error: r.error.clone(),
         findings: r.findings.iter().map(|f| FindingText { severity: f.severity.label().to_string(), code: f.code.clone(), detail: f.detail.clone() }).collect(),
         ..Default::default()
     };
-    if let Some(c) = &r.company {
+    // A value in another currency never reaches a USD calculation (the price, the curve and the share count are in USD): no years, no
+    // balance. `build` refuses with `Refusal::Currency`.
+    if let Some(c) = r.company.as_ref().filter(|_| is_usd(&r.currency)) {
         out.years = c.annual.iter().map(|p| YearData::from_period(registry, p, &basis)).collect();
         // The latest period with a balance sheet: a later 10-Q first, then the fiscal year.
         let last_year = c.annual.last();
@@ -794,6 +804,8 @@ pub enum Refusal {
     ShortHistory(String),
     /// The table has no cell for the company.
     NoPriors(String),
+    /// The values are in a currency that is not USD, and no conversion exists.
+    Currency(String),
 }
 
 impl Refusal {
@@ -806,6 +818,7 @@ impl Refusal {
             Refusal::Missing(v) => format!("missing {}", v.join("+")),
             Refusal::ShortHistory(_) => "history too short".to_string(),
             Refusal::NoPriors(_) => "no table cell".to_string(),
+            Refusal::Currency(c) => format!("reporting currency {c}"),
         }
     }
 }
@@ -819,6 +832,7 @@ impl fmt::Display for Refusal {
             Refusal::Missing(v) => write!(f, "necessary variable with no value: {}", v.join(", ")),
             Refusal::ShortHistory(m) => write!(f, "history too short: {m}"),
             Refusal::NoPriors(m) => write!(f, "no table cell: {m}"),
+            Refusal::Currency(c) => write!(f, "reporting currency {c}, no conversion"),
         }
     }
 }
@@ -1061,6 +1075,9 @@ pub fn build(inputs: &AutoInputs, table: &ProcessTable, fade: &[FadeCell], marke
     let mut rows: Vec<ExplainRow> = Vec::new();
     let mut row = |input: &str, value: String, source: &str, rule: &str| rows.push(ExplainRow { input: input.into(), value, source: source.into(), rule: rule.into() });
 
+    if !is_usd(&inputs.currency) {
+        return Err(Refusal::Currency(inputs.currency.clone()));
+    }
     if opts.valuation {
         if inputs.status == "ERROR" {
             return Err(Refusal::NoData(inputs.error.clone().unwrap_or_else(|| "the data cannot be read".into())));

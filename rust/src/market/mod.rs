@@ -27,6 +27,7 @@ pub mod earnings_dates;
 pub mod estimates_cache;
 pub mod estimates_cli;
 pub mod fmp;
+pub mod fund_holdings;
 pub mod fred_api;
 pub mod intraday;
 pub mod keys;

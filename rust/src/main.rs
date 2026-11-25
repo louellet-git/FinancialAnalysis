@@ -39,6 +39,7 @@ USAGE:
                                                   stochastic rate models (Rust); see below
   fa vol fit heston|bates --symbol T --date D [--rate R] [--expiry-max DAYS]
                                                   fit Heston or Bates to a stored option snapshot (fa vol --help)
+  fa usage record|show ...                        tokens by ticket, head and agent type from session transcripts (fa usage --help)
   fa dcf drivers|classic|scenarios|models ...     Monte Carlo DCF in Rust (fa dcf --help)
   fa selftest golden [--case NAME] [--cases PATH] [--update REASON [--case NAME | --all]]
                                                   stored commands with the SHA-256 of their expected output; an input file that changed makes a case SKIPPED (fa selftest golden --help)
@@ -56,6 +57,7 @@ USAGE:
                                                   option chain of today, or the surface of past dates from daily closes (fa options --help)
   fa prices show TICKER [--from D] [--to D] | last TICKER... | check TICKER... [--sources A,B]
                                                   rows of the cache, last close, or a cross-check of two sources
+  fa fund holdings TICKER [--cache DIR] [--top N]  ETF holdings from the newest SEC N-PORT report
   fa estimates get TICKER... [--tickers-file F] [--endpoints LIST] [--momentum] [--refresh]
                                                   analyst consensus EPS, price targets, surprises into data/raw (Nasdaq site, no key)
   fa estimates show TICKER [--price P]            consensus by period, revisions, forward P/E, target against the last close
@@ -79,6 +81,7 @@ USAGE:
   fa trade backtest [--bot ID]... [--max-risk N] [--out FILE] [-v]   backtest the option bots (fa trade backtest --help)
   fa trade paper [BOT]... [--no-refresh] [--no-live]   forward paper trading (needs --no-live: the live chain is refused) (fa trade paper --help)
   fa trade premium [--horizon N] [--lag N]   implied against realised variance of SPY (VIX 21 days, VIX1D 1 day)
+  fa algo run|replay --strategy demo [--date D] [--poll-secs N] [--max-pos N] [--max-loss USD] ...   algo engine, own paper simulator, no order (fa algo --help)
   fa sync [TICKER...] [--tickers-file F] [--only A,B] [--skip A,B] [--force] [--dry-run] [--max-minutes N]
                                                   bring all cached data sets up to date, only the old ones, one queue for each host (fa sync --help)
   fa sync --status [TICKER...]                    age of each data set from the cache files, no request
@@ -333,6 +336,10 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
             Ok(code) => Ok(ExitCode::from(code as u8)),
             Err(e) => Ok(usage_error(&e)),
         },
+        Some("fund") => match financial_analysis::market::fund_holdings::run(&fa.repo, &args[1..]) {
+            Ok(code) => Ok(ExitCode::from(code as u8)),
+            Err(e) => Ok(usage_error(&e)),
+        },
         Some("estimates") => match financial_analysis::market::estimates_cli::run_estimates(&fa.repo, &args[1..]) {
             Ok(code) => Ok(ExitCode::from(code as u8)),
             Err(e) => Ok(usage_error(&e)),
@@ -377,7 +384,15 @@ fn dispatch(fa: &Fa, args: &[String]) -> financial_analysis::Result<ExitCode> {
             },
             _ => Ok(usage_error("trade needs a command: backtest, fetch, paper or premium")),
         },
+        Some("usage") => match financial_analysis::usage::command(&fa.repo, &args[1..]) {
+            Ok(code) => Ok(ExitCode::from(code as u8)),
+            Err(e) => Ok(usage_error(&e)),
+        },
         Some("board") => match financial_analysis::board_check::command(&fa.repo, &args[1..]) {
+            Ok(code) => Ok(ExitCode::from(code as u8)),
+            Err(e) => Ok(usage_error(&e)),
+        },
+        Some("algo") => match financial_analysis::trading::algo::cli::command(&fa.repo, &args[1..]) {
             Ok(code) => Ok(ExitCode::from(code as u8)),
             Err(e) => Ok(usage_error(&e)),
         },

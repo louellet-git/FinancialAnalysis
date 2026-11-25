@@ -61,6 +61,10 @@ anchors = [
     "us-gaap/IncomeTaxExpenseBenefit",
     "us-gaap/RegulatedAndUnregulatedOperatingRevenue",
     "us-gaap/RevenuesNetOfInterestExpense",
+    "ifrs-full/Revenue",
+    "ifrs-full/ProfitLoss",
+    "ifrs-full/ProfitLossAttributableToOwnersOfParent",
+    "ifrs-full/CashFlowsFromUsedInOperatingActivities",
 ]
 
 # ============================================================================
@@ -76,6 +80,7 @@ tags = [
     "us-gaap/Revenues",
     "us-gaap/RegulatedAndUnregulatedOperatingRevenue",
     "us-gaap/RevenuesNetOfInterestExpense",
+    "ifrs-full/Revenue",
 ]
 formulas = [
     "net_interest_income + noninterest_income",
@@ -154,6 +159,7 @@ tags = [
     "us-gaap/CostOfRevenue",
     "us-gaap/CostOfGoodsAndServicesSold",
     "us-gaap/CostOfGoodsSold",
+    "ifrs-full/CostOfSales",
 ]
 
 [[variable]]
@@ -161,6 +167,7 @@ name = "gross_profit"
 statement = "income_statement"
 tags = [
     "us-gaap/GrossProfit",
+    "ifrs-full/GrossProfit",
 ]
 formulas = ["revenue - cogs_total"]
 
@@ -259,6 +266,7 @@ name = "operating_income"
 statement = "income_statement"
 tags = [
     "us-gaap/OperatingIncomeLoss",
+    "ifrs-full/ProfitLossFromOperatingActivities",
 ]
 formulas = ["gross_profit - operating_expenses_total"]
 
@@ -283,6 +291,7 @@ tags = [
     "us-gaap/InterestExpenseNonoperating",
     "us-gaap/InterestExpenseDebt",
     "us-gaap/InterestAndDebtExpense",
+    "ifrs-full/InterestExpense",
 ]
 formulas = ["interest_paid"]
 
@@ -330,6 +339,7 @@ core = true
 tags = [
     "us-gaap/IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest",
     "us-gaap/IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments",
+    "ifrs-full/ProfitLossBeforeTax",
 ]
 formulas = ["income_before_tax_domestic + income_before_tax_foreign"]
 
@@ -356,6 +366,7 @@ statement = "income_statement"
 core = true
 tags = [
     "us-gaap/IncomeTaxExpenseBenefit",
+    "ifrs-full/IncomeTaxExpenseContinuingOperations",
 ]
 
 [[variable]]
@@ -365,6 +376,7 @@ core = true
 note = "Net income that belongs to the shareholders of the parent company."
 tags = [
     "us-gaap/NetIncomeLoss",
+    "ifrs-full/ProfitLossAttributableToOwnersOfParent",
 ]
 formulas = ["net_income_incl_nci - net_income_noncontrolling", "net_income_incl_nci", "net_income_to_common"]
 
@@ -373,6 +385,7 @@ name = "net_income_incl_nci"
 statement = "income_statement"
 tags = [
     "us-gaap/ProfitLoss",
+    "ifrs-full/ProfitLoss",
 ]
 
 [[variable]]
@@ -380,6 +393,7 @@ name = "net_income_noncontrolling"
 statement = "income_statement"
 tags = [
     "us-gaap/NetIncomeLossAttributableToNoncontrollingInterest",
+    "ifrs-full/ProfitLossAttributableToNoncontrollingInterests",
 ]
 
 [[variable]]
@@ -416,6 +430,7 @@ tags = [
     "us-gaap/DepreciationDepletionAndAmortization",
     "us-gaap/DepreciationAndAmortization",
     "us-gaap/DepreciationAmortizationAndAccretionNet",
+    "ifrs-full/DepreciationAndAmortisationExpense",
 ]
 formulas = ["depreciation + opex_amortization?"]
 
@@ -436,6 +451,7 @@ unit = "USD/shares"
 memo = true
 tags = [
     "us-gaap/EarningsPerShareBasic",
+    "ifrs-full/BasicEarningsLossPerShare",
 ]
 
 [[variable]]
@@ -445,6 +461,7 @@ unit = "USD/shares"
 memo = true
 tags = [
     "us-gaap/EarningsPerShareDiluted",
+    "ifrs-full/DilutedEarningsLossPerShare",
 ]
 
 [[variable]]
@@ -455,6 +472,7 @@ memo = true
 tags = [
     "us-gaap/WeightedAverageNumberOfSharesOutstandingBasic",
     "us-gaap/WeightedAverageLimitedPartnershipUnitsOutstanding",
+    "ifrs-full/WeightedAverageShares",
 ]
 
 [[variable]]
@@ -467,6 +485,7 @@ tags = [
     "us-gaap/WeightedAverageNumberOfDilutedSharesOutstanding",
     "us-gaap/WeightedAverageLimitedPartnershipUnitsOutstandingDiluted",
     "us-gaap/WeightedAverageNumberOfLimitedPartnershipAndGeneralPartnershipUnitOutstandingBasicAndDiluted",
+    "ifrs-full/AdjustedWeightedAverageShares",
 ]
 formulas = ["shares_basic"]
 
@@ -484,6 +503,8 @@ tags = [
     "us-gaap/CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
     "us-gaap/CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsIncludingDisposalGroupAndDiscontinuedOperations",
     "us-gaap/Cash",
+    "ifrs-full/CashAndCashEquivalents",
+    "ifrs-full/Cash",
 ]
 
 [[variable]]
@@ -579,6 +600,7 @@ name = "total_current_assets"
 statement = "balance_sheet"
 tags = [
     "us-gaap/AssetsCurrent",
+    "ifrs-full/CurrentAssets",
 ]
 
 [[variable]]
@@ -668,6 +690,7 @@ core = true
 note = "A filer with no Assets tag: the total of liabilities and equity is the same amount."
 tags = [
     "us-gaap/Assets",
+    "ifrs-full/Assets",
 ]
 formulas = ["total_liabilities_and_equity"]
 
@@ -773,6 +796,7 @@ tags = [
     "us-gaap/LongTermDebtAndCapitalLeaseObligationsCurrent",
     "us-gaap/ConvertibleDebtCurrent",
     "us-gaap/ConvertibleNotesPayableCurrent",
+    "ifrs-full/CurrentPortionOfLongtermBorrowings",
 ]
 formulas = ["long_term_debt_total - long_term_debt"]
 
@@ -795,6 +819,7 @@ tags = [
     "us-gaap/LongTermNotesPayable",
     "us-gaap/ConvertibleDebtNoncurrent",
     "us-gaap/ConvertibleLongTermNotesPayable",
+    "ifrs-full/LongtermBorrowings",
 ]
 formulas = ["long_term_debt_total - long_term_debt_current"]
 
@@ -816,6 +841,7 @@ note = "All interest-bearing debt. Operating leases are not included. Filers tag
 tags = [
     "us-gaap/DebtLongtermAndShorttermCombinedAmount",
     "us-gaap/DebtAndCapitalLeaseObligations",
+    "ifrs-full/Borrowings",
 ]
 formulas = ["debt_current? + long_term_debt", "short_term_borrowings? + long_term_debt_total"]
 
@@ -948,6 +974,7 @@ note = "Equity that belongs to the shareholders of the parent company."
 tags = [
     "us-gaap/StockholdersEquity",
     "us-gaap/PartnersCapital",
+    "ifrs-full/EquityAttributableToOwnersOfParent",
 ]
 formulas = ["total_equity_incl_nci - noncontrolling_interest?"]
 
@@ -995,6 +1022,7 @@ core = true
 tags = [
     "us-gaap/NetCashProvidedByUsedInOperatingActivities",
     "us-gaap/NetCashProvidedByUsedInOperatingActivitiesContinuingOperations",
+    "ifrs-full/CashFlowsFromUsedInOperatingActivities",
 ]
 
 [[variable]]
@@ -1057,6 +1085,7 @@ tags = [
     "us-gaap/PaymentsToAcquireMachineryAndEquipment",
     "us-gaap/PaymentsToAcquireFurnitureAndFixtures",
     "us-gaap/PaymentsToExploreAndDevelopOilAndGasProperties",
+    "ifrs-full/PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities",
 ]
 
 [[variable]]

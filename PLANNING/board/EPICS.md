@@ -37,6 +37,8 @@ move (new facts, time, rates, premium, growth, no model) for a list of stocks, a
 | E2.S2 The parts that the report leaves open | fundamental | `T-20261121-premium-company-part` → `T-20261121-rates-balance-sheet` | now, next |
 | E2.S3 The common part comes from Economics, not from the prices | economics | `T-20261121-economics-view-engine` (needs the SPF loader, pull request 160) → `T-20261121-economics-premium-macro` → `T-20261121-economics-jst-design` | now |
 | E2.S4 The study is engine code, not a script | fundamental | `T-20261121-dcf-engine-integration` | now |
+| E2.S5 The AI build-out: its financing and its limits (a report of 1 to 2 pages for the person) | economics (fundamental gives the filing numbers) | the ticket of the Head of Economics (2026-11-23) | now |
+| E2.S6 Why a fund or a sector is at its level: one-page answers for the person (first: URA, 2026-11-23) | economics (fundamental gives the implied numbers) | the ticket of the Head of Economics | now |
 
 ## E3. Value each type of company
 
@@ -45,10 +47,11 @@ a recorded reason for no model, and each report that the person uses passed the 
 
 | Story | Lead | Tickets, in order | Mark |
 |---|---|---|---|
-| E3.S1 Models for the classes that the cash-flow model does not fit | fundamental | `T-20261119-evaluator-bank` → `T-20261120-evaluator-utility` → `T-20261119-evaluator-insurer` → `T-20261119-evaluator-reit` → `T-20261121-evaluator-captive-finance` → `T-20261119-evaluator-etf-fund` → `T-20261119-evaluator-other-classes` | next |
+| E3.S1 Models for the classes that the cash-flow model does not fit | fundamental | `T-20261119-evaluator-bank` → `T-20261120-evaluator-utility` → `T-20261119-evaluator-insurer` → `T-20261119-evaluator-reit` → `T-20261121-evaluator-captive-finance` → `T-20261119-evaluator-other-classes` (the fund look-through is in E3.S5) | next |
 | E3.S2 The judgments of the ticker models become rules | fundamental | `T-20261121-dcf-engine-from-tickers` | next |
 | E3.S3 Ticker reports | fundamental | `T-20261025-ibm-q2-grading`, `T-20261119-duol-depth` (a decision of the person), `T-20261025-orcl-frontier-run` | next |
 | E3.S4 Old tickets | fundamental | `T-20261119-engine-fixed-answer-tests` (names Pytest; the repo has no Python), `T-20261025-v3-reproducibility-drift` (names a Python module) | old |
+| E3.S5 Value what a fund holds: remove the limits of the URA page (owner word 2026-11-23) | technology (data), fundamental (models) | dated fund holdings from the SEC form N-PORT → a scout of which holdings our SEC data can read (foreign filers) → the uranium prices and the physical trust in the store → a design of a value model for a miner → `T-20261119-evaluator-etf-fund` (the look-through) | now (the small parts), next (after the token reset) |
 
 ## E4. Trade options and arbitrage from the quant models
 
@@ -99,11 +102,31 @@ open on `main`): `T-20261121-nvda-assumption-records`, `T-20261120-agent-teams-f
 
 ## Order across the epics
 
-Agreed with the person on 2026-11-21, until the reset of the weekly token limit (2026-11-25, 11:00 Toronto
-time; 71% was used on 2026-11-21). It is an order, not a limit: no work is stopped.
+**Week of 2026-11-25 to 2026-12-02 (the token limit resets at 16:00 UTC on each date). Agreed with the
+person on 2026-11-25 ("Agreed to the week"); it is an order and a pace, not a stop.**
 
-1. E2.S1, the week report to its end.
-2. E5.S1 (the data audit) and E6.S5 (the two monitoring scripts).
-3. E4.S2 (the arbitrage register, in review) and E4.S1 after the live run of 2026-11-23.
-4. E1.S1, the T1 correction of the projection test.
-5. All other backlog (company types, volatility models, new studies) starts after the reset.
+Facts of the week before: the limit reached 99% on Monday 2026-11-23, and the heads stopped for two days.
+All projects of the person share the limit. The shares below are estimates from the cost of that week.
+
+| Order | Story | Result of the week | Head | Share of the week (estimate) |
+|---|---|---|---|---|
+| 1 | E4.S1 | Owner word 2026-11-25: the quant team begins algo trading on the Alpaca paper account (live data; the broker makes the fills, the spreads and the fees). First a one-page plan, then the gate "Order code (paper only)", then the first paper orders; the always-on host | quant, technology | 8% |
+| 2 | E3.S5 | The IFRS mapping for Cameco and the size of the rest; the scout of the sources outside the SEC; the design of a miner model (one page, for the person) | technology, fundamental | 10% |
+| 3 | E1.S1 | The T1 correction of the projection test, with its gate | fundamental | 6% |
+| 4 | E2.S1 | The S&P 100 part, after the review of the three S&P pieces by the person | fundamental | 5% |
+| 5 | E5.S1, E6.S5 | The data audit closed; the usage table of each head at the close of each ticket | technology, each head | 3% |
+| - | Gates | The reviews of the work above | quality | 6% |
+| - | Staff | The board map, the reads before the person | staff | 2% |
+| - | Reserve | The questions of the person and new requests | - | 5% |
+| | | **Financial Analysis in all (owner word 2026-11-25: 45%; Scan Support 15%, ShredTree 30%)** | | **45%** |
+
+Below the line if the 45% is used: the uranium and gold series, the last step of the FRED replacement,
+the first real run of the economics view. They move to the next week; no result is lost.
+
+Not in this week: the models for banks, utilities, insurers and REITs; the volatility models; the token
+calculator; the live data view; the trade-level backtest.
+
+Pace: Financial Analysis uses about 6% to 7% of the week for each day. The Head of Staff measures it as the
+cost of the six sessions since the reset (`get_session`; about 850 USD at list price is 45%, an estimate
+from the week before) and tells the heads once if it is above 40% of that on Friday, 65% on Sunday or 90%
+on Tuesday (each at 16:00 UTC).

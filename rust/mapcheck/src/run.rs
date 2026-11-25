@@ -57,6 +57,8 @@ pub struct TickerReport {
     pub core_filled: usize,
     pub seconds: f64,
     pub company: Option<Company>,
+    /// The currency of the values: "USD", or the reporting currency of an ifrs-full filer (no conversion), or "unknown".
+    pub currency: String,
 }
 
 /// The companyfacts file for a ticker: `<cache>/<TICKER>/company_facts.json[.gz]`.
@@ -102,6 +104,7 @@ fn error_report(ticker: &str, message: String, seconds: f64) -> TickerReport {
         core_filled: 0,
         seconds,
         company: None,
+        currency: "USD".to_string(),
     }
 }
 
@@ -137,7 +140,7 @@ pub fn check_cached(registry: &Registry, cache: &Path, ticker: &str, facts: &Com
 
 fn check_facts_with(registry: &Registry, ticker: &str, facts: &CompanyFacts, n_periods: usize, as_of: i64, keep_values: bool, fill: Option<Fill>) -> TickerReport {
     let start = Instant::now();
-    if !facts.has_us_gaap() {
+    if !facts.has_statements() {
         if registration_only(facts) {
             // A new US registrant: the registration statement (form S-1) has no XBRL values.
             let mut report = error_report(ticker, String::new(), start.elapsed().as_secs_f64());
@@ -204,6 +207,24 @@ fn check_facts_with(registry: &Registry, ticker: &str, facts: &CompanyFacts, n_p
         template = "no-revenue";
         judged = false;
     }
+    let currency = facts.currency().unwrap_or_else(|| "unknown".to_string());
+    if currency == "unknown" {
+        findings.push(Finding {
+            severity: Severity::Warn,
+            code: "currency".to_string(),
+            detail: "an ifrs-full filer with no total assets in a currency unit: the currency is not known, and the facts give no values".to_string(),
+        });
+    } else if currency != "USD" {
+        findings.push(Finding { severity: Severity::Info, code: "currency".to_string(), detail: format!("all amounts are in {currency} (no conversion to USD)") });
+    }
+    let other = facts.other_currency_facts();
+    if other > 0 {
+        findings.push(Finding {
+            severity: Severity::Info,
+            code: "other_currency_facts".to_string(),
+            detail: format!("{other} total-assets facts in another currency than {currency} are not used"),
+        });
+    }
     let worst = findings.iter().map(|f| f.severity).max().unwrap_or(Severity::Info);
     let status = if !judged {
         Status::Template
@@ -229,6 +250,7 @@ fn check_facts_with(registry: &Registry, ticker: &str, facts: &CompanyFacts, n_p
         latest,
         seconds: start.elapsed().as_secs_f64(),
         company: if keep_values { Some(company) } else { None },
+        currency,
     }
 }
 
@@ -384,7 +406,7 @@ pub fn values_json(registry: &Registry, report: &TickerReport) -> Vec<Value> {
         }
         lines.push(json!({
             "ticker": report.ticker,
-            "form": period.forms.primary(),
+            "form": period.form_label(),
             "period_end": period.end,
             "filed_date": period.filed.clone().unwrap_or_else(|| period.end.clone()),
             "values": values,
@@ -428,14 +450,20 @@ mod tests {
     #[test]
     fn other_filers_with_no_us_gaap_facts_stay_an_error() {
         let registry = Registry::embedded().unwrap();
-        // A foreign registrant (form F-1), a registrant with no registration form, an IFRS
-        // filer with a form S-1 fee fact, and a file with no facts.
-        let ifrs = r#"{"facts":{"ffd":{"TtlFeeAmt":{"units":{"USD":[{"end":"2026-10-20","val":1,"form":"S-1"}]}}},"ifrs-full":{"Assets":{"units":{"USD":[{"end":"2025-12-31","val":1,"form":"20-F"}]}}}}}"#;
-        for other in [fee_facts("ffd", "F-1"), fee_facts("ffd", "S-8"), fee_facts("dei", "20-F"), facts(ifrs), facts(r#"{"facts":{}}"#)] {
+        // A foreign registrant (form F-1), a registrant with no registration form, a filer with
+        // cover facts only, and a file with no facts. (An IFRS filer with ifrs-full facts is mapped.)
+        for other in [fee_facts("ffd", "F-1"), fee_facts("ffd", "S-8"), fee_facts("dei", "20-F"), facts(r#"{"facts":{}}"#)] {
             let report = check_facts(&registry, "X", &other, 12, 0, false);
             assert_eq!(report.status, Status::Error);
             assert!(report.error.unwrap().starts_with("not a us-gaap filer"));
         }
+    }
+
+    #[test]
+    fn an_ifrs_filer_is_mapped_not_an_error() {
+        let registry = Registry::embedded().unwrap();
+        let ifrs = r#"{"facts":{"ffd":{"TtlFeeAmt":{"units":{"USD":[{"end":"2026-10-20","val":1,"form":"S-1"}]}}},"ifrs-full":{"Assets":{"units":{"USD":[{"end":"2025-12-31","val":1,"form":"20-F"}]}}}}}"#;
+        assert!(check_facts(&registry, "X", &facts(ifrs), 12, 0, false).error.is_none());
     }
 
     #[test]

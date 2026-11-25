@@ -177,6 +177,7 @@ mod tests {
             values: vec![None; n],
             sources: vec![None; n],
             raw_extras: Default::default(),
+            form: None,
         };
         for (name, value) in values {
             p.values[registry.var(name)] = Some(*value);

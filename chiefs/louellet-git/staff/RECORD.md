@@ -227,3 +227,110 @@ machine, with the script output in the token ledger of each head? Answer of the 
 overly complicated".
 Done: the simplest form. The counts stay on each machine; a head runs `fa usage show` when I ask. No push
 path, no permission rule, no tie to the ledger. I read the cost by head myself (`get_session`).
+
+## 2026-11-21 about 22:12 UTC (chat)
+Words: "Ignore the new quality and risk session we'll stick to one"
+Done: the session test is stopped before a new session started. The old session is the Head of Quality and
+Risk again (its title goes back, it takes gates again). No context change of a head.
+
+## 2026-11-23 about 04:39 UTC (chat, from speech)
+Words: "Can you have some research done? I think it's fundamental research / economist. Why did Anthropic
+IPO? Like, I thought that they were making revenue. I feel like they already had enough donors. I don't
+understand why they had to IPO. Like, what do they need that debt for? And it sounds like they got a lot
+of debt. Like, I want to understand the full scope. So if you can make like a 1 to 2 page report on like
+why they needed the debt in the first place, or like why they wanted it. And is there anything ahead that
+might indicate like, hey, AI might slow down? ... Not just from like an investing perspective, but more
+from like a technological, physics, etc."
+Done: the exact words went to the Head of Economics (it leads; ticket with story E2.S5) and a short note
+to the Head of Fundamental Research (the filing numbers). Conditions: sources for each fact, the conflict
+disclosure (the agents run on Anthropic models), no valuation, a small run because of the weekly limit.
+The report comes to me first.
+
+## 2026-11-23 about 15:01 UTC (chat)
+The AI build-out report (2 pages, Head of Economics, Quality and Risk PASS) went to the person at about
+04:55 UTC. He then sent a video link ("All Code Is Slop (Except Mine)") with: "What can we take for our
+purposes? Keep it concise and lean". I read the talk page of the conference (the video itself did not
+load) and gave a short table; no rule was changed. A question about the repo `the-heads` was for a
+different project ("My bad, meant for another repo"); I read it and changed nothing.
+Words, then: "Ok now something for you, one page - why is URA at its current level? One pager."
+Done: the task went to the Head of Economics (it leads; story E2.S6), with a small request to the Head of
+Fundamental Research (what the prices of the largest holdings imply). The page comes to me first.
+Then, about 15:03 UTC: "I want an analysis including past 3 years". Done: one line to the Head of
+Economics: the URA page explains the level with the price path of the last 3 years and its main turns.
+
+## 2026-11-23 about 15:22 UTC (chat)
+Words: "Good first draft for the URA. On the limitations section can we fill that out/begin work on removing
+limitations."
+Done: the Head of Economics makes the limits a table on the page (limit, effect, what removes it, who,
+when). New story E3.S5 on the board map. Technology: dated fund holdings from an official source, a scout
+of which holdings our SEC data can read, the uranium and trust data. Fundamental Research: a design of a
+value model for a miner, the fund look-through, the beta in the engine. Small parts now, the large parts
+after the token reset. The draft reached the person before me; I said the rule once to that head.
+
+## 2026-11-23 about 15:24 UTC (chat)
+The person asked for a one-page answer for GLD (the gold fund) in the same form as the URA page, and wants
+the two pages together. (His reason is private and is not in this file.)
+Done: the task went to the Head of Economics (story E2.S6). The two pages come to me first.
+
+## 2026-11-23 about 15:38 UTC (question dialog)
+The URA and GLD pages (Head of Economics, both passed by Quality and Risk) went to the person at about
+15:36 UTC. The scout of the URA holdings (Head of Technology, PR 222): our SEC mapping reads 25.8% of the
+fund; 35.6% is IFRS filers (Cameco 22.2%); 27.0% does not file with the SEC; 11.6% is trusts and collateral.
+Question: shall the Head of Technology add the IFRS standard to our data mapping after the token reset,
+with Cameco as the first test? Answer of the person: "Yes, Cameco first (Recommended)".
+Done: the answer went to the Head of Technology. One company first, then the real size of the rest comes
+to me before more is built.
+
+## 2026-11-23 about 15:47 UTC (chat)
+Words (on the 27% of the URA holdings that do not file with the SEC): "So let's grab the other 27%"
+Done: item 5 of the story E3.S5 for the Head of Technology, after the reset and after the Cameco test: a
+read-only scout of the sources of those companies (national filing systems first), then one source first,
+then the real size of the rest comes to me. A key or terms that need the person come to me as a question.
+
+## 2026-11-25 about 16:07 UTC (chat)
+Words: "Scope out work for the week."
+Done: a dream pass of my file (my context was at 738,688 of 784,000). Facts read: the weekly limit reset at
+16:00 UTC (0% used; next reset 2026-12-02 16:00 UTC); last week reached 99% on Monday 2026-11-23 and the
+heads stopped for two days. A proposed scope and split for the week went to the person in the chat and is
+in `PLANNING/board/EPICS.md` as a proposal.
+
+## 2026-11-25 about 16:13 UTC (chat)
+Words: "Agreed to the week, for the quant side please find a way for the quant team to be able to begin algo
+trading on a paper account (continuous data w fees and spreads and all, not simulated by us ideally).
+Proceed"
+Done: the week is agreed in `PLANNING/board/EPICS.md`; one message to each head with its part and the
+pace. The quant goal went to the Head of Quant Research as the first work of story E4.S1 (a one-page plan
+to me first; paper account only; the controls of section 8 and the gate before the first order). Its share
+of the week went from 8% to 14%, from the reserve.
+
+## 2026-11-25 about 16:15 UTC (chat)
+Words (the split of the weekly token limit): "45% Financial analysis's, 15% scan support and 30% shred-tree."
+Done: the shares of the week in `PLANNING/board/EPICS.md` are scaled from 80% to 45%; the uranium and gold
+series, the last FRED step and the first run of the economics view go below the line. One short message to
+each head with its new share.
+
+## 2026-11-25 about 16:24 UTC (dialog)
+Question: the quant plan for paper trading has three steps (A: 1 SPY share; B: 1 SPY option; C: 1 SPY
+condor). Control 6 of section 8 says "no option". Do you permit option orders on the Alpaca paper account
+(1 contract, defined risk only), after step A passes its gate?
+Answer: "Yes, permit (Recommended)"
+Done: told Quant and Quality. Quality reviews the new text of control 6 before step B. Paper account only;
+no margin; 1 contract.
+
+## 2026-11-25 about 16:40 UTC (dialog)
+Question: the miner value model design is ready (one page). The first build is about 6% to 8% of the weekly
+limit for one company, and the full test needs about 3 to 4 more weeks. A small step with no new code
+exists: read the uranium price that a stock price needs from the value tables that the miners publish
+(about 1% to 2%). Which path do you want? (Choices: small step first; build the model; stop here.)
+Answer: "Small step first (Recommended)"
+Done: told Fundamental Research. First the check of which technical reports have a value table, then the
+hand measurement, from the reserve of the week. No build before he sees the number and says yes.
+
+## 2026-11-25 about 17:01 UTC (dialog)
+Question: the small step is done (the page "Uranium Price Needed: NexGen"); do you want the build of the
+miner model? (Choices: build next week; build this week; stop here.)
+Answer (his own text, no choice): "I’m not sure I understand, the pdf doesn’t really read well/im not sure
+what it’s trying to tell me"
+Done: I gave him the message of the page in plain words. The page goes back to Fundamental Research for a
+plain form. No decision on the build yet. My fault: I checked the numbers and the form and not if a reader
+with no context gets the message.

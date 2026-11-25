@@ -15,6 +15,7 @@
     clippy::manual_is_multiple_of
 )]
 
+pub mod algo;
 pub mod bots;
 pub mod calendar;
 pub mod chain;
