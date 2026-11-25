@@ -23,7 +23,7 @@ dollars, except as noted. The HTML has no page numbers; the section names are gi
 | IsoEnergy | "approximately 27.8%"; balance sheet line "Investment in associate 181,010" | Text and balance sheet |
 | Debentures of 2024 | "As at November 9, 2026, US$250 million of the principal of the 2024 Debentures remain outstanding"; conversion price US$10.73 | Text |
 | Debentures of 2023 | US$110 million; US$40 million converted on 2026-09-15, US$70 million on 2026-10-22; "no longer outstanding" on 2026-11-09 | Text |
-| A second debt number | "the aggregate US$320 million principal amount of the Debentures" | Text (two places). It does not agree with US$250 million; the filing does not explain it |
+| The debt on 2026-09-30 | "the aggregate US$320 million principal amount of the Debentures" | Text (two places). It is US$250 million plus the US$70 million of the 2023 debentures that were converted on 2026-10-22: the debt at the date of the cash. The share count of 2026-11-09 has those new shares. US$250 million agrees with the share date; US$320 million with the cash date (found by the auditor) |
 | Shares | "As at November 9, 2026, there were 688,034,761 Shares" | Text |
 | Project status | Licence to prepare the site and construct: 2026-03-05; "Licensed construction activities commenced on June 8, 2026" | Text. First production date: not found |
 
@@ -47,7 +47,7 @@ Market value = 688.034761 x 6.40 x fx. The needed price is the straight line bet
 |---|---:|---:|---:|---|---|---:|
 | Table 2 of the page (NPV with the costs of the 2024 update) | 1.4231 | 250 | 6,266.5 | 5,844.2 at US$80 | 6,832.6 at US$90 | US$84.3 |
 | The exchange rate of the company's table | 1.3333 | 250 | 5,871.2 | 5,847.2 at US$80 | 6,833.2 at US$90 | US$80.2 |
-| The second debt number | 1.4231 | 320 | 6,266.5 | 5,744.6 at US$80 | 6,733.0 at US$90 | US$85.3 |
+| The debt of 2026-09-30 (a date mix) | 1.4231 | 320 | 6,266.5 | 5,744.6 at US$80 | 6,733.0 at US$90 | US$85.3 |
 | NPV with the costs of the 2021 study | 1.4231 | 250 | 6,266.5 | 6,245.8 at US$70 | 7,224.2 at US$80 | US$70.2 |
 
 Blocks at US$80 and US$90 (fx 1.4231): mine 4,890 and 5,840; uranium held 2.7 x 80 x 1.4231 = 307.4 and 345.8; cash and
@@ -78,3 +78,30 @@ Denison has no price file in the data store, so its market value was not calcula
 - No value for the ground outside the mine plan (the needed price is too high). No delay and no building risk in the
   table (the needed price is too low). All pounds at one flat price. The 8% rate is the company's.
 - A measurement only: not a value of the company, not an input of a model, not a trade view.
+
+## 5. Added after the audit of 2026-11-25 (Head of Quality and Risk: REVISE, three major points; all applied)
+
+- The PDF of the first version had damaged text where a line had two dollar signs (the converter read them as a
+  formula). The PDF is now made with `pandoc -f gfm-tex_math_dollars`, and its text is checked with `pdftotext`.
+- More numbers of document A (read by the second agent; C$ thousands unless noted):
+  - Change in cash, nine months to 2026-09-30: "$159.5 million associated with the development of the Rook I Project
+    including detailed engineering, procurement and construction activities"; "$16.9 million of advances made for the
+    Rook I Project construction"; "$99.8 million of exploration expenditures in connection with the development of
+    the Rook I Project prior to the receipt of the Licence and 2026 exploration drilling".
+  - The 2024 update: "an expected increase in pre-production capital costs from approximately C$1.3 billion in the
+    Rook I FS Technical Report to approximately C$2.2 billion". The capital spent to date and the remaining capital:
+    not found as one number.
+  - Funding: "will continue to require additional financing to fund construction of the Rook I Project to
+    completion". Options: 45,985,100 on 2026-11-09. The 2024 debentures convert into 23,299,161 shares at US$10.73.
+  - Balance sheet: "Mineral property, plant and equipment" 979,026 (2025-12-31: 7,565); "Exploration and evaluation
+    assets" 161,796 (812,270).
+- The new row of Table 3: the sum with 159.5 + 16.9 = 176.4 million added back (the table of the company subtracts
+  the full build cost, and this part is paid and has left the cash). Sums: 6,020.6 at US$80 and 7,009.0 at US$90;
+  market value 6,266.5; needed price US$82.5. Only the 2026 part of the paid capital is known; the part paid before
+  2026 is not in this row.
+- Directions of the limits (on the page): too high, because the ground outside the plan has no value, the mine value
+  is not moved forward from its cost base of Q4 2023, and the paid part of the build cost is counted two times; too
+  low, because the table has no delay and no building risk and no new share is counted for the financing that the
+  company says it needs.
+- Table 1: the rows of Denison, Uranium Energy and Cameco were read one time, by one agent, and are not audited.
+  Energy Fuels was not opened: the page says "four miners that we opened".
