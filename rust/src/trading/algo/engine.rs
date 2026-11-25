@@ -25,6 +25,8 @@ use std::time::Instant;
 #[derive(Debug, Clone)]
 pub struct Config {
     pub max_pos: i64,
+    /// Reject an order that would make the position negative (the paper broker is long only in step A).
+    pub long_only: bool,
     pub max_loss: f64,
     pub spread_share: f64,
     pub latency_ms: i64,
@@ -38,7 +40,7 @@ pub struct Config {
 
 impl Config {
     pub fn to_json(&self) -> Value {
-        json!({"max_pos": self.max_pos, "max_loss": self.max_loss, "spread_share": self.spread_share, "latency_ms": self.latency_ms,
+        json!({"max_pos": self.max_pos, "long_only": self.long_only, "max_loss": self.max_loss, "spread_share": self.spread_share, "latency_ms": self.latency_ms,
                "fee": self.fee, "until_secs_new_york": self.until_secs, "stop_file": self.stop_file.display().to_string(), "feed": self.feed})
     }
 }
@@ -48,6 +50,8 @@ pub enum Stop {
     Kill,
     Until,
     MaxLoss,
+    /// The order hook asked for a stop (its own loss stop, or three API errors in a row).
+    Broker,
     EndOfInput,
 }
 
@@ -57,12 +61,14 @@ impl Stop {
             Stop::Kill => "kill file",
             Stop::Until => "end time",
             Stop::MaxLoss => "max loss",
+            Stop::Broker => "broker stop",
             Stop::EndOfInput => "end of input",
         }
     }
 }
 
 struct Pending {
+    id: usize,
     side: Side,
     qty: i64,
     limit: Option<f64>,
@@ -117,6 +123,33 @@ impl Summary {
     }
 }
 
+/// One decision of the strategy, after the engine checks (max position, long only). `pos_before` is the simulator position
+/// after the pending orders, before this decision.
+pub struct DecisionCtx<'a> {
+    pub id: usize,
+    pub side: Side,
+    pub qty: i64,
+    pub limit: Option<f64>,
+    pub pos_before: i64,
+    pub input: &'a Input,
+}
+
+/// A receiver of the decisions. The paper broker (`paper.rs`) is the only one. The engine keeps its own simulator fill: the
+/// hook gets the simulator result for each decision, so that the journal can show both next to each other.
+pub trait OrderHook {
+    /// Called for each valid input before the engine acts (the hook reads the state of its orders).
+    fn poll(&mut self, input: &Input);
+    fn decision(&mut self, ctx: &DecisionCtx);
+    /// The simulator fill, or the cancel of the simulator, of decision `id` (the journal record).
+    fn sim_result(&mut self, id: usize, record: &Value);
+    /// A stop: cancel the open orders and close the position. `sim` is the simulator close (the journal record).
+    fn stop(&mut self, why: Stop, input: &Input, sim: Option<&Value>);
+    /// A reason to stop at once (a loss stop of the hook, three API errors in a row).
+    fn stop_request(&self) -> Option<String>;
+    /// The end of the run: write what is open.
+    fn finish(&mut self);
+}
+
 pub struct Engine<S: Strategy> {
     cfg: Config,
     strat: S,
@@ -135,11 +168,19 @@ pub struct Engine<S: Strategy> {
     pub stopped: Option<Stop>,
     pub journal: Vec<Value>,
     sink: Option<Box<dyn Write>>,
+    hook: Option<Box<dyn OrderHook>>,
+    next_id: usize,
 }
 
 impl<S: Strategy> Engine<S> {
     pub fn new(cfg: Config, strat: S, sink: Option<Box<dyn Write>>) -> Self {
-        Engine { cfg, strat, pos: 0, cash: 0.0, fees: 0.0, pending: vec![], inputs: 0, fills: 0, rejected: 0, decisions: vec![], compute_ms: vec![], peak: 0.0, max_dd: 0.0, last: None, stopped: None, journal: vec![], sink }
+        Engine { cfg, strat, pos: 0, cash: 0.0, fees: 0.0, pending: vec![], inputs: 0, fills: 0, rejected: 0, decisions: vec![], compute_ms: vec![], peak: 0.0, max_dd: 0.0, last: None, stopped: None, journal: vec![], sink, hook: None, next_id: 0 }
+    }
+
+    /// Connect an order hook (the paper broker). The simulator stays as it is.
+    pub fn with_hook(mut self, hook: Box<dyn OrderHook>) -> Self {
+        self.hook = Some(hook);
+        self
     }
 
     pub fn decisions(&self) -> &[Decision] {
@@ -168,14 +209,16 @@ impl<S: Strategy> Engine<S> {
         pnl
     }
 
-    fn fill(&mut self, side: Side, qty: i64, limit: Option<f64>, decision_ms: i64, inp: &Input, why: &str) {
+    /// Returns the journal record of the fill or of the cancel.
+    fn fill(&mut self, side: Side, qty: i64, limit: Option<f64>, decision_ms: i64, inp: &Input, why: &str) -> Value {
         let half = (inp.ask - inp.bid) / 2.0;
         let price = inp.mid() + side.sign() as f64 * self.cfg.spread_share * half;
         let broken = limit.is_some_and(|l| (side == Side::Buy && price > l) || (side == Side::Sell && price < l));
         let side_text = format!("{side:?}").to_lowercase();
         if broken {
-            self.write(json!({"kind": "cancel", "reason": "limit", "quote_ms": inp.quote_ms, "decision_ms": decision_ms, "side": side_text, "qty": qty, "limit": limit, "fill_price": price}));
-            return;
+            let rec = json!({"kind": "cancel", "reason": "limit", "quote_ms": inp.quote_ms, "decision_ms": decision_ms, "side": side_text, "qty": qty, "limit": limit, "fill_price": price});
+            self.write(rec.clone());
+            return rec;
         }
         let fee = self.cfg.fee * qty as f64;
         self.cash -= side.sign() as f64 * qty as f64 * price + fee;
@@ -183,11 +226,13 @@ impl<S: Strategy> Engine<S> {
         self.pos += side.sign() * qty;
         self.fills += 1;
         let pnl = self.mark(inp.mid());
-        self.write(json!({
+        let rec = json!({
             "kind": "fill", "why": why, "input_kind": inp.kind, "quote_ms": inp.quote_ms, "decision_ms": decision_ms, "fill_ms": inp.read_ms,
             "latency_ms": inp.read_ms - decision_ms, "side": side_text, "qty": qty, "fill_price": price,
             "bid": inp.bid, "ask": inp.ask, "fee": fee, "pos": self.pos, "cash": self.cash, "pnl": pnl
-        }));
+        });
+        self.write(rec.clone());
+        rec
     }
 
     fn fill_due(&mut self, inp: &Input) {
@@ -197,23 +242,35 @@ impl<S: Strategy> Engine<S> {
         let (due, rest): (Vec<Pending>, Vec<Pending>) = std::mem::take(&mut self.pending).into_iter().partition(|p| eligible(p));
         self.pending = rest;
         for p in due {
-            self.fill(p.side, p.qty, p.limit, p.decision_ms, inp, "order");
+            let rec = self.fill(p.side, p.qty, p.limit, p.decision_ms, inp, "order");
+            if let Some(h) = self.hook.as_mut() {
+                h.sim_result(p.id, &rec);
+            }
         }
     }
 
     fn flatten(&mut self, inp: &Input, why: Stop) {
         if !self.pending.is_empty() {
             let n = self.pending.len();
-            self.pending.clear();
+            let gone = std::mem::take(&mut self.pending);
             self.write(json!({"kind": "cancel", "reason": "stop", "cancelled": n, "quote_ms": inp.quote_ms}));
+            if let Some(h) = self.hook.as_mut() {
+                for p in gone {
+                    h.sim_result(p.id, &json!({"kind": "cancel", "reason": "stop", "quote_ms": inp.quote_ms}));
+                }
+            }
         }
+        let mut sim = None;
         if self.pos != 0 {
             let side = if self.pos > 0 { Side::Sell } else { Side::Buy };
-            self.fill(side, self.pos.abs(), None, inp.read_ms, inp, why.label());
+            sim = Some(self.fill(side, self.pos.abs(), None, inp.read_ms, inp, why.label()));
         }
         self.mark(inp.mid());
         self.stopped = Some(why);
         self.write(json!({"kind": "stop", "reason": why.label(), "quote_ms": inp.quote_ms, "pos": self.pos, "pnl": self.pnl_at(inp.mid())}));
+        if let Some(h) = self.hook.as_mut() {
+            h.stop(why, inp, sim.as_ref());
+        }
     }
 
     /// Process one input. Returns `false` when the engine has stopped.
@@ -227,6 +284,9 @@ impl<S: Strategy> Engine<S> {
         }
         self.inputs += 1;
         self.last = Some(inp.clone());
+        if let Some(h) = self.hook.as_mut() {
+            h.poll(inp);
+        }
         if self.cfg.stop_file.exists() {
             self.flatten(inp, Stop::Kill);
             return false;
@@ -241,6 +301,11 @@ impl<S: Strategy> Engine<S> {
             self.flatten(inp, Stop::MaxLoss);
             return false;
         }
+        if let Some(why) = self.hook.as_ref().and_then(|h| h.stop_request()) {
+            self.write(json!({"kind": "broker_stop", "reason": why, "quote_ms": inp.quote_ms}));
+            self.flatten(inp, Stop::Broker);
+            return false;
+        }
         if inp.kind == "bar_open" {
             return true;
         }
@@ -251,15 +316,22 @@ impl<S: Strategy> Engine<S> {
         self.compute_ms.push(compute);
         let mut proj = projected;
         for Intent { side, qty, limit } in intents {
+            let side_text = format!("{side:?}").to_lowercase();
+            if self.cfg.long_only && proj + side.sign() * qty < 0 {
+                self.rejected += 1;
+                self.write(json!({"kind": "reject", "reason": "long only", "quote_ms": inp.quote_ms, "decision_ms": inp.read_ms, "side": side_text, "qty": qty, "pos": self.pos}));
+                continue;
+            }
             let after = proj + side.sign() * qty;
             // The max position clips an order that raises the size of the position.
             let allowed = if after.abs() > proj.abs() { qty - (after.abs() - self.cfg.max_pos).max(0) } else { qty };
-            let side_text = format!("{side:?}").to_lowercase();
             if qty <= 0 || allowed <= 0 {
                 self.rejected += 1;
                 self.write(json!({"kind": "reject", "reason": "max position", "quote_ms": inp.quote_ms, "decision_ms": inp.read_ms, "side": side_text, "qty": qty, "pos": self.pos}));
                 continue;
             }
+            let (id, pos_before) = (self.next_id, proj);
+            self.next_id += 1;
             proj += side.sign() * allowed;
             self.decisions.push(Decision { decision_ms: inp.read_ms, side, qty: allowed });
             self.write(json!({
@@ -267,7 +339,10 @@ impl<S: Strategy> Engine<S> {
                 "compute_ms": compute, "side": side_text, "qty": allowed, "requested_qty": qty, "limit": limit,
                 "bid": inp.bid, "ask": inp.ask, "pos": self.pos, "cash": self.cash, "pnl": pnl
             }));
-            self.pending.push(Pending { side, qty: allowed, limit, decision_ms: inp.read_ms, seq: self.inputs });
+            self.pending.push(Pending { id, side, qty: allowed, limit, decision_ms: inp.read_ms, seq: self.inputs });
+            if let Some(h) = self.hook.as_mut() {
+                h.decision(&DecisionCtx { id, side, qty: allowed, limit, pos_before, input: inp });
+            }
         }
         true
     }
@@ -280,6 +355,9 @@ impl<S: Strategy> Engine<S> {
             } else {
                 self.stopped = Some(Stop::EndOfInput);
             }
+        }
+        if let Some(h) = self.hook.as_mut() {
+            h.finish();
         }
         let mid = self.last.as_ref().map(|l| l.mid()).unwrap_or(0.0);
         let net = self.pnl_at(mid);
@@ -329,7 +407,7 @@ mod tests {
         Input { quote_ms: ms - 50, read_ms: ms, symbol: "SPY".into(), bid, ask, kind: "quote".into() }
     }
     fn cfg() -> Config {
-        Config { max_pos: 100, max_loss: 1000.0, spread_share: 1.0, latency_ms: 0, fee: 0.01, until_secs: 15 * 3600 + 55 * 60, stop_file: std::env::temp_dir().join("fa-algo-no-such-stop-file"), feed: "test".into() }
+        Config { max_pos: 100, long_only: false, max_loss: 1000.0, spread_share: 1.0, latency_ms: 0, fee: 0.01, until_secs: 15 * 3600 + 55 * 60, stop_file: std::env::temp_dir().join("fa-algo-no-such-stop-file"), feed: "test".into() }
     }
     fn buy(q: i64) -> Intent {
         Intent { side: Side::Buy, qty: q, limit: None }
@@ -430,6 +508,19 @@ mod tests {
         let s = e.finish();
         assert_eq!(s.rejected, 1);
         assert_eq!(e.decisions()[1].qty, 20);
+    }
+
+    #[test]
+    fn long_only_rejects_a_sell_that_makes_the_position_negative() {
+        let mut c = cfg();
+        c.long_only = true;
+        let mut e = Engine::new(c, Script(vec![(T0, sell(5)), (T0 + 1000, buy(5)), (T0 + 2000, sell(5)), (T0 + 3000, sell(1))]), None);
+        for k in 0..5 {
+            e.on_input(&inp(T0 + k * 1000, 99.9, 100.1));
+        }
+        let s = e.finish();
+        assert_eq!((s.decisions, s.rejected), (2, 2), "the first and the last sell are rejected");
+        assert!(e.journal.iter().any(|v| v["kind"] == "reject" && v["reason"] == "long only"));
     }
 
     #[test]

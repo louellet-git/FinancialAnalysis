@@ -2,12 +2,12 @@
 id: T-20261121-algo-paper-orders
 title: Paper orders for fa algo (Alpaca paper account only, controls 1 to 8)
 area: trading
-status: backlog
+status: review
 owner: louellet-git
 head: quant
 story: E4.S1
 order: 3.3
-branch:
+branch: claude/quant-algo-paper-orders
 created: 2026-11-21
 requested_by: louellet-git
 acceptance: `fa algo run --send` sends orders to the Alpaca paper account only, on the laptop or the e2-micro, with each control 1 to 8 of `docs/QUALITY-STANDARDS.md` section 8 covered by a test; the default is a dry run that sends nothing; the gate "Order code (paper only)" (code-reviewer and risk-compliance-officer) passes.
@@ -35,3 +35,8 @@ d. Order runs: the laptop or the e2-micro only; a cloud session never passes `--
 - `docs/models/paper-trader.md` line 6 changes (QUALITY-STANDARDS section 8).
 - The test `no_order_code_in_the_repo` of PR 131 changes: it allows the paper host constant only.
 - The model document of `fa algo` and its records (A-155 to A-159, or a new range from the Head of Technology).
+
+## State (2026-11-25)
+Plan: `chiefs/louellet-git/quant/plan-paper-orders-2026-11-25.md`. PR 131 is merged. Step A now: 1 SPY share,
+limit orders, dry run by default, `--send` only on the laptop or the e2-micro. Steps B and C (options) wait for the
+new text of control 6 and its review (the person permitted option orders on paper, 1 contract, defined risk only).
