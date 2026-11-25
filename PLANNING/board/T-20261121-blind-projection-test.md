@@ -143,7 +143,7 @@ The branch is merged with main 0e817ff (three text conflicts; tests 1061 + 17 + 
   needs a new written test.
 - After a pass: T1 on the full sample one time, and T2 to T4 one time, both labelled "not blind", on the new store.
   The earlier full-sample numbers were made on the old store; the report gives both.
-Count of runs after the restart: 1 (one half-0 development run; no score run).
+Count of runs after the restart: 6 (six half-0 development runs; no score run).
 
 **Half-0 base run after the restart (16:33 UTC, 2026-11-25; development, not a score).** Command: `fa dcf pit --cut 2015
 --half 0 --rules acq_cv=1 --diag rev --cache <store 2d4619d>`, code c2a2ab7. 4050 company-years of 602 companies.
@@ -169,3 +169,31 @@ Cells: below P10 / inside / above P90, in percent (pass: inside 75 to 85, each t
   the next 10-K filings.
 Next step: the variance diagnosis on half 0 (code and one run), then the rule in this ticket, then the gate of the
 statistics (Head of Economics) on the rule text, then the one score run.
+
+**Five more half-0 development runs (16:37 UTC, 2026-11-25): one rule switch each; a rule that passes is REJECTED.**
+Command of each: the base command with one more rule (`growth_w=1`, `growth_w=0`, `own_sigma_nu=0`,
+`own_sigma_nu=100`, `last_floor=-1`). Rows "all", below P10 / inside / above P90 at T+1, T+2, T+3:
+| Rule | Revenue | Free cash flow |
+|---|---|---|
+| base (`acq_cv=1`) | 6.3/84.2/9.5; 5.6/84.1/10.3; 3.5/88.1/8.3 | 15.4/76.1/8.4; 10.8/80.0/9.1; 10.6/79.1/10.3 |
+| `growth_w=1` | 8.7/81.1/10.3; 9.0/80.0/11.0; 9.2/80.1/10.7 | 14.2/76.4/9.4; 11.8/77.8/10.4; 11.9/77.4/10.8 |
+| `growth_w=0` | 5.9/85.2/8.9; 5.0/85.3/9.7; 2.8/89.6/7.6 | 20.9/71.9/7.2; 18.7/73.1/8.2; 17.6/73.9/8.5 |
+| `own_sigma_nu=0` | 5.7/85.9/8.4; 5.2/85.4/9.4; 3.6/88.6/7.9 | 15.3/75.5/9.3; 10.9/79.6/9.5; 10.0/79.8/10.2 |
+| `own_sigma_nu=100` | 5.8/85.8/8.4; 5.2/85.3/9.5; 3.4/88.7/7.9 | 15.2/75.8/9.0; 11.0/79.7/9.3; 10.1/79.9/10.0 |
+| `last_floor=-1` | 6.0/83.9/10.1; 5.3/83.5/11.2; 3.2/87.4/9.4 | 15.4/76.1/8.5; 11.1/79.5/9.5; 10.8/78.5/10.7 |
+- `growth_w=1` (full weight on the own growth history, no uncertainty of the company mean) passes the "all" rows of
+  revenue and of free cash flow at each horizon. **This head REJECTS it as the rule.** Its class rows show that the
+  pass is two opposite errors that cancel: companies with a growth of 20% to 50% in the base year have a real revenue
+  17% below the P50 at T+3 (with the default weight: 4% below), those above 50% are 38% below (default: 5% below), and
+  those with falling revenue are 13% above (default: 11% above). The shrink of the company mean to the mean of its
+  size class is necessary for the centre. A rule that passes the "all" row and makes the centre of the fast growers
+  worse is a pass of the letter of T1, not of its purpose.
+- What the runs show: the centre needs the shrink (the default weight); the band is too wide because of the term for
+  the uncertainty of the company mean, (1 - w) tau^2. In the middle classes (growth 0% to 20%) the band with no such
+  term is calibrated (`growth_w=1`: 8.1/83.4/8.5 and 7.0/84.7/8.2 at T+1).
+- Checked in the code: the table value tau already has the correction for the noise of a short history
+  (`calibrate.rs`, the variance of the company means less the mean noise). So tau is not too large for that reason.
+- Next candidate, NOT run: tau is a variance of company means, and a few extreme companies can make it large for all
+  companies of the class. A spread from the quartiles of the company means (a robust spread) can be the one rule, with
+  the half-0 fact as its reason. It needs an option in the table estimate, one half-0 run, and the class rows.
+- The rule is still not chosen. The hold-out is not scored.
