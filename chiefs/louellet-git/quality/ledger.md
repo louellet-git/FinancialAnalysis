@@ -189,3 +189,4 @@
 | forecast freeze (T1), amendment | 2026-11-25 | PR 252 (ca636ac): head check of the amendment (A1 fiscal year ends after the freeze, A2 program c43b7ec); RULE.md +15/-0; verdict PASS | small (head only) | T1 correction |
 | fund drivers design | 2026-11-25 | econ/fund-decomposition (5aeadc1): head read as a statistics design; verdict REVISE, 2 MAJ (rule 3.6 unexplained part is 36 x intercept by OLS; placebo 50 shifts are 25 distinct, p formula and the quarterly floor of 0.10) | small (head only) | design before a run |
 | fund drivers design, fixes | 2026-11-25 | econ/fund-decomposition (a8d550e): head check of the fixes; verdict PASS | small (head only) | design before a run |
+| usage week | 2026-11-25 | PR 257 (ba3ea99): head read; prices agree with the current list, last_reset agrees with resetsAt, one count per message id, share parse tested; verdict PASS-WITH-NOTES (Haiku prompts above 100K have a second price) | small (head only) | |
