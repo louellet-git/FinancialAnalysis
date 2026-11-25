@@ -334,3 +334,8 @@ what it’s trying to tell me"
 Done: I gave him the message of the page in plain words. The page goes back to Fundamental Research for a
 plain form. No decision on the build yet. My fault: I checked the numbers and the form and not if a reader
 with no context gets the message.
+
+## 2026-11-25 about 18:03 UTC (chat)
+Words: "Please switch head of fundamental research back to opus"
+Done: not done by me. I have no tool that changes the model of a different session. That session shows
+that the model was set by the user in the session itself. I told him how he does it there.
