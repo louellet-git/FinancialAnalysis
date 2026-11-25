@@ -2,7 +2,7 @@
 id: T-20261121-algo-paper-orders
 title: Paper orders for fa algo (Alpaca paper account only, controls 1 to 8)
 area: trading
-status: in-progress
+status: review
 owner: louellet-git
 head: quant
 story: E4.S1
