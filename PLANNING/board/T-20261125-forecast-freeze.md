@@ -18,3 +18,7 @@ test is the pass for trades; this ticket does not change the rule "No trades unt
 
 Plan: one option `fa dcf pit --freeze FILE` (Rust, with a test), one run on the data store, the file and its rule in
 `analysis/priors/forecast_freeze_2026-11-25/`. No agent.
+
+Done (2026-11-25 20:49 UTC): the rule `analysis/priors/forecast_freeze_2026-11-25/RULE.md` was committed (c43b7ec)
+before the run; then `forecasts.csv` (1454 companies, store 2d4619d). Tests 1137 + 17 + 1 pass; clippy has no finding
+in the new code. Next: the score of T+1 in about April 2027 (one command, to build then; the rule is fixed).

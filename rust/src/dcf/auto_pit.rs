@@ -813,7 +813,7 @@ pub struct Frozen {
 /// The frozen forecast of one company, or `None`: the last fiscal year ends before `min_end` (a company with no new
 /// report), the `NEED_BEFORE` years up to it are not in sequence, or the model refuses the company. Only the years up
 /// to the base year enter the model (as in `model_at`).
-pub fn freeze_company(ticker: &str, years: &[YearData], table: &ProcessTable, fade: &[FadeCell], rules: &Rules, paths: usize, seed: u64, min_end: &str) -> Option<Frozen> {
+pub fn freeze_company(ticker: &str, years: &[YearData], table: &ProcessTable, fade: &[FadeCell], p: &PitParams, min_end: &str) -> Option<Frozen> {
     let mut counts = RuleCounts::default();
     let rows = clean_series(raw_years(years), &mut counts);
     let k = rows.len().checked_sub(1)?;
@@ -821,10 +821,10 @@ pub fn freeze_company(ticker: &str, years: &[YearData], table: &ProcessTable, fa
         return None;
     }
     let b = years.iter().position(|y| y.end == rows[k].end)?;
-    let model = model_at(ticker, years, b, table, fade, rules).ok()?;
+    let model = model_at(ticker, years, b, table, fade, p.rules).ok()?;
     let mut spec = PathsSpec::from_toml(&model.toml).ok()?;
     spec.projection_years = HORIZON;
-    let sim = PathEngine::new(&spec).ok()?.simulate_one_thread(paths, seed, &Mods::default(), true).ok()?;
+    let sim = PathEngine::new(&spec).ok()?.simulate_one_thread(p.paths, p.seed, &Mods::default(), true).ok()?;
     let q = |t: usize, f: usize| -> [f64; 3] {
         let s = sorted_copy(&sim.column(t, f));
         [percentile(&s, 10.0), percentile(&s, 50.0), percentile(&s, 90.0)]
@@ -911,7 +911,7 @@ fn command_inner(repo: &Path, args: &[String]) -> R<()> {
     if let Some(path) = opt(args, "--freeze") {
         // the forecasts of the last fiscal year of each company; nothing is scored
         let min_end = opt(args, "--min-end").unwrap_or("2025-01-01");
-        let mut rows: Vec<Frozen> = setup.companies.par_iter().filter_map(|(t, years)| freeze_company(t, years, &setup.table, &setup.fade, &rules, paths, seed, min_end)).collect();
+        let mut rows: Vec<Frozen> = setup.companies.par_iter().filter_map(|(t, years)| freeze_company(t, years, &setup.table, &setup.fade, &PitParams { rules: &rules, paths, seed, min_year: None }, min_end)).collect();
         rows.sort_by(|a, b| a.ticker.cmp(&b.ticker));
         let header = format!(
             "FROZEN FORECASTS of the automatic model (nothing is scored). {}\nCommand: fa dcf pit {}\nRules: {:?}\n{} of {} companies of the standard template have a forecast (last fiscal year ending on or after {min_end}, {NEED_BEFORE} years in sequence up to it, a model); {paths} paths each, seed {seed}.\nColumns: the base year (its end and its filing date), its revenue, then the P10, P50 and P90 of the revenue and of the free cash flow (model definition) of the {HORIZON} years after it, in US dollars.",

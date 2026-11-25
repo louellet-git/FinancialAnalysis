@@ -537,7 +537,8 @@ fn the_frozen_forecast_is_the_band_of_the_last_year_and_needs_its_history() {
     };
     let y: Vec<YearData> = (0..7).map(year).collect();
     let rules = Rules::default();
-    let f = freeze_company("ACME", &y, &table(), &[], &rules, 200, 7, "2025-01-01").expect("a forecast");
+    let pp = PitParams { rules: &rules, paths: 200, seed: 7, min_year: None };
+    let f = freeze_company("ACME", &y, &table(), &[], &pp, "2025-01-01").expect("a forecast");
     // the base year is the last year (2025), with its filing date and revenue
     assert_eq!((f.base_end.as_str(), f.base_filed.as_str()), ("2025-12-31", "2026-02-15"));
     assert_eq!(f.base_revenue, y[6].revenue.unwrap());
@@ -550,11 +551,11 @@ fn the_frozen_forecast_is_the_band_of_the_last_year_and_needs_its_history() {
         assert!(f.rev_q[h][0] < f.rev_q[h][1] && f.rev_q[h][1] < f.rev_q[h][2]);
     }
     // a last year before the limit, or fewer than five years in sequence: no forecast
-    assert!(freeze_company("ACME", &y, &table(), &[], &rules, 200, 7, "2026-01-01").is_none());
-    assert!(freeze_company("ACME", &y[3..], &table(), &[], &rules, 200, 7, "2025-01-01").is_none());
+    assert!(freeze_company("ACME", &y, &table(), &[], &pp, "2026-01-01").is_none());
+    assert!(freeze_company("ACME", &y[3..], &table(), &[], &pp, "2025-01-01").is_none());
     let mut gap = y.clone();
     gap.remove(5);
-    assert!(freeze_company("ACME", &gap, &table(), &[], &rules, 200, 7, "2025-01-01").is_none());
+    assert!(freeze_company("ACME", &gap, &table(), &[], &pp, "2025-01-01").is_none());
     // the file: the header as comments, one column line, one row with 4 + 2 x 3 x 3 fields
     let text = freeze_text(&[f], "line one\nline two");
     let lines: Vec<&str> = text.lines().collect();

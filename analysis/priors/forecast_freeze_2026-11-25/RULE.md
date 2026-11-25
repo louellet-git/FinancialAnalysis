@@ -51,4 +51,12 @@ say which test lifts the rule "No trades until T1 passes": the person decides th
 
 ## Record
 
-Filled in when the file is made: date and time (UTC), the engine commit, the store commit, the command, the counts.
+- Made: 2026-11-25 20:49 UTC. Engine: branch `claude/t1-forecast-freeze`, commit c43b7ec (main afd3f7a with the
+  option `--freeze`; the model code is that of main). The program was built from that commit before the run.
+- Data store: fa-data 2d4619d (the two later store commits add only program files).
+- Command: `fa dcf pit --freeze analysis/priors/forecast_freeze_2026-11-25/forecasts.csv --cache <store 2d4619d>`.
+- Counts: 1898 companies of the standard template loaded; 1454 have a forecast. Base years: 1135 end in 2025 and
+  319 end in 2026 (their T+1 is the fiscal year 2027).
+- Check of the file: in each row, P10 is below P50 and P50 is below P90 for the revenue and the free cash flow at
+  T+1 (0 rows fail). After a clippy correction (the arguments of `freeze_company`, no change of logic), a second run
+  with the corrected program gave the same 1454 rows (compared line by line).
