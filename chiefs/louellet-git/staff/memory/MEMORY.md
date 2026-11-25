@@ -40,20 +40,20 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
   session cost (an estimate). Tell the heads once if FA is above 40% of that on Fri, 65% on Sun, 90% on Tue.
   My own share is 2%: few turns, short answers, no relay of a head message that is not for him.
 
-## 4. Open now (2026-11-25, evening)
-- Three decisions wait for him (two dialogs were closed by a restart of my session; ask again, one dialog):
-  (1) T1 FAILED on its hold-out (the middle of the range is too high; the test learned growth from 2009 to
-  2011 only). Fundamental recommends: correct the middle, test on several periods (not blind, 5% to 8%), and
-  freeze the forecasts now for a real blind test on the fiscal 2026 reports (early 2027). He must also say
-  which test is "the pass" for trades. (2) The miner model build (6% to 8% for NexGen first; 3 to 4 more
-  weeks for the full test); the plain NexGen page (version 3) is with him. (3) The scout of the 27%: Japan
-  and Korea (12.5% of URA) have official data; Japan needs a free EDINET key that only he can make; the
-  rest (about 12.7%) is PDF only and stays a limit. My view: (1) first, (2) after it, (3) not now.
-- Waits for him also: his review of the three S&P pieces (the S&P 100 part waits); the host guide
-  `docs/guides/algo-host-gcp.md` (45 minutes; his own paper keys); his four owner tickets.
-- E4.S1: Quant step A (1 SPY share on the paper account) is in work. He permitted option orders (1 contract,
-  defined risk) after step A; Quality reviews the new text of control 6 before step B.
-- E3.S5: the Cameco IFRS mapping passed its gate; the rest is small. `fa usage` now gives tokens by ticket
-  (PR 241); a head must run it before it removes a worktree (tell each head in its next message).
-- E1 is on hold: "No trades until T1 passes". No trade on Friday 2026-11-27.
-- Calculator data: 78% of a head's cost is its own context. Pace check: Friday 16:05 UTC (scheduled).
+## 4. Open now (2026-11-25, night)
+- His three answers of 2026-11-25: (1) T1 failed; Fundamental corrects the middle of the range and tests it
+  on several periods (next week, 5% to 8%, not blind) and saves the forecasts now for a blind test on the
+  fiscal 2026 reports (early 2027). He must say later which test is "the pass". (2) The miner model: build
+  after the T1 work, NexGen first. (3) The Japan reader (EDINET): yes, against my "not now"; he makes the
+  free key; Technology gives the size first and starts with one company.
+- Waits for him: the host guide `docs/guides/algo-host-gcp.md` (45 minutes; his own paper keys), then a
+  dry-run day and `--send` for step A (1 SPY share; on main, PR 248). The EDINET key. His review of the
+  three S&P pieces (the S&P 100 part waits). His four owner tickets.
+- E4.S1: step B (1 long SPY option; control 6 has its new text) is on hold until he has run step A with
+  `--send` for one day or more.
+- Pace: Financial Analysis used about 154 USD (18% of its week share) in the first 3 hours; I used 27 USD
+  of my 38. I give him results and decisions only. Technology holds the items below the line.
+- Automation (agreement 10): the report check is in the document reviewer (PR 245); `fa usage` needs no
+  head step (PR 246). Candidates: one script for the pace reading; one list of what waits for him.
+- E1 is on hold: "No trades until T1 passes". Calculator data: 78% of a head's cost is its own context;
+  60% of the Technology tokens have no ticket. Pace check: Friday 16:05 UTC (scheduled).
