@@ -308,3 +308,11 @@ Words (the split of the weekly token limit): "45% Financial analysis's, 15% scan
 Done: the shares of the week in `PLANNING/board/EPICS.md` are scaled from 80% to 45%; the uranium and gold
 series, the last FRED step and the first run of the economics view go below the line. One short message to
 each head with its new share.
+
+## 2026-11-25 about 16:24 UTC (dialog)
+Question: the quant plan for paper trading has three steps (A: 1 SPY share; B: 1 SPY option; C: 1 SPY
+condor). Control 6 of section 8 says "no option". Do you permit option orders on the Alpaca paper account
+(1 contract, defined risk only), after step A passes its gate?
+Answer: "Yes, permit (Recommended)"
+Done: told Quant and Quality. Quality reviews the new text of control 6 before step B. Paper account only;
+no margin; 1 contract.
