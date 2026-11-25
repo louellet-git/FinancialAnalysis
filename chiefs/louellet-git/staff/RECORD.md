@@ -280,3 +280,9 @@ Question: shall the Head of Technology add the IFRS standard to our data mapping
 with Cameco as the first test? Answer of the person: "Yes, Cameco first (Recommended)".
 Done: the answer went to the Head of Technology. One company first, then the real size of the rest comes
 to me before more is built.
+
+## 2026-11-23 about 15:47 UTC (chat)
+Words (on the 27% of the URA holdings that do not file with the SEC): "So let's grab the other 27%"
+Done: item 5 of the story E3.S5 for the Head of Technology, after the reset and after the Cameco test: a
+read-only scout of the sources of those companies (national filing systems first), then one source first,
+then the real size of the rest comes to me. A key or terms that need the person come to me as a question.

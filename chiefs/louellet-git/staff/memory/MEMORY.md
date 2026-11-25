@@ -53,7 +53,7 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
   Fundamental 382, Quality 270, Quant 170, Economics 124, Staff 50. 98% of the tokens are cache reads.
 - Sent to the person 2026-11-23: the AI build-out report (E2.S5), the URA and GLD pages (E2.S6). E3.S5
   removes their limits: dated holdings (in its gate), IFRS mapping with Cameco first after the reset (the
-  person said yes; the size of the rest comes to me before more is built), the uranium and gold data, a
-  miner model design (the person reads it before a build), the fund look-through.
+  person said yes; the size of the rest comes to me before more is built), the 27% outside the SEC (a source scout first, owner word), the uranium
+  and gold data, a miner model design (the person reads it before a build), the fund look-through.
 - Weekly limit readings: 2026-11-21 18:49 UTC 71%, 22:50 UTC 83%.
 - E1 (stock trades) is on hold: "No trades until T1 passes". PR 131 waits for the live run of 2026-11-23.
