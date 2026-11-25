@@ -1,0 +1,23 @@
+# The US ticker of a holding of the URA fund (Global X Uranium ETF), so that the monthly prices of our Nasdaq price files can be used.
+# key = the ISIN of the N-PORT line; ticker = the US listing of the SAME share (same ISIN: a dual listing, for example NYSE and TSX).
+# A line is here only if the share has the same ISIN on both markets and the US ticker is known to the maintainer.
+# A holding that is not in this file is "foreign": it has quarterly prices only (from valUSD / balance of N-PORT).
+# Added 2026-11-25 from the URA report of 2026-07-31 (accession 0002048251-26-008623). Check each line with `fa fund attribution URA`:
+# its price check compares the N-PORT price with the Nasdaq close at each report date.
+# key,ticker,name
+CA13321L1085,CCJ,Cameco Corp
+CA65340P1062,NXE,NexGen Energy
+CA2483561072,DNN,Denison Mines
+US9168961038,UEC,Uranium Energy Corp
+US15643U1043,LEU,Centrus Energy
+US02156V1098,OKLO,Oklo
+US67079K1007,SMR,NuScale Power
+CA2926717083,UUUU,Energy Fuels
+CA91688R1082,URG,Ur-Energy
+US91703D1000,UROY,Uranium Royalty Corp
+US63010H1086,NNE,Nano Nuclear Energy
+US53224K3023,LTBR,Lightbridge
+US8814541020,IMSR,Terrestrial Energy
+CA46500E8678,ISOU,IsoEnergy
+CA29259W7008,EU,enCore Energy
+NL0015002Q12,NKLR,Terra Innovatum
