@@ -330,3 +330,25 @@ acquisition charge do not change. A cell with fewer than 20 values has the ratio
   rows and the free cash flow rows as two separate facts, with the class rows.
 - Before the score: the statistics gate (Head of Economics) reads this rule text. No score run before its answer.
 Count of runs after the restart: 10 (ten half-0 development runs; no score run).
+
+**Statistics gate on the rule text (17:21 UTC, 2026-11-25): PASS-WITH-NOTES (Head of Economics). The conditions, written
+before the score run.**
+- (i) The ratios of the score come from the table of the cut 2011, which the code calculates again: `pit_setup` builds
+  the panel, cuts it at the year of `--cut` (`up_to_year`), and `estimate_table` calls `fit_ar1`, which calculates
+  the two shape ratios from that panel. Checked in the code by this head. The output of the run prints the ratios of
+  each cell. The values of the cut 2015 are not used.
+- (ii) Ten development runs came before the choice of the rule, all on half 0 with the cut 2015. The companies of half
+  0 are in the score again, with their base years 2011 to 2014; the real values of T+1 to T+3 of those base years are
+  the years 2012 to 2017, and a part of them was history in the development runs. Half 1 is the cleaner part. Label:
+  "partly blind".
+- (iii) One score. The rule does not change after it. A fail is reported as a fail.
+- The score is three commands in one go, with the same store, code, seed and rule: all companies (this run decides),
+  `--half 0` and `--half 1` (the same companies in two parts, reported next to it). The table of each command comes
+  from all companies up to 2011.
+- Notes of the gate for the report: the pooled band of a class is correct on average and wrong for one company when
+  the companies have different shock sizes (too narrow for a company with large shocks, too wide for one with small
+  shocks); the sum of three scaled normal parts is not exactly the scaled sum (an approximation); give the number of
+  values of each cell. The class row of the falling base year is a limit to state (centre error, A-003), not a new
+  pass rule.
+- The result of T1 keeps its written pass rule. If the free cash flow fails, T1 is "fail (free cash flow ...)", and
+  the revenue result is a separate fact below it, not a T1 pass.
