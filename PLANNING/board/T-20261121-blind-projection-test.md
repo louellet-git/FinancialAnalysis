@@ -214,3 +214,31 @@ normal distribution in standard deviations). Switch: `--rules tau_robust=1`, off
 - Risk seen before the run: in a cell where the noise is larger than the robust spread, tau is 0, the weight is 0 and
   the band has no term for the company mean. The 30-100B class has tau 0 today (its rows are equal with weight 0),
   and its centre at T+3 is the worst (+7.4%).
+
+**Result of `tau_robust` (17:03 UTC, 2026-11-25; half-0 development run 7): REJECTED.** Command: the base command with
+`tau_robust=1`, code d6fc94b plus the switch (not committed yet). Rows "all", below P10 / inside / above P90:
+- Revenue: 6.6/83.6/9.8; 5.8/82.5/11.7; 4.4/85.1/10.6. T+3 fails (low tail 4.4, inside 85.1).
+- Free cash flow: 19.8/72.7/7.5; 16.4/75.0/8.6; 16.3/74.5/9.2. All three horizons fail (base: 15.4, 10.8, 10.6 below P10).
+- Why: the robust tau is near 0 in most classes, so the weight of the own history is near 0 (the rows are near those of
+  `growth_w=0`). The acquisition charge of A-002 is the weight times the expected spend: with a weight near 0 the
+  charge is near 0, the P50 of the free cash flow goes up (real below P50: 56% at T+1 against 49%), and the low tail
+  fails. Fact for each later candidate: a rule that changes the weight w changes the free cash flow through A-002.
+- Fact from the diagnosis rows of all runs: the excess width is in the companies with a growing base year (base run,
+  10th and 90th percentile of z: -1.05/+0.91 at T+1 and -0.85/+0.96 at T+3; a calibrated band has -1.28/+1.28). The
+  band of the companies with a falling base year has about the correct width (-1.16/+1.34 at T+1), and its centre is
+  too low at T+2 and T+3.
+
+**Candidate `level_last`, written before its half-0 run (17:03 UTC).** Found in the code (`auto.rs`, the shock size):
+the shock of the growth is at least kappa times a growth level, and the level is the LARGEST absolute growth of the
+history window (the last 4 growth values, with the base year). kappa is measured from the fade table as the spread of
+the growth one year after a start year, over the growth of the START year (`level_spread_ratio`). So the measurement
+is for the growth of the last year, and the model uses it on the largest growth of the window: one year of high growth
+in the past keeps the band wide for each later base year. Definition of the candidate: the level is the absolute
+organic growth of the base year; if the base year has no organic growth (a jump year), the last value of the history.
+No other change, no free number. Switch: `--rules level_last=1`, off by default.
+- Reason: it makes the use of kappa agree with its measurement. It does not come from a fit of the band.
+- Expected, before the run: narrower bands for companies with a growing base year and a past year of higher growth;
+  no change for a company whose base year has its largest growth. A smaller shock gives a larger weight w for these
+  companies (less noise in the history mean): read the centre of the growth classes and the free cash flow rows.
+- Second run for a bound, not a candidate: `level_kappa=0` (no level term). It shows the largest possible effect.
+- The same read as before: a pass of the "all" rows with a worse centre in a class is not a pass.
