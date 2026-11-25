@@ -26,3 +26,12 @@ needed price gives no answer.
 Cost: about 1% to 2% of the weekly token limit, from the reserve of the week (not from T1). One analyst agent, one audit.
 
 Board note (16:41 UTC, 2026-11-25): created and in progress (louellet-git, branch claude/uranium-needed-price).
+
+Board note (16:50 UTC, 2026-11-25): the page and its sources file are written (`analysis/priors/uranium_needed_price_2026-11-25.md`,
+PDF in `analysis/priors/pdf/`, one page; `uranium_needed_price_sources_2026-11-25.md`). Result of the check: 1 of 5
+miners (NexGen) prints its mine value at several uranium prices. Result of the measurement: the close of NexGen of
+2026-11-20 (US$6.40) needs a flat uranium price of about US$84 a pound (US$80 to US$85 by the exchange rate and the
+debt number; US$70 with the costs of the 2021 study); spot US$91.55 and long-term US$98.00 on 2026-10-30. Agents: one
+research agent (30 tool calls) and one check of the NexGen filing. NEXT: the audit of the numbers (Quality), then the
+Head of Staff, then the person. The design ticket `T-20261123-miner-value-model-design` is merged (pull request 231):
+move it to `done/` with the pull request of this ticket.
