@@ -46,11 +46,12 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
 - Sent to him 2026-11-23: the AI build-out report, the URA and GLD pages ("good first draft").
 - E3.S5 (remove the limits of the fund pages): dated holdings done (`fa fund holdings`); next the IFRS
   mapping with Cameco first (he said yes; the size of the rest comes to me before more is built), the
-  scout of the 27% outside the SEC (his word), the uranium and gold series, a miner model design (he reads
-  it before a build), then the fund look-through.
+  scout of the 27% outside the SEC (his word), the uranium and gold series, then the fund look-through.
+  The miner model design (PR 231) is back with Fundamental for three points; then it goes to him.
+- Tell Technology in the next message (not alone): `fa usage` puts a worktree session under one ticket.
 - E4.S1, his word 2026-11-25: the quant team begins algo trading on the Alpaca paper account (broker
-  fills, spreads and fees; not our simulator). A one-page plan of Quant comes to me first. My session got
-  401 from both Alpaca hosts; Technology checks the access. No strategy passed a gate: the first paper
-  trades are a process test at the smallest size.
+  fills, spreads and fees; not our simulator). A one-page plan of Quant comes to me first. The Alpaca
+  hosts work from a head session (cloud key: data only; orders go from his laptop or the always-on host).
+  No strategy passed a gate: the first paper trades are a process test at the smallest size.
 - E1 (stock trades) is on hold: "No trades until T1 passes". No trade on Friday 2026-11-27.
 - Contexts above the dream-pass point on 2026-11-25: Technology 766k, Fundamental 697k, Economics 670k.
