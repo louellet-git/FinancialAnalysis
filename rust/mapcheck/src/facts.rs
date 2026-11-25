@@ -34,7 +34,9 @@ impl Forms {
 
     pub fn has(self, form: Option<&str>) -> bool {
         match (self, form) {
-            (Forms::Annual, Some("10-K")) | (Forms::Annual, Some("10-K/A")) => true,
+            // 40-F and 20-F: the annual reports of foreign filers (Canada: 40-F; others: 20-F). Their facts
+            // are mostly ifrs-full facts.
+            (Forms::Annual, Some("10-K" | "10-K/A" | "40-F" | "40-F/A" | "20-F" | "20-F/A")) => true,
             (Forms::Quarterly, Some("10-Q")) | (Forms::Quarterly, Some("10-Q/A")) => true,
             _ => false,
         }
@@ -83,7 +85,12 @@ pub struct CompanyFacts {
 
 impl CompanyFacts {
     /// All facts for one tag in one unit (an empty list if the filer has none).
+    /// A variable has the unit "USD" or "USD/shares". For an `ifrs-full` tag of a filer with no us-gaap facts,
+    /// the unit is the reporting currency of the filer (for example CAD). No conversion: the value stays in
+    /// that currency (`reporting_currency`).
     pub fn entries(&self, tag: &Tag, unit: &str) -> &[Fact] {
+        let unit = if tag.namespace == "ifrs-full" && !self.has_us_gaap() { self.currency_unit(unit) } else { unit.to_string() };
+        let unit = unit.as_str();
         self.facts
             .get(&tag.namespace)
             .and_then(|ns| ns.get(&tag.name))
@@ -94,6 +101,35 @@ impl CompanyFacts {
 
     pub fn has_us_gaap(&self) -> bool {
         self.facts.contains_key("us-gaap")
+    }
+
+    /// True if the filer has statement facts in a taxonomy that the registry reads (us-gaap or ifrs-full).
+    pub fn has_statements(&self) -> bool {
+        self.has_us_gaap() || self.facts.contains_key("ifrs-full")
+    }
+
+    /// The reporting currency of an `ifrs-full` filer: the currency unit of its latest total assets (None: no such unit).
+    pub fn reporting_currency(&self) -> Option<&str> {
+        let units = &self.facts.get("ifrs-full")?.get("Assets")?.units;
+        // More than one currency (Denison: USD to 2017, CAD later): the currency of the latest total assets.
+        units
+            .iter()
+            .filter(|(u, _)| u.len() == 3 && u.chars().all(|c| c.is_ascii_uppercase()))
+            .max_by(|(ua, a), (ub, b)| {
+                let latest = |v: &&Vec<Fact>| v.iter().map(|f| f.end.as_str()).max().unwrap_or("").to_string();
+                latest(a).cmp(&latest(b)).then_with(|| ub.cmp(ua))
+            })
+            .map(|(u, _)| u.as_str())
+    }
+
+    /// "USD" -> the reporting currency, "USD/shares" -> "<currency>/shares"; other units stay.
+    fn currency_unit(&self, unit: &str) -> String {
+        let currency = self.reporting_currency().unwrap_or("USD");
+        match unit {
+            "USD" => currency.to_string(),
+            "USD/shares" => format!("{currency}/shares"),
+            other => other.to_string(),
+        }
     }
 
     /// The filing dates (text, YYYY-MM-DD) of all facts that come from an annual form (10-K, 10-K/A), oldest first.

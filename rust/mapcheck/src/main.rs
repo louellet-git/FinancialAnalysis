@@ -339,6 +339,9 @@ fn cmd_values(raw: &[String]) -> Result<bool, String> {
                     Some((sic, text)) => println!("\n{ticker}: SIC {sic} {text}, sector {} (Fama-French 12)", sec::ff12_sector(sic)),
                     None => println!("\n{ticker}: no SIC code in the cache (the file is missing or old, or the filer has no code; run: mapcheck fetch --submissions {ticker})"),
                 }
+                if !facts.has_us_gaap() {
+                    println!("{ticker}: ifrs-full facts; all amounts are in {} (no conversion to USD)", facts.reporting_currency().unwrap_or("USD"));
+                }
                 print!("{}", values_listing(&registry, &report));
             }
             Err(e) => println!("\n{ticker}: {e}"),
@@ -398,7 +401,7 @@ fn cmd_crosscheck(raw: &[String]) -> Result<bool, String> {
         let outcome = (|| -> Result<(String, Vec<mapcheck::crosscheck::Row>), String> {
             let facts = sec::load_or_fetch_facts(&cache, ticker, delay)?;
             if !facts.has_us_gaap() {
-                return Err("not a us-gaap filer".to_string());
+                return Err("not a us-gaap filer (the crosscheck reads a 10-K)".to_string());
             }
             let company = mapcheck::mapper::map_company(&registry, &facts, periods);
             let filing = mapcheck::filing::load_filing(ticker, &sec::fetch_filing(&cache, ticker, delay, false)?)?;

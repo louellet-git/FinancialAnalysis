@@ -929,4 +929,65 @@ mod tests {
         let p = resolve_period(&registry, &facts, FY.1, Forms::Annual);
         assert_eq!(p.filed.as_deref(), Some("2025-02-20"));
     }
+
+    /// Cameco FY2025 (40-F, accession 0001193125-26-116229): values from the SEC company facts, in CAD.
+    fn ifrs_fixture() -> CompanyFacts {
+        let f = |start: Option<&str>, val: f64| {
+            let s = start.map(|s| format!(r#""start":"{s}","#)).unwrap_or_default();
+            format!(r#"{{{s}"end":"2025-12-31","val":{val},"form":"40-F","filed":"2026-02-20","accn":"0001193125-26-116229"}}"#)
+        };
+        let flow = |unit: &str, val: f64| format!(r#"{{"units":{{"{unit}":[{}]}}}}"#, f(Some("2025-01-01"), val));
+        let bal = |val: f64| format!(r#"{{"units":{{"CAD":[{}]}}}}"#, f(None, val));
+        let json = format!(
+            r#"{{"cik":1009001,"entityName":"CAMECO CORP","facts":{{"ifrs-full":{{"Revenue":{},"CostOfSales":{},"ProfitLossFromOperatingActivities":{},"ProfitLoss":{},"ProfitLossAttributableToOwnersOfParent":{},"CashFlowsFromUsedInOperatingActivities":{},"PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities":{},"DepreciationAndAmortisationExpense":{},"WeightedAverageShares":{},"DilutedEarningsLossPerShare":{},"Borrowings":{},"CashAndCashEquivalents":{},"EquityAttributableToOwnersOfParent":{},"Assets":{}}}}}}}"#,
+            flow("CAD", 3481933000.0),
+            flow("CAD", 2511660000.0),
+            flow("CAD", 618142000.0),
+            flow("CAD", 589542000.0),
+            flow("CAD", 589577000.0),
+            flow("CAD", 1408432000.0),
+            flow("CAD", 333025000.0),
+            flow("CAD", 293094000.0),
+            flow("shares", 435361956.0),
+            flow("CAD/shares", 1.35),
+            bal(996348000.0),
+            bal(1114860000.0),
+            bal(6903363000.0),
+            bal(10301282000.0),
+        );
+        serde_json::from_str(&json).unwrap()
+    }
+
+    #[test]
+    fn ifrs_full_filer_gives_the_variables_in_its_own_currency() {
+        let registry = Registry::embedded().unwrap();
+        let p = resolve_period(&registry, &ifrs_fixture(), "2025-12-31", Forms::Annual);
+        for (name, value) in [
+            ("revenue", 3481933000.0),
+            ("cogs_total", 2511660000.0),
+            ("operating_income", 618142000.0),
+            ("net_income", 589577000.0),
+            ("net_income_incl_nci", 589542000.0),
+            ("operating_cash_flow", 1408432000.0),
+            ("capex", -333025000.0),
+            ("da_total", 293094000.0),
+            ("shares_basic", 435361956.0),
+            ("eps_diluted", 1.35),
+            ("total_debt", 996348000.0),
+            ("cash_and_equivalents", 1114860000.0),
+            ("equity", 6903363000.0),
+            ("total_assets", 10301282000.0),
+        ] {
+            assert_eq!(p.get(&registry, name), Some(value), "{name}");
+        }
+        assert_eq!(p.source(&registry, "revenue"), "ifrs-full/Revenue");
+    }
+
+    #[test]
+    fn annual_forms_include_40f_and_20f() {
+        for form in ["10-K", "10-K/A", "40-F", "40-F/A", "20-F", "20-F/A"] {
+            assert!(Forms::Annual.has(Some(form)), "{form}");
+        }
+        assert!(!Forms::Annual.has(Some("10-Q")) && !Forms::Quarterly.has(Some("40-F")));
+    }
 }

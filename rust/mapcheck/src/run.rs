@@ -137,7 +137,7 @@ pub fn check_cached(registry: &Registry, cache: &Path, ticker: &str, facts: &Com
 
 fn check_facts_with(registry: &Registry, ticker: &str, facts: &CompanyFacts, n_periods: usize, as_of: i64, keep_values: bool, fill: Option<Fill>) -> TickerReport {
     let start = Instant::now();
-    if !facts.has_us_gaap() {
+    if !facts.has_statements() {
         if registration_only(facts) {
             // A new US registrant: the registration statement (form S-1) has no XBRL values.
             let mut report = error_report(ticker, String::new(), start.elapsed().as_secs_f64());
@@ -428,14 +428,20 @@ mod tests {
     #[test]
     fn other_filers_with_no_us_gaap_facts_stay_an_error() {
         let registry = Registry::embedded().unwrap();
-        // A foreign registrant (form F-1), a registrant with no registration form, an IFRS
-        // filer with a form S-1 fee fact, and a file with no facts.
-        let ifrs = r#"{"facts":{"ffd":{"TtlFeeAmt":{"units":{"USD":[{"end":"2026-10-20","val":1,"form":"S-1"}]}}},"ifrs-full":{"Assets":{"units":{"USD":[{"end":"2025-12-31","val":1,"form":"20-F"}]}}}}}"#;
-        for other in [fee_facts("ffd", "F-1"), fee_facts("ffd", "S-8"), fee_facts("dei", "20-F"), facts(ifrs), facts(r#"{"facts":{}}"#)] {
+        // A foreign registrant (form F-1), a registrant with no registration form, a filer with
+        // cover facts only, and a file with no facts. (An IFRS filer with ifrs-full facts is mapped.)
+        for other in [fee_facts("ffd", "F-1"), fee_facts("ffd", "S-8"), fee_facts("dei", "20-F"), facts(r#"{"facts":{}}"#)] {
             let report = check_facts(&registry, "X", &other, 12, 0, false);
             assert_eq!(report.status, Status::Error);
             assert!(report.error.unwrap().starts_with("not a us-gaap filer"));
         }
+    }
+
+    #[test]
+    fn an_ifrs_filer_is_mapped_not_an_error() {
+        let registry = Registry::embedded().unwrap();
+        let ifrs = r#"{"facts":{"ffd":{"TtlFeeAmt":{"units":{"USD":[{"end":"2026-10-20","val":1,"form":"S-1"}]}}},"ifrs-full":{"Assets":{"units":{"USD":[{"end":"2025-12-31","val":1,"form":"20-F"}]}}}}}"#;
+        assert!(check_facts(&registry, "X", &facts(ifrs), 12, 0, false).error.is_none());
     }
 
     #[test]

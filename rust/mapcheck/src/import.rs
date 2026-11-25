@@ -76,7 +76,7 @@ pub fn import_facts(
     periods: usize,
     facts: &CompanyFacts,
 ) -> Result<Imported, ImportError> {
-    if !facts.has_us_gaap() {
+    if !facts.has_statements() {
         let namespaces: Vec<&String> = facts.facts.keys().collect();
         return Err(ImportError::Unsupported(format!(
             "{ticker}: does not report under us-gaap (namespaces found: {namespaces:?}). IFRS and non-US-GAAP filers are not supported."
