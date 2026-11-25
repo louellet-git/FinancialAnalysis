@@ -130,3 +130,21 @@ Pace: Financial Analysis uses about 6% to 7% of the week for each day. The Head 
 cost of the six sessions since the reset (`get_session`; about 850 USD at list price is 45%, an estimate
 from the week before) and tells the heads once if it is above 40% of that on Friday, 65% on Sunday or 90%
 on Tuesday (each at 16:00 UTC).
+
+**Table: the share of each head for the week to 2026-12-02** (session cost in USD at list price; 1% of the
+weekly limit is about 19 USD, an estimate). See: a head reads its own use with one call and one subtraction.
+
+| Head | Share of the limit | Share in USD | Cost of the session at the reset (USD) | Used on 2026-11-25, 21:50 UTC |
+|---|---|---|---|---|
+| Technology | 12% | about 227 | 674.19 | 30 (13% of its share) |
+| Fundamental Research | 13% | about 246 | 407.65 | 59 (24%) |
+| Quality and Risk | 6% | about 113 | 284.85 | 20 (18%) |
+| Quant Research | 5% | about 95 | 169.53 | 26 (27%) |
+| Economics | 2% | about 38 | 153.84 | 16 (42%) |
+| Staff | 2% | about 38 | 108.23 | about 33 (87%) |
+| Reserve | 5% | about 95 | - | - |
+
+How a head reads its own use: call `get_session` with no session id and read `usage.cost_usd`; the use of
+this week is that number less the cost at the reset in the table. The reset is each Wednesday at 16:00 UTC.
+The Head of Staff writes the new reset costs in this table after each reset. A share is a guide for the
+order and the pace of the work. It is not a stop.
