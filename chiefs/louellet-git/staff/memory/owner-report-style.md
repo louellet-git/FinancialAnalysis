@@ -23,3 +23,8 @@ document before it goes to the person. A head can read it; it is not a form.
 9. **A small intro at the top.** One to three lines of necessary background, after the title and the
    subtitle and before the answer.
 10. Short, clear, ASD-STE100.
+11. **A reader with no context gets the message.** His words on 2026-11-25, on a page that had the correct
+    form and correct numbers: "the pdf doesn’t really read well/im not sure what it’s trying to tell me".
+    My reading (not his words): the first lines say the question, the answer and what it means for him, in
+    plain words. The method and the limits come after, and they are short. I read each page as a person who
+    did not do the work, before it goes to him.

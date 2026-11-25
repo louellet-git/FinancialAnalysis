@@ -39,19 +39,21 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
   session cost (an estimate). Tell the heads once if FA is above 40% of that on Fri, 65% on Sun, 90% on Tue.
   My own share is 2%: few turns, short answers, no relay of a head message that is not for him.
 
-## 4. Open now (2026-11-25)
-- Waits for him: his review of the three S&P pieces (sent 2026-11-21; on main in `analysis/priors/pdf/`),
-  then the S&P 100 part starts. His live run of the algo engine (planned 2026-11-23; PR 131 is not merged;
-  I do not know if he did it). His four owner tickets.
-- Sent to him 2026-11-23: the AI build-out report, the URA and GLD pages ("good first draft").
-- E3.S5 (remove the limits of the fund pages): dated holdings done (`fa fund holdings`); next the IFRS
-  mapping with Cameco first (he said yes; the size of the rest comes to me before more is built), the
-  scout of the 27% outside the SEC (his word), the uranium and gold series, then the fund look-through.
-  The miner model design (PR 231) is back with Fundamental for three points; then it goes to him.
-- Tell Technology in the next message (not alone): `fa usage` puts a worktree session under one ticket.
-- E4.S1, his word 2026-11-25: the quant team begins algo trading on the Alpaca paper account (broker
-  fills, spreads and fees; not our simulator). A one-page plan of Quant comes to me first. The Alpaca
-  hosts work from a head session (cloud key: data only; orders go from his laptop or the always-on host).
-  No strategy passed a gate: the first paper trades are a process test at the smallest size.
-- E1 (stock trades) is on hold: "No trades until T1 passes". No trade on Friday 2026-11-27.
-- Contexts above the dream-pass point on 2026-11-25: Technology 766k, Fundamental 697k, Economics 670k.
+## 4. Open now (2026-11-25, evening)
+- Three decisions wait for him (two dialogs were closed by a restart of my session; ask again, one dialog):
+  (1) T1 FAILED on its hold-out (the middle of the range is too high; the test learned growth from 2009 to
+  2011 only). Fundamental recommends: correct the middle, test on several periods (not blind, 5% to 8%), and
+  freeze the forecasts now for a real blind test on the fiscal 2026 reports (early 2027). He must also say
+  which test is "the pass" for trades. (2) The miner model build (6% to 8% for NexGen first; 3 to 4 more
+  weeks for the full test); the plain NexGen page (version 3) is with him. (3) The scout of the 27%: Japan
+  and Korea (12.5% of URA) have official data; Japan needs a free EDINET key that only he can make; the
+  rest (about 12.7%) is PDF only and stays a limit. My view: (1) first, (2) after it, (3) not now.
+- Waits for him also: his review of the three S&P pieces (the S&P 100 part waits); the host guide
+  `docs/guides/algo-host-gcp.md` (45 minutes; his own paper keys); his four owner tickets.
+- E4.S1: Quant step A (1 SPY share on the paper account) is in work. He permitted option orders (1 contract,
+  defined risk) after step A; Quality reviews the new text of control 6 before step B.
+- E3.S5: the Cameco IFRS mapping passed its gate; the rest is small. `fa usage` now gives tokens by ticket
+  (PR 241); a head must run it before it removes a worktree (tell each head in its next message).
+- E1 is on hold: "No trades until T1 passes". No trade on Friday 2026-11-27.
+- Data for the calculator: 78% of the cost of a head session is its own context, not its agents.
+- Friday 2026-11-27 16:05 UTC: the pace check (a scheduled message to me).
