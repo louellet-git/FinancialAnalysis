@@ -42,12 +42,12 @@ person decided. Keep this file below 60 lines. Started 2026-11-20. Dream pass: 2
 - Anthropic (ANT): numbers and words of the filing only, with the disclosure (the agents run on Anthropic models).
 
 ## Tested rules and contacts
-- Heads by session title (send_message; ids from `list_sessions`, never in a file): FA-L - Head of Technology, of
-  Quality and Risk, of Economics, of Quant Research, of Staff.
+- Heads by session title (send_message; ids from `list_sessions`, never in a file): FA-L - Head of Technology, of Quality and Risk, of Economics, of Quant Research, of Staff.
 - Head of Staff: one short message when a result is done (it reads a result before Luc), an owner decision, a
   conflict, a long block. No status reports. A permission refusal goes to Technology.
-- Tokens: all projects share one weekly limit; it resets on Wednesday 16:00 UTC. Few agents. At the close of each
-  ticket: `fa usage record && fa usage show`, with the table in the done message (E6.S5).
+- Tokens: one weekly limit (reset Wednesday 16:00 UTC); my share is in `PLANNING/board/EPICS.md` (last table; 13% =
+  about 246 USD in the week to 2026-12-02). My use: `get_session` (no id), `usage.cost_usd` less its value at the reset
+  (407.65 USD at 2026-11-25). A share is a guide for the pace. At the close of a ticket: `fa usage record && fa usage show`.
 - No push to a branch under review until the verdict. A change under `rust/` or `analysis/` starts a check run (put
   such changes in one pull request); `docs/`, `chiefs/` and `PLANNING/` do not. Run `fa selftest golden` before a merge
   that changes the output of a command (pull request 190 made a case fail on main).
