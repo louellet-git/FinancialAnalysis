@@ -2,13 +2,13 @@
 id: T-20261123-non-sec-accounts-scout
 title: Scout the sources of the accounts of the URA holdings that do not file with the SEC
 area: importer
-status: backlog
+status: in-progress
 owner: louellet-git
 requested_by: louellet-git
 head: technology
 order: 2
 story: E3.S5
-branch:
+branch: claude/non-sec-scout
 created: 2026-11-23
 acceptance: One short table for the non-SEC holdings of URA (27.0% of its weight): where each company publishes its accounts, the format (structured data or PDF), the terms for automatic reading and for a stored copy, and whether a key or an account is necessary; what a program cannot read is named plainly.
 ---
