@@ -8,7 +8,8 @@ orders only to the Alpaca PAPER account (`CLAUDE.md`, "Purpose"; `docs/QUALITY-S
 2. Compute Engine → VM instances → Create instance:
    - Region `us-east1`, machine type `e2-micro` (the free tier: one e2-micro in us-west1, us-central1 or
      us-east1).
-   - Boot disk: Debian 12, "Standard persistent disk", 30 GB (the free size).
+   - Boot disk: "Ubuntu 24.04 LTS" (x86/64), "Standard persistent disk", 30 GB (the free size). Use this image:
+     the program is built on Ubuntu 24.04 and needs its C library (glibc 2.39); Debian 12 has an older one.
    - Firewall: no HTTP or HTTPS. Create.
 3. Click "SSH" on the line of the machine. A terminal opens in the browser. All next steps are in it.
 
@@ -56,7 +57,7 @@ After=network-online.target
 User=algo
 WorkingDirectory=/home/algo/fa
 EnvironmentFile=/etc/fa-algo.env
-ExecStart=/home/algo/fa/rust/target/release/fa algo run --strategy demo --symbol SPY --broker alpaca-paper --until 15:55
+ExecStart=/home/algo/fa/rust/target/release/fa algo run --strategy demo --symbol SPY --until 15:55
 Restart=on-failure
 RestartSec=60
 END
@@ -72,8 +73,9 @@ END
 sudo systemctl daemon-reload && sudo systemctl enable --now fa-algo.timer
 systemctl list-timers fa-algo.timer
 ```
-- The line has no `--send`: the program does a dry run and sends nothing. Add `--send` to `ExecStart` only
-  after the Head of Quant Research says that step A passed its gate (then `sudo systemctl daemon-reload`).
+- This first line uses the program's own simulator: it sends nothing to Alpaca. When step A of the paper orders
+  passes its gate, the Head of Quant Research gives the new line (with `--broker alpaca-paper`, and later
+  `--send`) and a new binary; then edit `ExecStart` and run `sudo systemctl daemon-reload`.
 - A market holiday: the timer still starts the program. Until the Head of Quant Research confirms a holiday
   check in the engine, make the kill file (section 6) the evening before a holiday, and remove it after.
 - Logs: `journalctl -u fa-algo -n 50`. A test now: `sudo systemctl start fa-algo`.
