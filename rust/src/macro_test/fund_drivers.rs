@@ -272,7 +272,13 @@ pub struct URead {
     pub sha256: String,
 }
 
-/// The reader of U. No IMF reader exists yet (Technology owns readers): this one says so.
+/// The IMF uranium reader of Technology (record R2: read at run time, not stored; the read is logged in the cache).
+pub fn imf_u_reader(cache: &Path) -> Result<URead, String> {
+    let r = crate::market::imf_pcps::read_logged(cache)?;
+    Ok(URead { months: r.parsed.months, read_date: r.read_date, sha256: r.sha256 })
+}
+
+/// A reader that gives no U (tests).
 pub fn no_u_reader() -> Result<URead, String> {
     Err("U not available (no IMF uranium reader in the program)".into())
 }
@@ -609,7 +615,7 @@ pub fn command(repo: &Path, args: &[String]) -> Result<i32, CmdError> {
         i += 2;
     }
     let cache = flag(args, "--cache").map_or_else(|| repo.join("data").join("raw"), |c| if PathBuf::from(&c).is_absolute() { PathBuf::from(c) } else { repo.join(c) });
-    let res = run_study(&cache, &no_u_reader).map_err(Data)?;
+    let res = run_study(&cache, &|| imf_u_reader(&cache)).map_err(Data)?;
     print!("{}", report_text(&res));
     if let Some(out) = flag(args, "--out") {
         let json = serde_json::to_string_pretty(&res).map_err(|e| Data(e.to_string()))?;
