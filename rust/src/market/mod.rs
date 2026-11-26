@@ -28,6 +28,7 @@ pub mod estimates_cache;
 pub mod estimates_cli;
 pub mod fmp;
 pub mod fund_attribution;
+pub mod fund_distributions;
 pub mod fund_gold;
 pub mod fund_holdings;
 pub mod fred_api;
