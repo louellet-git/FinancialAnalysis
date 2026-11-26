@@ -2,7 +2,7 @@
 id: T-20261125-economics-fund-decomposition
 title: URA and GLD decomposition for Luc: layers 1 and 2 (identity, attribution) and layer 3 (drivers, frozen design)
 area: docs
-status: in-progress
+status: review
 owner: louellet-git
 requested_by: louellet-git
 story: E2.S6
