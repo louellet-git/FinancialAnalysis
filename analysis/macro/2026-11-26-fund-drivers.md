@@ -2,12 +2,12 @@
 
 *Which outside drivers the monthly returns of URA (three parts) and GLD are consistent with, November 2023 to October 2026. Layer 3 of 3.*
 
-The first two pages showed what URA and GLD hold. This page asks why those holdings moved. The test was fixed before we read the data. The answer: each of the four parts is consistent with its drivers, but the drivers explain only 12% to 43% of the moves. The rest is not explained.
+The first two pages showed what URA and GLD hold. This page asks why those holdings moved. The test was fixed before the run (records R1 to R5 are dated before it). The answer: each of the four parts is consistent with its drivers, but the drivers explain only 12% to 43% of the moves. The rest is not explained.
 
 ## The answer
 
 1. **URA miners are consistent with the uranium price and the stock market.** The drivers explain 35% of the monthly moves. Uranium is the clearest driver (coefficient 0.94, t 2.10, a wide range).
-2. **URA reactor and fuel companies are consistent with the stock market, not with uranium.** The drivers explain 25%. The market and the chip stocks give most of it; the uranium link is not clear (t 0.65).
+2. **URA reactor and fuel companies are consistent with the stock market; a link with uranium is not shown (t 0.65).** The drivers explain 25%. The market and the chip stocks give most of it.
 3. **The foreign part of URA is consistent with the uranium price.** The drivers explain 43% (12 quarters; 49% without the one doubtful holding, Daewoo E&C).
 4. **GLD is only weakly consistent with real yields and the dollar.** The two drivers together explain 12%. Neither one is clear alone.
 
@@ -35,7 +35,7 @@ The first two pages showed what URA and GLD hold. This page asks why those holdi
 
 The intercept (the part of the return with no driver, not an explanation) is -62 pp for the miners, -144 pp for the reactor names, +32 pp for the foreign part and +65 pp for GLD over the sample.
 
-**The last 12 months (Nov 2025 to Oct 2026).** Each part did worse than the drivers predicted. The sums of the monthly errors (actual less predicted) are -80 pp for the miners (return -39 pp), -217 pp for the reactor names (return -160 pp) and -31 pp for GLD (return -3 pp).
+**The last 12 months (Nov 2025 to Oct 2026).** Each of the three monthly parts did worse than the drivers predicted. The sums of the monthly errors (actual less predicted) are -80 pp for the miners (return -39 pp), -217 pp for the reactor names (return -160 pp) and -31 pp for GLD (return -3 pp). The out-of-sample R² is still positive: the forecasts were closer than the average of the earlier months, but they stayed too high on average.
 
 ---
 Status: `fa macro fund-drivers` (run of record 2026-11-26; design and its records R1 to R5 in analysis/macro/2026-11-25-fund-drivers-design.md). Source of the uranium price: International Monetary Fund, Primary Commodity Prices. Gold: World Bank Commodity Price Data (CC BY 4.0).
