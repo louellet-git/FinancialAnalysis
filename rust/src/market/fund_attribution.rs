@@ -166,6 +166,8 @@ pub enum Group {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Row {
     pub name: String,
+    /// The ISIN of the position (empty if the report has none).
+    pub isin: String,
     pub group: Group,
     pub ticker: Option<String>,
     pub method: Method,
@@ -303,7 +305,7 @@ pub fn attribute(r0: &Report, r1: &Report, class_id: &str, map: &HashMap<String,
             Group::Us => q.us += contrib,
             Group::Foreign => q.foreign += contrib,
         }
-        q.rows.push(Row { name: p.name.clone(), group, ticker, method, w0, p0: p.price(), p1: b[i].price(), ret, contrib, bal_ratio, split, trade_est, flag: flag_of(p, &b[i], split) });
+        q.rows.push(Row { name: p.name.clone(), isin: p.isin.clone(), group, ticker, method, w0, p0: p.price(), p1: b[i].price(), ret, contrib, bal_ratio, split, trade_est, flag: flag_of(p, &b[i], split) });
     }
     // The pro-rata part of the balance change (creations and redemptions) is not a trade of the fund manager.
     let w_sum: f64 = q.rows.iter().map(|r| r.w0).fold(0.0, |a, b| a + b);

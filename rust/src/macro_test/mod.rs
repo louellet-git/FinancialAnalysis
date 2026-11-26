@@ -26,6 +26,7 @@
 
 pub mod data;
 pub mod design;
+pub mod fund_drivers;
 pub mod extras;
 pub mod stats;
 pub mod view;
@@ -333,11 +334,12 @@ fn command_inner(repo: &Path, args: &[String]) -> Result<i32, CmdError> {
     match args.first().map(String::as_str) {
         Some("premium-test") => {}
         Some("view") => return view::command(repo, &args[1..]),
+        Some("fund-drivers") => return fund_drivers::command(repo, &args[1..]),
         Some("-h" | "--help") | None => {
             println!("{USAGE}");
             return Ok(0);
         }
-        Some(o) => return Err(Usage(format!("unknown macro command '{o}' (premium-test, view)"))),
+        Some(o) => return Err(Usage(format!("unknown macro command '{o}' (premium-test, view, fund-drivers)"))),
     }
     let a = &args[1..];
     if a.iter().any(|x| x == "-h" || x == "--help") {

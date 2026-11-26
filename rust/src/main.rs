@@ -71,6 +71,7 @@ USAGE:
   fa earnings dates TICKER... [--tolerance N]     past report dates against the SEC filing list (8-K item 2.02), next date
   fa macro premium-test --series FILE [--dfii10 FILE] [--t10yie FILE] [--cache DIR] [--out FILE] [--exclude-from D --exclude-to D] [--list sp500|sp100]
                                                   frozen test of the weekly change of the implied premium (fa macro premium-test --help)
+  fa macro fund-drivers [--cache DIR] [--out FILE]  frozen layer-3 study of URA and GLD against outside drivers (design 2026-11-25-fund-drivers)
   fa recon bonds [--date D] [--out FILE]          bond values from our rates vs market prices (see: fa recon help)
   fa recon bills [--date D]                       tests of each cause of the bill difference of recon bonds
   fa recon rich-cheap [--date D] [--out FILE]     fitted NSS curve, difference of each security, rich and cheap candidates

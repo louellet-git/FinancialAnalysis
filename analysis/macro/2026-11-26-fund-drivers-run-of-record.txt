@@ -1,0 +1,76 @@
+note: /home/user/fa-data-ro/_sec/company_tickers_mf.json is not in the cache: no share-class filter (the same rule as fa fund attribution)
+FUND DRIVERS (frozen design analysis/macro/2026-11-25-fund-drivers-design.md (R1, R2, R3, R4)): a fit is not a cause; log returns; rates in percentage points
+U read on 2026-11-26; SHA-256 of the series bytes 97eb684c868de161abecce9ce946e2d0896e5f1b91e33036f543ab6d04600e62. The series is not stored. A new run can change if the IMF revises a value.
+Models that ran: 4. With 4 models at 10%, a false 'consistent' is possible; the out-of-sample condition lowers that chance.
+
+URA-M: n 36, df 32, Newey-West lag 3
+  R2 0.345; unexplained in sample (a) 0.655
+  intercept    -0.0173  se   0.0187  t  -0.92
+  U             0.9391  se   0.4472  t   2.10
+  S             1.0058  se   0.6921  t   1.45
+  C             0.1751  se   0.2500  t   0.70
+  intercept x n (separate line, not an explanation): -62.27 pp
+  out of sample (12 months, expanding window, against the fit-window mean): R2 0.284; (b) sum of errors -79.68 pp next to the return of those months -39.11 pp
+  placebo: 25 shifts, 0 at or above the true R2, p 0.038
+  words: consistent with the drivers
+  S and C together: R2 full 0.345, without S and C 0.236, S and C only 0.229, joint contribution 0.109
+  year 2024 (n 12, description only): intercept 0.003, U 0.821, S 1.851, C -0.709
+  year 2025 (n 12, description only): intercept 0.009, U 1.279, S -0.458, C 1.048
+  year 2026 (n 10, description only): intercept -0.086, U 3.524, S 0.932, C 0.110
+
+URA-R: n 36, df 32, Newey-West lag 3
+  R2 0.251; unexplained in sample (a) 0.749
+  intercept    -0.0399  se   0.0434  t  -0.92
+  U             0.4673  se   0.7237  t   0.65
+  S             2.6899  se   1.2497  t   2.15
+  C             0.3906  se   0.4454  t   0.88
+  intercept x n (separate line, not an explanation): -143.80 pp
+  out of sample (12 months, expanding window, against the fit-window mean): R2 0.368; (b) sum of errors -217.30 pp next to the return of those months -160.13 pp
+  placebo: 25 shifts, 1 at or above the true R2, p 0.077
+  words: consistent with the drivers
+  S and C together: R2 full 0.251, without S and C 0.062, S and C only 0.243, joint contribution 0.189
+  year 2024 (n 12, description only): intercept 0.063, U 0.271, S 1.757, C -0.704
+  year 2025 (n 12, description only): intercept -0.016, U 1.775, S 6.587, C -0.101
+  year 2026 (n 10, description only): intercept -0.156, U 1.438, S 2.457, C 0.434
+
+URA-F: n 12, df 10, Newey-West lag 1
+  R2 0.425; unexplained in sample (a) 0.575
+  intercept     0.0269  se   0.0367  t   0.73
+  U             0.7597  se   0.1678  t   4.53
+  intercept x n (separate line, not an explanation): +32.32 pp
+  no out-of-sample check (too few quarters); with 9 shifts the smallest p is 0.10, so the rule is p <= 0.10
+  placebo: 9 shifts, 0 at or above the true R2, p 0.100
+  words: consistent with the drivers
+  year 2024 (n 4, description only): intercept 0.011, U 0.625
+  year 2025 (n 4, description only): intercept 0.106, U 1.444
+  year 2026 (n 3, description only): intercept -0.086, U 3.583
+
+GLD: n 36, df 33, Newey-West lag 3
+  R2 0.119; unexplained in sample (a) 0.881
+  intercept     0.0180  se   0.0091  t   1.99
+  R            -0.0489  se   0.0389  t  -1.26
+  D            -0.5092  se   0.3605  t  -1.41
+  intercept x n (separate line, not an explanation): +64.80 pp
+  out of sample (12 months, expanding window, against the fit-window mean): R2 0.092; (b) sum of errors -31.23 pp next to the return of those months -3.41 pp
+  placebo: 25 shifts, 1 at or above the true R2, p 0.077
+  words: consistent with the drivers
+  year 2024 (n 12, description only): intercept 0.022, R -0.023, D -0.136
+  year 2025 (n 12, description only): intercept 0.038, R -0.020, D -0.298
+  year 2026 (n 10, description only): intercept 0.018, R -0.048, D -3.642
+
+URA-F without Daewoo E&C (R1, sensitivity only): n 12, df 10, Newey-West lag 1
+  R2 0.491; unexplained in sample (a) 0.509
+  intercept     0.0248  se   0.0349  t   0.71
+  U             0.7844  se   0.1673  t   4.69
+  intercept x n (separate line, not an explanation): +29.78 pp
+  no out-of-sample check (too few quarters); with 9 shifts the smallest p is 0.10, so the rule is p <= 0.10
+  placebo: 9 shifts, 0 at or above the true R2, p 0.100
+  (sensitivity line only: no words; the words use the fit with all holdings, record R1)
+  year 2024 (n 4, description only): intercept 0.012, U 0.636
+  year 2025 (n 4, description only): intercept 0.107, U 1.465
+  year 2026 (n 3, description only): intercept -0.103, U 3.796
+
+GLD identity against the World Bank gold change (not a driver; monthly average, lags about half a month): n 36, correlation 0.805, slope 1.025, R2 0.648, mean absolute difference 2.64 pp
+limits: 36 months is a small sample; weights change at quarter ends only; URA-F closes quarterly; the IMF series is a monthly average with its own method; a fit is not a cause.
+
+wrote /tmp/claude-0/-home-user-FinancialAnalysis/af80974b-02c9-52e5-9dfa-cca74a1a8d6d/scratchpad/fund_drivers_run.json
