@@ -67,9 +67,9 @@ Low end: the holding was held all quarter. High end: it added nothing.
 |---|---|---|---|---|
 | (a) The foreign holdings (34% to 58% of the fund) have a value only at each quarter end | No monthly split of the foreign part | A monthly price source with terms that permit our use | Technology | not planned: no such free source is known |
 | (b) The start weights are held for the full quarter | Trades and new holdings go to the remainder; Table 2 gives a range, not a number | A holdings report for each month (not public) | No owner (not possible) | not planned |
-| (c) No share count and no distribution amounts | The premium is a change only, not a level; the December gaps stay an inference | The distribution history of the fund, with its terms | Technology | asked 2026-11-26; no ticket yet |
+| (c) No share count and no distribution amounts | The premium is a change only, not a level; the December gaps stay an inference | The distribution history of the fund (Nasdaq site, checked against the yearly SEC N-CSR) | Technology | a new ticket after the uranium series |
 | (d) The Sprott uranium trust (4% to 11% of the fund) is one line | The uranium in the trust is not separated from the trust price | The look-through data of Sprott | Luc (consent of Sprott) | your decision; the work is in story E3.S5 |
-| (e) One holding, Daewoo E&C (0.61%), rose about 7 times in one quarter (2026-04-30: +3.57 pp), then fell 62% | Its two parts are not checked against a second price | A second price for this Korean stock | Technology | asked 2026-11-26; no ticket yet |
+| (e) One holding, Daewoo E&C (0.61%), rose about 7 times in one quarter (2026-04-30: +3.57 pp), then fell 62% | Its two parts are not checked against a second price | A second price for this Korean stock (none is permitted) | Technology | not planned |
 | (f) Each quarter uses a report that is public about 60 days after the quarter end | A look back, not a view at that date; the quarter to 2026-10-31 is not public yet | Time | No owner (no action) | about 2026-12-30 |
 
 All quarters use the 2026 list of US tickers. Each quarter has a price check of the US-listed names against Nasdaq closes, and no name was above the 8% tolerance (the largest difference was 4.84%).
