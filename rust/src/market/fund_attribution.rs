@@ -403,7 +403,7 @@ fn pp_opt(v: Option<f64>) -> String {
 
 /// The six limits of the method, printed at the end.
 pub const LIMITS: [&str; 6] = [
-    "1. The foreign part of the fund (about a quarter of the net assets for URA) has a quarterly value only: no permitted monthly price.",
+    "1. The foreign part of the fund (about 35% to 58% of the net assets for URA, 2023 to 2026) has a quarterly value only: no permitted monthly price.",
     "2. A trade inside a quarter goes to the remainder, with cash, fee and securities lending (the start weights are held for the quarter).",
     "3. The premium is price return minus NAV return. N-PORT has no share count, so a premium level (price / NAV - 1) is not known.",
     "4. GLD months are approximate (World Bank monthly average). This limit applies to a GLD run only.",

@@ -142,6 +142,8 @@ fa prices show IBM [--from D] [--to D]            # rows of the cache
 fa prices last IBM JNJ                            # last close, date, source; warns when older than 5 weekdays
 fa prices check MSFT --sources yahoo,nasdaq       # compare two sources on the common dates (network)
 fa estimates get IBM MSFT [--tickers-file F] [--endpoints forecast,surprise,targets,momentum] [--momentum] [--refresh]   # consensus EPS, price targets, surprises into data/raw (Nasdaq site, no key; network)
+fa commodity get gold [--cache DIR]   # World Bank Pink Sheet monthly file into data/raw/commodity/worldbank (2 requests; CC BY 4.0; network)
+fa commodity show gold [--from YYYY-MM]   # monthly gold price, USD per troy ounce, 1960 to the last month of the file (cache only)
 fa estimates show IBM [--price P]                 # consensus by period, revisions, forward P/E, target against the last close, next report date
 fa earnings calendar [IBM...] [--tickers-file F] [--from D] [--days 60]   # Nasdaq earnings calendar scan, next report date of each ticker (network)
 fa earnings dates IBM JNJ [--tolerance 1]         # past report dates against the SEC 8-K list (mapcheck fetch --submissions TICKER)

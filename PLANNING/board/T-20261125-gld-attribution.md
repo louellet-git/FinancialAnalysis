@@ -20,3 +20,7 @@ Part 1 (2026-11-26, pull request 262): the quarter-end part. `fa fund attributio
 against the reported NAV per share: within 0.004 USD in all 13 (gold in settlement included). Layer 1b: premium level
 -1.19% to +1.64%. Layer 2: NAV return = gold + fee drag (-0.093 to -0.103 pp) + rest (-0.015 to +0.015 pp). Open: the
 monthly view (waits for the owner's answer on the World Bank series); `fa sync` does not read this data set yet.
+
+Gate note (Quality and Risk, 2026-11-26, PR 261): the World Bank gold is a monthly average (before 2025-06: the London
+afternoon fixing). The layer 1 identity of GLD must say "monthly average against a month-end NAV"; the quarter ends
+use the price of the trust's own 10-Q or 10-K.
