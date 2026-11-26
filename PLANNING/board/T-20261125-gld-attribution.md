@@ -14,3 +14,9 @@ acceptance: `fa fund attribution GLD` prints, for each quarter end of 3 years, t
 ---
 Owner word (2026-11-25, through the Head of Staff): "All three layers this week". The URA part is
 T-20261125-fund-attribution (done). Needs the gold series of T-20261123-commodity-series for the monthly view.
+
+Part 1 (2026-11-26, pull request 262): the quarter-end part. `fa fund attribution GLD [--fetch]`: 13 filings (10-Q and
+10-K, 2023-09-30 to 2026-09-30, 15 requests). Layer 1a: ounces per share x the trust's price - accrued fee per share
+against the reported NAV per share: within 0.004 USD in all 13 (gold in settlement included). Layer 1b: premium level
+-1.19% to +1.64%. Layer 2: NAV return = gold + fee drag (-0.093 to -0.103 pp) + rest (-0.015 to +0.015 pp). Open: the
+monthly view (waits for the owner's answer on the World Bank series); `fa sync` does not read this data set yet.

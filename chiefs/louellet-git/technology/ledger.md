@@ -28,3 +28,4 @@
 | URA N-PORT history and fund attribution | 2026-11-25 | 1 Sonnet data-engineer agent (~209k); 13 reports, 12 quarters, remainder within 0.35 pp in 10 of 12 | about 1% of the week | 21 new tests; PR 260 |
 | EDINET reader part 1 | 2026-11-25 | 1 Sonnet data-engineer agent (~253k); fixture from the documentation, no key | about 1.5% of the week | mapcheck 154 tests; PR 258; real read on the laptop open |
 | fa usage show --week | 2026-11-25 | 1 Sonnet rust-engineer agent (~66k); USD from the transcripts, +0.5% against the platform cost | 2.67 USD | 13 usage tests; PR 257 |
+| GLD attribution part 1 (quarter ends) | 2026-11-26 | 1 Sonnet data-engineer agent (~176k); 13 filings; identity within 0.004 USD | about 1% of the week | 9 new tests; PR 262 |

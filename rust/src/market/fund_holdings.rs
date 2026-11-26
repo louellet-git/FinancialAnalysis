@@ -151,7 +151,7 @@ fn opt_num(v: Option<&str>) -> Option<f64> {
     v.and_then(|t| t.trim().parse::<f64>().ok()).filter(|x| x.is_finite())
 }
 
-fn unescape(s: &str) -> String {
+pub(crate) fn unescape(s: &str) -> String {
     let mut out = String::new();
     let mut rest = s;
     while let Some(i) = rest.find('&') {
