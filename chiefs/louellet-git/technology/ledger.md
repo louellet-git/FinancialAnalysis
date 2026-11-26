@@ -32,3 +32,4 @@
 | Commodity series part 1 (gold) | 2026-11-26 | 1 Sonnet data-engineer agent (~99k); World Bank gold loaded; IMF stopped (403 on the terms page) | under 0.5% of the week | 7 tests; PR 261 |
 | Commodity series part 2 (IMF uranium, run-time read) | 2026-11-26 | 1 Sonnet data-engineer agent (~175k); 9 IMF requests in all; no copy kept | about 0.5% of the week | PR 265 |
 | URA distribution history | 2026-11-26 | 1 Sonnet data-engineer agent (~108k); Yahoo 1 request, SEC N-CSR check to the cent | about 0.3% of the week | 2 new tests; PR 264 |
+| GLD attribution part 2 (monthly view) | 2026-11-26 | 1 Sonnet data-engineer agent (~238k, both parts); averaging error up to 7 pp, so a direction view only | about 0.3% of the week | 2 new tests; PR 266 |

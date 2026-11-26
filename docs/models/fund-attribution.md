@@ -83,7 +83,7 @@ Record: `docs/HIDDEN-ASSUMPTIONS.md`, #288.
 Command: `fa fund attribution GLD [--fetch] [--refresh] [--from D] [--to D] [--cache DIR]`. The program chooses this part from the ticker.
 GLD holds gold bars only, so there is no N-PORT list of holdings. The trust is an SEC filer (CIK 1222333), and its own 10-Q and 10-K
 state the gold, the NAV and the fee. The model uses the 4 quarter ends of the fiscal year (31 Dec, 31 Mar, 30 Jun, 30 Sep).
-The monthly view: not yet built (it waits for an owner answer).
+The monthly view (World Bank monthly average, below) is part of the same command.
 
 ### Inputs (GLD)
 | Input | Source | Note |
@@ -119,7 +119,7 @@ A first run with `--fetch` needs 2 requests and one for each filing. The SEC cli
 
 ### Limits (GLD)
 1. The gold price is the trust's own number (market value / ounces), not a second source. Layer 1a tests the arithmetic and the cent grid.
-2. The monthly view is not yet built. A later monthly view with the World Bank monthly average compares an average of a month with a month-end NAV: they do not match.
+2. The monthly view compares a monthly AVERAGE gold price with a month-END fund price: approximate (see the monthly part).
 3. The close against the NAV is mostly timing, not a premium: the NAV uses the LBMA Gold Price PM (about 15:00 London), the GLD close is 16:00 New York. The move of gold between the two times is in the level and in its change. The size is printed for each row (day range of the close day).
 4. The change of the ounces per share (the fee paid in gold) is the measure of the fee: it contains every other change of the ounces per share (none is known). The rate of 0.40% is a text of the filing.
 5. A quarter is 85 to 100 days between two filings. The last quarter end is missing until its filing is public. A 10-K/A is not used.
@@ -130,3 +130,14 @@ A first run with `--fetch` needs 2 requests and one for each filing. The SEC cli
 is the real one; the statement keeps the real numbers and rows, with the layout cut down). The decomposition and settlement tests use constructed round numbers (100 ounces,
 10 shares, prices 2000 and 2200) with a known answer. The filing list and companyfacts tests use small constructed JSON. No test uses the network.
 Record: `docs/HIDDEN-ASSUMPTIONS.md`, #289.
+
+### The GLD monthly view (2026-11-26)
+Input: the World Bank Pink Sheet monthly gold file in `data/raw/commodity/worldbank/` (read through `commodity.rs`; `fa commodity get gold` fills it; the monthly view makes no request; USD per troy ounce, nominal; the file has whole dollars) and the GLD Nasdaq month-end closes.
+For each month of the 3 years: GLD return = month-end close / the close of the month before - 1 (the last close on or before the last business day); World Bank change = the monthly average / the average of the month before - 1; difference = GLD return - World Bank change. The output is labelled "monthly AVERAGE gold price against a month-END fund price: approximate". The quarter ends of layers 1 and 2 use the trust's own LBMA price.
+Quarterly check: the World Bank change over the 3 months (average of the last month / average of the month of the earlier quarter end), and the sum of the three monthly changes, against the layer-2 gold return of the same quarter. The difference is the averaging error. A rising price makes the average lag the month end, so the error has the sign of the end of the move, and is not an error of the trust or of the World Bank.
+Series break: before 2025-06 the World Bank value is the London afternoon fixing average; from 2025-06 it is a spot average of daily rates (`commodity::GOLD_BREAK_MONTH`; the Description line of the file is compared at each run, a changed text prints a warning). The row of 2025-06 and the quarter that contains it are marked.
+Run of 2026-11-26 (36 months, 12 quarters, cache only): the monthly difference is -7.78 to +7.37 pp (the +7.37 is 2023-10, where the file has the same whole-dollar value, 1916, in 2023-09 and 2023-10); the quarterly averaging error is -6.97 to +6.87 pp, mean absolute 3.91 pp. The monthly view is therefore a picture of direction and size, not a measure: it cannot replace the quarter ends of layers 1 and 2.
+Tests: `the_monthly_arithmetic_and_the_averaging_error` (constructed closes 100, 110, 99, 99 and averages 100, 105, 105, 105: the monthly returns, the break mark, the quarter error +6 pp, a missing month gives no error).
+
+### URA, layer 1b header (2026-11-26)
+The program prints, in the line of the distributions, how many ex-dates are "not cross-checked": an ex-date after the end of the last fiscal year that an N-CSR covers (URA: 2025-10-31, set by hand in `fund_distributions::ncsr_covered_to`; the N-CSR is not read). Run: 1 of 20 (2025-12-30, 2.0840). A ticker with no entry prints "not cross-checked (no N-CSR year known for this ticker)".

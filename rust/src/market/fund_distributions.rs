@@ -63,6 +63,20 @@ pub fn read(cache: &Path, ticker: &str) -> Option<Record> {
 }
 
 /// The sum of the distributions with an ex-date in (d0, d1] (after d0, up to and with d1).
+/// The end of the last fiscal year that an N-CSR covers, by hand (the N-CSR is not read by the program). The distributions with an
+/// ex-date after it cannot be checked against an N-CSR. URA: fiscal year end 2025-10-31 (set 2026-11-26).
+pub fn ncsr_covered_to(ticker: &str) -> Option<&'static str> {
+    match ticker {
+        "URA" => Some("2025-10-31"),
+        _ => None,
+    }
+}
+
+/// The distributions with an ex-date after `covered_to`: these are "not cross-checked".
+pub fn not_cross_checked<'a>(d: &'a [Distribution], covered_to: &str) -> Vec<&'a Distribution> {
+    d.iter().filter(|x| x.ex_date.as_str() > covered_to).collect()
+}
+
 pub fn sum_between(d: &[Distribution], d0: &str, d1: &str) -> f64 {
     // `0.0 +` keeps an empty sum at +0.0 (the sum of nothing is -0.0 in Rust).
     0.0 + d.iter().filter(|x| x.ex_date.as_str() > d0 && x.ex_date.as_str() <= d1).map(|x| x.amount).sum::<f64>()
@@ -150,5 +164,16 @@ mod tests {
         // The start date is out and the end date is in: (d0, d1].
         assert_eq!(sum_between(&dist, "2024-12-19", "2025-03-31"), 0.0);
         assert_eq!(sum_between(&dist, "2024-09-30", "2024-12-19"), 0.5);
+    }
+
+    #[test]
+    fn a_distribution_after_the_last_ncsr_year_is_not_cross_checked() {
+        let d = |e: &str| Distribution { ex_date: e.into(), amount: 1.0 };
+        let v = vec![d("2024-12-20"), d("2025-10-31"), d("2025-12-19")];
+        let late = not_cross_checked(&v, "2025-10-31");
+        assert_eq!(late.len(), 1);
+        assert_eq!(late[0].ex_date, "2025-12-19");
+        assert_eq!(ncsr_covered_to("URA"), Some("2025-10-31"));
+        assert_eq!(ncsr_covered_to("GLD"), None);
     }
 }
