@@ -32,7 +32,7 @@ No request is sent. The US ticker of a holding comes from the file rust/src/mark
 
   fa fund attribution GLD [--from D] [--to D] [--cache DIR] [--fetch] [--refresh]
     The SPDR Gold Trust, from its own 10-Q and 10-K (quarter ends, 3 years back from the newest): the NAV against ounces x gold
-    price - fee, the premium level, and the NAV return as gold return + fee drag + a named rest. The monthly view is not yet built.
+    price - fee, the premium level, and the NAV return as gold return + fee drag + a named rest. The monthly view (World Bank monthly average gold against GLD month-end closes, cache only: fa commodity get gold) follows the summary.
     --fetch     get the files that are not in DIR/GLD/trust (filing list, companyfacts, one document for each filing: SEC EDGAR)
     --refresh   with --fetch: get the filing list and the companyfacts file again (a new filing)
     Without --fetch no request is sent. The closes of GLD: DIR/GLD/prices.json (fa prices get GLD --source nasdaq).";
@@ -513,6 +513,21 @@ pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
             r.distributions.len()
         ),
         None => println!("{} distributions: no file (fa fund distributions {}): layer 1b is the price return only.", o.ticker, o.ticker),
+    }
+    if let Some(r) = &dist {
+        match super::fund_distributions::ncsr_covered_to(&o.ticker) {
+            Some(to) => {
+                let late = super::fund_distributions::not_cross_checked(&r.distributions, to);
+                println!(
+                    "{} distributions: {} of {} ex-dates are not cross-checked (ex-date after {to}, the end of the last fiscal year that an N-CSR covers): {}",
+                    o.ticker,
+                    late.len(),
+                    r.distributions.len(),
+                    if late.is_empty() { "none".to_string() } else { late.iter().map(|d| format!("{} {:.4}", d.ex_date, d.amount)).collect::<Vec<_>>().join(", ") }
+                );
+            }
+            None => println!("{} distributions: not cross-checked (no N-CSR year known for this ticker).", o.ticker),
+        }
     }
     let mut tick_cache: HashMap<String, Option<Vec<PricePoint>>> = HashMap::new();
     for t in map.values() {

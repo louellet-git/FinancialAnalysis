@@ -2,7 +2,7 @@
 id: T-20261125-gld-attribution
 title: GLD layers 1 and 2: ounces for each share x the gold price, less the fee, against the GLD price
 area: importer
-status: in-progress
+status: done
 owner: louellet-git
 requested_by: louellet-git
 head: technology
@@ -11,6 +11,7 @@ order: 2
 branch: claude/gld-monthly
 created: 2026-11-25
 acceptance: `fa fund attribution GLD` prints, for each quarter end of 3 years, the NAV from the trust's own 10-Q and 10-K (ounces, shares, the gold price that the trust used, the fee) against the GLD price, and a monthly view with the gold series of T-20261123-commodity-series (approximate, a monthly average); the remainder is named; fixed-answer tests; one real run.
+merged: pull request 262 (part 1) and pull request 266 (part 2, branch claude/gld-monthly)
 ---
 Owner word (2026-11-25, through the Head of Staff): "All three layers this week". The URA part is
 T-20261125-fund-attribution (done). Needs the gold series of T-20261123-commodity-series for the monthly view.
@@ -26,3 +27,7 @@ afternoon fixing). The layer 1 identity of GLD must say "monthly average against
 use the price of the trust's own 10-Q or 10-K.
 
 Part 2 start (2026-11-26): the monthly view, now unblocked (owner decision: the World Bank gold series for all years).
+Result part 2 (2026-11-26): the monthly view (36 months): GLD month-end return against the change of the World Bank
+monthly average: -7.78 to +7.37 pp; the quarterly averaging error against the layer-2 gold return is -6.97 to +6.87 pp
+(mean absolute 3.91 pp). So the monthly view shows direction and size only; the quarter ends stay the measure. The
+series break (2025-06) is marked. Also: URA distributions after the last N-CSR year print "not cross-checked".

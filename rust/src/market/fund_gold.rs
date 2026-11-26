@@ -369,7 +369,7 @@ fn pp(v: f64) -> String {
 /// The limits that apply to GLD (the list of the URA run is in `fund_attribution::LIMITS`).
 pub const GLD_LIMITS: [&str; 6] = [
     "1. The gold price is the one that the trust used for its own NAV: the market value of the filing divided by the ounces (the LBMA Gold Price PM of the date in the filing). It is the trust's own number, not a second source: layer 1a tests the arithmetic and the cent grid, not the price.",
-    "2. The monthly view is not yet built (it waits for an owner answer). A later monthly view that uses the World Bank monthly average compares an average of the month with a month-end NAV: the two do not match, and the difference is not an error of the trust.",
+    "2. The monthly view compares a monthly AVERAGE gold price (World Bank) with a month-END fund price (Nasdaq close): approximate. The quarter ends of layers 1 and 2 use the trust's own LBMA price. The World Bank series has a break in 2025-06 (London afternoon fixing average before, spot average from then). The size of the averaging error is printed for each quarter.",
     "3. The close against the NAV is mostly timing, not a premium. The NAV is the LBMA Gold Price PM (about 15:00 London, about 10:00 New York); the GLD close is 16:00 New York. The move of gold between the two times is in the level and in its change (the true premium is about 0.1 pp). The size is printed for each row: the high-low range of the GLD close day as % of the close (an upper bound of the timing noise; 0.46% to 2.55% in the run of 2026-11-26).",
     "4. The ounces-per-share change (the fee paid in gold) is measured as the change of the ounces per share. It includes the gold that the trust sold to pay the fee and any other change of the ounces per share (none is known). The fee rate (0.40% a year) is a text of the filing, not a test of it.",
     "5. A quarter is the gap between two quarter-end filings (85 to 100 days). The last quarter end can be missing until the filing is public (10-Q about 5 weeks, 10-K about 8 weeks after the end). A 10-K/A is not used.",
@@ -546,7 +546,7 @@ pub fn run(repo: &Path, o: &super::fund_attribution::Options) -> Result<i32, Str
         _ => println!("GLD price: no price file (fa prices get GLD --source nasdaq): the premium lines are n/a."),
     }
     println!("Gold price: the LBMA Gold Price PM of the pricing date, as the trust used it. It is read as market value / ounces from the text of the filing (no price number is tagged).");
-    println!("Monthly view: not yet (waits for an owner answer).");
+    println!("Monthly view: below the summary (World Bank monthly average, cache only).");
 
     for am in &loaded.amendments {
         println!("amendment not read: {} filed {} (period {})", am.form, am.filed, am.period_end);
@@ -706,6 +706,7 @@ pub fn run(repo: &Path, o: &super::fund_attribution::Options) -> Result<i32, Str
             r.ranges
         );
     }
+    monthly_view(&cache, &points, prices.as_deref(), &rows.iter().map(|r| (r.end.clone(), r.g)).collect::<Vec<_>>());
     println!("\nTHE LIMITS");
     for l in GLD_LIMITS {
         println!("{l}");
@@ -715,6 +716,167 @@ pub fn run(repo: &Path, o: &super::fund_attribution::Options) -> Result<i32, Str
         println!("{c}");
     }
     Ok(0)
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// The monthly view: the World Bank monthly average gold price against the GLD month-end close.
+
+/// The last day of a month `YYYY-MM` as `YYYY-MM-DD`.
+pub fn month_end(month: &str) -> Option<String> {
+    let (y, m) = (month.get(..4)?.parse::<i64>().ok()?, month.get(5..7)?.parse::<i64>().ok()?);
+    (month.len() == 7 && (1..=12).contains(&m)).then(|| format!("{y:04}-{m:02}-{:02}", mapcheck::dates::days_in_month(y, m)))
+}
+
+/// The months from `from` to `to` (both `YYYY-MM`, both in the list).
+pub fn months_between(from: &str, to: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let (mut y, mut m) = match (from.get(..4).and_then(|v| v.parse::<i64>().ok()), from.get(5..7).and_then(|v| v.parse::<i64>().ok())) {
+        (Some(y), Some(m)) => (y, m),
+        _ => return out,
+    };
+    while format!("{y:04}-{m:02}").as_str() <= to && out.len() < 1200 {
+        out.push(format!("{y:04}-{m:02}"));
+        m += 1;
+        if m > 12 {
+            m = 1;
+            y += 1;
+        }
+    }
+    out
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MonthRow {
+    pub month: String,
+    pub gld_close: Option<f64>,
+    /// The GLD return of the month: month-end close / the close of the month before - 1.
+    pub gld_ret: Option<f64>,
+    pub wb: Option<f64>,
+    /// The change of the World Bank monthly average against the month before.
+    pub wb_chg: Option<f64>,
+    /// GLD return - World Bank change.
+    pub diff: Option<f64>,
+    /// The change into this month compares a spot average with a London afternoon fixing average.
+    pub break_month: bool,
+}
+
+/// The monthly rows for `months` (the first month is the base: it has no return). `gld(month)` is the month-end close.
+pub fn monthly_rows(months: &[String], gld: &dyn Fn(&str) -> Option<f64>, wb: &std::collections::BTreeMap<String, f64>, break_month: &str) -> Vec<MonthRow> {
+    let mut out: Vec<MonthRow> = Vec::new();
+    for (i, m) in months.iter().enumerate() {
+        let (c, w) = (gld(m), wb.get(m).copied());
+        let prev = i.checked_sub(1).map(|j| (gld(&months[j]), wb.get(&months[j]).copied()));
+        let gld_ret = c.zip(prev.and_then(|p| p.0)).map(|(c, p)| c / p - 1.0);
+        let wb_chg = w.zip(prev.and_then(|p| p.1)).map(|(w, p)| w / p - 1.0);
+        out.push(MonthRow { month: m.clone(), gld_close: c, gld_ret, wb: w, wb_chg, diff: gld_ret.zip(wb_chg).map(|(a, b)| a - b), break_month: i > 0 && m == break_month });
+    }
+    out
+}
+
+/// A quarter of the monthly view: the World Bank change over the three months (the average of the last month against the average
+/// of the month of the earlier quarter end) against the gold price return of layer 2.
+#[derive(Debug, Clone, PartialEq)]
+pub struct QuarterCompare {
+    pub end: String,
+    pub wb_chg: Option<f64>,
+    /// The sum of the three monthly World Bank changes (for the size of the difference between a sum and a product).
+    pub wb_sum: Option<f64>,
+    pub layer2_gold: f64,
+    /// World Bank change - the gold price return of layer 2: the averaging error.
+    pub error: Option<f64>,
+    pub contains_break: bool,
+}
+
+/// `quarters`: (start month, end month, layer-2 gold return, end label), the months are `YYYY-MM`.
+pub fn quarter_compare(rows: &[MonthRow], quarters: &[(String, String, f64, String)]) -> Vec<QuarterCompare> {
+    let find = |m: &str| rows.iter().position(|r| r.month == m);
+    quarters
+        .iter()
+        .map(|(m0, m1, g, end)| {
+            let (i0, i1) = (find(m0), find(m1));
+            let wb_chg = i0.zip(i1).and_then(|(a, b)| rows[a].wb.zip(rows[b].wb)).map(|(w0, w1)| w1 / w0 - 1.0);
+            let wb_sum = i0.zip(i1).and_then(|(a, b)| rows[a + 1..=b].iter().map(|r| r.wb_chg).sum::<Option<f64>>());
+            let contains_break = i0.zip(i1).is_some_and(|(a, b)| rows[a + 1..=b].iter().any(|r| r.break_month));
+            QuarterCompare { end: end.clone(), wb_chg, wb_sum, layer2_gold: *g, error: wb_chg.map(|w| w - g), contains_break }
+        })
+        .collect()
+}
+
+fn monthly_view(cache: &Path, points: &[Point], prices: Option<&[PricePoint]>, layer2: &[(String, f64)]) {
+    use super::commodity as wbc;
+    println!("\nMONTHLY VIEW - monthly AVERAGE gold price (World Bank) against a month-END fund price (GLD, Nasdaq close): approximate.");
+    println!("The quarter ends of layers 1 and 2 use the trust's own LBMA price. Cache only, no request.");
+    let Some(file) = wbc::newest(&wbc::series_dir(cache)) else {
+        println!("monthly view: n/a (no World Bank file in {}: run fa commodity get gold)", wbc::series_dir(cache).display());
+        return;
+    };
+    let parsed = match std::fs::read(&file).map_err(|e| e.to_string()).and_then(|b| wbc::read_series(&b, &wbc::SERIES[0])) {
+        Ok(p) => p,
+        Err(e) => {
+            println!("monthly view: n/a ({}: {e})", file.display());
+            return;
+        }
+    };
+    println!(
+        "World Bank Commodity Price Data (The Pink Sheet), {} ({}), CC BY 4.0, USD per troy ounce, nominal.",
+        file.file_name().and_then(|n| n.to_str()).unwrap_or(""),
+        parsed.updated
+    );
+    match parsed.description.as_deref() {
+        Some(d) if d.starts_with(wbc::SERIES[0].description) => {}
+        Some(d) => println!("WARNING the definition of the gold column changed (a new break?): {d}"),
+        None => println!("WARNING no Description line for the gold column: the definition is not checked."),
+    }
+    println!("SERIES BREAK {}: before it the value is the London afternoon fixing average, from it a spot average of daily rates. The change into {} compares the two.", wbc::GOLD_BREAK_MONTH, wbc::GOLD_BREAK_MONTH);
+    let (Some(first), Some(last)) = (points.first(), points.last()) else { return };
+    let months = months_between(&first.period_end[..7], &last.period_end[..7]);
+    let gld = |m: &str| -> Option<f64> { prices.and_then(|r| month_end(m).and_then(|d| business_day_on_or_before(&d)).and_then(|d| close_before(r, &d))).map(|h| h.1) };
+    let rows = monthly_rows(&months, &gld, &parsed.months, wbc::GOLD_BREAK_MONTH);
+    println!("{:<8} {:>10} {:>10} {:>10} {:>10} {:>9}", "month", "GLD close", "GLD ret %", "WB avg", "WB chg %", "diff pp");
+    let cell = |v: Option<f64>| v.map_or("n/a".to_string(), pp);
+    for r in rows.iter().skip(1) {
+        println!(
+            "{:<8} {:>10} {:>10} {:>10} {:>10} {:>9}{}",
+            r.month,
+            r.gld_close.map_or("n/a".into(), |c| format!("{c:.2}")),
+            cell(r.gld_ret),
+            r.wb.map_or("n/a".into(), |w| format!("{w:.2}")),
+            cell(r.wb_chg),
+            cell(r.diff),
+            if r.break_month { "  <-- series break: spot average from this month" } else { "" }
+        );
+    }
+    let diffs: Vec<f64> = rows.iter().filter_map(|r| r.diff).collect();
+    if let (Some(lo), Some(hi)) = (diffs.iter().cloned().reduce(f64::min), diffs.iter().cloned().reduce(f64::max)) {
+        println!("monthly difference (GLD return - World Bank change), {} months: {} to {} pp", diffs.len(), pp(lo), pp(hi));
+    }
+    // The quarters of layer 2 (those that have a gold return).
+    let mut qs: Vec<(String, String, f64, String)> = Vec::new();
+    for w in points.windows(2) {
+        if let Some((_, g)) = layer2.iter().find(|(e, _)| *e == w[1].period_end) {
+            qs.push((w[0].period_end[..7].to_string(), w[1].period_end[..7].to_string(), *g, w[1].period_end.clone()));
+        }
+    }
+    let qc = quarter_compare(&rows, &qs);
+    println!("\nQUARTERLY: World Bank change over the 3 months (average of the last month / average of the month of the earlier quarter end) against the gold price return of layer 2 (the trust's LBMA price, month end to month end)");
+    println!("{:<11} {:>10} {:>10} {:>12} {:>11}", "quarter end", "WB 3 months", "sum of 3", "layer-2 gold", "avg. error");
+    for q in &qc {
+        println!(
+            "{:<11} {:>10} {:>10} {:>12} {:>11}{}",
+            q.end,
+            cell(q.wb_chg),
+            cell(q.wb_sum),
+            pp(q.layer2_gold),
+            cell(q.error),
+            if q.contains_break { "  <-- contains the series break" } else { "" }
+        );
+    }
+    let errs: Vec<f64> = qc.iter().filter_map(|q| q.error).collect();
+    if let (Some(lo), Some(hi)) = (errs.iter().cloned().reduce(f64::min), errs.iter().cloned().reduce(f64::max)) {
+        let mean_abs = errs.iter().map(|e| e.abs()).sum::<f64>() / errs.len() as f64;
+        println!("averaging error of the quarter (World Bank change - layer-2 gold return), {} quarters: {} to {} pp, mean absolute {:.3} pp", errs.len(), pp(lo), pp(hi), mean_abs * 100.0);
+    }
+    println!("The averaging error is the difference between the change of a monthly average and the change of the month-end price (a rising price makes the average lag the month end by about half a month of the move). It is not an error of the trust or of the World Bank.");
 }
 
 #[cfg(test)]
@@ -923,5 +1085,32 @@ mod tests {
         assert_eq!(close_before(&wide, "2026-01-02").unwrap().2, Some(0.1));
         assert_eq!(close_before(&rows, "2026-01-01"), None);
         assert_eq!(close_before(&rows, "2026-01-11"), None);
+    }
+
+    #[test]
+    fn the_monthly_arithmetic_and_the_averaging_error() {
+        let months = months_between("2025-12", "2026-03");
+        assert_eq!(months, ["2025-12", "2026-01", "2026-02", "2026-03"]);
+        assert_eq!(month_end("2024-02").as_deref(), Some("2024-02-29"));
+        assert_eq!(month_end("2026-13"), None);
+        // GLD month-end closes 100, 110, 99, 99; World Bank averages 100, 105, 105, 105.
+        let close: std::collections::HashMap<&str, f64> = [("2025-12", 100.0), ("2026-01", 110.0), ("2026-02", 99.0), ("2026-03", 99.0)].into();
+        let wb: std::collections::BTreeMap<String, f64> = [("2025-12", 100.0), ("2026-01", 105.0), ("2026-02", 105.0), ("2026-03", 105.0)].iter().map(|(k, v)| (k.to_string(), *v)).collect();
+        let rows = monthly_rows(&months, &|m| close.get(m).copied(), &wb, "2026-02");
+        assert_eq!(rows[0].gld_ret, None);
+        assert!((rows[1].gld_ret.unwrap() - 0.10).abs() < 1e-15 && (rows[1].wb_chg.unwrap() - 0.05).abs() < 1e-15);
+        assert!((rows[1].diff.unwrap() - 0.05).abs() < 1e-15);
+        assert!((rows[2].gld_ret.unwrap() + 0.10).abs() < 1e-15 && rows[2].wb_chg == Some(0.0));
+        assert!(rows[2].break_month && !rows[1].break_month && !rows[0].break_month);
+        // The quarter 2025-12 to 2026-03: the World Bank change is 105/100 - 1 = 5%; layer 2 says -1%: the error is +6 pp.
+        let q = quarter_compare(&rows, &[("2025-12".into(), "2026-03".into(), -0.01, "2026-03-31".into())]);
+        assert!((q[0].wb_chg.unwrap() - 0.05).abs() < 1e-15 && (q[0].wb_sum.unwrap() - 0.05).abs() < 1e-15);
+        assert!((q[0].error.unwrap() - 0.06).abs() < 1e-15 && q[0].contains_break);
+        // A month with no World Bank value gives no error, not a wrong one.
+        let mut wb2 = wb.clone();
+        wb2.remove("2026-03");
+        let rows = monthly_rows(&months, &|m| close.get(m).copied(), &wb2, "2026-02");
+        let q = quarter_compare(&rows, &[("2025-12".into(), "2026-03".into(), -0.01, "x".into())]);
+        assert_eq!((q[0].wb_chg, q[0].error), (None, None));
     }
 }

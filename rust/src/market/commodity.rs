@@ -38,6 +38,8 @@ pub const LICENCE: &str = "CC BY 4.0 (https://datacatalog.worldbank.org/public-l
 const FILE_STEM: &str = "CMO-Historical-Data-Monthly";
 const SHEET: &str = "Monthly Prices";
 /// The sentence of the Description sheet that the gold column has today (2026-11-25). A change of it is a break of the series.
+/// The first month of the spot average: before it the value is the London afternoon fixing average (a break of the series).
+pub const GOLD_BREAK_MONTH: &str = "2025-06";
 pub const GOLD_DEFINITION_START: &str = "Gold, spot average of daily rates, from June 2025; previously (UK), 99.5% fine, London afternoon fixing";
 
 /// A series of the file: the command name, the column title, the unit text, the start of its Description line.
