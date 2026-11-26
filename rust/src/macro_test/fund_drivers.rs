@@ -416,16 +416,26 @@ pub fn foreign_outcomes(reports: &[Report], class_id: &str, map: &HashMap<String
 fn ura_outcomes(cache: &Path, dates: &[String]) -> Result<UraOutcomes, String> {
     let map = parse_map(MAP_CSV);
     let path = cache.join("_sec").join("company_tickers_mf.json");
-    let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e} (the share class of URA is needed)", path.display()))?;
-    let s = series_of(&text, "URA").map_err(|e| format!("URA in {}: {e}", path.display()))?;
-    let (loaded, _) = select_reports(read_cached_reports(cache, "URA", Some(&s.series_id)));
+    // The same rule as layer 2 (`fa fund attribution`): the share class from the SEC ticker file if it is in the
+    // cache; else no series filter and no class (the URA reports hold one fund), with a printed note.
+    let (series_id, class_id) = match std::fs::read_to_string(&path) {
+        Ok(text) => {
+            let s = series_of(&text, "URA").map_err(|e| format!("URA in {}: {e}", path.display()))?;
+            (Some(s.series_id), s.class_id)
+        }
+        Err(_) => {
+            eprintln!("note: {} is not in the cache: no share-class filter (the same rule as fa fund attribution)", path.display());
+            (None, String::new())
+        }
+    };
+    let (loaded, _) = select_reports(read_cached_reports(cache, "URA", series_id.as_deref()));
     let reports: Vec<Report> = loaded.into_iter().map(|l| l.report).collect();
     let mut prices: Prices = HashMap::new();
     for t in URA_M.iter().chain(URA_R.iter()) {
         prices.insert((*t).to_string(), price_cache::history(cache, t));
     }
     let mut out = group_outcomes(&reports, &prices, &map, dates)?;
-    let (f, fx) = foreign_outcomes(&reports, &s.class_id, &map, &f_dates())?;
+    let (f, fx) = foreign_outcomes(&reports, &class_id, &map, &f_dates())?;
     out.f = f;
     out.f_ex_daewoo = fx;
     Ok(out)
