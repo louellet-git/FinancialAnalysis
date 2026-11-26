@@ -146,8 +146,8 @@ weekly limit is about 19 USD, an estimate). See: a head reads its own use with o
 | Quality and Risk | 6% | about 113 | 284.85 | 20 (18%) |
 | Quant Research | 5% | about 95 | 169.53 | 26 (27%) |
 | Economics | 2% | about 38 | 153.84 | 16 (42%) |
-| Staff | 2% | about 38 | 108.23 | about 33 (87%) |
-| Reserve | 5% | about 95 | - | - |
+| Staff | 4% (2% from the reserve, 2026-11-26) | about 76 | 108.23 | about 33 |
+| Reserve | 5%: used (the uranium page 1.5%, the URA and GLD pages and layer 3 1.7%, staff 2%) | about 95 | - | - |
 
 How a head reads its own use: run `fa usage show --week` in its own session (after `git pull` and a build
 of `fa`). It gives the tokens and the USD at list price for each ticket since the reset, the share from this
