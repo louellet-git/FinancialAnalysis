@@ -17,19 +17,19 @@ You asked: is URA a black box? This page checks two things. First: does the repo
 | Quarter to | NAV return | US-listed part | Foreign part | Remainder | Price less NAV |
 |---|---|---|---|---|---|
 | 2023-10-31 | +17.10 | +9.92 | +7.08 | +0.10 | +1.14 |
-| 2024-01-31 | +22.14 | +8.80 | +13.27 | +0.08 | -9.18 |
+| 2024-01-31 | +22.14 | +8.80 | +13.27 | +0.08 | -2.91 |
 | 2024-04-30 | -4.39 | -2.44 | -1.85 | -0.11 | -0.72 |
-| 2024-07-31 | -3.45 | -1.15 | -2.43 | +0.13 | +1.96 |
+| 2024-07-31 | -3.45 | -1.15 | -2.43 | +0.13 | +2.04 |
 | 2024-10-31 | +9.21 | +8.20 | -0.88 | **+1.89** | -0.77 |
-| 2025-01-31 | -4.59 | -0.53 | -3.92 | -0.15 | -3.28 |
+| 2025-01-31 | -4.59 | -0.53 | -3.92 | -0.15 | -0.87 |
 | 2025-04-30 | -11.99 | -10.39 | -1.95 | +0.35 | +0.30 |
 | 2025-07-31 | +57.49 | +42.67 | +14.71 | +0.11 | -0.05 |
 | 2025-10-31 | +39.77 | +26.38 | +11.79 | **+1.59** | +0.27 |
-| 2026-01-31 | +6.18 | -2.52 | +8.81 | -0.11 | -6.42 |
+| 2026-01-31 | +6.18 | -2.52 | +8.81 | -0.11 | -2.64 |
 | 2026-04-30 | -0.70 | -3.99 | +3.55 | -0.25 | +3.30 |
 | 2026-07-31 | -29.23 | -18.41 | -10.83 | +0.01 | -1.52 |
 
-The remainder has trades, cash, the fee, dividends and securities lending. "Price less NAV" is the premium change plus any distribution. In the quarter to 2026-04-30, Daewoo E&C (limit e) gives +3.57 of the +3.55 pp foreign part.
+The remainder has trades, cash, the fee, dividends and securities lending. "Price less NAV" uses the price with distributions; it is the premium change plus timing. In the quarter to 2026-04-30, Daewoo E&C (limit e) gives +3.57 of the +3.55 pp foreign part.
 
 **Table 2: The three quarters with large new holdings.** See that the unexplained part is a range, and that in 2026 a small remainder hides two estimates that cancel.
 
@@ -49,7 +49,7 @@ One end: the new holdings were held all quarter. The other end: they added nothi
 | 2026-01-31 | +6.18 | Oklo -5.67, Cameco +4.62, NuScale -3.00, National Atomic Co. (Kazakhstan) +1.41, NexGen +1.35 |
 | 2026-07-31 | -29.23 | Cameco -6.87, Oklo -3.40, Daewoo E&C -2.52 (limit e), Uranium Energy -2.06, Energy Fuels -1.99 |
 
-**The price against the value.** The price and the NAV agree to within 2 pp in 8 of 12 quarters. The three largest negative gaps (-9.18, -3.28 and -6.42 pp) are in the three quarters that contain December. That is consistent with a yearly distribution in December, which the price return does not include. Our data has no distribution amounts, so this stays an inference.
+**The price against the value.** With the distributions, the price and the NAV agree to within 2 pp in 8 of 12 quarters. In the three quarters that contain December, the yearly distribution makes the gaps smaller (from -9.18, -3.28, -6.42 to -2.91, -0.87, -2.64 pp).
 
 <div style="page-break-before: always"></div>
 
@@ -65,7 +65,7 @@ One end: the new holdings were held all quarter. The other end: they added nothi
 |---|---|---|---|---|
 | (a) The foreign holdings (34% to 58% of the fund) have a value only at each quarter end | No monthly split of the foreign part | A monthly price source with terms that permit our use | Technology | not planned: no such free source is known |
 | (b) The start weights are held for the full quarter | Trades and new holdings go to the remainder; Table 2 gives a range, not a number | A holdings report for each month (not public) | No owner (not possible) | not planned |
-| (c) No share count and no distribution amounts | The premium is a change only, not a level; the December gaps stay an inference | The distribution history of the fund (Nasdaq site, checked against the yearly SEC N-CSR) | Technology | a new ticket after the uranium series |
+| (c) No share count; the amount of the 2025-12-30 distribution (2.084 per share) is not yet checked against the SEC N-CSR (the years FY2021 to FY2025 agree to the cent) | The premium is a change only, not a level, and the change holds timing | A daily NAV and share count (not in our sources); the next N-CSR for the amount | Technology | not planned (NAV); with the next N-CSR (amount) |
 | (d) The Sprott uranium trust (4% to 11% of the fund) is one line | The uranium in the trust is not separated from the trust price | The look-through data of Sprott | Luc (consent of Sprott) | your decision; the work is in story E3.S5 |
 | (e) Daewoo E&C: the fund's own valuation (same security in all reports; weight 0.61%, then 4.06%, then 1.71%) shows a rise of about 7 times (2026-04-30: +3.57 pp), then a fall of 62% | Its rise and its fall are not checked against a second price; the parts use the value that the NAV used | A second price for this Korean stock (none is permitted) | Technology | not planned |
 | (f) Each quarter uses a report that is public about 60 days after the quarter end | A look back, not a view at that date; the quarter to 2026-10-31 is not public yet | Time | No owner (no action) | about 2026-12-30 |
@@ -73,4 +73,4 @@ One end: the new holdings were held all quarter. The other end: they added nothi
 All quarters use the 2026 list of US tickers. Each quarter has a price check of the US-listed names against Nasdaq closes, and no name was above the 8% tolerance (the largest difference was 4.84%).
 
 ---
-Status: `fa fund attribution URA`; SEC N-PORT reports and Nasdaq closes (data store fa-data 0bdfc65).
+Status: `fa fund attribution URA`; SEC N-PORT reports and Nasdaq closes (data store fa-data 3a4f753); distributions from Yahoo, checked against the SEC N-CSR.
