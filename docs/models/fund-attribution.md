@@ -1,6 +1,8 @@
 # Model: fund attribution (layers 1 and 2 of an ETF)
 
-Updated: 2026-11-25. Commit: not yet made.
+Two parts: the N-PORT part (URA, a fund of shares; below) and the gold trust part (GLD; the last section).
+
+Updated: 2026-11-26. Commit: pull request 262.
 
 ## Purpose
 Explain an ETF (first URA, the uranium fund) so that it is not a black box. Layer 1: do the net assets agree with the
@@ -71,3 +73,55 @@ prints "probable cause (not proved)" and the unexplained part. The entering esti
 and +1.89 and +1.59 points in two (2024-10-31: Oklo entered the fund, bound +1.71, unexplained +0.06; 2025-10-31: trades and an entering holding, unexplained +0.32 by
 this estimate and +0.64 by the validator's estimate).
 Record: `docs/HIDDEN-ASSUMPTIONS.md`, #288.
+
+## The GLD part (a gold trust, quarter ends; 2026-11-26)
+Command: `fa fund attribution GLD [--fetch] [--refresh] [--from D] [--to D] [--cache DIR]`. The program chooses this part from the ticker.
+GLD holds gold bars only, so there is no N-PORT list of holdings. The trust is an SEC filer (CIK 1222333), and its own 10-Q and 10-K
+state the gold, the NAV and the fee. The model uses the 4 quarter ends of the fiscal year (31 Dec, 31 Mar, 30 Jun, 30 Sep).
+The monthly view: not yet built (it waits for an owner answer).
+
+### Inputs (GLD)
+| Input | Source | Note |
+|---|---|---|
+| Ounces of gold, market value of the gold, date of the LBMA Gold Price PM | Text of the 10-Q or 10-K: the sentence "the amount of gold owned by the Trust ... ounces ... market value ... based on the LBMA Gold Price PM on DATE" | Custom item: not in the XBRL companyfacts file |
+| Gold price used by the trust | Market value / ounces (implied) | The filing names the LBMA Gold Price PM but gives no price number |
+| Gold receivable, gold payable, accounts payable to the sponsor (the accrued fee), net assets, shares, NAV per share | Text of the statement of financial condition (USD thousands) | A receivable or payable row exists only in quarters that have one; no row is 0 |
+| Sponsor fee of the quarter | XBRL companyfacts, tag `SponsorFees`, the 3-month fact | Cross-check lines only; not in the identity |
+| Cross-check | XBRL `AssetsNet`, `SharesOutstanding`, `NetAssetValuePerShare` at the period end | A difference is printed as `XBRL check` |
+| GLD close | `data/raw/GLD/prices.json` (Nasdaq, split-adjusted; GLD pays no distribution) | The last close up to 5 days before the date (a weekend period end) |
+Cache: `data/raw/GLD/trust/` (`submissions.json`, `company_facts.json`, `ACCESSION.htm`, `record.json`). Without `--fetch` no request is sent.
+A first run with `--fetch` needs 2 requests and one for each filing. The SEC client names the program and reads the contact from `sec_contact.toml` or `SEC_USER_AGENT`.
+
+### Method (GLD)
+1. Layer 1a, for each quarter end: ounces per share x gold price - accrued fee per share against the reported NAV per share. This is a check of the sum of the filing and its rounding, not of the gold price or the ounces: the price is market value / ounces, so the identity is (value + receivable - payable - fee) / shares by construction. The ounces per
+   share include the gold in settlement: (ounces + (gold receivable - gold payable) / price) / shares. The line prints the difference, and
+   the distance of the implied price from a whole cent (the LBMA price is in cents). Flags: NAV difference above half a cent, price off the
+   cent grid, net assets / shares against the reported NAV, gold value + receivable - payable - fee payable against net assets (above 1000 USD), an XBRL difference.
+2. Layer 1b: GLD close / NAV per share - 1 (the share count is known). It is NOT a premium: the NAV is the London PM price (about 15:00 London) and the close is 16:00 New York, so most of the level is the move of gold between the two times (the true premium is about 0.1 pp). The output labels it "close against the NAV at the London price: mostly timing, not a premium" and prints a noise size for each row: the high-low range of the GLD close day as % of the close (from `prices.json`, which has high and low; an upper bound).
+3. Layer 2, for each quarter: NAV return = gold price return g + the change of the ounces per share d (the fee paid in gold; output label "oz/sh chg") + rest.
+   The rest has an exact split: the cross term g x d, and the effect of the accrued fee payable ((f0 (1+g)(1+d) - f1) / NAV0, f is the fee per share); what is left is rounding
+   (thousands of USD in the statement). The fee check prints d against 0.40% x days / 365 and against the fee of the quarter / mean net assets.
+4. Layer 2 close against NAV: GLD price return - NAV return = the change of close / NAV (difference form; mostly timing, not a premium; the two day ranges are printed); the ratio form (1+r)/(1+n) - 1 equals the change of the level (printed with the difference of the two, about 1e-16).
+5. The price day is the last business day (Monday to Friday) on or before the period end (the filing names the period end as the LBMA date); it is used for the GLD close and the day count (91 days, not 92, for 2023-12-31 to 2024-03-31). A holiday takes the last close before it. The period end and the filing date are printed too.
+6. A filing with a NAV, cent-grid, net assets or settlement-gap flag is out of layer 2: the output prints "no attribution" with the reason. A 10-K/A or 10-Q/A is not read: the output prints "amendment not read: FORM filed DATE". A value in parentheses in the statement is negative; a negative ounces, value, shares, net assets or NAV, or a negative payable, is refused.
+
+### Run of 2026-11-26 (13 filings, 2023-09-30 to 2026-09-30, 12 quarters; 15 requests)
+- Layer 1a: the identity NAV agrees with the reported NAV in each of the 13 filings (largest difference 0.0040 USD, below the rounding of the reported 2 decimals); the implied price is on the cent grid (largest distance 0.003 cent); the XBRL values agree with the text.
+- Gold in settlement is up to 242 million USD (7 of 13 quarter ends). Without it the identity fails by 0.40 to 0.73 USD in those 7.
+- Layer 2: the change of the ounces per share (the fee paid in gold) is -0.093 to -0.103 pp in each quarter (the rate gives -0.099 to -0.101 pp); the rest is -0.015 to +0.015 pp; rounding is below 0.0001 pp.
+- Layer 1b: close / NAV - 1 is -1.19% to +1.64% (2023-09-29 and 2026-03-31 are the extremes); its change is -1.66 to +1.70 pp in a quarter. The day ranges of the GLD close days are 0.46% to 2.55%: the level is of the size of the timing noise, so it is not read as a premium.
+- 2024-03-31 is a Sunday and 2024-03-29 a holiday: the price day is 2024-03-29 (Good Friday, no GLD close) and the close is of 2024-03-28.
+
+### Limits (GLD)
+1. The gold price is the trust's own number (market value / ounces), not a second source. Layer 1a tests the arithmetic and the cent grid.
+2. The monthly view is not yet built. A later monthly view with the World Bank monthly average compares an average of a month with a month-end NAV: they do not match.
+3. The close against the NAV is mostly timing, not a premium: the NAV uses the LBMA Gold Price PM (about 15:00 London), the GLD close is 16:00 New York. The move of gold between the two times is in the level and in its change. The size is printed for each row (day range of the close day).
+4. The change of the ounces per share (the fee paid in gold) is the measure of the fee: it contains every other change of the ounces per share (none is known). The rate of 0.40% is a text of the filing.
+5. A quarter is 85 to 100 days between two filings. The last quarter end is missing until its filing is public. A 10-K/A is not used.
+6. The text layout of the statement is assumed (tested on the 13 filings of the run and on a trimmed text). A new layout gives "NOT READ" with the reason, not a wrong number.
+
+### Tests (GLD)
+`cargo test --manifest-path rust/Cargo.toml --locked fund_gold`. The fixture text is trimmed from the real 10-Q of 2026-06-30 (the sentence on the gold
+is the real one; the statement keeps the real numbers and rows, with the layout cut down). The decomposition and settlement tests use constructed round numbers (100 ounces,
+10 shares, prices 2000 and 2200) with a known answer. The filing list and companyfacts tests use small constructed JSON. No test uses the network.
+Record: `docs/HIDDEN-ASSUMPTIONS.md`, #289.

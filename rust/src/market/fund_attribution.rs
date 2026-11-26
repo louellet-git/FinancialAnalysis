@@ -27,7 +27,14 @@ USAGE:
     --cache DIR   default data/raw. It reads DIR/TICKER/nport/*.xml (fill it with: fa fund holdings TICKER --from D)
                   and the closes DIR/<T>/prices.json of the fund and of the US-listed holdings (fa prices get T --source nasdaq).
     --top N       the holdings shown for each quarter (default 6), sorted by the size of the part
-No request is sent. The US ticker of a holding comes from the file rust/src/market/fund_ticker_map.csv (URA only).";
+No request is sent. The US ticker of a holding comes from the file rust/src/market/fund_ticker_map.csv (URA only).
+
+  fa fund attribution GLD [--from D] [--to D] [--cache DIR] [--fetch] [--refresh]
+    The SPDR Gold Trust, from its own 10-Q and 10-K (quarter ends, 3 years back from the newest): the NAV against ounces x gold
+    price - fee, the premium level, and the NAV return as gold return + fee drag + a named rest. The monthly view is not yet built.
+    --fetch     get the files that are not in DIR/GLD/trust (filing list, companyfacts, one document for each filing: SEC EDGAR)
+    --refresh   with --fetch: get the filing list and the companyfacts file again (a new filing)
+    Without --fetch no request is sent. The closes of GLD: DIR/GLD/prices.json (fa prices get GLD --source nasdaq).";
 
 const MAP_CSV: &str = include_str!("fund_ticker_map.csv");
 /// A quarter is the gap between two reports: from 80 to 100 days. Another gap is a missing report.
@@ -427,6 +434,10 @@ pub struct Options {
     pub from: Option<String>,
     pub to: Option<String>,
     pub top: usize,
+    /// GLD only: allow the requests to the SEC for the files that are not in the cache.
+    pub fetch: bool,
+    /// GLD only: get the filing list and the companyfacts file again.
+    pub refresh: bool,
 }
 
 pub fn parse_args(args: &[String]) -> Result<Option<Options>, String> {
@@ -438,7 +449,7 @@ pub fn parse_args(args: &[String]) -> Result<Option<Options>, String> {
     if !super::fund_holdings::valid_ticker(&ticker) {
         return Err(format!("{t}: not a ticker (letters, digits, . and - only)"));
     }
-    let mut o = Options { ticker, cache: None, from: None, to: None, top: 6 };
+    let mut o = Options { ticker, cache: None, from: None, to: None, top: 6, fetch: false, refresh: false };
     let mut it = args[1..].iter();
     while let Some(a) = it.next() {
         let date = |v: Option<&String>, n: &str| -> Result<String, String> {
@@ -451,6 +462,8 @@ pub fn parse_args(args: &[String]) -> Result<Option<Options>, String> {
             "--cache" => o.cache = Some(PathBuf::from(it.next().ok_or("--cache needs a folder")?)),
             "--from" => o.from = Some(date(it.next(), "--from")?),
             "--to" => o.to = Some(date(it.next(), "--to")?),
+            "--fetch" => o.fetch = true,
+            "--refresh" => o.refresh = true,
             "--top" => o.top = it.next().and_then(|v| v.parse().ok()).ok_or("--top needs a number")?,
             x => return Err(format!("unknown option {x}")),
         }
@@ -463,6 +476,9 @@ pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
         println!("{USAGE}");
         return Ok(0);
     };
+    if o.ticker == "GLD" {
+        return super::fund_gold::run(repo, &o);
+    }
     let cache = o.cache.clone().unwrap_or_else(|| repo.join("data").join("raw"));
     let map = parse_map(MAP_CSV);
     // The share class of the ticker, from the SEC file of fund tickers if it is in the cache.
