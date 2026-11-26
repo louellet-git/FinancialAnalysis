@@ -39,7 +39,7 @@ USAGE:
                                                   stochastic rate models (Rust); see below
   fa vol fit heston|bates --symbol T --date D [--rate R] [--expiry-max DAYS]
                                                   fit Heston or Bates to a stored option snapshot (fa vol --help)
-  fa usage record|show ...                        tokens by ticket, head and agent type from session transcripts (fa usage --help)
+  fa usage record|show [--week] ...                tokens by ticket, head and agent type from session transcripts; --week: USD of this week (fa usage --help)
   fa dcf drivers|classic|scenarios|models ...     Monte Carlo DCF in Rust (fa dcf --help)
   fa selftest golden [--case NAME] [--cases PATH] [--update REASON [--case NAME | --all]]
                                                   stored commands with the SHA-256 of their expected output; an input file that changed makes a case SKIPPED (fa selftest golden --help)
@@ -57,7 +57,8 @@ USAGE:
                                                   option chain of today, or the surface of past dates from daily closes (fa options --help)
   fa prices show TICKER [--from D] [--to D] | last TICKER... | check TICKER... [--sources A,B]
                                                   rows of the cache, last close, or a cross-check of two sources
-  fa fund holdings TICKER [--cache DIR] [--top N]  ETF holdings from the newest SEC N-PORT report
+  fa fund holdings TICKER [--cache DIR] [--top N] [--from D] [--to D]  ETF holdings from the SEC N-PORT report (newest, or the history from D)
+  fa fund attribution TICKER [--from D] [--to D] [--cache DIR]  ETF layers 1 and 2 from the N-PORT history: net assets, premium, parts of the return
   fa estimates get TICKER... [--tickers-file F] [--endpoints LIST] [--momentum] [--refresh]
                                                   analyst consensus EPS, price targets, surprises into data/raw (Nasdaq site, no key)
   fa estimates show TICKER [--price P]            consensus by period, revisions, forward P/E, target against the last close

@@ -5,6 +5,7 @@ pub mod checks;
 pub mod cli;
 pub mod crosscheck;
 pub mod dates;
+pub mod edinet;
 pub mod facts;
 pub mod filing;
 pub mod http;

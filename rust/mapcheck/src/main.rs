@@ -20,6 +20,7 @@ mapcheck: from SEC data to the standard DCF input variables.
 USAGE
     mapcheck [check] [OPTIONS] [TICKER ...]   map and check the tickers in the cache
     mapcheck fetch   [OPTIONS] [TICKER ...]   get SEC company facts into the cache
+    mapcheck fetch --edinet --ticker 8001.T --from D --to D   get a Japanese annual report from EDINET
     mapcheck import  [OPTIONS] TICKER ...     write data/processed/<TICKER>.json
     mapcheck values  [OPTIONS] TICKER ...     each variable with its value and source
     mapcheck filing  [OPTIONS] TICKER ...     the statements of the latest 10-K
@@ -56,6 +57,15 @@ fetch (network: SEC EDGAR; the contact is in the file sec_contact.toml of the re
     --prospectus         get the latest prospectus of each ticker (424B4, or S-1/A, or S-1)
     --submissions        get the earnings filings of each ticker (form 8-K with item 2.02) from the
                          SEC filing list, into <ticker>/sec_8k_earnings.json (1 request for each ticker)
+
+fetch --edinet (network: EDINET API v2; the free key is in the environment variable EDINET_API_KEY or in .env;
+    a missing key stops the command at once; the key is never printed or saved)
+    --edinet             find the annual securities report (type 120) of the ticker in the file dates
+                         --from to --to (one request each weekday, 3 seconds apart; stops at the first hit)
+    --edinet-doc ID      get this document (EDINET document ID) and make no scan
+    --edinet-rebuild     no request: make company_facts.json again from the ZIP files in the cache
+    --ticker T           the Tokyo ticker, form 8001.T (the cache folder has this name; amounts stay in JPY)
+    --filed D            filing date, if the cover page has none (YYYY-MM-DD)
 
 import (gets the company facts if they are not in the cache)
     --store DIR          output directory (default: data/processed)
@@ -150,9 +160,12 @@ fn cmd_check(raw: &[String]) -> Result<bool, String> {
 
 fn cmd_fetch(raw: &[String]) -> Result<bool, String> {
     let mut with_value = COMMON_VALUES.to_vec();
-    with_value.extend(["--top", "--write-list", "--delay"]);
-    let args = Args::parse(raw, &with_value, &["--refresh", "--filings", "--gaps", "--prospectus", "--submissions"])?;
+    with_value.extend(["--top", "--write-list", "--delay", "--edinet-doc", "--from", "--to", "--ticker", "--filed"]);
+    let args = Args::parse(raw, &with_value, &["--refresh", "--filings", "--gaps", "--prospectus", "--submissions", "--edinet", "--edinet-rebuild"])?;
     let cache = cache_of(&args);
+    if args.flag("--edinet") || args.flag("--edinet-rebuild") || args.value("--edinet-doc").is_some() {
+        return cmd_fetch_edinet(&args, &cache);
+    }
     let delay: f64 = args.number("--delay", 0.15)?;
     if args.flag("--submissions") {
         // The forms 8-K with item 2.02 of each ticker (the past earnings dates), 1 request for each ticker.
@@ -283,6 +296,61 @@ fn cmd_fetch(raw: &[String]) -> Result<bool, String> {
         }
         fs::write(path, text).map_err(|e| format!("{path}: {e}"))?;
         println!("List: {path}");
+    }
+    Ok(true)
+}
+
+/// The EDINET read of one Tokyo ticker: find the annual report (or take the document ID), get the CSV form,
+/// save it with its record, make `company_facts.json`, and print the latest year as proof.
+fn cmd_fetch_edinet(args: &Args, cache: &Path) -> Result<bool, String> {
+    use mapcheck::edinet;
+    let ticker = args.value("--ticker").map(str::to_uppercase).or_else(|| args.tickers().ok().and_then(|t| t.into_iter().next())).ok_or("give the ticker (for example 8001.T)")?;
+    let sec_code = edinet::security_code(&ticker)?;
+    let folder = edinet::folder(cache, &ticker);
+    if !args.flag("--edinet-rebuild") {
+        let key = edinet::api_key()?;
+        let delay: f64 = args.number("--delay", edinet::DEFAULT_DELAY_SECONDS)?;
+        let mut session = edinet::Session::new(edinet::Http::new(&key, delay), &key);
+        let (doc_id, meta) = match args.value("--edinet-doc") {
+            Some(id) => (id.to_string(), None),
+            None => {
+                let (from, to) = (args.value("--from").ok_or("give --from and --to (file dates, YYYY-MM-DD) or --edinet-doc DOCID")?, args.value("--to").ok_or("give --to")?);
+                let found = session.find_annual_report(&sec_code, from, to, &mut |date, n| println!("  {date}: {n} documents"))?;
+                match found {
+                    Some(meta) => {
+                        println!("found {} {} (EDINET code {}), fiscal year {} to {}, submitted {}", meta.doc_id, meta.filer_name, meta.edinet_code, meta.period_start, meta.period_end, meta.submit_date_time);
+                        (meta.doc_id.clone(), Some(meta))
+                    }
+                    None => {
+                        println!("{ticker}: no annual securities report (type 120, with a CSV form) of security code {sec_code} in {from} to {to} ({} requests)", session.requests);
+                        return Ok(false);
+                    }
+                }
+            }
+        };
+        let zip = session.csv_zip(&doc_id)?;
+        let today = dates::format(dates::today());
+        let path = edinet::save_document(&folder, &doc_id, &zip, meta.as_ref(), args.value("--filed"), &today)?;
+        println!("saved {} ({} bytes, {} requests)", path.display(), zip.len(), session.requests);
+    }
+    let (facts_file, lines) = edinet::rebuild_facts(&folder)?;
+    for line in &lines {
+        println!("{line}");
+    }
+    println!("facts: {}", facts_file.display());
+    // The proof: the standard variables of the latest year, in JPY.
+    let registry = Registry::embedded()?;
+    let facts = mapcheck::run::read_facts(&facts_file)?;
+    let company = mapcheck::mapper::map_company(&registry, &facts, 12);
+    println!("{ticker}: {} | currency {} (no conversion) | {} annual periods", company.name, company.currency, company.annual.len());
+    if let Some(p) = company.annual.last() {
+        println!("latest fiscal year end {}:", p.end);
+        for name in ["revenue", "operating_income", "net_income", "operating_cash_flow", "capex", "total_assets", "total_liabilities", "equity", "cash_and_equivalents", "shares_outstanding"] {
+            match p.get(&registry, name) {
+                Some(v) => println!("  {name:22} {v:>22.0}  {}", p.source(&registry, name)),
+                None => println!("  {name:22} {:>22}", "(no value)"),
+            }
+        }
     }
     Ok(true)
 }

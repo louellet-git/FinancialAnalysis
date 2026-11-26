@@ -65,6 +65,10 @@ anchors = [
     "ifrs-full/ProfitLoss",
     "ifrs-full/ProfitLossAttributableToOwnersOfParent",
     "ifrs-full/CashFlowsFromUsedInOperatingActivities",
+    "jpigp_cor/RevenueIFRS",
+    "jpigp_cor/ProfitLossAttributableToOwnersOfParentIFRS",
+    "jpigp_cor/NetCashProvidedByUsedInOperatingActivitiesIFRS",
+    "jpcrp_cor/RevenueIFRSSummaryOfBusinessResults",
 ]
 
 # ============================================================================
@@ -81,6 +85,8 @@ tags = [
     "us-gaap/RegulatedAndUnregulatedOperatingRevenue",
     "us-gaap/RevenuesNetOfInterestExpense",
     "ifrs-full/Revenue",
+    "jpigp_cor/RevenueIFRS",
+    "jpcrp_cor/RevenueIFRSSummaryOfBusinessResults",
 ]
 formulas = [
     "net_interest_income + noninterest_income",
@@ -160,6 +166,7 @@ tags = [
     "us-gaap/CostOfGoodsAndServicesSold",
     "us-gaap/CostOfGoodsSold",
     "ifrs-full/CostOfSales",
+    "jpigp_cor/CostOfSalesIFRS",
 ]
 
 [[variable]]
@@ -168,6 +175,7 @@ statement = "income_statement"
 tags = [
     "us-gaap/GrossProfit",
     "ifrs-full/GrossProfit",
+    "jpigp_cor/GrossProfitIFRS",
 ]
 formulas = ["revenue - cogs_total"]
 
@@ -267,6 +275,7 @@ statement = "income_statement"
 tags = [
     "us-gaap/OperatingIncomeLoss",
     "ifrs-full/ProfitLossFromOperatingActivities",
+    "jpigp_cor/OperatingProfitLossIFRS",
 ]
 formulas = ["gross_profit - operating_expenses_total"]
 
@@ -340,6 +349,8 @@ tags = [
     "us-gaap/IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest",
     "us-gaap/IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments",
     "ifrs-full/ProfitLossBeforeTax",
+    "jpigp_cor/ProfitLossBeforeTaxIFRS",
+    "jpcrp_cor/ProfitLossBeforeTaxIFRSSummaryOfBusinessResults",
 ]
 formulas = ["income_before_tax_domestic + income_before_tax_foreign"]
 
@@ -377,6 +388,8 @@ note = "Net income that belongs to the shareholders of the parent company."
 tags = [
     "us-gaap/NetIncomeLoss",
     "ifrs-full/ProfitLossAttributableToOwnersOfParent",
+    "jpigp_cor/ProfitLossAttributableToOwnersOfParentIFRS",
+    "jpcrp_cor/ProfitLossAttributableToOwnersOfParentIFRSSummaryOfBusinessResults",
 ]
 formulas = ["net_income_incl_nci - net_income_noncontrolling", "net_income_incl_nci", "net_income_to_common"]
 
@@ -386,6 +399,8 @@ statement = "income_statement"
 tags = [
     "us-gaap/ProfitLoss",
     "ifrs-full/ProfitLoss",
+    "jpigp_cor/ProfitLossIFRS",
+    "jpcrp_cor/ProfitLossIFRSSummaryOfBusinessResults",
 ]
 
 [[variable]]
@@ -394,6 +409,7 @@ statement = "income_statement"
 tags = [
     "us-gaap/NetIncomeLossAttributableToNoncontrollingInterest",
     "ifrs-full/ProfitLossAttributableToNoncontrollingInterests",
+    "jpigp_cor/ProfitLossAttributableToNonControllingInterestsIFRS",
 ]
 
 [[variable]]
@@ -505,6 +521,8 @@ tags = [
     "us-gaap/Cash",
     "ifrs-full/CashAndCashEquivalents",
     "ifrs-full/Cash",
+    "jpigp_cor/CashAndCashEquivalentsIFRS",
+    "jpcrp_cor/CashAndCashEquivalentsIFRSSummaryOfBusinessResults",
 ]
 
 [[variable]]
@@ -691,6 +709,8 @@ note = "A filer with no Assets tag: the total of liabilities and equity is the s
 tags = [
     "us-gaap/Assets",
     "ifrs-full/Assets",
+    "jpigp_cor/AssetsIFRS",
+    "jpcrp_cor/TotalAssetsIFRSSummaryOfBusinessResults",
 ]
 formulas = ["total_liabilities_and_equity"]
 
@@ -945,6 +965,7 @@ name = "total_liabilities"
 statement = "balance_sheet"
 tags = [
     "us-gaap/Liabilities",
+    "jpigp_cor/LiabilitiesIFRS",
 ]
 formulas = ["total_liabilities_and_equity - total_equity_incl_nci - temporary_equity?"]
 
@@ -975,6 +996,8 @@ tags = [
     "us-gaap/StockholdersEquity",
     "us-gaap/PartnersCapital",
     "ifrs-full/EquityAttributableToOwnersOfParent",
+    "jpigp_cor/EquityAttributableToOwnersOfParentIFRS",
+    "jpcrp_cor/EquityAttributableToOwnersOfParentIFRSSummaryOfBusinessResults",
 ]
 formulas = ["total_equity_incl_nci - noncontrolling_interest?"]
 
@@ -992,6 +1015,7 @@ statement = "balance_sheet"
 tags = [
     "us-gaap/StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest",
     "us-gaap/PartnersCapitalIncludingPortionAttributableToNoncontrollingInterest",
+    "jpigp_cor/EquityIFRS",
 ]
 formulas = ["equity + noncontrolling_interest?"]
 
@@ -1000,6 +1024,7 @@ name = "total_liabilities_and_equity"
 statement = "balance_sheet"
 tags = [
     "us-gaap/LiabilitiesAndStockholdersEquity",
+    "jpigp_cor/LiabilitiesAndEquityIFRS",
 ]
 
 [[variable]]
@@ -1023,6 +1048,8 @@ tags = [
     "us-gaap/NetCashProvidedByUsedInOperatingActivities",
     "us-gaap/NetCashProvidedByUsedInOperatingActivitiesContinuingOperations",
     "ifrs-full/CashFlowsFromUsedInOperatingActivities",
+    "jpigp_cor/NetCashProvidedByUsedInOperatingActivitiesIFRS",
+    "jpcrp_cor/CashFlowsFromUsedInOperatingActivitiesIFRSSummaryOfBusinessResults",
 ]
 
 [[variable]]
@@ -1086,6 +1113,8 @@ tags = [
     "us-gaap/PaymentsToAcquireFurnitureAndFixtures",
     "us-gaap/PaymentsToExploreAndDevelopOilAndGasProperties",
     "ifrs-full/PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities",
+    "jpigp_cor/PurchaseOfPropertyPlantAndEquipmentInvCFIFRS",
+    "jpigp_cor/PurchaseOfPropertyPlantAndEquipmentAndIntangibleAssetsInvCFIFRS",
 ]
 
 [[variable]]

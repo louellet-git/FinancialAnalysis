@@ -18,6 +18,19 @@ pub const QUARTER_DAYS: (i64, i64) = (80, 100);
 pub const SAME_PERIOD_DAYS: i64 = 14;
 pub const YTD_NOTE: &str = "year-to-date difference";
 
+/// The namespaces of IFRS statement facts: the IFRS taxonomy (SEC 20-F and 40-F filers) and the two EDINET namespaces
+/// (`jpigp_cor`: IFRS statement lines; `jpcrp_cor`: the summary of business results). Their values are in the
+/// reporting currency of the filer.
+pub const IFRS_NAMESPACES: [&str; 3] = ["ifrs-full", "jpigp_cor", "jpcrp_cor"];
+
+/// The tags whose currency unit gives the reporting currency, in sequence.
+const TOTAL_ASSETS_TAGS: [(&str, &str); 3] =
+    [("ifrs-full", "Assets"), ("jpigp_cor", "AssetsIFRS"), ("jpcrp_cor", "TotalAssetsIFRSSummaryOfBusinessResults")];
+
+pub fn is_ifrs_namespace(namespace: &str) -> bool {
+    IFRS_NAMESPACES.contains(&namespace)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Forms {
     Annual,
@@ -37,6 +50,8 @@ impl Forms {
             // 40-F and 20-F: the annual reports of foreign filers (Canada: 40-F; others: 20-F). Their facts
             // are mostly ifrs-full facts.
             (Forms::Annual, Some("10-K" | "10-K/A" | "40-F" | "40-F/A" | "20-F" | "20-F/A")) => true,
+            // EDINET document type 120: the annual securities report (有価証券報告書) of a Japanese filer.
+            (Forms::Annual, Some(crate::edinet::FORM_ANNUAL)) => true,
             (Forms::Quarterly, Some("10-Q")) | (Forms::Quarterly, Some("10-Q/A")) => true,
             _ => false,
         }
@@ -89,7 +104,7 @@ impl CompanyFacts {
     /// the unit is the reporting currency of the filer (for example CAD). No conversion: the value stays in
     /// that currency (`reporting_currency`).
     pub fn entries(&self, tag: &Tag, unit: &str) -> &[Fact] {
-        let unit = if tag.namespace == "ifrs-full" {
+        let unit = if is_ifrs_namespace(&tag.namespace) {
             // An ifrs-full tag is read only for a filer with no us-gaap facts: a filer with both (CRH, NXPI) keeps its
             // us-gaap values (its older IFRS years do not replace the restated US GAAP years). With no known currency
             // there is no value (no silent fallback to USD).
@@ -132,12 +147,18 @@ impl CompanyFacts {
 
     /// True if the filer has statement facts in a taxonomy that the registry reads (us-gaap or ifrs-full).
     pub fn has_statements(&self) -> bool {
-        self.has_us_gaap() || self.facts.contains_key("ifrs-full")
+        self.has_us_gaap() || IFRS_NAMESPACES.iter().any(|n| self.facts.contains_key(*n))
     }
 
-    /// The reporting currency of an `ifrs-full` filer: the currency unit of its latest total assets (None: no such unit).
+    /// The currency units of the total assets of an IFRS filer: `ifrs-full/Assets` (SEC), else the EDINET total assets
+    /// (`jpigp_cor/AssetsIFRS`, then the summary item). None: the filer has none of them.
+    fn total_assets_units(&self) -> Option<&HashMap<String, Vec<Fact>>> {
+        TOTAL_ASSETS_TAGS.iter().find_map(|(ns, name)| self.facts.get(*ns).and_then(|n| n.get(*name)).map(|c| &c.units))
+    }
+
+    /// The reporting currency of an IFRS filer: the currency unit of its latest total assets (None: no such unit).
     pub fn reporting_currency(&self) -> Option<&str> {
-        let units = &self.facts.get("ifrs-full")?.get("Assets")?.units;
+        let units = self.total_assets_units()?;
         // More than one currency (Denison: USD to 2017, CAD later): the currency of the latest total assets.
         // On equal latest dates the unit that is first in alphabetical order wins (the `ub.cmp(ua)` reverses the
         // order, and `max_by` takes the greatest).
@@ -154,13 +175,13 @@ impl CompanyFacts {
     /// The count of total-assets facts in a currency other than the reporting currency (they are not used).
     pub fn other_currency_facts(&self) -> usize {
         let Some(currency) = self.reporting_currency() else { return 0 };
-        self.facts.get("ifrs-full").and_then(|ns| ns.get("Assets")).map_or(0, |c| c.units.iter().filter(|(u, _)| u.as_str() != currency).map(|(_, v)| v.len()).sum())
+        self.total_assets_units().map_or(0, |units| units.iter().filter(|(u, _)| u.as_str() != currency).map(|(_, v)| v.len()).sum())
     }
 
     /// The currency of the standard variables: "USD" for a filer with us-gaap facts (or with no statements);
     /// for an ifrs-full filer with no us-gaap facts the currency of its total assets; None if that is not known.
     pub fn currency(&self) -> Option<String> {
-        if self.has_us_gaap_statements() || !self.facts.contains_key("ifrs-full") {
+        if self.has_us_gaap_statements() || !IFRS_NAMESPACES.iter().any(|n| self.facts.contains_key(*n)) {
             Some("USD".to_string())
         } else {
             self.reporting_currency().map(|c| c.to_string())
