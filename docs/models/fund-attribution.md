@@ -44,7 +44,7 @@ No assumption record: the model has no tuned value. The constants are in the cod
 output prints MAP SUSPECT; with no Nasdaq close it prints price check NOT RUN).
 
 ## Limits
-1. The foreign part (about a quarter of the net assets) is quarterly only: no permitted monthly price.
+1. The foreign part (about 35% to 58% of the net assets of URA, 2023 to 2026) is quarterly only: no permitted monthly price.
 2. Trades inside a quarter go to the remainder, with cash, fee and securities lending.
 3. The premium is a difference of returns. N-PORT has no share count, so there is no premium level.
 4. GLD months are approximate (World Bank monthly average): this model is not run for GLD yet.
