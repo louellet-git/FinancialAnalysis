@@ -502,6 +502,9 @@ pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
     if args.first().map(String::as_str) == Some("attribution") {
         return super::fund_attribution::run(repo, &args[1..]);
     }
+    if args.first().map(String::as_str) == Some("distributions") {
+        return super::fund_distributions::run(repo, &args[1..]);
+    }
     let (ticker, cache, top, from, to) = match parse_args(args)? {
         Cmd::Help => {
             println!("{USAGE}");

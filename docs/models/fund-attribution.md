@@ -16,6 +16,7 @@ The user is the Head of Economics. The model is a measurement. It makes no forec
 | Holdings, net assets, monthly NAV returns, flows | SEC N-PORT, `data/raw/URA/nport/*.xml` (`fa fund holdings URA --from D`) | One report for each fiscal quarter (31 Jan, 30 Apr, 31 Jul, 31 Oct for URA); NPORT-P, an amendment only if the NPORT-P is missing |
 | Price of a holding in USD | valUSD / balance of the line (units NS, asset category EC, long) | Both quarter ends; no other price source; includes the exchange rate of the filer |
 | Fund price | `data/raw/URA/prices.json` (Nasdaq, adjusted for splits only) | NO distributions: a price return, not a total return |
+| Fund distributions | `data/raw/URA/distributions.json` (`fa fund distributions URA`: Yahoo chart `events=div`, one request; record with source, date and address) | Ex-date and cash amount per share; no pay date. Without the file, layer 1b is the price return only, as before |
 | US ticker of a holding | `rust/src/market/fund_ticker_map.csv` (ISIN to ticker, 16 lines, same ISIN on both markets) | Only for the monthly view and the price check; `fa prices get T --source nasdaq` fills the files |
 
 ## Method (short)
@@ -24,6 +25,10 @@ The user is the Head of Economics. The model is a measurement. It makes no forec
    up). The independent check is the sum of pctVal against holdings / net assets.
 2. Layer 1b: price return (Nasdaq close at the two report dates) minus NAV return (product of the three monthly returns,
    rtn1 is the newest month). The difference is the change of the premium or discount plus the distributions.
+   With the distribution file: price total return = (close_end + distributions with an ex-date in (start, end]) / close_start - 1.
+   The output prints the price-only return, the total return and the difference of the total return to the NAV return (the
+   change of the premium or discount, plus timing). The distribution is not reinvested inside the quarter: this is a small
+   second-order effect (the cash would earn the return of the fund from the ex-date to the quarter end).
 3. Layer 2: link each holding of the start report to the end report by ISIN, else CUSIP, else name. Part = start weight
    (valUSD / net assets) x (end price / start price - 1). Sum by group (US-listed if the ISIN is in the map file, else foreign).
 4. Remainder = NAV return - sum of the parts. Named line: "trading in the quarter, cash, fee, securities lending, other".
@@ -48,7 +53,7 @@ output prints MAP SUSPECT; with no Nasdaq close it prints price check NOT RUN).
 ## Limits
 1. The foreign part (about 35% to 58% of the net assets of URA, 2023 to 2026) is quarterly only: no permitted monthly price.
 2. Trades inside a quarter go to the remainder, with cash, fee and securities lending.
-3. The premium is a difference of returns. N-PORT has no share count, so there is no premium level.
+3. The premium is a difference of returns (price total return minus NAV return when the distribution file exists). N-PORT has no share count, so there is no premium level.
 4. GLD months are approximate (World Bank monthly average): this model is not run for GLD yet.
 5. The look-through of the Sprott trust needs the consent of Sprott: the trust is one foreign line.
 6. The last quarter can be missing: N-PORT is public 60 days after the quarter end, for the third month only.
