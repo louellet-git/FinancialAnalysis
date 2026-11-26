@@ -16,7 +16,8 @@
 
 use super::stats::{expanding_preds, nw_se, ols};
 use super::CmdError;
-use crate::market::fund_attribution::{attribute, close_on, parse_map, positions, Group};
+use crate::market::fund_attribution::{attribute, close_on, parse_map, positions, Group, Quarter};
+use crate::market::prices::PricePoint;
 use crate::market::fund_holdings::{read_cached_reports, select_reports, series_of, Report};
 use crate::market::{commodity, price_cache};
 use serde::Serialize;
@@ -59,10 +60,15 @@ const MAP_CSV: &str = include_str!("../market/fund_ticker_map.csv");
 
 /// The month-end dates of the sample, with the base month-end before the first month: 37 dates.
 pub fn month_ends() -> Vec<String> {
-    let (mut y, mut m) = FIRST_MONTH;
+    month_ends_from(FIRST_MONTH, N_MONTHS)
+}
+
+/// `n` month-ends from the month `first`, with the base month-end before it: n + 1 dates.
+pub fn month_ends_from(first: (i64, i64), n: usize) -> Vec<String> {
+    let (mut y, mut m) = first;
     // base: the last day of the month before the first month
     let mut out = vec![mapcheck::dates::format(mapcheck::dates::days_from_civil(y, m, 1) - 1)];
-    for _ in 0..N_MONTHS {
+    for _ in 0..n {
         out.push(mapcheck::dates::format(mapcheck::dates::days_from_civil(y, m, mapcheck::dates::days_in_month(y, m))));
         m += 1;
         if m > 12 {
@@ -309,6 +315,7 @@ fn log_changes_of_months(months: &BTreeMap<String, f64>, dates: &[String], what:
 }
 
 /// The URA outcomes. M and R: 36 monthly log returns. F: quarterly log returns (all holdings, and without Daewoo E&C).
+#[derive(Debug, Default)]
 pub struct UraOutcomes {
     pub m: Vec<f64>,
     pub r: Vec<f64>,
@@ -317,68 +324,104 @@ pub struct UraOutcomes {
     pub notes: Vec<String>,
 }
 
-fn find<'a>(reports: &'a [Report], date: &str) -> Option<&'a Report> {
-    reports.iter().find(|r| r.report_date == date)
+type Prices = HashMap<String, Option<Vec<PricePoint>>>;
+
+/// The report that gives the weights of a quarter: the one dated at the quarter start, no other (no look-ahead).
+pub fn weight_report<'a>(reports: &'a [Report], quarter_start: &str) -> Option<&'a Report> {
+    reports.iter().find(|r| r.report_date == quarter_start)
 }
 
-fn ura_outcomes(cache: &Path, dates: &[String]) -> Result<UraOutcomes, String> {
-    let map = parse_map(MAP_CSV);
-    let (series_id, class_id) = std::fs::read_to_string(cache.join("_sec").join("company_tickers_mf.json"))
-        .ok()
-        .and_then(|t| series_of(&t, "URA").ok())
-        .map_or((None, String::new()), |s| (Some(s.series_id), s.class_id));
-    let (loaded, _) = select_reports(read_cached_reports(cache, "URA", series_id.as_deref()));
-    let reports: Vec<Report> = loaded.into_iter().map(|l| l.report).collect();
-    let mut prices: HashMap<String, Option<Vec<crate::market::prices::PricePoint>>> = HashMap::new();
-    for t in URA_M.iter().chain(URA_R.iter()) {
-        prices.insert((*t).to_string(), price_cache::history(cache, t));
-    }
-    let mut out = UraOutcomes { m: vec![], r: vec![], f: vec![], f_ex_daewoo: vec![], notes: vec![] };
-    let mut f_open = true;
-    for qi in 0..N_MONTHS / 3 {
+/// Record R4 (proposed): the 12 quarters of URA-F are the quarters with public N-PORT reports, 2023-07-31 to 2026-07-31.
+/// The 37 month-end dates 2023-07-31 to 2026-07-31; quarter k runs from date 3k to date 3k+3.
+pub fn f_dates() -> Vec<String> {
+    month_ends_from((2023, 8), N_MONTHS)
+}
+
+/// Group month returns of URA-M and URA-R from the reports and the Nasdaq closes. `dates` has 37 month-ends.
+pub fn group_outcomes(reports: &[Report], prices: &Prices, map: &HashMap<String, String>, dates: &[String]) -> Result<UraOutcomes, String> {
+    let mut out = UraOutcomes::default();
+    for qi in 0..(dates.len() - 1) / 3 {
         let q_dates = &dates[3 * qi..=3 * qi + 3];
-        let r0 = find(&reports, &q_dates[0]).ok_or_else(|| format!("URA: no N-PORT report of {} (the weights of the quarter)", q_dates[0]))?;
+        let r0 = weight_report(reports, &q_dates[0]).ok_or_else(|| format!("URA: no N-PORT report of {} (the weights of the quarter)", q_dates[0]))?;
         let net0 = r0.net_assets.filter(|n| *n > 0.0).ok_or_else(|| format!("URA {}: no net assets", r0.report_date))?;
         let (pos, _) = positions(r0);
         for (group, list, sink) in [("URA-M", URA_M.as_slice(), &mut out.m), ("URA-R", URA_R.as_slice(), &mut out.r)] {
             let mut members: Vec<(f64, [f64; 4])> = Vec::new();
+            let mut dropped: Vec<(String, f64)> = Vec::new();
             for p in &pos {
                 let Some(t) = map.get(&p.isin).or_else(|| map.get(&p.cusip)) else { continue };
                 if !list.contains(&t.as_str()) {
                     continue;
                 }
+                let w = p.val_usd / net0;
                 let rows = prices.get(t).and_then(|o| o.as_ref());
                 let px: Option<Vec<f64>> = rows.and_then(|rows| q_dates.iter().map(|d| close_on(rows, d)).collect());
                 match px {
-                    Some(px) if px.iter().all(|v| *v > 0.0) => members.push((p.val_usd / net0, [px[0], px[1], px[2], px[3]])),
-                    _ => out.notes.push(format!("{group} {}: member {t} has no close at a date of the quarter and is left out", q_dates[3])),
+                    Some(px) if px.iter().all(|v| *v > 0.0) => members.push((w, [px[0], px[1], px[2], px[3]])),
+                    _ => dropped.push((t.clone(), w)),
                 }
             }
             if members.is_empty() {
                 return Err(format!("{group}: no member with prices in the quarter to {}", q_dates[3]));
             }
+            if !dropped.is_empty() {
+                let kept: f64 = members.iter().map(|m| m.0).sum();
+                let lost: f64 = dropped.iter().map(|m| m.1).sum();
+                let names: Vec<String> = dropped.iter().map(|(t, w)| format!("{t} (start weight {:.4})", w)).collect();
+                out.notes.push(format!(
+                    "{group} quarter to {}: left out for a missing close: {}. Weights of the members kept sum to {kept:.4} of the fund; the left-out weights {lost:.4}; the group return divides by the kept sum (renormalised to 1)",
+                    q_dates[3],
+                    names.join(", ")
+                ));
+            }
             sink.extend(group_month_returns(&members).iter().map(|r| (1.0 + r).ln()));
         }
-        // URA-F needs the report at the end of the quarter.
-        match (f_open, find(&reports, &q_dates[3])) {
-            (true, Some(r1)) => {
-                let q = attribute(r0, r1, &class_id, &map)?;
-                for (excl, sink) in [(false, &mut out.f), (true, &mut out.f_ex_daewoo)] {
-                    let rows: Vec<_> = q.rows.iter().filter(|r| r.group == Group::Foreign && !(excl && r.isin == DAEWOO_ISIN)).collect();
-                    let w: f64 = rows.iter().map(|r| r.w0).sum();
-                    let c: f64 = rows.iter().map(|r| r.contrib).sum();
-                    if w <= 0.0 {
-                        return Err(format!("URA-F: no foreign weight in the quarter to {}", q_dates[3]));
-                    }
-                    sink.push((1.0 + c / w).ln());
-                }
-            }
-            _ => {
-                f_open = false;
-                out.notes.push(format!("URA-F: no N-PORT report of {}: the quarter and the later ones are not used", q_dates[3]));
-            }
-        }
     }
+    Ok(out)
+}
+
+/// The foreign-group return of one quarter as a log: sum of the layer-2 parts / sum of the start weights of the foreign rows.
+/// `exclude_daewoo` drops the row with the ISIN of record R1.
+pub fn foreign_return(q: &Quarter, exclude_daewoo: bool) -> Result<f64, String> {
+    let rows: Vec<_> = q.rows.iter().filter(|r| r.group == Group::Foreign && !(exclude_daewoo && r.isin == DAEWOO_ISIN)).collect();
+    let w: f64 = rows.iter().map(|r| r.w0).sum();
+    let c: f64 = rows.iter().map(|r| r.contrib).sum();
+    if w <= 0.0 {
+        return Err(format!("URA-F: no foreign weight in the quarter to {}", q.d1));
+    }
+    Ok((1.0 + c / w).ln())
+}
+
+/// URA-F: exactly 12 quarters, 2023-07-31 to 2026-07-31 (record R4). A missing report is an error, not a shorter sample.
+pub fn foreign_outcomes(reports: &[Report], class_id: &str, map: &HashMap<String, String>, dates: &[String]) -> Result<(Vec<f64>, Vec<f64>), String> {
+    let (mut f, mut fx) = (vec![], vec![]);
+    for qi in 0..N_MONTHS / 3 {
+        let (d0, d1) = (&dates[3 * qi], &dates[3 * qi + 3]);
+        let (Some(r0), Some(r1)) = (weight_report(reports, d0), weight_report(reports, d1)) else {
+            return Err(format!("URA-F needs the 12 quarters 2023-07-31 to 2026-07-31; the N-PORT report of {d0} or {d1} is missing (quarters found: {qi} of 12)"));
+        };
+        let q = attribute(r0, r1, class_id, map)?;
+        f.push(foreign_return(&q, false)?);
+        fx.push(foreign_return(&q, true)?);
+    }
+    Ok((f, fx))
+}
+
+fn ura_outcomes(cache: &Path, dates: &[String]) -> Result<UraOutcomes, String> {
+    let map = parse_map(MAP_CSV);
+    let path = cache.join("_sec").join("company_tickers_mf.json");
+    let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e} (the share class of URA is needed)", path.display()))?;
+    let s = series_of(&text, "URA").map_err(|e| format!("URA in {}: {e}", path.display()))?;
+    let (loaded, _) = select_reports(read_cached_reports(cache, "URA", Some(&s.series_id)));
+    let reports: Vec<Report> = loaded.into_iter().map(|l| l.report).collect();
+    let mut prices: Prices = HashMap::new();
+    for t in URA_M.iter().chain(URA_R.iter()) {
+        prices.insert((*t).to_string(), price_cache::history(cache, t));
+    }
+    let mut out = group_outcomes(&reports, &prices, &map, dates)?;
+    let (f, fx) = foreign_outcomes(&reports, &s.class_id, &map, &f_dates())?;
+    out.f = f;
+    out.f_ex_daewoo = fx;
     Ok(out)
 }
 
@@ -420,58 +463,75 @@ pub fn identity(gld: &[f64], g: &[f64]) -> Option<Identity> {
     Some(Identity { n, correlation: sxy / (sxx * syy).sqrt(), slope: f.beta[1], r2: f.r2, mean_abs_difference_pp: gld.iter().zip(g).map(|(a, b)| (a - b).abs()).sum::<f64>() / n as f64 * 100.0 })
 }
 
-/// The whole study. `u_reader` is called once.
+/// The inputs that come from files (the cache), each as a result so that a missing file is a note and not a stop.
+pub struct Inputs<'a> {
+    pub s: Vec<f64>,
+    pub c: Vec<f64>,
+    pub d: Vec<f64>,
+    pub gld: Vec<f64>,
+    pub r: Result<Vec<f64>, String>,
+    pub g: Result<Vec<f64>, String>,
+    /// The URA outcomes (called only when U is read).
+    pub ura: &'a dyn Fn() -> Result<UraOutcomes, String>,
+}
+
+/// The whole study from the cache. `u_reader` is called once.
 pub fn run_study(cache: &Path, u_reader: &dyn Fn() -> Result<URead, String>) -> Result<Results, String> {
     let dates = month_ends();
-    let labels: Vec<String> = dates[1..].to_vec();
-    let q_labels: Vec<String> = (0..N_MONTHS / 3).map(|i| dates[3 * i + 3].clone()).collect();
-    let mut res = Results { design: "analysis/macro/2026-11-25-fund-drivers-design.md (R1, R2, R3)", u_read_date: None, u_sha256: None, models: vec![], sensitivity_f_without_daewoo: None, not_run: vec![], notes: vec![], gld_identity: None };
-    let s = price_log_returns(cache, "SPY", &dates)?;
-    let c = price_log_returns(cache, "SMH", &dates)?;
-    let d = price_log_returns(cache, "UUP", &dates)?;
-    // U.
-    let u = match u_reader() {
-        Ok(u) => {
-            res.u_read_date = Some(u.read_date.clone());
-            res.u_sha256 = Some(u.sha256.clone());
-            Some(log_changes_of_months(&u.months, &dates, "U")?)
-        }
-        Err(e) => {
-            res.not_run.push(format!("URA-M, URA-R, URA-F: {e}"));
-            None
-        }
-    };
-    if let Some(u) = &u {
-        let ura = ura_outcomes(cache, &dates)?;
-        res.notes.extend(ura.notes.clone());
-        for (nm, y) in [("URA-M", &ura.m), ("URA-R", &ura.r)] {
-            res.models.push(analyse(nm, y, &["U", "S", "C"], &[u, &s, &c], &labels, false)?);
-        }
-        let nf = ura.f.len();
-        res.notes.push(format!("URA-F uses {nf} of 12 quarters"));
-        let uq: Vec<f64> = (0..nf).map(|i| u[3 * i..3 * i + 3].iter().sum()).collect();
-        let ql = &q_labels[..nf];
-        res.models.push(analyse("URA-F", &ura.f, &["U"], &[&uq], ql, true)?);
-        res.sensitivity_f_without_daewoo = Some(analyse("URA-F without Daewoo E&C (R1, sensitivity only)", &ura.f_ex_daewoo, &["U"], &[&uq], ql, true)?);
-    }
-    // GLD.
-    let gld = price_log_returns(cache, "GLD", &dates)?;
-    match real_yield_changes(cache, &dates) {
-        Ok(r) => res.models.push(analyse("GLD", &gld, &["R", "D"], &[&r, &d], &labels, false)?),
-        Err(e) => res.not_run.push(format!("GLD: R not available ({e})")),
-    }
-    // Identity check against the World Bank gold price (not a driver).
     let g = commodity::newest(&commodity::series_dir(cache))
         .ok_or_else(|| "no World Bank file in the cache (fa commodity get gold)".to_string())
         .and_then(|p| std::fs::read(&p).map_err(|e| format!("{}: {e}", p.display())))
         .and_then(|b| commodity::read_series(&b, &commodity::SERIES[0]))
         .and_then(|p| log_changes_of_months(&p.months, &dates, "G"));
-    match g {
-        Ok(g) => res.gld_identity = identity(&gld, &g),
+    let ura = || ura_outcomes(cache, &dates);
+    let inp = Inputs {
+        s: price_log_returns(cache, "SPY", &dates)?,
+        c: price_log_returns(cache, "SMH", &dates)?,
+        d: price_log_returns(cache, "UUP", &dates)?,
+        gld: price_log_returns(cache, "GLD", &dates)?,
+        r: real_yield_changes(cache, &dates),
+        g,
+        ura: &ura,
+    };
+    run_core(inp, u_reader)
+}
+
+pub fn run_core(inp: Inputs, u_reader: &dyn Fn() -> Result<URead, String>) -> Result<Results, String> {
+    let dates = month_ends();
+    let fd = f_dates();
+    let labels: Vec<String> = dates[1..].to_vec();
+    let q_labels: Vec<String> = (0..N_MONTHS / 3).map(|i| fd[3 * i + 3].clone()).collect();
+    let mut res = Results { design: "analysis/macro/2026-11-25-fund-drivers-design.md (R1, R2, R3, R4)", u_read_date: None, u_sha256: None, models: vec![], sensitivity_f_without_daewoo: None, not_run: vec![], notes: vec![], gld_identity: None };
+    let (s, c, d) = (&inp.s, &inp.c, &inp.d);
+    match u_reader() {
+        Ok(u) => {
+            res.u_read_date = Some(u.read_date.clone());
+            res.u_sha256 = Some(u.sha256.clone());
+            let um = log_changes_of_months(&u.months, &dates, "U")?;
+            let uf = log_changes_of_months(&u.months, &fd, "U (URA-F window)")?;
+            let ura = (inp.ura)()?;
+            res.notes.extend(ura.notes.clone());
+            for (nm, y) in [("URA-M", &ura.m), ("URA-R", &ura.r)] {
+                res.models.push(analyse(nm, y, &["U", "S", "C"], &[&um, s, c], &labels, false)?);
+            }
+            // Quarterly U: the sum of the three monthly log changes of the quarter (IMF months 2023-08 to 2026-07).
+            let uq: Vec<f64> = (0..N_MONTHS / 3).map(|i| uf[3 * i..3 * i + 3].iter().sum()).collect();
+            res.models.push(analyse("URA-F", &ura.f, &["U"], &[&uq], &q_labels, true)?);
+            res.sensitivity_f_without_daewoo = Some(analyse("URA-F without Daewoo E&C (R1, sensitivity only)", &ura.f_ex_daewoo, &["U"], &[&uq], &q_labels, true)?);
+        }
+        Err(e) => res.not_run.push(format!("URA-M, URA-R, URA-F: {e}")),
+    }
+    match &inp.r {
+        Ok(r) => res.models.push(analyse("GLD", &inp.gld, &["R", "D"], &[r, d], &labels, false)?),
+        Err(e) => res.not_run.push(format!("GLD: R not available ({e})")),
+    }
+    match &inp.g {
+        Ok(g) => res.gld_identity = identity(&inp.gld, g),
         Err(e) => res.not_run.push(format!("GLD identity: {e}")),
     }
     Ok(res)
 }
+
 
 pub fn report_text(r: &Results) -> String {
     let mut s = String::new();
@@ -484,10 +544,11 @@ pub fn report_text(r: &Results) -> String {
             let _ = writeln!(s, "U not available");
         }
     }
-    let _ = writeln!(s, "Models in the table: {}. With four models at 10%, one false 'consistent' is possible; the out-of-sample condition lowers that chance.", r.models.len());
-    let mut all: Vec<&Model> = r.models.iter().collect();
-    all.extend(r.sensitivity_f_without_daewoo.iter());
-    for m in all {
+    let n = r.models.len();
+    let _ = writeln!(s, "Models that ran: {n}. With {n} models at 10%, a false 'consistent' is possible; the out-of-sample condition lowers that chance.");
+    let mut all: Vec<(&Model, bool)> = r.models.iter().map(|m| (m, true)).collect();
+    all.extend(r.sensitivity_f_without_daewoo.iter().map(|m| (m, false)));
+    for (m, with_words) in all {
         let _ = writeln!(s, "\n{}: n {}, df {}, Newey-West lag {}", m.name, m.n, m.df, m.lag);
         let _ = writeln!(s, "  R2 {:.3}; unexplained in sample (a) {:.3}", m.r2, m.unexplained_in_sample);
         for c in &m.coefs {
@@ -503,7 +564,11 @@ pub fn report_text(r: &Results) -> String {
             }
         }
         let _ = writeln!(s, "  placebo: {} shifts, {} at or above the true R2, p {:.3}", m.shifts, m.shifts_at_or_above, m.placebo_p);
-        let _ = writeln!(s, "  words: {}", m.words);
+        if with_words {
+            let _ = writeln!(s, "  words: {}", m.words);
+        } else {
+            let _ = writeln!(s, "  (sensitivity line only: no words; the words use the fit with all holdings, record R1)");
+        }
         if let Some(j) = &m.joint_s_c {
             let _ = writeln!(s, "  S and C together: R2 full {:.3}, without S and C {:.3}, S and C only {:.3}, joint contribution {:.3}", j.r2_full, j.r2_without_s_c, j.r2_s_c_only, j.joint_contribution);
         }
@@ -679,5 +744,213 @@ mod tests {
     fn without_a_u_reader_the_uranium_models_are_not_run() {
         let e = no_u_reader().err().unwrap();
         assert!(e.contains("U not available"));
+    }
+
+    // ---- record R4 and review tests ----
+
+    #[test]
+    fn f_window_is_the_twelve_public_quarters() {
+        let d = f_dates();
+        assert_eq!(d.len(), 37);
+        assert_eq!(d[0], "2023-07-31");
+        assert_eq!(d[3], "2023-10-31");
+        assert_eq!(d[33], "2026-04-30");
+        assert_eq!(d[36], "2026-07-31");
+        assert_eq!(shifts(N_MONTHS / 3, QUARTERLY_MIN_SHIFT).len(), 9);
+    }
+
+    #[test]
+    fn fewer_than_twelve_quarters_is_an_error() {
+        let map = parse_map(MAP_CSV);
+        let e = foreign_outcomes(&[], "C000", &map, &f_dates()).unwrap_err();
+        assert!(e.contains("12 quarters") && e.contains("2023-07-31") && e.contains("0 of 12"), "{e}");
+    }
+
+    fn frow(name: &str, isin: &str, group: Group, w0: f64, contrib: f64) -> crate::market::fund_attribution::Row {
+        crate::market::fund_attribution::Row {
+            name: name.into(),
+            isin: isin.into(),
+            group,
+            ticker: None,
+            method: crate::market::fund_attribution::Method::Isin,
+            w0,
+            p0: 1.0,
+            p1: 1.0,
+            ret: 0.0,
+            contrib,
+            bal_ratio: 1.0,
+            split: None,
+            trade_est: 0.0,
+            flag: None,
+        }
+    }
+
+    /// Foreign rows: A weight 0.2 part 0.02 (return 10%); Daewoo weight 0.1 part 0.03 (30%). A US row is ignored.
+    /// All: 0.05 / 0.3 = 1/6. Without Daewoo: 0.02 / 0.2 = 0.1.
+    #[test]
+    fn daewoo_is_excluded_from_the_r1_outcome() {
+        let q = Quarter {
+            d1: "2024-01-31".into(),
+            rows: vec![frow("A", "KR0000000001", Group::Foreign, 0.2, 0.02), frow("Daewoo E&C", DAEWOO_ISIN, Group::Foreign, 0.1, 0.03), frow("US", "US0000000001", Group::Us, 0.5, 0.5)],
+            ..Quarter::default()
+        };
+        assert!(close(foreign_return(&q, false).unwrap(), (1.0 + 1.0 / 6.0_f64).ln()));
+        assert!(close(foreign_return(&q, true).unwrap(), 1.1_f64.ln()));
+        let only = Quarter { rows: vec![frow("Daewoo E&C", DAEWOO_ISIN, Group::Foreign, 0.1, 0.03)], ..Quarter::default() };
+        assert!(foreign_return(&only, true).is_err());
+    }
+
+    /// x = 0,1,2,3 and y = 0,2,1,3: slope 0.8, intercept 0.3, residuals -0.3, 0.9, -0.9, 0.3.
+    /// Lag 3, weights 3/4, 1/2, 1/4. S0 = [[1.8, 2.7], [2.7, 4.86]]; Gamma1 = [[-2.7, -4.05], [-4.05, -6.48]];
+    /// Gamma2 = [[1.08, 1.62], [1.62, 1.62]]; Gamma3 = [[-0.18, -0.27], [-0.27, 0]].
+    /// S = [[0.27, 0.405], [0.405, 0.81]]. (X'X)^-1 = [[0.7, -0.3], [-0.3, 0.2]].
+    /// Slope variance = 0.09 x 0.27 - 2 x 0.06 x 0.405 + 0.04 x 0.81 = 0.0081; se 0.09.
+    /// Intercept variance = 0.49 x 0.27 - 2 x 0.21 x 0.405 + 0.09 x 0.81 = 0.0351.
+    #[test]
+    fn newey_west_lag_three_by_hand() {
+        let x = rows_of(&[&[0.0, 1.0, 2.0, 3.0]], 4);
+        let f = ols(&x, &[0.0, 2.0, 1.0, 3.0]).unwrap();
+        assert!(close(f.beta[0], 0.3) || (f.beta[0] - 0.3).abs() < 1e-12);
+        assert!((f.beta[1] - 0.8).abs() < 1e-12);
+        let se = nw_se(&x, &f, 3);
+        assert!((se[1] - 0.09).abs() < 1e-12, "{}", se[1]);
+        assert!((se[0] - 0.0351_f64.sqrt()).abs() < 1e-12, "{}", se[0]);
+    }
+
+    fn rep(date: &str, w: [f64; 3]) -> Report {
+        let h = |name: &str, isin: &str, v: f64| crate::market::fund_holdings::Holding {
+            name: name.into(),
+            cusip: String::new(),
+            isin: isin.into(),
+            val_usd: v,
+            pct_val: 0.0,
+            balance: 1.0,
+            units: "NS".into(),
+            currency: "USD".into(),
+            exchange_rt: None,
+            ticker: String::new(),
+            asset_cat: "EC".into(),
+            country: "CA".into(),
+            payoff: "Long".into(),
+        };
+        Report {
+            series_id: "S".into(),
+            report_date: date.into(),
+            form: "NPORT-P".into(),
+            rep_pd_end: date.into(),
+            tot_assets: Some(100.0),
+            tot_liabs: Some(0.0),
+            net_assets: Some(100.0),
+            monthly: vec![],
+            flows: [None, None, None],
+            holdings: vec![h("Cameco", "CA13321L1085", w[0]), h("NexGen", "CA65340P1062", w[1]), h("Centrus", "US15643U1043", w[2])],
+            bad_numbers: 0,
+        }
+    }
+
+    fn pp_of(closes: [f64; 4]) -> Option<Vec<PricePoint>> {
+        let d = ["2023-07-31", "2023-08-31", "2023-09-30", "2023-10-31"];
+        Some(d.iter().zip(closes).map(|(d, c)| PricePoint { date: (*d).into(), open: c, high: c, low: c, close: c, volume: 1 }).collect())
+    }
+
+    fn fixture_prices() -> Prices {
+        let mut p = Prices::new();
+        p.insert("CCJ".into(), pp_of([100.0, 110.0, 121.0, 121.0]));
+        p.insert("NXE".into(), pp_of([100.0, 100.0, 100.0, 200.0]));
+        p.insert("LEU".into(), pp_of([10.0, 10.0, 10.0, 10.0]));
+        p
+    }
+
+    fn q_dates() -> Vec<String> {
+        vec!["2023-07-31".into(), "2023-08-31".into(), "2023-09-30".into(), "2023-10-31".into()]
+    }
+
+    /// The weights of the quarter come from the report dated at its start. The report at the end has other weights (CCJ 30,
+    /// NXE 10): using it would give month 1 = (0.3 x 0.1 + 0)/0.4 = 0.075, not 0.025.
+    #[test]
+    fn weights_come_from_the_start_report_only() {
+        let reports = vec![rep("2023-07-31", [10.0, 30.0, 10.0]), rep("2023-10-31", [30.0, 10.0, 10.0])];
+        assert_eq!(weight_report(&reports, "2023-07-31").unwrap().report_date, "2023-07-31");
+        assert!(weight_report(&reports, "2023-08-31").is_none());
+        assert!(weight_report(&reports[1..], "2023-07-31").is_none());
+        let map = parse_map(MAP_CSV);
+        let o = group_outcomes(&reports, &fixture_prices(), &map, &q_dates()).unwrap();
+        assert!(close(o.m[0], 1.025_f64.ln()), "{}", o.m[0]);
+        assert!((o.m[1] - (1.0 + 0.11 / 4.1_f64).ln()).abs() < 1e-12);
+        assert!((o.m[2] - (1.0 + 3.0 / 4.21_f64).ln()).abs() < 1e-12);
+        assert!(close(o.r[0], 0.0));
+        assert!(o.notes.is_empty());
+        // Without the report of the quarter start: an error, not the later report.
+        assert!(group_outcomes(&reports[1..], &fixture_prices(), &map, &q_dates()).is_err());
+    }
+
+    /// NexGen has no close: it is left out, the note names it and the kept weight sum (0.1 of the fund; left out 0.3).
+    #[test]
+    fn a_member_without_a_close_is_named_in_a_note() {
+        let reports = vec![rep("2023-07-31", [10.0, 30.0, 10.0])];
+        let mut p = fixture_prices();
+        p.insert("NXE".into(), None);
+        let o = group_outcomes(&reports, &p, &parse_map(MAP_CSV), &q_dates()).unwrap();
+        assert_eq!(o.notes.len(), 1);
+        assert!(o.notes[0].contains("NXE") && o.notes[0].contains("0.1000") && o.notes[0].contains("0.3000") && o.notes[0].contains("renormalised"), "{}", o.notes[0]);
+        // CCJ alone: its own return.
+        assert!(close(o.m[0], 1.1_f64.ln()));
+    }
+
+    /// 10-year real yield 1.80, 1.95, 1.70 percent on 2024-01-31, 2024-02-29, 2024-03-29 (the month end 03-31 is a Sunday).
+    /// Changes in percentage points: +0.15 and -0.25.
+    #[test]
+    fn real_yield_change_in_pp_from_a_fixture() {
+        let dir = std::env::temp_dir().join(format!("fa_fund_drivers_real_{}", std::process::id()));
+        std::fs::create_dir_all(dir.join("rates")).unwrap();
+        for y in 2023..=2026 {
+            let body = if y == 2024 { "01/31/2024,1.80\n02/29/2024,1.95\n03/29/2024,1.70\n" } else { "06/30/2023,1.0\n" };
+            std::fs::write(dir.join("rates").join(format!("treasury_real_{y}.csv")), format!("Date,\"10 YR\"\n{body}")).unwrap();
+        }
+        let d: Vec<String> = vec!["2024-01-31".into(), "2024-02-29".into(), "2024-03-31".into()];
+        let r = real_yield_changes(&dir, &d).unwrap();
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!((r[0] - 0.15).abs() < 1e-9 && (r[1] + 0.25).abs() < 1e-9, "{r:?}");
+    }
+
+    fn wave(i: usize, k: usize) -> f64 {
+        (((i * 37 + k * 11 + i * i * 3) % 17) as f64 - 8.0) / 100.0
+    }
+
+    /// A fake U reader and fake outcomes run the URA path through `run_core`: three URA models, the sensitivity line,
+    /// GLD, the read date and the SHA-256 line, the real count of models, and no words line for the sensitivity.
+    #[test]
+    fn fake_u_reader_runs_the_ura_path_end_to_end() {
+        let col = |k: usize, n: usize| -> Vec<f64> { (0..n).map(|i| wave(i, k)).collect() };
+        let ura = || {
+            Ok(UraOutcomes { m: col(1, 36), r: col(2, 36), f: col(3, 12), f_ex_daewoo: col(4, 12), notes: vec!["a note".into()] })
+        };
+        let inp = Inputs { s: col(5, 36), c: col(6, 36), d: col(7, 36), gld: col(8, 36), r: Ok(col(9, 36)), g: Ok(col(8, 36)), ura: &ura };
+        let u = || {
+            let mut months = BTreeMap::new();
+            for (i, d) in month_ends_from((2023, 7), 40).iter().enumerate() {
+                months.insert(d[..7].to_string(), 100.0 * (1.0 + wave(i, 12) / 2.0));
+            }
+            Ok(URead { months, read_date: "2026-11-27".into(), sha256: "ab12".repeat(16) })
+        };
+        let res = run_core(inp, &u).unwrap();
+        assert_eq!(res.models.len(), 4);
+        assert_eq!(res.models[2].name, "URA-F");
+        assert_eq!(res.models[2].n, 12);
+        assert_eq!(res.models[2].shifts, 9);
+        assert!(res.sensitivity_f_without_daewoo.is_some());
+        assert!(res.gld_identity.is_some());
+        let t = report_text(&res);
+        assert!(t.contains("U read on 2026-11-27; SHA-256 of the series bytes abab") || t.contains(&format!("SHA-256 of the series bytes {}", "ab12".repeat(16))), "{t}");
+        assert!(t.contains("Models that ran: 4"));
+        assert_eq!(t.matches("  words:").count(), 4);
+        assert!(t.contains("sensitivity line only"));
+        assert!(t.contains("note: a note"));
+        // Without the reader: no URA models, GLD stays.
+        let ura2 = || -> Result<UraOutcomes, String> { panic!("not called") };
+        let inp2 = Inputs { s: col(5, 36), c: col(6, 36), d: col(7, 36), gld: col(8, 36), r: Ok(col(9, 36)), g: Err("x".into()), ura: &ura2 };
+        let res2 = run_core(inp2, &no_u_reader).unwrap();
+        assert_eq!(res2.models.len(), 1);
+        assert!(report_text(&res2).contains("U not available"));
     }
 }

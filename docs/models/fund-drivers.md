@@ -47,7 +47,8 @@ The group lists are the constants `URA_M` and `URA_R` (record R3).
 - U is read at run time through a reader and is not stored (record R2). The command prints the read date and the SHA-256 of the series bytes.
   No IMF reader exists yet. Then the command prints "U not available", and the URA models are not run.
 - The command reads the cache only. It sends no request and no order.
-- The last quarter of URA-F needs the N-PORT report of the quarter end. If it is not yet public, URA-F uses fewer quarters, and the count is printed.
+- URA-F uses the 12 quarters with public N-PORT reports, 2023-07-31 to 2026-07-31 (proposed record R4). Its quarterly U is the sum of the three monthly log changes of the quarter. If a report is missing, the command stops with an error.
+- The sensitivity line without Daewoo E&C has no words line (record R1).
 
 ## Limits
 
