@@ -29,7 +29,7 @@ You asked: is URA a black box? This page checks two things. First: does the repo
 | 2026-04-30 | -0.70 | -3.99 | +3.55 | -0.25 | +3.30 |
 | 2026-07-31 | -29.23 | -18.41 | -10.83 | +0.01 | -1.52 |
 
-The remainder has the trades in the quarter, cash, the fee, dividends and securities lending. "Price less NAV" is the change of the premium plus any distribution (the price return has no distributions).
+The remainder has trades, cash, the fee, dividends and securities lending. "Price less NAV" is the premium change plus any distribution. In the quarter to 2026-04-30, Daewoo E&C (limit e) gives +3.57 of the +3.55 pp foreign part.
 
 **Table 2: The three quarters with large new holdings.** See that the unexplained part is a range, and that in 2026 a small remainder hides two estimates that cancel.
 
