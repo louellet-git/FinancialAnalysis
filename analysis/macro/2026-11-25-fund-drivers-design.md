@@ -59,3 +59,5 @@ How much of the monthly return of each group of URA, and of GLD, is consistent w
 ## 6. Dated records
 
 **Freeze.** The design is frozen at commit a8d550e plus this line (Head of Quality and Risk, PASS, 2026-11-25, about 22:50 UTC). No data was read before the freeze.
+
+**Record R1 (2026-11-26, before the run; Head of Quality and Risk, OK).** URA-F is also reported without Daewoo E&C (its quarter-to-2026-04-30 part comes from one fund valuation with no second price). The rule-3.5 words use the fit with all holdings; the fit without it is a sensitivity line only.
