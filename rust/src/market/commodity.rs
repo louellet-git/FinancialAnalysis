@@ -62,6 +62,20 @@ pub fn file_link(page: &str) -> Option<String> {
     Some(if href.starts_with("http") { href } else { format!("https://www.worldbank.org{href}") })
 }
 
+/// The file link of the page, only if its host is in the `worldbank` host group (www.worldbank.org,
+/// thedocs.worldbank.org). A changed page must not send the program to an unknown host.
+pub fn checked_file_link(page: &str) -> Result<String, String> {
+    let link = file_link(page).ok_or("the commodity page has no link to CMO-Historical-Data-Monthly.xlsx")?;
+    if !link.starts_with("https://") || crate::hostnet::group_of_url(&link) != "worldbank" {
+        return Err(format!("the file link of the commodity page is not on a World Bank host: {link}; no request is made"));
+    }
+    Ok(link)
+}
+
+fn wants_help(args: &[String]) -> bool {
+    args.iter().any(|a| matches!(a.as_str(), "-h" | "--help" | "help"))
+}
+
 /// The cells of one `<row>`: (column letters, type, text). Unlike the Atlanta Fed reader, columns can have two letters (`BR`).
 fn row_cells(row: &str) -> Vec<(String, &str, &str)> {
     let mut out = Vec::new();
@@ -199,6 +213,10 @@ fn find_series(name: Option<&str>) -> Result<&'static Series, String> {
 }
 
 fn get(repo: &Path, args: &[String]) -> Result<i32, String> {
+    if wants_help(args) {
+        println!("{USAGE}");
+        return Ok(0);
+    }
     let p = super::price_cli::parse(args, &["--cache"], &[])?;
     let series = find_series(p.tickers.first().map(String::as_str))?;
     let cache = p.flag("--cache").map(PathBuf::from).unwrap_or_else(|| super::price_cli::cache_dir(repo));
@@ -206,7 +224,7 @@ fn get(repo: &Path, args: &[String]) -> Result<i32, String> {
     let day = today_iso();
     // Request 1: the commodity page (the link of the file has a hash). Request 2: the file.
     let page = crate::hostnet::get(PAGE, &[], PAUSE)?;
-    let link = file_link(&String::from_utf8_lossy(&page)).ok_or("the commodity page has no link to CMO-Historical-Data-Monthly.xlsx")?;
+    let link = checked_file_link(&String::from_utf8_lossy(&page))?;
     let body = crate::hostnet::get(&link, &[], PAUSE)?;
     if !body.starts_with(b"PK") {
         return Err(format!("{FILE_STEM}.xlsx: the answer is not an xlsx file (no zip header)"));
@@ -395,6 +413,29 @@ mod tests {
         assert!(file_link("<p>none</p>").is_none());
         assert_eq!(crate::hostnet::group_of_url("https://thedocs.worldbank.org/en/doc/x"), "worldbank");
         assert_eq!(crate::hostnet::group_of_url(PAGE), "worldbank");
+    }
+
+    #[test]
+    fn a_file_link_to_another_host_is_refused() {
+        let ok = "<a href=\"https://thedocs.worldbank.org/en/doc/abc/related/CMO-Historical-Data-Monthly.xlsx\">x</a>";
+        assert!(checked_file_link(ok).is_ok());
+        let relative = "<a href=\"/content/dam/CMO-Historical-Data-Monthly.xlsx\">x</a>";
+        assert!(checked_file_link(relative).unwrap().starts_with("https://www.worldbank.org/"));
+        for bad in [
+            "<a href=\"https://evil.example.com/CMO-Historical-Data-Monthly.xlsx\">x</a>",
+            "<a href=\"http://thedocs.worldbank.org/CMO-Historical-Data-Monthly.xlsx\">x</a>",
+            "<a href=\"https://thedocs.worldbank.org.evil.example/CMO-Historical-Data-Monthly.xlsx\">x</a>",
+        ] {
+            assert!(checked_file_link(bad).unwrap_err().contains("not on a World Bank host"), "{bad}");
+        }
+    }
+
+    #[test]
+    fn help_and_a_bad_flag_make_no_request() {
+        // Both return before the first request: help prints the usage, a bad flag is a parse error.
+        let repo = std::path::Path::new("/nonexistent-repo");
+        assert_eq!(get(repo, &["--help".to_string()]).unwrap(), 0);
+        assert!(get(repo, &["gold".to_string(), "--bogus".to_string()]).is_err());
     }
 
     #[test]
