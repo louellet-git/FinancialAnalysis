@@ -26,6 +26,7 @@ USAGE:
   fa fund attribution TICKER [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--cache DIR] [--top N]
     --cache DIR   default data/raw. It reads DIR/TICKER/nport/*.xml (fill it with: fa fund holdings TICKER --from D)
                   and the closes DIR/<T>/prices.json of the fund and of the US-listed holdings (fa prices get T --source nasdaq).
+                  If DIR/TICKER/distributions.json exists (fa fund distributions TICKER: one Yahoo request), layer 1b uses the price total return.
     --top N       the holdings shown for each quarter (default 6), sorted by the size of the part
 No request is sent. The US ticker of a holding comes from the file rust/src/market/fund_ticker_map.csv (URA only).
 
@@ -407,7 +408,7 @@ fn pp_opt(v: Option<f64>) -> String {
 pub const LIMITS: [&str; 6] = [
     "1. The foreign part of the fund (about 35% to 58% of the net assets for URA, 2023 to 2026) has a quarterly value only: no permitted monthly price.",
     "2. A trade inside a quarter goes to the remainder, with cash, fee and securities lending (the start weights are held for the quarter).",
-    "3. The premium is price return minus NAV return. N-PORT has no share count, so a premium level (price / NAV - 1) is not known.",
+    "3. The premium change is price total return minus NAV return (price return, if no distribution file is in the cache). N-PORT has no share count, so a premium level (price / NAV - 1) is not known. The distributions are from Yahoo (ex-date, amount; no pay date), not cross-checked with the fund reports.",
     "4. GLD months are approximate (World Bank monthly average). This limit applies to a GLD run only.",
     "5. The look-through of the Sprott trust (uranium in the trust) needs the consent of Sprott: the trust is one line here.",
     "6. The last quarter can be missing: N-PORT is public 60 days after the quarter end, for the third month only.",
@@ -428,6 +429,8 @@ struct SummaryRow {
     us: f64,
     foreign: f64,
     remainder: Option<f64>,
+    /// Price total return minus NAV return (pp), when the distribution file and both closes exist.
+    premium_tr: Option<f64>,
 }
 
 pub struct Options {
@@ -499,6 +502,20 @@ pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
     }
     let fund_prices = price_cache::history(&cache, &o.ticker);
     let meta: Option<price_cache::Meta> = std::fs::read_to_string(price_cache::meta_path(&cache, &o.ticker)).ok().and_then(|t| serde_json::from_str(&t).ok());
+    let dist = super::fund_distributions::read(&cache, &o.ticker);
+    match &dist {
+        Some(r) => println!(
+            "{} distributions: {} ({}, requested {}; {} to {}, {} ex-dates; no pay date in this source). Price total return = (close_end + distributions with an ex-date in (start, end]) / close_start - 1; no reinvestment inside the quarter (second-order, a few hundredths of a pp).",
+            o.ticker,
+            r.source,
+            r.address,
+            r.fetched,
+            r.distributions.first().map_or("-", |d| d.ex_date.as_str()),
+            r.distributions.last().map_or("-", |d| d.ex_date.as_str()),
+            r.distributions.len()
+        ),
+        None => println!("{} distributions: no file (fa fund distributions {}): layer 1b is the price return only.", o.ticker, o.ticker),
+    }
     let mut tick_cache: HashMap<String, Option<Vec<PricePoint>>> = HashMap::new();
     for t in map.values() {
         tick_cache.entry(t.clone()).or_insert_with(|| price_cache::history(&cache, t));
@@ -516,7 +533,7 @@ pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
             m.adjusted,
             m.first_date,
             m.last_date,
-            if m.adjusted.contains("dividends") { "The price return includes the distributions." } else { "The price return has NO distributions: it is not a total return." }
+            if m.adjusted.contains("dividends") { "The price return includes the distributions." } else { "The price return has NO distributions: it is not a total return (layer 1b adds them when a distribution file exists)." }
         ),
         (Some(_), None) => println!("{} price: no record file; it is not known if the closes include the distributions.", o.ticker),
         _ => println!("{} price: no price file (fa prices get {} --source nasdaq): the premium lines are n/a.", o.ticker, o.ticker),
@@ -576,6 +593,7 @@ pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
             }
         };
         // Layer 1b.
+        let mut premium_tr: Option<f64> = None;
         let pr = fund_prices.as_ref().and_then(|rows| close_on(rows, &q.d0).zip(close_on(rows, &q.d1))).map(|(p0, p1)| p1 / p0 - 1.0);
         match (pr, q.nav_ret) {
             (Some(p), Some(n)) => {
@@ -590,7 +608,24 @@ pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
                     pp(d),
                     pp(ratio)
                 );
-                println!("          price vs NAV, distributions not removed: the difference = change of the premium/discount + the distributions of the quarter (not in the Nasdaq close)");
+                match &dist {
+                    Some(r) => {
+                        let (c0, c1) = fund_prices.as_ref().and_then(|rows| close_on(rows, &q.d0).zip(close_on(rows, &q.d1))).unwrap_or((f64::NAN, f64::NAN));
+                        let paid = super::fund_distributions::sum_between(&r.distributions, &q.d0, &q.d1) + 0.0;
+                        let tr = super::fund_distributions::total_return(c0, c1, &r.distributions, &q.d0, &q.d1);
+                        let (dt, ratio_t) = premium_change(tr, n);
+                        println!(
+                            "          price TOTAL return {} pp (distributions in the quarter {:.4} per share = {} pp of the start close), difference to NAV {} pp (ratio form {} pp) = change of the premium/discount + timing",
+                            pp(tr),
+                            paid,
+                            pp(paid / c0),
+                            pp(dt),
+                            pp(ratio_t)
+                        );
+                        premium_tr = Some(dt);
+                    }
+                    None => println!("          price vs NAV, distributions not removed: the difference = change of the premium/discount + the distributions of the quarter (not in the Nasdaq close)"),
+                }
             }
             _ => println!("LAYER 1b: n/a (price return {}, NAV return {})", pp_opt(pr), pp_opt(q.nav_ret)),
         }
@@ -707,13 +742,16 @@ pub fn run(repo: &Path, args: &[String]) -> Result<i32, String> {
         if !mv.missing.is_empty() {
             println!("  no Nasdaq price file or close (weight {:.2}%): {}", mv.missing.iter().map(|m| m.1).sum::<f64>() * 100.0, mv.missing.iter().map(|m| m.0.as_str()).collect::<Vec<_>>().join(", "));
         }
-        summary.push(SummaryRow { date: q.d1.clone(), nav: q.nav_ret, us: q.us, foreign: q.foreign, remainder: q.remainder });
+        summary.push(SummaryRow { date: q.d1.clone(), nav: q.nav_ret, us: q.us, foreign: q.foreign, remainder: q.remainder, premium_tr });
     }
 
     println!("\nSUMMARY (pp of the fund NAV return for each quarter)");
-    println!("{:<11} {:>9} {:>9} {:>9} {:>10}", "quarter end", "NAV ret", "US-listed", "foreign", "remainder");
+    println!("{:<11} {:>9} {:>9} {:>9} {:>10} {:>14}", "quarter end", "NAV ret", "US-listed", "foreign", "remainder", "TR - NAV (1b)");
     for r in &summary {
-        println!("{:<11} {:>9} {:>9} {:>9} {:>10}", r.date, pp_opt(r.nav), pp(r.us), pp(r.foreign), pp_opt(r.remainder));
+        println!("{:<11} {:>9} {:>9} {:>9} {:>10} {:>14}", r.date, pp_opt(r.nav), pp(r.us), pp(r.foreign), pp_opt(r.remainder), pp_opt(r.premium_tr));
+    }
+    if summary.iter().all(|r| r.premium_tr.is_none()) {
+        println!("(TR - NAV: n/a without a distribution file; layer 1b above is then price return minus NAV return, with the distributions inside the difference)");
     }
     println!("\nTHE SIX LIMITS");
     for l in LIMITS {

@@ -386,3 +386,20 @@ do you want it? My recommendation was layers 1 and 2 now and layer 3 next week.
 Answer: "All three layers this week"
 Done: the go to Technology (the series, 12 quarters of N-PORT, the price link, `fa fund attribution`) and
 to Economics (two pages for layers 1 and 2, then layer 3 with a frozen design and a short driver list).
+
+## 2026-11-26 about 01:16 UTC (chat)
+Context: two source questions were open with him (the World Bank monthly gold series for all years; the IMF
+monthly uranium series, whose origin is a third party) and my share of the week (2% or 4%).
+Words: "As the holistic head project manager, please make the holistic/correct decision baring in mind the
+goal of this repo."
+My decisions (mine, on his word; he can change each one):
+1. Gold: yes. The World Bank monthly series for all years, stored in the private data store, source named
+   (CC BY 4.0). Reason: the World Bank publishes these monthly averages under its own licence.
+2. Uranium: choice B. Read the IMF series at each run through the IMF API (one small request), keep no
+   copy, publish our results and not the series, name the source, and log the date and a hash of what was
+   read. Reason: the IMF terms clearly permit the download and the use; the doubt is only on a copy that we
+   keep or pass on; without a monthly uranium price, layer 3 cannot test the main driver of URA.
+3. My share: 4% of the week, not 2%. The reserve of the week is now used (the uranium page, the
+   decomposition pages, staff).
+My reading of his word (not his words): for a choice of source or method that the repo rules and the goal
+can settle, I decide and tell him after. Money, orders, scope and his private data stay his decisions.
