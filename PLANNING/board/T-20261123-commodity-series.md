@@ -28,3 +28,9 @@ Not permitted: the Cameco page, UxC, TradeTech (their terms forbid a copy).
 Start (2026-11-25): owner word "All three layers this week" (URA and GLD decomposition, through the Head of Staff).
 First part: items 1 (IMF uranium, monthly) and 4 (a gold price, monthly: the World Bank Pink Sheet, CC BY 4.0 to
 verify; LBMA is licensed). Items 2, 3, 5 and 6 stay open.
+
+Part 1 (2026-11-26, pull request 261): item 4 done: `fa commodity get|show gold`, World Bank Pink Sheet monthly file
+(CC BY 4.0, datacatalog.worldbank.org/public-licenses, read 2026-11-25): 802 months, 1960-01 to 2026-10, a monthly
+average in whole USD per troy ounce; 2026-08 to 2026-10 checked against the Pink Sheet PDF. Series break: spot average
+from June 2025, before that the London afternoon fixing (LBMA-linked; the owner accepts or rejects). Item 1 stopped:
+the IMF terms pages answer HTTP 403 to our client (Akamai), so the terms are not read; a person reads them in a browser.

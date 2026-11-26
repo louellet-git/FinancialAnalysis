@@ -27,3 +27,4 @@
 | sp500 members command | 2026-11-21 | fa members get (1 data-engineer agent, ~45k); fetch verified (SHA match, 2720 dates); gate pending | ~60k | kept out of the store, data/local |
 | EDINET reader part 1 | 2026-11-25 | 1 Sonnet data-engineer agent (~253k); fixture from the documentation, no key | about 1.5% of the week | mapcheck 154 tests; PR 258; real read on the laptop open |
 | fa usage show --week | 2026-11-25 | 1 Sonnet rust-engineer agent (~66k); USD from the transcripts, +0.5% against the platform cost | 2.67 USD | 13 usage tests; PR 257 |
+| Commodity series part 1 (gold) | 2026-11-26 | 1 Sonnet data-engineer agent (~99k); World Bank gold loaded; IMF stopped (403 on the terms page) | under 0.5% of the week | 7 tests; PR 261 |
