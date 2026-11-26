@@ -142,11 +142,14 @@ fa prices show IBM [--from D] [--to D]            # rows of the cache
 fa prices last IBM JNJ                            # last close, date, source; warns when older than 5 weekdays
 fa prices check MSFT --sources yahoo,nasdaq       # compare two sources on the common dates (network)
 fa estimates get IBM MSFT [--tickers-file F] [--endpoints forecast,surprise,targets,momentum] [--momentum] [--refresh]   # consensus EPS, price targets, surprises into data/raw (Nasdaq site, no key; network)
+fa commodity get gold [--cache DIR]   # World Bank Pink Sheet monthly file into data/raw/commodity/worldbank (2 requests; CC BY 4.0; network)
+fa commodity show gold [--from YYYY-MM]   # monthly gold price, USD per troy ounce, 1960 to the last month of the file (cache only)
 fa estimates show IBM [--price P]                 # consensus by period, revisions, forward P/E, target against the last close, next report date
 fa earnings calendar [IBM...] [--tickers-file F] [--from D] [--days 60]   # Nasdaq earnings calendar scan, next report date of each ticker (network)
 fa earnings dates IBM JNJ [--tolerance 1]         # past report dates against the SEC 8-K list (mapcheck fetch --submissions TICKER)
 fa fund holdings URA --from 2023-07-31       # SEC N-PORT history of an ETF into data/raw/URA/nport (network; the fields: currency, exchange rate, net assets, monthly returns, flows)
 fa fund attribution URA [--from D]               # layers 1 and 2 of an ETF: net assets, price against NAV return, the parts of the return and a named remainder; reads the cache, no request
+fa fund attribution GLD [--fetch] [--refresh] [--from D]   # the SPDR Gold Trust from its own 10-Q and 10-K, quarter ends: ounces x gold price - fee against the NAV, the premium level, NAV return = gold + fee drag + named rest; --fetch gets the SEC files that the cache lacks (the monthly view: not yet)
 fa sync [IBM MSFT...] [--tickers-file F] [--only A,B] [--skip A,B] [--force] [--dry-run] [--max-minutes N] [--bond-days N]   # bring all old data sets up to date, one queue for each host; --bond-days N asks for the FedInvest prices of the last N market days (network)
 fa usage show --week [--since RFC3339] [--head NAME]   # tokens and USD at list price for each ticket since the last weekly reset (Wednesday 16:00 UTC); with --head: the share, the use and the rest from PLANNING/board/EPICS.md
 fa sync --status [IBM...]                         # one line for each data set: current, old, no data; no request

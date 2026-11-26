@@ -28,6 +28,7 @@ pub mod estimates_cache;
 pub mod estimates_cli;
 pub mod fmp;
 pub mod fund_attribution;
+pub mod fund_gold;
 pub mod fund_holdings;
 pub mod fred_api;
 pub mod intraday;
@@ -49,6 +50,7 @@ pub mod splits_rules;
 pub mod splits_cli;
 pub mod members_cli;
 pub mod spf;
+pub mod commodity;
 
 use serde::de::{MapAccess, Visitor};
 use serde::ser::SerializeMap;
