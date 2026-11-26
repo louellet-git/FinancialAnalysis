@@ -11,8 +11,8 @@
 //!
 //! Layer 1a: ounces per share x gold price - accrued fee per share against the reported NAV per share.
 //! Layer 1b: NAV per share against the GLD close at the same date (a premium LEVEL: the share count is known).
-//! Layer 2: NAV return = gold price return + fee drag (the change of the ounces per share) + the named rest. The rest is
-//! split exactly: the cross term (gold return x fee drag) and the effect of the accrued fee payable; what is left is rounding.
+//! Layer 2: NAV return = gold price return + the change of the ounces per share (the fee paid in gold) + the named rest. The rest is
+//! split exactly: the cross term (gold return x the change of the ounces per share) and the effect of the accrued fee payable; what is left is rounding.
 //!
 //! Request count: the filing list (1), companyfacts (1) and one document for each filing; a file in the cache costs no request.
 //! Model document: `docs/models/fund-attribution.md`.
@@ -86,6 +86,31 @@ pub fn parse_submissions(json: &str) -> Result<(String, Vec<Filing>), String> {
     Ok((name, out))
 }
 
+/// The amendments (10-K/A and 10-Q/A) of the filing list: the program does not read them.
+pub fn parse_amendments(json: &str) -> Vec<Filing> {
+    let v: Value = serde_json::from_str(json).unwrap_or(Value::Null);
+    let r = &v["filings"]["recent"];
+    let col = |k: &str| r[k].as_array().cloned().unwrap_or_default();
+    let (forms, ends, filed, acc) = (col("form"), col("reportDate"), col("filingDate"), col("accessionNumber"));
+    (0..forms.len())
+        .filter_map(|i| {
+            let s = |c: &Vec<Value>| c.get(i).and_then(Value::as_str).unwrap_or("").to_string();
+            let f = Filing { form: s(&forms), period_end: s(&ends), filed: s(&filed), accession: s(&acc), doc: String::new() };
+            (matches!(f.form.as_str(), "10-K/A" | "10-Q/A") && parse_date(&f.period_end).is_some()).then_some(f)
+        })
+        .collect()
+}
+
+/// The last business day (Monday to Friday) on or before `date`. A holiday is not known: the close lookup takes the last close.
+pub fn business_day_on_or_before(date: &str) -> Option<String> {
+    let mut d = parse_date(date)?;
+    // The day number counts from 1970-01-01, a Thursday: (d + 4) mod 7 is 0 for Sunday, 6 for Saturday.
+    while matches!((d + 4).rem_euclid(7), 0 | 6) {
+        d -= 1;
+    }
+    Some(mapcheck::dates::format(d))
+}
+
 /// The text of an HTML filing: tags become spaces, entities are decoded, white space (also the no-break space) is one space.
 pub fn flat_text(html: &str) -> String {
     let mut s = String::with_capacity(html.len() / 2);
@@ -107,20 +132,22 @@ pub fn flat_text(html: &str) -> String {
     unescape(&s.replace("&nbsp;", " ")).split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-/// A number after `marker` (after spaces, `$` and `(`; commas removed). Returns the number and the position after it.
+/// A number after `marker` (after spaces, `$` and `(`; commas removed; a `(` before the number makes it negative). Returns the number and the position after it.
 /// A dash (the sign of the statement for "none") is 0.
 fn num_after(text: &str, marker: &str, from: usize) -> Option<(f64, usize)> {
     let at = from + text.get(from..)?.find(marker)? + marker.len();
     let rest = &text[at..];
     let skip = rest.len() - rest.trim_start_matches([' ', '$', '(']).len();
     let body = &rest[skip..];
+    // A value in parentheses is negative (the sign of the statement).
+    let sign = if rest[..skip].contains('(') { -1.0 } else { 1.0 };
     if let Some(r) = body.strip_prefix(['\u{2014}', '\u{2013}']) {
         return Some((0.0, at + skip + body.len() - r.len()));
     }
     let len = body.find(|c: char| !(c.is_ascii_digit() || c == ',' || c == '.')).unwrap_or(body.len());
     let raw = body[..len].replace(',', "");
     let raw = raw.trim_end_matches('.');
-    raw.parse::<f64>().ok().map(|v| (v, at + skip + len))
+    raw.parse::<f64>().ok().map(|v| (sign * v, at + skip + len))
 }
 
 const MONTHS: [&str; 12] = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -186,7 +213,12 @@ pub fn parse_doc(text: &str) -> Result<DocValues, String> {
     }
     let (shares, p) = num_after(text, "", q).ok_or("no shares")?;
     let (nav_reported, _) = num_after(text, "Net asset value per Share", p).ok_or("no NAV per share")?;
-    // A statement in thousands: the first Net Assets number is in thousands of USD.
+    if ![ounces, market_value, shares, net_assets].iter().all(|v| *v > 0.0) || [payable, gold_receivable, gold_payable].iter().any(|v| *v < 0.0) || nav_reported <= 0.0 {
+        return Err("a value has a wrong sign (a value in parentheses is negative): ounces, value, shares, net assets and NAV must be positive, the payables and the receivable not negative".into());
+    }
+    if ![ounces, market_value, shares, net_assets, nav_reported].iter().all(|v| *v > 0.0) || [payable, gold_receivable, gold_payable].iter().any(|v| *v < 0.0) {
+        return Err("a value has a wrong sign (a value in parentheses is negative): ounces, value, shares, net assets and NAV must be positive; the payables and the receivable must not be negative".into());
+    }
     Ok(DocValues { ounces, market_value, price_date, payable: payable * 1000.0, gold_receivable: gold_receivable * 1000.0, gold_payable: gold_payable * 1000.0, net_assets: net_assets * 1000.0, shares, nav_reported })
 }
 
@@ -262,7 +294,7 @@ pub struct Decomp {
     pub nav_ret: f64,
     /// The gold price return (implied prices).
     pub g: f64,
-    /// The fee drag: the change of the ounces per share.
+    /// The change of the ounces per share (the fee paid in gold).
     pub d: f64,
     /// g x d.
     pub cross: f64,
@@ -273,7 +305,7 @@ pub struct Decomp {
 }
 
 impl Decomp {
-    /// The rest in the formula NAV return = gold return + fee drag + rest.
+    /// The rest in the formula NAV return = gold return + change of the ounces per share + rest.
     pub fn rest(&self) -> f64 {
         self.nav_ret - self.g - self.d
     }
@@ -297,14 +329,37 @@ pub fn premium(close: f64, nav: f64) -> f64 {
     close / nav - 1.0
 }
 
-/// The last close on or before `date`, at most 5 calendar days before it: the date of the row and the close. The filing names
-/// the period end as the price date, also when it is a Saturday or Sunday (the LBMA has no price then): the NAV of such a
-/// date is the one of the last business day, and so is the GLD close.
-fn close_before(rows: &[PricePoint], date: &str) -> Option<(String, f64)> {
+/// The last close on or before `date`, at most 5 calendar days before it: the date of the row, the close, and the high-low
+/// range of that day as a fraction of the close (None if the row has no valid high and low). The filing names the period end as
+/// the price date, also when it is a Saturday or Sunday; `business_day_on_or_before` gives the business day, and a holiday
+/// takes the last close before it.
+fn close_before(rows: &[PricePoint], date: &str) -> Option<(String, f64, Option<f64>)> {
     let i = rows.partition_point(|r| r.date.as_str() <= date);
     let r = rows.get(i.checked_sub(1)?)?;
     let gap = parse_date(date)? - parse_date(&r.date)?;
-    (gap <= 5 && r.close.is_finite() && r.close > 0.0).then(|| (r.date.clone(), r.close))
+    let range = (r.high.is_finite() && r.low.is_finite() && r.low > 0.0 && r.high >= r.low).then(|| (r.high - r.low) / r.close);
+    (gap <= 5 && r.close.is_finite() && r.close > 0.0).then(|| (r.date.clone(), r.close, range))
+}
+
+/// The hard flags of a filing: a difference that the program cannot explain. A filing with one is out of layer 2.
+pub fn hard_flags(p: &Point) -> Vec<String> {
+    let mut f = Vec::new();
+    let diff = p.nav_identity() - p.doc.nav_reported;
+    if diff.abs() > NAV_DIFF_FLAG {
+        f.push(format!("the identity NAV {:.4} differs from the reported NAV {:.2} by {:+.4}", p.nav_identity(), p.doc.nav_reported, diff));
+    }
+    if p.cent_grid_error() > CENT_GRID_TOLERANCE {
+        f.push(format!("the implied price {:.6} is {:.4} cent from a whole cent (the rounding of the ounces explains up to {:.3} cent)", p.price(), p.cent_grid_error() * 100.0, CENT_GRID_TOLERANCE * 100.0));
+    }
+    let by_nav = p.doc.net_assets / p.doc.shares;
+    if (by_nav - p.doc.nav_reported).abs() > NAV_DIFF_FLAG {
+        f.push(format!("net assets / shares {:.4} differs from the reported NAV {:.2}", by_nav, p.doc.nav_reported));
+    }
+    let gap = p.doc.market_value + p.settlement() - p.doc.payable - p.doc.net_assets;
+    if gap.abs() > 1000.0 {
+        f.push(format!("gold value + receivable - gold payable - fee payable - net assets = {gap:+.0} USD (the statement is in thousands: up to 500 is rounding)"));
+    }
+    f
 }
 
 fn pp(v: f64) -> String {
@@ -315,10 +370,10 @@ fn pp(v: f64) -> String {
 pub const GLD_LIMITS: [&str; 6] = [
     "1. The gold price is the one that the trust used for its own NAV: the market value of the filing divided by the ounces (the LBMA Gold Price PM of the date in the filing). It is the trust's own number, not a second source: layer 1a tests the arithmetic and the cent grid, not the price.",
     "2. The monthly view is not yet built (it waits for an owner answer). A later monthly view that uses the World Bank monthly average compares an average of the month with a month-end NAV: the two do not match, and the difference is not an error of the trust.",
-    "3. The NAV is struck at the LBMA Gold Price PM (3:00 PM London, about 10:00 AM New York); the GLD close is at 4:00 PM New York. The premium level contains the move of gold between the two times (not removed).",
-    "4. The fee drag is the change of the ounces per share. It includes the gold that the trust sold to pay the fee and any other change of the ounces per share (none is known). The fee rate (0.40% a year) is a text of the filing, not a test of it.",
+    "3. The close against the NAV is mostly timing, not a premium. The NAV is the LBMA Gold Price PM (about 15:00 London, about 10:00 New York); the GLD close is 16:00 New York. The move of gold between the two times is in the level and in its change (the true premium is about 0.1 pp). The size is printed for each row: the high-low range of the GLD close day as % of the close (an upper bound of the timing noise; 0.46% to 2.55% in the run of 2026-11-26).",
+    "4. The ounces-per-share change (the fee paid in gold) is measured as the change of the ounces per share. It includes the gold that the trust sold to pay the fee and any other change of the ounces per share (none is known). The fee rate (0.40% a year) is a text of the filing, not a test of it.",
     "5. A quarter is the gap between two quarter-end filings (85 to 100 days). The last quarter end can be missing until the filing is public (10-Q about 5 weeks, 10-K about 8 weeks after the end). A 10-K/A is not used.",
-    "6. GLD pays no distribution: the price return of the Nasdaq close (split-adjusted) is the total return. A distribution would enter the premium change.",
+    "6. GLD pays no distribution: the price return of the Nasdaq close (split-adjusted) is the total return. A distribution would enter the change of close / NAV.",
 ];
 
 fn gld_cautions() -> [String; 3] {
@@ -364,6 +419,8 @@ pub struct Loaded {
     pub filings: Vec<Filing>,
     pub name: String,
     pub requests: usize,
+    /// The amendments (10-K/A, 10-Q/A) in the range: named in the output, not read.
+    pub amendments: Vec<Filing>,
 }
 
 /// The filing list and the facts, from the cache; fetched only if missing, or if `refresh`. Returns the filings in the range
@@ -428,7 +485,8 @@ fn load(cache: &Path, from: Option<&str>, to: Option<&str>, fetch: bool, refresh
         write_atomic(&p, &t)?;
         record(&dir, &format!("{}.htm", f.accession), &url, t.len(), &format!("{} for the period ending {}, filed {}", f.form, f.period_end, f.filed))?;
     }
-    Ok((Loaded { filings, name, requests }, facts))
+    let amendments: Vec<Filing> = parse_amendments(&sub_text).into_iter().filter(|f| f.period_end >= lo && to.is_none_or(|t| f.period_end.as_str() <= t)).collect();
+    Ok((Loaded { filings, name, requests, amendments }, facts))
 }
 
 /// Read one filing from the text, with the companyfacts cross-check.
@@ -490,18 +548,25 @@ pub fn run(repo: &Path, o: &super::fund_attribution::Options) -> Result<i32, Str
     println!("Gold price: the LBMA Gold Price PM of the pricing date, as the trust used it. It is read as market value / ounces from the text of the filing (no price number is tagged).");
     println!("Monthly view: not yet (waits for an owner answer).");
 
-    println!("\nLAYER 1a - ounces per share x gold price - accrued fee per share, against the reported NAV per share");
+    for am in &loaded.amendments {
+        println!("amendment not read: {} filed {} (period {})", am.form, am.filed, am.period_end);
+    }
+    println!("\nLAYER 1a - arithmetic check: ounces per share x gold price - accrued fee per share, against the reported NAV per share");
+    println!("(a check of the sum of the filing and its rounding, not of the gold price or the ounces: the price is market value / ounces)");
     println!(
-        "{:<11} {:<11} {:<5} {:>11} {:>9} {:>10} {:>10} {:>9} {:>9} {:>9} {:>8} {:>8} {:>8}",
-        "period end", "price date", "form", "ounces k", "shares m", "price", "oz/share", "fee/sh", "NAV ident", "NAV rep", "diff", "cent err", "settle $m"
+        "{:<11} {:<11} {:<11} {:<5} {:>10} {:>9} {:>10} {:>10} {:>9} {:>9} {:>9} {:>8} {:>8} {:>8}",
+        "period end", "price day", "filed", "form", "ounces k", "shares m", "price", "oz/share", "fee/sh", "NAV ident", "NAV rep", "diff", "cent err", "settle $m"
     );
     let mut flags: Vec<String> = Vec::new();
+    let mut excluded: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    let pday = |p: &Point| business_day_on_or_before(&p.doc.price_date).unwrap_or_else(|| p.doc.price_date.clone());
     for p in &points {
         let diff = p.nav_identity() - p.doc.nav_reported;
         println!(
-            "{:<11} {:<11} {:<5} {:>11.1} {:>9.1} {:>10.2} {:>10.5} {:>9.4} {:>9.4} {:>9.2} {:>+8.4} {:>8.1e} {:>+8.1}",
+            "{:<11} {:<11} {:<11} {:<5} {:>10.1} {:>9.1} {:>10.2} {:>10.5} {:>9.4} {:>9.4} {:>9.2} {:>+8.4} {:>8.1e} {:>+8.1}",
             p.period_end,
-            p.doc.price_date,
+            pday(p),
+            p.filed,
             p.form,
             p.doc.ounces / 1e3,
             p.doc.shares / 1e6,
@@ -514,45 +579,47 @@ pub fn run(repo: &Path, o: &super::fund_attribution::Options) -> Result<i32, Str
             p.cent_grid_error(),
             p.settlement() / 1e6
         );
-        if diff.abs() > NAV_DIFF_FLAG {
-            flags.push(format!("FLAG {}: the identity NAV {:.4} differs from the reported NAV {:.2} by {:+.4}", p.period_end, p.nav_identity(), p.doc.nav_reported, diff));
+        let hf = hard_flags(p);
+        for f in &hf {
+            flags.push(format!("FLAG {}: {f}", p.period_end));
         }
-        if p.cent_grid_error() > CENT_GRID_TOLERANCE {
-            flags.push(format!("FLAG {}: the implied price {:.6} is {:.4} cent from a whole cent (the rounding of the ounces explains up to {:.3} cent)", p.period_end, p.price(), p.cent_grid_error() * 100.0, CENT_GRID_TOLERANCE * 100.0));
-        }
-        let by_nav = p.doc.net_assets / p.doc.shares;
-        if (by_nav - p.doc.nav_reported).abs() > NAV_DIFF_FLAG {
-            flags.push(format!("FLAG {}: net assets / shares {:.4} differs from the reported NAV {:.2}", p.period_end, by_nav, p.doc.nav_reported));
-        }
-        let gap = p.doc.market_value + p.settlement() - p.doc.payable - p.doc.net_assets;
-        if gap.abs() > 1000.0 {
-            flags.push(format!("FLAG {}: gold value + receivable - gold payable - fee payable - net assets = {:+.0} USD (the statement is in thousands: up to 500 is rounding)", p.period_end, gap));
+        if !hf.is_empty() {
+            excluded.insert(p.period_end.clone(), hf.join("; "));
         }
         if !p.xbrl_note.is_empty() {
             flags.push(format!("XBRL check {}: {}", p.period_end, p.xbrl_note));
         }
     }
-    println!("diff = identity NAV - reported NAV (the reported NAV has 2 decimals). cent err = distance of the implied price from a whole cent (USD).");
+    println!("price day = the last business day (Monday to Friday) on or before the period end; the filing names the period end as the LBMA price date. diff = identity NAV - reported NAV (the reported NAV has 2 decimals). cent err = distance of the implied price from a whole cent (USD).");
     println!("oz/share = (ounces + settle / price) / shares. settle = gold receivable (creations, gold not yet in the trust) - gold payable (redemptions, gold still in the trust).");
     println!("fee/sh = accrued fee payable to the sponsor per share (USD). The statement is in thousands of USD; the gold value is in dollars.");
     if flags.is_empty() {
-        println!("Checks: the NAV identity holds to the cent, the implied prices are on the cent grid, net assets / shares agree with the reported NAV, and the XBRL companyfacts values agree with the text, for each filing.");
+        println!("Checks (a check of the sum of the filing and its rounding, not of the gold price or the ounces): the identity NAV agrees with the reported NAV to the cent, the implied prices are on the cent grid, net assets / shares agree with the reported NAV, and the XBRL companyfacts values agree with the text, for each filing.");
     }
     for f in &flags {
         println!("{f}");
     }
 
-    println!("\nLAYER 1b - NAV per share against the GLD close at the pricing date (the premium level)");
-    println!("{:<11} {:>10} {:<11} {:>10} {:>10}", "price date", "NAV/share", "close date", "GLD close", "premium %");
+    println!("\nLAYER 1b - GLD close against the NAV at the London price: mostly timing, not a premium");
+    println!("{:<11} {:>10} {:<11} {:>10} {:>11} {:>10}", "price day", "NAV/share", "close date", "GLD close", "close/NAV %", "day range %");
     let mut levels: Vec<Option<f64>> = Vec::new();
     for p in &points {
-        let hit = prices.as_ref().and_then(|r| close_before(r, &p.doc.price_date));
+        let hit = prices.as_ref().and_then(|r| close_before(r, &pday(p)));
         let close = hit.as_ref().map(|h| h.1);
         let prem = close.map(|c| premium(c, p.nav()));
         levels.push(prem);
-        println!("{:<11} {:>10.4} {:<11} {:>10} {:>10}", p.doc.price_date, p.nav(), hit.as_ref().map_or("n/a", |h| h.0.as_str()), close.map_or("n/a".into(), |c| format!("{c:.2}")), prem.map_or("n/a".into(), |v| format!("{:+.3}", v * 100.0)));
+        println!(
+            "{:<11} {:>10.4} {:<11} {:>10} {:>11} {:>10}",
+            pday(p),
+            p.nav(),
+            hit.as_ref().map_or("n/a", |h| h.0.as_str()),
+            close.map_or("n/a".into(), |c| format!("{c:.2}")),
+            prem.map_or("n/a".into(), |v| format!("{:+.3}", v * 100.0)),
+            hit.as_ref().and_then(|h| h.2).map_or("n/a".into(), |r| format!("{:.2}", r * 100.0))
+        );
     }
-    println!("The premium is close / NAV - 1. The NAV uses the 3:00 PM London price; the close is 4:00 PM New York (limit 3).");
+    println!("close/NAV = GLD close / NAV per share - 1. The NAV is the London PM price (about 15:00 London); the close is 16:00 New York. Most of the level is the move of gold between the two times, not a premium (the true premium is about 0.1 pp).");
+    println!("day range = (high - low) / close of the GLD close day (GLD high and low of data/raw/GLD/prices.json): a size of the timing noise (an upper bound: the range also holds moves outside the two times).");
 
     struct Row {
         end: String,
@@ -561,19 +628,24 @@ pub fn run(repo: &Path, o: &super::fund_attribution::Options) -> Result<i32, Str
         d: f64,
         rest: f64,
         price_ret: Option<f64>,
+        ranges: String,
     }
     let mut rows: Vec<Row> = Vec::new();
     for (i, w) in points.windows(2).enumerate() {
         let (a, b) = (&w[0], &w[1]);
         let gap = parse_date(&b.period_end).zip(parse_date(&a.period_end)).map(|(x, y)| x - y);
-        println!("\n=== quarter {} to {} (pricing dates {} to {}) ===", a.period_end, b.period_end, a.doc.price_date, b.doc.price_date);
+        println!("\n=== quarter {} to {} (price days {} to {}) ===", a.period_end, b.period_end, pday(a), pday(b));
         if !gap.is_some_and(|g| GAP_DAYS.contains(&g)) {
             println!("no quarter: the two filings are {} days apart (a filing is missing between them). No attribution.", gap.map_or("?".to_string(), |g| g.to_string()));
             continue;
         }
+        if let Some(why) = excluded.get(&a.period_end).map(|w| (&a.period_end, w)).or_else(|| excluded.get(&b.period_end).map(|w| (&b.period_end, w))) {
+            println!("no attribution: the filing of {} has a flag ({}).", why.0, why.1);
+            continue;
+        }
         let d = decompose(a, b);
-        let days = parse_date(&b.doc.price_date).zip(parse_date(&a.doc.price_date)).map_or(0, |(x, y)| x - y);
-        println!("LAYER 2: NAV return {} pp = gold price return {} pp + fee drag {} pp + rest {} pp", pp(d.nav_ret), pp(d.g), pp(d.d), pp(d.rest()));
+        let days = parse_date(&pday(b)).zip(parse_date(&pday(a))).map_or(0, |(x, y)| x - y);
+        println!("LAYER 2: NAV return {} pp = gold price return {} pp + ounces-per-share change (the fee paid in gold) {} pp + rest {} pp", pp(d.nav_ret), pp(d.g), pp(d.d), pp(d.rest()));
         println!(
             "  gold price {:.2} -> {:.2}; ounces per share {:.5} -> {:.5}; NAV per share {:.4} -> {:.4}",
             a.price(),
@@ -584,7 +656,7 @@ pub fn run(repo: &Path, o: &super::fund_attribution::Options) -> Result<i32, Str
             b.nav()
         );
         println!(
-            "  rest {} pp = cross term (gold return x fee drag) {} pp + effect of the accrued fee payable {} pp + rounding {} pp   <-- named remainder",
+            "  rest {} pp = cross term (gold return x ounces-per-share change (the fee paid in gold)) {} pp + effect of the accrued fee payable {} pp + rounding {} pp   <-- named remainder",
             pp(d.rest()),
             pp(d.cross),
             pp(d.payable),
@@ -594,41 +666,44 @@ pub fn run(repo: &Path, o: &super::fund_attribution::Options) -> Result<i32, Str
         let avg_na = (a.doc.net_assets + b.doc.net_assets) / 2.0;
         match b.fee_q {
             Some(fee) => println!(
-                "  fee check ({days} days): fee drag {} pp; stated rate {:.2}% x days/365 = {} pp; sponsor fee of the quarter {:.1} USD m / mean net assets = {} pp (the fee follows the daily NAV, not the mean of two dates)",
+                "  fee check ({days} days): ounces-per-share change (the fee paid in gold) {} pp; stated rate {:.2}% x days/365 = {} pp; sponsor fee of the quarter {:.1} USD m / mean net assets = {} pp (the fee follows the daily NAV, not the mean of two dates)",
                 pp(d.d),
                 FEE_RATE * 100.0,
                 pp(expect),
                 fee / 1e6,
                 pp(-fee / avg_na)
             ),
-            None => println!("  fee check ({days} days): fee drag {} pp; stated rate {:.2}% x days/365 = {} pp; the sponsor fee of the quarter is not tagged for this quarter", pp(d.d), FEE_RATE * 100.0, pp(expect)),
+            None => println!("  fee check ({days} days): ounces-per-share change (the fee paid in gold) {} pp; stated rate {:.2}% x days/365 = {} pp; the sponsor fee of the quarter is not tagged for this quarter", pp(d.d), FEE_RATE * 100.0, pp(expect)),
         }
-        let pr = prices.as_ref().and_then(|r| close_before(r, &a.doc.price_date).zip(close_before(r, &b.doc.price_date))).map(|(x, y)| y.1 / x.1 - 1.0);
+        let hits = prices.as_ref().and_then(|r| close_before(r, &pday(a)).zip(close_before(r, &pday(b))));
+        let pr = hits.as_ref().map(|(x, y)| y.1 / x.1 - 1.0);
+        let ranges = hits.as_ref().map(|(x, y)| format!("{} / {}", x.2.map_or("n/a".into(), |v| format!("{:.2}", v * 100.0)), y.2.map_or("n/a".into(), |v| format!("{:.2}", v * 100.0)))).unwrap_or_else(|| "n/a".into());
         match pr {
             Some(r) => {
                 let (diff, ratio) = super::fund_attribution::premium_change(r, d.nav_ret);
-                println!("LAYER 2 premium: GLD price return {} pp - NAV return {} pp = change of the premium {} pp (ratio form {} pp)", pp(r), pp(d.nav_ret), pp(diff), pp(ratio));
+                println!("LAYER 2 close against NAV (mostly timing, not a premium): GLD price return {} pp - NAV return {} pp = change of close/NAV {} pp (ratio form {} pp); day ranges of the two close days {ranges} %", pp(r), pp(d.nav_ret), pp(diff), pp(ratio));
                 if let (Some(Some(l0)), Some(Some(l1))) = (levels.get(i), levels.get(i + 1)) {
-                    println!("  premium level {} % -> {} %: ratio change (1+l1)/(1+l0)-1 = {} pp, as the ratio form (difference {:.2e})", pp(*l0), pp(*l1), pp((1.0 + l1) / (1.0 + l0) - 1.0), (1.0 + l1) / (1.0 + l0) - 1.0 - ratio);
+                    println!("  close/NAV {} % -> {} %: ratio change (1+l1)/(1+l0)-1 = {} pp, as the ratio form (difference {:.2e})", pp(*l0), pp(*l1), pp((1.0 + l1) / (1.0 + l0) - 1.0), (1.0 + l1) / (1.0 + l0) - 1.0 - ratio);
                 }
             }
-            None => println!("LAYER 2 premium: n/a (no GLD close at the two pricing dates)"),
+            None => println!("LAYER 2 close against NAV: n/a (no GLD close at the two price days)"),
         }
-        rows.push(Row { end: b.period_end.clone(), nav: d.nav_ret, g: d.g, d: d.d, rest: d.rest(), price_ret: pr });
+        rows.push(Row { end: b.period_end.clone(), nav: d.nav_ret, g: d.g, d: d.d, rest: d.rest(), price_ret: pr, ranges });
     }
 
     println!("\nSUMMARY (pp of the NAV return for each quarter)");
-    println!("{:<11} {:>9} {:>9} {:>9} {:>9} {:>10} {:>10}", "quarter end", "NAV ret", "gold", "fee drag", "rest", "GLD price", "prem chg");
+    println!("{:<11} {:>9} {:>9} {:>9} {:>9} {:>10} {:>13} {:>14}", "quarter end", "NAV ret", "gold", "oz/sh chg", "rest", "GLD price", "close/NAV chg", "day ranges %");
     for r in &rows {
         println!(
-            "{:<11} {:>9} {:>9} {:>9} {:>9} {:>10} {:>10}",
+            "{:<11} {:>9} {:>9} {:>9} {:>9} {:>10} {:>13} {:>14}",
             r.end,
             pp(r.nav),
             pp(r.g),
             pp(r.d),
             pp(r.rest),
             r.price_ret.map_or("n/a".into(), pp),
-            r.price_ret.map_or("n/a".into(), |p| pp(p - r.nav))
+            r.price_ret.map_or("n/a".into(), |p| pp(p - r.nav)),
+            r.ranges
         );
     }
     println!("\nTHE LIMITS");
@@ -752,6 +827,33 @@ mod tests {
     }
 
     #[test]
+    fn a_weekend_period_end_has_the_last_business_day() {
+        assert_eq!(business_day_on_or_before("2023-12-31").as_deref(), Some("2023-12-29"));
+        assert_eq!(business_day_on_or_before("2023-09-30").as_deref(), Some("2023-09-29"));
+        assert_eq!(business_day_on_or_before("2024-06-30").as_deref(), Some("2024-06-28"));
+        assert_eq!(business_day_on_or_before("2025-03-31").as_deref(), Some("2025-03-31"));
+        // 2023-12-29 to 2024-03-28 is 90 days; to the business day of 2024-03-31 (2024-03-29) it is 91.
+        assert_eq!(parse_date("2024-03-29").unwrap() - parse_date("2023-12-29").unwrap(), 91);
+    }
+
+    #[test]
+    fn a_value_in_parentheses_is_negative_and_a_wrong_sign_is_refused() {
+        assert_eq!(num_after("x Gold payable ( 5,000 ) y", "Gold payable", 0).map(|v| v.0), Some(-5000.0));
+        assert_eq!(num_after("x Gold payable $ 5,000 y", "Gold payable", 0).map(|v| v.0), Some(5000.0));
+        let t = TEXT.replace("Accounts payable to Sponsor $ 45,418", "Accounts payable to Sponsor $ ( 45,418 )");
+        assert!(parse_doc(&flat_text(&t)).unwrap_err().contains("wrong sign"));
+    }
+
+    #[test]
+    fn a_filing_with_a_hard_flag_is_named() {
+        let p = Point { period_end: "2026-06-30".into(), form: "10-Q".into(), accession: "x".into(), filed: "".into(), doc: doc(), fee_q: None, xbrl_note: String::new() };
+        assert!(hard_flags(&p).is_empty(), "{:?}", hard_flags(&p));
+        let mut bad = p.clone();
+        bad.doc.gold_receivable = 50_000_000.0;
+        assert!(hard_flags(&bad).iter().any(|f| f.contains("net assets")), "{:?}", hard_flags(&bad));
+    }
+
+    #[test]
     fn premium_and_its_change_agree() {
         let (l0, l1) = (premium(101.0, 100.0), premium(103.0, 101.0));
         assert!((l0 - 0.01).abs() < 1e-15);
@@ -799,6 +901,9 @@ mod tests {
           "accessionNumber":["0001437749-25-036305","0001437749-24-037938","0001437749-25-024998","0001437749-25-000001","0001437749-25-000002"],
           "primaryDocument":["gld20250930_10k.htm","a.htm","gld20250630_10q.htm","x.htm","../evil.htm"]}}}"#;
         let (name, v) = parse_submissions(j).unwrap();
+        // The 10-K/A is named, not read.
+        let am = parse_amendments(j);
+        assert_eq!((am.len(), am[0].form.as_str(), am[0].filed.as_str()), (1, "10-K/A", "2024-12-19"));
         assert_eq!(name, "SPDR GOLD TRUST");
         assert_eq!(v.iter().map(|f| f.accession.as_str()).collect::<Vec<_>>(), ["0001437749-25-036305", "0001437749-25-024998"]);
         assert!(parse_submissions(&j.replace("1222333", "999")).is_err());
@@ -810,9 +915,12 @@ mod tests {
     fn the_close_is_the_last_one_up_to_five_days_back() {
         let row = |d: &str, c: f64| PricePoint { date: d.into(), open: c, high: c, low: c, close: c, volume: 1 };
         let rows = vec![row("2026-01-02", 10.0), row("2026-01-05", 11.0)];
-        assert_eq!(close_before(&rows, "2026-01-05"), Some(("2026-01-05".into(), 11.0)));
+        assert_eq!(close_before(&rows, "2026-01-05"), Some(("2026-01-05".into(), 11.0, Some(0.0))));
         // A Sunday: the close of the Friday before.
-        assert_eq!(close_before(&rows, "2026-01-04"), Some(("2026-01-02".into(), 10.0)));
+        assert_eq!(close_before(&rows, "2026-01-04"), Some(("2026-01-02".into(), 10.0, Some(0.0))));
+        // The high-low range of the day as a fraction of the close.
+        let wide = vec![PricePoint { date: "2026-01-02".into(), open: 10.0, high: 10.5, low: 9.5, close: 10.0, volume: 1 }];
+        assert_eq!(close_before(&wide, "2026-01-02").unwrap().2, Some(0.1));
         assert_eq!(close_before(&rows, "2026-01-01"), None);
         assert_eq!(close_before(&rows, "2026-01-11"), None);
     }
