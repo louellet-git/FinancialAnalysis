@@ -10,7 +10,7 @@ You asked: is URA a black box? This page checks two things. First: does the repo
 2. **The holdings explain the return.** In 10 of 12 quarters, the start weight times the return of each holding gives the NAV return to within 0.35 percentage points (pp). In 3 quarters the fund bought new holdings with a large weight: Oklo in 2024, Nano Nuclear in 2025, and six names (4% of the fund, three of them US-listed and in the estimate) in 2026. After an estimate for these purchases and other trades, 0.06 to 1.78 pp, 0.32 to 0.64 pp and 0.26 to 0.63 pp stay unexplained (Table 2).
 3. **A small number of US-listed names made the large moves.** In the quarter to July 2025 (+57%), Cameco and three reactor and fuel companies (Oklo, NuScale, Centrus) gave 34 of the 57 pp. The price of each of the three rose to about 3 times its start price. In the quarter to July 2026 (-29%), the fall came from all groups. Cameco gave -6.9 pp and Oklo -3.4 pp (Table 3).
 
-**What this means for you.** At the level of the holdings, this test shows no hidden part. The open question is why those names moved. Layer 3 tests that.
+**What this means for you.** At the level of the holdings, this test shows no hidden part. The two layers show what moved, not why. Layer 3 tests why. Page 2 gives the monthly view and six limits.
 
 **Table 1: Each quarter, split into its parts** (pp of the NAV return; start weights from the N-PORT report at the start of the quarter). See that the remainder is small except in two quarters.
 
@@ -50,8 +50,6 @@ One end: the new holdings were held all quarter. The other end: they added nothi
 | 2026-07-31 | -29.23 | Cameco -6.87, Oklo -3.40, Daewoo E&C -2.52 (limit e), Uranium Energy -2.06, Energy Fuels -1.99 |
 
 **The price against the value.** The price and the NAV agree to within 2 pp in 8 of 12 quarters. The three largest negative gaps (-9.18, -3.28 and -6.42 pp) are in the three quarters that contain December. That is consistent with a yearly distribution in December, which the price return does not include. Our data has no distribution amounts, so this stays an inference.
-
-**Limits.** The two layers show what moved, not why. Page 2 lists six limits and the monthly view.
 
 <div style="page-break-before: always"></div>
 
