@@ -6,7 +6,7 @@
 //! Terms (read 2026-11-25): the World Bank licenses its own datasets under CC BY 4.0 by default
 //! (https://datacatalog.worldbank.org/public-licenses). A stored copy is permitted; the user must give credit.
 //! The file is not a vintage file: the Bank can revise old values, so a later copy never replaces an earlier one.
-//! Uranium is not in this file. The IMF terms page could not be read (HTTP 403, 2026-11-25), so no IMF series is loaded.
+//! Uranium is not in this file. It comes from the IMF data API (`imf_pcps.rs`), one request for one series.
 
 use super::{today_iso, write_atomic};
 use crate::futures::mpt::{attr, shared_strings, sheet_path, zip_entry};
@@ -17,14 +17,16 @@ pub const USAGE: &str = "\
 fa commodity - monthly commodity prices (World Bank Commodity Price Data, the \"Pink Sheet\")
 
 USAGE:
-  fa commodity get gold [--cache DIR]     download CMO-Historical-Data-Monthly.xlsx into DIR/commodity/worldbank/
+  fa commodity get gold|uranium [--cache DIR]     download CMO-Historical-Data-Monthly.xlsx into DIR/commodity/worldbank/
                                           CMO-Historical-Data-Monthly_<date>.xlsx (+ .meta.json). Each dated copy is kept.
-  fa commodity show gold [--from YYYY-MM] [--cache DIR] [--file F]
+  fa commodity show gold|uranium [--from YYYY-MM] [--cache DIR] [--file F]
                                           one row for each month: month, price in US dollars per troy ounce.
                                           Default file: the newest copy of DIR/commodity/worldbank. Default --cache: data/raw.
 
 gold:    monthly average of daily spot rates (see the note that `show` prints: the source changed in June 2025).
-uranium: not loaded. The IMF terms page could not be read (docs/DATA-SOURCES.md); the World Bank file has no uranium.
+uranium: IMF Primary Commodity Prices, series G001.PURAN.USD.M, US dollars per pound, monthly average (NUEXCO spot).
+         `get uranium` makes ONE request to api.imf.org into DIR/commodity/imf/. `show uranium` prints USD/lb.
+         Source: International Monetary Fund, Primary Commodity Prices (attribution is required).
 Credit: World Bank Commodity Price Data (The Pink Sheet), CC BY 4.0.";
 
 pub const PAGE: &str = "https://www.worldbank.org/en/research/commodity-markets";
@@ -206,9 +208,6 @@ pub fn format_rows(p: &Parsed, from: Option<&str>) -> String {
 
 fn find_series(name: Option<&str>) -> Result<&'static Series, String> {
     let n = name.map(str::to_lowercase).ok_or("name a series: gold (see fa commodity --help)")?;
-    if n == "uranium" {
-        return Err("uranium is not loaded: the IMF terms page could not be read (HTTP 403, 2026-11-25) and the World Bank file has no uranium; see docs/DATA-SOURCES.md".into());
-    }
     SERIES.iter().find(|s| s.name == n).ok_or_else(|| format!("unknown series '{n}'; see fa commodity --help"))
 }
 
@@ -218,8 +217,11 @@ fn get(repo: &Path, args: &[String]) -> Result<i32, String> {
         return Ok(0);
     }
     let p = super::price_cli::parse(args, &["--cache"], &[])?;
-    let series = find_series(p.tickers.first().map(String::as_str))?;
     let cache = p.flag("--cache").map(PathBuf::from).unwrap_or_else(|| super::price_cli::cache_dir(repo));
+    if p.tickers.first().is_some_and(|n| n == "URANIUM") {
+        return super::imf_pcps::get(&cache);
+    }
+    let series = find_series(p.tickers.first().map(String::as_str))?;
     let dir = series_dir(&cache);
     let day = today_iso();
     // Request 1: the commodity page (the link of the file has a hash). Request 2: the file.
@@ -252,8 +254,12 @@ fn get(repo: &Path, args: &[String]) -> Result<i32, String> {
 
 fn show(repo: &Path, args: &[String]) -> Result<i32, String> {
     let p = super::price_cli::parse(args, &["--cache", "--file", "--from"], &[])?;
-    let series = find_series(p.tickers.first().map(String::as_str))?;
     let cache = p.flag("--cache").map(PathBuf::from).unwrap_or_else(|| super::price_cli::cache_dir(repo));
+    if p.tickers.first().is_some_and(|n| n == "URANIUM") {
+        let from = p.flag("--from").map(|f| super::imf_pcps::month_of(&f.replacen('-', "-M", 1)).ok_or_else(|| format!("--from {f}: write YYYY-MM"))).transpose()?;
+        return super::imf_pcps::show(&cache, p.flag("--file"), from.as_deref());
+    }
+    let series = find_series(p.tickers.first().map(String::as_str))?;
     let file = match p.flag("--file") {
         Some(f) => PathBuf::from(f),
         None => newest(&series_dir(&cache)).ok_or_else(|| format!("no {FILE_STEM}_*.xlsx in {}: run fa commodity get {}", series_dir(&cache).display(), series.name))?,
@@ -440,7 +446,8 @@ mod tests {
 
     #[test]
     fn uranium_and_unknown_series_are_refused() {
-        assert!(find_series(Some("URANIUM")).unwrap_err().contains("not loaded"));
+        // Uranium is not a World Bank series: `get` and `show` send it to the IMF reader before `find_series`.
+        assert!(find_series(Some("URANIUM")).unwrap_err().contains("unknown series"));
         assert!(find_series(Some("silver")).unwrap_err().contains("unknown series"));
         assert!(find_series(None).is_err());
         assert_eq!(find_series(Some("Gold")).unwrap().column, "Gold");

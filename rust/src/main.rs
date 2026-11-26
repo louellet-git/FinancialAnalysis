@@ -63,8 +63,8 @@ USAGE:
   fa estimates show TICKER [--price P]            consensus by period, revisions, forward P/E, target against the last close
   fa spf get [--cache DIR]                        Philadelphia Fed SPF medianLevel.xlsx into DIR/macro/spf (dated copy)
   fa spf show [--cache DIR] [--file F]            Q1 long-run medians (RGDP10, CPI10, STOCK10, BOND10, BILL10), release dates
-  fa commodity get gold [--cache DIR]             World Bank Pink Sheet monthly file into DIR/commodity/worldbank (dated copy, CC BY 4.0)
-  fa commodity show gold [--from YYYY-MM]         monthly gold price, USD per troy ounce (monthly average of daily rates)
+  fa commodity get gold|uranium [--cache DIR]     gold: World Bank Pink Sheet file (CC BY 4.0); uranium: IMF PCPS series, one API request (IMF attribution)
+  fa commodity show gold|uranium [--from YYYY-MM] monthly price: gold USD per troy ounce, uranium USD per pound (monthly averages)
   fa earnings calendar [TICKER...] [--tickers-file F] [--from D] [--days N]
                                                   Nasdaq earnings calendar scan, then the next report date of each ticker
   fa earnings dates TICKER... [--tolerance N]     past report dates against the SEC filing list (8-K item 2.02), next date
