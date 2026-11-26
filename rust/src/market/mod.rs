@@ -51,6 +51,7 @@ pub mod splits_cli;
 pub mod members_cli;
 pub mod spf;
 pub mod commodity;
+pub mod imf_pcps;
 
 use serde::de::{MapAccess, Visitor};
 use serde::ser::SerializeMap;

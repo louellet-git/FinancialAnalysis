@@ -143,6 +143,7 @@ fa prices last IBM JNJ                            # last close, date, source; wa
 fa prices check MSFT --sources yahoo,nasdaq       # compare two sources on the common dates (network)
 fa estimates get IBM MSFT [--tickers-file F] [--endpoints forecast,surprise,targets,momentum] [--momentum] [--refresh]   # consensus EPS, price targets, surprises into data/raw (Nasdaq site, no key; network)
 fa commodity get gold [--cache DIR]   # World Bank Pink Sheet monthly file into data/raw/commodity/worldbank (2 requests; CC BY 4.0; network)
+fa commodity show uranium [--from YYYY-MM]   # IMF PCPS uranium, USD per pound, read at each run from api.imf.org (1 request, no copy kept; log line in data/raw/commodity/imf/reads.log; network)
 fa commodity show gold [--from YYYY-MM]   # monthly gold price, USD per troy ounce, 1960 to the last month of the file (cache only)
 fa estimates show IBM [--price P]                 # consensus by period, revisions, forward P/E, target against the last close, next report date
 fa earnings calendar [IBM...] [--tickers-file F] [--from D] [--days 60]   # Nasdaq earnings calendar scan, next report date of each ticker (network)

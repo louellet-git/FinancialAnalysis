@@ -30,3 +30,4 @@
 | fa usage show --week | 2026-11-25 | 1 Sonnet rust-engineer agent (~66k); USD from the transcripts, +0.5% against the platform cost | 2.67 USD | 13 usage tests; PR 257 |
 | GLD attribution part 1 (quarter ends) | 2026-11-26 | 1 Sonnet data-engineer agent (~176k); 13 filings; identity within 0.004 USD | about 1% of the week | 9 new tests; PR 262 |
 | Commodity series part 1 (gold) | 2026-11-26 | 1 Sonnet data-engineer agent (~99k); World Bank gold loaded; IMF stopped (403 on the terms page) | under 0.5% of the week | 7 tests; PR 261 |
+| Commodity series part 2 (IMF uranium, run-time read) | 2026-11-26 | 1 Sonnet data-engineer agent (~175k); 9 IMF requests in all; no copy kept | about 0.5% of the week | PR 265 |

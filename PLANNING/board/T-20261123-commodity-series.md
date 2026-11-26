@@ -40,3 +40,8 @@ years, in the private store, source named (CC BY 4.0). Uranium: read the IMF ser
 run through the IMF API (one small request, honest client); keep no copy in the store or the repo; name the source;
 log the date and a hash of each read. A risk-compliance read of this choice comes first. The EIA annual series stays
 as a public-domain cross-check.
+
+Part 2 (2026-11-26, pull request 265): item 1 done as decided. `fa commodity show uranium` reads the IMF PCPS series
+(G001.PURAN.USD.M, SDMX-JSON) at each run, one request, keeps no copy, logs date, address, bytes, SHA-256 and month range
+in data/raw/commodity/imf/reads.log; `imf_pcps::read_logged(cache)` is the call for models. Real run 2026-11-26: 418
+months, 1992-01 to 2026-10. Gold row: the owner decision recorded. Open: item 2 (EIA annual, the cross-check), 3, 5, 6.
