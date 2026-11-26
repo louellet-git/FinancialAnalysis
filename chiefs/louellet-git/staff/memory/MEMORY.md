@@ -21,6 +21,8 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
     The token calculator waits for data and for his yes. Automate (his word 2026-11-25): for each thing
     that I or a head do by hand more than one time, ask if a script or an agent file can do it.
 11. Questions for him: research first, then one clickable dialog with a recommendation. Record the answer.
+    A choice of source or method that the rules and the goal settle: I decide and tell him after (his word
+    2026-11-26, my reading). Money, orders, scope and his private data stay his.
 12. Privacy: this repo is public. His own holdings and private reasons go in no file.
 
 ## 2. How I stay on track
@@ -40,20 +42,17 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
   session cost (an estimate). Tell the heads once if FA is above 40% of that on Fri, 65% on Sun, 90% on Tue.
   My own share is 2%: few turns, short answers, no relay of a head message that is not for him.
 
-## 4. Open now (2026-11-25, night)
-- His three answers of 2026-11-25: (1) T1 failed; Fundamental corrects the middle of the range and tests it
-  on several periods (next week, 5% to 8%, not blind) and saves the forecasts now for a blind test on the
-  fiscal 2026 reports (early 2027). He must say later which test is "the pass". (2) The miner model: build
-  after the T1 work, NexGen first. (3) The Japan reader (EDINET): yes, against my "not now"; he makes the
-  free key; Technology gives the size first and starts with one company.
-- Waits for him: the host guide `docs/guides/algo-host-gcp.md` (45 minutes; his own paper keys), then a
-  dry-run day and `--send` for step A (1 SPY share; on main, PR 248). The EDINET key. His review of the
-  three S&P pieces (the S&P 100 part waits). His four owner tickets.
-- E4.S1: step B (1 long SPY option; control 6 has its new text) is on hold until he has run step A with
-  `--send` for one day or more.
-- Pace: Financial Analysis used about 154 USD (18% of its week share) in the first 3 hours; I used 27 USD
-  of my 38. I give him results and decisions only. Technology holds the items below the line.
-- Automation (agreement 10): the report check is in the document reviewer (PR 245); `fa usage` needs no
-  head step (PR 246). Candidates: one script for the pace reading; one list of what waits for him.
-- E1 is on hold: "No trades until T1 passes". Calculator data: 78% of a head's cost is its own context;
-  60% of the Technology tokens have no ticket. Pace check: Friday 16:05 UTC (scheduled).
+## 4. Open now (2026-11-26)
+- URA and GLD in five layers (his word 2026-11-25; "All three layers this week"). Layers 1 and 2: the data
+  and `fa fund attribution` are on main; the URA page is with him; the GLD page and layer 3 are with
+  Economics. My decisions of 2026-11-26: World Bank gold series yes; IMF uranium read at each run, no copy.
+- T1 failed. The forecast freeze is on main (first score about April 2027). Next week: the work on the
+  middle (5% to 8%), then the miner model (NexGen first). He says later which test is "the pass".
+- Waits for him: the host guide (45 minutes, his own paper keys), a dry-run day, then `--send` (step A).
+  The EDINET key (he must open the Proton mailbox or use a different address; then I open the secure form
+  and Technology tests the key in a header). His review of the three S&P pieces. His four owner tickets.
+- On hold: step B (until step A ran with `--send`); the items below the line of Technology.
+- Pace: about 184 USD (22% of the week share) after day 1; my share is 4% now. Each head reads its own use
+  with `fa usage show --week`. Pace check: Friday 16:05 UTC (scheduled). The reserve is used.
+- E1 is on hold: "No trades until T1 passes". Dialogs are often closed by a restart of my session: put
+  each question in the text also.
