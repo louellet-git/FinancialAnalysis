@@ -8,7 +8,7 @@ requested_by: louellet-git
 head: technology
 order: 2
 story: E3.S5
-branch: claude/commodity-series
+branch: claude/imf-uranium
 created: 2026-11-23
 acceptance: Each series below is in the store with a source note and its terms, or the ticket says that its terms forbid a stored copy (then the limit stays on the page); one real run for each loaded series.
 ---
@@ -34,3 +34,9 @@ Part 1 (2026-11-26, pull request 261): item 4 done: `fa commodity get|show gold`
 average in whole USD per troy ounce; 2026-08 to 2026-10 checked against the Pink Sheet PDF. Series break: spot average
 from June 2025, before that the London afternoon fixing (LBMA-linked; the owner accepts or rejects). Item 1 stopped:
 the IMF terms pages answer HTTP 403 to our client (Akamai), so the terms are not read; a person reads them in a browser.
+
+Decision (2026-11-26, the Head of Staff for Luc, who asked it to decide): gold: the World Bank monthly series for all
+years, in the private store, source named (CC BY 4.0). Uranium: read the IMF series (PCPS, G001.PURAN.USD.M) at each
+run through the IMF API (one small request, honest client); keep no copy in the store or the repo; name the source;
+log the date and a hash of each read. A risk-compliance read of this choice comes first. The EIA annual series stays
+as a public-domain cross-check.
