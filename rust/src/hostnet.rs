@@ -24,7 +24,7 @@ use std::time::{Duration, Instant};
 pub const USER_AGENT: &str = "FinancialAnalysis fa (personal research)";
 
 /// The host groups: (group name, host names). A host that is not here is its own group.
-pub const GROUPS: [(&str, &[&str]); 16] = [
+pub const GROUPS: [(&str, &[&str]); 17] = [
     ("sec", &["data.sec.gov", "www.sec.gov", "sec.gov"]),
     ("nasdaq", &["api.nasdaq.com"]),
     ("alpaca", &["data.alpaca.markets", "paper-api.alpaca.markets", "api.alpaca.markets"]),
@@ -41,6 +41,7 @@ pub const GROUPS: [(&str, &[&str]); 16] = [
     ("cftc", &["www.cftc.gov", "publicreporting.cftc.gov"]),
     ("philadelphiafed", &["www.philadelphiafed.org"]),
     ("worldbank", &["www.worldbank.org", "thedocs.worldbank.org"]),
+    ("imf", &["api.imf.org"]),
 ];
 
 /// The group of a host name (`api.nasdaq.com` is `nasdaq`).
