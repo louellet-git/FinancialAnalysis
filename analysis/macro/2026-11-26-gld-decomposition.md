@@ -51,7 +51,7 @@ Status: `fa fund attribution GLD`; the 10-Q and 10-K reports of the SPDR Gold Tr
 | Limit | What it does to the answer | What removes it | Who | When |
 |---|---|---|---|---|
 | (a) The gold price is the trust's own number (market value / ounces in the report), not a second source | Layer 1 checks the sum of the report, not the gold price | A second gold price for the same dates (the LBMA price is licensed, Technology) | Technology | not planned (licensed) |
-| (b) Quarter ends only | No month-by-month split | The monthly gold series (World Bank, a monthly average, not a month-end price) | Luc (answer on this series) | after your answer |
+| (b) Quarter ends only | No month-by-month split | The monthly gold series (World Bank, a monthly average, not a month-end price) | Economics | with layer 3 |
 | (c) The NAV and the close are at different times | The gap of the close to the NAV is not a premium; the true premium is not measured | A NAV at 16:00 New York (not public) | No owner (not possible) | not planned |
 | (d) The ounces and values are read from the text of the reports; one corrected report (10-K/A, 2024-12-19) is not used | A change of the report layout can break the reading | Tests on each new report | Technology | with each new report |
 | (e) The quarter to 2026-12-31 is not public yet | The page stops at 2026-09-30 | Time (a 10-Q is public about 5 weeks after the quarter end) | No owner (no action) | about early February 2027 |
