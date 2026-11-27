@@ -403,3 +403,27 @@ My decisions (mine, on his word; he can change each one):
    decomposition pages, staff).
 My reading of his word (not his words): for a choice of source or method that the repo rules and the goal
 can settle, I decide and tell him after. Money, orders, scope and his private data stay his decisions.
+
+## 2026-11-27, about 22:30 to 23:00 UTC. The meaning of "price" and a one pager
+
+His words, in sequence:
+- "Can you run the numbers on IBM? Is it a buy, sell, hold?"
+- After my first answer, which used the reviewed IBM model with its July inputs: "When I tell you to price I
+  want you to use the DCF valuation engine that we produced using up to date info."
+- "I want a one pager"
+
+My reading (not his words): "price a ticker" is a standing instruction. I run the DCF engine with the newest
+data (the newest SEC filing, the rate and the price of the day), not the old inputs of a report, and the
+result goes to him as one page in the owner report style.
+
+What I did, by his direct request (I ran the engine myself in my own checkout; I woke no head):
+1. `fa sync IBM SPY` for the SEC facts, the prices, the estimates and the yield curve.
+2. The reviewed IBM model with the inputs of today: rate 4.94%, net debt $61.3B and 953.5M shares from the
+   10-Q of 2026-09-30. Result: P10 $68.22, P50 $130.16, P90 $224.28; 93.7% of the results below $248.03.
+3. `fa dcf auto IBM` on the same data, with one input corrected by hand (the current debt was counted two
+   times; board ticket T-20261127-current-debt-two-times). Result: P10 $3.89, P50 $127.58, P90 $446.60;
+   72.8% below the price.
+4. One page, "IBM Price Check", sent to him. The runs are mine and have no review of the model validator
+   or the auditor; the page says so.
+A correction of my first answer: I said that the reviewed model uses a rate of 4.3%. The correct value is
+4.6% (`analysis/IBM/driver_model.toml`).
