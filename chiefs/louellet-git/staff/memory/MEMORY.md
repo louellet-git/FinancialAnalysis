@@ -24,25 +24,25 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
     A choice of source or method that the rules and the goal settle: I decide and tell him after (his word
     2026-11-26, my reading). Money, orders, scope and his private data stay his.
 12. Privacy: this repo is public. His own holdings and private reasons go in no file.
+13. "Price X" (2026-11-27): the DCF engine with the newest filing, rate and price; one page. See `RECORD.md`.
 
 ## 2. How I stay on track
 - Memory: this file, `../RECORD.md` (his words, same turn), `../ledger.md`, `owner-report-style.md`.
 - Dream pass before a compaction: when `get_session` shows my context above about 588,000 (threshold
   784,000). Put small changes in one pull request. No force push (the permission system refuses it).
-- I start no build. `get_session` gives the cost of each head session; `list_events` on my session
-  (kinds `rate_limit_event`) gives the weekly limit; `list_sessions` gives what a head asks of him.
+- I start no build (exception: an engine run that he asks me for). `get_session` gives the cost of each
+  head; `list_events` on my session (kinds `rate_limit_event`), the weekly limit; `list_sessions`, their asks.
 
 ## 3. The weekly token limit (all his projects share it; the Scan Support heads run too)
-- Week 1 (to 2026-11-25 16:00 UTC): 71% on Sat 18:49, 83% on Sat 22:50, 99% on Mon 11-23 16:22 UTC. The
-  limit stopped the heads for two days. Lesson: a pace is necessary, not only a split.
+- Week 1 (to 2026-11-25): 99% on Mon 16:22 UTC; the limit stopped the heads for two days. A pace is necessary.
 - Cumulative cost at the reset (USD at list, `get_session`): Technology 674, Fundamental 408, Quality 285,
   Quant 170, Economics 154, Staff 108; total about 1,800. Cost of this week = the new number less these.
 - Week 2: reset 2026-11-25 16:00 UTC, next 2026-12-02 16:00 UTC. His split: Financial Analysis 45%, Scan
   Support 15%, ShredTree 30%. The agreed week is in `EPICS.md` (last section). 45% is about 850 USD of new
   session cost (an estimate). Tell the heads once if FA is above 40% of that on Fri, 65% on Sun, 90% on Tue.
-  My own share is 2%: few turns, short answers, no relay of a head message that is not for him.
+  My own share is 4%: few turns, short answers. Do not wake an idle head for a notice: a wake costs tokens.
 
-## 4. Open now (2026-11-26)
+## 4. Open now (2026-11-27)
 - URA and GLD in five layers (his word 2026-11-25; "All three layers this week"). Layers 1 and 2: the data
   and `fa fund attribution` are on main; the URA page is with him; the GLD page and layer 3 are with
   Economics. My decisions of 2026-11-26: World Bank gold series yes; IMF uranium read at each run, no copy.
@@ -52,7 +52,8 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
   The EDINET key (he must open the Proton mailbox or use a different address; then I open the secure form
   and Technology tests the key in a header). His review of the three S&P pieces. His four owner tickets.
 - On hold: step B (until step A ran with `--send`); the items below the line of Technology.
-- Pace: about 184 USD (22% of the week share) after day 1; my share is 4% now. Each head reads its own use
-  with `fa usage show --week`. Pace check: Friday 16:05 UTC (scheduled). The reserve is used.
+- Pace Fri 11-27 16:05 UTC: the account at 76% (mostly ShredTree); FA about 390 USD (Tech 73, Fund 62,
+  Quality 42, Quant 31, Econ 51, Staff 130, above my share). Reset task: 2026-12-02 16:10 UTC (scheduled).
+- IBM price check 2026-11-27: both models give a middle of about $130 against $248. Ticket for the debt fault.
 - E1 is on hold: "No trades until T1 passes". Dialogs are often closed by a restart of my session: put
   each question in the text also.
