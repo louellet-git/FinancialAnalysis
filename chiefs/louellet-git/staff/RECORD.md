@@ -427,3 +427,28 @@ What I did, by his direct request (I ran the engine myself in my own checkout; I
    or the auditor; the page says so.
 A correction of my first answer: I said that the reviewed model uses a rate of 4.3%. The correct value is
 4.6% (`analysis/IBM/driver_model.toml`).
+
+## 2026-11-28, about 00:30 UTC. Two models: our own value and a mark-to-market value
+
+His words, in sequence:
+- "So how is it that like the entire stock market is just overpriced?"
+- "Maybe we should have our internal model and we consider that the lower bound, whereas the upper bound is
+  our mark to market model. When can we begin on the mark to market model, what would it require? Leveraging
+  an automated system and our engine"
+
+My answer to the first question, from `analysis/priors/market_implied_2026-11-20.md`: the engine gives the
+median S&P 500 company a middle value of 0.48 times its price; the premium must fall from 4.41% to 2.32% for
+the median company to be worth its price.
+
+My reading of the second (not his words): two values from one engine and one set of company inputs. The
+internal value uses our own premium and stays free of the price (`docs/QUALITY-STANDARDS.md`, section 6). The
+mark-to-market value uses the premium that the prices of the whole list imply. It is a second model with
+its own name, not a change of the first.
+
+A preview for IBM that I ran myself (list premium 2.32% of 2026-11-20, an approximation): value at the means
+$170 at our premium and $275 at the market premium; price $248.03. The middle values (P50) are $128 and $187.
+The measure (middle or value at the means) is a design choice that must be fixed before the run.
+
+My plan, which he can change: no head starts before the reset of 2026-12-02 (the account was at 85% on
+2026-11-28 00:40 UTC). After the reset, Fundamental Research writes a fixed design page with its size, and
+he sees the size before the build.
