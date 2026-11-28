@@ -54,6 +54,6 @@ Part 1 is what the person and I agreed, no more and no less; the words are in `.
 - On hold: step B (until step A ran with `--send`); the items below the line of Technology.
 - Pace Fri 11-27 16:05 UTC: the account at 76% (mostly ShredTree); FA about 390 USD (Tech 73, Fund 62,
   Quality 42, Quant 31, Econ 51, Staff 130, above my share). Reset task: 2026-12-02 16:10 UTC (scheduled).
-- IBM price check 2026-11-27: both models give a middle of about $130 against $248. Ticket for the debt fault.
-- E1 is on hold: "No trades until T1 passes". Dialogs are often closed by a restart of my session: put
-  each question in the text also.
+- Mark-to-market model (his idea 2026-11-28): our value = lower bound, value at the market premium = upper.
+  After the reset: Fundamental writes the fixed design page with its size; he sees it before the build.
+- E1 is on hold: "No trades until T1 passes". Put each question in the text also (dialogs get closed).
